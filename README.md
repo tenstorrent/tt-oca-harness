@@ -19,8 +19,8 @@ absent from this repository; do not add `dependencies:` entries for third-party 
 - **Commit vendored sources.** The materialized files under `vendor/` are committed to this
   repository so that every revision is fully self-contained and reproducible without network
   access.
-- **One upstream commit pin per entry.** The `rev:` field must be a full commit hash (not a
-  branch or tag) so the import is deterministic.
+- **Pin every upstream entry.** The `rev:` field must be a full commit hash or an immutable tag
+  (e.g. a release tag). Mutable refs such as branch names are prohibited.
 
 ### Filesystem layout
 
@@ -80,7 +80,7 @@ Each entry must follow this template:
 vendor_package:
   - name: <descriptive-name>
     target_dir: vendor/<VENDOR_NAME>/<REPOSITORY_NAME>
-    upstream: { git: "<upstream-url>", rev: "<full-commit-hash>" }
+    upstream: { git: "<upstream-url>", rev: "<full-commit-hash-or-tag>" }
     include_from_upstream:
       - "<path/relative/to/upstream/root>"
       # add only the subtrees actually consumed by OCAH
