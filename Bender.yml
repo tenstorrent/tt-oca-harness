@@ -1,0 +1,30 @@
+package:
+  name: tt-oca
+  authors:
+    - "Noah Betik <nbetik@tenstorrent.com>"
+    - "Nicole Boettcher <nboettcher@tenstorrent.com>"
+    - "Frank Chen <fchen@tenstorrent.com>"
+    - "Zhimin Chen <zhiminchen@tenstorrent.com>"
+    - "Carlos Gewehr <cgewehr@tenstorrent.com>"
+    - "Minshao Ho <minshaoho@tenstorrent.com>"
+    - "Andrew Hsiao <ahsiao@tenstorrent.com>"
+    - "Bruce Hsu <brucehsu@tenstorrent.com>"
+    - "Henry Lai <yenhenglai@tenstorrent.com>"
+    - "Leo Li <lizhili@tenstorrent.com>"
+    - "Haohao Liao <hliao@tenstorrent.com>"
+    - "Ben Melton <bmelton@tenstorrent.com>"
+    - "Paul Scheidt <pscheidt@tenstorrent.com>"
+    - "Adam Taback <ataback@tenstorrent.com>"
+    - "Kai Qin <kqin@tenstorrent.com>"
+    - "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+
+vendor_package:
+  - name: opentitan
+    target_dir: vendor/lowRISC/opentitan
+    upstream: { git: "git@github.com:lowRISC/opentitan.git", rev: "bbe4dbf28bbfe815dcd11d723dc3e38635b46704" }
+    include_from_upstream:
+      - "hw/ip/otbn/rtl"
+      - "hw/ip/otbn/data"
+      - "hw/ip/otbn/dv/tracer"
+      - "hw/ip/otbn/util"
+    patch_dir: "vendor/patches/lowRISC/opentitan/"
