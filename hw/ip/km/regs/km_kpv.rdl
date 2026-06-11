@@ -1,0 +1,220 @@
+// Key and Policy Vault (KPV) - KM Port Register Definition
+// SystemRDL 2.0
+//
+// Copyright 2026 Tenstorrent Inc.
+//
+// Base Address: 0x0000_D000 (KM CPU via crossbar)
+// Size: 4KB
+// 32 key entries (512 bits = 16 x 32-bit words each), 32 KM control registers.
+// Access rules: lock_write/lock_use enforced in RTL; violations return SLVERR.
+
+addrmap km_kpv {
+    name = "Key and Policy Vault (KM Port)";
+    desc = "Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.";
+
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    //=========================================================================
+    // Warm reset signal declaration
+    //=========================================================================
+    // cpuif_reset quiesces the KM-port AXI CPUIF on warm reset.
+    // field_reset is intentionally NOT set: lock_write, lock_use, and
+    // unlock_sep carry explicit `resetsignal = WARM_RST_N`. All other fields
+    // (key data, EXTEND, DEST_VALID, LAST_DWORD, scrambler) use the default
+    // arst_n (cold reset only). The KPVLP port regblock is NOT modified here.
+    signal warm_rst_n {
+        activelow;
+        async = false;
+        cpuif_reset = true;
+    };
+    warm_rst_n WARM_RST_N;
+
+    //=========================================================================
+    // Key Entry Word Register (one 32-bit word of a 512-bit key)
+    //=========================================================================
+    // Key entry data: no reset for security (FR-0000-106, FR-0000-149). Power-up value is undefined.
+    reg key_word_reg {
+        name = "KEY_WORD";
+        desc = "One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.";
+
+        field {
+            name = "DATA";
+            desc = "32-bit key data word. No reset for security; power-up value undefined.
+                    Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.";
+            sw = rw;
+            hw = na;       // No HW interface: key data stored in external register file
+            // No reset: datapath must power up with random value (FR-0000-149)
+        } data[31:0];
+    };
+
+    //=========================================================================
+    // Key Entry Regfile: 16 words per slot (512 bits)
+    //=========================================================================
+    regfile key_entry_rf {
+        name = "KEY_ENTRY";
+        desc = "One key entry (16 x 32-bit words = 512 bits)";
+
+        key_word_reg WORD[16] @ 0x000;
+    };
+
+    // 32 key entries: KEY_ENTRY[0] at 0x000, [1] at 0x040, ... [31] at 0x7C0
+    // External: no internal flops; RTL bridges to km_kpv_regfile via req/ack interface.
+    external key_entry_rf KEY_ENTRY[32] @ 0x000;
+
+    //=========================================================================
+    // KM Control Register (per slot)
+    // FR-0000-105: Lock_write[0], Lock_use[1], Unlock_sep[2], Reserved[3],
+    //             Extend[6:4], Reserved[8:7], Dest_valid[16:9], Last_dword[20:17], Reserved[31:21]
+    //=========================================================================
+    reg ctrl_reg {
+        name = "CTRL";
+        desc = "Per-slot control: lock bits (W1S), Extend, Dest_valid, Last_dword";
+
+        field {
+            name = "LOCK_WRITE";
+            desc = "Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe (FR-0000-143)
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } lock_write[0:0];
+
+        field {
+            name = "LOCK_USE";
+            desc = "Prevents KM read of this key entry data until reset. Read-any, write-1-only.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe (FR-0000-143)
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } lock_use[1:1];
+
+        field {
+            name = "UNLOCK_SEP";
+            desc = "Allows SEP (KPVLP) to write this slot when lock_write==0. Read-any, write-1-only.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            swwel = true;  // HW drives: when asserted (lock_write), SW write does not update
+            hwclr = true;  // HW can clear on wipe (FR-0000-143)
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } unlock_sep[2:2];
+
+        field {
+            name = "RSVD_3";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 1'b0;
+        } rsvd_3[3:3];
+
+        field {
+            name = "EXTEND";
+            desc = "Zero-indexed number of additional slots for wide keys. Firmware enforced.";
+            sw = rw;
+            hw = rw;
+            swwel = true;  // HW drives: when asserted (lock_write), SW write does not update
+            reset = 3'h0;
+        } extend[6:4];
+
+        field {
+            name = "RSVD_8_7";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 2'h0;
+        } rsvd_8_7[8:7];
+
+        field {
+            name = "DEST_VALID";
+            desc = "Which crypto block may consume this key. Firmware enforced.";
+            sw = rw;
+            hw = rw;
+            swwel = true;  // HW drives: when asserted (lock_write), SW write does not update
+            reset = 8'h0;
+        } dest_valid[16:9];
+
+        field {
+            name = "LAST_DWORD";
+            desc = "Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.";
+            sw = rw;
+            hw = rw;
+            swwel = true;  // HW drives: when asserted (lock_write), SW write does not update
+            reset = 4'h0;
+        } last_dword[20:17];
+
+        field {
+            name = "RSVD_31_21";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 11'h0;
+        } rsvd_31_21[31:21];
+    };
+
+    // 32 control registers at 0x800 - 0x87C
+    ctrl_reg CTRL[32] @ 0x800;
+
+    //=========================================================================
+    // KPV Scrambler (KM port only; KPVLP does not expose — FR-0000-113)
+    //=========================================================================
+    // Scrambler key: no reset for security (FR-0000-116). When LOCK=1, key cannot be modified until KM reset.
+    reg kpv_scrambler_key_reg {
+        name = "KPV_SCRAMBLER_KEY";
+        desc = "32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.";
+
+        field {
+            name = "KEY";
+            desc = "Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr (FR-0000-143).";
+            sw = rw;
+            hw = rw;       // HW holds value via next; clears on wipe via hwclr
+            hwclr = true;  // HW can clear all bits to 0 (used for wipe)
+            swwel = true;  // When LOCK=1, SW write does not update (RTL override)
+            // No reset: datapath security (FR-0000-149)
+        } key[31:0];
+    };
+
+    kpv_scrambler_key_reg KPV_SCRAMBLER_KEY @ 0x880;
+
+    // Scrambler control: ENABLE and LOCK; reset to 0 on KM reset (FR-0000-116).
+    reg kpv_scrambler_ctrl_reg {
+        name = "KPV_SCRAMBLER_CTRL";
+        desc = "KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.";
+
+        field {
+            name = "ENABLE";
+            desc = "1 = scramble key entry data on write, descramble on read; 0 = passthrough.";
+            sw = rw;
+            hw = r;
+            swwel = true;  // When LOCK=1, SW write does not update
+            hwclr = true;  // HW can clear on wipe (FR-0000-143)
+            reset = 1'b0;
+        } enable[0:0];
+
+        field {
+            name = "LOCK";
+            desc = "Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe (FR-0000-143)
+            reset = 1'b0;
+        } lock[1:1];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 30'h0;
+        } rsvd[31:2];
+    };
+
+    kpv_scrambler_ctrl_reg KPV_SCRAMBLER_CTRL @ 0x884;
+};

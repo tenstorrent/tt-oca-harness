@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
+# Slim local manifest for the vendored OpenTitan OTBN RTL used by OCAH.
+
+package:
+  name: opentitan
+  authors:
+    - "lowRISC contributors"
+
+sources:
+  - target: opentitan_otbn
+    files:
+      - upstream/hw/ip/otbn/rtl/otbn_pkg.sv
+      - upstream/hw/ip/otbn/rtl/otbn_reg_pkg.sv
+      - upstream/hw/ip/otbn/rtl/otbn_alu_base.sv
+      - upstream/hw/ip/otbn/rtl/otbn_alu_bignum.sv
+      - upstream/hw/ip/otbn/rtl/otbn_controller.sv
+      - upstream/hw/ip/otbn/rtl/otbn_core.sv
+      - upstream/hw/ip/otbn/rtl/otbn_decoder.sv
+      - upstream/hw/ip/otbn/rtl/otbn_instruction_fetch.sv
+      - upstream/hw/ip/otbn/rtl/otbn_loop_controller.sv
+      - upstream/hw/ip/otbn/rtl/otbn_lsu.sv
+      - upstream/hw/ip/otbn/rtl/otbn_mac_bignum.sv
+      - upstream/hw/ip/otbn/rtl/otbn_mac_bignum_fsm.sv
+      - upstream/hw/ip/otbn/rtl/otbn_mod_result_selector.sv
+      - upstream/hw/ip/otbn/rtl/otbn_predecode.sv
+      - upstream/hw/ip/otbn/rtl/otbn_reg_top.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_base.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_base_ff.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_base_fpga.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_bignum.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_bignum_ff.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rf_bignum_fpga.sv
+      - upstream/hw/ip/otbn/rtl/otbn_rnd.sv
+      - upstream/hw/ip/otbn/rtl/otbn_scramble_ctrl.sv
+      - upstream/hw/ip/otbn/rtl/otbn_stack.sv
+      - upstream/hw/ip/otbn/rtl/otbn_start_stop_control.sv
+      - upstream/hw/ip/otbn/rtl/otbn_vec_adder.sv
+      - upstream/hw/ip/otbn/rtl/otbn_vec_multiplier.sv
+      - upstream/hw/ip/otbn/rtl/otbn_vec_shifter.sv
+      - upstream/hw/ip/otbn/rtl/otbn_vec_transposer.sv
+      - upstream/hw/ip/otbn/rtl/otbn.sv
