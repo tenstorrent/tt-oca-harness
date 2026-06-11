@@ -1,0 +1,57 @@
+`ifndef GPIO_RDL_DEFINED
+`define GPIO_RDL_DEFINED
+
+addrmap gpio {
+    desc = "Sample GPIO register block";
+
+    reg DATA_CTRL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven data to send to the pad.";
+        } core2pad[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register interface enable.";
+        } interface_enable[16:16] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "PAD2SOC value.";
+        } pad2core[31:31] = 0x0;
+    };
+
+    reg CONTROL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven drive strength.";
+        } drive_strength[2:0] = 0x2;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven pull enable.";
+        } pull_enable_n0_scan[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven pull select.";
+        } pull_select[9:9] = 0x0;
+    };
+
+    DATA_CTRL  DATA_CTRL  @0x0;
+    CONTROL    CONTROL    @0x4;
+};
+
+`endif

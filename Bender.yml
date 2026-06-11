@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 package:
   name: tt-oca
   authors:
@@ -13,18 +16,86 @@ package:
     - "Leo Li <lizhili@tenstorrent.com>"
     - "Haohao Liao <hliao@tenstorrent.com>"
     - "Ben Melton <bmelton@tenstorrent.com>"
+    - "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    - "Kai Qin <kqin@tenstorrent.com>"
     - "Paul Scheidt <pscheidt@tenstorrent.com>"
     - "Adam Taback <ataback@tenstorrent.com>"
-    - "Kai Qin <kqin@tenstorrent.com>"
-    - "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+
+dependencies:
+  idma: { path: "vendor/pulp-platform/iDMA" }
+  opentitan: { path: "vendor/lowRISC/opentitan" }
 
 vendor_package:
   - name: opentitan
-    target_dir: vendor/lowRISC/opentitan
+    target_dir: vendor/lowRISC/opentitan/upstream
     upstream: { git: "git@github.com:lowRISC/opentitan.git", rev: "bbe4dbf28bbfe815dcd11d723dc3e38635b46704" }
-    include_from_upstream:
-      - "hw/ip/otbn/rtl"
-      - "hw/ip/otbn/data"
-      - "hw/ip/otbn/dv/tracer"
+    exclude_from_upstream:
+      - "hw/ip/otbn/dv"
       - "hw/ip/otbn/util"
-    patch_dir: "vendor/patches/lowRISC/opentitan/"
+      - "util/regtool.py"
+      - "util/reggen/doc"
+      - "util/reggen/BUILD"
+      - "util/reggen/Makefile"
+      - "util/reggen/README.md"
+      - "util/reggen/fpv_csr.sv.tpl"
+      - "util/reggen/gen_cfg_html.py"
+      - "util/reggen/gen_cfg_md.py"
+      - "util/reggen/gen_cheader.py"
+      - "util/reggen/gen_dv.py"
+      - "util/reggen/gen_fpv.py"
+      - "util/reggen/gen_html.py"
+      - "util/reggen/gen_json.py"
+      - "util/reggen/gen_md.py"
+      - "util/reggen/gen_rtl.py"
+      - "util/reggen/gen_rust.py"
+      - "util/reggen/gen_sec_cm_testplan.py"
+      - "util/reggen/gen_selfdoc.py"
+      - "util/reggen/gen_tock.py"
+      - "util/reggen/html_helpers.py"
+      - "util/reggen/md_helpers.py"
+      - "util/reggen/reg_pkg.sv.tpl"
+      - "util/reggen/reg_top.sv.tpl"
+      - "util/reggen/sec_cm_testplan.hjson.tpl"
+      - "util/reggen/uvm_reg.sv.tpl"
+      - "util/reggen/uvm_reg_base.sv.tpl"
+      - "util/reggen/validate.py"
+      - "util/reggen/vendor_specific.py"
+      - "util/reggen/version.py"
+    mapping:
+      - { from: "hw/ip/otbn/data/otbn.hjson", to: "hw/ip/otbn/data/otbn.hjson", patch_dir: "hw/ip/otbn/data" }
+      - { from: "hw/ip/otbn/rtl", to: "hw/ip/otbn/rtl", patch_dir: "" }
+      - { from: "util/reggen/access.py", to: "util/reggen/access.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/alert.py", to: "util/reggen/alert.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/bits.py", to: "util/reggen/bits.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/bus_interfaces.py", to: "util/reggen/bus_interfaces.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/clocking.py", to: "util/reggen/clocking.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/countermeasure.py", to: "util/reggen/countermeasure.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/enum_entry.py", to: "util/reggen/enum_entry.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/exporter.py", to: "util/reggen/exporter.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/feature.py", to: "util/reggen/feature.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/field.py", to: "util/reggen/field.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/inter_signal.py", to: "util/reggen/inter_signal.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/interrupt.py", to: "util/reggen/interrupt.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/ip_block.py", to: "util/reggen/ip_block.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/lib.py", to: "util/reggen/lib.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/memory.py", to: "util/reggen/memory.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/multi_register.py", to: "util/reggen/multi_register.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/params.py", to: "util/reggen/params.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/reg_base.py", to: "util/reggen/reg_base.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/reg_block.py", to: "util/reggen/reg_block.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/register.py", to: "util/reggen/register.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/signal.py", to: "util/reggen/signal.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/systemrdl_exporter.py", to: "util/reggen/systemrdl_exporter.py", patch_dir: "util/reggen" }
+      - { from: "util/reggen/systemrdl/udp.py", to: "util/reggen/systemrdl/udp.py", patch_dir: "util/reggen/systemrdl" }
+      - { from: "util/reggen/systemrdl/udp.rdl", to: "util/reggen/systemrdl/udp.rdl", patch_dir: "util/reggen/systemrdl" }
+      - { from: "util/reggen/window.py", to: "util/reggen/window.py", patch_dir: "util/reggen" }
+      - { from: "util/design/mubi/prim_mubi.py", to: "util/design/mubi/prim_mubi.py", patch_dir: "util/design/mubi" }
+    patch_dir: "vendor/lowRISC/opentitan/patches"
+
+  - name: idma
+    target_dir: "vendor/pulp-platform/iDMA/upstream"
+    upstream: { git: "git@github.com:pulp-platform/iDMA.git", rev: "b248755b3265ff88b826eeec5e23eef012ba61b5" }
+    include_from_upstream:
+      - "src"
+      - "target/rtl"
+    patch_dir: "vendor/pulp-platform/iDMA/patches"

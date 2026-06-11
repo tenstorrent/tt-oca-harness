@@ -1,0 +1,242 @@
+[[system_timer_octs-address-map]]
+system_timer_octs address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x24
+
+Open Chiplet Time Synchronization (OCTS) System Timer Registers
+
+[cols=",,",options="header",]
+|==========================
+|Offset |Identifier |Name
+|0x00 |TIMER_START |—
+|0x04 |CTRL |—
+|0x08 |STATUS |—
+|0x0C |TIMER_PRESET_LO |—
+|0x10 |TIMER_PRESET_HI |—
+|0x14 |TIMER_COUNT_LO |—
+|0x18 |TIMER_COUNT_HI |—
+|0x1C |CREDIT_EXPIRED |—
+|0x20 |TIMER_GPIO_ENABLE |—
+|==========================
+
+[[timer_start-register]]
+TIMER_START register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+System Timer Start Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |START |rw |0x0 |—
+|=====================================
+
+[[start-field]]
+START field
++++++++++++
+
+Start the system timer.
+
+[[ctrl-register]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4
+* Base Offset: 0x4
+* Size: 0x4
+
+System Timer Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |CREDIT_VAL |rw |0xA |—
+|15:8 |PULSE_WIDTH |rw |0x2 |—
+|23:16 |STEP |rw |0x1 |—
+|=====================================
+
+[[credit_val-field]]
+CREDIT_VAL field
+++++++++++++++++
+
+Credit value factor.
+
+[[pulse_width-field]]
+PULSE_WIDTH field
++++++++++++++++++
+
+Pulse width for sync load and credit signals.
+
+[[step-field]]
+STEP field
+++++++++++
+
+Step amount for secondary timer.
+
+[[status-register]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x4
+
+System Timer Status Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |MODE |r |0x0 |—
+|4 |RUNNING |r |0x0 |—
+|=====================================
+
+[[mode-field]]
+MODE field
+++++++++++
+
+Timer mode: 0=PRIMARY, 1=SECONDARY.
+
+[[running-field]]
+RUNNING field
++++++++++++++
+
+Timer is currently enabled and running.
+
+[[timer_preset_lo-register]]
+TIMER_PRESET_LO register
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xC
+* Base Offset: 0xC
+* Size: 0x4
+
+System Timer Preset Value [31:0]
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |PRESET_LO |rw |0x0 |—
+|=====================================
+
+[[preset_lo-field]]
+PRESET_LO field
++++++++++++++++
+
+Lower 32 bits of preset value.
+
+[[timer_preset_hi-register]]
+TIMER_PRESET_HI register
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x4
+
+System Timer Preset Value [63:32]
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |PRESET_HI |rw |0x0 |—
+|=====================================
+
+[[preset_hi-field]]
+PRESET_HI field
++++++++++++++++
+
+Upper 32 bits of preset value.
+
+[[timer_count_lo-register]]
+TIMER_COUNT_LO register
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x14
+* Base Offset: 0x14
+* Size: 0x4
+
+Current System Timer Count [31:0]
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |COUNT_LO |r |0x0 |—
+|=====================================
+
+[[count_lo-field]]
+COUNT_LO field
+++++++++++++++
+
+Lower 32 bits of current timer count.
+
+[[timer_count_hi-register]]
+TIMER_COUNT_HI register
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x18
+* Size: 0x4
+
+Current System Timer Count [63:32]
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |COUNT_HI |r |0x0 |—
+|=====================================
+
+[[count_hi-field]]
+COUNT_HI field
+++++++++++++++
+
+Upper 32 bits of current timer count.
+
+[[credit_expired-register]]
+CREDIT_EXPIRED register
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1C
+* Base Offset: 0x1C
+* Size: 0x4
+
+Credit Expired Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |MAX_CYCLES_EXPIRED |rw |0x0 |—
+|=====================================
+
+[[max_cycles_expired-field]]
+MAX_CYCLES_EXPIRED field
+++++++++++++++++++++++++
+
+Maximum number of clock cycles since a count credit expired.
+
+[[timer_gpio_enable-register]]
+TIMER_GPIO_ENABLE register
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x20
+* Base Offset: 0x20
+* Size: 0x4
+
+System Timer GPIO Enable Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |GPIO_ENABLE |rw |0x0 |—
+|=====================================
+
+[[gpio_enable-field]]
+GPIO_ENABLE field
++++++++++++++++++
+
+Enable the GPIO pad LSIO interface for the system timer.

@@ -1,0 +1,14 @@
+.venv/
+.bender/
+__pycache__/
+*.pyc
+
+# Optional overlay repositories cloned by make agents-init / make nonfree-init
+agents/
+nonfree/
+
+# Transient per-block build outputs. Keep .gitkeep placeholders when used to show structure.
+**/build/**
+!**/build/
+!**/build/**/
+!**/build/**/.gitkeep

@@ -1,0 +1,1138 @@
+diff --git a/src/backend/idma_axi_read.sv b/src/backend/idma_axi_read.sv
+index 754dea438..af8b9dd8a 100644
+--- a/src/backend/idma_axi_read.sv
++++ b/src/backend/idma_axi_read.sv
+@@ -201,6 +201,12 @@ module idma_axi_read #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(first_r_q,     first_r_d,     '1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            first_r_q <= '1;
++        end else begin
++            first_r_q <= first_r_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_axi_write.sv b/src/backend/idma_axi_write.sv
+index ee27349d1..4cedbbdde 100644
+--- a/src/backend/idma_axi_write.sv
++++ b/src/backend/idma_axi_write.sv
+@@ -288,7 +288,20 @@ module idma_axi_write #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(w_cnt_valid_q, w_cnt_valid_d, '0, clk_i, rst_ni)
+-    `FF(w_num_beats_q, w_num_beats_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_cnt_valid_q <= '0;
++        end else begin
++            w_cnt_valid_q <= w_cnt_valid_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_num_beats_q <= '0;
++        end else begin
++            w_num_beats_q <= w_num_beats_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_axis_write.sv b/src/backend/idma_axis_write.sv
+index ee5b0b171..0c25e2e68 100644
+--- a/src/backend/idma_axis_write.sv
++++ b/src/backend/idma_axis_write.sv
+@@ -143,9 +143,11 @@ module idma_axis_write #(
+         // not used signal
+         assign buffer_data_masked = '0;
+         // simpler: direct connection
+-        assign write_req_o.t      = aw_req_i.axis.t_chan;
+-        assign write_req_o.t.data = buffer_out_i;
+-        assign write_req_o.t.keep = dp_poison_i ? '0 : mask_out;
++        always_comb begin
++            write_req_o.t      = aw_req_i.axis.t_chan;
++            write_req_o.t.data = buffer_out_i;
++            write_req_o.t.keep = dp_poison_i ? '0 : mask_out;
++        end
+     end
+ 
+     // we are ready for the next transfer internally, once the w last signal is applied
+diff --git a/src/backend/idma_channel_coupler.sv b/src/backend/idma_channel_coupler.sv
+index 1491716a2..e0d5a5741 100644
+--- a/src/backend/idma_channel_coupler.sv
++++ b/src/backend/idma_channel_coupler.sv
+@@ -179,7 +179,13 @@ module idma_channel_coupler #(
+     assign busy_o = aw_valid;
+ 
+     // state
+-    `FF(aw_to_send_q, aw_to_send_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            aw_to_send_q <= '0;
++        end else begin
++            aw_to_send_q <= aw_to_send_d;
++        end
++    end
+ 
+ 
+ endmodule
+diff --git a/src/backend/idma_dataflow_element.sv b/src/backend/idma_dataflow_element.sv
+index 00744710a..2b5d1c709 100644
+--- a/src/backend/idma_dataflow_element.sv
++++ b/src/backend/idma_dataflow_element.sv
+@@ -12,6 +12,8 @@ module idma_dataflow_element #(
+     parameter int unsigned BufferDepth = 32'd3,
+     /// The width of the buffer in bytes
+     parameter int unsigned StrbWidth = 32'd1,
++    /// Use a non-passthrough FIFO
++    parameter bit NotPassthroughFifo = 1'b0,
+     /// Print the info of the FIFO configuration
+     parameter bit PrintFifoInfo = 1'b0,
+     /// The strobe type
+@@ -34,22 +36,45 @@ module idma_dataflow_element #(
+ 
+     // buffer is implemented as an array of FIFOs
+     for (genvar i = 0; i < StrbWidth; i++) begin : gen_fifo_buffer
+-        passthrough_stream_fifo #(
+-            .type_t       ( byte_t        ),
+-            .Depth        ( BufferDepth   ),
+-            .PrintInfo    ( PrintFifoInfo )
+-        ) i_passthrough_stream_fifo (
+-            .clk_i,
+-            .rst_ni,
+-            .testmode_i,
+-            .flush_i      ( 1'b0        ),
+-            .data_i       ( data_i  [i] ),
+-            .valid_i      ( valid_i [i] ),
+-            .ready_o      ( ready_o [i] ),
+-            .data_o       ( data_o  [i] ),
+-            .valid_o      ( valid_o [i] ),
+-            .ready_i      ( ready_i [i] )
+-        );
++        if (NotPassthroughFifo == 1'b1) begin : gen_fifo_nonpassthrough
++            stream_fifo #(
++                .FALL_THROUGH   ( 1'b0 ),
++                .DEPTH          ( BufferDepth ),
++                .T              ( byte_t )
++            ) i_stream_fifo (
++                .clk_i,
++                .rst_ni,
++                .testmode_i,
++                .flush_i      ( 1'b0        ),
++                .data_i       ( data_i  [i] ),
++                .valid_i      ( valid_i [i] ),
++                .ready_o      ( ready_o [i] ),
++                .data_o       ( data_o  [i] ),
++                .valid_o      ( valid_o [i] ),
++                .ready_i      ( ready_i [i] ),
++                .usage_o      (             )
++            );
++        end else begin : gen_fifo_passthrough
++            passthrough_stream_fifo #(
++                .type_t       ( byte_t        ),
++                .Depth        ( BufferDepth   ),
++                .PrintInfo    ( PrintFifoInfo )
++            ) i_passthrough_stream_fifo (
++                .clk_i,
++                .rst_ni,
++                .testmode_i,
++                .flush_i      ( 1'b0        ),
++                .data_i       ( data_i  [i] ),
++                .valid_i      ( valid_i [i] ),
++                .ready_o      ( ready_o [i] ),
++                .data_o       ( data_o  [i] ),
++                .valid_o      ( valid_o [i] ),
++                .ready_i      ( ready_i [i] )
++            );
++        end
++
++
++
+     end : gen_fifo_buffer
+ 
+ endmodule
+diff --git a/src/backend/idma_error_handler.sv b/src/backend/idma_error_handler.sv
+index ad9abccea..2030cfea7 100644
+--- a/src/backend/idma_error_handler.sv
++++ b/src/backend/idma_error_handler.sv
+@@ -378,7 +378,21 @@ module idma_error_handler #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(state_q,         state_d, IDLE, clk_i, rst_ni)
+-    `FF(num_outst_q, num_outst_d,   '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            state_q <= IDLE;
++        end else begin
++            state_q <= state_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            num_outst_q <= '0;
++        end else begin
++            num_outst_q <= num_outst_d;
++        end
++    end
++
+ 
+ endmodule
+diff --git a/src/backend/idma_obi_write.sv b/src/backend/idma_obi_write.sv
+index d79163c12..8d4bbba79 100644
+--- a/src/backend/idma_obi_write.sv
++++ b/src/backend/idma_obi_write.sv
+@@ -118,12 +118,13 @@ module idma_obi_write #(
+         // always_comb process implements masking of invalid data
+         always_comb begin : proc_mask
+             // defaults
+-            write_req_o.a.addr  = aw_req_i.obi.a_chan.addr;
+-            write_req_o.a.aid   = aw_req_i.obi.a_chan.aid;
+-            write_req_o.a.we    = 1'b1;
+-            write_req_o.a.wdata = '0;
+-            write_req_o.a.be    = '0;
+-            buffer_data_masked  = '0;
++            write_req_o.a.addr       = aw_req_i.obi.a_chan.addr;
++            write_req_o.a.aid        = aw_req_i.obi.a_chan.aid;
++            write_req_o.a.we         = 1'b1;
++            write_req_o.a.wdata      = '0;
++            write_req_o.a.be         = '0;
++	    write_req_o.a.a_optional = '0;
++            buffer_data_masked       = '0;
+             // control the write to the bus apply data to the bus only if data should be written
+             if (ready_to_write == 1'b1 & !dp_poison_i) begin
+                 // assign data from buffers, mask non valid entries
+@@ -139,14 +140,15 @@ module idma_obi_write #(
+ 
+     end else begin : gen_direct_connect
+         // assign meta data
+-        assign write_req_o.a.addr  = aw_req_i.obi.a_chan.addr;
+-        assign write_req_o.a.aid   = aw_req_i.obi.a_chan.aid;
+-        assign write_req_o.a.we    = 1'b1;
++        assign write_req_o.a.addr       = aw_req_i.obi.a_chan.addr;
++        assign write_req_o.a.aid        = aw_req_i.obi.a_chan.aid;
++        assign write_req_o.a.we         = 1'b1;
+         // not used signal
+-        assign buffer_data_masked  = '0;
++        assign buffer_data_masked       = '0;
+         // simpler: direct connection
+-        assign write_req_o.a.wdata = buffer_out_i;
+-        assign write_req_o.a.be    = dp_poison_i ? '0 : mask_out;
++        assign write_req_o.a.wdata      = buffer_out_i;
++        assign write_req_o.a.be         = dp_poison_i ? '0 : mask_out;
++	assign write_req_o.a.a_optional = '0;
+     end
+ 
+     // we are ready for the next transfer internally, once the w last signal is applied
+diff --git a/src/backend/idma_tilelink_read.sv b/src/backend/idma_tilelink_read.sv
+index f59c93856..06487dbd6 100644
+--- a/src/backend/idma_tilelink_read.sv
++++ b/src/backend/idma_tilelink_read.sv
+@@ -213,7 +213,20 @@ module idma_tilelink_read #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(first_r_q,     first_r_d,     '1, clk_i, rst_ni)
+-    `FF(counter_r_q, counter_r_d,     '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            first_r_q <= '1;
++        end else begin
++            first_r_q <= first_r_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            counter_r_q <= '0;
++        end else begin
++            counter_r_q <= counter_r_d;
++        end
++    end
+ 
+ endmodule
+diff --git a/src/backend/idma_tilelink_write.sv b/src/backend/idma_tilelink_write.sv
+index 50c94b5e5..5aa7d0a26 100644
+--- a/src/backend/idma_tilelink_write.sv
++++ b/src/backend/idma_tilelink_write.sv
+@@ -272,7 +272,21 @@ module idma_tilelink_write #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(w_cnt_valid_q, w_cnt_valid_d, '0, clk_i, rst_ni)
+-    `FF(w_num_beats_q, w_num_beats_d, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_cnt_valid_q <= '0;
++        end else begin
++            w_cnt_valid_q <= w_cnt_valid_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_num_beats_q <= '0;
++        end else begin
++            w_num_beats_q <= w_num_beats_d;
++        end
++    end
++
+ 
+ endmodule
+diff --git a/src/backend/tpl/idma_backend.sv.tpl b/src/backend/tpl/idma_backend.sv.tpl
+index c5a2e1641..eaade4f47 100644
+--- a/src/backend/tpl/idma_backend.sv.tpl
++++ b/src/backend/tpl/idma_backend.sv.tpl
+@@ -25,6 +25,8 @@ module idma_backend_${name_uniqueifier} #(
+     /// - '2': minimal possible configuration
+     /// - '3': efficiently handle misaligned transfers (recommended)
+     parameter int unsigned BufferDepth      = 32'd2,
++    /// Use a non-passthrough FIFO in dataflow element
++    parameter bit NotPassthroughDataflowElement = 1'b0,
+     /// With of a transfer: max transfer size is `2**TFLenWidth` bytes
+     parameter int unsigned TFLenWidth       = 32'd24,
+     /// The depth of the memory system the backend is attached to
+@@ -689,23 +691,24 @@ _rsp_t ${protocol}_write_rsp_i,
+     // Transport Layer / Datapath
+     //--------------------------------------
+     idma_transport_layer_${name_uniqueifier} #(
+-        .NumAxInFlight               ( NumAxInFlight               ),
+-        .DataWidth                   ( DataWidth                   ),
+-        .BufferDepth                 ( BufferDepth                 ),
+-        .MaskInvalidData             ( MaskInvalidData             ),
+-        .PrintFifoInfo               ( PrintFifoInfo               ),
+-        .r_dp_req_t                  ( r_dp_req_t                  ),
+-        .w_dp_req_t                  ( w_dp_req_t                  ),
+-        .r_dp_rsp_t                  ( r_dp_rsp_t                  ),
+-        .w_dp_rsp_t                  ( w_dp_rsp_t                  ),
+-        .write_meta_channel_t        ( write_meta_channel_t        ),
++        .NumAxInFlight               ( NumAxInFlight                 ),
++        .DataWidth                   ( DataWidth                     ),
++        .BufferDepth                 ( BufferDepth                   ),
++        .NotPassthroughFifo          ( NotPassthroughDataflowElement ),
++        .MaskInvalidData             ( MaskInvalidData               ),
++        .PrintFifoInfo               ( PrintFifoInfo                 ),
++        .r_dp_req_t                  ( r_dp_req_t                    ),
++        .w_dp_req_t                  ( w_dp_req_t                    ),
++        .r_dp_rsp_t                  ( r_dp_rsp_t                    ),
++        .w_dp_rsp_t                  ( w_dp_rsp_t                    ),
++        .write_meta_channel_t        ( write_meta_channel_t          ),
+ % if not one_write_port:
+-        .write_meta_channel_tagged_t ( write_meta_channel_tagged_t ),
++        .write_meta_channel_tagged_t ( write_meta_channel_tagged_t   ),
+ % endif
+-        .read_meta_channel_t         ( read_meta_channel_t         )\
++        .read_meta_channel_t         ( read_meta_channel_t           )\
+ % if not one_read_port:
+ ,
+-        .read_meta_channel_tagged_t  ( read_meta_channel_tagged_t  )\
++        .read_meta_channel_tagged_t  ( read_meta_channel_tagged_t    )\
+ % endif
+ % for protocol in used_protocols:
+ ,
+@@ -824,7 +827,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+             .aw_req_i         (\
+ % if one_write_port:
+  w_req.aw_req                ),
+-% else:           
++% else:
+  w_meta_req_tagged           ),
+ % endif
+             .aw_valid_i       ( w_valid                     ),
+@@ -846,7 +849,7 @@ w_req.decouple_aw || (w_req.w_dp_req.dst_protocol inside {\
+         // Atleast one write protocol uses combined aw and w -> Need to buffer read meta requests
+         // As a write could depend on up to two reads
+         stream_fifo_optimal_wrap #(
+-            .Depth        ( 2                    ),
++            .Depth        ( NumAxInFlight        ),
+             .type_t       (\
+     % if one_write_port:
+  write_meta_channel_t ),
+diff --git a/src/backend/tpl/idma_legalizer.sv.tpl b/src/backend/tpl/idma_legalizer.sv.tpl
+index 777ee1bca..e53d0e067 100644
+--- a/src/backend/tpl/idma_legalizer.sv.tpl
++++ b/src/backend/tpl/idma_legalizer.sv.tpl
+@@ -657,10 +657,33 @@ ${database[protocol]['legalizer_write_data_path']}
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF (opt_tf_q, opt_tf_d,           '0, clk_i, rst_ni)
+-    `FFL(r_tf_q,   r_tf_d,   r_tf_ena, '0, clk_i, rst_ni)
+-    `FFL(w_tf_q,   w_tf_d,   w_tf_ena, '0, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            opt_tf_q <= '0;
++        end else begin
++            opt_tf_q <= opt_tf_d;
++        end
++    end
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            r_tf_q <= '0;
++        end else begin
++            if (r_tf_ena) begin
++                r_tf_q <= r_tf_d;
++            end
++        end
++    end
+ 
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            w_tf_q <= '0;
++        end else begin
++            if (w_tf_ena) begin
++                w_tf_q <= w_tf_d;
++            end
++        end
++    end
+ 
+     //--------------------------------------
+     // Assertions
+diff --git a/src/backend/tpl/idma_transport_layer.sv.tpl b/src/backend/tpl/idma_transport_layer.sv.tpl
+index 91d27131c..67d7283c3 100644
+--- a/src/backend/tpl/idma_transport_layer.sv.tpl
++++ b/src/backend/tpl/idma_transport_layer.sv.tpl
+@@ -19,6 +19,8 @@ module idma_transport_layer_${name_uniqueifier} #(
+     /// - '2': minimal possible configuration
+     /// - '3': efficiently handle misaligned transfers (recommended)
+     parameter int unsigned BufferDepth = 32'd3,
++    /// Use a non-passthrough FIFO
++    parameter bit NotPassthroughFifo = 1'b0,
+     /// Mask invalid data on the manager interface
+     parameter bit MaskInvalidData = 1'b1,
+     /// Print the info of the FIFO configuration
+@@ -425,11 +427,12 @@ ${rendered_read_ports[read_port]}
+     //--------------------------------------
+ 
+     idma_dataflow_element #(
+-        .BufferDepth   ( BufferDepth   ),
+-        .StrbWidth     ( StrbWidth     ),
+-        .PrintFifoInfo ( PrintFifoInfo ),
+-        .strb_t        ( strb_t        ),
+-        .byte_t        ( byte_t        )
++        .BufferDepth        ( BufferDepth        ),
++        .StrbWidth          ( StrbWidth          ),
++        .NotPassthroughFifo ( NotPassthroughFifo ),
++        .PrintFifoInfo      ( PrintFifoInfo      ),
++        .strb_t             ( strb_t             ),
++        .byte_t             ( byte_t             )
+     ) i_dataflow_element (
+         .clk_i       ( clk_i                    ),
+         .rst_ni      ( rst_ni                   ),
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen.sv b/src/frontend/desc64/idma_desc64_ar_gen.sv
+index ef97f2d3d..c489907c9 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen.sv
+@@ -122,9 +122,9 @@ always_comb begin : proc_ar
+     axi_ar_chan_o.burst = axi_pkg::BURST_INCR;
+ end
+ 
+-`FF(inflight_q, inflight_d, 1'b0);
+-`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0);
+-`FF(next_addr_q, next_addr_d, '1);
++`FF(inflight_q, inflight_d, 1'b0)
++`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0)
++`FF(next_addr_q, next_addr_d, '1)
+ 
+ assign feedback_addr_o       = ar_addr;
+ assign feedback_addr_valid_o = axi_ar_chan_ready_i && axi_ar_chan_valid_o;
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+index b4ba4a700..56aba4250 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+@@ -231,11 +231,11 @@ end
+ 
+ assign queued_address_ready_o = !take_from_next && (!base_valid_q || next_addr_valid_this_cycle);
+ 
+-`FF(inflight_counter_q, inflight_counter_d, '0);
+-`FF(base_addr_q, base_addr_d, '0);
+-`FF(next_addr_valid_q, next_addr_valid_d, 1'b0);
+-`FF(base_valid_q, base_valid_d, 1'b0);
+-`FF(flush_q, flush_d, 1'b0);
++`FF(inflight_counter_q, inflight_counter_d, '0)
++`FF(base_addr_q, base_addr_d, '0)
++`FF(next_addr_valid_q, next_addr_valid_d, 1'b0)
++`FF(base_valid_q, base_valid_d, 1'b0)
++`FF(flush_q, flush_d, 1'b0)
+ assign flush_d = flush;
+ 
+ stream_fifo #(
+diff --git a/src/frontend/desc64/idma_desc64_reader.sv b/src/frontend/desc64/idma_desc64_reader.sv
+index d1975bf0a..29402b7ca 100644
+--- a/src/frontend/desc64/idma_desc64_reader.sv
++++ b/src/frontend/desc64/idma_desc64_reader.sv
+@@ -97,8 +97,8 @@ end else if (DataWidth == 128) begin : gen_128_data_path
+         end
+     end
+ 
+-    `FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0);
+-    `FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0);
++    `FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0)
++    `FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0)
+ end else if (DataWidth == 64) begin : gen_64_data_path
+     logic [1:0]       fetch_counter_q, fetch_counter_d;
+     logic [2:0][63:0] descriptor_data_q, descriptor_data_d;
+@@ -128,8 +128,8 @@ end else if (DataWidth == 64) begin : gen_64_data_path
+         end
+     end
+ 
+-    `FF(descriptor_data_q, descriptor_data_d, 192'b0);
+-    `FF(fetch_counter_q, fetch_counter_d, 2'b0);
++    `FF(descriptor_data_q, descriptor_data_d, 192'b0)
++    `FF(fetch_counter_q, fetch_counter_d, 2'b0)
+ end else if (DataWidth == 32) begin : gen_32_data_path
+     logic [2:0]       fetch_counter_q, fetch_counter_d;
+     logic [6:0][31:0] descriptor_data_q, descriptor_data_d;
+diff --git a/src/frontend/desc64/idma_desc64_reader_gater.sv b/src/frontend/desc64/idma_desc64_reader_gater.sv
+index f0ba964f5..cce23db27 100644
+--- a/src/frontend/desc64/idma_desc64_reader_gater.sv
++++ b/src/frontend/desc64/idma_desc64_reader_gater.sv
+@@ -50,8 +50,8 @@ always_comb begin
+     end
+ end
+ 
+-`FF(n_to_flush_q, n_to_flush_d, 'b0);
+-`FF(engage_q, engage_d, 'b0);
++`FF(n_to_flush_q, n_to_flush_d, 'b0)
++`FF(engage_q, engage_d, 'b0)
+ 
+ assign r_valid_o = flush ? 1'b0 : r_valid_i;
+ assign r_ready_o = flush ? 1'b1 : r_ready_i;
+diff --git a/src/frontend/desc64/idma_desc64_reg_wrapper.sv b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+index 44ac8ae2d..6bc59009f 100644
+--- a/src/frontend/desc64/idma_desc64_reg_wrapper.sv
++++ b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+@@ -79,6 +79,6 @@ import idma_desc64_reg_pkg::idma_desc64_hw2reg_t; #(
+             input_addr_valid_d = '0;
+         end
+     end
+-    `FF(input_addr_valid_q, input_addr_valid_d, '0);
++    `FF(input_addr_valid_q, input_addr_valid_d, '0)
+ 
+ endmodule
+diff --git a/src/frontend/desc64/idma_desc64_top.sv b/src/frontend/desc64/idma_desc64_top.sv
+index 629ed6a27..b9fcea0b8 100644
+--- a/src/frontend/desc64/idma_desc64_top.sv
++++ b/src/frontend/desc64/idma_desc64_top.sv
+@@ -458,7 +458,7 @@ stream_fifo #(
+     .ready_i   (master_rsp_i.aw_ready)
+ );
+ 
+-`FF(w_counter_q, w_counter_d, '0);
++`FF(w_counter_q, w_counter_d, '0)
+ 
+ 
+ assign idma_rsp_ready_o = next_wb_addr_ready && next_wb_addr_valid;
+@@ -468,8 +468,8 @@ assign irq_o            = do_irq_out && master_req_o.b_ready && master_rsp_i.b_v
+ // and empty in lockstep. Capacity is tested at the idma_req fifo, the
+ // other two ready signals are ignored.
+ // pragma translate_off
+-`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid);
+-`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid);
++`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
++`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
+ // pragma translate_on
+ 
+ endmodule
+diff --git a/src/frontend/reg/tpl/idma_reg.hjson.tpl b/src/frontend/reg/tpl/idma_reg.hjson.tpl
+index 5a5a4c33e..5262a4af6 100644
+--- a/src/frontend/reg/tpl/idma_reg.hjson.tpl
++++ b/src/frontend/reg/tpl/idma_reg.hjson.tpl
+@@ -80,24 +80,247 @@ ${params}
+         ]
+       }
+     },
+-    { multireg:
+-      { name: "next_id",
+-        desc: "Next ID, launches transfer, returns 0 if transfer not set up properly.",
+-        swaccess: "ro",
+-        hwaccess: "hrw",
+-        hwre: "true",
+-        count: "16",
+-        cname: "next_id",
+-        hwext: "true",
+-        compact: "false",
+-        fields: [
+-          { bits: "31:0",
+-            name: "next_id",
+-            desc: "Next ID, launches transfer, returns 0 if transfer not set up properly."
+-          }
+-        ]
+-      }
++    { skipto: "0x48" },
++    { name: "next_id_0"
++      desc: "Next ID 0, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_0",
++          desc: "Next ID 0, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x50" },
++    { name: "next_id_1"
++      desc: "Next ID 1, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_1",
++          desc: "Next ID 1, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x58" },
++    { name: "next_id_2"
++      desc: "Next ID 2, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_2",
++          desc: "Next ID 2, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x60" },
++    { name: "next_id_3"
++      desc: "Next ID 3, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_3",
++          desc: "Next ID 3, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x68" },
++    { name: "next_id_4"
++      desc: "Next ID 4, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_4",
++          desc: "Next ID 4, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x70" },
++    { name: "next_id_5"
++      desc: "Next ID 5, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_5",
++          desc: "Next ID 5, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x78" },
++    { name: "next_id_6"
++      desc: "Next ID 6, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_6",
++          desc: "Next ID 6, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
+     },
++    { skipto: "0x80" },
++    { name: "next_id_7"
++      desc: "Next ID 7, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_7",
++          desc: "Next ID 7, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x88" },
++    { name: "next_id_8"
++      desc: "Next ID 8, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_8",
++          desc: "Next ID 8, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x90" },
++    { name: "next_id_9"
++      desc: "Next ID 9, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_9",
++          desc: "Next ID 9, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x98" },
++    { name: "next_id_10"
++      desc: "Next ID 10, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_10",
++          desc: "Next ID 10, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xA0" },
++    { name: "next_id_11"
++      desc: "Next ID 11, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_11",
++          desc: "Next ID 11, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xA8" },
++    { name: "next_id_12"
++      desc: "Next ID 12, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_12",
++          desc: "Next ID 12, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xB0" },
++    { name: "next_id_13"
++      desc: "Next ID 13, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_13",
++          desc: "Next ID 13, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xB8" },
++    { name: "next_id_14"
++      desc: "Next ID 14, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_14",
++          desc: "Next ID 14, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xC0" },
++    { name: "next_id_15"
++      desc: "Next ID 15, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_15",
++          desc: "Next ID 15, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xC8" },
+     { multireg:
+       { name: "done_id",
+         desc: "Get ID of finished transactions.",
+@@ -106,7 +329,6 @@ ${params}
+         count: "16",
+         cname: "done_id",
+         hwext: "true",
+-        compact: "false",
+         fields: [
+           { bits: "31:0",
+             name: "done_id",
+diff --git a/src/frontend/reg/tpl/idma_reg.sv.tpl b/src/frontend/reg/tpl/idma_reg.sv.tpl
+index 27de593fd..3e67945e9 100644
+--- a/src/frontend/reg/tpl/idma_reg.sv.tpl
++++ b/src/frontend/reg/tpl/idma_reg.sv.tpl
+@@ -64,9 +64,6 @@ module idma_${identifier} #(
+       stream_idx_o = '0;
+       for (int r = 0; r < NumRegs; r++) begin
+           for (int c = 0; c < NumStreams; c++) begin
+-              if (dma_reg2hw[r].next_id[c].re) begin
+-                  stream_idx_o = c;
+-              end
+           end
+       end
+   end
+@@ -84,7 +81,7 @@ module idma_${identifier} #(
+       .reg_rsp_o ( dma_ctrl_rsp     [i] ),
+       .reg2hw    ( dma_reg2hw       [i] ),
+       .hw2reg    ( dma_hw2reg       [i] ),
+-      .devmode_i ( 1'b1                 )
++      .devmode_i ( 1'b0                 )
+     );
+ 
+     logic read_happens;
+@@ -92,15 +89,41 @@ module idma_${identifier} #(
+     always_comb begin : proc_dma_backpressure
+       // ready signal
+       dma_ctrl_rsp_o[i]       = dma_ctrl_rsp[i];
+-      dma_ctrl_rsp_o[i].ready = read_happens ? arb_ready[i] : dma_ctrl_rsp[i];
++      //Two cases for setting ready:
++      // 1. Reading next_id: Detected by read_happens == 1 and use the backpressure from arbiter
++      //        read_happens && arb_ready[i] ()
++      // 2. Reading or writing to other registers Detected by read_happens == 0 and respond immediately on receiving a request
++      //        dma_ctrl_req_i[i].valid && ~read_happens
++      dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
+     end
+ 
++    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
++    assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
++    assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
++    assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
++    assign next_id_re_temp[3] = dma_reg2hw[i].next_id_3.re;
++    assign next_id_re_temp[4] = dma_reg2hw[i].next_id_4.re;
++    assign next_id_re_temp[5] = dma_reg2hw[i].next_id_5.re;
++    assign next_id_re_temp[6] = dma_reg2hw[i].next_id_6.re;
++    assign next_id_re_temp[7] = dma_reg2hw[i].next_id_7.re;
++    assign next_id_re_temp[8] = dma_reg2hw[i].next_id_8.re;
++    assign next_id_re_temp[9] = dma_reg2hw[i].next_id_9.re;
++    assign next_id_re_temp[10] = dma_reg2hw[i].next_id_10.re;
++    assign next_id_re_temp[11] = dma_reg2hw[i].next_id_11.re;
++    assign next_id_re_temp[12] = dma_reg2hw[i].next_id_12.re;
++    assign next_id_re_temp[13] = dma_reg2hw[i].next_id_13.re;
++    assign next_id_re_temp[14] = dma_reg2hw[i].next_id_14.re;
++    assign next_id_re_temp[15] = dma_reg2hw[i].next_id_15.re;
++
+     // valid signals
+ 
+     always_comb begin : proc_launch
+         read_happens = 1'b0;
+         for (int c = 0; c < NumStreams; c++) begin
+-            read_happens |= dma_reg2hw[i].next_id[c].re;
++            read_happens |= next_id_re_temp[c];
++            if (next_id_re_temp[c]) begin
++                stream_idx_o = c;
++            end
+         end
+         arb_valid[i] = read_happens;
+     end
+@@ -173,20 +196,38 @@ module idma_${identifier} #(
+ % endif
+     end
+ 
++    cnt_width_t [MaxNumStreams-1:0] next_id_temp;
+     // observational registers
+     for (genvar c = 0; c < NumStreams; c++) begin : gen_hw2reg_connections
+         assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+-        assign dma_hw2reg[i].next_id[c] = next_id_i;
++        assign next_id_temp[c] = next_id_i;
+         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
+     end
+ 
+     // tie-off unused channels
+     for (genvar c = NumStreams; c < MaxNumStreams; c++) begin : gen_hw2reg_unused
+         assign dma_hw2reg[i].status[c]  = '0;
+-        assign dma_hw2reg[i].next_id[c] = '0;
++        assign next_id_temp[c] = '0;
+         assign dma_hw2reg[i].done_id[c] = '0;
+     end
+ 
++    assign dma_hw2reg[i].next_id_0 = next_id_temp[0];
++    assign dma_hw2reg[i].next_id_1 = next_id_temp[1];
++    assign dma_hw2reg[i].next_id_2 = next_id_temp[2];
++    assign dma_hw2reg[i].next_id_3 = next_id_temp[3];
++    assign dma_hw2reg[i].next_id_4 = next_id_temp[4];
++    assign dma_hw2reg[i].next_id_5 = next_id_temp[5];
++    assign dma_hw2reg[i].next_id_6 = next_id_temp[6];
++    assign dma_hw2reg[i].next_id_7 = next_id_temp[7];
++    assign dma_hw2reg[i].next_id_8 = next_id_temp[8];
++    assign dma_hw2reg[i].next_id_9 = next_id_temp[9];
++    assign dma_hw2reg[i].next_id_10 = next_id_temp[10];
++    assign dma_hw2reg[i].next_id_11 = next_id_temp[11];
++    assign dma_hw2reg[i].next_id_12 = next_id_temp[12];
++    assign dma_hw2reg[i].next_id_13 = next_id_temp[13];
++    assign dma_hw2reg[i].next_id_14 = next_id_temp[14];
++    assign dma_hw2reg[i].next_id_15 = next_id_temp[15];
++
+   end
+ 
+   // arbitration
+diff --git a/src/include/idma/typedef.svh b/src/include/idma/typedef.svh
+index d250ec104..5fb2c5670 100644
+--- a/src/include/idma/typedef.svh
++++ b/src/include/idma/typedef.svh
+@@ -28,6 +28,48 @@
+         idma_pkg::backend_options_t beo;                                 \
+         logic                       last;                                \
+     } options_t;
++`define IDMA_TYPEDEF_DATA_CONV_OPTIONS_T(options_t, axi_id_t, data_fmt_t) \
++    typedef struct packed {                                               \
++        idma_pkg::protocol_e        src_protocol;                         \
++        idma_pkg::protocol_e        dst_protocol;                         \
++        axi_id_t                    axi_id;                               \
++        idma_pkg::axi_options_t     src;                                  \
++        idma_pkg::axi_options_t     dst;                                  \
++        idma_pkg::backend_options_t beo;                                  \
++        logic                       last;                                 \
++        data_fmt_t                  src_data_fmt;                         \
++        data_fmt_t                  dst_data_fmt;                         \
++        logic                       stoch_rnd_en;                         \
++        logic                       overflow_en;                          \
++    } options_t;
++`define IDMA_TYPEDEF_EXT_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t)   \
++    typedef struct packed {                                              \
++        idma_pkg::protocol_e        src_protocol;                        \
++        idma_pkg::protocol_e        dst_protocol;                        \
++        axi_id_t                    axi_id;                              \
++        idma_pkg::axi_options_t     src;                                 \
++        idma_pkg::axi_options_t     dst;                                 \
++        idma_pkg::backend_options_t beo;                                 \
++        logic                       last;                                \
++        dvm_t                       dvm_signals;                         \
++        cmd_user_t                  cmd_user;                            \
++    } options_t;
++`define IDMA_TYPEDEF_EXT_DATA_CONV_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t, data_fmt_t)   \
++    typedef struct packed {                                              \
++        idma_pkg::protocol_e        src_protocol;                        \
++        idma_pkg::protocol_e        dst_protocol;                        \
++        axi_id_t                    axi_id;                              \
++        idma_pkg::axi_options_t     src;                                 \
++        idma_pkg::axi_options_t     dst;                                 \
++        idma_pkg::backend_options_t beo;                                 \
++        logic                       last;                                \
++        dvm_t                       dvm_signals;                         \
++        cmd_user_t                  cmd_user;                            \
++        data_fmt_t                  src_data_fmt;                        \
++        data_fmt_t                  dst_data_fmt;                        \
++        logic                       stoch_rnd_en;                        \
++        logic                       overflow_en;                         \
++    } options_t;
+ `define IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)            \
+     typedef struct packed {                                              \
+         axi_pkg::resp_t      cause;                                      \
+@@ -48,6 +90,15 @@
+         logic         error;                                             \
+         err_payload_t pld;                                               \
+     } idma_rsp_t;
++`define IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)  \
++    typedef struct packed {                                                    \
++        tf_len_t   length;                                                     \
++        axi_addr_t src_addr;                                                   \
++        axi_addr_t dst_addr;                                                   \
++        options_t  opt;                                                        \
++        logic      l1_accum_en;                                                \
++    } idma_req_t;
++
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ 
+@@ -57,11 +108,23 @@
+ // Usage Example:
+ // `IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)
+ // `IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)
+-`define IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t) \
+-    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                            \
++`define IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)                              \
++    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                                                         \
+     `IDMA_TYPEDEF_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
+-`define IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)                     \
+-    `IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)                  \
++`define IDMA_TYPEDEF_FULL_ACCUM_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t)                        \
++    `IDMA_TYPEDEF_OPTIONS_T(options_t, axi_id_t)                                                         \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_DATA_CONV_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, data_fmt_t) \
++    `IDMA_TYPEDEF_DATA_CONV_OPTIONS_T(options_t, axi_id_t, data_fmt_t) \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_EXT_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, dvm_t, cmd_user_t) \
++    `IDMA_TYPEDEF_EXT_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t)                                  \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_ACCUM_EXT_DATA_CONV_REQ_T(idma_req_t, axi_id_t, axi_addr_t, tf_len_t, dvm_t, cmd_user_t, data_fmt_t) \
++    `IDMA_TYPEDEF_EXT_DATA_CONV_OPTIONS_T(options_t, axi_id_t, dvm_t, cmd_user_t, data_fmt_t) \
++    `IDMA_TYPEDEF_ACCUM_REQ_T(idma_req_t, tf_len_t, axi_addr_t, options_t)
++`define IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, axi_addr_t)                                                  \
++    `IDMA_TYPEDEF_ERR_PAYLOAD_T(err_payload_t, axi_addr_t)                                               \
+     `IDMA_TYPEDEF_RSP_T(idma_rsp_t, err_payload_t)
+ ////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/src/midend/idma_mp_dist_midend.sv b/src/midend/idma_mp_dist_midend.sv
+index 362d93742..5100d4505 100644
+--- a/src/midend/idma_mp_dist_midend.sv
++++ b/src/midend/idma_mp_dist_midend.sv
+@@ -90,9 +90,27 @@ module idma_mp_dist_midend #(
+       trans_complete_d = '0;
+     end
+   end
+-  `FF(trans_complete_q, trans_complete_d, '0, clk_i, rst_ni)
+-  `FF(tie_off_trans_complete_q, tie_off_trans_complete_d, '0, clk_i, rst_ni)
+-  `FF(backend_busy_q, backend_busy_d, '1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            trans_complete_q <= '0;
++        end else begin
++            trans_complete_q <= trans_complete_d;
++        end
++    end
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            tie_off_trans_complete_q <= '0;
++        end else begin
++            tie_off_trans_complete_q <= tie_off_trans_complete_d;
++        end
++    end
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            backend_busy_q <= '1;
++        end else begin
++            backend_busy_q <= backend_busy_d;
++        end
++    end
+ 
+   // Fork
+   logic [NumBEs-1:0] valid, ready;
+diff --git a/src/midend/idma_mp_split_midend.sv b/src/midend/idma_mp_split_midend.sv
+index 6d21612ce..8815af56d 100644
+--- a/src/midend/idma_mp_split_midend.sv
++++ b/src/midend/idma_mp_split_midend.sv
+@@ -89,7 +89,13 @@ module idma_mp_split_midend #(
+       idma_rsp_valid_o = 1'b1;
+     end
+   end
+-  `FF(num_trans_q, num_trans_d, '0, clk_i, rst_ni)
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      num_trans_q <= '0;
++    end else begin
++      num_trans_q <= num_trans_d;
++    end
++  end
+ 
+   // Split requests
+   always_comb begin : proc_
+@@ -105,8 +111,21 @@ module idma_mp_split_midend #(
+   state_t state_d, state_q;
+   idma_req_t req_d, req_q;
+ 
+-  `FFARN(state_q, state_d, Idle, clk_i, rst_ni)
+-  `FFARN(req_q, req_d, '0, clk_i, rst_ni)
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      state_q <= Idle;
++    end else begin
++      state_q <= state_d;
++    end
++  end
++
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      req_q <= '0;
++    end else begin
++      req_q <= req_d;
++    end
++  end
+ 
+   always_comb begin : proc_splitting
+     // defaults
+diff --git a/src/midend/idma_nd_midend.sv b/src/midend/idma_nd_midend.sv
+index 07267c97d..3d07fd58c 100644
+--- a/src/midend/idma_nd_midend.sv
++++ b/src/midend/idma_nd_midend.sv
+@@ -233,7 +233,14 @@ module idma_nd_midend #(
+     `FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
+     `FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+     `FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+-    `FF (burst_sent_q, burst_sent_d,                 '0,           clk_i, rst_ni)
++
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            burst_sent_q <= '0;
++        end else begin
++            burst_sent_q <= burst_sent_d;
++        end
++    end
+ 
+     //--------------------------------------
+     // Assertions
+@@ -281,6 +288,13 @@ module idma_nd_counter #(
+     assign done_o = counter_q == limit_i;
+ 
+     // state
+-    `FF(counter_q, counter_d, 'd1, clk_i, rst_ni)
++    always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++            counter_q <= 'd1;
++        end else begin
++            counter_q <= counter_d;
++        end
++    end
++
+ 
+ endmodule : idma_nd_counter
