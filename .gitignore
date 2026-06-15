@@ -17,7 +17,9 @@ overlay/*
 !**/build/**/
 !**/build/**/.gitkeep
 
-# Generated register HTML docs (heavy binary font/woff assets). Regenerated
-# locally via `make regen-regs-html`; the text collateral under
-# regs/gen/{sv,svh,c,py,adoc} is committed instead.
-**/regs/gen/html/
+# Generated register HTML docs: commit the raw .html files, but drop the
+# PeakRDL viewer assets (fonts, JS, CSS, search/data JSON, launchers, etc.).
+**/regs/gen/html/**
+!**/regs/gen/html/**/
+!**/regs/gen/html/**/*.html
+
