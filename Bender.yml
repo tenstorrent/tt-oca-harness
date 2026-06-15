@@ -94,7 +94,7 @@ vendor_package:
 
   - name: idma
     target_dir: "vendor/pulp-platform/iDMA/upstream"
-    upstream: { git: "git@github.com:pulp-platform/iDMA.git", rev: "b248755b3265ff88b826eeec5e23eef012ba61b5" }
+    upstream: { git: "git@github.com:pulp-platform/iDMA.git", rev: "v0.6.5" }
     include_from_upstream:
       - "src"
       - "target/rtl"
