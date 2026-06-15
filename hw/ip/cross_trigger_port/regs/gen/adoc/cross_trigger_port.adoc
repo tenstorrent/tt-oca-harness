@@ -1,0 +1,136 @@
+[[cross_trigger_port-address-map]]
+cross_trigger_port address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0xC
+
+Configuration and status registers for the cross trigger port
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |CONFIG |—
+|0x4 |STATUS |—
+|0x8 |STRETCH_MULT |—
+|========================
+
+[[config-register]]
+CONFIG register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+Cross Trigger Port Configuration
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |MODE |rw |0x0 |—
+|1 |INVERT |rw |0x0 |—
+|2 |RESET |rw |0x0 |—
+|=====================================
+
+[[mode-field]]
+MODE field
+++++++++++
+
+Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point
+
+[[invert-field]]
+INVERT field
+++++++++++++
+
+Inverts the sense of the incoming and outgoing GPIO signals. 0 - No
+inversion. Wire-OR mode uses active-low signaling with active or passive
+pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs
+and outputs of I/Os are inverted. Wire-OR mode uses active-high
+signaling with active or passive pull-downs. Point-to-point mode uses
+active-low signaling.
+
+[[reset-field]]
+RESET field
++++++++++++
+
+Forcefully clears the request output signal of the point-to-point
+handshake logic. Primarily for debug and recovery of handshake deadlock.
+
+[[status-register]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4
+* Base Offset: 0x4
+* Size: 0x4
+
+Cross Trigger Port Status
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |BUSY |r |0x0 |—
+|4 |REQ_OUT |r |0x0 |—
+|5 |ACK_IN |r |0x0 |—
+|6 |REQ_IN |r |0x0 |—
+|7 |ACK_OUT |r |0x0 |—
+|=====================================
+
+[[busy-field]]
+BUSY field
+++++++++++
+
+Indicates whether a pulse assertion or handshake is currently in
+progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or
+handshake is currently in progress
+
+[[req_out-field]]
+REQ_OUT field
++++++++++++++
+
+Readout of the current CT_Req_out signal value.
+
+[[ack_in-field]]
+ACK_IN field
+++++++++++++
+
+Readout of the current synchronized CT_Ack_in signal value.
+
+[[req_in-field]]
+REQ_IN field
+++++++++++++
+
+Readout of the current synchronized CT_Req_in signal value.
+
+[[ack_out-field]]
+ACK_OUT field
++++++++++++++
+
+Readout of the current CT_Ack_out signal value.
+
+[[stretch_mult-register]]
+STRETCH_MULT register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x4
+
+Pulse Stretch Multiplier
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |STRETCH_MULT |rw |0x0 |—
+|=====================================
+
+[[stretch_mult-field]]
+STRETCH_MULT field
+++++++++++++++++++
+
+The number of clock cycles a core-side cross trigger pulse is stretched
+on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is
+received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock
+cycles.

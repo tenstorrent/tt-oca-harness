@@ -1,0 +1,122 @@
+= Register Overlays
+
+This note captures the minimal adopter-overlay flow for register generation.
+It is intentionally rough; the integrator guide can polish it later.
+
+== When an overlay is needed
+
+Most adopters do not need a register overlay. The open tt-oca tree already
+provides the canonical SystemRDL sources and committed generated collateral for
+the open OCAH IP blocks:
+
+* `hw/ip/*/regs/*.rdl`
+* `hw/sys/*/regs/*.rdl`
+* `*/regs/gen/{c,sv,svh,py,adoc}`
+
+An adopter should use those generated files directly unless they need to model
+technology-specific or proprietary wrapper blocks. The expected overlay use
+case is the small set of intentional shim slots and extension regions, such as
+PLL/PVT wrappers, eFuse shims, or subsystem extension windows. The adopter does
+not need to duplicate all tt-oca IP RDLs.
+
+== How the overlay is included
+
+An adopter overlay is a Make fragment included before `hw/regs.mk`:
+
+[source,sh]
+----
+make regen-regs OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+----
+
+The overlay fragment sets the same generic register-generation variables used
+by the open flow:
+
+* `OCAH_EXTRA_REG_RDL_FILES` registers standalone adopter RDL entry points.
+* `OCAH_EXTRA_REG_BLOCKS` registers additional block ids, typically subsystem
+  variants such as an adopter-specific `smc`.
+* `OCAH_REG_RDL_OVERRIDE_<key>` lets a variant reuse a canonical tt-oca top RDL.
+* `OCAH_REG_EXTRA_SEARCH_<key>` prepends adopter RDL directories so bare
+  SystemRDL includes resolve to adopter files first.
+* `OCAH_REG_GEN_OVERRIDE_<key>` and `OCAH_REG_BUILD_OVERRIDE_<key>` keep
+  generated collateral under the adopter overlay tree.
+
+The example template in `overlay/examples/example.mk` is inert by default and
+shows the expected variables without registering real blocks.
+
+== Standalone shim generation
+
+If an overlay provides a shim RDL such as:
+
+[source,text]
+----
+/path/to/overlay/hw/sys/smc/dv/shims/regs/pll_wrap.rdl
+----
+
+then the overlay can add it to `OCAH_EXTRA_REG_RDL_FILES`. Running:
+
+[source,sh]
+----
+make regen-regs TARGET=pll_wrap OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+----
+
+generates the usual per-block collateral next to that RDL, for example:
+
+[source,text]
+----
+/path/to/overlay/hw/sys/smc/dv/shims/regs/gen/c/pll_wrap.h
+/path/to/overlay/hw/sys/smc/dv/shims/regs/gen/sv/pll_wrap_reg.sv
+----
+
+== Subsystem-top variants
+
+For subsystem tops, the overlay should normally reuse the canonical tt-oca top
+RDL instead of forking it. For example, an adopter-specific SMC variant can point
+`OCAH_REG_RDL_OVERRIDE_<key>` at:
+
+[source,text]
+----
+$(OCAH_ROOT)/hw/sys/smc/regs/smc.rdl
+----
+
+and set `OCAH_REG_EXTRA_SEARCH_<key>` to the adopter shim directories. When
+PeakRDL elaborates the canonical top, bare includes such as `"pll_wrap.rdl"`
+resolve to the adopter shim first. The top address map stays shared; only the
+replaceable shim contents change.
+
+Running:
+
+[source,sh]
+----
+make regen-regs TARGET=smc OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+----
+
+can generate both the open SMC collateral and the registered adopter SMC
+variant collateral.
+
+== Firmware include paths
+
+The hand-maintained firmware umbrellas (`hw/common/dv/fw/smc.h` and `sep.h`)
+include generated headers by basename. Firmware builds must therefore search
+adopter generated C-header directories before open generated directories.
+
+For overlays checked out under `$(OCAH_ROOT)/overlay/*`, the SMC/SEP firmware
+Makefiles discover common generated header paths automatically. For overlays
+elsewhere, pass explicit include directories:
+
+[source,sh]
+----
+make -C hw/sys/smc/dv/fw \
+  OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS="/path/to/overlay/hw/sys/smc/regs/gen/c /path/to/overlay/hw/sys/smc/dv/shims/regs/gen/c"
+----
+
+This is compile-time header selection only. The register-generation selection is
+controlled by `OCAH_ADOPTER_OVERLAY_MK` and the `OCAH_EXTRA_*` / `OCAH_REG_*`
+variables.
+
+== KISS guidance
+
+Use overlays only for blocks that are intentionally replaceable or adopter
+specific. Do not fork tt-oca's canonical top RDLs or duplicate every open IP
+register description. Keep the overlay small: provide same-named shim RDLs,
+register them with an overlay Makefile, regenerate only the affected blocks, and
+let firmware include order select the adopter headers.

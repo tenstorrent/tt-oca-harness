@@ -1,0 +1,369 @@
+`ifndef SMC_EFUSE_MAP_RDL_DEFINED
+`define SMC_EFUSE_MAP_RDL_DEFINED
+
+addrmap smc_efuse_map {
+
+    name = "Efuse address map of physical efuse macro";
+    desc = "Address map for efuse shadow registers providing access to various chip configuration and ID fields";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    default regwidth = 64;
+    default accesswidth = 64;
+
+    reg LOCKS {
+        desc = "Lock controls for each fuse field. When write locked, the corresponding field is not
+                programmable. When read locked, the shadow register is not readable.";
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Chiplet ID write lock. When set, chiplet ID field is not writable.";
+        } chiplet_id_write_lock[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Chiplet ID read lock. When set, chiplet ID field is not readable.";
+        } chiplet_id_read_lock[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Package ID write lock. When set, package ID field is not writable.";
+        } package_id_write_lock[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Package ID read lock. When set, package ID field is not readable.";
+        } package_id_read_lock[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "BIRA disable write lock. When set, BIRA field is not writable.";
+        } bira_dis_write_lock[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "BIRA disable read lock. When set, BIRA field is not readable.";
+        } bira_dis_read_lock[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Cluster write lock. When set, cluster field is not writable.";
+        } cluster_write_lock[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Cluster read lock. When set, cluster field is not readable.";
+        } cluster_read_lock[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Fabric write lock. When set, fabric field is not writable.";
+        } fabric_write_lock[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Fabric read lock. When set, fabric field is not readable.";
+        } fabric_read_lock[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SOP topology write lock. When set, SOP topology field is not writable.";
+        } sop_topology_write_lock[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SOP topology read lock. When set, SOP topology field is not readable.";
+        } sop_topology_read_lock[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.";
+        } i2c_i3c_id_write_lock[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.";
+        } i2c_i3c_id_read_lock[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C clock gating write lock. When set, I2C clock gating field is not writable.";
+        } i2c_clock_gating_write_lock[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I2C clock gating read lock. When set, I2C clock gating field is not readable.";
+        } i2c_clock_gating_read_lock[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I3C disable write lock. When set, I3C disable field is not writable.";
+        } i3c_disable_write_lock[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "I3C disable read lock. When set, I3C disable field is not readable.";
+        } i3c_disable_read_lock[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "PLL and sensor write lock. When set, PLL and sensor field is not writable.";
+        } pll_and_sensor_write_lock[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "PLL and sensor read lock. When set, PLL and sensor field is not readable.";
+        } pll_and_sensor_read_lock[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SPI control field enable write lock. When set, SPI control field is not writable.";
+        } spi_ctrl_field_enable_write_lock[20:20] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SPI control field enable read lock. When set, SPI control field is not readable.";
+        } spi_ctrl_field_enable_read_lock[21:21] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SPI config write lock. When set, SPI config field is not writable.";
+        } spi_config_write_lock[22:22] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SPI config read lock. When set, SPI config field is not readable.";
+        } spi_config_read_lock[23:23] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Reserved write lock. When set, reserved field is not writable.";
+        } reserved_write_lock[24:24] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Reserved read lock. When set, reserved field is not readable.";
+        } reserved_read_lock[25:25] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Unused lock bits for future expansion.";
+        } unused_lock_bits[63:26] = 0x0;
+    };
+
+    reg CHIPLET_ID {
+        desc = "Chiplet ID register";
+        regwidth = 256;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Chiplet ID stored in fuse, divided into 8 words and defined as follows:
+                    [1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;
+                    [3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID, e.g. Athena/Quasar/…​;
+                    [4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);
+                    [5]: Chiplet User Group ID;
+                    [7:6]: Reserved for extension.";
+        } chiplet_id_value [255:0] = 0x0;
+    };
+
+    reg PACKAGE_ID {
+        desc = "Package ID register";
+        regwidth = 256;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:
+                    [1:0]: Serial number of the package;
+                    [2]: Package Design Version, e.g. A1Q1/…​;
+                    [3]: Package Design ID, e.g. Grendel;
+                    [4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);
+                    [5]: Package User Group ID;
+                    [7:6]: Reserved for extension";
+        } package_id_value [255:0] = 0x0;
+    };
+
+    reg BIRA {
+        desc = "Built-In Repair Analysis data";
+        regwidth = 16384;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "16KB memory repair data for SMC and SEP SRAMs";
+        } repair_data[16383:0] = 0x0;
+    };
+
+    reg CLUSTER {
+        desc = "CPU cluster configuration";
+        regwidth = 512;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "512-bit fuses reserved for CPU cluster configuration";
+        } cluster_config[511:0] = 0x0;
+    };
+
+    reg FABRIC {
+        desc = "Fabric configuration";
+        regwidth = 256;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "256-bit fuses reserved for fabric configuration";
+        } fabric_config[255:0] = 0x0;
+    };
+
+    reg SOP_TOPOLOGY {
+        desc = "System on Package topology";
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Serial number of topology configuration";
+        } topology_serial[31:0] = 0x0;
+    };
+
+    reg I2C_I3C_ID {
+        desc = "I2C/I3C interface ID";
+        regwidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I2C or I3C ID configuration:
+                   * Static ID mode: [6:0] contains ID, [63:7] reserved
+                   * Provisional ID mode: [63:0] full ID";
+        } interface_id[63:0] = 0x0;
+    };
+
+    reg I2C_CLOCK_GATING {
+        desc = "I2C clock gating control";
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I2C clock gating configuration";
+        } clock_gating_config[31:0] = 0x0;
+    };
+
+    reg I3C_DISABLE {
+        desc = "I3C interface disable control";
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I3C interface disable configuration";
+        } disable_config[31:0] = 0x0;
+    };
+
+    reg PLL_AND_SENSOR {
+        desc = "PLL and sensor configuration";
+        regwidth = 4096;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "4KB fuses reserved for PLL and sensor configuration";
+        } pll_sensor_config[4095:0] = 0x0;
+    };
+
+    reg RESERVED {
+        desc = "Reserved register";
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Reserved for future use";
+        } reserved_data[31:0] = 0x0;
+    };
+
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    LOCKS                   LOCKS                   @ 0x0;
+    CHIPLET_ID              CHIPLET_ID              @ 0x8;
+    PACKAGE_ID              PACKAGE_ID              @ 0x28;
+    BIRA                    BIRA                    @ 0x48;
+    CLUSTER                 CLUSTER                 @ 0x848;
+    FABRIC                  FABRIC                  @ 0x888;
+    SOP_TOPOLOGY            SOP_TOPOLOGY            @ 0x8A8;
+    I2C_I3C_ID              I2C_I3C_ID[9]           @ 0x8AC;
+    I2C_CLOCK_GATING        I2C_CLOCK_GATING        @ 0x8F4;
+    I3C_DISABLE             I3C_DISABLE             @ 0x8F8;
+    PLL_AND_SENSOR          PLL_AND_SENSOR          @ 0x8FC;
+    RESERVED                RESERVED[65]            @ 0xAFC;  // Pad to 3KB
+
+};
+
+`endif

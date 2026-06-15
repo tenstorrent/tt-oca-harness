@@ -1,0 +1,25 @@
+[[sep_axi_extension-address-map]]
+sep_axi_extension address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x20000000
+
+SEP AXI Extension address map
+
+[cols=",,",options="header",]
+|=========================
+|Offset |Identifier |Name
+|0x10000000 |xip_region |—
+|=========================
+
+[[xip_region-memory]]
+xip_region memory
+~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x10000000
+* Base Offset: 0x10000000
+* Size: 0x10000000
+
+No supported members.

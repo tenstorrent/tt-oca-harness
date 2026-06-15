@@ -1,0 +1,58 @@
+`ifndef CLINT_REG_RDL
+`define CLINT_REG_RDL
+
+addrmap clint {
+    desc = "";
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    reg MSIP {
+        field {
+            sw=rw; 
+            hw=r;
+            desc="MSIP bit for core";
+        } value[0:0] = 0x0;
+
+        field {
+            sw=r;
+            hw=r;
+            desc="Reserved";
+        } rsvd0[31:1] = 0x0;
+    };
+
+    reg MTIMECMP {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Cycle count value to be used for comparison, triggers interrupt once count value matches this";
+        } count[63:0];
+    };
+
+    reg MTIME {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw=rw; 
+            hw=r;
+            desc="Cycle count (time) value";
+        } count[63:0];
+    };
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    MSIP        MSIP[4]     @0x0;
+    MTIMECMP    MTIMECMP[4] @0x4000;
+    MTIME       MTIME       @0xbff8;
+
+};
+
+`endif

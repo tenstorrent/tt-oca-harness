@@ -1,0 +1,46 @@
+[[pll_wrap-address-map]]
+pll_wrap address map
+~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0xEE8
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |footprint |—
+|========================
+
+[[footprint-memory]]
+footprint memory
+~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0xEE8
+
+Placeholder footprint (proprietary PLL hard-IP; no CSRs modeled)
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |mem_array[0] |—
+|========================
+
+[[mem_array-register]]
+mem_array register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0xEE8
+* Array Dimensions: [954]
+* Array Stride: 0x4
+* Total Size: 0xEE8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |r |— |—
+|=====================================

@@ -1,0 +1,119 @@
+`ifndef GPIO_INTF_RDL_DEFINED
+`define GPIO_INTF_RDL_DEFINED
+
+addrmap gpio_intf {
+
+    desc = "GPIO Interface CSR";
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+    //---------------------------------
+
+    reg ACCESS_FILTER {
+        desc = "GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                the filter may not update before your next transaction, causing unexpected behavior.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } write_filter_enable[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } read_filter_enable[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When write_filter_enable is set, only allow write accesses with this prot value
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } awprot_requirement[10:8] = 0x1;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When read_filter_enable is set, only allow read accesses with this prot value
+                    WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+                    the filter may not update before your next transaction, causing unexpected behavior.";
+        } arprot_requirement[18:16] = 0x1;
+    };
+
+    reg DATA_CTRL {
+        regwidth = 32;
+        accesswidth = 32;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register-driven data to send to the pad.";
+        } core2pad[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "2'b00: Neither RX nor TX enabled. 2'b01: TX enabled. 2'b10: RX enabled. 2'b11: Neither RX nor TX enabled.";
+        } enable_rx_tx[5:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Register Interface Enable. Setting this chooses register values to drive the PAD. This includes chip2pad, enable_rx_tx, and pad2soc";
+        } interface_enable[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Force LSIO interface to be used. interface_enable has higher priority over this";
+        } lsio_select[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Interrupt Enable.";
+        } interrupt_enable[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "When set, LSIO acceses will be blocked from the GPIO interface";
+        } lsio_disable[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge";
+        } interrupt_type[21:20] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "When set, this bit indicates that the pad being driving by the LSIO";
+        } lsio_enable[25:25] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "PAD2SOC Value";
+        } pad2core[31:31] = 0x0;
+    };
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    DATA_CTRL     DATA_CTRL      @0x0;
+    ACCESS_FILTER ACCESS_FILTER  @0x8;
+
+};
+
+`endif

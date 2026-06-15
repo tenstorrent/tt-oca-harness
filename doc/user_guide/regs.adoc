@@ -1,0 +1,328 @@
+# Register Generation
+
+OCAH register collateral is generated from SystemRDL entry points. Most blocks
+use `hw/{ip,sys}/<block>/regs/<block>.rdl` and write generated files under
+`hw/{ip,sys}/<block>/regs/gen/`. A few standalone RDL files are also registered
+directly (DV shims and selected IP sub-blocks used by the firmware umbrellas);
+they write generated files under the containing `regs/gen/` directory.
+
+Some OpenTitan-sourced blocks start from HJSON instead of hand-authored RDL.
+Those blocks are listed in `OCAH_HJSON_REG_BLOCKS` using their vendored block
+roots; `hw/regs.mk` first exports the vendored HJSON to RDL with
+`tools/regs/reggen_wrapper.py`, then runs the same PeakRDL outputs as the
+native RDL blocks.
+
+## Targets
+
+Run the default register generators (SV RTL, firmware C headers, SV address
+headers, and Python address constants):
+
+```sh
+make regen-regs
+```
+
+Run one block:
+
+```sh
+make regen-regs TARGET=smc
+make regen-regs TARGET=system_timer_octs
+make regen-regs TARGET=otbn
+```
+
+Run one output class:
+
+```sh
+make regen-regs-sv TARGET=smc
+make regen-regs-h TARGET=smc
+make regen-regs-svh TARGET=smc
+make regen-regs-py TARGET=smc
+make regen-regs-adoc TARGET=smc
+make regen-regs-html TARGET=smc
+```
+
+Documentation is intentionally explicit: `regen-regs` does not run
+`regen-regs-adoc` or `regen-regs-html`. The documentation build flow calls those
+targets when it needs register docs.
+
+Remove generated collateral (all blocks, or a single block):
+
+```sh
+make regen-regs-clean
+make regen-regs-clean TARGET=smc
+```
+
+Implementation targets are prefixed as `ocah-*` in make fragments. The top-level
+`Makefile` exposes unprefixed aliases such as `regen-regs`.
+
+## HJSON-backed blocks
+
+OpenTitan HJSON inputs are vendored under
+`vendor/lowRISC/opentitan/upstream/hw/ip/<block>/data/`.
+For example, OTBN uses:
+
+```text
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson
+```
+
+The generated source RDL is written to:
+
+```text
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/regs/otbn.rdl
+```
+
+The local wrapper intentionally supports only the HJSON-to-SystemRDL path. The
+OpenTitan reggen modules it imports are vendored directly from the pinned
+OpenTitan revision under `vendor/lowRISC/opentitan/upstream/util/`.
+
+## Outputs
+
+For a block named `gpio`, generation produces:
+
+```text
+hw/ip/gpio/regs/gen/
+  sv/gpio_reg.sv
+  sv/gpio_reg_pkg.sv
+  svh/gpio_reg.svh
+  c/gpio.h
+  c/gpio_addr.h
+  py/gpio_addr.py
+  adoc/gpio.md
+  adoc/gpio.adoc
+  html/index.html
+```
+
+A standalone file-backed entry point such as
+`hw/sys/smc/dv/shims/regs/pll_wrap.rdl` shares its containing generated
+directory:
+
+```text
+hw/sys/smc/dv/shims/regs/gen/
+  sv/pll_wrap_reg.sv
+  sv/pll_wrap_reg_pkg.sv
+  svh/pll_wrap_reg.svh
+  c/pll_wrap.h
+  c/pll_wrap_addr.h
+  py/pll_wrap_addr.py
+  adoc/pll_wrap.md
+  adoc/pll_wrap.adoc
+  html/pll_wrap/index.html
+```
+
+The generated RTL package, such as `gpio_reg_pkg.sv`, is for the generated CSR
+block's hardware interface. The address package include, such as
+`gpio_reg.svh`, is for DV/RTL code that needs base addresses and register
+offsets.
+
+## Register RTL (SystemVerilog)
+
+Register RTL is produced by `peakrdl regblock`. That exporter requires every
+`external` component to sit at an offset that is a power-of-2 multiple of its
+size, which the **composite subsystem tops** (`smc`, `sep`) violate: they place
+external memories and placeholders at fixed silicon addresses (e.g. a 1 MiB
+`spm_memory` at `+0x60000`). Running `regblock` on such a top fails. The
+addresses are fixed by the chip, so the tops are **never** regblocked.
+
+The subsystem top yields **address headers only** (the `svpkg`/C/markdown/HTML
+exporters have no alignment constraint), while register RTL is emitted **per
+leaf CSR sub-block**. Each leaf's registers sit at offset 0, so the alignment
+rule is trivially satisfied. Concretely:
+
+- **Plain (leaf) blocks** (e.g. `km`, `system_timer_octs`, every `hw/ip/*`,
+  and standalone DV shim/IP sub-block entry points): one `regblock` run on the
+  block's own RDL produces the monolithic
+  `gen/sv/<block>_reg.sv` + `_reg_pkg.sv` shown above.
+- **Composite tops** (`smc`, `sep`): no monolithic `<top>_reg.sv`. Instead each
+  local CSR sub-block under `hw/sys/<top>/regs/*.rdl` is regblocked into
+  `gen/sv/blocks/<sub>_reg.sv` (+ `_reg_pkg.sv`) by a per-sub-block pattern rule.
+  The top still emits its address headers and docs as usual.
+- **RTL-elsewhere blocks** (`OCAH_REG_NO_RTL_BLOCKS`): no `regblock` run at all,
+  address headers only.
+
+Two orthogonal policy lists decide what each sub-block gets:
+
+- `OCAH_REG_MEM_BLOCKS` and `OCAH_REG_PLACEHOLDER_BLOCKS` (together
+  `OCAH_REG_NON_CSR_BLOCKS`) — blocks with no CSRs. Memories are pure
+  SystemRDL `mem{}` definitions (`spm_memory`, `ext_memory`, the SEP
+  SRAM/ICCM/DCCM/boot ROM, ...) and get **no** collateral. Composite-local
+  placeholders (`oca_i3c_wrap`) are addrmaps that only reserve an address
+  window: they keep a C header for the umbrella but get no SV RTL and no docs.
+  DV shim placeholders (`pll_wrap`, `pvt_wrap`, extension windows, ...) are
+  standalone blocks and are generated like normal entry points.
+- `OCAH_REG_NO_RTL_BLOCKS` — real CSR blocks whose RTL is authored outside
+  `regblock`: HJSON-native crypto (`aes`, `hmac`, `kmac`, `otbn`), the wide fuse
+  shadow maps (`smc_efuse_map`, `sep_efuse_map`, which `regblock` cannot export
+  and which the C flow special-cases via `OCAH_REG_NO_BITFIELDS`), vendor RISC-V
+  IP (`clint`, `plic`, `debug_module`, `wdt`, `bus_error_unit`), hand-written
+  wrappers (`misc_wrap`, whose CSR children `scratch`/`chip_config`/`ndm_reset`
+  are regblocked on their own), and other vendor IP (`el2_pic`, `aon_timer`,
+  `efuse_mmr`, the ARM CoreSight `dfd` trace block). These are excluded from SV
+  only; they are still documented and still get a C header.
+
+## Firmware Headers
+
+`<block>.h` is generated by `peakrdl c-header` and is the primary firmware
+header. It provides packed C structs plus field masks and bit positions:
+
+```c
+#include "gpio.h"
+
+volatile gpio_t *gpio = (volatile gpio_t *)base_addr;
+gpio->CONTROL.w = value;
+```
+
+`<block>_addr.h` is generated by `peakrdl-rawheader --format c`. It provides
+raw constants for firmware or DV firmware that uses explicit MMIO helpers:
+
+```c
+#include "gpio_addr.h"
+
+mmio_write32(GPIO_BASE_ADDR + GPIO_CONTROL_BASE_ADDR, value);
+```
+
+Both headers live in `regs/gen/c/`, but they use distinct filenames and include
+guards. Keep rawheader prefixes enabled to avoid macro collisions across blocks.
+
+### Composite-top umbrella
+
+A composite top (`smc`, `sep`) is not run through `c-header` directly. Each of
+its local CSR sub-blocks (and placeholders) gets its own header in
+`regs/gen/c/blocks/<sub>.h`, and the top emits only `regs/gen/c/<top>_addr.h`.
+Firmware that wants a single include uses the **hand-maintained** umbrella
+`hw/common/dv/fw/<top>.h`: a curated collection of `#include`s (the address
+header, the local sub-block headers, and the referenced `hw/ip` block headers).
+It is a source file, not generated, so add a line when a sub-block is added to
+the top RDL. The firmware build (`hw/sys/<top>/dv/fw/fw.mk`) puts the umbrella
+dir, the top's `gen/c` and `gen/c/blocks`, standalone shim `gen/c` dirs, and
+every `hw/ip/*/regs/gen/c` on the include path so the umbrella's basename
+includes resolve. Nonfree generated dirs are listed before open dirs, so
+same-named overlay headers override open placeholders by include-path
+precedence.
+
+## Documentation
+
+HTML documentation is generated directly with `peakrdl html`.
+
+AsciiDoc documentation is generated by first exporting Markdown with
+`peakrdl markdown`, then converting it with Pandoc:
+
+```sh
+pandoc -f markdown -t asciidoc input.md -o output.adoc
+```
+
+Pandoc is required for `regen-regs-adoc`.
+
+### Per-block docs for composite tops
+
+A plain (leaf) block gets a single document: `gen/adoc/<block>.{md,adoc}` and a
+`gen/html/index.html` site.
+
+The composite subsystem tops (`smc`, `sep`) are **not** documented as one giant
+monolithic file. Instead each local sub-block is documented on its own, so a
+documentation system can include each piece individually:
+
+```text
+hw/sys/smc/regs/gen/
+  adoc/blocks/<sub>.md
+  adoc/blocks/<sub>.adoc
+  html/blocks/<sub>/index.html
+```
+
+The documented set keeps every register-bearing sub-block, **including** the
+vendor IP whose RTL is not regblock-sourced (`clint`, `plic`, `wdt`,
+`debug_module`, `bus_error_unit`, the crypto and eFuse address views, ...) — they
+still have a register/address view worth documenting. Only register-less
+reservations (`OCAH_REG_NON_CSR_BLOCKS`: external memories and placeholders) are
+dropped. This is a deliberately broader set than the SV one (`OCAH_REG_NON_CSR_BLOCKS`
+plus `OCAH_REG_NO_RTL_BLOCKS`): docs describe the address map; RTL comes from the
+block's actual source.
+
+## Committed collateral
+
+The text collateral under `regs/gen/{sv,svh,c,py,adoc}` is committed so adopters
+can build against the headers and packages without running the generators. It is
+only regenerated when a block's RDL (or the UDP file) changes; the per-block
+`build/regs/*.generated` stamps gate this incrementally.
+
+The `regs/gen/html/` tree is **not** committed (it is git-ignored): it carries
+heavy binary font/woff assets and is purely documentation. Regenerate it locally
+on demand with `make regen-regs-html`.
+
+## DV shim blocks (`dv/shims`)
+
+A subset of blocks belong not to an OCAH core but to the **wrapper** that
+integrates it. In `tt-oca-hw` the SMC core (`smc.sv`) is wrapped by
+`smc_ip_integration.sv`, which carries the 3rd-party IP, macros and shims that
+are not part of the core (PLL, PVT, the eFuse shim, the Cadence I3C controller).
+Their register maps are therefore DV *models* of wrapper IP, not core registers,
+and live under a `dv/shims` tree kept out of the core `regs/` closures:
+
+- `hw/sys/<sub>/dv/shims/regs/` — subsystem wrapper shims (`pll_wrap`,
+  `pvt_wrap`, `smc_axil_extension`, `sep_axi_extension`).
+- `hw/ip/<ip>/dv/shims/regs/` — IP-level shims shared across subsystems
+  (`efuse_shim_ctrl`, instantiated by both smc and sep).
+
+The canonical tops still `` `include "pll_wrap.rdl" `` by bare name; `hw/regs.mk`
+adds every `*/dv/shims/regs` dir to the shared search list
+(`OCAH_REG_CATALOG_DIRS`) so resolution is unchanged. It also registers every
+open `*/dv/shims/regs/*.rdl` as a standalone entry point, so shims can be
+generated directly with targets such as `make regen-regs TARGET=pll_wrap`.
+The open `dv/shims` RDLs are **permanent** placeholders (a 1-register eFuse
+model, an empty extension footprint, ...); the real maps come from an overlay.
+
+## Overlay flow (proprietary swap and adopter integration)
+
+The proprietary blocks above (a vendor PLL/PVT, a Cadence I3C controller, a
+Samsung eFuse shim) cannot be open-sourced, so the open `dv/shims` placeholders
+are swapped for real RDLs from an *overlay* tree that mirrors the canonical
+layout. `nonfree/` is overlay instance #1 (cloned via `make nonfree-init`); the
+same mechanism is how an adopter integrates their own IP.
+
+### How the swap works
+
+An overlay is a **per-vendor** tree supplying same-named RDLs under a mirrored
+`*/dv/shims/regs` path, e.g.
+`nonfree/vendor/samsung/hw/sys/smc/dv/shims/regs/pll_wrap.rdl`.
+`nonfree/nonfree.mk` is a thin entry that includes `nonfree/hw/regs.mk` (the
+symmetric counterpart of the open `hw/regs.mk`, run before it). For each vendor,
+the nonfree shim RDL files are registered as standalone entry points too, so a
+target such as `make regen-regs TARGET=pll_wrap` generates both the open
+placeholder and the same-named nonfree replacement. For each selected vendor ×
+canonical top it also registers a *variant* register block:
+
+- vendors are listed in `OCAH_NONFREE_VENDORS` (default `samsung`); tops in
+  `OCAH_NONFREE_REG_VARIANTS`;
+- each variant reuses the **canonical** top RDL (`hw/sys/smc/regs/smc.rdl`) via
+  `OCAH_REG_RDL_OVERRIDE_<key>` (no top duplication), and
+- prepends the vendor's `dv/shims/regs` dirs to the search list via
+  `OCAH_REG_EXTRA_SEARCH_<key>`.
+
+`hw/regs.mk` builds one ordered bare-path search list per block
+(`ocah_reg_search_dirs`: per-block overlay extras first, then the shared
+catalog) and derives the PeakRDL `-I` flags from it, so SystemRDL `` `include ``
+resolution is consistent across every exporter run. Because includes resolve
+against the search paths first (then the including file's own directory), a
+same-named overlay RDL transparently overrides the open placeholder. A vendor
+supplies only the blocks it customizes; the rest fall through to the open
+`dv/shims` placeholders. Collateral is emitted under
+`nonfree/vendor/<name>/<path>/regs/gen` (the whole `nonfree/` tree is
+git-ignored), leaving the open tree's committed collateral untouched.
+
+Running `make regen-regs TARGET=smc` regenerates the open block **and** every
+registered vendor variant (they share the basename `smc`). The top-level
+instance base addresses are identical across flows; only the swapped blocks'
+internal contents (and sizes, within their reserved slots) differ.
+
+### Two contract categories
+
+- **Replaceable blocks** (fixed contract): the overlay's addrmap keeps the same
+  type name and fits the slot reserved by the top. Examples: `pll_wrap`,
+  `pvt_wrap`, `efuse_shim_ctrl`. Slot budgets come from the spacing in the top
+  RDL (e.g. `pll_wrap @ +0x3000`, next block at `+0x4000`).
+- **Extension regions** (open-ended): a deliberately empty container addrmap that
+  reserves a window for adopter-added peripherals. Examples: `smc_axil_extension`
+  (`@ +0x040_0000`), `sep_axi_extension`. The open tree ships an empty footprint;
+  an overlay overrides the container to instantiate its peripherals plus their
+  own sub-block RDLs (this is how the Cadence I3C controllers are added in the
+  nonfree build). To add a peripheral, drop its RDL in the overlay's
+  `dv/shims/regs` dir and instantiate it in the overlay's copy of the extension
+  container, then regenerate.

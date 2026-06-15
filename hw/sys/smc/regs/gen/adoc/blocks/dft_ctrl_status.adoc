@@ -1,0 +1,75 @@
+[[dft_ctrl_status-address-map]]
+dft_ctrl_status address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |STATUS_SMU |—
+|========================
+
+[[status_smu-register]]
+STATUS_SMU register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |mem_repair_done |r |0x0 |—
+|1 |mem_repair_success |r |0x0 |—
+|2 |mem_repair_abort |r |0x0 |—
+|4 |mbist_done |r |0x0 |—
+|8 |mbist_pass |r |0x0 |—
+|12 |mbist_abort |r |0x0 |—
+|=====================================
+
+[[mem_repair_done-field]]
+mem_repair_done field
++++++++++++++++++++++
+
+One bit indicator from DFT logic to say when mem repair is completed.
+This register is sticky 1 and will hold the value until reset
+
+[[mem_repair_success-field]]
+mem_repair_success field
+++++++++++++++++++++++++
+
+One bit indicator from DFT logic to say if mem repair was successful
+This register is sticky 1 and will hold the value until reset
+
+[[mem_repair_abort-field]]
+mem_repair_abort field
+++++++++++++++++++++++
+
+One bit indicator from DFT logic to say that mem repair has hit timeout
+and aborted This register is sticky 1 and will hold the value until
+reset
+
+[[mbist_done-field]]
+mbist_done field
+++++++++++++++++
+
+One bit indicator from DFT logic to say when MBIST is completed This
+register is sticky 1 and will hold the value until reset
+
+[[mbist_pass-field]]
+mbist_pass field
+++++++++++++++++
+
+One bit indicator from DFT logic to say when MBIST is successful This
+register is sticky 1 and will hold the value until reset
+
+[[mbist_abort-field]]
+mbist_abort field
++++++++++++++++++
+
+One bit indicator from DFT logic to say that MBIST has hit timeout and
+aborted This register is sticky 1 and will hold the value until reset

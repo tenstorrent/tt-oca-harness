@@ -1,0 +1,129 @@
+// Available includes
+`include "avsbus_controller.rdl"
+`include "chip_config.rdl"
+`include "perf_dma.rdl"
+`include "dft_ctrl_status.rdl"
+`include "axi_filter.rdl"
+`include "gpio_wrap.rdl"
+`include "gpio_poc_pbias_ctrl.rdl"
+`include "pvt_wrap.rdl"
+`include "remapped_region.rdl"
+`include "reset_unit.rdl"
+`include "scratch.rdl"
+`include "axi_alias_remap.rdl"
+`include "axil_mailbox_smc_wrap.rdl"
+`include "output_remap.rdl"
+`include "spm_memory.rdl"
+`include "spm_rom_memory.rdl"
+`include "system_timer_octs.rdl"
+`include "telemetry_receiver_wrap.rdl"
+`include "uart_wrap.rdl"
+`include "zeroer.rdl"
+`include "misc_wrap.rdl"
+
+// TODO: Things to add
+// `include "axi_data_accel.rdl"
+`include "bus_error_unit.rdl"
+`include "clint.rdl"
+`include "efuse_interface_ctrl.rdl"
+`include "efuse_shim_ctrl.rdl"
+`include "ext_memory.rdl"
+`include "oca_i3c_wrap.rdl"
+`include "plic.rdl"
+`include "cpu_ctrl.rdl"
+`include "smc_efuse_map.rdl"
+`include "wdt.rdl"
+`include "pll_wrap.rdl"
+`include "i2c_wrap.rdl"
+`include "debug_module.rdl"
+`include "dfd.rdl"
+`include "smc_axil_extension.rdl"
+
+// SMC resource accessible from external agents
+addrmap smc_top #(
+    longint unsigned BASE_ADDR = 0xC000_0000
+) {
+
+    wdt                            smc_cluster_core0_wdt      @BASE_ADDR + 0x000_0000;
+    wdt                            smc_cluster_core1_wdt      @BASE_ADDR + 0x000_0400;
+    wdt                            smc_cluster_core2_wdt      @BASE_ADDR + 0x000_0800;
+    wdt                            smc_cluster_core3_wdt      @BASE_ADDR + 0x000_0c00;
+
+    reset_unit                     smc_reset_unit             @BASE_ADDR + 0x000_2000;
+    misc_wrap                      smc_misc_wrap              @BASE_ADDR + 0x000_2800;
+
+    pll_wrap                       smc_pll_wrap               @BASE_ADDR + 0x000_3000;
+
+    gpio_intf                      gpio_intf[68]              @BASE_ADDR + 0x000_4000 += 0x10;
+    gpio_ctrl                      gpio_ctrl[68]              @BASE_ADDR + 0x000_4440 += 0x20;
+    gpio_ctrl                      gpio_refclk_ctrl           @BASE_ADDR + 0x000_4CC0;
+    gpio_poc_pbias_ctrl            gpio_poc_pbias_ctrl        @BASE_ADDR + 0x000_4DE0;
+
+    // OCA I3C Controllers
+    oca_i3c_wrap                   oca_i3c_wrap_0             @BASE_ADDR + 0x000_5000;
+    oca_i3c_wrap                   oca_i3c_wrap_1             @BASE_ADDR + 0x000_5500;
+    oca_i3c_wrap                   oca_i3c_wrap_2             @BASE_ADDR + 0x000_5a00;
+    oca_i3c_wrap                   oca_i3c_wrap_3             @BASE_ADDR + 0x000_5f00;
+    oca_i3c_wrap                   oca_i3c_wrap_4             @BASE_ADDR + 0x000_6400;
+    oca_i3c_wrap                   oca_i3c_wrap_5             @BASE_ADDR + 0x000_6900;
+
+    pvt_wrap                       smc_pvt_wrap                   @BASE_ADDR + 0x000_7000;
+
+    avsbus_controller              smc_avsbus_controller          @BASE_ADDR + 0x000_8000;
+
+    i2c_wrap                       smc_i2c_wrap                   @BASE_ADDR + 0x000_9000;
+
+    uart_wrap                      smc_uart_wrap                  @BASE_ADDR + 0x000_a000;
+
+    smc_efuse_map                  smc_efuse_map                  @BASE_ADDR + 0x000_b000;
+    efuse_interface_ctrl           efuse_interface_ctrl           @BASE_ADDR + 0x000_c000;
+    efuse_shim_ctrl                efuse_shim_ctrl                @BASE_ADDR + 0x000_c100;
+
+    telemetry_receiver_wrap        smc_telemetry_receiver_wrap    @BASE_ADDR + 0x000_d000;
+
+    system_timer_octs              smc_system_timer_octs          @BASE_ADDR + 0x000_e000;
+
+    external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_f000;
+    dft_ctrl_status                dft_ctrl                       @BASE_ADDR + 0x000_f800; // These CSRs are for ROMs knowledge of dft status
+
+    cpu_ctrl                       smc_cpu_ctrl                 @BASE_ADDR + 0x001_0000;
+    alias_remap                    smc_alias_remap[8]           @BASE_ADDR + 0x001_2000 += 0x20;
+    output_remap                   smc_mmode_remap[8]           @BASE_ADDR + 0x001_3000 += 0x8;
+    output_remap                   smc_xvisor_remap[8]          @BASE_ADDR + 0x001_4000 += 0x8;
+
+    filter_ctrl                    smc_inbound_filter_ctrl[16]  @BASE_ADDR + 0x001_5000 += 0x20;
+    filter_ctrl                    smc_outbound_filter_ctrl[16] @BASE_ADDR + 0x001_6000 += 0x20;
+
+    axil_mailbox_smc_wrap          smc_mailbox                  @BASE_ADDR + 0x001_8000;
+
+    dma_ctrl                       dma_ctrl                     @BASE_ADDR + 0x003_8000;
+    zeroer_ctrl                    zeroer_ctrl                  @BASE_ADDR + 0x003_8200;
+
+// TODO: Add once reri_error_bank RDL is available
+//     reri_bank                      smc_reri_bank               @BASE_ADDR + 0x003_a000;
+
+    external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
+
+    external spm_memory            spm_memory                  @BASE_ADDR + 0x006_0000;
+
+    smc_cla                        smc_cla                     @BASE_ADDR + 0x016_0000;
+
+    smc_axil_extension             smc_axil_extension          @BASE_ADDR + 0x040_0000;
+
+    external remapped_region       ecam_region                 @BASE_ADDR + 0x080_0000;
+
+    external remapped_region       mmode_region                @BASE_ADDR + 0x100_0000;
+
+    external remapped_region       xvisor_region               @BASE_ADDR + 0x180_0000;
+
+    plic                           smc_cluster_plic            @BASE_ADDR + 0x400_0000;
+
+    clint                          smc_cluster_clint           @BASE_ADDR + 0x800_0000;
+
+    bus_error_unit                 smc_cluster_core0_beu       @BASE_ADDR + 0x801_0000;
+    bus_error_unit                 smc_cluster_core1_beu       @BASE_ADDR + 0x801_1000;
+    bus_error_unit                 smc_cluster_core2_beu       @BASE_ADDR + 0x801_2000;
+    bus_error_unit                 smc_cluster_core3_beu       @BASE_ADDR + 0x801_3000;
+
+
+};

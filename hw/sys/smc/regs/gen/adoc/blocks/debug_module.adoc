@@ -1,0 +1,1881 @@
+[[debug_module-address-map]]
+debug_module address map
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x104
+
+RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset
+values updated as per specification and user rules (Preset/- -> 0x0). HW
+access permissions are derived based on SW access. SW `w' access changed
+to `rw'. Fields previously rw1c now use `woclr'.
+
+[cols=",,",options="header",]
+|=================================================
+|Offset |Identifier |Name
+|0x010 |abstractdata[0] |—
+|0x014 |abstractdata[1] |—
+|0x018 |abstractdata[2] |—
+|0x01C |abstractdata[3] |—
+|0x020 |abstractdata[4] |—
+|0x024 |abstractdata[5] |—
+|0x028 |abstractdata[6] |—
+|0x02C |abstractdata[7] |—
+|0x030 |abstractdata[8] |—
+|0x034 |abstractdata[9] |—
+|0x038 |abstractdata[10] |—
+|0x03C |abstractdata[11] |—
+|0x040 |dmcontrol |Debug Module Control
+|0x044 |dmstatus |Debug Module Status
+|0x048 |hartinfo |Hart Info
+|0x04C |haltsum1 |Halt Summary 1
+|0x050 |hawindowsel |Hart Array Window Select
+|0x054 |hawindow |Hart Array Window
+|0x058 |abstractcs |Abstract Control and Status
+|0x05C |command |Abstract Command
+|0x060 |abstractauto |Abstract Command Autoexec
+|0x064 |confstrptr[0] |—
+|0x068 |confstrptr[1] |—
+|0x06C |confstrptr[2] |—
+|0x074 |nextdm |Next Debug Module
+|0x080 |progbuf[0] |—
+|0x084 |progbuf[1] |—
+|0x088 |progbuf[2] |—
+|0x08C |progbuf[3] |—
+|0x090 |progbuf[4] |—
+|0x094 |progbuf[5] |—
+|0x098 |progbuf[6] |—
+|0x09C |progbuf[7] |—
+|0x0A0 |progbuf[8] |—
+|0x0A4 |progbuf[9] |—
+|0x0A8 |progbuf[10] |—
+|0x0AC |progbuf[11] |—
+|0x0B0 |progbuf[12] |—
+|0x0B4 |progbuf[13] |—
+|0x0B8 |progbuf[14] |—
+|0x0BC |progbuf[15] |—
+|0x0C0 |authdata |Authentication Data
+|0x0D0 |haltsum2 |Halt Summary 2
+|0x0D4 |haltsum3 |Halt Summary 3
+|0x0DC |sbaddress3 |System Bus Address 127:96
+|0x0E0 |sbcs |System Bus Access Control and Status
+|0x0E4 |sbaddress0 |System Bus Address 31:0
+|0x0E8 |sbaddress1 |System Bus Address 63:32
+|0x0EC |sbaddress2 |System Bus Address 95:64
+|0x0F0 |sbdata0 |System Bus Data 31:0
+|0x0F4 |sbdata1 |System Bus Data 63:32
+|0x0F8 |sbdata2 |System Bus Data 95:64
+|0x0FC |sbdata3 |System Bus Data 127:96
+|0x100 |haltsum0 |Halt Summary 0
+|=================================================
+
+[[abstractdata-register]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-1]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x14
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-1]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-2]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-2]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-3]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1C
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-3]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-4]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x20
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-4]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-5]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x24
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-5]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-6]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x28
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-6]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-7]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2C
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-7]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-8]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x30
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-8]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-9]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x34
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-9]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-10]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x38
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-10]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[abstractdata-register-11]]
+abstractdata register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3C
+* Base Offset: 0x10
+* Size: 0x4
+* Array Dimensions: [12]
+* Array Stride: 0x4
+* Total Size: 0x30
+
+Abstract Data Register. Used for arguments/return values of abstract
+commands.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-11]]
+data field
+++++++++++
+
+Data value for abstract commands.
+
+[[dmcontrol-register]]
+dmcontrol register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x40
+* Base Offset: 0x40
+* Size: 0x4
+
+Controls the overall Debug Module and selected harts. Writes to action
+bits (haltreq, resumereq, etc.) apply to the new value of hartsel and
+hasel.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |dmactive |rw |0x0 |—
+|1 |ndmreset |rw |0x0 |—
+|2 |clrresethaltreq |rw, woset |0x0 |—
+|3 |setresethaltreq |rw, woset |0x0 |—
+|5:4 |_reserved_5_4 |r |0x0 |—
+|15:6 |hartselhi |rw |0x0 |—
+|25:16 |hartsello |rw |0x0 |—
+|26 |hasel |rw |0x0 |—
+|27 |_reserved_27 |r |0x0 |—
+|28 |ackhavereset |rw, woset |0x0 |—
+|29 |hartreset |rw |0x0 |—
+|30 |resumereq |rw, woset |0x0 |—
+|31 |haltreq |rw |0x0 |—
+|=====================================
+
+[[dmactive-field]]
+dmactive field
+++++++++++++++
+
+Debug Module active and reset. 0: DM takes reset values (except this
+bit). 1: DM functions normally.
+
+[[ndmreset-field]]
+ndmreset field
+++++++++++++++
+
+Controls reset signal from DM to system (ndmreset). Write 1, then 0 to
+deassert.
+
+[[clrresethaltreq-field]]
+clrresethaltreq field
++++++++++++++++++++++
+
+Optional (if dmstatus.hasresethaltreq=1). Writing 1 clears halt-on-reset
+request bit for selected harts.
+
+[[setresethaltreq-field]]
+setresethaltreq field
++++++++++++++++++++++
+
+Optional (if dmstatus.hasresethaltreq=1). Writing 1 sets halt-on-reset
+request bit for selected harts (unless clrresethaltreq is also 1).
+
+[[reserved_5_4-field]]
+_reserved_5_4 field
++++++++++++++++++++
+
+Reserved.
+
+[[hartselhi-field]]
+hartselhi field
++++++++++++++++
+
+High 10 bits of hartsel: DM-specific index of the hart to select.
+
+[[hartsello-field]]
+hartsello field
++++++++++++++++
+
+Low 10 bits of hartsel: DM-specific index of the hart to select.
+
+[[hasel-field]]
+hasel field
++++++++++++
+
+Selects definition of currently selected harts. 0: single hart by
+hartsel. 1: hart by hartsel plus those by hart array mask. Tied to 0 if
+hart array mask not implemented.
+
+[[reserved_27-field]]
+_reserved_27 field
+++++++++++++++++++
+
+Reserved.
+
+[[ackhavereset-field]]
+ackhavereset field
+++++++++++++++++++
+
+Writing 1 clears havereset for any selected harts.
+
+[[hartreset-field]]
+hartreset field
++++++++++++++++
+
+Optional. Hart reset for currently selected harts. Write 1, then 0 to
+deassert. Debugger must not change selection while this is 1. If not
+implemented, reads as 0.
+
+[[resumereq-field]]
+resumereq field
++++++++++++++++
+
+Resume request for currently selected harts. Writing 1 causes halted
+harts to resume and clears their resume ack bit. Ignored if haltreq is
+set.
+
+[[haltreq-field]]
+haltreq field
++++++++++++++
+
+Halt request for currently selected harts. Write 0 to clear, 1 to set.
+
+[[dmstatus-register]]
+dmstatus register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x44
+* Base Offset: 0x44
+* Size: 0x4
+
+Reports status for the Debug Module and currently selected harts. This
+entire register is read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|3:0 |version |r |0x2 |—
+|4 |confstrptrvalid |r |0x0 |—
+|5 |hasresethaltreq |r |0x0 |—
+|6 |authbusy |r |0x0 |—
+|7 |authenticated |r |0x0 |—
+|8 |anyhalted |r |0x0 |—
+|9 |allhalted |r |0x0 |—
+|10 |anyrunning |r |0x0 |—
+|11 |allrunning |r |0x0 |—
+|12 |anyunavail |r |0x0 |—
+|13 |allunavail |r |0x0 |—
+|14 |anynonexistent |r |0x0 |—
+|15 |allnonexistent |r |0x0 |—
+|16 |anyresumeack |r |0x0 |—
+|17 |allresumeack |r |0x0 |—
+|18 |anyhavereset |r |0x0 |—
+|19 |allhavereset |r |0x0 |—
+|21:20 |_reserved_21_20 |r |0x0 |—
+|22 |impebreak |r |0x0 |—
+|31:23 |_reserved_31_23 |r |0x0 |—
+|=====================================
+
+[[version-field]]
+version field
++++++++++++++
+
+Debug Module version. 0=No DM, 1=v0.11, 2=v0.13, 15=Non-conformant.
+
+[[confstrptrvalid-field]]
+confstrptrvalid field
++++++++++++++++++++++
+
+0: confstrptr0-3 are not relevant to config string. 1: confstrptr0-3
+hold config string address.
+
+[[hasresethaltreq-field]]
+hasresethaltreq field
++++++++++++++++++++++
+
+1: DM supports halt-on-reset functionality
+(setresethaltreq/clrresethaltreq bits in dmcontrol).
+
+[[authbusy-field]]
+authbusy field
+++++++++++++++
+
+0: Authentication module ready. 1: Authentication module busy.
+
+[[authenticated-field]]
+authenticated field
++++++++++++++++++++
+
+0: Authentication required. 1: Authentication passed. Preset to 1 if no
+authentication implemented.
+
+[[anyhalted-field]]
+anyhalted field
++++++++++++++++
+
+1: Any currently selected hart is halted.
+
+[[allhalted-field]]
+allhalted field
++++++++++++++++
+
+1: All currently selected harts are halted.
+
+[[anyrunning-field]]
+anyrunning field
+++++++++++++++++
+
+1: Any currently selected hart is running.
+
+[[allrunning-field]]
+allrunning field
+++++++++++++++++
+
+1: All currently selected harts are running.
+
+[[anyunavail-field]]
+anyunavail field
+++++++++++++++++
+
+1: Any currently selected hart is unavailable.
+
+[[allunavail-field]]
+allunavail field
+++++++++++++++++
+
+1: All currently selected harts are unavailable.
+
+[[anynonexistent-field]]
+anynonexistent field
+++++++++++++++++++++
+
+1: Any currently selected hart does not exist in this platform.
+
+[[allnonexistent-field]]
+allnonexistent field
+++++++++++++++++++++
+
+1: All currently selected harts do not exist in this platform.
+
+[[anyresumeack-field]]
+anyresumeack field
+++++++++++++++++++
+
+1: Any currently selected hart has acknowledged its last resume request.
+
+[[allresumeack-field]]
+allresumeack field
+++++++++++++++++++
+
+1: All currently selected harts have acknowledged their last resume
+request.
+
+[[anyhavereset-field]]
+anyhavereset field
+++++++++++++++++++
+
+1: At least one currently selected hart has been reset and not
+acknowledged.
+
+[[allhavereset-field]]
+allhavereset field
+++++++++++++++++++
+
+1: All currently selected harts have been reset and not acknowledged.
+
+[[reserved_21_20-field]]
+_reserved_21_20 field
++++++++++++++++++++++
+
+Reserved.
+
+[[impebreak-field]]
+impebreak field
++++++++++++++++
+
+1: Implicit ebreak after Program Buffer. Must be 1 if
+abstractcs.progbufsize is 1.
+
+[[reserved_31_23-field]]
+_reserved_31_23 field
++++++++++++++++++++++
+
+Reserved.
+
+[[hartinfo-register]]
+hartinfo register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x48
+* Base Offset: 0x48
+* Size: 0x4
+
+Information about the hart currently selected by hartsel. Optional;
+reads all-zero if not present. Entire register is read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|11:0 |dataaddr |r |0x0 |—
+|15:12 |datasize |r |0x0 |—
+|16 |dataaccess |r |0x0 |—
+|19:17 |_reserved_19_17 |r |0x0 |—
+|23:20 |nscratch |r |0x0 |—
+|31:24 |_reserved_31_24 |r |0x0 |—
+|=====================================
+
+[[dataaddr-field]]
+dataaddr field
+++++++++++++++
+
+If dataaccess=0: Number of first CSR for dataN. If dataaccess=1: Signed
+address of RAM where dataN are shadowed (relative to zero).
+
+[[datasize-field]]
+datasize field
+++++++++++++++
+
+If dataaccess=0: Number of CSRs for dataN. If dataaccess=1: Number of
+32-bit words in memory map for dataN. Max value 12.
+
+[[dataaccess-field]]
+dataaccess field
+++++++++++++++++
+
+0: Data registers (dataN) are shadowed by CSRs. 1: Data registers are
+shadowed in hart’s memory map.
+
+[[reserved_19_17-field]]
+_reserved_19_17 field
++++++++++++++++++++++
+
+Reserved.
+
+[[nscratch-field]]
+nscratch field
+++++++++++++++
+
+Number of dscratch registers available for debugger use during program
+buffer execution (dscratch0 upwards).
+
+[[reserved_31_24-field]]
+_reserved_31_24 field
++++++++++++++++++++++
+
+Reserved.
+
+[[haltsum1-register]]
+haltsum1 register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4C
+* Base Offset: 0x4C
+* Size: 0x4
+
+Read-only. Each bit indicates if any hart in a group of 32 is halted.
+May not be present in systems with fewer than 33 harts.
+Unavailable/nonexistent harts are not considered halted.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |haltsum1 |r |0x0 |—
+|=====================================
+
+[[haltsum1-field]]
+haltsum1 field
+++++++++++++++
+
+Halt status summary. LSB for harts
+\{hartsel[19:10],10’h0}-\{hartsel[19:10],10’h1f}, MSB for harts
+\{hartsel[19:10],10’h3e0}-\{hartsel[19:10],10’h3ff}.
+
+[[hawindowsel-register]]
+hawindowsel register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x50
+* Base Offset: 0x50
+* Size: 0x4
+
+Selects which 32-bit portion of the hart array mask register is
+accessible in hawindow.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|14:0 |hawindowsel |rw |0x0 |—
+|31:15 |_reserved_31_15 |r |0x0 |—
+|=====================================
+
+[[hawindowsel-field]]
+hawindowsel field
++++++++++++++++++
+
+Window select for hart array mask register. E.g., on a system with 48
+harts, only bit 0 may be writable.
+
+[[reserved_31_15-field]]
+_reserved_31_15 field
++++++++++++++++++++++
+
+Reserved. High bits may be tied to 0 depending on hart array mask size.
+
+[[hawindow-register]]
+hawindow register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x54
+* Base Offset: 0x54
+* Size: 0x4
+
+R/W access to a 32-bit portion of the hart array mask register, selected
+by hawindowsel.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |maskdata |rw |0x0 |—
+|=====================================
+
+[[maskdata-field]]
+maskdata field
+++++++++++++++
+
+32-bit window into the hart array mask register. Some bits may be
+constant 0, depending on hawindowsel and implemented harts.
+
+[[abstractcs-register]]
+abstractcs register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x58
+* Base Offset: 0x58
+* Size: 0x4
+
+Controls and status for abstract commands. Writing this register while
+an abstract command is executing (busy=1) sets cmderr to 1 (busy) if
+cmderr was 0.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|3:0 |datacount |r |0x0 |—
+|7:4 |_reserved_7_4 |r |0x0 |—
+|10:8 |cmderr |rw, woclr |0x0 |—
+|11 |_reserved_11 |r |0x0 |—
+|12 |busy |r |0x0 |—
+|23:13 |_reserved_23_13 |r |0x0 |—
+|28:24 |progbufsize |r |0x0 |—
+|31:29 |_reserved_31_29 |r |0x0 |—
+|=====================================
+
+[[datacount-field]]
+datacount field
++++++++++++++++
+
+Number of data registers (dataN) implemented. Valid sizes are 1-12.
+
+[[reserved_7_4-field]]
+_reserved_7_4 field
++++++++++++++++++++
+
+Reserved.
+
+[[cmderr-field]]
+cmderr field
+++++++++++++
+
+Abstract command error status. Remains set until cleared. Valid if
+busy=0. 0=none, 1=busy, 2=not_supported, 3=exception, 4=halt/resume,
+5=bus, 7=other.
+
+[[reserved_11-field]]
+_reserved_11 field
+++++++++++++++++++
+
+Reserved.
+
+[[busy-field]]
+busy field
+++++++++++
+
+1: An abstract command is currently being executed. Set when `command'
+is written, cleared on completion.
+
+[[reserved_23_13-field]]
+_reserved_23_13 field
++++++++++++++++++++++
+
+Reserved.
+
+[[progbufsize-field]]
+progbufsize field
++++++++++++++++++
+
+Size of the Program Buffer, in 32-bit words. Valid sizes are 0-16.
+
+[[reserved_31_29-field]]
+_reserved_31_29 field
++++++++++++++++++++++
+
+Reserved.
+
+[[command-register]]
+command register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5C
+* Base Offset: 0x5C
+* Size: 0x4
+
+Writes cause corresponding abstract command to execute. Writing while
+busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|23:0 |control |rw |0x0 |—
+|31:24 |cmdtype |rw |0x0 |—
+|=====================================
+
+[[control-field]]
+control field
++++++++++++++
+
+Command-specific control field.
+
+[[cmdtype-field]]
+cmdtype field
++++++++++++++
+
+Type of abstract command (e.g., 0 for Access Register, 1 for Quick
+Access, 2 for Access Memory).
+
+[[abstractauto-register]]
+abstractauto register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x60
+* Base Offset: 0x60
+* Size: 0x4
+
+Optional. Allows more efficient burst accesses. Writing while busy sets
+cmderr=1 (if cmderr=0). Detect support by R/W test.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|11:0 |autoexecdata |rw |0x0 |—
+|15:12 |_reserved_15_12 |r |0x0 |—
+|31:16 |autoexecprogbuf |rw |0x0 |—
+|=====================================
+
+[[autoexecdata-field]]
+autoexecdata field
+++++++++++++++++++
+
+Bitmask (12 bits). If bit N=1, R/W to dataN re-executes command in
+`command' register.
+
+[[reserved_15_12-field]]
+_reserved_15_12 field
++++++++++++++++++++++
+
+Reserved.
+
+[[autoexecprogbuf-field]]
+autoexecprogbuf field
++++++++++++++++++++++
+
+Bitmask (16 bits). If bit N=1, R/W to progbufN re-executes command in
+`command' register.
+
+[[confstrptr-register]]
+confstrptr register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x64
+* Base Offset: 0x64
+* Size: 0x4
+* Array Dimensions: [3]
+* Array Stride: 0x4
+* Total Size: 0xC
+
+Part of configuration string pointer address (if
+dmstatus.confstrptrvalid=1) or unspecified identifier information.
+Read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |addr |r |0x0 |—
+|=====================================
+
+[[addr-field]]
+addr field
+++++++++++
+
+Bits of configuration string pointer or identifier information.
+
+[[confstrptr-register-1]]
+confstrptr register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x68
+* Base Offset: 0x64
+* Size: 0x4
+* Array Dimensions: [3]
+* Array Stride: 0x4
+* Total Size: 0xC
+
+Part of configuration string pointer address (if
+dmstatus.confstrptrvalid=1) or unspecified identifier information.
+Read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |addr |r |0x0 |—
+|=====================================
+
+[[addr-field-1]]
+addr field
+++++++++++
+
+Bits of configuration string pointer or identifier information.
+
+[[confstrptr-register-2]]
+confstrptr register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6C
+* Base Offset: 0x64
+* Size: 0x4
+* Array Dimensions: [3]
+* Array Stride: 0x4
+* Total Size: 0xC
+
+Part of configuration string pointer address (if
+dmstatus.confstrptrvalid=1) or unspecified identifier information.
+Read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |addr |r |0x0 |—
+|=====================================
+
+[[addr-field-2]]
+addr field
+++++++++++
+
+Bits of configuration string pointer or identifier information.
+
+[[nextdm-register]]
+nextdm register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x74
+* Base Offset: 0x74
+* Size: 0x4
+
+If multiple DMs on DMI, this holds base address of the next DM. 0 if
+this is the last. Read-only.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |addr |r |0x0 |—
+|=====================================
+
+[[addr-field-3]]
+addr field
+++++++++++
+
+Base address of the next Debug Module or 0.
+
+[[progbuf-register]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x80
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-12]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-1]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x84
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-13]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-2]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x88
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-14]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-3]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8C
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-15]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-4]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x90
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-16]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-5]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x94
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-17]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-6]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x98
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-18]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-7]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x9C
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-19]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-8]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xA0
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-20]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-9]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xA4
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-21]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-10]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xA8
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-22]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-11]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xAC
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-23]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-12]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xB0
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-24]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-13]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xB4
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-25]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-14]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xB8
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-26]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[progbuf-register-15]]
+progbuf register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xBC
+* Base Offset: 0x80
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Program Buffer word. For debugger to write small programs.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-27]]
+data field
+++++++++++
+
+Program instruction word.
+
+[[authdata-register]]
+authdata register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xC0
+* Base Offset: 0xC0
+* Size: 0x4
+
+32-bit serial port to/from authentication module. Use when
+dmstatus.authbusy is clear.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-28]]
+data field
+++++++++++
+
+Data for authentication mechanism.
+
+[[haltsum2-register]]
+haltsum2 register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xD0
+* Base Offset: 0xD0
+* Size: 0x4
+
+Read-only. Each bit indicates if any hart in a group of 1024 is halted.
+May not be present if < 1025 harts.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |haltsum2 |r |0x0 |—
+|=====================================
+
+[[haltsum2-field]]
+haltsum2 field
+++++++++++++++
+
+Halt status summary. LSB for harts
+\{hartsel[19:15],15’h0}-\{hartsel[19:15],15’h3ff}, etc.
+
+[[haltsum3-register]]
+haltsum3 register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xD4
+* Base Offset: 0xD4
+* Size: 0x4
+
+Read-only. Each bit indicates if any hart in a group of 32768 is halted.
+May not be present if < 32769 harts.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |haltsum3 |r |0x0 |—
+|=====================================
+
+[[haltsum3-field]]
+haltsum3 field
+++++++++++++++
+
+Halt status summary. LSB for harts 20’h0-20’h7fff, etc.
+
+[[sbaddress3-register]]
+sbaddress3 register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xDC
+* Base Offset: 0xDC
+* Size: 0x4
+
+Bits 127:96 of the physical system bus address for System Bus Access.
+Not present if sbcs.sbasize < 97. Writes while sbcs.sbbusy=1 set
+sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |address |rw |0x0 |—
+|=====================================
+
+[[address-field]]
+address field
++++++++++++++
+
+Address bits 127:96 for system bus access.
+
+[[sbcs-register]]
+sbcs register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0xE0
+* Base Offset: 0xE0
+* Size: 0x4
+
+Controls and status for the System Bus Access master. Writes while
+sbbusy=1 result in undefined behavior.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |sbaccess8 |r |0x0 |—
+|1 |sbaccess16 |r |0x0 |—
+|2 |sbaccess32 |r |0x0 |—
+|3 |sbaccess64 |r |0x0 |—
+|4 |sbaccess128 |r |0x0 |—
+|8:5 |sbasize |r |0x0 |—
+|11:9 |sberror |rw, woclr |0x0 |—
+|14:12 |_reserved_14_12 |r |0x0 |—
+|15 |sbreadondata |rw |0x0 |—
+|16 |sbautoincrement |rw |0x0 |—
+|19:17 |sbaccess |rw |0x2 |—
+|20 |sbreadonaddr |rw |0x0 |—
+|21 |sbbusy |r |0x0 |—
+|22 |sbbusyerror |rw, woclr |0x0 |—
+|28:23 |_reserved_28_23 |r |0x0 |—
+|31:29 |sbversion |r |0x1 |—
+|=====================================
+
+[[sbaccess8-field]]
+sbaccess8 field
++++++++++++++++
+
+1: 8-bit system bus accesses are supported.
+
+[[sbaccess16-field]]
+sbaccess16 field
+++++++++++++++++
+
+1: 16-bit system bus accesses are supported.
+
+[[sbaccess32-field]]
+sbaccess32 field
+++++++++++++++++
+
+1: 32-bit system bus accesses are supported.
+
+[[sbaccess64-field]]
+sbaccess64 field
+++++++++++++++++
+
+1: 64-bit system bus accesses are supported.
+
+[[sbaccess128-field]]
+sbaccess128 field
++++++++++++++++++
+
+1: 128-bit system bus accesses are supported.
+
+[[sbasize-field]]
+sbasize field
++++++++++++++
+
+Width of system bus addresses in bits (e.g., 32 for 32-bit addresses). 0
+indicates no bus access support. NOTE: This field is 4 bits wide
+([8:5]), which is insufficient to directly store typical bus widths like
+32 or 64. This implies the value is an encoding or there is a spec
+issue. The text implies it stores values like 32, 64, etc (e.g. `if
+sbasize < 33').
+
+[[sberror-field]]
+sberror field
++++++++++++++
+
+System bus master error flags. No new access if non-zero. 0=none,
+1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.
+
+[[reserved_14_12-field]]
+_reserved_14_12 field
++++++++++++++++++++++
+
+Reserved.
+
+[[sbreadondata-field]]
+sbreadondata field
+++++++++++++++++++
+
+1: Every read from sbdata0 automatically triggers a system bus read at
+(possibly auto-incremented) address.
+
+[[sbautoincrement-field]]
+sbautoincrement field
++++++++++++++++++++++
+
+1: sbaddress is incremented by access size (from sbaccess) after every
+system bus access.
+
+[[sbaccess-field]]
+sbaccess field
+++++++++++++++
+
+Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit,
+3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.
+
+[[sbreadonaddr-field]]
+sbreadonaddr field
+++++++++++++++++++
+
+1: Every write to sbaddress0 automatically triggers a system bus read at
+the new address.
+
+[[sbbusy-field]]
+sbbusy field
+++++++++++++
+
+1: System bus master is busy. Goes high on access request, low on
+completion.
+
+[[sbbusyerror-field]]
+sbbusyerror field
++++++++++++++++++
+
+System bus busy error. Set if access attempted while busy or read while
+read in progress. No new access if set.
+
+[[reserved_28_23-field]]
+_reserved_28_23 field
++++++++++++++++++++++
+
+Reserved.
+
+[[sbversion-field]]
+sbversion field
++++++++++++++++
+
+System Bus interface version. 0=pre-2018 drafts, 1=this version (0.13).
+
+[[sbaddress0-register]]
+sbaddress0 register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xE4
+* Base Offset: 0xE4
+* Size: 0x4
+
+Bits 31:0 of the physical system bus address. Not present if
+sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If
+sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write
+triggers read sequence.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |address |rw |0x0 |—
+|=====================================
+
+[[address-field-1]]
+address field
++++++++++++++
+
+Address bits 31:0.
+
+[[sbaddress1-register]]
+sbaddress1 register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xE8
+* Base Offset: 0xE8
+* Size: 0x4
+
+Bits 63:32 of the physical system bus address. Not present if
+sbcs.sbasize < 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |address |rw |0x0 |—
+|=====================================
+
+[[address-field-2]]
+address field
++++++++++++++
+
+Address bits 63:32.
+
+[[sbaddress2-register]]
+sbaddress2 register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xEC
+* Base Offset: 0xEC
+* Size: 0x4
+
+Bits 95:64 of the physical system bus address. Not present if
+sbcs.sbasize < 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |address |rw |0x0 |—
+|=====================================
+
+[[address-field-3]]
+address field
++++++++++++++
+
+Address bits 95:64.
+
+[[sbdata0-register]]
+sbdata0 register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xF0
+* Base Offset: 0xF0
+* Size: 0x4
+
+Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags
+are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are
+non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write
+triggers bus write sequence. Read triggers read sequence including
+conditional next read if sbcs.sbreadondata=1.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-29]]
+data field
+++++++++++
+
+Data bits 31:0.
+
+[[sbdata1-register]]
+sbdata1 register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xF4
+* Base Offset: 0xF4
+* Size: 0x4
+
+Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and
+sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set
+sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-30]]
+data field
+++++++++++
+
+Data bits 63:32.
+
+[[sbdata2-register]]
+sbdata2 register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xF8
+* Base Offset: 0xF8
+* Size: 0x4
+
+Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1.
+Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-31]]
+data field
+++++++++++
+
+Data bits 95:64.
+
+[[sbdata3-register]]
+sbdata3 register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xFC
+* Base Offset: 0xFC
+* Size: 0x4
+
+Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1.
+Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field-32]]
+data field
+++++++++++
+
+Data bits 127:96.
+
+[[haltsum0-register]]
+haltsum0 register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x100
+* Base Offset: 0x100
+* Size: 0x4
+
+Read-only. Each bit indicates whether one specific hart is halted.
+Unavailable/nonexistent harts are not considered halted. LSB for hart
+\{hartsel[19:5],5’h0}, MSB for hart \{hartsel[19:5],5’h1f}.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |haltsum0 |r |0x0 |—
+|=====================================
+
+[[haltsum0-field]]
+haltsum0 field
+++++++++++++++
+
+Halt status for 32 harts based on hartsel[19:5].

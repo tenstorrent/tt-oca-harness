@@ -1,0 +1,5132 @@
+[[axil_mailbox_sep_wrap-address-map]]
+axil_mailbox_sep_wrap address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x7850
+
+[cols=",,",options="header",]
+|=============================
+|Offset |Identifier |Name
+|0x0000 |outbound_mailbox_0 |—
+|0x0800 |inbound_mailbox_0 |—
+|0x1000 |outbound_mailbox_1 |—
+|0x1800 |inbound_mailbox_1 |—
+|0x2000 |outbound_mailbox_2 |—
+|0x2800 |inbound_mailbox_2 |—
+|0x3000 |outbound_mailbox_3 |—
+|0x3800 |inbound_mailbox_3 |—
+|0x4000 |outbound_mailbox_4 |—
+|0x4800 |inbound_mailbox_4 |—
+|0x5000 |outbound_mailbox_5 |—
+|0x5800 |inbound_mailbox_5 |—
+|0x6000 |outbound_mailbox_6 |—
+|0x6800 |inbound_mailbox_6 |—
+|0x7000 |outbound_mailbox_7 |—
+|0x7800 |inbound_mailbox_7 |—
+|=============================
+
+[[outbound_mailbox_0-address-map]]
+outbound_mailbox_0 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x20
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x28
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x30
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x38
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-1]]
+wtirq field
++++++++++++
+
+[[rtirq-field-1]]
+rtirq field
++++++++++++
+
+[[eirq-field-1]]
+eirq field
+++++++++++
+
+[[irqp-register]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x40
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-2]]
+wtirq field
++++++++++++
+
+[[rtirq-field-2]]
+rtirq field
++++++++++++
+
+[[eirq-field-2]]
+eirq field
+++++++++++
+
+[[ctrl-register]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x48
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_0-address-map]]
+inbound_mailbox_0 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x800
+* Base Offset: 0x800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-1]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-1]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-1]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-1]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-1]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-1]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-1]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-1]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-1]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-1]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-1]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-1]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-1]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-1]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-1]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-1]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-1]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-3]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-3]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-3]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-1]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-4]]
+wtirq field
++++++++++++
+
+[[rtirq-field-4]]
+rtirq field
++++++++++++
+
+[[eirq-field-4]]
+eirq field
+++++++++++
+
+[[irqp-register-1]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-5]]
+wtirq field
++++++++++++
+
+[[rtirq-field-5]]
+rtirq field
++++++++++++
+
+[[eirq-field-5]]
+eirq field
+++++++++++
+
+[[ctrl-register-1]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-1]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-1]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_1-address-map]]
+outbound_mailbox_1 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x1000
+* Base Offset: 0x1000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-2]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-2]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-2]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-2]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-2]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-2]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-2]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-2]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-2]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-2]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-2]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-2]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-2]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-2]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-2]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-2]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-2]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-6]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-6]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-6]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-2]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-7]]
+wtirq field
++++++++++++
+
+[[rtirq-field-7]]
+rtirq field
++++++++++++
+
+[[eirq-field-7]]
+eirq field
+++++++++++
+
+[[irqp-register-2]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-8]]
+wtirq field
++++++++++++
+
+[[rtirq-field-8]]
+rtirq field
++++++++++++
+
+[[eirq-field-8]]
+eirq field
+++++++++++
+
+[[ctrl-register-2]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-2]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-2]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_1-address-map]]
+inbound_mailbox_1 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x1800
+* Base Offset: 0x1800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-3]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-3]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-3]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-3]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-3]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-3]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-3]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-3]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-3]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-3]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-3]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-3]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-3]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-3]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-3]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-3]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-3]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-9]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-9]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-9]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-3]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-10]]
+wtirq field
++++++++++++
+
+[[rtirq-field-10]]
+rtirq field
++++++++++++
+
+[[eirq-field-10]]
+eirq field
+++++++++++
+
+[[irqp-register-3]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-11]]
+wtirq field
++++++++++++
+
+[[rtirq-field-11]]
+rtirq field
++++++++++++
+
+[[eirq-field-11]]
+eirq field
+++++++++++
+
+[[ctrl-register-3]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x1848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-3]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-3]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_2-address-map]]
+outbound_mailbox_2 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x2000
+* Base Offset: 0x2000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-4]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-4]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-4]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-4]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-4]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-4]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-4]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-4]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-4]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-4]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-4]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-4]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-4]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-4]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-4]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-4]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-4]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-12]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-12]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-12]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-4]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-13]]
+wtirq field
++++++++++++
+
+[[rtirq-field-13]]
+rtirq field
++++++++++++
+
+[[eirq-field-13]]
+eirq field
+++++++++++
+
+[[irqp-register-4]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-14]]
+wtirq field
++++++++++++
+
+[[rtirq-field-14]]
+rtirq field
++++++++++++
+
+[[eirq-field-14]]
+eirq field
+++++++++++
+
+[[ctrl-register-4]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-4]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-4]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_2-address-map]]
+inbound_mailbox_2 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x2800
+* Base Offset: 0x2800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-5]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-5]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-5]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-5]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-5]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-5]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-5]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-5]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-5]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-5]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-5]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-5]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-5]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-5]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-5]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-5]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-5]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-15]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-15]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-15]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-5]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x2838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-16]]
+wtirq field
++++++++++++
+
+[[rtirq-field-16]]
+rtirq field
++++++++++++
+
+[[eirq-field-16]]
+eirq field
+++++++++++
+
+[[irqp-register-5]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-17]]
+wtirq field
++++++++++++
+
+[[rtirq-field-17]]
+rtirq field
++++++++++++
+
+[[eirq-field-17]]
+eirq field
+++++++++++
+
+[[ctrl-register-5]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x2848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-5]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-5]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_3-address-map]]
+outbound_mailbox_3 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x3000
+* Base Offset: 0x3000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-6]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-6]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-6]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-6]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-6]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-6]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-6]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-6]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-6]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-6]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-6]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-6]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-6]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-6]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-6]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-6]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-6]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-18]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-18]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-18]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-6]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-19]]
+wtirq field
++++++++++++
+
+[[rtirq-field-19]]
+rtirq field
++++++++++++
+
+[[eirq-field-19]]
+eirq field
+++++++++++
+
+[[irqp-register-6]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-20]]
+wtirq field
++++++++++++
+
+[[rtirq-field-20]]
+rtirq field
++++++++++++
+
+[[eirq-field-20]]
+eirq field
+++++++++++
+
+[[ctrl-register-6]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-6]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-6]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_3-address-map]]
+inbound_mailbox_3 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x3800
+* Base Offset: 0x3800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-7]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-7]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-7]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-7]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-7]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-7]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-7]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-7]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-7]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-7]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-7]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-7]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-7]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-7]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-7]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-7]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-7]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-21]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-21]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-21]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-7]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x3838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-22]]
+wtirq field
++++++++++++
+
+[[rtirq-field-22]]
+rtirq field
++++++++++++
+
+[[eirq-field-22]]
+eirq field
+++++++++++
+
+[[irqp-register-7]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-23]]
+wtirq field
++++++++++++
+
+[[rtirq-field-23]]
+rtirq field
++++++++++++
+
+[[eirq-field-23]]
+eirq field
+++++++++++
+
+[[ctrl-register-7]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x3848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-7]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-7]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_4-address-map]]
+outbound_mailbox_4 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x4000
+* Base Offset: 0x4000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-8]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-8]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-8]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-8]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-8]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-8]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-8]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-8]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-8]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-8]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-8]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-8]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-8]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-8]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-8]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-8]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-8]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-24]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-24]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-24]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-8]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-25]]
+wtirq field
++++++++++++
+
+[[rtirq-field-25]]
+rtirq field
++++++++++++
+
+[[eirq-field-25]]
+eirq field
+++++++++++
+
+[[irqp-register-8]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-26]]
+wtirq field
++++++++++++
+
+[[rtirq-field-26]]
+rtirq field
++++++++++++
+
+[[eirq-field-26]]
+eirq field
+++++++++++
+
+[[ctrl-register-8]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-8]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-8]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_4-address-map]]
+inbound_mailbox_4 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x4800
+* Base Offset: 0x4800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-9]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-9]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-9]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-9]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-9]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-9]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-9]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-9]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-9]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-9]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-9]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-9]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-9]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-9]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-9]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-9]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-9]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-27]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-27]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-27]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-9]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-28]]
+wtirq field
++++++++++++
+
+[[rtirq-field-28]]
+rtirq field
++++++++++++
+
+[[eirq-field-28]]
+eirq field
+++++++++++
+
+[[irqp-register-9]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-29]]
+wtirq field
++++++++++++
+
+[[rtirq-field-29]]
+rtirq field
++++++++++++
+
+[[eirq-field-29]]
+eirq field
+++++++++++
+
+[[ctrl-register-9]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x4848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-9]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-9]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_5-address-map]]
+outbound_mailbox_5 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x5000
+* Base Offset: 0x5000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-10]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-10]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-10]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-10]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-10]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-10]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-10]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-10]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-10]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-10]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-10]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-10]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-10]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-10]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-10]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-10]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-10]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-30]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-30]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-30]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-10]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-31]]
+wtirq field
++++++++++++
+
+[[rtirq-field-31]]
+rtirq field
++++++++++++
+
+[[eirq-field-31]]
+eirq field
+++++++++++
+
+[[irqp-register-10]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-32]]
+wtirq field
++++++++++++
+
+[[rtirq-field-32]]
+rtirq field
++++++++++++
+
+[[eirq-field-32]]
+eirq field
+++++++++++
+
+[[ctrl-register-10]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-10]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-10]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_5-address-map]]
+inbound_mailbox_5 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x5800
+* Base Offset: 0x5800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-11]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-11]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-11]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-11]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-11]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-11]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-11]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-11]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-11]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-11]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-11]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-11]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-11]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-11]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-11]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-11]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-11]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-33]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-33]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-33]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-11]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-34]]
+wtirq field
++++++++++++
+
+[[rtirq-field-34]]
+rtirq field
++++++++++++
+
+[[eirq-field-34]]
+eirq field
+++++++++++
+
+[[irqp-register-11]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-35]]
+wtirq field
++++++++++++
+
+[[rtirq-field-35]]
+rtirq field
++++++++++++
+
+[[eirq-field-35]]
+eirq field
+++++++++++
+
+[[ctrl-register-11]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x5848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-11]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-11]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_6-address-map]]
+outbound_mailbox_6 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x6000
+* Base Offset: 0x6000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-12]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-12]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-12]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-12]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-12]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-12]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-12]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-12]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-12]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-12]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-12]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-12]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-12]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-12]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-12]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-12]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-12]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-36]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-36]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-36]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-12]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-37]]
+wtirq field
++++++++++++
+
+[[rtirq-field-37]]
+rtirq field
++++++++++++
+
+[[eirq-field-37]]
+eirq field
+++++++++++
+
+[[irqp-register-12]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-38]]
+wtirq field
++++++++++++
+
+[[rtirq-field-38]]
+rtirq field
++++++++++++
+
+[[eirq-field-38]]
+eirq field
+++++++++++
+
+[[ctrl-register-12]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-12]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-12]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_6-address-map]]
+inbound_mailbox_6 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x6800
+* Base Offset: 0x6800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-13]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-13]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-13]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-13]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-13]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-13]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-13]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-13]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-13]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-13]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-13]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-13]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-13]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-13]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-13]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-13]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-13]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-39]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-39]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-39]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-13]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-40]]
+wtirq field
++++++++++++
+
+[[rtirq-field-40]]
+rtirq field
++++++++++++
+
+[[eirq-field-40]]
+eirq field
+++++++++++
+
+[[irqp-register-13]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-41]]
+wtirq field
++++++++++++
+
+[[rtirq-field-41]]
+rtirq field
++++++++++++
+
+[[eirq-field-41]]
+eirq field
+++++++++++
+
+[[ctrl-register-13]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x6848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-13]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-13]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[outbound_mailbox_7-address-map]]
+outbound_mailbox_7 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x7000
+* Base Offset: 0x7000
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-14]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7000
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-14]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-14]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7008
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-14]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-14]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7010
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-14]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-14]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-14]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-14]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-14]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7018
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-14]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-14]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-14]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7020
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-14]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-14]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7028
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-14]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-14]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7030
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-42]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-42]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-42]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-14]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7038
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-43]]
+wtirq field
++++++++++++
+
+[[rtirq-field-43]]
+rtirq field
++++++++++++
+
+[[eirq-field-43]]
+eirq field
+++++++++++
+
+[[irqp-register-14]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7040
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-44]]
+wtirq field
++++++++++++
+
+[[rtirq-field-44]]
+rtirq field
++++++++++++
+
+[[eirq-field-44]]
+eirq field
+++++++++++
+
+[[ctrl-register-14]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7048
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-14]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-14]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port
+
+[[inbound_mailbox_7-address-map]]
+inbound_mailbox_7 address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x7800
+* Base Offset: 0x7800
+* Size: 0x50
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |WRITE_DATA |—
+|0x08 |READ_DATA |—
+|0x10 |STATUS |—
+|0x18 |ERROR_FLAGS |—
+|0x20 |WIRQT |—
+|0x28 |RIRQT |—
+|0x30 |IRQS |—
+|0x38 |IRQEN |—
+|0x40 |IRQP |—
+|0x48 |CTRL |—
+|========================
+
+[[write_data-register-15]]
+WRITE_DATA register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7800
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |write_data |w |0x0 |—
+|=====================================
+
+[[write_data-field-15]]
+write_data field
+++++++++++++++++
+
+Write data to mailbox fifo
+
+[[read_data-register-15]]
+READ_DATA register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7808
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |read_data |r |0x0 |—
+|=====================================
+
+[[read_data-field-15]]
+read_data field
++++++++++++++++
+
+Read data from mailbox fifo
+
+[[status-register-15]]
+STATUS register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7810
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|======================================
+|Bits |Identifier |Access |Reset |Name
+|0 |empty |r |0x0 |—
+|1 |full |r |0x0 |—
+|2 |write_level_above_thresh |r |0x0 |—
+|3 |read_level_above_thresh |r |0x0 |—
+|======================================
+
+[[empty-field-15]]
+empty field
++++++++++++
+
+0: Data is available to read, 1: Data is not available to read
+
+[[full-field-15]]
+full field
+++++++++++
+
+0: Space is available to write, 1: Space is not available to write
+
+[[write_level_above_thresh-field-15]]
+write_level_above_thresh field
+++++++++++++++++++++++++++++++
+
+If set, write fifo level is higher than threshhold set in WIRQT
+
+[[read_level_above_thresh-field-15]]
+read_level_above_thresh field
++++++++++++++++++++++++++++++
+
+If set, read fifo level is higher than threshhold set in RIRQT
+
+[[error_flags-register-15]]
+ERROR_FLAGS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7818
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |read_error |r |0x0 |—
+|1 |write_error |r |0x0 |—
+|=====================================
+
+[[read_error-field-15]]
+read_error field
+++++++++++++++++
+
+Attempted read from an empty mailbox
+
+[[write_error-field-15]]
+write_error field
++++++++++++++++++
+
+Attempted write to a full mailbox
+
+[[wirqt-register-15]]
+WIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7820
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |wirqt |rw |0x0 |—
+|=====================================
+
+[[wirqt-field-15]]
+wirqt field
++++++++++++
+
+When the usage pointer of the FIFO connected to the W channel exceeds
+this value, a write threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is
+full.
+
+[[rirqt-register-15]]
+RIRQT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7828
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |rirqt |rw |0x0 |—
+|=====================================
+
+[[rirqt-field-15]]
+rirqt field
++++++++++++
+
+When the fill pointer of the FIFO connected to the R channel exceeds
+this value, a read threshold IRQ is triggered and the corresponding
+STATUS register bit is set. When a value larger than or equal to the
+MailboxDepth parameter is written to this register, it gets reduced to
+MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is
+full.
+
+[[irqs-register-15]]
+IRQS register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7830
+* Base Offset: 0x30
+* Size: 0x8
+
+This register is used to read and clear interrupt requests, regardless
+of IRQEN register and whether the interrupt is enabled or disabled.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-45]]
+wtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in write
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[rtirq-field-45]]
+rtirq field
++++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Usage level threshold in read
+mailbox exceeded On write: link:No%20error%20IRQ%20pending[0]: No
+acknowledge link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear
+interrupt request
+
+[[eirq-field-45]]
+eirq field
+++++++++++
+
+On read: link:No%20error%20IRQ%20pending[0]: No interrupt request
+link:Error%20IRQ%20pending%3C/p%3E[1]: Error on mailbox access On write:
+link:No%20error%20IRQ%20pending[0]: No acknowledge
+link:Error%20IRQ%20pending%3C/p%3E[1]: Acknowledge and clear interrupt
+request
+
+[[irqen-register-15]]
+IRQEN register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7838
+* Base Offset: 0x38
+* Size: 0x8
+
+This register is used to enable and disable which interrupts are sent to
+the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |rw |0x0 |—
+|1 |rtirq |rw |0x0 |—
+|2 |eirq |rw |0x0 |—
+|=====================================
+
+[[wtirq-field-46]]
+wtirq field
++++++++++++
+
+[[rtirq-field-46]]
+rtirq field
++++++++++++
+
+[[eirq-field-46]]
+eirq field
+++++++++++
+
+[[irqp-register-15]]
+IRQP register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7840
+* Base Offset: 0x40
+* Size: 0x8
+
+This register is used to read the current status of the interrupts sent
+to the CPU.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wtirq |r |0x0 |—
+|1 |rtirq |r |0x0 |—
+|2 |eirq |r |0x0 |—
+|=====================================
+
+[[wtirq-field-47]]
+wtirq field
++++++++++++
+
+[[rtirq-field-47]]
+rtirq field
++++++++++++
+
+[[eirq-field-47]]
+eirq field
+++++++++++
+
+[[ctrl-register-15]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x7848
+* Base Offset: 0x48
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |wflush |w |0x0 |—
+|1 |rflush |w |0x0 |—
+|=====================================
+
+[[wflush-field-15]]
+wflush field
+++++++++++++
+
+Flush the write FIFO for this port
+
+[[rflush-field-15]]
+rflush field
+++++++++++++
+
+Flush the read FIFO for this port

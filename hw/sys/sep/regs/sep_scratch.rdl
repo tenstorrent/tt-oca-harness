@@ -1,0 +1,18 @@
+`ifndef SCRATCH_REG_RDL
+`define SCRATCH_REG_RDL
+
+addrmap sep_scratch {
+    reg SCRATCH {
+        regwidth = 64;
+        accesswidth = 64;
+        field  {
+            sw=rw;
+            hw=r;
+            desc="Scratch register for the CPU";
+        } data [31:0] = 0x0;
+    };
+
+	SCRATCH         SCRATCH[8]         @ 0x00;
+};
+
+`endif

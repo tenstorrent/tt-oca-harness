@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 ifndef ocah_mk
 ocah_mk := 1
 
@@ -49,6 +52,7 @@ OCAH_PHONY += ocah-agents-init
 OCAH_NONFREE_REMOTE ?=
 OCAH_NONFREE_COMMIT ?=
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
+OCAH_ADOPTER_OVERLAY_MK ?=
 
 ## @section Optional nonfree components
 
@@ -70,6 +74,7 @@ ocah-nonfree-init:
 	fi
 
 -include $(OCAH_ROOT)/nonfree/nonfree.mk
+-include $(OCAH_ADOPTER_OVERLAY_MK)
 
 OCAH_PHONY += ocah-nonfree-init
 

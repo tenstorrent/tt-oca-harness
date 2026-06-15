@@ -1,0 +1,124 @@
+[[chip_config-address-map]]
+chip_config address map
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x14
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |VERSION_LO |—
+|0x04 |VERSION_HI |—
+|0x08 |CHIP_ID |—
+|0x0C |LC_STATE |—
+|0x10 |RAS_BANK_INFO |—
+|========================
+
+[[version_lo-register]]
+VERSION_LO register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |version_lo |r |0x100A0 |—
+|=====================================
+
+[[version_lo-field]]
+version_lo field
+++++++++++++++++
+
+SMC version, lower 32 bits
+
+[[version_hi-register]]
+VERSION_HI register
+^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4
+* Base Offset: 0x4
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |version_hi |r |0x0 |—
+|=====================================
+
+[[version_hi-field]]
+version_hi field
+++++++++++++++++
+
+SMC version, upper 32 bits
+
+[[chip_id-register]]
+CHIP_ID register
+^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |chip_id |r |0x0 |—
+|=====================================
+
+[[chip_id-field]]
+chip_id field
++++++++++++++
+
+Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
+
+[[lc_state-register]]
+LC_STATE register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0xC
+* Base Offset: 0xC
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|7:0 |lc_state |r |0xF |—
+|=====================================
+
+[[lc_state-field]]
+lc_state field
+++++++++++++++
+
+Lifecycle state value from SEP. Default to invalid state
+
+[[ras_bank_info-register]]
+RAS_BANK_INFO register
+^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|3:0 |bank_chip |rw |0x0 |—
+|7:4 |bank_instance |rw |0x0 |—
+|=====================================
+
+[[bank_chip-field]]
+bank_chip field
++++++++++++++++
+
+Chiplet type ID
+
+[[bank_instance-field]]
+bank_instance field
++++++++++++++++++++
+
+Chiplet instance ID

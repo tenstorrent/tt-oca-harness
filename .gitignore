@@ -6,9 +6,18 @@ __pycache__/
 # Optional overlay repositories cloned by make agents-init / make nonfree-init
 agents/
 nonfree/
+overlay/*
+!overlay/
+!overlay/examples/
+!overlay/examples/**
 
 # Transient per-block build outputs. Keep .gitkeep placeholders when used to show structure.
 **/build/**
 !**/build/
 !**/build/**/
 !**/build/**/.gitkeep
+
+# Generated register HTML docs (heavy binary font/woff assets). Regenerated
+# locally via `make regen-regs-html`; the text collateral under
+# regs/gen/{sv,svh,c,py,adoc} is committed instead.
+**/regs/gen/html/

@@ -1,0 +1,28 @@
+`ifndef PLL_WRAP_REG_RDL
+`define PLL_WRAP_REG_RDL
+
+// OCAH: proprietary PLL hard-IP. Placeholder reserves the map slot only
+// (see smc_top @ +0x3000); no CSRs are modeled. A uniquely named footprint mem
+// keeps the generated C type distinct from the other placeholder wrappers.
+mem pll_wrap_placeholder_mem #(
+    longint unsigned NUM_ENTRIES = 954,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Placeholder footprint (proprietary PLL hard-IP; no CSRs modeled)";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    reg mem_word {
+        regwidth = 32;
+        field { sw = r; hw = r; } data[WIDTH-1:0];
+    };
+
+    mem_word mem_array[NUM_ENTRIES];
+};
+
+addrmap pll_wrap {
+    external pll_wrap_placeholder_mem footprint @0x0;
+};
+
+`endif

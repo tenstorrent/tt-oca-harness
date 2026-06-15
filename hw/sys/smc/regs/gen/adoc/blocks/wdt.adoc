@@ -1,0 +1,226 @@
+[[wdt-address-map]]
+wdt address map
+~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x24
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |CTRL |—
+|0x08 |COUNT |—
+|0x10 |SCALED_COUNT |—
+|0x18 |FEED |—
+|0x1C |KEY |—
+|0x20 |CMP |—
+|========================
+
+[[ctrl-register]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+KEY reg must be written to before any other register in this addrmap can
+be written to, unlocking the WDT. After writing to another register, the
+WDT will be locked again, and KEY must be written to again to unlock it.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|3:0 |wdogscale |rw |0x0 |—
+|7:4 |rsvd0 |r |0x0 |—
+|8 |wdogrsten |rw |0x0 |—
+|9 |wdogzerocmp |rw |0x0 |—
+|11:10 |rsvd1 |r |0x0 |—
+|12 |wdogenalways |rw |0x0 |—
+|13 |wdogcoreawake |rw |0x0 |—
+|27:14 |rsvd2 |r |0x0 |—
+|28 |wdogip0 |rw |0x0 |—
+|31:29 |rsvd3 |r |0x0 |—
+|=====================================
+
+[[wdogscale-field]]
+wdogscale field
++++++++++++++++
+
+WDT counter scale value. Scales the current cycle count (time) by count
+/ 2 ^ wdogscale value
+
+[[rsvd0-field]]
+rsvd0 field
++++++++++++
+
+Reserved
+
+[[wdogrsten-field]]
+wdogrsten field
++++++++++++++++
+
+Enables a sticky reset signal to outputted to top level, can be used for
+a second stage wdt
+
+[[wdogzerocmp-field]]
+wdogzerocmp field
++++++++++++++++++
+
+Enable cycle counter to be reset to 0 when compare value has been
+reached
+
+[[rsvd1-field]]
+rsvd1 field
++++++++++++
+
+Reserved
+
+[[wdogenalways-field]]
+wdogenalways field
+++++++++++++++++++
+
+Enable WDT to always count. This has priority over wdogcoreawake
+
+[[wdogcoreawake-field]]
+wdogcoreawake field
++++++++++++++++++++
+
+Enable WDT to only count when the core is not in reset
+
+[[rsvd2-field]]
+rsvd2 field
++++++++++++
+
+Reserved
+
+[[wdogip0-field]]
+wdogip0 field
++++++++++++++
+
+Pending interrupt
+
+[[rsvd3-field]]
+rsvd3 field
++++++++++++
+
+Reserved
+
+[[count-register]]
+COUNT register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|30:0 |wdogcount |rw |0x0 |—
+|=====================================
+
+[[wdogcount-field]]
+wdogcount field
++++++++++++++++
+
+31 bit wdt counter registers. On write, the counter will be set to the
+written value, then continue counting up. KEY reg must be written to
+before any other register in this addrmap can be written to, unlocking
+the WDT. After writing to another register, the WDT will be locked
+again, and KEY must be written to again to unlock it.
+
+[[scaled_count-register]]
+SCALED_COUNT register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |wdogs |rw |0x0 |—
+|=====================================
+
+[[wdogs-field]]
+wdogs field
++++++++++++
+
+Scaled value of wdt counter. (i.e. count >> wdogscale). Writing to this
+reg has no effect, but will lock the WDT (meaning KEY must be written to
+KEY reg to unlock it again). KEY reg must be written to before any other
+register in this addrmap can be written to, unlocking the WDT. After
+writing to another register, the WDT will be locked again, and KEY must
+be written to again to unlock it.
+
+[[feed-register]]
+FEED register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x18
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |wdogfeed |rw |0x0 |—
+|=====================================
+
+[[wdogfeed-field]]
+wdogfeed field
+++++++++++++++
+
+Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+KEY reg must be written to before any other register in this addrmap can
+be written to, unlocking the WDT. After writing to another register, the
+WDT will be locked again, and KEY must be written to again to unlock it.
+
+[[key-register]]
+KEY register
+^^^^^^^^^^^^
+
+* Absolute Address: 0x1C
+* Base Offset: 0x1C
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |wdogkey |rw |0x0 |—
+|=====================================
+
+[[wdogkey-field]]
+wdogkey field
++++++++++++++
+
+Key register. Magic key (0x51F15E) must be written to this register
+before a write to any other register in this addrmap. Must be written
+every time. Reading this reg returns 1 if key has been written to it and
+it is unlocked, 0 otherwise.
+
+[[cmp-register]]
+CMP register
+^^^^^^^^^^^^
+
+* Absolute Address: 0x20
+* Base Offset: 0x20
+* Size: 0x4
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |wdogcmp0 |rw |0x1000 |—
+|=====================================
+
+[[wdogcmp0-field]]
+wdogcmp0 field
+++++++++++++++
+
+Compare register. Value that gets compared to wdogs. KEY reg must be
+written to before any other register in this addrmap can be written to,
+unlocking the WDT. After writing to another register, the WDT will be
+locked again, and KEY must be written to again to unlock it.

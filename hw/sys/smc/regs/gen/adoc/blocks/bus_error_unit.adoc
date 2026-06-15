@@ -1,0 +1,340 @@
+[[bus_error_unit-address-map]]
+bus_error_unit address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x30
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |CAUSE |—
+|0x08 |PHYS_ADDR |—
+|0x10 |ENABLE |—
+|0x18 |PLIC_ENABLE |—
+|0x20 |ACCRUED_ENABLE |—
+|0x28 |LOCAL_ENABLE |—
+|========================
+
+[[cause-register]]
+CAUSE register
+^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|2:0 |data |rw |0x0 |—
+|=====================================
+
+[[data-field]]
+data field
+++++++++++
+
+Cause register. Enumerates different kinds of errors
+
+[[phys_addr-register]]
+PHYS_ADDR register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|55:0 |value |r |— |—
+|=====================================
+
+[[value-field]]
+value field
++++++++++++
+
+Physical address of error event. No reset value
+
+[[enable-register]]
+ENABLE register
+^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |rsvd0 |rw |0x0 |—
+|1 |icache_tlbus |rw |0x1 |—
+|2 |icache_correctable |rw |0x1 |—
+|3 |rsvd3 |rw |0x0 |—
+|4 |rsvd4 |rw |0x0 |—
+|5 |dcache_tlbus |rw |0x1 |—
+|6 |dcache_correctable |rw |0x1 |—
+|7 |dcache_uncorrectable |rw |0x1 |—
+|=====================================
+
+[[rsvd0-field]]
+rsvd0 field
++++++++++++
+
+Reserved
+
+[[icache_tlbus-field]]
+icache_tlbus field
+++++++++++++++++++
+
+Enable recording error information for ICache Tilelink bus error.
+Enabled on reset.
+
+[[icache_correctable-field]]
+icache_correctable field
+++++++++++++++++++++++++
+
+Enable recording error information for ICache ECC correctable bus error.
+Enabled on reset.
+
+[[rsvd3-field]]
+rsvd3 field
++++++++++++
+
+Reserved
+
+[[rsvd4-field]]
+rsvd4 field
++++++++++++
+
+Reserved
+
+[[dcache_tlbus-field]]
+dcache_tlbus field
+++++++++++++++++++
+
+Enable recording error information for DCache Tilelink bus error.
+Enabled on reset.
+
+[[dcache_correctable-field]]
+dcache_correctable field
+++++++++++++++++++++++++
+
+Enable recording error information for DCache ECC correctable bus error.
+Enabled on reset.
+
+[[dcache_uncorrectable-field]]
+dcache_uncorrectable field
+++++++++++++++++++++++++++
+
+Enable recording error information for DCache ECC uncorrectable bus
+error. Enabled on reset.
+
+[[plic_enable-register]]
+PLIC_ENABLE register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x18
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |rsvd0 |rw |0x0 |—
+|1 |icache_tlbus |rw |0x0 |—
+|2 |icache_correctable |rw |0x0 |—
+|3 |rsvd3 |rw |0x0 |—
+|4 |rsvd4 |rw |0x0 |—
+|5 |dcache_tlbus |rw |0x0 |—
+|6 |dcache_correctable |rw |0x0 |—
+|7 |dcache_uncorrectable |rw |0x0 |—
+|=====================================
+
+[[rsvd0-field-1]]
+rsvd0 field
++++++++++++
+
+Reserved
+
+[[icache_tlbus-field-1]]
+icache_tlbus field
+++++++++++++++++++
+
+PLIC interrupt enable mask for ICache Tilelink bus error.
+
+[[icache_correctable-field-1]]
+icache_correctable field
+++++++++++++++++++++++++
+
+PLIC interrupt enable mask for ICache ECC correctable bus error.
+
+[[rsvd3-field-1]]
+rsvd3 field
++++++++++++
+
+Reserved
+
+[[rsvd4-field-1]]
+rsvd4 field
++++++++++++
+
+Reserved
+
+[[dcache_tlbus-field-1]]
+dcache_tlbus field
+++++++++++++++++++
+
+PLIC interrupt enable mask for DCache Tilelink bus error.
+
+[[dcache_correctable-field-1]]
+dcache_correctable field
+++++++++++++++++++++++++
+
+PLIC interrupt enable mask for DCache ECC correctable bus error.
+
+[[dcache_uncorrectable-field-1]]
+dcache_uncorrectable field
+++++++++++++++++++++++++++
+
+PLIC interrupt enable mask for DCache ECC uncorrectable bus error.
+
+[[accrued_enable-register]]
+ACCRUED_ENABLE register
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x20
+* Base Offset: 0x20
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |rsvd0 |rw |0x0 |—
+|1 |icache_tlbus |rw |0x0 |—
+|2 |icache_correctable |rw |0x0 |—
+|3 |rsvd3 |rw |0x0 |—
+|4 |rsvd4 |rw |0x0 |—
+|5 |dcache_tlbus |rw |0x0 |—
+|6 |dcache_correctable |rw |0x0 |—
+|7 |dcache_uncorrectable |rw |0x0 |—
+|=====================================
+
+[[rsvd0-field-2]]
+rsvd0 field
++++++++++++
+
+Reserved
+
+[[icache_tlbus-field-2]]
+icache_tlbus field
+++++++++++++++++++
+
+Coarse grain interrupt enable mask for ICache Tilelink bus error.
+
+[[icache_correctable-field-2]]
+icache_correctable field
+++++++++++++++++++++++++
+
+Coarse grain interrupt enable mask for ICache ECC correctable bus error.
+
+[[rsvd3-field-2]]
+rsvd3 field
++++++++++++
+
+Reserved
+
+[[rsvd4-field-2]]
+rsvd4 field
++++++++++++
+
+Reserved
+
+[[dcache_tlbus-field-2]]
+dcache_tlbus field
+++++++++++++++++++
+
+Coarse grain interrupt enable mask for DCache Tilelink bus error.
+
+[[dcache_correctable-field-2]]
+dcache_correctable field
+++++++++++++++++++++++++
+
+Coarse grain interrupt enable mask for DCache ECC correctable bus error.
+
+[[dcache_uncorrectable-field-2]]
+dcache_uncorrectable field
+++++++++++++++++++++++++++
+
+Coarse grain interrupt enable mask for DCache ECC uncorrectable bus
+error.
+
+[[local_enable-register]]
+LOCAL_ENABLE register
+^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x28
+* Base Offset: 0x28
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |rsvd0 |rw |0x0 |—
+|1 |icache_tlbus |rw |0x0 |—
+|2 |icache_correctable |rw |0x0 |—
+|3 |rsvd3 |rw |0x0 |—
+|4 |rsvd4 |rw |0x0 |—
+|5 |dcache_tlbus |rw |0x0 |—
+|6 |dcache_correctable |rw |0x0 |—
+|7 |dcache_uncorrectable |rw |0x0 |—
+|=====================================
+
+[[rsvd0-field-3]]
+rsvd0 field
++++++++++++
+
+Reserved
+
+[[icache_tlbus-field-3]]
+icache_tlbus field
+++++++++++++++++++
+
+Core local interrupt enable mask for ICache Tilelink bus error.
+
+[[icache_correctable-field-3]]
+icache_correctable field
+++++++++++++++++++++++++
+
+Core local interrupt enable mask for ICache ECC correctable bus error.
+
+[[rsvd3-field-3]]
+rsvd3 field
++++++++++++
+
+Reserved
+
+[[rsvd4-field-3]]
+rsvd4 field
++++++++++++
+
+Reserved
+
+[[dcache_tlbus-field-3]]
+dcache_tlbus field
+++++++++++++++++++
+
+Core local interrupt enable mask for DCache Tilelink bus error.
+
+[[dcache_correctable-field-3]]
+dcache_correctable field
+++++++++++++++++++++++++
+
+Core local interrupt enable mask for DCache ECC correctable bus error.
+
+[[dcache_uncorrectable-field-3]]
+dcache_uncorrectable field
+++++++++++++++++++++++++++
+
+Core local interrupt enable mask for DCache ECC uncorrectable bus error.

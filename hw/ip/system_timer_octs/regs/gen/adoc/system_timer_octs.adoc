@@ -42,7 +42,9 @@ System Timer Start Register
 START field
 +++++++++++
 
-Start the system timer.
+Start the system timer. Asserts the sync_load signal to start
+synchronization (only does anything if primary mode). Ensure both
+primary and secondary are out of reset.
 
 [[ctrl-register]]
 CTRL register
@@ -66,19 +68,21 @@ System Timer Control Register
 CREDIT_VAL field
 ++++++++++++++++
 
-Credit value factor.
+Credit value factor. WARNING: This value must be greater than
+PULSE_WIDTH
 
 [[pulse_width-field]]
 PULSE_WIDTH field
 +++++++++++++++++
 
-Pulse width for sync load and credit signals.
+Pulse width for sync load and credit signals. A value of 0 will be
+rounded up to 1. WARNING: This value must be less than CREDIT_VAL
 
 [[step-field]]
 STEP field
 ++++++++++
 
-Step amount for secondary timer.
+Step amount for secondary timer
 
 [[status-register]]
 STATUS register
@@ -101,13 +105,13 @@ System Timer Status Register
 MODE field
 ++++++++++
 
-Timer mode: 0=PRIMARY, 1=SECONDARY.
+Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)
 
 [[running-field]]
 RUNNING field
 +++++++++++++
 
-Timer is currently enabled and running.
+Timer is currently enabled and running
 
 [[timer_preset_lo-register]]
 TIMER_PRESET_LO register
@@ -129,7 +133,7 @@ System Timer Preset Value [31:0]
 PRESET_LO field
 +++++++++++++++
 
-Lower 32 bits of preset value.
+Lower 32 bits of preset value
 
 [[timer_preset_hi-register]]
 TIMER_PRESET_HI register
@@ -151,7 +155,7 @@ System Timer Preset Value [63:32]
 PRESET_HI field
 +++++++++++++++
 
-Upper 32 bits of preset value.
+Upper 32 bits of preset value
 
 [[timer_count_lo-register]]
 TIMER_COUNT_LO register
@@ -173,7 +177,7 @@ Current System Timer Count [31:0]
 COUNT_LO field
 ++++++++++++++
 
-Lower 32 bits of current timer count.
+Lower 32 bits of current timer count
 
 [[timer_count_hi-register]]
 TIMER_COUNT_HI register
@@ -195,7 +199,7 @@ Current System Timer Count [63:32]
 COUNT_HI field
 ++++++++++++++
 
-Upper 32 bits of current timer count.
+Upper 32 bits of current timer count
 
 [[credit_expired-register]]
 CREDIT_EXPIRED register
@@ -217,7 +221,13 @@ Credit Expired Register
 MAX_CYCLES_EXPIRED field
 ++++++++++++++++++++++++
 
-Maximum number of clock cycles since a count credit expired.
+Maximum number of clock cycles since a count credit expired (SECONDARY
+only). To reset the value of this register, write anything to it. If
+this number is very high (exact value depends on clock speed and credit
+value), this indicates that the secondary has not recieved a count
+credit pulse in a while, and is likely not syncing properly with the
+primary. This register can also be used to determine the clock skew
+between the primary and secondary. If PRIMARY, this field is always 0.
 
 [[timer_gpio_enable-register]]
 TIMER_GPIO_ENABLE register
@@ -239,4 +249,6 @@ System Timer GPIO Enable Register
 GPIO_ENABLE field
 +++++++++++++++++
 
-Enable the GPIO pad LSIO interface for the system timer.
+Enable the GPIO pad lsio interface for the system timer. This is done to
+prevent X-prop on reset into the secondary timer, which can cause the
+secondary timer to start counting early.
