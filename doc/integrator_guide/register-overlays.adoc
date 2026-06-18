@@ -21,11 +21,16 @@ not need to duplicate all tt-oca IP RDLs.
 
 == How the overlay is included
 
-An adopter overlay is a Make fragment included before `hw/regs.mk`:
+An adopter overlay lives in an adopter-controlled tree outside tt-oca. Keep
+proprietary RDL, generated collateral, and the overlay makefile in that external
+tree; do not add them under the open tt-oca checkout.
+
+Copy `doc/integrator_guide/examples/overlay.example.mk` into the adopter tree,
+fill in the paths, and pass it to make:
 
 [source,sh]
 ----
-make regen-regs OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+make regen-regs OCAH_ADOPTER_OVERLAY_MK=/path/to/acme-overlay/overlay.mk
 ----
 
 The overlay fragment sets the same generic register-generation variables used
@@ -40,8 +45,8 @@ by the open flow:
 * `OCAH_REG_GEN_OVERRIDE_<key>` and `OCAH_REG_BUILD_OVERRIDE_<key>` keep
   generated collateral under the adopter overlay tree.
 
-The example template in `overlay/examples/example.mk` is inert by default and
-shows the expected variables without registering real blocks.
+The example template is inert by default and shows the expected variables
+without registering real blocks.
 
 == Standalone shim generation
 
@@ -49,22 +54,22 @@ If an overlay provides a shim RDL such as:
 
 [source,text]
 ----
-/path/to/overlay/hw/sys/smc/dv/shims/regs/pll_wrap.rdl
+/path/to/acme-overlay/hw/sys/smc/dv/shims/regs/pll_wrap.rdl
 ----
 
 then the overlay can add it to `OCAH_EXTRA_REG_RDL_FILES`. Running:
 
 [source,sh]
 ----
-make regen-regs TARGET=pll_wrap OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+make regen-regs TARGET=pll_wrap OCAH_ADOPTER_OVERLAY_MK=/path/to/acme-overlay/overlay.mk
 ----
 
 generates the usual per-block collateral next to that RDL, for example:
 
 [source,text]
 ----
-/path/to/overlay/hw/sys/smc/dv/shims/regs/gen/c/pll_wrap.h
-/path/to/overlay/hw/sys/smc/dv/shims/regs/gen/sv/pll_wrap_reg.sv
+/path/to/acme-overlay/hw/sys/smc/dv/shims/regs/gen/c/pll_wrap.h
+/path/to/acme-overlay/hw/sys/smc/dv/shims/regs/gen/sv/pll_wrap_reg.sv
 ----
 
 == Subsystem-top variants
@@ -87,7 +92,7 @@ Running:
 
 [source,sh]
 ----
-make regen-regs TARGET=smc OCAH_ADOPTER_OVERLAY_MK=/path/to/overlay.mk
+make regen-regs TARGET=smc OCAH_ADOPTER_OVERLAY_MK=/path/to/acme-overlay/overlay.mk
 ----
 
 can generate both the open SMC collateral and the registered adopter SMC
@@ -99,14 +104,12 @@ The hand-maintained firmware umbrellas (`hw/common/dv/fw/smc.h` and `sep.h`)
 include generated headers by basename. Firmware builds must therefore search
 adopter generated C-header directories before open generated directories.
 
-For overlays checked out under `$(OCAH_ROOT)/overlay/*`, the SMC/SEP firmware
-Makefiles discover common generated header paths automatically. For overlays
-elsewhere, pass explicit include directories:
+Pass explicit include directories for the adopter generated headers:
 
 [source,sh]
 ----
 make -C hw/sys/smc/dv/fw \
-  OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS="/path/to/overlay/hw/sys/smc/regs/gen/c /path/to/overlay/hw/sys/smc/dv/shims/regs/gen/c"
+  OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS="/path/to/acme-overlay/hw/sys/smc/regs/gen/c /path/to/acme-overlay/hw/sys/smc/dv/shims/regs/gen/c"
 ----
 
 This is compile-time header selection only. The register-generation selection is
