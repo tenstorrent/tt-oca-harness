@@ -23,14 +23,14 @@
 
 #include <stdint.h>
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep.h"
 
 //==============================================================================
 // Outbound Filter Register Definitions
 //==============================================================================
 
 // Outbound filter 0 base address (from och_sep_top_reg.svh)
-#define OUTBOUND_FILTER_BASE OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR
+#define OUTBOUND_FILTER_BASE OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
 
 // Register offsets (each filter occupies 0x100 bytes)
 #define FILTER_CONFIG_OFFSET 0x0   // 64-bit: Configuration and control

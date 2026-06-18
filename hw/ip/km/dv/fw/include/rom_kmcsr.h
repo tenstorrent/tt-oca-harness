@@ -13,22 +13,25 @@
 
 #include <stdint.h>
 
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /** @brief KMCSR hardware version register (volatile, read-only). */
-#define ROM_KMCSR_VERSION_REG         (*(volatile KM_CSR_VERSION_REG_reg_u *)KMCSR_VERSION_REG_ADDR)
+#define ROM_KMCSR_VERSION_REG         (*(volatile km_csr__version_reg_t *)KEY_MANAGER_KMCSR_VERSION_BASE_ADDR)
 /** @brief KMCSR boot status register (volatile, write-1-only on COLD_BOOT_DONE field). */
-#define ROM_KMCSR_BOOT_STATUS_REG     (*(volatile KM_CSR_BOOT_STATUS_REG_reg_u *)KMCSR_BOOT_STATUS_REG_ADDR)
+#define ROM_KMCSR_BOOT_STATUS_REG     (*(volatile km_csr__boot_status_reg_t *)KEY_MANAGER_KMCSR_BOOT_STATUS_BASE_ADDR)
 /** @brief KMCSR recoverable-error register (volatile, R/W). */
-#define ROM_KMCSR_RECOVERABLE_ERR_REG (*(volatile KM_CSR_RECOVERABLE_ERR_REG_reg_u *)KMCSR_RECOVERABLE_ERR_REG_ADDR)
+#define ROM_KMCSR_RECOVERABLE_ERR_REG (*(volatile km_csr__recoverable_err_reg_t *)KEY_MANAGER_KMCSR_RECOVERABLE_ERR_BASE_ADDR)
 /** @brief SRAM scrambler key register (volatile, write-only). */
-#define ROM_KMCSR_SCRAMBLER_KEY_REG   (*(volatile KM_CSR_SCRAMBLER_KEY_REG_reg_u *)KMCSR_SCRAMBLER_KEY_REG_ADDR)
+#define ROM_KMCSR_SCRAMBLER_KEY_REG   (*(volatile km_csr__scrambler_key_reg_t *)KEY_MANAGER_KMCSR_SCRAMBLER_KEY_BASE_ADDR)
 /** @brief SRAM scrambler control register (volatile, R/W). */
-#define ROM_KMCSR_SCRAMBLER_CTRL_REG  (*(volatile KM_CSR_SCRAMBLER_CTRL_REG_reg_u *)KMCSR_SCRAMBLER_CTRL_REG_ADDR)
+#define ROM_KMCSR_SCRAMBLER_CTRL_REG  (*(volatile km_csr__scrambler_ctrl_reg_t *)KEY_MANAGER_KMCSR_SCRAMBLER_CTRL_BASE_ADDR)
 /** @brief Programmable IRQ vector address (volatile, R/W; SW-wel gated when lock is set). */
-#define ROM_KMCSR_IRQ_ENTRY_ADDR_REG  (*(volatile KM_CSR_IRQ_ENTRY_ADDR_REG_reg_u *)KMCSR_IRQ_ENTRY_ADDR_REG_ADDR)
+#define ROM_KMCSR_IRQ_ENTRY_ADDR_REG  (*(volatile km_csr__irq_entry_addr_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_ADDR_BASE_ADDR)
 /** @brief IRQ entry address lock (volatile; write-1 set, not cleared by writing 0). */
-#define ROM_KMCSR_IRQ_ENTRY_LOCK_REG  (*(volatile KM_CSR_IRQ_ENTRY_LOCK_REG_reg_u *)KMCSR_IRQ_ENTRY_LOCK_REG_ADDR)
+#define ROM_KMCSR_IRQ_ENTRY_LOCK_REG  (*(volatile km_csr__irq_entry_lock_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_LOCK_BASE_ADDR)
+/** @brief SRAM region write-lock register. */
+#define ROM_KMCSR_SRAM_LOCK_REG       (*(volatile km_csr__sram_lock_reg_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
 
 /**
  * @brief Read KMCSR hardware version register.
@@ -90,6 +93,16 @@ uint8_t rom_kmcsr_irq_entry_lock_read(void);
  * @brief Set `IRQ_ENTRY_LOCK` (write 1 to `lock`; sticky until KM reset).
  */
 void rom_kmcsr_irq_entry_lock_set(void);
+
+static inline uint32_t rom_kmcsr_sram_lock_read(void)
+{
+    return ROM_KMCSR_SRAM_LOCK_REG.w;
+}
+
+static inline void rom_kmcsr_sram_lock_set(uint32_t mask)
+{
+    ROM_KMCSR_SRAM_LOCK_REG.w = mask;
+}
 
 /**
  * @brief Read BOOT_STATUS.COLD_BOOT_DONE bit.

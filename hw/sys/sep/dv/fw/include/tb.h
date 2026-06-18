@@ -1,7 +1,15 @@
 #ifndef TB_H
 #define TB_H
 
-#include "och_sep_top_reg.h"
+#ifdef __ASSEMBLER__
+/* Assembly TUs (e.g. crt0.s) must not pull in the C register typedefs from the
+ * umbrella sep.h. They only need address macros, so include the address-only
+ * generated header instead. Drop this once the generated block headers carry
+ * their own #ifndef __ASSEMBLER__ guard. */
+#include "sep_addr.h"
+#else
+#include "sep.h"
+#endif
 
 #define STDOUT 0x80000000
 

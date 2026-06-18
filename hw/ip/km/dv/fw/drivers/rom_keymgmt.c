@@ -17,7 +17,8 @@
 #include "rom_prng.h"
 #include "rom_sideload.h"
 #include "rom_isr.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /*===========================================================================
  * Internal helpers
@@ -37,8 +38,8 @@ static int slot_available(uint8_t slot)
     if (slot >= ROM_KM_KPV_NUM_SLOTS)
         return 0;
 
-    KM_KPV_CTRL_REG_reg_u ctrl;
-    ctrl.val = KPV_CTRL(slot).val;
+    km_kpv__ctrl_reg_t ctrl;
+    ctrl.w = KPV_CTRL(slot).w;
 
     if (ctrl.f.lock_write || ctrl.f.lock_use || ctrl.f.unlock_sep)
         return 0;
@@ -254,10 +255,10 @@ int rom_allocate_kpvlp_slot(uint8_t num_slots, uint8_t *base_slot)
 
     /* Set UNLOCK_SEP to allow SEP writes through the KPVLP port */
     for (uint8_t s = 0; s < num_slots; s++) {
-        KM_KPV_CTRL_REG_reg_u ctrl;
-        ctrl.val = KPV_CTRL(base + s).val;
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = KPV_CTRL(base + s).w;
         ctrl.f.unlock_sep = 1;
-        KPV_CTRL(base + s).val = ctrl.val;
+        KPV_CTRL(base + s).w = ctrl.w;
     }
 
     *base_slot = base;
@@ -363,8 +364,8 @@ int rom_register_kpvlp_key(uint8_t base_slot, uint8_t key_size,
      * and must not already have a handle. */
     for (uint8_t s = 0; s < num_slots; s++) {
         uint8_t slot = base_slot + s;
-        KM_KPV_CTRL_REG_reg_u ctrl;
-        ctrl.val = KPV_CTRL(slot).val;
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = KPV_CTRL(slot).w;
 
         if (!ctrl.f.unlock_sep)
             return -1;

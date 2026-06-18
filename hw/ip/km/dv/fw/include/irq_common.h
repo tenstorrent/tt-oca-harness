@@ -8,18 +8,19 @@
 #define IRQ_COMMON_H
 
 #include <stdint.h>
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /** @brief KMCSR IRQ status register (volatile, W1C). */
-#define KMCSR_IRQ_STATUS_REG    (*(volatile KM_CSR_IRQ_STATUS_REG_reg_u *)KMCSR_IRQ_STATUS_REG_ADDR)
+#define KMCSR_IRQ_STATUS_REG    (*(volatile km_csr__irq_status_reg_t *)KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR)
 /** @brief KMCSR IRQ enable register (volatile). */
-#define KMCSR_IRQ_ENABLE_REG    (*(volatile KM_CSR_IRQ_ENABLE_REG_reg_u *)KMCSR_IRQ_ENABLE_REG_ADDR)
+#define KMCSR_IRQ_ENABLE_REG    (*(volatile km_csr__irq_enable_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENABLE_BASE_ADDR)
 /** @brief KMCSR IRQ software-set register (volatile, single-pulse). */
-#define KMCSR_IRQ_SET_REG       (*(volatile KM_CSR_IRQ_SET_REG_reg_u *)KMCSR_IRQ_SET_REG_ADDR)
+#define KMCSR_IRQ_SET_REG       (*(volatile km_csr__irq_set_reg_t *)KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR)
 /** @brief Mailbox IRQ status register (volatile, W1C). */
-#define MBOX_IRQ_STATUS_REG     (*(volatile KM_MAILBOX_KM_IRQ_STATUS_REG_reg_u *)MAILBOX_KM_KM_IRQ_STATUS_REG_ADDR)
+#define MBOX_IRQ_STATUS_REG     (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
 /** @brief Mailbox IRQ enable register (volatile). */
-#define MBOX_IRQ_ENABLE_REG     (*(volatile KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u *)MAILBOX_KM_KM_IRQ_ENABLE_REG_ADDR)
+#define MBOX_IRQ_ENABLE_REG     (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
 
 /**
  * @brief Read the current IRQ status.

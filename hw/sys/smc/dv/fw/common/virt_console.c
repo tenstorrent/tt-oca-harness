@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "virt_console.h"
-#include "smc_defines.h"
+#include "smc_io.h"
 
 /*
 Format of 32-bit writes to scratch2 for virtual console:

@@ -14,15 +14,16 @@
 #include "rom_prng.h"
 #include "rom_shred.h"
 #include "rom_drbg.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /** @brief KPV scrambler key register (volatile, write-only). */
-#define KPV_SCRAMBLER_KEY  (*(volatile KM_KPV_KPV_SCRAMBLER_KEY_REG_reg_u *)KPV_KPV_SCRAMBLER_KEY_REG_ADDR)
+#define KPV_SCRAMBLER_KEY  (*(volatile km_kpv__kpv_scrambler_key_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR)
 /** @brief KPV scrambler control register (volatile, R/W). */
-#define KPV_SCRAMBLER_CTRL (*(volatile KM_KPV_KPV_SCRAMBLER_CTRL_REG_reg_u *)KPV_KPV_SCRAMBLER_CTRL_REG_ADDR)
+#define KPV_SCRAMBLER_CTRL (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 
 /** @brief Base of KPV key array (32 slots × 16 words = 512 words). */
-#define KPV_KEY_BASE  ((volatile uint32_t *)KPV_KEY_ENTRY_0__WORD_0__REG_ADDR)
+#define KPV_KEY_BASE  ((volatile uint32_t *)KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 0))
 
 /** @brief Pointer to the first word of slot [slot]. */
 #define KPV_SLOT_BASE(slot)  (KPV_KEY_BASE + (uint32_t)(slot) * ROM_KM_KPV_WORDS_PER_SLOT)
@@ -46,7 +47,7 @@ void rom_kpv_init_scrambler(void)
         return;
 
     for (uint8_t i = 0; i < ROM_KM_SHRED_ITER + 1; i++)
-        KPV_SCRAMBLER_KEY.val = rom_drbg_get_word();
+        KPV_SCRAMBLER_KEY.w = rom_drbg_get_word();
 }
 
 /**
@@ -57,10 +58,10 @@ void rom_kpv_init_scrambler(void)
  */
 void rom_kpv_scrambler_enable(void)
 {
-    KM_KPV_KPV_SCRAMBLER_CTRL_REG_reg_u ctrl;
-    ctrl.val = KPV_SCRAMBLER_CTRL.val;
+    km_kpv__kpv_scrambler_ctrl_reg_t ctrl;
+    ctrl.w = KPV_SCRAMBLER_CTRL.w;
     ctrl.f.enable = 1;
-    KPV_SCRAMBLER_CTRL.val = ctrl.val;
+    KPV_SCRAMBLER_CTRL.w = ctrl.w;
 }
 
 /**
@@ -73,10 +74,10 @@ void rom_kpv_scrambler_disable(void)
 {
     if (KPV_SCRAMBLER_CTRL.f.lock)
         return;
-    KM_KPV_KPV_SCRAMBLER_CTRL_REG_reg_u ctrl;
-    ctrl.val = KPV_SCRAMBLER_CTRL.val;
+    km_kpv__kpv_scrambler_ctrl_reg_t ctrl;
+    ctrl.w = KPV_SCRAMBLER_CTRL.w;
     ctrl.f.enable = 0;
-    KPV_SCRAMBLER_CTRL.val = ctrl.val;
+    KPV_SCRAMBLER_CTRL.w = ctrl.w;
 }
 
 /**
@@ -87,10 +88,10 @@ void rom_kpv_scrambler_disable(void)
  */
 void rom_kpv_scrambler_lock(void)
 {
-    KM_KPV_KPV_SCRAMBLER_CTRL_REG_reg_u ctrl;
-    ctrl.val = KPV_SCRAMBLER_CTRL.val;
+    km_kpv__kpv_scrambler_ctrl_reg_t ctrl;
+    ctrl.w = KPV_SCRAMBLER_CTRL.w;
     ctrl.f.lock = 1;
-    KPV_SCRAMBLER_CTRL.val = ctrl.val;
+    KPV_SCRAMBLER_CTRL.w = ctrl.w;
 }
 
 /*===========================================================================
@@ -115,7 +116,7 @@ int rom_kpv_shred_all(rom_km_prng_state_t *prng)
     }
 
     for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++)
-        KPV_CTRL(s).val = 0;
+        KPV_CTRL(s).w = 0;
 
     rom_shred_region(KPV_KEY_BASE, ROM_KM_KPV_TOTAL_WORDS, prng, 1);
     return 0;
@@ -137,7 +138,7 @@ int rom_kpv_shred_slot(uint8_t slot, rom_km_prng_state_t *prng)
     if (KPV_CTRL(slot).f.lock_write)
         return -1;
 
-    KPV_CTRL(slot).val = 0;
+    KPV_CTRL(slot).w = 0;
     rom_shred_region(KPV_SLOT_BASE(slot),
                      (uint16_t)ROM_KM_KPV_WORDS_PER_SLOT,
                      prng, 1);
@@ -174,8 +175,8 @@ int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key,
     /* Configure control registers for each slot. */
     uint8_t words_written = 0;
     for (uint8_t s = 0; s < num_slots; s++) {
-        KM_KPV_CTRL_REG_reg_u ctrl;
-        ctrl.val = 0;
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = 0;
         ctrl.f.extend = ((s == 0) ? extend : 0) & 0x7u;
         ctrl.f.dest_valid = dest_valid.raw;
 
@@ -186,7 +187,7 @@ int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key,
             ctrl.f.last_dword = 15u & 0xFu;
         }
 
-        KPV_CTRL(base_slot + s).val = ctrl.val;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
 
         /* Write key data words for this slot. */
         uint8_t words_in_slot = (s == num_slots - 1)
@@ -218,8 +219,8 @@ int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key,
  */
 int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t *dest_valid)
 {
-    KM_KPV_CTRL_REG_reg_u base_ctrl;
-    base_ctrl.val = KPV_CTRL(base_slot).val;
+    km_kpv__ctrl_reg_t base_ctrl;
+    base_ctrl.w = KPV_CTRL(base_slot).w;
 
     uint8_t extend = (uint8_t)base_ctrl.f.extend;
     uint8_t num_slots = extend + 1;
@@ -234,8 +235,8 @@ int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t
             return -1;
     }
 
-    KM_KPV_CTRL_REG_reg_u final_ctrl;
-    final_ctrl.val = KPV_CTRL(base_slot + extend).val;
+    km_kpv__ctrl_reg_t final_ctrl;
+    final_ctrl.w = KPV_CTRL(base_slot + extend).w;
     *key_len = (uint8_t)(ROM_KM_KPV_WORDS_PER_SLOT * extend
                         + final_ctrl.f.last_dword + 1);
     dest_valid->raw = (uint8_t)base_ctrl.f.dest_valid;
@@ -297,10 +298,10 @@ void rom_kpv_write_lock(uint8_t base_slot)
     uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
 
     for (uint8_t s = 0; s <= extend; s++) {
-        KM_KPV_CTRL_REG_reg_u ctrl;
-        ctrl.val = KPV_CTRL(base_slot + s).val;
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = KPV_CTRL(base_slot + s).w;
         ctrl.f.lock_write = 1;
-        KPV_CTRL(base_slot + s).val = ctrl.val;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
     }
 }
 
@@ -316,9 +317,9 @@ void rom_kpv_read_lock(uint8_t base_slot)
     uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
 
     for (uint8_t s = 0; s <= extend; s++) {
-        KM_KPV_CTRL_REG_reg_u ctrl;
-        ctrl.val = KPV_CTRL(base_slot + s).val;
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = KPV_CTRL(base_slot + s).w;
         ctrl.f.lock_use = 1;
-        KPV_CTRL(base_slot + s).val = ctrl.val;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
     }
 }

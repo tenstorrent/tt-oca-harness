@@ -132,13 +132,16 @@
  * Command IDs
  *===========================================================================*/
 
-/** @brief Command identifiers (sparse: 0x00-0x04 and 0x20-0x26). */
+/** @brief Command identifiers (sparse: 0x00-0x04, 0x10-0x12, and 0x20-0x26). */
 typedef enum {
     ROM_KM_CMD_HW_VER              = 0x00, /**< Query hardware version */
     ROM_KM_CMD_ROM_VER             = 0x01, /**< Query ROM firmware version */
     ROM_KM_CMD_SRAM_VER            = 0x02, /**< Query SRAM firmware version (reserved) */
     ROM_KM_CMD_STAT                = 0x03, /**< Query recoverable-error status */
     ROM_KM_CMD_RECOV_ACK           = 0x04, /**< Acknowledge recoverable error */
+    ROM_KM_CMD_EXEC_ROM            = 0x10, /**< Continue executing ROM; ignore subsequent handover commands */
+    ROM_KM_CMD_SRAM_LOAD_EXEC      = 0x11, /**< Accept firmware image via mailbox, load to SRAM, and execute */
+    ROM_KM_CMD_SRAM_EXEC           = 0x12, /**< Jump to pre-loaded mutable firmware in SRAM */
     ROM_KM_CMD_KPVLP_SLOT_REQ      = 0x20, /**< Allocate KPVLP slots */
     ROM_KM_CMD_KPVLP_KEY_REGISTER  = 0x21, /**< Register a KPVLP-loaded key */
     ROM_KM_CMD_KEY_GENERATE        = 0x22, /**< Generate a random key */
@@ -149,7 +152,9 @@ typedef enum {
 } rom_km_cmd_id_t;
 
 /** @brief Evaluate to non-zero if @p id is a valid command ID. */
-#define ROM_KM_CMD_IS_VALID(id)     ((id) <= 0x04 || ((id) >= 0x20 && (id) <= 0x26))
+#define ROM_KM_CMD_IS_VALID(id)     ((id) <= 0x04 || \
+                                     ((id) >= 0x10 && (id) <= 0x12) || \
+                                     ((id) >= 0x20 && (id) <= 0x26))
 
 /*===========================================================================
  * Response IDs
@@ -209,7 +214,11 @@ typedef enum {
     ROM_KM_UFAULT_ILLEGAL_INSN      = -9,  /**< Illegal instruction trap */
     ROM_KM_UFAULT_BUS_ERROR         = -10, /**< AXI bus-error trap */
     ROM_KM_UFAULT_EBREAK            = -11, /**< EBREAK instruction trap */
-    ROM_KM_UFAULT_SPURIOUS_IRQ      = -12  /**< Unrecognised IRQ source */
+    ROM_KM_UFAULT_SPURIOUS_IRQ      = -12, /**< Unrecognised IRQ source */
+    ROM_KM_UFAULT_OTP_SIGINT        = -13, /**< OTP dual-rail integrity violation */
+    ROM_KM_UFAULT_FW_CRC            = -14, /**< Mutable firmware image CRC-32C mismatch */
+    ROM_KM_UFAULT_FW_STACK_OVF      = -15, /**< Firmware load destination exceeded stack guard */
+    ROM_KM_UFAULT_SHRED_RANGE       = -16  /**< Shred word count exceeded the shred-order buffer */
 } rom_km_unrecov_fault_code_t;
 
 /*===========================================================================

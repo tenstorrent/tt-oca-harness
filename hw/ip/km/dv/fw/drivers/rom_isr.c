@@ -127,10 +127,10 @@ void rom_isr_buserr(rom_irq_frame_t *frame)
 __attribute__((cold))
 void rom_isr_kmcsr(void)
 {
-    KM_CSR_IRQ_STATUS_REG_reg_u status;
-    KM_CSR_IRQ_ENABLE_REG_reg_u enable;
-    status.val = rom_kmcsr_irq_status_read();
-    enable.val = rom_kmcsr_irq_enable_read();
+    km_csr__irq_status_reg_t status;
+    km_csr__irq_enable_reg_t enable;
+    status.w = rom_kmcsr_irq_status_read();
+    enable.w = rom_kmcsr_irq_enable_read();
 
     if (status.f.wipe_state && enable.f.wipe_state_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_WIPE_STATE);
@@ -190,10 +190,10 @@ static void mbox_flush_and_reset(int flush_fifos)
  */
 void rom_mailbox_enable_outbound_drain_irq(void)
 {
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u en;
-    en.val = rom_mailbox_irq_enable_read();
+    km_mailbox_km__irq_enable_reg_t en;
+    en.w = rom_mailbox_irq_enable_read();
     en.f.outbound_write_space_avail_en = 1;
-    rom_mailbox_irq_enable_write(en.val);
+    rom_mailbox_irq_enable_write(en.w);
 }
 
 /**
@@ -205,10 +205,10 @@ void rom_mailbox_enable_outbound_drain_irq(void)
  */
 void rom_mailbox_disable_outbound_drain_irq(void)
 {
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u en;
-    en.val = rom_mailbox_irq_enable_read();
+    km_mailbox_km__irq_enable_reg_t en;
+    en.w = rom_mailbox_irq_enable_read();
     en.f.outbound_write_space_avail_en = 0;
-    rom_mailbox_irq_enable_write(en.val);
+    rom_mailbox_irq_enable_write(en.w);
 }
 
 /**
@@ -219,10 +219,10 @@ void rom_mailbox_disable_outbound_drain_irq(void)
  */
 void rom_mailbox_enable_inbound_irq(void)
 {
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u en;
-    en.val = rom_mailbox_irq_enable_read();
+    km_mailbox_km__irq_enable_reg_t en;
+    en.w = rom_mailbox_irq_enable_read();
     en.f.inbound_read_data_avail_en = 1;
-    rom_mailbox_irq_enable_write(en.val);
+    rom_mailbox_irq_enable_write(en.w);
 }
 
 /**
@@ -233,10 +233,10 @@ void rom_mailbox_enable_inbound_irq(void)
  */
 void rom_mailbox_disable_inbound_irq(void)
 {
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u en;
-    en.val = rom_mailbox_irq_enable_read();
+    km_mailbox_km__irq_enable_reg_t en;
+    en.w = rom_mailbox_irq_enable_read();
     en.f.inbound_read_data_avail_en = 0;
-    rom_mailbox_irq_enable_write(en.val);
+    rom_mailbox_irq_enable_write(en.w);
 }
 
 /**
@@ -264,36 +264,36 @@ static void rom_trigger_recoverable_direct(int8_t fault_code)
  */
 void rom_isr_mailbox(void)
 {
-    KM_MAILBOX_KM_IRQ_STATUS_REG_reg_u irq_sts;
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u irq_en;
-    irq_sts.val = rom_mailbox_irq_status_read();
-    irq_en.val = rom_mailbox_irq_enable_read();
+    km_mailbox_km__irq_status_reg_t irq_sts;
+    km_mailbox_km__irq_enable_reg_t irq_en;
+    irq_sts.w = rom_mailbox_irq_status_read();
+    irq_en.w = rom_mailbox_irq_enable_read();
 
     /* --- Error conditions (checked first) --- */
 
     if (irq_sts.f.outbound_overflow && irq_en.f.outbound_overflow_en) {
         mbox_flush_and_reset(1);
-        KM_MAILBOX_KM_IRQ_STATUS_REG_reg_u w1c = {0};
+        km_mailbox_km__irq_status_reg_t w1c = {0};
         w1c.f.outbound_overflow = 1;
-        rom_mailbox_irq_status_clear(w1c.val);
+        rom_mailbox_irq_status_clear(w1c.w);
         rom_trigger_recoverable_direct(ROM_KM_RFAULT_MBOX_OVERFLOW);
         return;
     }
 
     if (irq_sts.f.inbound_underflow && irq_en.f.inbound_underflow_en) {
         mbox_flush_and_reset(1);
-        KM_MAILBOX_KM_IRQ_STATUS_REG_reg_u w1c = {0};
+        km_mailbox_km__irq_status_reg_t w1c = {0};
         w1c.f.inbound_underflow = 1;
-        rom_mailbox_irq_status_clear(w1c.val);
+        rom_mailbox_irq_status_clear(w1c.w);
         rom_trigger_recoverable_direct(ROM_KM_RFAULT_MBOX_UNDERFLOW);
         return;
     }
 
     if (irq_sts.f.flushed_by_sep && irq_en.f.flushed_by_sep_en) {
         mbox_flush_and_reset(0);
-        KM_MAILBOX_KM_IRQ_STATUS_REG_reg_u w1c = {0};
+        km_mailbox_km__irq_status_reg_t w1c = {0};
         w1c.f.flushed_by_sep = 1;
-        rom_mailbox_irq_status_clear(w1c.val);
+        rom_mailbox_irq_status_clear(w1c.w);
         rom_trigger_recoverable_direct(ROM_KM_RFAULT_FLUSHED_BY_SEP);
         return;
     }

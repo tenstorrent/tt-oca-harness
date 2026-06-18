@@ -15,7 +15,8 @@
 #include "rom_shred.h"
 #include "rom_drbg.h"
 #include "rom_shuffle.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /*===========================================================================
  * Key valid bit accessors

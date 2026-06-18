@@ -17,7 +17,8 @@
 #include "rom_sideload.h"
 #include "rom_keymgmt.h"
 #include "rom_kmcsr.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /**
  * @brief Validates command payload length.

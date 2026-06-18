@@ -13,7 +13,7 @@
  */
 uint32_t rom_kmcsr_version_read(void)
 {
-    return ROM_KMCSR_VERSION_REG.val;
+    return ROM_KMCSR_VERSION_REG.w;
 }
 
 /**
@@ -33,10 +33,10 @@ uint8_t rom_kmcsr_recoverable_err_bit_read(void)
  */
 void rom_kmcsr_recoverable_err_bit_write(uint8_t value)
 {
-    KM_CSR_RECOVERABLE_ERR_REG_reg_u reg;
-    reg.val = ROM_KMCSR_RECOVERABLE_ERR_REG.val;
+    km_csr__recoverable_err_reg_t reg;
+    reg.w = ROM_KMCSR_RECOVERABLE_ERR_REG.w;
     reg.f.recoverable_err = value ? 1u : 0u;
-    ROM_KMCSR_RECOVERABLE_ERR_REG.val = reg.val;
+    ROM_KMCSR_RECOVERABLE_ERR_REG.w = reg.w;
 }
 
 /**
@@ -56,7 +56,7 @@ uint8_t rom_kmcsr_sram_scrambler_enable_bit_read(void)
  */
 void rom_kmcsr_sram_scrambler_key_write(uint32_t word)
 {
-    ROM_KMCSR_SCRAMBLER_KEY_REG.val = word;
+    ROM_KMCSR_SCRAMBLER_KEY_REG.w = word;
 }
 
 /**
@@ -76,9 +76,9 @@ uint32_t rom_kmcsr_irq_entry_addr_read(void)
  */
 void rom_kmcsr_irq_entry_addr_write(uint32_t addr)
 {
-    KM_CSR_IRQ_ENTRY_ADDR_REG_reg_u w = {0};
+    km_csr__irq_entry_addr_reg_t w = {0};
     w.f.addr = addr;
-    ROM_KMCSR_IRQ_ENTRY_ADDR_REG.val = w.val;
+    ROM_KMCSR_IRQ_ENTRY_ADDR_REG.w = w.w;
 }
 
 /**
@@ -96,9 +96,9 @@ uint8_t rom_kmcsr_irq_entry_lock_read(void)
  */
 void rom_kmcsr_irq_entry_lock_set(void)
 {
-    KM_CSR_IRQ_ENTRY_LOCK_REG_reg_u w = {0};
+    km_csr__irq_entry_lock_reg_t w = {0};
     w.f.lock = 1u;
-    ROM_KMCSR_IRQ_ENTRY_LOCK_REG.val = w.val;
+    ROM_KMCSR_IRQ_ENTRY_LOCK_REG.w = w.w;
 }
 
 /**
@@ -116,7 +116,7 @@ uint8_t rom_kmcsr_cold_boot_done_read(void)
  */
 void rom_kmcsr_cold_boot_done_set(void)
 {
-    KM_CSR_BOOT_STATUS_REG_reg_u w = {0};
+    km_csr__boot_status_reg_t w = {0};
     w.f.cold_boot_done = 1u;
-    ROM_KMCSR_BOOT_STATUS_REG.val = w.val;
+    ROM_KMCSR_BOOT_STATUS_REG.w = w.w;
 }

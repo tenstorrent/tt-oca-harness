@@ -4,11 +4,12 @@
  * @brief DRBG sampler driver implementation
  *
  * All register access goes through volatile pointers and
- * PeakRDL-generated types from key_manager_regs.h.
+ * PeakRDL-generated types from km.h / km_addr.h.
  */
 
 #include "rom_drbg.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /**
  * @brief Read the DRBG status register.
@@ -17,7 +18,7 @@
  */
 uint32_t rom_drbg_status_read(void)
 {
-    return ROM_DRBG_STATUS_REG.val;
+    return ROM_DRBG_STATUS_REG.w;
 }
 
 /**
@@ -27,15 +28,15 @@ uint32_t rom_drbg_status_read(void)
  */
 uint32_t rom_drbg_get_word(void)
 {
-    return ROM_DRBG_DATA_REG.val;
+    return ROM_DRBG_DATA_REG.w;
 }
 
 /** @brief DRBG status register (volatile). */
-#define DRBG_STATUS   (*(volatile KM_DRBG_SAMPLER_STATUS_REG_reg_u *)DRBG_SAMPLER_STATUS_REG_ADDR)
+#define DRBG_STATUS   (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 /** @brief DRBG configuration register (volatile). */
-#define DRBG_CFG      (*(volatile KM_DRBG_SAMPLER_CFG_REG_reg_u *)DRBG_SAMPLER_CFG_REG_ADDR)
+#define DRBG_CFG      (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
 /** @brief DRBG prefetch data register (volatile). */
-#define DRBG_PREFETCH (*(volatile KM_DRBG_SAMPLER_PREFETCH_DATA_REG_reg_u *)DRBG_SAMPLER_PREFETCH_DATA_REG_ADDR)
+#define DRBG_PREFETCH (*(volatile km_drbg_sampler__prefetch_data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR)
 
 /**
  * @brief Block until the DRBG hardware is ready.
@@ -54,16 +55,16 @@ void rom_drbg_init(void)
  */
 void rom_drbg_get_block(uint32_t *buf, uint8_t count)
 {
-    KM_DRBG_SAMPLER_CFG_REG_reg_u cfg;
+    km_drbg_sampler__cfg_reg_t cfg;
 
-    cfg.val = DRBG_CFG.val;
+    cfg.w = DRBG_CFG.w;
     cfg.f.prefetch = 1;
-    DRBG_CFG.val = cfg.val;
+    DRBG_CFG.w = cfg.w;
 
     for (uint8_t i = 0; i < count; i++)
-        buf[i] = DRBG_PREFETCH.val;
+        buf[i] = DRBG_PREFETCH.w;
 
-    cfg.val = DRBG_CFG.val;
+    cfg.w = DRBG_CFG.w;
     cfg.f.prefetch = 0;
-    DRBG_CFG.val = cfg.val;
+    DRBG_CFG.w = cfg.w;
 }

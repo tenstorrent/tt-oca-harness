@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "smc_defines.h"
+#include "smc_io.h"
 #include "virt_console.h"
 
 #define TEST_PASS 0xacafaca1
@@ -112,7 +112,7 @@ static inline void init_test(int hartid) {
   simputshex32("Seeding test: ", seed);
   _RANDOM_LFSR = seed;
 
-  _TEST_CONTROL = read_reg(SMC_CPU_CTRL_TEST_CTRL_REG_ADDR);
+  _TEST_CONTROL = read_reg(SMC_TOP_SMC_CPU_CTRL_TEST_CTRL_BASE_ADDR);
   simputshex32("Reading test_ctrl: ", _TEST_CONTROL);
 }
 

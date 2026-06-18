@@ -3,45 +3,50 @@
 
 # SEP DV firmware build.
 #
-# Invoked as a standalone recursive sub-make by hw/dv/fw.mk:
-#   make dv-fw TARGET=sep [RISCV_TOOLCHAIN=/path/to/bin]
+# Built via the DV firmware dispatcher: make dv-fw TARGET=sep
 FW_NAME := sep
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OCAH_ROOT ?= $(abspath $(FW_DIR)/../../../../..)
 
-# Ported runtime sources (from tt-oca-hw fw/sep/tests/common; see
-# doc/dv-firmware.md). Tests supply their own main() and
-# link against the runtime library produced here.
+# Runtime sources. Tests supply their own main() and link against libsep.a.
 FW_C_SRCS   := $(wildcard $(FW_DIR)/common/*.c)
 FW_ASM_SRCS := $(wildcard $(FW_DIR)/common/*.s $(FW_DIR)/common/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
 
-# Register headers. The umbrella sep.h is hand-maintained under hw/common/dv/fw
-# and includes generated headers by basename. Overlay generated dirs come first
-# so same-named adopter shim headers override the open placeholders.
-OCAH_SEP_REG_GEN_C := $(OCAH_ROOT)/hw/sys/sep/regs/gen/c
-OCAH_SEP_ADOPTER_OVERLAY_FW_INCLUDE_DIRS ?= \
-  $(wildcard $(OCAH_ROOT)/overlay/*/hw/sys/sep/regs/gen/c) \
-  $(wildcard $(OCAH_ROOT)/overlay/*/hw/sys/sep/dv/shims/regs/gen/c) \
-  $(wildcard $(OCAH_ROOT)/overlay/*/hw/ip/*/dv/shims/regs/gen/c)
-OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS ?=
-FW_INCLUDES += \
-  -I$(OCAH_ROOT)/hw/common/dv/fw \
-  $(addprefix -I,$(OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS)) \
-  $(addprefix -I,$(OCAH_SEP_ADOPTER_OVERLAY_FW_INCLUDE_DIRS)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/nonfree/vendor/*/hw/sys/sep/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/nonfree/vendor/*/hw/sys/sep/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/nonfree/vendor/*/hw/ip/*/dv/shims/regs/gen/c)) \
-  -I$(OCAH_SEP_REG_GEN_C) \
-  -I$(OCAH_SEP_REG_GEN_C)/blocks \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/sys/sep/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c))
+# Register headers via the shared engine helper (umbrella sep.h under
+# hw/common/dv/fw + this sys's generated headers).
+FW_REG_SYS := sep
 
-# Full SEP compile additionally needs the VeeR EL2 snapshot (defines.h with
-# ICCM/DCCM addresses). That snapshot is not vendored; see toolchain.mk +
-# doc/dv-firmware.md. Until it is provided, `all` builds libsep_fw.a from the
-# staged runtime sources.
+FW_TEST_EXCLUDE_NAMES := bl1_pass_test
+FW_TEST_SRCS := $(filter-out \
+  $(FW_DIR)/tests/common/% \
+  $(foreach test,$(FW_TEST_EXCLUDE_NAMES),$(FW_DIR)/tests/$(test)/%), \
+  $(wildcard $(FW_DIR)/tests/*/*.c))
+FW_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_TEST_SRCS)))))
+$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(test) := $(firstword $(wildcard $(FW_DIR)/tests/$(test)/*.c))))
+$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(test) := $(wildcard $(FW_DIR)/tests/$(test)/*.c)))
+FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
+FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
+# Test sources predate strict prototypes / native register headers; keep these
+# relaxations so they compile unchanged.
+FW_TEST_EXTRA_CFLAGS += \
+  -Wno-implicit-function-declaration \
+  -Wno-incompatible-pointer-types \
+  -Wno-strict-prototypes
+FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/exec_from_tcms.ld
+FW_TEST_LDFLAGS = $(FW_LDFLAGS)
+
+define FW_TEST_POSTPROCESS
+	$(OBJCOPY) -O verilog $(1) --only-section=.text --only-section=.nmi_handler \
+	  --change-addresses "-0xC0000000" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).itcm.hex"
+	$(OBJCOPY) -O verilog $(1) \
+	  --only-section=.data --only-section=.sdata --only-section=.rodata --only-section=.srodata \
+	  --only-section=.bss --only-section=.sbss \
+	  --change-addresses "-0xC0040000" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).dtcm.hex"
+endef
+
+# A full SEP compile also needs the external VeeR EL2 snapshot (see toolchain.mk).
+# Until then `all` just builds libsep.a.
 
 include $(FW_DIR)/toolchain.mk
-include $(OCAH_ROOT)/hw/common/dv/fw/common.mk
+include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk

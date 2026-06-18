@@ -13,7 +13,7 @@
  */
 uint32_t rom_kmcsr_irq_status_read(void)
 {
-    return KMCSR_IRQ_STATUS_REG.val;
+    return KMCSR_IRQ_STATUS_REG.w;
 }
 
 /**
@@ -23,7 +23,7 @@ uint32_t rom_kmcsr_irq_status_read(void)
  */
 void rom_kmcsr_irq_status_clear(uint32_t bits)
 {
-    KMCSR_IRQ_STATUS_REG.val = bits;
+    KMCSR_IRQ_STATUS_REG.w = bits;
 }
 
 /**
@@ -33,7 +33,7 @@ void rom_kmcsr_irq_status_clear(uint32_t bits)
  */
 uint32_t rom_kmcsr_irq_enable_read(void)
 {
-    return KMCSR_IRQ_ENABLE_REG.val;
+    return KMCSR_IRQ_ENABLE_REG.w;
 }
 
 /**
@@ -43,7 +43,7 @@ uint32_t rom_kmcsr_irq_enable_read(void)
  */
 void rom_kmcsr_irq_enable_write(uint32_t value)
 {
-    KMCSR_IRQ_ENABLE_REG.val = value;
+    KMCSR_IRQ_ENABLE_REG.w = value;
 }
 
 /**
@@ -56,7 +56,7 @@ void rom_kmcsr_irq_enable_write(uint32_t value)
  */
 void rom_kmcsr_irq_set(uint32_t bits)
 {
-    KMCSR_IRQ_SET_REG.val = bits;
+    KMCSR_IRQ_SET_REG.w = bits;
 }
 
 /**
@@ -66,7 +66,7 @@ void rom_kmcsr_irq_set(uint32_t bits)
  */
 uint32_t rom_mailbox_irq_status_read(void)
 {
-    return MBOX_IRQ_STATUS_REG.val;
+    return MBOX_IRQ_STATUS_REG.w;
 }
 
 /**
@@ -76,7 +76,7 @@ uint32_t rom_mailbox_irq_status_read(void)
  */
 void rom_mailbox_irq_status_clear(uint32_t bits)
 {
-    MBOX_IRQ_STATUS_REG.val = bits;
+    MBOX_IRQ_STATUS_REG.w = bits;
 }
 
 /**
@@ -86,7 +86,7 @@ void rom_mailbox_irq_status_clear(uint32_t bits)
  */
 uint32_t rom_mailbox_irq_enable_read(void)
 {
-    return MBOX_IRQ_ENABLE_REG.val;
+    return MBOX_IRQ_ENABLE_REG.w;
 }
 
 /**
@@ -96,5 +96,5 @@ uint32_t rom_mailbox_irq_enable_read(void)
  */
 void rom_mailbox_irq_enable_write(uint32_t bits)
 {
-    MBOX_IRQ_ENABLE_REG.val = bits;
+    MBOX_IRQ_ENABLE_REG.w = bits;
 }

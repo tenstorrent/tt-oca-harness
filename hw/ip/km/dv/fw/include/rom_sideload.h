@@ -13,7 +13,8 @@
 #include <stdint.h>
 #include "rom_defs.h"
 #include "rom_prng.h"
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /* ============================================================================
  * HMAC (PeakRDL KEY_CTRL)
@@ -21,7 +22,7 @@
 
 /** @brief HMAC key control register (volatile). */
 #define ROM_HMAC_KEY_CTRL_REG \
-    (*(volatile HMAC_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)HMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile hmac_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_HMAC_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the HMAC key valid bit. */
 void rom_hmac_key_valid_clear(void);
@@ -53,7 +54,7 @@ void rom_hmac_write_key(const uint32_t *key, uint8_t key_len,
 
 /** @brief KMAC key control register (volatile). */
 #define ROM_KMAC_KEY_CTRL_REG \
-    (*(volatile KMAC_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)KMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile kmac_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_KMAC_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the KMAC key valid bit. */
 void rom_kmac_key_valid_clear(void);
@@ -85,7 +86,7 @@ void rom_kmac_write_key(const uint32_t *key, uint8_t key_len,
 
 /** @brief AES key control register (volatile). */
 #define ROM_AES_KEY_CTRL_REG \
-    (*(volatile AES_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)AES_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile aes_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_AES_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the AES key valid bit. */
 void rom_aes_key_valid_clear(void);
@@ -117,7 +118,7 @@ void rom_aes_write_key(const uint32_t *key, uint8_t key_len,
 
 /** @brief OTBN key control register (volatile). */
 #define ROM_OTBN_KEY_CTRL_REG \
-    (*(volatile OTBN_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)OTBN_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile otbn_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_OTBN_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the OTBN key valid bit. */
 void rom_otbn_key_valid_clear(void);

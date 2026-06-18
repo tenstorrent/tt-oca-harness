@@ -12,12 +12,13 @@
 
 #include <stdint.h>
 
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 
 /** @brief DRBG sampler status register (volatile, read-only). */
-#define ROM_DRBG_STATUS_REG (*(volatile KM_DRBG_SAMPLER_STATUS_REG_reg_u *)DRBG_SAMPLER_STATUS_REG_ADDR)
+#define ROM_DRBG_STATUS_REG (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 /** @brief DRBG sampler data register (volatile, read-only). */
-#define ROM_DRBG_DATA_REG   (*(volatile KM_DRBG_SAMPLER_DATA_REG_reg_u *)DRBG_SAMPLER_DATA_REG_ADDR)
+#define ROM_DRBG_DATA_REG   (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
 
 /**
  * @brief Read the DRBG status register.

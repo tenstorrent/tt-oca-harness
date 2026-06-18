@@ -11,19 +11,20 @@
 
 #include <stdint.h>
 
-#include "key_manager_regs.h"
+#include "km.h"
+#include "km_addr.h"
 #include "rom_defs.h"
 
 /** @brief Outbound mailbox write-data register (volatile). */
-#define ROM_MBOX_WRITE_DATA_REG  (*(volatile KM_MAILBOX_KM_WRITE_DATA_REG_reg_u      *)MAILBOX_KM_KM_WRITE_DATA_REG_ADDR)
+#define ROM_MBOX_WRITE_DATA_REG  (*(volatile km_mailbox_km__write_data_reg_t      *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
 /** @brief Outbound mailbox write-separator register (volatile). */
-#define ROM_MBOX_WRITE_SEP_REG   (*(volatile KM_MAILBOX_KM_WRITE_SEPARATOR_REG_reg_u *)MAILBOX_KM_KM_WRITE_SEPARATOR_REG_ADDR)
+#define ROM_MBOX_WRITE_SEP_REG   (*(volatile km_mailbox_km__write_separator_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR)
 /** @brief Inbound mailbox read-data register (volatile). */
-#define ROM_MBOX_READ_DATA_REG   (*(volatile KM_MAILBOX_KM_READ_DATA_REG_reg_u       *)MAILBOX_KM_KM_READ_DATA_REG_ADDR)
+#define ROM_MBOX_READ_DATA_REG   (*(volatile km_mailbox_km__read_data_reg_t       *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
 /** @brief Mailbox status register (volatile). */
-#define ROM_MBOX_STATUS_REG      (*(volatile KM_MAILBOX_KM_STATUS_REG_reg_u          *)MAILBOX_KM_KM_STATUS_REG_ADDR)
+#define ROM_MBOX_STATUS_REG      (*(volatile km_mailbox_km__status_reg_t          *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
 /** @brief Mailbox control register (volatile). */
-#define ROM_MBOX_CTRL_REG        (*(volatile KM_MAILBOX_KM_CTRL_REG_reg_u            *)MAILBOX_KM_KM_CTRL_REG_ADDR)
+#define ROM_MBOX_CTRL_REG        (*(volatile km_mailbox_km__ctrl_reg_t            *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 /**
  * @brief Flush inbound and outbound mailbox FIFOs.

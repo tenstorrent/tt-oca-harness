@@ -311,8 +311,8 @@ _dummy_int_handler:
     andi    t0, t0, 0xFF            # t0 = claimid (0-255)
 
     # Disable this interrupt source at PIC to prevent infinite re-entry
-    # meie[id] is at PIC_MEIE_0__REG_ADDR + (id * 4)
-    li      t1, PIC_MEIE_0__REG_ADDR
+    # meie[id] is at OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0) + (id * 4)
+    li      t1, OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0)
     slli    t2, t0, 2               # t2 = claimid * 4
     add     t1, t1, t2              # t1 = &meie[claimid]
     sw      zero, 0(t1)             # Disable interrupt source

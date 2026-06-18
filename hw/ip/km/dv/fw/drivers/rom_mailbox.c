@@ -15,9 +15,9 @@
  */
 void rom_mailbox_flush(void)
 {
-    KM_MAILBOX_KM_CTRL_REG_reg_u ctrl = {0};
+    km_mailbox_km__ctrl_reg_t ctrl = {0};
     ctrl.f.flush = 1;
-    ROM_MBOX_CTRL_REG.val = ctrl.val;
+    ROM_MBOX_CTRL_REG.w = ctrl.w;
     while (ROM_MBOX_CTRL_REG.f.flush) {}
 }
 
@@ -82,7 +82,7 @@ uint8_t rom_mailbox_inbound_separator(void)
  */
 uint32_t rom_mailbox_read_data(void)
 {
-    return ROM_MBOX_READ_DATA_REG.val;
+    return ROM_MBOX_READ_DATA_REG.w;
 }
 
 /**
@@ -90,7 +90,7 @@ uint32_t rom_mailbox_read_data(void)
  */
 void rom_mailbox_set_write_separator(void)
 {
-    ROM_MBOX_WRITE_SEP_REG.val = 1u;
+    ROM_MBOX_WRITE_SEP_REG.w = 1u;
 }
 
 /**
@@ -100,5 +100,5 @@ void rom_mailbox_set_write_separator(void)
  */
 void rom_mailbox_write_data(uint32_t word)
 {
-    ROM_MBOX_WRITE_DATA_REG.val = word;
+    ROM_MBOX_WRITE_DATA_REG.w = word;
 }
