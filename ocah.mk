@@ -80,6 +80,7 @@ OCAH_PHONY += ocah-nonfree-init
 
 include $(OCAH_ROOT)/hw/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
+include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"
