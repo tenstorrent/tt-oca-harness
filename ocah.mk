@@ -50,7 +50,7 @@ ocah-agents-init:
 OCAH_PHONY += ocah-agents-init
 
 OCAH_NONFREE_REMOTE ?= git@yyz-gitlab.local.tenstorrent.com:aottaviano/tt-oca-harness-nonfree.git
-OCAH_NONFREE_COMMIT ?= ed28c38685f2944c5e34a084c6496023424c1d95
+OCAH_NONFREE_COMMIT ?= ed28c38
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
