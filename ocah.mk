@@ -23,34 +23,8 @@ uv-sync:
 
 OCAH_PHONY += uv-sync
 
-OCAH_AGENTS_REMOTE ?=
-OCAH_AGENTS_COMMIT ?=
-OCAH_AGENTS_DIR ?= $(OCAH_ROOT)/agents
-
-## @section Optional AI assistant configuration
-
-## Clone the optional tt-oca-agents repository into a staging directory.
-## This step is optional and not required for normal OCAH use.
-.PHONY: ocah-agents-init
-ocah-agents-init:
-	@if [ -z "$(OCAH_AGENTS_REMOTE)" ]; then \
-		echo "error: OCAH_AGENTS_REMOTE is not set (placeholder until tt-oca-agents repo exists)"; \
-		exit 1; \
-	fi
-	@if [ -d "$(OCAH_AGENTS_DIR)/.git" ]; then \
-		echo "agents repo already cloned at $(OCAH_AGENTS_DIR)"; \
-	else \
-		git clone "$(OCAH_AGENTS_REMOTE)" "$(OCAH_AGENTS_DIR)"; \
-	fi
-	@if [ -n "$(OCAH_AGENTS_COMMIT)" ]; then \
-		git -C "$(OCAH_AGENTS_DIR)" checkout "$(OCAH_AGENTS_COMMIT)"; \
-	fi
-# TODO: distribute files from $(OCAH_AGENTS_DIR) once tt-oca-agents layout is defined.
-
-OCAH_PHONY += ocah-agents-init
-
-OCAH_NONFREE_REMOTE ?= git@yyz-gitlab.local.tenstorrent.com:aottaviano/tt-oca-harness-nonfree.git
-OCAH_NONFREE_COMMIT ?= 58d49ab
+OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
+OCAH_NONFREE_COMMIT ?= e6b5e78
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
@@ -60,26 +34,19 @@ OCAH_ADOPTER_OVERLAY_MK ?=
 ## This step is optional and not required for normal OCAH use.
 .PHONY: ocah-nonfree-init
 ocah-nonfree-init:
-	@if [ -z "$(OCAH_NONFREE_REMOTE)" ]; then \
-		echo "error: OCAH_NONFREE_REMOTE is not set (placeholder until nonfree repo exists)"; \
-		exit 1; \
-	fi
-	@if [ -d "$(OCAH_NONFREE_DIR)/.git" ]; then \
-		echo "nonfree repo already cloned at $(OCAH_NONFREE_DIR)"; \
-	else \
-		git clone "$(OCAH_NONFREE_REMOTE)" "$(OCAH_NONFREE_DIR)"; \
-	fi
-	@if [ -n "$(OCAH_NONFREE_COMMIT)" ]; then \
-		git -C "$(OCAH_NONFREE_DIR)" checkout "$(OCAH_NONFREE_COMMIT)"; \
-	fi
+	@test -n "$(OCAH_NONFREE_REMOTE)" || { echo "error: OCAH_NONFREE_REMOTE is not set"; exit 1; }
+	@[ -d "$(OCAH_NONFREE_DIR)/.git" ] && echo "nonfree repo already cloned at $(OCAH_NONFREE_DIR)" || git clone "$(OCAH_NONFREE_REMOTE)" "$(OCAH_NONFREE_DIR)"
+	@test -z "$(OCAH_NONFREE_COMMIT)" || git -C "$(OCAH_NONFREE_DIR)" checkout "$(OCAH_NONFREE_COMMIT)"
 
 -include $(OCAH_ROOT)/nonfree/nonfree.mk
 -include $(OCAH_ADOPTER_OVERLAY_MK)
 
 OCAH_PHONY += ocah-nonfree-init
 
+## Core hardware collateral and DV firmware build targets.
 include $(OCAH_ROOT)/hw/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
+## Yosys synthesis flow targets.
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 HELP_TITLE = "OCAH Make Targets"
