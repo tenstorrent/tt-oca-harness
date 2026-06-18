@@ -11,11 +11,8 @@ overlay/*
 !overlay/examples/
 !overlay/examples/**
 
-# Transient per-block build outputs. Keep .gitkeep placeholders when used to show structure.
-**/build/**
-!**/build/
-!**/build/**/
-!**/build/**/.gitkeep
+# Transient per-block build outputs.
+**/build/
 
 # Generated register HTML docs are transient PeakRDL viewer output.
 **/regs/gen/html/**
