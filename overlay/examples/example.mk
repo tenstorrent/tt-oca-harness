@@ -45,9 +45,3 @@
 # OCAH_REG_GEN_OVERRIDE_$(OCAH_EXAMPLE_SMC_KEY) := $(OCAH_ADOPTER_OVERLAY_ROOT)/hw/sys/smc/regs/gen
 # OCAH_REG_BUILD_OVERRIDE_$(OCAH_EXAMPLE_SMC_KEY) := $(OCAH_ADOPTER_OVERLAY_ROOT)/hw/sys/smc/build/regs
 
-# Firmware builds also need overlay generated C-header dirs before open dirs.
-# For checked-out overlays under $(OCAH_ROOT)/overlay/*, SMC/SEP fw.mk discover
-# common paths automatically. For external paths, pass:
-#
-#   make -C hw/sys/smc/dv/fw \
-#     OCAH_ADOPTER_OVERLAY_FW_INCLUDE_DIRS="/path/to/overlay/hw/sys/smc/regs/gen/c /path/to/overlay/hw/sys/smc/dv/shims/regs/gen/c"

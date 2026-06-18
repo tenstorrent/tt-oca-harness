@@ -17,9 +17,6 @@ overlay/*
 !**/build/**/
 !**/build/**/.gitkeep
 
-# Generated register HTML docs: commit the raw .html files, but drop the
-# PeakRDL viewer assets (fonts, JS, CSS, search/data JSON, launchers, etc.).
+# Generated register HTML docs are transient PeakRDL viewer output.
 **/regs/gen/html/**
-!**/regs/gen/html/**/
-!**/regs/gen/html/**/*.html
 

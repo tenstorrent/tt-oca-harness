@@ -10,9 +10,8 @@ ocah_reg_dirs := $(wildcard $(OCAH_ROOT)/hw/ip/*/regs $(OCAH_ROOT)/hw/sys/*/regs
 ocah_reg_root_if_rdl = $(if $(wildcard $(1)/$(notdir $(patsubst %/regs,%,$(1))).rdl),$(patsubst $(OCAH_ROOT)/%,%,$(patsubst %/regs,%,$(1))))
 OCAH_RDL_REG_BLOCKS := $(sort $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_root_if_rdl,$(d))))
 
-# Standalone RDL files generated as normal blocks even though their name is not
-# a hw/{ip,sys}/<name>/ root basename: DV shims and IP sub-blocks pulled by the
-# firmware umbrellas (hw/common/dv/fw/*.h).
+# Extra RDL files exported as standalone blocks: DV shims and IP sub-blocks whose
+# name is not a regs/ dir basename (pulled in by the firmware headers).
 OCAH_REG_UMBRELLA_IP_RDL_NAMES ?= \
   efuse_interface_ctrl \
   axil_mailbox_smc_wrap \
@@ -32,10 +31,14 @@ OCAH_BENDER ?= bender
 ocah_bender_path = $(strip $(shell $(OCAH_BENDER) path $(1) 2>/dev/null))
 ocah_relpath = $(patsubst $(OCAH_ROOT)/%,%,$(1))
 
-# HJSON-backed vendor blocks, each "<bender-package>:<package-relative-hjson>".
-# The block name is the HJSON basename; the package root is resolved with
-# `bender path`. Collateral lands under <package-root>/gen/<block-name>, leaving
-# the vendored upstream/ tree untouched.
+# Per-block accessors for a block id: its name, source root, and make-safe key.
+# Ids may contain '/', so the key flattens them for use in variable names.
+ocah_reg_name = $(notdir $(1))
+ocah_reg_root = $(OCAH_ROOT)/$(1)
+ocah_reg_key = $(subst /,_,$(1))
+
+# HJSON-backed vendor blocks, each given as bender-package:package-relative-hjson.
+# Collateral lands under the package gen/ dir, leaving the vendored tree untouched.
 OCAH_VENDOR_HJSON_REG_BLOCKS ?= \
   opentitan:upstream/hw/ip/otbn/data/otbn.hjson \
   idma:upstream/target/rtl/idma_reg64_2d.hjson
@@ -49,9 +52,8 @@ ocah_vendor_reg_hjson = $(call ocah_vendor_root,$(1))/$(call ocah_vendor_hjson_r
 
 OCAH_HJSON_REG_BLOCKS ?= $(foreach e,$(OCAH_VENDOR_HJSON_REG_BLOCKS),$(call ocah_vendor_reg_block,$(e)))
 
-# OCAH_EXTRA_REG_BLOCKS lets an optional overlay (e.g. nonfree/nonfree.mk, which
-# is included before this file) register additional block ids - typically
-# variant builds that reuse a canonical top RDL with overlay includes swapped in.
+# Lets an optional overlay (such as nonfree) register extra block ids, typically
+# variant builds that reuse a canonical top RDL with overlay includes.
 OCAH_EXTRA_REG_BLOCKS ?=
 
 OCAH_REG_BLOCKS ?= \
@@ -67,8 +69,8 @@ OCAH_PANDOC ?= pandoc
 OCAH_REGGEN_WRAPPER ?= $(OCAH_ROOT)/tools/regs/reggen_wrapper.py
 OCAH_REGEN_REG_JOBS ?= 8
 
-# Register generation is embarrassingly parallel across blocks and sub-blocks.
-# Default those goals to -j8 unless the user already supplied a jobs flag.
+# Register generation is parallel across blocks; default these goals to -j unless
+# the user already passed a jobs flag.
 ocah_reg_make_goals := $(filter regen-regs% ocah-regen-regs%,$(MAKECMDGOALS))
 ifneq ($(ocah_reg_make_goals),)
 ifeq ($(filter -j% --jobs%,$(MAKEFLAGS)),)
@@ -76,37 +78,30 @@ MAKEFLAGS += -j$(OCAH_REGEN_REG_JOBS)
 endif
 endif
 
-# Run a tool from the repo root, mirroring output into a log; used as
-# `@$(ocah_sh) '<cmd> 2>&1 | tee "<log>"'`. A plain constant (not a $(call)
-# function) so commands carrying their own commas stay intact.
+# Run a command from the repo root with pipefail, so a tee'd log does not mask
+# failures. A plain constant so commands containing commas stay intact.
 ocah_sh := cd "$(OCAH_ROOT)" && bash -o pipefail -c
 
-# Shared catalog of bare search dirs for tops that pull sub-block RDLs from
-# elsewhere via bare `include lines; self-contained blocks need none. Covers the
-# hw/ip register catalog plus the DV shim trees.
+# Shared include search dirs for tops that pull sub-block RDLs via bare include
+# lines. Covers the IP register dirs plus the DV shim trees.
 OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/shims/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs)
 OCAH_REG_INCDIR_BLOCKS ?= $(OCAH_REG_COMPOSITE_BLOCKS)
 
-# Ordered bare search dirs for a block: per-block overlay extras first
-# (OCAH_REG_EXTRA_SEARCH_<key>), then the shared catalog for incdir tops, so
-# same-named overlay RDLs win by include-path precedence. Emitted as peakrdl -I
-# flags for consistent `include resolution across exporter runs.
+# Include search dirs for a block: per-block overlay extras first, then the shared
+# set, so overlay RDLs win by include precedence. Emitted as peakrdl -I flags.
 ocah_reg_search_dirs = $(OCAH_REG_EXTRA_SEARCH_$(call ocah_reg_key,$(1))) $(if $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_INCDIR_BLOCKS)),$(OCAH_REG_CATALOG_DIRS))
 ocah_reg_incdirs = $(addprefix -I ,$(call ocah_reg_search_dirs,$(1)))
 
-# Blocks whose C header is emitted without bitfield structs (peakrdl c-header
-# cannot represent registers wider than 64 bits, so these fall back to address +
-# field mask/position defines only).
+# Blocks whose C header omits bitfield structs, because peakrdl cannot represent
+# registers wider than 64 bits (address and mask defines only).
 OCAH_REG_NO_BITFIELDS ?= smc_efuse_map sep_efuse_map
 ocah_reg_c_bitfields = $(if $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_NO_BITFIELDS)),none,ltoh)
 
-# Composite tops aggregate sub-blocks at addresses peakrdl exporters cannot run
-# as one top, so each local sub-block is generated on its own and the top keeps
-# only its address view. The firmware umbrella is hand-maintained outside gen/
-# (see hw/common/dv/fw/<top>.h).
+# Composite tops cannot be run by peakrdl as one block, so each local sub-block is
+# generated on its own and the top keeps only its address view.
 OCAH_REG_COMPOSITE_BLOCKS ?= sep smc
 ocah_reg_is_composite = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_COMPOSITE_BLOCKS))
 
@@ -121,11 +116,14 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer efuse_mmr dfd
 
-# Local sub-block sets for a composite top, derived by globbing its regs/ dir.
-# Memories (no addrmap) yield no collateral and drop out structurally; C headers
-# keep placeholders; docs drop placeholders; SV additionally drops RTL-elsewhere.
+# Local sub-blocks of a composite top, found by globbing its regs/ dir. C headers
+# keep placeholders; docs drop them; SV also drops RTL-elsewhere blocks.
 ocah_reg_local_rdls = $(filter-out %/$(call ocah_reg_name,$(1)).rdl,$(wildcard $(call ocah_reg_root,$(1))/regs/*.rdl))
-ocah_reg_ch_blocks = $(basename $(notdir $(shell grep -lE '\baddrmap\b' $(call ocah_reg_local_rdls,$(1)) /dev/null)))
+# The addrmap scan is memoized once per composite block; ocah_reg_ch_blocks reads
+# that cache, with a live scan as a fallback for non-composite callers.
+ocah_reg_ch_blocks_scan = $(basename $(notdir $(shell grep -lE '\baddrmap\b' $(call ocah_reg_local_rdls,$(1)) /dev/null)))
+ocah_reg_ch_blocks = $(if $(call ocah_reg_is_composite,$(1)),$(OCAH_REG_CH_BLOCKS_$(call ocah_reg_key,$(1))),$(call ocah_reg_ch_blocks_scan,$(1)))
+$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),$(eval OCAH_REG_CH_BLOCKS_$(call ocah_reg_key,$(block)) := $(call ocah_reg_ch_blocks_scan,$(block)))))
 ocah_reg_doc_blocks = $(filter-out $(OCAH_REG_PLACEHOLDER_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 ocah_reg_sv_blocks = $(filter-out $(OCAH_REG_NO_RTL_BLOCKS),$(call ocah_reg_doc_blocks,$(1)))
 # A plain (leaf) block whose own name is RTL-elsewhere is header-only: no
@@ -139,14 +137,8 @@ ifeq ($(strip $(OCAH_SELECTED_REG_BLOCKS)),)
   $(error Unknown OCAH register block '$(TARGET)'; known blocks: $(foreach block,$(OCAH_REG_BLOCKS),$(notdir $(block))))
 endif
 
-ocah_reg_name = $(notdir $(1))
-ocah_reg_root = $(OCAH_ROOT)/$(1)
-# Make-safe per-block key (block ids may contain '/', e.g. overlay variants).
-ocah_reg_key = $(subst /,_,$(1))
-
-# Standalone file-backed block metadata. These blocks share generated headers
-# with their containing regs/ dir (e.g. hw/sys/smc/dv/shims/regs/gen/c) but get a
-# per-entry build dir so their .generated stamps do not collide.
+# Metadata for file-backed blocks. They share a gen/ dir with their regs/ folder
+# but get a per-entry build dir so their stamps do not collide.
 define ocah_reg_file_block_vars
 OCAH_REG_RDL_OVERRIDE_$(call ocah_reg_key,$(call ocah_reg_file_block_id,$(1))) := $(1)
 OCAH_REG_GEN_OVERRIDE_$(call ocah_reg_key,$(call ocah_reg_file_block_id,$(1))) := $(patsubst %/,%,$(dir $(1)))/gen
@@ -183,16 +175,15 @@ ocah_reg_md_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).m
 ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).adoc
 ocah_reg_html_output = $(or $(OCAH_REG_HTML_OUTPUT_OVERRIDE_$(call ocah_reg_key,$(1))),$(call ocah_reg_gen,$(1))/html/index.html)
 
-# Per-sub-block output file lists for a composite top (one file per sub-block, so
-# make tracks each independently - only the changed RDL rebuilds).
+# Per-sub-block output lists for a composite top, one file per sub-block so make
+# rebuilds only the changed RDL.
 ocah_reg_sv_block_outputs = $(foreach b,$(call ocah_reg_sv_blocks,$(1)),$(call ocah_reg_sv_block_dir,$(1))/$(b)_reg.sv)
 ocah_reg_c_block_outputs = $(foreach b,$(call ocah_reg_ch_blocks,$(1)),$(call ocah_reg_c_block_dir,$(1))/$(b).h)
 ocah_reg_adoc_block_outputs = $(foreach b,$(call ocah_reg_doc_blocks,$(1)),$(call ocah_reg_adoc_block_dir,$(1))/$(b).adoc)
 ocah_reg_html_block_outputs = $(foreach b,$(call ocah_reg_doc_blocks,$(1)),$(call ocah_reg_html_block_dir,$(1))/$(b)/index.html)
 
-# Output selectors feeding the regen-regs-* aggregates and the .generated deps:
-# composite -> per-sub-block lists; RTL-elsewhere leaf -> empty SV stamp; plain
-# leaf -> single-file outputs.
+# Output selectors feeding the regen aggregates and stamps. Composite tops use
+# per-sub-block lists, RTL-elsewhere leaves use a stamp, plain leaves use files.
 ocah_reg_sv_target = $(if $(call ocah_reg_is_composite,$(1)),$(call ocah_reg_sv_block_outputs,$(1)),$(if $(call ocah_reg_sv_skipped,$(1)),$(call ocah_reg_sv_stamp,$(1)),$(call ocah_reg_sv_outputs,$(1))))
 ocah_reg_h_target = $(if $(call ocah_reg_is_composite,$(1)),$(call ocah_reg_c_block_outputs,$(1)),$(call ocah_reg_c_output,$(1)))
 ocah_reg_adoc_target = $(if $(call ocah_reg_is_composite,$(1)),$(call ocah_reg_adoc_block_outputs,$(1)),$(call ocah_reg_adoc_output,$(1)))
@@ -210,20 +201,31 @@ ocah_reg_file_clean_outputs = \
   $(call ocah_reg_html_dir,$(1))
 ocah_reg_clean_paths = $(if $(call ocah_reg_is_file_backed,$(1)),$(call ocah_reg_file_clean_outputs,$(1)) $(call ocah_reg_build,$(1)),$(call ocah_reg_gen,$(1)) $(call ocah_reg_build,$(1)))
 
-OCAH_REGEN_REG_SV := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_sv_target,$(block)))
-OCAH_REGEN_REG_H := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_h_target,$(block)) $(call ocah_reg_raw_c_output,$(block)))
-OCAH_REGEN_REG_SVH := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_svpkg_output,$(block)))
-OCAH_REGEN_REG_PY := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_py_output,$(block)))
-OCAH_REGEN_REG_ADOC := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_adoc_target,$(block)))
-OCAH_REGEN_REG_HTML := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_html_target,$(block)))
-OCAH_REGEN_REG_STAMPS := $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_build,$(block))/.generated)
-# Default regen-regs skips documentation. Documentation is generated explicitly
-# by regen-regs-adoc and regen-regs-html (or by the doc build flow).
+# Map a per-block output function over the selected blocks.
+ocah_reg_collect = $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call $(1),$(block)))
+ocah_reg_h_full  = $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1))
+ocah_reg_stamp   = $(call ocah_reg_build,$(1))/.generated
+
+OCAH_REGEN_REG_SV     := $(call ocah_reg_collect,ocah_reg_sv_target)
+OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
+OCAH_REGEN_REG_SVH    := $(call ocah_reg_collect,ocah_reg_svpkg_output)
+OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
+OCAH_REGEN_REG_ADOC   := $(call ocah_reg_collect,ocah_reg_adoc_target)
+OCAH_REGEN_REG_HTML   := $(call ocah_reg_collect,ocah_reg_html_target)
+OCAH_REGEN_REG_STAMPS := $(call ocah_reg_collect,ocah_reg_stamp)
+# Default regen-regs skips docs; generate them via regen-regs-adoc/-html.
 OCAH_REGEN_ALL := \
   $(OCAH_REGEN_REG_SV) \
   $(OCAH_REGEN_REG_H) \
   $(OCAH_REGEN_REG_SVH) \
   $(OCAH_REGEN_REG_PY)
+
+# Canned peakrdl exporter command lines shared by the plain and composite rules.
+# $(1) is the block id (for -I dirs); later args are input, output, name/bitfields, log.
+ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
+ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(OCAH_REG_CPU_IF)" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
+ocah_reg_run_markdown = "$(UV)" run peakrdl markdown $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" 2>&1 | tee "$(4)"
+ocah_reg_run_html     = "$(UV)" run peakrdl html $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" 2>&1 | tee "$(4)"
 
 define ocah_hjson_reg_block_rules
 $(call ocah_reg_rdl,$(1)): $(call ocah_reg_hjson,$(1)) $(OCAH_REGGEN_WRAPPER) | uv-sync
@@ -263,7 +265,7 @@ define ocah_reg_sv_plain_rule
 $(call ocah_reg_sv_stamp,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" -o "$(call ocah_reg_gen,$(1))/sv" --cpuif "$(OCAH_REG_CPU_IF)" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(call ocah_reg_name,$(1))_reg" --package-name "$(call ocah_reg_name,$(1))_reg_pkg" 2>&1 | tee "$(call ocah_reg_build,$(1))/peakrdl_sv.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_name,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
 	@touch "$$@"
 
 $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
@@ -271,23 +273,22 @@ $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
 endef
 
 # Per-sub-block collateral for composite tops: pattern rules running the matching
-# peakrdl exporter on each local sub-block RDL (one output per sub-block). The top
-# keeps only its address view (see ocah_reg_block_rules).
+# peakrdl exporter on each local sub-block RDL.
 define ocah_reg_composite_rules
 $(call ocah_reg_sv_block_dir,$(1))/%_reg.sv: $(call ocah_reg_root,$(1))/regs/%.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1) sub-block $$*"
-	@$(ocah_sh) '"$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$$<" -o "$$(@D)" --cpuif "$(OCAH_REG_CPU_IF)" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$$*_reg" --package-name "$$*_reg_pkg" 2>&1 | tee "$(1)/build/regs/peakrdl_sv_$$*.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$$<,$$(@D),$$*,$(1)/build/regs/peakrdl_sv_$$*.log)'
 
 $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/%.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1) sub-block $$*"
-	@$(ocah_sh) '"$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$$<" -o "$$@" --bitfields $$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh) --type-style lexical 2>&1 | tee "$(1)/build/regs/c_header_$$*.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$$<,$$@,$$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh),$(1)/build/regs/c_header_$$*.log)'
 
 $(call ocah_reg_adoc_block_dir,$(1))/%.md: $(call ocah_reg_root,$(1))/regs/%.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Markdown register docs for $(1) sub-block $$*"
-	@$(ocah_sh) '"$(UV)" run peakrdl markdown $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$$<" -o "$$@" 2>&1 | tee "$(1)/build/regs/markdown_$$*.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_markdown,$(1),$$<,$$@,$(1)/build/regs/markdown_$$*.log)'
 
 $(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_adoc_block_dir,$(1))/%.md
 	@command -v "$(OCAH_PANDOC)" >/dev/null 2>&1 || { echo "error: pandoc is required to convert Markdown register docs to AsciiDoc"; exit 1; }
@@ -297,7 +298,7 @@ $(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_adoc_block_dir,$(1)
 $(call ocah_reg_html_block_dir,$(1))/%/index.html: $(call ocah_reg_root,$(1))/regs/%.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1) sub-block $$*"
-	@$(ocah_sh) '"$(UV)" run peakrdl html $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$$<" -o "$$(@D)" 2>&1 | tee "$(1)/build/regs/html_$$*.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$$<,$$(@D),$(1)/build/regs/html_$$*.log)'
 endef
 
 # No register RTL (sourced outside regblock): skip the regblock run but keep the
@@ -315,7 +316,7 @@ define ocah_reg_doc_plain_rule
 $(call ocah_reg_md_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Markdown register docs for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl markdown $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" -o "$(call ocah_reg_md_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/markdown.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_markdown,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_md_output,$(1)),$(call ocah_reg_build,$(1))/markdown.log)'
 
 $(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_md_output,$(1))
 	@command -v "$(OCAH_PANDOC)" >/dev/null 2>&1 || { \
@@ -330,7 +331,7 @@ $(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_md_output,$(1))
 $(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl html $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" -o "$$(@D)" 2>&1 | tee "$(call ocah_reg_build,$(1))/html.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$(@D),$(call ocah_reg_build,$(1))/html.log)'
 endef
 
 # Firmware C header for plain (leaf) blocks: one peakrdl c-header run.
@@ -338,18 +339,27 @@ define ocah_reg_cheader_plain_rule
 $(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" -o "$(call ocah_reg_c_output,$(1))" --bitfields $(call ocah_reg_c_bitfields,$(1)) --type-style lexical 2>&1 | tee "$(call ocah_reg_build,$(1))/c_header.log"'
+	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_c_output,$(1)),$(call ocah_reg_c_bitfields,$(1)),$(call ocah_reg_build,$(1))/c_header.log)'
 endef
+
+# Split blocks into composite tops and plain leaves so the loops below read as
+# two clear passes.
+OCAH_REG_COMPOSITE_BLOCK_IDS := $(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),$(block)))
+OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(OCAH_REG_BLOCKS))
 
 # Address exporters (raw-C, svpkg, py) and the .generated stamp for every block.
 $(foreach block,$(OCAH_HJSON_REG_BLOCKS),$(eval $(call ocah_hjson_reg_block_rules,$(block))))
 $(foreach block,$(OCAH_REG_BLOCKS),$(eval $(call ocah_reg_block_rules,$(block))))
 # Composite tops: per-sub-block sv/c/adoc/html pattern rules.
-$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),$(eval $(call ocah_reg_composite_rules,$(block)))))
-# Plain (leaf) blocks: single-file sv (or header-only skip), docs, and C header.
-$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),,$(eval $(call $(if $(call ocah_reg_sv_skipped,$(block)),ocah_reg_sv_skip_rule,ocah_reg_sv_plain_rule),$(block)))))
-$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),,$(eval $(call ocah_reg_doc_plain_rule,$(block)))))
-$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_is_composite,$(block)),,$(eval $(call ocah_reg_cheader_plain_rule,$(block)))))
+$(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_composite_rules,$(block))))
+# Plain (leaf) blocks: single-file sv (or header-only skip when RTL is sourced
+# outside regblock), docs, and C header.
+$(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call $(if $(call ocah_reg_sv_skipped,$(block)),ocah_reg_sv_skip_rule,ocah_reg_sv_plain_rule),$(block))))
+$(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_doc_plain_rule,$(block))))
+$(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_cheader_plain_rule,$(block))))
+
+# The ## comments and .PHONY targets below are kept literal: the make help
+# generator parses these raw lines, so they cannot be folded into a macro.
 
 ## @section Register Regeneration
 

@@ -279,18 +279,18 @@ same mechanism is how an adopter integrates their own IP.
 
 ### How the swap works
 
-An overlay is a **per-vendor** tree supplying same-named RDLs under a mirrored
-`*/dv/shims/regs` path, e.g.
-`nonfree/vendor/samsung/hw/sys/smc/dv/shims/regs/pll_wrap.rdl`.
+An overlay mirrors the open `hw/...` tree and introduces `vendor/<vendor>` only
+at the proprietary IP leaf, e.g.
+`nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap.rdl`.
 `nonfree/nonfree.mk` is a thin entry that includes `nonfree/hw/regs.mk` (the
-symmetric counterpart of the open `hw/regs.mk`, run before it). For each vendor,
-the nonfree shim RDL files are registered as standalone entry points too, so a
+symmetric counterpart of the open `hw/regs.mk`, run before it). Nonfree shim RDL
+files are registered as standalone entry points too, so a
 target such as `make regen-regs TARGET=pll_wrap` generates both the open
-placeholder and the same-named nonfree replacement. For each selected vendor ×
-canonical top it also registers a *variant* register block:
+placeholder and the same-named nonfree replacement. For each selected canonical
+top it also registers a *variant* register block:
 
-- vendors are listed in `OCAH_NONFREE_VENDORS` (default `samsung`); tops in
-  `OCAH_NONFREE_REG_VARIANTS`;
+- vendor leaves are listed per subsystem, e.g. `OCAH_NONFREE_SMC_VENDOR_DIRS` and
+  `OCAH_NONFREE_SEP_VENDOR_DIRS`;
 - each variant reuses the **canonical** top RDL (`hw/sys/smc/regs/smc.rdl`) via
   `OCAH_REG_RDL_OVERRIDE_<key>` (no top duplication), and
 - prepends the vendor's `dv/shims/regs` dirs to the search list via
