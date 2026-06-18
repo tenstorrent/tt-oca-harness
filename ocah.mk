@@ -14,12 +14,8 @@ OCAH_PHONY ?=
 ## Sync the uv-managed Python environment used by OCAH generation flows.
 .PHONY: uv-sync
 uv-sync:
-	@command -v "$(UV)" >/dev/null 2>&1 || { \
-		echo "error: uv is required for OCAH register regeneration."; \
-		echo "install instructions: https://docs.astral.sh/uv/getting-started/installation/"; \
-		exit 1; \
-	}
-	@cd "$(OCAH_ROOT)" && "$(UV)" sync
+	@command -v "$(UV)" >/dev/null 2>&1 || { echo "error: uv is required; see https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
+	@"$(UV)" -C "$(OCAH_ROOT)" sync
 
 OCAH_PHONY += uv-sync
 
