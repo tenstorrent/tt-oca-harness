@@ -24,6 +24,5 @@
 #include "smc_avsbus.h"
 #include "smc_uart.h"
 #include "smc_cluster.h"
-#include "smc_clock.h"
 
 #endif /* SMC_IO_H */
