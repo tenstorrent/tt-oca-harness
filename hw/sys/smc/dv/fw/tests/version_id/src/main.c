@@ -11,13 +11,6 @@ int main(void)
 
   if (hartid == 0)
   {
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    program_clocks_quasar();
-    select_clock_for_gpio_obs(2); // choose awm 0's clock
-
     uint32_t version_low, version_low_expected;
     uint32_t version_high, version_high_expected;
     uint32_t chip_id;
