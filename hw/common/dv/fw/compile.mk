@@ -5,7 +5,7 @@ ifndef ocah_fw_common_mk
 ocah_fw_common_mk := 1
 
 # Shared DV firmware build engine. A subsystem fw.mk sets the FW_* inputs below,
-# includes its toolchain.mk, then includes this file for the build rules + all/clean.
+# includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
 # Inputs a subsystem defines before including this file:
 #   FW_NAME          - short subsystem name (e.g. km, sep, smc)
@@ -20,18 +20,20 @@ ocah_fw_common_mk := 1
 #   FW_LINKER_SCRIPT - linker script path
 #   FW_ENTRY_SRCS    - entry/main C/asm sources providing the image entry point
 # Optional (enable per-test linked images through `dv-fw-tests`):
-#   FW_TEST_SRCS          - C testcase entry files
-#   FW_TEST_NAMES         - testcase names, each with FW_TEST_SRC_<name> set
 #   FW_TEST_LINKER_SCRIPT - linker script used for test images
 #   FW_TEST_LDFLAGS       - extra/override test link flags (defaults to FW_LDFLAGS)
 #   FW_TEST_INCLUDES      - extra test-only include flags
 #   FW_TEST_EXTRA_CFLAGS  - extra test-only C flags
 #   FW_TEST_EXTRA_ARCHIVES - optional extra archives linked after lib<name>.a
 #   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name)
+# Test discovery is unified below (canonical tests/<name>/<name>.c); a subsystem
+# declares only deltas:
+#   FW_TEST_EXCLUDE_NAMES   - test dir names to skip
+#   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
+# A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
 
-# Toolchain resolution.
-# RISCV_TOOLCHAIN is empty by default; set it to a dir of riscv64-unknown-elf-*
-# tools, or leave empty to use the toolchain on PATH (provisioned via Docker).
+# Toolchain resolution. RISCV_TOOLCHAIN = dir of riscv64-unknown-elf-* tools, or
+# empty to use the toolchain on PATH (provisioned via Docker).
 RISCV_TOOLCHAIN ?=
 RISCV_PREFIX ?= riscv64-unknown-elf-
 
@@ -41,9 +43,8 @@ else
 OCAH_FW_TOOL_PREFIX := $(patsubst %/,%,$(RISCV_TOOLCHAIN))/$(RISCV_PREFIX)
 endif
 
-# ':=' (not '?='): CC/AR are predefined by Make, so '?=' would not take effect;
-# a command-line override still wins. AR/RANLIB use the gcc-* wrappers so the LTO
-# plugin indexes -flto archives correctly.
+# ':=' because CC/AR are Make built-ins ('?=' wouldn't take); cmdline still wins.
+# AR/RANLIB use gcc-* wrappers so the LTO plugin indexes -flto archives.
 CC      := $(OCAH_FW_TOOL_PREFIX)gcc
 AR      := $(OCAH_FW_TOOL_PREFIX)gcc-ar
 RANLIB  := $(OCAH_FW_TOOL_PREFIX)gcc-ranlib
@@ -52,12 +53,12 @@ OBJDUMP := $(OCAH_FW_TOOL_PREFIX)objdump
 NM      := $(OCAH_FW_TOOL_PREFIX)nm
 SIZE    := $(OCAH_FW_TOOL_PREFIX)size
 
-# picolibc spec file, shared by every subsystem toolchain (compile + link).
-# Default here so the per-subsystem toolchain.mk files do not each repeat it.
+# picolibc spec file shared by every subsystem toolchain; default here so the
+# per-subsystem toolchain.mk files do not repeat it.
 FW_PICOLIBC_SPECS ?= picolibc.specs
 
-# Register include flags for a sys subsystem (umbrella dir + generated headers +
-# shim/ip trees). A sys sets FW_REG_SYS; leaf IP subsystems leave it unset.
+# Register -I flags for a sys subsystem (umbrella + generated headers + shim/ip
+# trees). A sys sets FW_REG_SYS; leaf IP subsystems leave it unset.
 ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   -I$(OCAH_ROOT)/hw/common/dv/fw \
   -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \
@@ -85,18 +86,30 @@ FW_TEST_EXTRA_CFLAGS ?=
 FW_TEST_EXTRA_ARCHIVES ?=
 FW_TEST_COMMON_SRCS ?=
 FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
+
+# Unified DV test discovery: one testcase per tests/<name>/ (plus sibling .c),
+# tests/common/ reserved for shared helpers. Opt out by pre-setting FW_TEST_NAMES.
+ifndef FW_TEST_NAMES
+FW_TEST_SRCS := $(filter-out \
+  $(FW_DIR)/tests/common/% \
+  $(foreach t,$(FW_TEST_EXCLUDE_NAMES),$(FW_DIR)/tests/$(t)/%), \
+  $(wildcard $(FW_DIR)/tests/*/*.c))
+FW_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_TEST_SRCS)))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_DIR)/tests/$(t)/*.c))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests/$(t)/*.c) $(FW_TEST_EXTRA_SRCS_$(t))))
+endif
+
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
 FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).elf)
 
-# Let the single pattern rules below find sources regardless of subdirectory.
+# Let the pattern rules below find sources regardless of subdirectory.
 vpath %.c $(sort $(dir $(FW_C_SRCS) $(FW_ENTRY_SRCS)))
 vpath %.S $(sort $(dir $(FW_ASM_SRCS) $(FW_ENTRY_SRCS)))
 vpath %.s $(sort $(dir $(FW_ASM_SRCS) $(FW_ENTRY_SRCS)))
 
 DEPFLAGS := -MMD -MP
 
-# Optional extra compile flags injected from the make command line, e.g. a local
-# register stub.
+# Optional extra compile flags from the make command line (e.g. a register stub).
 FW_EXTRA_CFLAGS ?=
 
 $(FW_BUILD_DIR):
@@ -149,8 +162,8 @@ endef
 
 $(foreach test,$(FW_TEST_NAMES),$(eval $(call ocah_fw_test_rules,$(test))))
 
-# Validate the test selection at parse time, but only when dv-fw-tests is
-# requested (TEST may be set for other goals and must not break all/clean).
+# Validate the test selection at parse time, but only for dv-fw-tests (TEST may
+# be set for other goals and must not break all/clean).
 ifneq ($(filter dv-fw-tests,$(MAKECMDGOALS)),)
 ifeq ($(strip $(FW_TEST_NAMES)),)
 $(error no FW C tests configured for $(FW_NAME))
@@ -169,7 +182,7 @@ dv-fw-tests: $(FW_TEST_ELFS)
 dv-fw-test-list:
 	@printf '%s\n' $(FW_TEST_NAMES)
 
-# Linked image (only when the subsystem provides a linker script + entry).
+# Linked image: only when the subsystem provides a linker script + entry.
 ifneq ($(strip $(FW_LINKER_SCRIPT)),)
 ifneq ($(strip $(FW_ENTRY_SRCS)),)
 $(FW_ELF): $(FW_ENTRY_OBJS) $(FW_ARCHIVE) $(FW_LINKER_SCRIPT)

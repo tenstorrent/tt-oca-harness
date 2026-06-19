@@ -6,29 +6,26 @@
 # Built via the DV firmware dispatcher: make dv-fw TARGET=smc
 FW_NAME := smc
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-OCAH_ROOT ?= $(abspath $(FW_DIR)/../../../../..)
+include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # SMC runtime driver library. DV tests supply main() and link against it. Layout
-# follows the SiFive Metal include convention rooted at common/.
-FW_C_SRCS   := $(wildcard $(FW_DIR)/common/*.c $(FW_DIR)/common/drivers/*.c)
-FW_ASM_SRCS := $(wildcard $(FW_DIR)/common/*.S)
+# follows the SiFive Metal include convention rooted at include/metal.
+FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c)
+FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := \
-  -I$(FW_DIR)/common \
-  -I$(FW_DIR)/common/drivers \
-  -I$(FW_DIR)/common/metal \
-  -I$(FW_DIR)/common/metal/drivers \
-  -I$(FW_DIR)/common/metal/smc
+  -I$(FW_DIR)/include \
+  -I$(FW_DIR)/include/metal \
+  -I$(FW_DIR)/include/metal/drivers \
+  -I$(FW_DIR)/include/metal/smc
 
 # Register headers via the shared engine helper (umbrella smc.h under
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := smc
 
-FW_TEST_SRCS := $(wildcard $(FW_DIR)/tests/*/src/main.c)
-FW_TEST_NAMES := $(sort $(notdir $(patsubst %/src/main.c,%,$(FW_TEST_SRCS))))
-$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(test) := $(FW_DIR)/tests/$(test)/src/main.c))
-$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(test) := $(wildcard $(FW_DIR)/tests/$(test)/src/*.c)))
-FW_TEST_SRCS_coremark += $(FW_DIR)/tests/core_portme.c
-FW_TEST_INCLUDES := -I$(FW_DIR)/tests $(addprefix -I,$(wildcard $(FW_DIR)/tests/*/inc $(FW_DIR)/tests/*/include))
+# Test discovery is unified in compile.mk; declare only the SMC deltas. coremark
+# pulls in the shared core_portme.c harness alongside its own source.
+FW_TEST_EXTRA_SRCS_coremark := $(FW_DIR)/tests/core_portme.c
+FW_TEST_INCLUDES := -I$(FW_DIR)/tests
 # Test sources predate strict prototypes / native register headers; keep these
 # relaxations so they compile unchanged.
 FW_TEST_EXTRA_CFLAGS += \
@@ -36,7 +33,7 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-implicit-int \
   -Wno-strict-prototypes
-FW_TEST_LINKER_SCRIPT := $(FW_DIR)/common/metal/smc/scratch_pad.ld
+FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/scratch_pad.ld
 # Link against picolibc like the SEP/KM flows: test images keep their own entry
 # (-Wl,-e,main) and skip crt0 (-nostartfiles), resolving libc/libm from picolibc.
 FW_TEST_LDFLAGS = \

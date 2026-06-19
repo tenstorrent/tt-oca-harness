@@ -6,25 +6,19 @@
 # Built via the DV firmware dispatcher: make dv-fw TARGET=sep
 FW_NAME := sep
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-OCAH_ROOT ?= $(abspath $(FW_DIR)/../../../../..)
+include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
-FW_C_SRCS   := $(wildcard $(FW_DIR)/common/*.c)
-FW_ASM_SRCS := $(wildcard $(FW_DIR)/common/*.s $(FW_DIR)/common/*.S)
+FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c)
+FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
 
 # Register headers via the shared engine helper (umbrella sep.h under
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := sep
 
+# Test discovery is unified in compile.mk; declare only the SEP deltas.
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
-FW_TEST_SRCS := $(filter-out \
-  $(FW_DIR)/tests/common/% \
-  $(foreach test,$(FW_TEST_EXCLUDE_NAMES),$(FW_DIR)/tests/$(test)/%), \
-  $(wildcard $(FW_DIR)/tests/*/*.c))
-FW_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_TEST_SRCS)))))
-$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(test) := $(firstword $(wildcard $(FW_DIR)/tests/$(test)/*.c))))
-$(foreach test,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(test) := $(wildcard $(FW_DIR)/tests/$(test)/*.c)))
 FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # Test sources predate strict prototypes / native register headers; keep these
