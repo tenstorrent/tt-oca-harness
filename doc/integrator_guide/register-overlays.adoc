@@ -9,9 +9,17 @@ Most adopters do not need a register overlay. The open tt-oca tree already
 provides the canonical SystemRDL sources and committed generated collateral for
 the open OCAH IP blocks:
 
-* `hw/ip/*/regs/*.rdl`
-* `hw/sys/*/regs/*.rdl`
+* `hw/ip/*/regs/*.rdl` (block tops and standalone sibling blocks)
+* `hw/sys/*/regs/*.rdl` (composite subsystem tops)
+* `hw/sys/*/regs/blocks/<sub>/<sub>.rdl` (composite local CSR sub-blocks)
+* `*/regs/include/*.rdl` (pure `` `include `` fragments; never generated directly)
 * `*/regs/gen/{c,sv,svh,py,adoc}`
+
+Each first-party `regs/` directory follows the layout convention documented in
+`doc/user_guide/regs.adoc` ("RDL tree layout"): the dir-name top, standalone
+siblings at the regs root, pure fragments under `include/`, and composite
+sub-blocks under `blocks/<sub>/`. The role of an RDL is its location, which is
+what makes register discovery a pure glob with no hand-maintained block list.
 
 An adopter should use those generated files directly unless they need to model
 technology-specific or proprietary wrapper blocks. The expected overlay use
@@ -87,6 +95,13 @@ and set `OCAH_REG_EXTRA_SEARCH_<key>` to the adopter shim directories. When
 PeakRDL elaborates the canonical top, bare includes such as `"pll_wrap.rdl"`
 resolve to the adopter shim first. The top address map stays shared; only the
 replaceable shim contents change.
+
+The canonical top's other bare includes — its local CSR sub-blocks (now under
+`hw/sys/<top>/regs/blocks/<sub>/<sub>.rdl`) and its pure fragments (under
+`hw/sys/<top>/regs/include/`) — still resolve automatically: the engine adds the
+open tree's `regs/blocks/*` and `regs/include` directories to the search path for
+composite tops, so a variant reusing the canonical top RDL needs only its own
+`OCAH_REG_EXTRA_SEARCH_<key>` for the replaceable shims.
 
 Running:
 

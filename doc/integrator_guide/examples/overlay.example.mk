@@ -44,4 +44,4 @@
 
 # Keep generated top collateral under the overlay tree instead of the open tree.
 # OCAH_REG_GEN_OVERRIDE_$(OCAH_ACME_SMC_KEY) := $(OCAH_ADOPTER_OVERLAY_ROOT)/hw/sys/smc/regs/gen
-# OCAH_REG_BUILD_OVERRIDE_$(OCAH_ACME_SMC_KEY) := $(OCAH_ADOPTER_OVERLAY_ROOT)/hw/sys/smc/build/regs
+# OCAH_REG_BUILD_OVERRIDE_$(OCAH_ACME_SMC_KEY) := $(OCAH_ADOPTER_OVERLAY_ROOT)/hw/sys/smc/regs/build

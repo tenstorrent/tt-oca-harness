@@ -15,7 +15,7 @@ OCAH_PHONY ?=
 .PHONY: uv-sync
 uv-sync:
 	@command -v "$(UV)" >/dev/null 2>&1 || { echo "error: uv is required; see https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
-	@"$(UV)" -C "$(OCAH_ROOT)" sync
+	@"$(UV)" --directory "$(OCAH_ROOT)" sync
 
 OCAH_PHONY += uv-sync
 
@@ -40,7 +40,7 @@ ocah-nonfree-init:
 OCAH_PHONY += ocah-nonfree-init
 
 ## Core hardware collateral and DV firmware build targets.
-include $(OCAH_ROOT)/hw/regs.mk
+include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
 ## Yosys synthesis flow targets.
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk

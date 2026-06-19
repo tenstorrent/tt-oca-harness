@@ -1,9 +1,9 @@
 `include "smc_efuse_map.rdl"
 `include "efuse_interface_ctrl.rdl"
 // efuse_shim_ctrl is a DV shim model; it lives under the efuse IP's dv/shims tree
-// (resolved via the dv/shims search path in hw/regs.mk for smc/sep, or relatively
+// (resolved via the dv/shims search path in hw/common/regs/regs.mk for smc/sep, or relatively
 // here for this standalone DV aggregation wrap).
-`include "../dv/shims/regs/efuse_shim_ctrl.rdl"
+`include "../../dv/shims/regs/efuse_shim_ctrl.rdl"
 
 `ifndef EFUSE_WRAP_RDL_DEFINED
 `define EFUSE_WRAP_RDL_DEFINED
