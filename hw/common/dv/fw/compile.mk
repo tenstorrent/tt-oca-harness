@@ -26,6 +26,7 @@ ocah_fw_common_mk := 1
 #   FW_TEST_LDFLAGS       - extra/override test link flags (defaults to FW_LDFLAGS)
 #   FW_TEST_INCLUDES      - extra test-only include flags
 #   FW_TEST_EXTRA_CFLAGS  - extra test-only C flags
+#   FW_TEST_EXTRA_ARCHIVES - optional extra archives linked after lib<name>.a
 #   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name)
 
 # Toolchain resolution.
@@ -57,7 +58,8 @@ FW_PICOLIBC_SPECS ?= picolibc.specs
 
 # Register include flags for a sys subsystem (umbrella dir + generated headers +
 # shim/ip trees). A sys sets FW_REG_SYS; leaf IP subsystems leave it unset.
-ocah_fw_reg_includes = -I$(OCAH_ROOT)/hw/common/dv/fw \
+ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
+  -I$(OCAH_ROOT)/hw/common/dv/fw \
   -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/sys/$(1)/dv/shims/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/gen/c)) \
@@ -80,8 +82,9 @@ FW_TEST_BUILD_DIR ?= $(FW_BUILD_DIR)/tests
 FW_TEST_LDFLAGS ?= $(FW_LDFLAGS)
 FW_TEST_INCLUDES ?=
 FW_TEST_EXTRA_CFLAGS ?=
+FW_TEST_EXTRA_ARCHIVES ?=
 FW_TEST_COMMON_SRCS ?=
-FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" -Wl,--no-whole-archive
+FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
 FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).elf)
 
@@ -136,7 +139,7 @@ FW_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_TEST_SRCS_$(1))),$$(FW_TEST_SRCS_$
 FW_TEST_OBJS_$(1) := $$(addprefix $(FW_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_TEST_SRCS_FOR_$(1):.c=.o)))
 $$(foreach src,$$(FW_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_test_obj_rule,$(1),$$(src))))
 
-$(FW_TEST_BUILD_DIR)/$(1)/$(1).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_LINKER_SCRIPT) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+$(FW_TEST_BUILD_DIR)/$(1)/$(1).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINKER_SCRIPT) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
 	$$(CC) $$(FW_TEST_LDFLAGS) -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).map" -T "$$(FW_TEST_LINKER_SCRIPT)" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK) -o "$$@"
 	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).dis"
 	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).sym"
