@@ -20,7 +20,7 @@ uv-sync:
 OCAH_PHONY += uv-sync
 
 OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
-OCAH_NONFREE_COMMIT ?= e6b5e78
+OCAH_NONFREE_COMMIT ?= main
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
