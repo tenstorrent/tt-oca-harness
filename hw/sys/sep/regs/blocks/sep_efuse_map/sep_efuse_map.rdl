@@ -1,0 +1,940 @@
+`ifndef SEP_EFUSE_MAP_RDL
+`define SEP_EFUSE_MAP_RDL
+
+
+addrmap sep_efuse_map {
+    desc = "";
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    default regwidth = 64;
+    default accesswidth = 64;
+
+    reg LOCKS {
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } LC_STATE_WRITE_LOCK[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } LC_STATE_READ_LOCK[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SBOOT_DIS_WRITE_LOCK[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SBOOT_DIS_READ_LOCK[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } TRANSIENT_RMA_EN_WRITE_LOCK[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } TRANSIENT_RMA_EN_READ_LOCK[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SiP_DIS_WRITE_LOCK[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SiP_DIS_READ_LOCK[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SYS_DIS_WRITE_LOCK[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SYS_DIS_READ_LOCK[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RMA_SIP_TOKEN_DIGEST_WRITE_LOCK[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RMA_SIP_TOKEN_DIGEST_READ_LOCK[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } CLASS_KEY_WRITE_LOCK[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } CLASS_KEY_READ_LOCK[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "chiplet_pubk_revoke_sel_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } CHIPLET_PUBK_REVOKE_WRITE_LOCK[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "chiplet_pubk_revoke_sel_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } CHIPLET_PUBK_REVOKE_READ_LOCK[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } BL1_VERSION_WRITE_LOCK[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } BL1_VERSION_READ_LOCK[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } BL2_VERSION_WRITE_LOCK[20:20] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } BL2_VERSION_READ_LOCK[21:21] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } CHIPLET_UID_WRITE_LOCK[22:22] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } CHIPLET_UID_READ_LOCK[23:23] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SiP_PUBK_DIGEST_WRITE_LOCK[24:24] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SiP_PUBK_DIGEST_READ_LOCK[25:25] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SiP_UID_WRITE_LOCK[26:26] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SiP_UID_READ_LOCK[27:27] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SYS_PUBK_DIGEST_WRITE_LOCK[28:28] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SYS_PUBK_DIGEST_READ_LOCK[29:29] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SYS_UID_WRITE_LOCK[30:30] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SYS_UID_READ_LOCK[31:31] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } STATUS_RPT_WRITE_LOCK[32:32] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } STATUS_RPT_READ_LOCK[33:33] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sep_rom_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SEP_ROM_CTRL_WRITE_LOCK[34:34] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sep_rom_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SEP_ROM_CTRL_READ_LOCK[35:35] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sep_spi_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SEP_SPI_CTRL_WRITE_LOCK[36:36] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "sep_spi_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SEP_SPI_CTRL_READ_LOCK[37:37] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK[38:38] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SEP_PUBLIC_KEY_HASH_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SEP_PUBLIC_KEY_HASH_0_READ_LOCK[39:39] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK[40:40] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "SEP_PUBLIC_KEY_HASH_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SEP_PUBLIC_KEY_HASH_1_READ_LOCK[41:41] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_0_WRITE_LOCK[42:42] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_0_READ_LOCK[43:43] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_1_WRITE_LOCK[44:44] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_1_READ_LOCK[45:45] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_2_WRITE_LOCK[46:46] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_2_READ_LOCK[47:47] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_3_WRITE_LOCK[48:48] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_3_READ_LOCK[49:49] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_4_WRITE_LOCK[50:50] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_4_READ_LOCK[51:51] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_5_WRITE_LOCK[52:52] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_5_READ_LOCK[53:53] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_6_WRITE_LOCK[54:54] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_6_READ_LOCK[55:55] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_7_WRITE_LOCK[56:56] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_7_READ_LOCK[57:57] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_256_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_256_WRITE_LOCK[58:58] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_256_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_256_READ_LOCK[59:59] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_64_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_64_WRITE_LOCK[60:60] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_64_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_64_READ_LOCK[61:61] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_32_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_32_WRITE_LOCK[62:62] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "RESERVED_LAST_32_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } RESERVED_LAST_32_READ_LOCK[63:63] = 0x0;
+    };
+
+    reg LC_STATE {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}";
+        } lc_state [7:0] = 0xf0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Unused";
+        } rsvd [31:8] = 0x0;
+    };
+
+    reg SBOOT_DIS {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Chicken bit to disable secure boot in SEP ROM.";
+        } disable_secure_boot [0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Unused";
+        } rsvd [31:1] = 0x0;
+    };
+
+    reg TRANSIENT_RMA_EN {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg";
+        } transient_rma_en [0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Unused";
+        } rsvd [31:1] = 0x0;
+    };
+
+    reg LC_DISABLE {
+        desc = "An owner's (SiP or System) feature control vector. When set, the corresponding feature is disabled";
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.";
+        } sep_debug[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.";
+        } soc_debug[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.";
+        } ap_debug[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.";
+        } ap_trace[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.";
+        } sip_debug[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "Reserved";
+        } debug_reserved[31:5] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.";
+        } fuse_test[32:32] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.";
+        } sep_stest[33:33] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.";
+        } sep_dtest[34:34] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.";
+        } ap_stest[35:35] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.";
+        } ap_dtest[36:36] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "Reserved";
+        } test_reserved[47:37] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = rw;
+            desc = "Reserved";
+        } func_reserved[63:48] = 0x0;
+    };
+
+
+    reg RMA_SIP_TOKEN_DIGEST {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field";
+        } token_digest [255:0] = 0x0;
+    };
+
+    reg RMA_CHIPLET_TOKEN_DIGEST {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field";
+        } token_digest [255:0] = 0x0;
+    };
+
+    reg CLASS_KEY {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Class key that could be used for FW encryption/decryption";
+        } key [255:0] = 0x0;
+    };
+
+    reg CHIPLET_PUBK_REVOKE {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Revoke public key used to verify BL1/ SEP ROM Should reject using the corresponding public key when associated bit is set to 1";
+        } select [31:0] = 0x0;
+    };
+
+    reg BL1_VERSION {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Minimum BL1 version that can be loaded by SEPROM";
+        } version [255:0] = 0x0;
+    };
+
+    reg BL2_VERSION {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.";
+        } version [255:0] = 0x0;
+    };
+
+    reg CHIPLET_UID {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Silicon creator's confidential device unique ID.";
+        } uid [255:0] = 0x0;
+    };
+
+    reg SiP_PUBK_DIGEST {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Hash digest of SiP owner's root public key for secure boot.";
+        } key_digest [255:0] = 0x0;
+    };
+
+    reg SiP_UID {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "SiP owner's confidential device unique ID.";
+        } uid [255:0] = 0x0;
+    };
+
+    reg SYS_PUBK_DIGEST {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Hash digest of system owner's root public key for secure boot.";
+        } key_digest [255:0] = 0x0;
+    };
+
+    reg SYS_UID {
+        regwidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "System owner's confidential device unique ID.";
+        } uid [255:0] = 0x0;
+    };
+
+    reg STATUS_RPT{
+        regwidth = 32;
+        accesswidth = 32;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status";
+        } rpt[1:0] = 0x0;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "reserved";
+        } reserved[31:2] = 0x0;
+    };
+
+    reg SEP_ROM_CTRL{
+        regwidth = 32;
+        accesswidth = 32;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "controls the endianness of the rom data out. 0->little endian; 1->big endian";
+        } rom_endianness_ctrl[0:0] = 0x0;
+
+        field{
+            sw = r;
+            hw = rw;
+            desc = "controls how the rom slices are swapped";
+        } rom_swap_ctrl[5:1] = 0x0;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "reserved";
+        } reserved[31:6] = 0x0;
+    };
+
+    reg SEP_SPI_CTRL_FIELD_EN{
+        regwidth = 32;
+        accesswidth = 32;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "8 bit which indicates the following 8 spi config regs are enabled or not. 1->enabled; 0->disabled";
+        } spi_control_field_en[7:0] = 0x0;
+         field{
+            sw = r;
+            hw = rw;
+            desc = "11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0";
+        } smu_pll_sysclk[18:8] = 0x0;
+        field{
+            sw = r;
+            hw = rw;
+            desc = "Reserved 13 bits";
+        } spi_control_field_en_rsvd[31:19] = 0x0;
+    };
+
+    reg SPI_DISCOVERY_CTRL{
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi discovery control reg";
+        } discovery[31:0] = 0x0;
+    };
+
+    reg SPI_PHY_DQ_TIMING {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi phy dq timing reg";
+        } dq_timing[31:0] = 0x0;
+    };
+
+    reg SPI_PHY_DQS_TIMING {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi phy dqs timing reg";
+        } dqs_timing[31:0] = 0x0;
+    };
+
+    reg SPI_PHY_GATE_LPBK {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi phy gate lpbk ctrl reg";
+        } gate_lpbk[31:0] = 0x0;
+    };
+
+    reg SPI_PHY_DLL_SLAVE {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi phy dll slv ctrl reg";
+        } dll_slave[31:0] = 0x0;
+
+    };
+
+    reg SPI_PHY_DLL_MASTER {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi phy dll mst ctrl reg";
+        } dll_master[31:0] = 0x0;
+    };
+
+    reg SPI_PHY_MISC {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi init phy misc ";
+        } misc[31:0] = 0x0;
+    };
+
+    reg SPI_RB_VALID_TIME {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "spi init rb valid time";
+        } rb_valid_time[31:0] = 0x0;
+    };
+
+    reg PUBLIC_KEY {
+        regwidth = 256;
+        accesswidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Extra public key hash digest ";
+        } key_hash[255:0] = 0x0;
+    };
+
+    reg RESERVED_I {
+        regwidth = 512;
+        accesswidth = 512;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Reserved region for future use";
+        } rsvd[511:0] = 0x0;
+    };
+    reg RESERVED_LAST_256 {
+        regwidth = 256;
+        accesswidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Reserved region for future use";
+        } rsvd[255:0] = 0x0;
+    };
+
+    reg RESERVED_LAST_64 {
+        regwidth = 64;
+        accesswidth = 64;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Reserved region for future use";
+        } rsvd[63:0] = 0x0;
+    };
+
+    reg RESERVED_LAST_32 {
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Reserved region for future use";
+        } rsvd[31:0] = 0x0;
+    };
+
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    LOCKS                         LOCKS                     @0x0;
+    LC_STATE                      LC_STATE                  @0x8;
+    SBOOT_DIS                     SBOOT_DIS                 @0xC;
+    TRANSIENT_RMA_EN              TRANSIENT_RMA_EN          @0x10;
+    LC_DISABLE                    SiP_DIS                   @0x14;
+    LC_DISABLE                    SYS_DIS                   @0x1C;
+    RMA_SIP_TOKEN_DIGEST          RMA_SIP_TOKEN_DIGEST      @0x24;
+    RMA_CHIPLET_TOKEN_DIGEST      RMA_CHIPLET_TOKEN_DIGEST  @0x44;
+    CLASS_KEY                     CLASS_KEY                 @0x64;
+    CHIPLET_PUBK_REVOKE           CHIPLET_PUBK_REVOKE       @0x84;
+    BL1_VERSION                   BL1_VERSION               @0x88;
+    BL2_VERSION                   BL2_VERSION               @0xa8;
+    CHIPLET_UID                   CHIPLET_UID               @0xc8;
+    SiP_PUBK_DIGEST               SiP_PUBK_DIGEST           @0xe8;
+    SiP_UID                       SiP_UID                   @0x108;
+    SYS_PUBK_DIGEST               SYS_PUBK_DIGEST           @0x128;
+    SYS_UID                       SYS_UID                   @0x148;
+    STATUS_RPT                    STATUS_RPT                @0x168;
+    SEP_ROM_CTRL                  SEP_ROM_CTRL              @0x16C;
+    SEP_SPI_CTRL_FIELD_EN         SEP_SPI_CTRL_FIELD_EN     @0x170;
+    SPI_DISCOVERY_CTRL            SPI_DISCOVERY_CTRL        @0x174;
+    SPI_PHY_DQ_TIMING             SPI_PHY_DQ_TIMING         @0x178;
+    SPI_PHY_DQS_TIMING            SPI_PHY_DQS_TIMING        @0x17C;
+    SPI_PHY_GATE_LPBK             SPI_PHY_GATE_LPBK         @0x180;
+    SPI_PHY_DLL_SLAVE             SPI_PHY_DLL_SLAVE         @0x184;
+    SPI_PHY_DLL_MASTER            SPI_PHY_DLL_MASTER        @0x188;
+    SPI_PHY_MISC                  SPI_PHY_MISC              @0x18C;
+    SPI_RB_VALID_TIME             SPI_RB_VALID_TIME         @0x190;
+    PUBLIC_KEY                    PUBLIC_KEY_0              @0x194;
+    PUBLIC_KEY                    PUBLIC_KEY_1              @0x1b4;
+    RESERVED_I                    RESERVED_0                @0x1d4;
+    RESERVED_I                    RESERVED_1                @0x214;
+    RESERVED_I                    RESERVED_2                @0x254;
+    RESERVED_I                    RESERVED_3                @0x294;
+    RESERVED_I                    RESERVED_4                @0x2d4;
+    RESERVED_I                    RESERVED_5                @0x314;
+    RESERVED_I                    RESERVED_6                @0x354;
+    RESERVED_I                    RESERVED_7                @0x394;
+    RESERVED_LAST_256             RESERVED_LAST_256         @0x3d4;
+    RESERVED_LAST_64              RESERVED_LAST_64          @0x3f4;
+    RESERVED_LAST_32              RESERVED_LAST_32          @0x3fc;
+};
+
+`endif

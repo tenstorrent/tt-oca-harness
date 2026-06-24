@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 ifndef ocah_help_mk
 ocah_help_mk := 1
 

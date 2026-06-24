@@ -1,0 +1,48 @@
+`ifndef NDM_REG_DEFINED
+`define NDM_REG_DEFINED
+
+
+////////////////////////////////////////////////////////////////////////////
+// NDM Reset Control Register
+////////////////////////////////////////////////////////////////////////////
+
+addrmap ndm_reset {
+    desc = "NDM Reset Control Register for communicating with debug module in each Ascalon cluster";
+
+    reg NDMRESET_REQUEST {
+        field {
+            sw = r;
+            hw = w;
+            desc = "NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.
+                    Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters";
+        } ndmreset_request[31:0] = 0x0;
+    };
+    
+    reg NDMRESET_PROCESS {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "NDM Response Firmware writes to this field to respond to NDM reset requests.
+                    Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters";
+        } ndmreset_process[31:0] = 0x0;
+    };
+
+    reg NDMRESET_CLUSTER_COUNT {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Number of NDM Clusters supported. Can be read to mask the ndmreset_request register";
+        } ndmreset_cluster_count[7:0] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    NDMRESET_REQUEST            NDMRESET_REQUEST            @0x0;
+    NDMRESET_PROCESS            NDMRESET_PROCESS            @0x4;
+    NDMRESET_CLUSTER_COUNT      NDMRESET_CLUSTER_COUNT      @0x8;
+
+};
+
+`endif

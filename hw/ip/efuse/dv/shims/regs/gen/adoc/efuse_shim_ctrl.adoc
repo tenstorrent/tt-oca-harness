@@ -1,0 +1,36 @@
+[[efuse_shim_ctrl-address-map]]
+efuse_shim_ctrl address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+[cols=",,",options="header",]
+|============================
+|Offset |Identifier |Name
+|0x0 |EFUSE_BANK_INIT_TIME |—
+|============================
+
+[[efuse_bank_init_time-register]]
+EFUSE_BANK_INIT_TIME register
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+eFuse bank initialization time. Number of cycles to wait for the OTP
+macro to initialize before sensing can begin.
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |init_time |rw |0x20 |—
+|=====================================
+
+[[init_time-field]]
+init_time field
++++++++++++++++
+
+Most OTP have a initalization time before sensing can be done

@@ -1,0 +1,43 @@
+`ifndef I2C_CTRL_RDL
+`define I2C_CTRL_RDL
+
+addrmap i2c_ctrl #(
+    longint unsigned NUM_I2CS = 3
+) {
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg I2C_CTRL {
+        desc = "Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I2C Enable.";
+        } I2C_EN[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "I2C Controller Mode Enable.";
+        } I2C_CONTROLLER_MODE_EN[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "SMBus Enable. Gates the SMBus Alert signal.";
+        } SMBUS_EN[8:8] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    I2C_CTRL    I2C_CTRL[NUM_I2CS]    @0x0;
+
+};
+
+`endif

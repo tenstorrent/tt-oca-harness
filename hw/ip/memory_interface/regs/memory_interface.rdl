@@ -1,0 +1,20 @@
+`ifndef SRAM_RDL_DEFINED
+`define SRAM_RDL_DEFINED
+
+`include "example_sram_macro_csr.rdl"
+`include "example_sram.rdl"
+
+addrmap example_sram_wrap {
+
+   desc = "Example SRAM Wrap";
+
+   ////////////////////////////////////////////////////////////////////////////
+   // Address Map
+   ////////////////////////////////////////////////////////////////////////////
+
+   external example_sram 				example_sram 							      @0x0;
+            example_sram_macro_csr 	example_sram_macro_csr 			      @0x2000;
+
+};
+`endif
+

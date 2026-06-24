@@ -2,7 +2,8 @@
 Markdown description for SystemRDL register map.
 
 Don't override. Generated from: system_timer_octs
-  - hw/ip/system_timer_octs/rdl/system_timer_octs.rdl
+  - /proj_soc/user_dev/aottaviano/ocah/oshw/tt-oca/hw/common/regs/regblock_udps.rdl
+  - /proj_soc/user_dev/aottaviano/ocah/oshw/tt-oca/hw/ip/system_timer_octs/regs/system_timer_octs.rdl
 -->
 
 ## system_timer_octs address map
@@ -39,7 +40,8 @@ Don't override. Generated from: system_timer_octs
 
 #### START field
 
-<p>Start the system timer.</p>
+<p>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
+both primary and secondary are out of reset.</p>
 
 ### CTRL register
 
@@ -57,15 +59,15 @@ Don't override. Generated from: system_timer_octs
 
 #### CREDIT_VAL field
 
-<p>Credit value factor.</p>
+<p>Credit value factor. WARNING: This value must be greater than PULSE_WIDTH</p>
 
 #### PULSE_WIDTH field
 
-<p>Pulse width for sync load and credit signals.</p>
+<p>Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL</p>
 
 #### STEP field
 
-<p>Step amount for secondary timer.</p>
+<p>Step amount for secondary timer</p>
 
 ### STATUS register
 
@@ -82,11 +84,11 @@ Don't override. Generated from: system_timer_octs
 
 #### MODE field
 
-<p>Timer mode: 0=PRIMARY, 1=SECONDARY.</p>
+<p>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</p>
 
 #### RUNNING field
 
-<p>Timer is currently enabled and running.</p>
+<p>Timer is currently enabled and running</p>
 
 ### TIMER_PRESET_LO register
 
@@ -102,7 +104,7 @@ Don't override. Generated from: system_timer_octs
 
 #### PRESET_LO field
 
-<p>Lower 32 bits of preset value.</p>
+<p>Lower 32 bits of preset value</p>
 
 ### TIMER_PRESET_HI register
 
@@ -118,7 +120,7 @@ Don't override. Generated from: system_timer_octs
 
 #### PRESET_HI field
 
-<p>Upper 32 bits of preset value.</p>
+<p>Upper 32 bits of preset value</p>
 
 ### TIMER_COUNT_LO register
 
@@ -134,7 +136,7 @@ Don't override. Generated from: system_timer_octs
 
 #### COUNT_LO field
 
-<p>Lower 32 bits of current timer count.</p>
+<p>Lower 32 bits of current timer count</p>
 
 ### TIMER_COUNT_HI register
 
@@ -150,7 +152,7 @@ Don't override. Generated from: system_timer_octs
 
 #### COUNT_HI field
 
-<p>Upper 32 bits of current timer count.</p>
+<p>Upper 32 bits of current timer count</p>
 
 ### CREDIT_EXPIRED register
 
@@ -166,7 +168,10 @@ Don't override. Generated from: system_timer_octs
 
 #### MAX_CYCLES_EXPIRED field
 
-<p>Maximum number of clock cycles since a count credit expired.</p>
+<p>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+This register can also be used to determine the clock skew between the primary and secondary.
+If PRIMARY, this field is always 0.</p>
 
 ### TIMER_GPIO_ENABLE register
 
@@ -182,4 +187,4 @@ Don't override. Generated from: system_timer_octs
 
 #### GPIO_ENABLE field
 
-<p>Enable the GPIO pad LSIO interface for the system timer.</p>
+<p>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</p>

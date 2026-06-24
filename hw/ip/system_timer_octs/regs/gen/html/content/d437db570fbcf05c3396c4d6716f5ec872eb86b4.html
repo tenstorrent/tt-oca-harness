@@ -10,7 +10,7 @@
     <dt>Base Offset:</dt><dd class="address">0x20</dd>
     <dt>Size:</dt><dd class="address">0x4</dd>
     
-    <dt>Source:</dt><dd><a href="https://github.com/tenstorrent/tt-oca/blob/aottaviano/tree/hw/ip/system_timer_octs/rdl/system_timer_octs.rdl#L108" target="_blank">system_timer_octs.rdl</a></dd>
+    <dt>Source:</dt><dd><a href="https://github.com/tenstorrent/tt-oca/blob/aottaviano/tree-sw/hw/ip/system_timer_octs/regs/system_timer_octs.rdl#L116" target="_blank">system_timer_octs.rdl</a></dd>
     
 </dl>
 <h2>Description</h2>
@@ -72,6 +72,6 @@
     <a class="headerlink" href="#GPIO_ENABLE.desc" title="Permalink to this headline"></a>
 </h3>
 <div id="_Content.GPIO_ENABLE.desc">
-<p>Enable the GPIO pad LSIO interface for the system timer.</p>
+<p>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</p>
 </div>
 </div>

@@ -1,0 +1,20 @@
+`ifndef TELEMETRY_RECEIVER_WRAP_RDL
+`define TELEMETRY_RECEIVER_WRAP_RDL
+
+`include "telemetry_receiver.rdl"
+
+addrmap telemetry_receiver_wrap #(
+    // TODO: Fix
+    // longint unsigned MAX_NUM_TELEMETRY_RECEIVERS = 16
+    longint unsigned NUM_TELEMETRY_RECEIVERS = 3
+) {
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    telemetry_receiver    telemetry_receiver[NUM_TELEMETRY_RECEIVERS]    @0x0 += 0x100;
+
+};
+
+`endif

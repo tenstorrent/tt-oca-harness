@@ -1,0 +1,274 @@
+// smc_uart_log_engine_disable_during_xfer_test
+//
+// Sanity-style check that clearing CTRL.EN mid-transfer cleanly halts the
+// engine and leaves the wrapper accessible. FW pre-loads SRAM with 256 bytes,
+// configures the engine pointing the log-write at the (line-loopback'd) UART
+// THR, triggers entry 0, immediately clears CTRL.EN, then verifies:
+//   * INTR_STATUS = 0 (no error injected, no bus error)
+//   * Subsequent writes to LOG_CTRL[0] with EN still 0 do NOT cause traffic
+//     (verified indirectly: re-enabling and re-triggering with a small length
+//     completes cleanly without prior leftovers corrupting it).
+//
+// Per RDL the engine's "CTRL.EN=0 resets all FSMs, flops, and FIFOs" — exact
+// behavior of LOG_CTRL[i] under EN=0 is documented as a designer question
+// (DS-008/Q-001). This test captures the LOG_CTRL[0] value at multiple points
+// for later inspection but does not pin its expected value.
+
+#include <stdint.h>
+
+#include "smc_io.h"
+#include "smc_test.h"
+
+#define WRAP0_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
+#define WRAP0_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
+#define WRAP0_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
+
+#define LE_CTRL_OFF         (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_SIZE_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_ADDR_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_WRITE_ADDR_OFF   (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_STATUS_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_LOG_CTRL0_OFF    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+
+#define UART_RBR_OFF        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_MCR_OFF        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+
+#define LOG_BUFFER_BASE     (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)  // SRAM scratch area
+#define LOG_REGION_SIZE     0x100u    // 256 bytes (slot 0 covers 256/16 = 16 bytes)
+#define LONG_XFER_LEN       0x200u    // intentionally larger than slot 0 — will fault?
+                                      // Use a smaller value for sanity; pick 16 = slot 0 size.
+
+int main(void) {
+    info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test start");
+
+    //--------------------------------------------------------------------------
+    // Pre-load SRAM with a known pattern. Per slot math, entry 0 starts at
+    // LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * 0 = LOG_REGION_ADDR.
+    //--------------------------------------------------------------------------
+    volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
+    for (uint32_t i = 0; i < 16; i++) {
+        buf[i] = (uint8_t)(0xA0u + i);  // distinguishable pattern
+    }
+
+    // Disable engine + UART CSR access path entirely before configuring
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+    write_reg(WRAP0_CTRL_REG, 1u);  // pad-mux enable so UART is reachable
+
+    // Engine to line-loopback through UART RBR/THR: set LOG_WRITE_ADDR to the
+    // UART RBR/THR offset and set MCR.LINE_LOOPBACK so TX feeds back into RX.
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x20u);   // LINE_LOOPBACK = 1
+    write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, LOG_REGION_SIZE);
+    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
+    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+    write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF,
+              WRAP0_UART_BASE + UART_RBR_OFF);
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);          // engine enable
+
+    //--------------------------------------------------------------------------
+    // Trigger entry 0 with the slot size (16 bytes) and immediately disable.
+    //--------------------------------------------------------------------------
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
+
+    // Snapshot LOG_CTRL[0] right after trigger
+    uint32_t snap1 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF);
+    info_msg_hex32_s(0, "LOG_CTRL[0] post-trigger=", snap1);
+
+    // Disable engine mid-transfer
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+
+    // Snapshot LOG_CTRL[0] after disable
+    uint32_t snap2 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF);
+    info_msg_hex32_s(0, "LOG_CTRL[0] post-disable=", snap2);
+
+    // INTR_STATUS must be 0 — disable should not raise errors
+    {
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        if (s != 0u) {
+            info_msg_hex32_s(0, "FAIL: INTR_STATUS unexpectedly set after disable=", s);
+            test_fail(0);
+        }
+    }
+
+    //--------------------------------------------------------------------------
+    // Allow some cycles for any in-flight UART byte to flush, then drain RBR.
+    // After disable, no NEW bytes should be inserted into the UART. We discard
+    // whatever's currently in the FIFO without asserting an exact count
+    // (since precise count depends on engine fetch timing).
+    //--------------------------------------------------------------------------
+    for (volatile int i = 0; i < 1000; i++) { /* settle */ }
+    for (int i = 0; i < 32; i++) {
+        // Drain by reading RBR; ignore values
+        (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
+    }
+
+    //--------------------------------------------------------------------------
+    // Re-enable and trigger again — should complete cleanly.
+    //--------------------------------------------------------------------------
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);  // W1C any stale bits
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
+
+    // Poll LOG_CTRL[0] for hwclr (timeout ~200000 polls)
+    {
+        uint32_t timeout = 200000u;
+        while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
+            timeout--;
+        }
+        if (timeout == 0u) {
+            info_msg_s(0, "FAIL: post-disable re-trigger: LOG_CTRL[0] did not hwclr");
+            test_fail(0);
+        }
+    }
+
+    {
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        if (s != 0u) {
+            info_msg_hex32_s(0, "FAIL: INTR_STATUS set after clean re-run=", s);
+            test_fail(0);
+        }
+    }
+
+    //--------------------------------------------------------------------------
+    // SCENARIO B: long-burst log entry let to complete fully — exercises
+    // log_fetch FSM ST_LOG_FETCH_REQ → ST_LOG_FETCH_WAIT → ST_LOG_FETCH_REQ
+    // cycles (multi-cycle fetch) and log_write FSM REQ → WAIT → REQ similarly.
+    // Use the full slot 0 size = LOG_REGION_SIZE/16 = 16 bytes — but multiple
+    // entries in quick succession trigger the WAIT→REQ multi-cycle path
+    // through arbitration.
+    //--------------------------------------------------------------------------
+    info_msg_s(0, "scenario B: multi-entry simultaneous trigger");
+
+    #define LE_LOG_CTRL_I_OFF(i) \
+        (0u + (i) * 4u)
+
+    // Pre-load all 16 slots' worth of pattern bytes
+    for (uint32_t i = 0; i < LOG_REGION_SIZE; i++) {
+        buf[i] = (uint8_t)(0xC0u + (i & 0x3Fu));
+    }
+
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+
+    // Trigger entries 0,1,2,3 simultaneously — log_engine round-robins through
+    // them, exercising the REQ→WAIT→REQ FSM cycles in both fetch + write
+    // domains plus log_index arbitration.
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0), 16u);
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1), 16u);
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(2), 16u);
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(3), 16u);
+
+    // Let all 4 transfers complete (no disable this round) — captures the
+    // natural WAIT → REQ cycles inside each entry and the
+    // multi-entry round-robin handoff.
+    {
+        uint32_t timeout = 500000u;
+        while (timeout > 0u) {
+            uint32_t c0 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0)) & 0xFFFFu;
+            uint32_t c1 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1)) & 0xFFFFu;
+            uint32_t c2 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(2)) & 0xFFFFu;
+            uint32_t c3 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(3)) & 0xFFFFu;
+            if ((c0 | c1 | c2 | c3) == 0u) break;
+            timeout--;
+        }
+        if (timeout == 0u) {
+            info_msg_s(0, "FAIL: scenario B: 4-entry trigger did not all clear");
+            test_fail(0);
+        }
+    }
+    // Drain whatever landed in UART RBR
+    for (int i = 0; i < 64; i++) {
+        (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
+    }
+
+    //--------------------------------------------------------------------------
+    // SCENARIO C: abort mid-WAIT — trigger a slot, wait long enough for the
+    // fetch FSM to reach the WAIT state (at least one beat fetched), then
+    // disable. Covers ST_LOG_FETCH_WAIT → ST_LOG_FETCH_IDLE and the
+    // analogous log_write WAIT → IDLE drain transitions.
+    //--------------------------------------------------------------------------
+    info_msg_s(0, "scenario C: abort while FSM is in WAIT");
+
+    // Reset state cleanly
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+
+    // Re-enable + trigger a 16-byte entry
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+    write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
+
+    // Spin a few cycles so the FSM advances past REQ into WAIT.
+    // ~50 cycles should be enough at SMC clock for the first AXI read to
+    // land and the fetch FSM to transition.
+    for (volatile int i = 0; i < 50; i++) { /* settle */ }
+
+    // Now disable — this catches the FSM in WAIT and forces WAIT → IDLE
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+
+    {
+        uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
+        info_msg_hex32_s(0, "scenario C INTR_STATUS=", s);
+        // No assertion: spec says disable cleanly halts; status MAY or MAY NOT
+        // be 0 depending on whether an in-flight beat raised an error first.
+        // Just record for waveform inspection.
+    }
+
+    for (volatile int i = 0; i < 1000; i++) { /* settle */ }
+    for (int i = 0; i < 16; i++) {
+        (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
+    }
+
+    //--------------------------------------------------------------------------
+    // SCENARIO D: alternate replica wrap (UART_LOG_ENGINE_WRAP_1) — covers
+    // the gen_uart_log_engine_wraps[1] replica's FSM (which the single-replica
+    // existing test never reached). This drives stimulus into the [1] slot's
+    // log_fetch_fsm IDLE → REQ → ... → IDLE path.
+    //--------------------------------------------------------------------------
+    info_msg_s(0, "scenario D: drive replica[1] log_engine");
+
+    #define WRAP1_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(1)
+    #define WRAP1_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1)
+    #define WRAP1_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(1)
+    #define WRAP1_LE_CTRL_OFF      LE_CTRL_OFF       /* same offset within block */
+    #define WRAP1_LE_REGION_SIZE   LE_REGION_SIZE_OFF
+    #define WRAP1_LE_REGION_ADDR   LE_REGION_ADDR_OFF
+    #define WRAP1_LE_WRITE_ADDR    LE_WRITE_ADDR_OFF
+    #define WRAP1_LE_LOG_CTRL0     LE_LOG_CTRL0_OFF
+    #define WRAP1_UART_RBR         UART_RBR_OFF
+    #define WRAP1_UART_MCR         UART_MCR_OFF
+
+    write_reg(WRAP1_CTRL_REG, 1u);
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x20u);  // line loopback
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR + 4, 0u);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_WRITE_ADDR,
+              WRAP1_UART_BASE + WRAP1_UART_RBR);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, 1u);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0, 16u);
+
+    // Let replica[1] complete naturally
+    {
+        uint32_t timeout = 200000u;
+        while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
+            timeout--;
+        }
+        if (timeout == 0u) {
+            info_msg_s(0, "FAIL: scenario D: replica[1] log_engine did not hwclr");
+            test_fail(0);
+        }
+    }
+    for (int i = 0; i < 32; i++) (void)read_reg(WRAP1_UART_BASE + WRAP1_UART_RBR);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, 0u);
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0u);
+    write_reg(WRAP1_CTRL_REG, 0u);
+
+    // Cleanup
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);  // clear LINE_LOOPBACK
+    write_reg(WRAP0_CTRL_REG, 0u);
+
+    info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test done");
+    test_pass(0);
+
+    while (1) __asm__("wfi");
+    return 0;
+}

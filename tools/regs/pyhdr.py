@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 """Convert a raw C constants header into a flat Python constants module."""
 
 from __future__ import annotations

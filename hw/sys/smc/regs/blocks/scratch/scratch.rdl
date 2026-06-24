@@ -1,0 +1,20 @@
+`ifndef SCRATCH_REG_RDL
+`define SCRATCH_REG_RDL
+
+addrmap scratch {
+
+    reg SCRATCH {
+        field  {
+            sw=rw;
+            hw=na;
+            desc="Scratch register";
+        } data [31:0] = 0x0;
+    };
+
+    // --------------------------------------------------
+
+    SCRATCH         SCRATCH[8]         @ 0x00;
+
+};
+
+`endif

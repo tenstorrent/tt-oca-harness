@@ -1,0 +1,670 @@
+[[log_engine-address-map]]
+log_engine address map
+~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x80
+
+Log Engine
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |CTRL |—
+|0x04 |LOG_REGION_SIZE |—
+|0x08 |LOG_REGION_ADDR |—
+|0x10 |LOG_WRITE_ADDR |—
+|0x14 |INTR_STATUS |—
+|0x18 |INTR_ENABLE |—
+|0x1C |INTR_TEST |—
+|0x40 |LOG_CTRL[0] |—
+|0x44 |LOG_CTRL[1] |—
+|0x48 |LOG_CTRL[2] |—
+|0x4C |LOG_CTRL[3] |—
+|0x50 |LOG_CTRL[4] |—
+|0x54 |LOG_CTRL[5] |—
+|0x58 |LOG_CTRL[6] |—
+|0x5C |LOG_CTRL[7] |—
+|0x60 |LOG_CTRL[8] |—
+|0x64 |LOG_CTRL[9] |—
+|0x68 |LOG_CTRL[10] |—
+|0x6C |LOG_CTRL[11] |—
+|0x70 |LOG_CTRL[12] |—
+|0x74 |LOG_CTRL[13] |—
+|0x78 |LOG_CTRL[14] |—
+|0x7C |LOG_CTRL[15] |—
+|========================
+
+[[ctrl-register]]
+CTRL register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x4
+
+Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |EN |rw |0x0 |—
+|=====================================
+
+[[en-field]]
+EN field
+++++++++
+
+Log Engine Enable. When set, enables the Log Engine. When unset,
+disables the Log Engine and resets all FSMs, flops, and FIFOs.
+
+[[log_region_size-register]]
+LOG_REGION_SIZE register
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4
+* Base Offset: 0x4
+* Size: 0x4
+
+Log Region Size Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|19:0 |LOG_REGION_SIZE |rw |0x0 |—
+|=====================================
+
+[[log_region_size-field]]
+LOG_REGION_SIZE field
++++++++++++++++++++++
+
+Log Region Size. Specified in bytes. Needs to be a multiple of 16.
+
+[[log_region_addr-register]]
+LOG_REGION_ADDR register
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x8
+
+Log Region Address Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |LOG_REGION_ADDR_LO |rw |0x0 |—
+|63:32 |LOG_REGION_ADDR_HI |rw |0x0 |—
+|=====================================
+
+[[log_region_addr_lo-field]]
+LOG_REGION_ADDR_LO field
+++++++++++++++++++++++++
+
+Log Region Start Address Low.
+
+[[log_region_addr_hi-field]]
+LOG_REGION_ADDR_HI field
+++++++++++++++++++++++++
+
+Log Region Start Address High.
+
+[[log_write_addr-register]]
+LOG_WRITE_ADDR register
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x4
+
+Log Write Address Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |LOG_WRITE_ADDR |rw |0x0 |—
+|=====================================
+
+[[log_write_addr-field]]
+LOG_WRITE_ADDR field
+++++++++++++++++++++
+
+Log Write Address. This is the address where the log data is written to.
+
+[[intr_status-register]]
+INTR_STATUS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x14
+* Base Offset: 0x14
+* Size: 0x4
+
+Interrupt Status Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |LOG_FETCH_ERR |rw, woclr |0x0 |—
+|4 |LOG_WRITE_ERR |rw, woclr |0x0 |—
+|=====================================
+
+[[log_fetch_err-field]]
+LOG_FETCH_ERR field
++++++++++++++++++++
+
+Log Fetch Error Interrupt. Asserted when the bus for fetching log data
+returns an error.
+
+[[log_write_err-field]]
+LOG_WRITE_ERR field
++++++++++++++++++++
+
+Log Write Error Interrupt. Asserted when the bus for writing log data
+returns an error.
+
+[[intr_enable-register]]
+INTR_ENABLE register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x18
+* Base Offset: 0x18
+* Size: 0x4
+
+Interrupt Enable Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |LOG_FETCH_ERR |rw |0x0 |—
+|4 |LOG_WRITE_ERR |rw |0x0 |—
+|=====================================
+
+[[log_fetch_err-field-1]]
+LOG_FETCH_ERR field
++++++++++++++++++++
+
+Log Fetch Error Interrupt Enable.
+
+[[log_write_err-field-1]]
+LOG_WRITE_ERR field
++++++++++++++++++++
+
+Log Write Error Interrupt Enable.
+
+[[intr_test-register]]
+INTR_TEST register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x1C
+* Base Offset: 0x1C
+* Size: 0x4
+
+Interrupt Test Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |LOG_FETCH_ERR |w |0x0 |—
+|4 |LOG_WRITE_ERR |w |0x0 |—
+|=====================================
+
+[[log_fetch_err-field-2]]
+LOG_FETCH_ERR field
++++++++++++++++++++
+
+Log Fetch Error Interrupt Test. Writing 1 forces the interrupt.
+
+[[log_write_err-field-2]]
+LOG_WRITE_ERR field
++++++++++++++++++++
+
+Log Write Error Interrupt Test. Writing 1 forces the interrupt.
+
+[[log_ctrl-register]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x40
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-1]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x44
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-1]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-2]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x48
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-2]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-3]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x4C
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-3]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-4]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x50
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-4]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-5]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x54
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-5]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-6]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x58
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-6]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-7]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x5C
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-7]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-8]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x60
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-8]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-9]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x64
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-9]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-10]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x68
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-10]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-11]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x6C
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-11]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-12]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x70
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-12]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-13]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x74
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-13]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-14]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x78
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-14]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.
+
+[[log_ctrl-register-15]]
+LOG_CTRL register
+^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x7C
+* Base Offset: 0x40
+* Size: 0x4
+* Array Dimensions: [16]
+* Array Stride: 0x4
+* Total Size: 0x40
+
+Log Control Register
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|15:0 |LOG_LEN |rw |0x0 |—
+|=====================================
+
+[[log_len-field-15]]
+LOG_LEN field
++++++++++++++
+
+Log Length. Writing a nonzero value representing the log length in bytes
+to this field starts the log transfer process. There are 16 copies of
+this register, each representing a log entry. The log entries go through
+round robin arbitration.

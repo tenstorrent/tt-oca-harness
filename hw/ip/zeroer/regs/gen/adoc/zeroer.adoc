@@ -1,0 +1,86 @@
+[[zeroer_ctrl-address-map]]
+zeroer_ctrl address map
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x18
+
+AXI zeroer control register
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x00 |DEST_ADDR |—
+|0x08 |SIZE |—
+|0x10 |CTRL_STATUS |—
+|========================
+
+[[dest_addr-register]]
+DEST_ADDR register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |DEST_ADDR |rw |0x0 |—
+|=====================================
+
+[[dest_addr-field]]
+DEST_ADDR field
++++++++++++++++
+
+Byte address to write zeros to
+
+[[size-register]]
+SIZE register
+^^^^^^^^^^^^^
+
+* Absolute Address: 0x8
+* Base Offset: 0x8
+* Size: 0x8
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|63:0 |SIZE |rw |0x0 |—
+|=====================================
+
+[[size-field]]
+SIZE field
+++++++++++
+
+Size in bytes of zeros to write
+
+[[ctrl_status-register]]
+CTRL_STATUS register
+^^^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x10
+* Base Offset: 0x10
+* Size: 0x8
+
+Writing this register will trigger start of zeroer
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|0 |INT_EN |rw |0x0 |—
+|32 |STATUS |r |0x0 |—
+|=====================================
+
+[[int_en-field]]
+INT_EN field
+++++++++++++
+
+If enabled, an interrupt will be outputted once zeroer completes.
+
+[[status-field]]
+STATUS field
+++++++++++++
+
+Returns status of whether zeroer has completed.

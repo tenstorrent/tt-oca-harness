@@ -2,7 +2,8 @@
 Markdown description for SystemRDL register map.
 
 Don't override. Generated from: key_manager
-  - hw/ip/km/regs/km.rdl
+  - /proj_soc/user_dev/aottaviano/ocah/oshw/tt-oca/hw/common/regs/regblock_udps.rdl
+  - /proj_soc/user_dev/aottaviano/ocah/oshw/tt-oca/hw/ip/km/regs/km.rdl
 -->
 
 ## key_manager address map

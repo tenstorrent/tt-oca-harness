@@ -1,0 +1,10 @@
+# Generated from PeakRDL raw-header C output.
+# Do not edit by hand.
+
+PVT_WRAP_BASE_ADDR = 0x00000000
+
+PVT_WRAP_SIZE = 0x00000948
+
+PVT_WRAP_FOOTPRINT_BASE_ADDR = 0x00000000
+
+PVT_WRAP_FOOTPRINT_SIZE = 0x00000948

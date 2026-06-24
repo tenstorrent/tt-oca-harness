@@ -10,7 +10,7 @@
     <dt>Base Offset:</dt><dd class="address">0x1c</dd>
     <dt>Size:</dt><dd class="address">0x4</dd>
     
-    <dt>Source:</dt><dd><a href="https://github.com/tenstorrent/tt-oca/blob/aottaviano/tree/hw/ip/system_timer_octs/rdl/system_timer_octs.rdl#L98" target="_blank">system_timer_octs.rdl</a></dd>
+    <dt>Source:</dt><dd><a href="https://github.com/tenstorrent/tt-oca/blob/aottaviano/tree-sw/hw/ip/system_timer_octs/regs/system_timer_octs.rdl#L103" target="_blank">system_timer_octs.rdl</a></dd>
     
 </dl>
 <h2>Description</h2>
@@ -63,6 +63,9 @@
     <a class="headerlink" href="#MAX_CYCLES_EXPIRED.desc" title="Permalink to this headline"></a>
 </h3>
 <div id="_Content.MAX_CYCLES_EXPIRED.desc">
-<p>Maximum number of clock cycles since a count credit expired.</p>
+<p>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+This register can also be used to determine the clock skew between the primary and secondary.
+If PRIMARY, this field is always 0.</p>
 </div>
 </div>

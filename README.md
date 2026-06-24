@@ -128,8 +128,21 @@ order.
 OCAH register collateral is generated from per-block SystemRDL files under
 `hw/ip/<block>/regs/`. HJSON-backed OpenTitan register blocks are first exported to RDL using
 `tools/regs/reggen_wrapper.py` and the directly vendored OpenTitan reggen modules under
-`vendor/lowRISC/opentitan/upstream/util/`. See [`doc/register-generation.md`](doc/register-generation.md)
+`vendor/lowRISC/opentitan/upstream/util/`. See [`doc/user_guide/regs.adoc`](doc/user_guide/regs.adoc)
 for the `make regen-regs` targets, generated output layout, and firmware/DV header conventions.
+
+---
+
+## DV Firmware
+
+Per-subsystem DV firmware (the runtime **drivers** ported from `tt-oca-hw`, not the tests) is
+built via `make dv-fw [TARGET=km|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk` under
+`hw/{ip,sys}/<name>/dv/fw/` and is built as an independent recursive sub-make so the three target
+CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state. The RISC-V
+toolchain (including picolibc for SEP) is provided by the project Docker image and selected via
+`RISCV_TOOLCHAIN` (empty by default; no proprietary paths committed). See
+[`doc/dv-firmware.md`](doc/dv-firmware.md) for the build-flow architecture, the toolchain
+contract, the ported driver sets + provenance, and the deferred register-header reconciliation.
 
 ---
 

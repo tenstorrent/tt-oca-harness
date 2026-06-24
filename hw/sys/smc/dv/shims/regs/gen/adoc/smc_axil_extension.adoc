@@ -1,0 +1,47 @@
+[[smc_axil_extension-address-map]]
+smc_axil_extension address map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x1800
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |footprint |—
+|========================
+
+[[footprint-memory]]
+footprint memory
+~~~~~~~~~~~~~~~~
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x1800
+
+Placeholder footprint (AXIL extension region; peripherals provided by
+overlay)
+
+[cols=",,",options="header",]
+|========================
+|Offset |Identifier |Name
+|0x0 |mem_array[0] |—
+|========================
+
+[[mem_array-register]]
+mem_array register
+^^^^^^^^^^^^^^^^^^
+
+* Absolute Address: 0x0
+* Base Offset: 0x0
+* Size: 0x1800
+* Array Dimensions: [1536]
+* Array Stride: 0x4
+* Total Size: 0x1800
+
+[cols=",,,,",options="header",]
+|=====================================
+|Bits |Identifier |Access |Reset |Name
+|31:0 |data |r |— |—
+|=====================================

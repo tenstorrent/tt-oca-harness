@@ -1,0 +1,16 @@
+`ifndef GPIO_WRAP_RDL_DEFINED
+`define GPIO_WRAP_RDL_DEFINED
+
+`include "gpio_intf.rdl"
+`include "gpio_ctrl.rdl"
+
+addrmap gpio_wrap {
+    desc = "Top-level addrmap for gpio_intf and gpio_shim";
+    
+
+    gpio_intf     gpio_intf      @0x000_0000;
+    gpio_ctrl     gpio_ctrl      @0x000_0010;
+
+};
+
+`endif

@@ -1,0 +1,28 @@
+`ifndef OCA_I3C_WRAP_RDL_DEFINED
+`define OCA_I3C_WRAP_RDL_DEFINED
+
+// OCAH: OCA I3C wrapper deferred. Placeholder reserves the map slot only (see
+// smc_top @ +0x5000..+0x6900); no CSRs are modeled. A uniquely named footprint
+// mem keeps the generated C type distinct from the other placeholder wrappers.
+mem oca_i3c_wrap_placeholder_mem #(
+    longint unsigned NUM_ENTRIES = 320,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Placeholder footprint (OCA I3C wrapper deferred; no CSRs modeled)";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    reg mem_word {
+        regwidth = 32;
+        field { sw = r; hw = r; } data[WIDTH-1:0];
+    };
+
+    mem_word mem_array[NUM_ENTRIES];
+};
+
+addrmap oca_i3c_wrap {
+    external oca_i3c_wrap_placeholder_mem footprint @0x0;
+};
+
+`endif

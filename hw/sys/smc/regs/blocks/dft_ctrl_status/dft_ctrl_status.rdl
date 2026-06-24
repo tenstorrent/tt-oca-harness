@@ -1,0 +1,67 @@
+`ifndef DFT_CTRL_STATUS_RDL_DEFINED
+`define DFT_CTRL_STATUS_RDL_DEFINED
+
+addrmap dft_ctrl_status {
+
+    reg STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when mem repair is completed.
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_done[0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say if mem repair was successful
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_success[1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
+                    This register is sticky 1 and will hold the value until reset";
+        } mem_repair_abort[2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when MBIST is completed
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_done[4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say when MBIST is successful
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_pass[8:8] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            stickybit;
+            desc = "One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
+                    This register is sticky 1 and will hold the value until reset";
+        } mbist_abort[12:12] = 0x0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    STATUS              STATUS_SMU      @0x0;
+
+};
+
+`endif

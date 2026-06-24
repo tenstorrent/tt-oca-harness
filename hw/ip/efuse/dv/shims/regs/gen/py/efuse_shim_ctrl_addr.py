@@ -1,0 +1,8 @@
+# Generated from PeakRDL raw-header C output.
+# Do not edit by hand.
+
+EFUSE_SHIM_CTRL_BASE_ADDR = 0x00000000
+
+EFUSE_SHIM_CTRL_SIZE = 0x00000004
+
+EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 0x00000000
