@@ -51,7 +51,7 @@ ocah_vendor_reg_hjson = $(call ocah_vendor_root,$(1))/$(call ocah_vendor_hjson_r
 
 OCAH_HJSON_REG_BLOCKS ?= $(foreach e,$(OCAH_VENDOR_HJSON_REG_BLOCKS),$(call ocah_vendor_reg_block,$(e)))
 
-# Overlay hook (e.g. nonfree): extra block ids, usually variants reusing a top RDL.
+# Overlay hook: extra block ids, usually variants reusing a top RDL.
 OCAH_EXTRA_REG_BLOCKS ?=
 
 OCAH_REG_BLOCKS ?= \

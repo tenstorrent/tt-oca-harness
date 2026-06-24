@@ -41,6 +41,13 @@ fill in the paths, and pass it to make:
 make regen-regs OCAH_ADOPTER_OVERLAY_MK=/path/to/acme-overlay/overlay.mk
 ----
 
+The template is:
+
+[source,makefile]
+----
+include::examples/overlay.example.mk[]
+----
+
 The overlay fragment sets the same generic register-generation variables used
 by the open flow:
 

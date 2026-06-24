@@ -11,6 +11,29 @@ firmware sources live beside the hardware that owns them.
 Discovery mirrors the register flow: any block exposing a `dv/fw/fw.mk` is built
 automatically, so new subsystems need no dispatcher edits.
 
+## Makefile roles
+
+There are two kinds of `fw.mk` in the tree:
+
+* `hw/common/dv/fw/fw.mk` is the open-tree DV firmware entrypoint. It owns the
+  user-visible targets (`ocah-dv-fw`, `ocah-dv-fw-tests`, list and clean
+  targets), discovers subsystem `dv/fw/fw.mk` files under `OCAH_ROOT`, and binds
+  that discovery to the open tree.
+* `hw/{ip,sys}/<name>/dv/fw/fw.mk` is a subsystem build manifest. It declares
+  `FW_*` inputs for one firmware target: source files, include paths, linker
+  scripts, test deltas, and the subsystem `toolchain.mk`.
+
+`dispatch.mk` sits between those roles. It has no tree-specific targets and does
+not know about the open tree; it is only a small library of make functions for
+discovering `dv/fw/fw.mk` files, mapping them to subsystem names, and fanning a
+goal out to selected recursive sub-makes. Keeping that logic in `dispatch.mk`
+lets another tree reuse the same fan-out machinery while keeping its own
+entrypoint target names and help text in its own `fw.mk`.
+
+So `fw.mk` is still the right name when the file is the makefile an integrator or
+subsystem includes/runs for firmware. `dispatch.mk` names the private helper
+layer, not another firmware build entrypoint.
+
 ## Two-stage firmware port
 
 The `tt-oca-hw` firmware is ported in two explicit milestones. Do **not** start
