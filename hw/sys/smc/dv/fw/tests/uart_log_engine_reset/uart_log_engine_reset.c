@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_reset_test
 //
 // Verify reset defaults of all uart_log_engine_wrap_0 registers per the RDL.

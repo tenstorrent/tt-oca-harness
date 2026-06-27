@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef BUS_ERROR_UNIT_REG_RDL
 `define BUS_ERROR_UNIT_REG_RDL
 

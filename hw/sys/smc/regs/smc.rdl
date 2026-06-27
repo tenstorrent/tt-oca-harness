@@ -1,16 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 // Available includes
 `include "avsbus_controller.rdl"
 `include "chip_config.rdl"
-`include "perf_dma.rdl"
-`include "dft_ctrl_status.rdl"
-`include "axi_filter.rdl"
+`include "dma_ctrl.rdl"
+`include "dfx_ctrl_status.rdl"
+`include "filter_ctrl.rdl"
 `include "gpio_wrap.rdl"
 `include "gpio_poc_pbias_ctrl.rdl"
 `include "pvt_wrap.rdl"
 `include "remapped_region.rdl"
 `include "reset_unit.rdl"
 `include "scratch.rdl"
-`include "axi_alias_remap.rdl"
+`include "alias_remap.rdl"
 `include "axil_mailbox_smc_wrap.rdl"
 `include "output_remap.rdl"
 `include "spm_memory.rdl"
@@ -18,11 +21,8 @@
 `include "system_timer_octs.rdl"
 `include "telemetry_receiver_wrap.rdl"
 `include "uart_wrap.rdl"
-`include "zeroer.rdl"
+`include "zeroer_ctrl.rdl"
 `include "misc_wrap.rdl"
-
-// TODO: Things to add
-// `include "axi_data_accel.rdl"
 `include "bus_error_unit.rdl"
 `include "clint.rdl"
 `include "efuse_interface_ctrl.rdl"
@@ -31,12 +31,13 @@
 `include "oca_i3c_wrap.rdl"
 `include "plic.rdl"
 `include "cpu_ctrl.rdl"
+`include "smc_base_config.rdl"
 `include "smc_efuse_map.rdl"
 `include "wdt.rdl"
 `include "pll_wrap.rdl"
 `include "i2c_wrap.rdl"
 `include "debug_module.rdl"
-`include "dfd.rdl"
+`include "smc_cla.rdl"
 `include "smc_axil_extension.rdl"
 
 // SMC resource accessible from external agents
@@ -84,23 +85,21 @@ addrmap smc_top #(
     system_timer_octs              smc_system_timer_octs          @BASE_ADDR + 0x000_e000;
 
     external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_f000;
-    dft_ctrl_status                dft_ctrl                       @BASE_ADDR + 0x000_f800; // These CSRs are for ROMs knowledge of dft status
+    dfx_ctrl_status                dfx_ctrl                       @BASE_ADDR + 0x000_f800; // These CSRs are for ROMs knowledge of dfx status
+    smc_base_config                smc_base_config                @BASE_ADDR + 0x001_0000;
+    alias_remap                    smc_alias_remap[8]             @BASE_ADDR + 0x001_2000 += 0x20;
+    output_remap                   smc_mmode_remap[8]             @BASE_ADDR + 0x001_3000 += 0x8;
+    output_remap                   smc_xvisor_remap[8]            @BASE_ADDR + 0x001_4000 += 0x8;
 
-    cpu_ctrl                       smc_cpu_ctrl                 @BASE_ADDR + 0x001_0000;
-    alias_remap                    smc_alias_remap[8]           @BASE_ADDR + 0x001_2000 += 0x20;
-    output_remap                   smc_mmode_remap[8]           @BASE_ADDR + 0x001_3000 += 0x8;
-    output_remap                   smc_xvisor_remap[8]          @BASE_ADDR + 0x001_4000 += 0x8;
+    filter_ctrl                    smc_inbound_filter_ctrl[16]    @BASE_ADDR + 0x001_5000 += 0x20;
+    filter_ctrl                    smc_outbound_filter_ctrl[16]   @BASE_ADDR + 0x001_6000 += 0x20;
 
-    filter_ctrl                    smc_inbound_filter_ctrl[16]  @BASE_ADDR + 0x001_5000 += 0x20;
-    filter_ctrl                    smc_outbound_filter_ctrl[16] @BASE_ADDR + 0x001_6000 += 0x20;
+    axil_mailbox_smc_wrap          smc_mailbox                    @BASE_ADDR + 0x001_8000;
 
-    axil_mailbox_smc_wrap          smc_mailbox                  @BASE_ADDR + 0x001_8000;
+    dma_ctrl                       dma_ctrl                       @BASE_ADDR + 0x003_8000;
+    zeroer_ctrl                    zeroer_ctrl                    @BASE_ADDR + 0x003_8200;
 
-    dma_ctrl                       dma_ctrl                     @BASE_ADDR + 0x003_8000;
-    zeroer_ctrl                    zeroer_ctrl                  @BASE_ADDR + 0x003_8200;
-
-// TODO: Add once reri_error_bank RDL is available
-//     reri_bank                      smc_reri_bank               @BASE_ADDR + 0x003_a000;
+    cpu_ctrl                       smc_cpu_ctrl                   @BASE_ADDR + 0x003_9000;
 
     external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
 

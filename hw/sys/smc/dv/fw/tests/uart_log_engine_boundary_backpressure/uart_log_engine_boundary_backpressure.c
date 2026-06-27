@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_boundary_backpressure_test
 //
 // Two real log_engine behaviours the existing tests don't land on

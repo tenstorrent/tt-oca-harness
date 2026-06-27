@@ -1,5 +1,7 @@
-/* Copyright 2018 SiFive, Inc */
 /* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
+/* Copyright 2018 SiFive, Inc */
 
 #ifndef METAL__CLOCK_H
 #define METAL__CLOCK_H

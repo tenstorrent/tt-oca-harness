@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef SEP_FABRIC_H
 #define SEP_FABRIC_H
 
@@ -7,7 +8,7 @@
  *
  * Consolidates fabric inline stubs, cache-attribute encodings, and alias/remap
  * setup placeholders. The non-inline setup_* helpers are open no-op
- * placeholders (real fabric programming is proprietary) defined in
+ * placeholders for adopter-specific fabric programming, defined in
  * common/sep_fabric.c and linked from libsep.a. Function names/signatures are
  * unchanged so the fabric tests keep their existing call sites. */
 

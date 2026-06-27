@@ -1,0 +1,770 @@
+// I3C controller register map based on MIPI HCI 1.2
+
+
+regfile StandbyControllerModeRegisters#(
+    bit pid_hi_reset,
+    bit pid_lo_reset,
+    bit virtual_pid_hi_reset,
+    bit virtual_pid_lo_reset
+){
+    name = "Standby Controller Mode";
+    default regwidth = 32;
+    reg {
+        regwidth = 32;
+        field {
+            name = "CAP_LENGTH";
+            desc = "Capability Structure Length in DWORDs";
+            sw = r;
+            hw = r;
+            reset = 16'h0010;
+        } CAP_LENGTH[23:8];
+        field {
+            name = "CAP_ID";
+            desc = "Extended Capability ID";
+            sw = r;
+            hw = r;
+            reset = 8'h12;
+        } CAP_ID[7:0];
+    } EXTCAP_HEADER;
+    reg {
+        name = "Standby Controller Control";
+        desc = "";
+        field {
+            name = "Host Controller Secondary Controller Enable";
+            desc = "Enables or disables the Secondary Controller:
+
+            2'b00 - DISABLED: Secondary Controller is disabled.
+
+            2'b01 - ACM_INIT: Secondary Controller is enabled,
+            but Host Controller initializes in Active Controller mode.
+
+            2'b10 - SCM_RUNNING: Secondary Controller operation is enabled,
+            Host Controller initializes in Standby Controller mode.
+
+            2'b11 - SCM_HOT_JOIN: Secondary Controller operation is enabled,
+            Host Controller conditionally becomes a Hot-Joining Device
+            to receive its Dynamic Address before operating in Standby Controller mode.
+            ";
+            sw = rw;
+            hw = r;
+            reset = 2'h0;
+        } STBY_CR_ENABLE_INIT[31:30];
+        field {
+            name = "RSTACT Support DefByte 0x02";
+            desc = "Controls whether I3C Secondary Controller Logic supports RSTACT CCC with
+            Defining Byte 0x02.
+
+            1'b0: NOT_SUPPORTED: Do not ACK Defining Byte 0x02
+
+            1'b1: HANDLE_INTR: Support Defining Byte 0x02
+            ";
+            sw = rw;
+            hw = r;
+            reset = 1'h0;
+        } RSTACT_DEFBYTE_02[20:20];
+        field {
+            name = "Dynamic Address Method Enable ENTDAA";
+            desc = "
+            Indicates ENTDAA method is enabled.
+
+            1'b0: DISABLED: will not respond
+
+            1'b1: ENABLED: will respond
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'h0;
+        } DAA_ENTDAA_ENABLE[15:15];
+        field {
+            name = "Dynamic Address Method Enable SETDASA";
+            desc = "
+            Indicates SETDASA method is enabled.
+
+            1'b0: DISABLED: will not respond
+
+            1'b1: ENABLED: will respond
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'h0;
+        } DAA_SETDASA_ENABLE[14:14];
+        field {
+            name = "Dynamic Address Method Enable SETAASA";
+            desc = "
+            Indicates SETAASA method is enabled.
+
+            1'b0: DISABLED: will not respond
+
+            1'b1: ENABLED: will respond
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'h0;
+        } DAA_SETAASA_ENABLE[13:13];
+        field {
+            name = "Target Transaction Interface Servicing Enable";
+            desc = "Indicates whether Read-Type/Write-Type transaction servicing is enabled, via
+            an I3C Target Transaction Interface to software (Section 6.17.3).
+
+            1'b0: DISABLED: not available
+
+            1'b1: ENABLED: available for software
+            ";
+            sw = rw;
+            hw = rw;
+            we = true;
+            reset = 1'h1;
+        } TARGET_XACT_ENABLE[12:12];
+        field {
+            name = "Ring Bundle IBI Selector for Broadcast CCC Capture";
+            desc = "Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.
+            The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.
+            ";
+            sw = rw;
+            hw = r;
+            reset = 1'h0;
+        } BAST_CCC_IBI_RING[10:8];
+        field {
+            name = "Send Controller Role Request";
+            desc = "Write of 1'b1 to this field shall instruct the Secondary Controller Logic
+            to attempt to send a Controller Role Request to the I3C Bus.
+            ";
+            sw = w;
+            hw = r;
+            reset = 1'h0;
+        } CR_REQUEST_SEND[5:5];
+        field {
+            name = "Handoff Deep Sleep";
+            desc = "If this field has a value of 1'b1, then the Secondary Controller Logic shall
+            report a return from Deep Sleep state to the Active Controller.
+            Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
+            after accepting the Controller Role and transitioning to Active Controller mode.
+            ";
+            sw = rw;
+            onwrite = wset;
+            hw = rw;
+            we = true;
+            hwclr;
+            reset = 1'h0;
+        } HANDOFF_DEEP_SLEEP[4:4];
+        field {
+            name = "Prime to Accept Controller Role";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } PRIME_ACCEPT_GETACCCR[3:3];
+        field {
+            name = "Active Controller Select";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_FSM_OP_SELECT[2:2];
+        field {
+            name = "Handoff Delay NACK";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } HANDOFF_DELAY_NACK[1:1];
+        field {
+            name = "Pending RX NACK";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } PENDING_RX_NACK[0:0];
+    } STBY_CR_CONTROL;
+    reg {
+        name = "Standby Controller Device Address";
+        desc = "";
+        field {
+            name = "Dynamic Address is Valid";
+            desc = "Indicates whether or not the value in the DYNAMIC_ADDR field is valid.
+            1'b0: DYNAMIC_ADDR field is not valid
+            1'b1: DYNAMIC_ADDR field is valid
+            ";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 1'b0;
+        } DYNAMIC_ADDR_VALID[31:31];
+        field {
+            name = "Device Dynamic Address";
+            desc = "Contains the Host Controller Device’s Dynamic Address.";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 7'h0;
+        } DYNAMIC_ADDR[22:16];
+        field {
+            name = "Static Address is Valid";
+            desc = "Indicates whether or not the value in the STATIC_ADDR field is valid.
+
+            1'b0: The Static Address field is not valid
+
+            1'b1: The Static Address field is valid
+            ";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 1'b0;
+        } STATIC_ADDR_VALID[15:15];
+        field {
+            name = "Device Static Address";
+            desc = "This field contains the Host Controller Device’s Static Address.";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 7'h0;
+        } STATIC_ADDR[6:0];
+    } STBY_CR_DEVICE_ADDR;
+    reg {
+        name = "Standby Controller Capabilities";
+        desc = "";
+        field {
+            name = "DAA_ENTDAA_SUPPORT";
+            desc = "Defines whether Dynamic Address Assignment with ENTDAA CCC is supported.
+
+            1'b0: DISABLED: Not supported
+
+            1'b1: ENABLED: Supported
+            ";
+            hw   = r;
+            sw   = r;
+            reset = 1'b0;
+        } DAA_ENTDAA_SUPPORT[15:15];
+        field {
+            name = "DAA_SETDASA_SUPPORT";
+            desc = " Defines whether Dynamic Address Assignment with SETDASA CCC (using Static Address) is supported.
+
+            1'b0: DISABLED: Not supported
+
+            1'b1: ENABLED: Supported
+            ";
+            hw   = r;
+            sw   = r;
+            reset = 1'b1;
+        } DAA_SETDASA_SUPPORT[14:14];
+        field {
+            name = "DAA_SETAASA_SUPPORT";
+            desc = "Defines whether Dynamic Address Assignment with SETAASA CCC (using Static Address) is supported.
+
+            1'b0: DISABLED: Not supported
+
+            1'b1: ENABLED: Supported
+            ";
+            hw   = r;
+            sw   = r;
+            reset = 1'b1;
+        } DAA_SETAASA_SUPPORT[13:13];
+        field {
+            name = "TARGET_XACT_SUPPORT";
+            desc = "Defines whether an I3C Target Transaction Interface is supported.
+
+            1'b0: DISABLED: Not supported
+
+            1'b1: ENABLED: Supported via vendor-defined Extended Capability structure
+            ";
+            hw   = r;
+            sw   = r;
+            reset = 1'b1;
+        } TARGET_XACT_SUPPORT[12:12];
+        field {
+            name = "SIMPLE_CRR_SUPPORT";
+            desc = "";
+            hw   = r;
+            sw   = r;
+            reset = 1'b0;
+        } SIMPLE_CRR_SUPPORT[5:5];
+    } STBY_CR_CAPABILITIES;
+    reg {
+        name = "Standby Controller Virtual Device Characteristics";
+        desc = "";
+        field {
+            name = "BCR_FIXED";
+            desc = "Bus Characteristics, Fixed Part.
+
+            Reset value is set to 3'b001, because this device is an I3C Target,
+            which supports extended capabilities
+            ";
+            hw   = r;
+            sw   = rw;
+            reset = 3'b001;
+        } BCR_FIXED[31:29];
+        field {
+            name = "BCR_VAR";
+            desc = "Bus Characteristics, Variable Part.
+
+            Reset value is set to 5'b10110, because this device:
+
+
+            - [bit4] is a Virtual Target
+
+            - [bit3] is not Offline Capable
+
+            - [bit2] uses the MDB in the IBI Payload
+
+            - [bit1] is capable of IBI requests
+
+            - [bit0] has no speed limitation
+            ";
+            hw   = r;
+            sw   = rw;
+            reset = 5'b10110;
+        } BCR_VAR[28:24];
+        field {
+            name = "DCR";
+            desc = "Device Characteristics Register. Value represents an OCP Recovery Device.";
+            hw   = r;
+            sw   = rw;
+            reset = 8'hBD;
+        } DCR[23:16];
+        field {
+            name = "PID_HI";
+            desc = "High part of the 48-bit Target Device Provisioned ID.";
+            hw   = r;
+            sw   = rw;
+            reset = virtual_pid_hi_reset;
+        } PID_HI[15:1];
+    } STBY_CR_VIRTUAL_DEVICE_CHAR;
+    reg {
+        name = "Standby Controller Status";
+        desc = "";
+        field {
+            name = "HJ_REQ_STATUS";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } HJ_REQ_STATUS[8:8];
+        field {
+            name = "SIMPLE_CRR_STATUS";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } SIMPLE_CRR_STATUS[7:5];
+        field {
+            name = "AC_CURRENT_OWN";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } AC_CURRENT_OWN[2:2];
+    } STBY_CR_STATUS;
+    reg {
+        name = "Standby Controller Device Characteristics";
+        desc = "";
+        field {
+            name = "BCR_FIXED";
+            desc = "Bus Characteristics, Fixed Part.
+
+            Reset value is set to 3'b001, because this device is an I3C Target,
+            which supports extended capabilities
+            ";
+            hw   = r;
+            sw   = rw;
+            reset = 3'b001;
+        } BCR_FIXED[31:29];
+        field {
+            name = "BCR_VAR";
+            desc = "Bus Characteristics, Variable Part.
+
+            Reset value is set to 5'b00110, because this device:
+
+
+            - [bit4] is not a Virtual  Target
+
+            - [bit3] is not Offline Capable
+
+            - [bit2] uses the MDB in the IBI Payload
+
+            - [bit1] is capable of IBI requests
+
+            - [bit0] has no speed limitation
+            ";
+            hw   = r;
+            sw   = rw;
+            reset = 5'b00110;
+        } BCR_VAR[28:24];
+        field {
+            name = "DCR";
+            desc = "Device Characteristics Register. Value represents an OCP Recovery Device.";
+            hw   = r;
+            sw   = rw;
+            reset = 8'hBD;
+        } DCR[23:16];
+        field {
+            name = "PID_HI";
+            desc = "High part of the 48-bit Target Device Provisioned ID.";
+            hw   = r;
+            sw   = rw;
+            reset = pid_hi_reset;
+        } PID_HI[15:1];
+    } STBY_CR_DEVICE_CHAR;
+    reg {
+        name = "Standby Controller Device PID Low";
+        desc = "";
+        field {
+            name = "PID_LO";
+            desc = "Low part of the 48-bit Target Device Provisioned ID.";
+            hw   = r;
+            sw   = rw;
+            reset = pid_lo_reset;
+        } PID_LO[31:0];
+    } STBY_CR_DEVICE_PID_LO;
+    reg {
+        name = "Standby Controller Interrupt Status";
+        desc = "";
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_FATAL_RSTDAA_ERR_STAT[19:19];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_UNHANDLED_NACK_STAT[18:18];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_PARAM_MODIFIED_STAT[17:17];
+        field {
+            name = "Secondary Controller Operation Reset Action";
+            desc = "The Host Controller shall write 1'b1 to this field to indicate that the
+                    Secondary Controller received a RSTACT CCC from the Active Controller, followed
+                    by the Target Reset Pattern.";
+            hw   = rw;
+            we   = true;
+            sw   = rw;
+            reset = 1'b0;
+        } STBY_CR_OP_RSTACT_STAT[16:16];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_ERR_STAT[14:14];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_OK_STAT[13:13];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_NACKED_STAT[12:12];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_DYN_ADDR_STAT[11:11];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CRR_RESPONSE_STAT[10:10];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_ERR_M3_STAT[3:3];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_ERR_FAIL_STAT[2:2];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_OK_PRIMED_STAT[1:1];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_OK_REMAIN_STAT[0:0];
+    } STBY_CR_INTR_STATUS;
+    reg {
+        name = "Standby Controller Virtual Device PID Low";
+        desc = "";
+        field {
+            name = "PID_LO";
+            desc = "Low part of the 48-bit Target Virtual Device Provisioned ID.";
+            hw   = r;
+            sw   = rw;
+            reset = virtual_pid_lo_reset;
+        } PID_LO[31:0];
+    } STBY_CR_VIRTUAL_DEVICE_PID_LO;
+    reg {
+        name = "Standby Controller Interrupt Signal Enable";
+        desc = "When set to 1'b1, and the corresponding interrupt status field is set in register
+                STBY_CR_INTR_STATUS, the Host Controller shall assert an interrupt to the Host.";
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_FATAL_RSTDAA_ERR_SIGNAL_EN[19:19];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_UNHANDLED_NACK_SIGNAL_EN[18:18];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_PARAM_MODIFIED_SIGNAL_EN[17:17];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            we   = true;
+            sw   = rw;
+            reset = 1'b0;
+        } STBY_CR_OP_RSTACT_SIGNAL_EN[16:16];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_ERR_SIGNAL_EN[14:14];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_OK_SIGNAL_EN[13:13];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_NACKED_SIGNAL_EN[12:12];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_DYN_ADDR_SIGNAL_EN[11:11];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CRR_RESPONSE_SIGNAL_EN[10:10];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_ERR_M3_SIGNAL_EN[3:3];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_ERR_FAIL_SIGNAL_EN[2:2];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_OK_PRIMED_SIGNAL_EN [1:1];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } ACR_HANDOFF_OK_REMAIN_SIGNAL_EN[0:0];
+    } STBY_CR_INTR_SIGNAL_ENABLE;
+    reg {
+        name = "Standby Controller Interrupt Force";
+        desc = "For software testing, when set to 1'b1, forces the corresponding interrupt
+                to be sent to the Host, if the corresponding fields are set in register
+                STBY_CR_INTR_SIGNAL_ENABLE";
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_FATAL_RSTDAA_ERR_FORCE[19:19];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_UNHANDLED_NACK_FORCE[18:18];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CCC_PARAM_MODIFIED_FORCE[17:17];
+        field {
+            name = "    ";
+            desc = "";
+            hw   = rw;
+            we   = true;
+            sw   = w;
+        } STBY_CR_OP_RSTACT_FORCE[16:16];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_ERR_FORCE[14:14];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_OK_FORCE[13:13];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_ACCEPT_NACKED_FORCE[12:12];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } STBY_CR_DYN_ADDR_FORCE[11:11];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } CRR_RESPONSE_FORCE[10:10];
+    } STBY_CR_INTR_FORCE;
+    reg {
+        name = "Standby Controller CCC Configuration GETCAPS";
+        desc = "";
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } F2_CRCAP2_DEV_INTERACT[11:8];
+        field {
+            name = "";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } F2_CRCAP1_BUS_CONFIG[2:0];
+    } STBY_CR_CCC_CONFIG_GETCAPS;
+    reg {
+        name = "Standby Controller CCC Configuration RSTACT";
+        desc = "";
+        field {
+            name = "Reset Dynamic Address after Target Reset";
+            desc = "If set to 1'b1, then the Secondary Controller Logic must clear its Dynamic
+                    Address in register STBY_CR_DEVICE_ADDR after receiving
+                    a Target Reset Pattern that followed a Broadcast or Direct SET RSTACT CCC sent
+                    to the Dynamic Address, with Defining Byte 0x01 or 0x02.
+                    Requires support for Dynamic Address Assignment with at least one supported
+                    method, such as the ENTDAA CCC, with field DAA_ENTDAA_ENABLE set to 1'b1 in
+                    register STBY_CR_CONTROL.
+                    If field ACR_FSM_OP_SELECT in register STBY_CR_CONTROL is set to 1'b1, then
+                    this field shall be cleared (i.e., readiness to accept the Controller Role
+                    shall be revoked) with this Target Reset Pattern.";
+            hw   = rw;
+            we   = true;
+            sw   = rw;
+            reset = 1'b1;
+        } RESET_DYNAMIC_ADDR[31:31];
+        field {
+            name = "Time to Reset Target";
+            desc = "For Direct GET CCC, this field is returned for Defining Byte 0x82.";
+            hw   = rw;
+            sw   = rw;
+            reset = 1'b0;
+        } RESET_TIME_TARGET[23:16];
+        field {
+            name = "Time to Reset Peripheral";
+            desc = "For Direct GET CCC, this field is returned for Defining Byte 0x81.";
+            hw   = rw;
+            sw   = rw;
+            reset = 1'b0;
+        } RESET_TIME_PERIPHERAL[15:8];
+        field {
+            name = "Defining Byte of the RSTACT CCC";
+            desc = "Contains the Defining Byte received with the last Direct SET CCC sent by the Active Controller.";
+            hw   = rw;
+            we   = true;
+            sw   = r;
+            reset = 1'b0;
+        } RST_ACTION[7:0];
+    } STBY_CR_CCC_CONFIG_RSTACT_PARAMS;
+    reg {
+        name = "Standby Virtual Controller Device Address";
+        desc = "";
+        field {
+            name = "Virtual Device Dynamic Address is Valid";
+            desc = "Indicates whether or not the value in the VIRT_DYNAMIC_ADDR field is valid.
+            1'b0: VIRT_DYNAMIC_ADDR field is not valid
+            1'b1: VIRT_DYNAMIC_ADDR field is valid
+            ";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 1'b0;
+        } VIRT_DYNAMIC_ADDR_VALID[31:31];
+        field {
+            name = "Virtual Device Dynamic Address";
+            desc = "Contains the Controller Virtual Device’s Dynamic Address.";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 7'h0;
+        } VIRT_DYNAMIC_ADDR[22:16];
+        field {
+            name = "Virtual Device Static Address is Valid";
+            desc = "Indicates whether or not the value in the VIRT_STATIC_ADDR field is valid.
+
+            1'b0: The Virtual Device Static Address field is not valid
+
+            1'b1: The Virtual Device Static Address field is valid
+            ";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 1'b0;
+        } VIRT_STATIC_ADDR_VALID[15:15];
+        field {
+            name = "Device Static Address";
+            desc = "This field contains the Host Controller Device’s Static Address.";
+            hw   = rw;
+            sw   = rw;
+            we   = true;
+            reset = 7'h0;
+        } VIRT_STATIC_ADDR[6:0];
+    } STBY_CR_VIRT_DEVICE_ADDR;
+    reg {
+        name = "Reserved 3";
+        desc = "";
+        field {
+            name = "Reserved";
+            desc = "";
+            hw   = rw;
+            sw   = rw;
+        } __rsvd[31:0];
+    } __rsvd_3;
+};

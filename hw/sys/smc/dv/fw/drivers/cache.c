@@ -1,5 +1,7 @@
-/* Copyright 2020 SiFive, Inc */
 /* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
+/* Copyright 2020 SiFive, Inc */
 
 #include <metal/cache.h>
 #include <metal/machine.h>

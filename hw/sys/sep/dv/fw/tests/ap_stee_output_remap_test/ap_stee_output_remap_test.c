@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // AP and STEE Output Remap Test
 //
@@ -14,7 +17,6 @@
 //   4. Verify register configurations are correct
 //   5. Signal test completion
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

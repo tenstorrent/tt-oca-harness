@@ -1,0 +1,87 @@
+---
+provides: [aes_pkg]
+schema_version: 2.4.0
+requires:
+  - edn_pkg
+  - caliptra_prim
+targets:
+  rtl:
+    directories: [$COMPILE_ROOT/rtl]
+    files:
+      - $COMPILE_ROOT/rtl/aes_reg_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_canright_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_clp_reg_pkg.sv
+  tb:
+    directories: [$COMPILE_ROOT/rtl]
+    files:
+      - $COMPILE_ROOT/rtl/aes_reg_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_canright_pkg.sv
+      - $COMPILE_ROOT/rtl/aes_clp_reg_pkg.sv
+---
+provides: [aes_coverage]
+schema_version: 2.4.0
+requires:
+  - libs
+  - aes_pkg
+targets:
+  tb:
+    directories: 
+      - $COMPILE_ROOT/coverage
+    files:
+      - $COMPILE_ROOT/coverage/aes_cov_if.sv
+      - $COMPILE_ROOT/coverage/aes_cov_bind.sv
+---
+provides: [aes]
+schema_version: 2.4.0
+requires:
+  - aes_pkg
+  - kv_defines_pkg
+  - caliptra_tlul_pkg
+targets:
+  rtl:
+    directories: [$COMPILE_ROOT/rtl]
+    files:
+      - $COMPILE_ROOT/rtl/aes_sbox_canright.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_canright_masked.sv
+      - $COMPILE_ROOT/rtl/aes_cipher_core.sv
+      - $COMPILE_ROOT/rtl/aes_sbox.sv
+      - $COMPILE_ROOT/rtl/aes_cipher_control_fsm_n.sv
+      - $COMPILE_ROOT/rtl/aes_cipher_control_fsm_p.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_lut.sv
+      - $COMPILE_ROOT/rtl/aes_mix_columns.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_dom.sv
+      - $COMPILE_ROOT/rtl/aes_sub_bytes.sv
+      - $COMPILE_ROOT/rtl/aes_sbox_canright_masked_noreuse.sv
+      - $COMPILE_ROOT/rtl/aes_sel_buf_chk.sv
+      - $COMPILE_ROOT/rtl/aes_cipher_control_fsm.sv
+      - $COMPILE_ROOT/rtl/aes_shift_rows.sv
+      - $COMPILE_ROOT/rtl/aes_mix_single_column.sv
+      - $COMPILE_ROOT/rtl/aes_cipher_control.sv
+      - $COMPILE_ROOT/rtl/aes_prng_masking.sv
+      - $COMPILE_ROOT/rtl/aes_key_expand.sv
+      - $COMPILE_ROOT/rtl/aes_control.sv
+      - $COMPILE_ROOT/rtl/aes_control_fsm.sv
+      - $COMPILE_ROOT/rtl/aes_control_fsm_n.sv
+      - $COMPILE_ROOT/rtl/aes_control_fsm_p.sv
+      - $COMPILE_ROOT/rtl/aes_core.sv
+      - $COMPILE_ROOT/rtl/aes_ctr.sv
+      - $COMPILE_ROOT/rtl/aes_ctr_fsm.sv
+      - $COMPILE_ROOT/rtl/aes_ctr_fsm_n.sv
+      - $COMPILE_ROOT/rtl/aes_ctr_fsm_p.sv
+      - $COMPILE_ROOT/rtl/aes_ctrl_gcm_reg_shadowed.sv
+      - $COMPILE_ROOT/rtl/aes_ctrl_reg_shadowed.sv
+      - $COMPILE_ROOT/rtl/aes_ghash.sv
+      - $COMPILE_ROOT/rtl/aes_prng_clearing.sv
+      - $COMPILE_ROOT/rtl/aes_reduced_round.sv      
+      - $COMPILE_ROOT/rtl/aes_reg_status.sv
+      - $COMPILE_ROOT/rtl/aes_reg_top.sv
+      - $COMPILE_ROOT/rtl/aes.sv
+      - $COMPILE_ROOT/rtl/aes_clp_reg.sv
+      - $COMPILE_ROOT/rtl/aes_clp_wrapper.sv
+    tops: [aes_cipher_core]
+  rtl_lint:
+    directories: []
+    waiver_files: []
+    tops: [aes_cipher_core]

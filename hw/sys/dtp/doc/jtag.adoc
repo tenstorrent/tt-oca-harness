@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[dtp-jtag-integration]]
+=== DTP JTAG Integration
+
+This section describes how JTAG components are integrated within the DTP subsystem. For detailed component documentation, see:
+
+* <<jtag-interface-unit>> - Top-level JTAG control module
+* <<jtag-ptap>> - Primary TAP implementation
+* <<jtag-stap>> - Secondary TAP for 3DIC support
+
+==== DTP JTAG Topology
+
+The DTP instantiates a single JTAG Interface Unit that serves as the primary debug access point for the chiplet. The interface unit connects to:
+
+* External JTAG pins (TCK, TDI, TDO, TMS, TRST)
+* Cross Trigger Network for clock stop control
+* SMC AXI fabric via JTAG2AXI
+* SMC and SEP OTP controllers via JTAG2AXIL
+* SMC and SEP CPU debug TAPs via STAPs
+
+==== Clock Domains
+
+The DTP operates in two clock domains:
+
+[cols="<,<,<",options="header"]
+|===
+|Domain |Signal |Description
+|System Clock |clk_i |Main system clock for cross trigger logic and AXI interfaces
+|JTAG Clock |TCK |JTAG test clock for all TAP controller and scan logic
+|===
+
+All cross-trigger signals are synchronized to the system clock domain within the CTPs.
+
+==== Reset Architecture
+
+* *rst_n_i*: Active-low asynchronous reset for cross trigger logic and AXI interfaces
+* *pwr_on_rst_ni*: Asynchronous active-low power-on reset for JTAG logic, combined internally with TRST_n
+* All registers reset to safe states
+* Clock stop output resets to 0 (clocks running)
+* JTAG TAP resets to Test-Logic-Reset state on TRST or power-on
+
+==== Security Integration
+
+The DTP integrates with the chiplet lifecycle controller:
+
+* Security disable signals gate STAP selection for debug TAPs
+* Lifecycle feature control determines which debug features are accessible
+* JTAG2AXI access can be restricted based on lifecycle state

@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[cross-trigger-port]]
+=== Cross Trigger Port
+
+==== Overview
+
+The Cross Trigger Port (CTP) module serves as the signaling interface between the chiplet core logic and the I/O pads for cross-trigger communication as specified in the Open Chiplet Cross Triggering (OCCT) specification.
+
+Each CTP connects to four separate I/O pads:
+
+* *CT_Req_out* - The cross trigger request output signal
+* *CT_Ack_in* - The cross trigger acknowledge input signal (point-to-point only)
+* *CT_Req_in* - The cross trigger request input signal (point-to-point only)
+* *CT_Ack_out* - The cross trigger acknowledge output signal (point-to-point only)
+
+The CTPs support two different inter-chiplet cross trigger signalling schemes:
+
+* *Wire-OR*: Supports a wider range of existing chiplet implementations and is very resource efficient
+* *Point-to-Point*: Faster, more reliable, and simpler to configure
+
+==== Configuration
+
+The Cross Trigger Port has no build-time configuration parameters. All operational settings are configured at runtime via CSR registers accessed through the AXI-Lite interface:
+
+* **MODE** - Wire-OR (0) or Point-to-Point (1) mode selection
+* **STRETCH_MULT** - 16-bit pulse stretch multiplier for Wire-OR mode
+* **INVERT** - Signal polarity inversion for GPIO adaptation
+* **RESET** - Handshake state machine reset control
+
+Refer to the register documentation for detailed CSR field descriptions.
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+include::architecture.adoc[]
+include::interface.adoc[]

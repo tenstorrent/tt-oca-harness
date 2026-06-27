@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_014 (V3, P2) - WDT BITE Before BARK Test
  *
@@ -13,7 +16,6 @@
  * Note: test_pass is signaled immediately after enabling the WDT, before
  * BITE fires. Cocotb `sep_hello_test` only waits for the pass signal.
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

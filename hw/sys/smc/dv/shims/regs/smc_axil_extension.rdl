@@ -1,10 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef SMC_AXIL_EXTENSION_RDL
 `define SMC_AXIL_EXTENSION_RDL
 
 // OCAH: AXIL extension region. This is the designated adopter/extension window:
-// open-source builds reserve the region only, while an overlay (e.g. nonfree)
-// overrides this file to instantiate proprietary peripherals (such as vendor
-// I3C controllers) plus their own sub-block RDLs. A uniquely named footprint mem
+// open-source builds reserve the region only, while an overlay can override
+// this file to instantiate external peripherals plus their own sub-block RDLs.
+// A uniquely named footprint mem
 // keeps the generated C type distinct from the other placeholder wrappers and
 // reserves the full 6 x 0x400 window addressed by smc_top @ +0x040_0000.
 mem smc_axil_extension_placeholder_mem #(

@@ -1,0 +1,85 @@
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
+
+* *KEY_SHARE0[8]*: 8 registers
+  ** Base Address: 0x0
+  ** Address Increment: 0x4 per register
+
+* *KEY_SHARE1[8]*: 8 registers
+  ** Base Address: 0x20
+  ** Address Increment: 0x4 per register
+
+* *KEY[8]*: 8 registers
+  ** Base Address: 0x400
+  ** Address Increment: 0x4 per register
+
+======
+
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 - 0x1C | KEY_SHARE0[8] | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x20 - 0x3C | KEY_SHARE1[8] | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x40 | KEY_CTRL | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x400 - 0x41C | KEY[8] | R a| One 32-bit word of ML-KEM shared key output. Written by hardware
+when key is ready; read by KM firmware to consume. Hardware clears
+all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
+| 0x424 | IRQ_STATUS | RW a| Interrupt status for ML-KEM shared key. Sticky bit set by
+hardware when a new shared key becomes valid; cleared by writing 1.
+| 0x428 | IRQ_ENABLE | RW a| Interrupt enable for ML-KEM shared key. Mask for the
+PicoRV32 IRQ vector bit driven by the shared-key-valid event.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KEY_SHARE0[8] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KEY_SHARE1[8] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KEY_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KEY[8] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | R | 0x0 a| 32-bit shared-key word. Hardware writes on key-ready event;
+hardware clears to 0 on key-consume event (KEY_VALID cleared).
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.IRQ_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| ML-KEM shared key valid. Sticky, write 1 to clear.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.IRQ_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid_en` | RW | 0x0 a| 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
+|===

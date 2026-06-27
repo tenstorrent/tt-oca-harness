@@ -1,0 +1,116 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: smc_efuse_map</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x8AC, stride 0x8</li>
+<li><strong>RESERVED[65]</strong>: 65 registers, base 0xAFC, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
+<tr><td>0x8</td><td><a href="#CHIPLET_ID">CHIPLET_ID</a></td><td>RW</td><td>Chiplet ID register</td></tr>
+<tr><td>0x28</td><td><a href="#PACKAGE_ID">PACKAGE_ID</a></td><td>RW</td><td>Package ID register</td></tr>
+<tr><td>0x48</td><td><a href="#BIRA">BIRA</a></td><td>RW</td><td>Built-In Repair Analysis data</td></tr>
+<tr><td>0x848</td><td><a href="#CLUSTER">CLUSTER</a></td><td>RW</td><td>CPU cluster configuration</td></tr>
+<tr><td>0x888</td><td><a href="#FABRIC">FABRIC</a></td><td>RW</td><td>Fabric configuration</td></tr>
+<tr><td>0x8A8</td><td><a href="#SOP_TOPOLOGY">SOP_TOPOLOGY</a></td><td>RW</td><td>System on Package topology</td></tr>
+<tr><td>0x8AC - 0x8EC</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
+<tr><td>0x8F4</td><td><a href="#I2C_CLOCK_GATING">I2C_CLOCK_GATING</a></td><td>RW</td><td>I2C clock gating control</td></tr>
+<tr><td>0x8F8</td><td><a href="#I3C_DISABLE">I3C_DISABLE</a></td><td>RW</td><td>I3C interface disable control</td></tr>
+<tr><td>0x8FC</td><td><a href="#PLL_AND_SENSOR">PLL_AND_SENSOR</a></td><td>RW</td><td>PLL and sensor configuration</td></tr>
+<tr><td>0xAFC - 0xBFC</td><td><a href="#RESERVED_65_">RESERVED[65]</a></td><td>RW</td><td>Reserved register</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="LOCKS">LOCKS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:26</td><td>unused_lock_bits</td><td>RW</td><td>0x0</td><td>Unused lock bits for future expansion.</td></tr>
+<tr><td>25</td><td>reserved_read_lock</td><td>RW</td><td>0x0</td><td>Reserved read lock. When set, reserved field is not readable.</td></tr>
+<tr><td>24</td><td>reserved_write_lock</td><td>RW</td><td>0x0</td><td>Reserved write lock. When set, reserved field is not writable.</td></tr>
+<tr><td>23</td><td>spi_config_read_lock</td><td>RW</td><td>0x0</td><td>SPI config read lock. When set, SPI config field is not readable.</td></tr>
+<tr><td>22</td><td>spi_config_write_lock</td><td>RW</td><td>0x0</td><td>SPI config write lock. When set, SPI config field is not writable.</td></tr>
+<tr><td>21</td><td>spi_ctrl_field_enable_read_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable read lock. When set, SPI control field is not readable.</td></tr>
+<tr><td>20</td><td>spi_ctrl_field_enable_write_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable write lock. When set, SPI control field is not writable.</td></tr>
+<tr><td>19</td><td>pll_and_sensor_read_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor read lock. When set, PLL and sensor field is not readable.</td></tr>
+<tr><td>18</td><td>pll_and_sensor_write_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor write lock. When set, PLL and sensor field is not writable.</td></tr>
+<tr><td>17</td><td>i3c_disable_read_lock</td><td>RW</td><td>0x0</td><td>I3C disable read lock. When set, I3C disable field is not readable.</td></tr>
+<tr><td>16</td><td>i3c_disable_write_lock</td><td>RW</td><td>0x0</td><td>I3C disable write lock. When set, I3C disable field is not writable.</td></tr>
+<tr><td>15</td><td>i2c_clock_gating_read_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating read lock. When set, I2C clock gating field is not readable.</td></tr>
+<tr><td>14</td><td>i2c_clock_gating_write_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating write lock. When set, I2C clock gating field is not writable.</td></tr>
+<tr><td>13</td><td>i2c_i3c_id_read_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.</td></tr>
+<tr><td>12</td><td>i2c_i3c_id_write_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.</td></tr>
+<tr><td>11</td><td>sop_topology_read_lock</td><td>RW</td><td>0x0</td><td>SOP topology read lock. When set, SOP topology field is not readable.</td></tr>
+<tr><td>10</td><td>sop_topology_write_lock</td><td>RW</td><td>0x0</td><td>SOP topology write lock. When set, SOP topology field is not writable.</td></tr>
+<tr><td>9</td><td>fabric_read_lock</td><td>RW</td><td>0x0</td><td>Fabric read lock. When set, fabric field is not readable.</td></tr>
+<tr><td>8</td><td>fabric_write_lock</td><td>RW</td><td>0x0</td><td>Fabric write lock. When set, fabric field is not writable.</td></tr>
+<tr><td>7</td><td>cluster_read_lock</td><td>RW</td><td>0x0</td><td>Cluster read lock. When set, cluster field is not readable.</td></tr>
+<tr><td>6</td><td>cluster_write_lock</td><td>RW</td><td>0x0</td><td>Cluster write lock. When set, cluster field is not writable.</td></tr>
+<tr><td>5</td><td>bira_dis_read_lock</td><td>RW</td><td>0x0</td><td>BIRA disable read lock. When set, BIRA field is not readable.</td></tr>
+<tr><td>4</td><td>bira_dis_write_lock</td><td>RW</td><td>0x0</td><td>BIRA disable write lock. When set, BIRA field is not writable.</td></tr>
+<tr><td>3</td><td>package_id_read_lock</td><td>RW</td><td>0x0</td><td>Package ID read lock. When set, package ID field is not readable.</td></tr>
+<tr><td>2</td><td>package_id_write_lock</td><td>RW</td><td>0x0</td><td>Package ID write lock. When set, package ID field is not writable.</td></tr>
+<tr><td>1</td><td>chiplet_id_read_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID read lock. When set, chiplet ID field is not readable.</td></tr>
+<tr><td>0</td><td>chiplet_id_write_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID write lock. When set, chiplet ID field is not writable.</td></tr>
+</table>
+<h3 id="CHIPLET_ID">CHIPLET_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>chiplet_id_value</td><td>RW</td><td>0x0</td><td>Chiplet ID stored in fuse, divided into 8 words and defined as follows:<br>[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;<br>[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID, e.g. Athena/Quasar/…​;<br>[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);<br>[5]: Chiplet User Group ID;<br>[7:6]: Reserved for extension.</td></tr>
+</table>
+<h3 id="PACKAGE_ID">PACKAGE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>package_id_value</td><td>RW</td><td>0x0</td><td>Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:<br>[1:0]: Serial number of the package;<br>[2]: Package Design Version, e.g. A1Q1/…​;<br>[3]: Package Design ID, e.g. Grendel;<br>[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);<br>[5]: Package User Group ID;<br>[7:6]: Reserved for extension</td></tr>
+</table>
+<h3 id="BIRA">BIRA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>16383:0</td><td>repair_data</td><td>RW</td><td>0x0</td><td>16KB memory repair data for SMC and SEP SRAMs</td></tr>
+</table>
+<h3 id="CLUSTER">CLUSTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>cluster_config</td><td>RW</td><td>0x0</td><td>512-bit fuses reserved for CPU cluster configuration</td></tr>
+</table>
+<h3 id="FABRIC">FABRIC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>fabric_config</td><td>RW</td><td>0x0</td><td>256-bit fuses reserved for fabric configuration</td></tr>
+</table>
+<h3 id="SOP_TOPOLOGY">SOP_TOPOLOGY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>topology_serial</td><td>RW</td><td>0x0</td><td>Serial number of topology configuration</td></tr>
+</table>
+<h3 id="I2C_I3C_ID_9_">I2C_I3C_ID[9]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>interface_id</td><td>RW</td><td>0x0</td><td>I2C or I3C ID configuration:<br>* Static ID mode: [6:0] contains ID, [63:7] reserved<br>* Provisional ID mode: [63:0] full ID</td></tr>
+</table>
+<h3 id="I2C_CLOCK_GATING">I2C_CLOCK_GATING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>clock_gating_config</td><td>RW</td><td>0x0</td><td>I2C clock gating configuration</td></tr>
+</table>
+<h3 id="I3C_DISABLE">I3C_DISABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>disable_config</td><td>RW</td><td>0x0</td><td>I3C interface disable configuration</td></tr>
+</table>
+<h3 id="PLL_AND_SENSOR">PLL_AND_SENSOR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>4095:0</td><td>pll_sensor_config</td><td>RW</td><td>0x0</td><td>4KB fuses reserved for PLL and sensor configuration</td></tr>
+</table>
+<h3 id="RESERVED_65_">RESERVED[65]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reserved_data</td><td>RW</td><td>0x0</td><td>Reserved for future use</td></tr>
+</table>
+</div>

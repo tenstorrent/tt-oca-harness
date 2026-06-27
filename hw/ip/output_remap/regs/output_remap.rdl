@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef OUTPUT_REMAP_REG_RDL
 `define OUTPUT_REMAP_REG_RDL
 

@@ -1,0 +1,250 @@
+# Key Manager ROM Firmware
+
+Bare-metal C/assembly firmware for the PicoRV32-based Key Manager subsystem.
+Manages the full key lifecycle: generation, loading, transfer to
+crypto engines (HMAC, KMAC, AES, OTBN, Adams Bridge seeds), and revocation. Also
+captures the Adams Bridge ML-KEM shared key into the KPV. Communicates with the
+host SEP through a structured command/response protocol over shared mailbox FIFOs.
+
+## Boot Flow
+
+```mermaid
+flowchart TD
+    RESET["Reset Vector (0x0000)"] --> INIT_IRQ["Clear KMCSR sticky IRQ status<br/>+ enable fault/error IRQs"]
+    INIT_IRQ --> INIT_DRBG["Initialize DRBG sampler<br/>(poll DRBG_READY)"]
+    INIT_DRBG --> SEED_PRNG["Seed PRNG from DRBG"]
+    SEED_PRNG --> CHECK_SCRAM{"SRAM scrambler<br/>enabled?"}
+    CHECK_SCRAM -->|No| WRITE_SCRAM_KEY["Write SRAM scrambler key<br/>SHRED_ITER+1 times"]
+    WRITE_SCRAM_KEY --> ENABLE_LOCK["Enable & lock SRAM scrambler"]
+    ENABLE_LOCK --> RESTART["Jump to address 0<br/>(restart CPU)"]
+    RESTART --> RESET
+    CHECK_SCRAM -->|Yes| INIT_KPV["Init & lock KPV scrambler"]
+    INIT_KPV --> SHRED_KPV["Shred all KPV slots"]
+    SHRED_KPV --> SHRED_ENGINES["Shred all crypto engine keys"]
+    SHRED_ENGINES --> INIT_STATE["Init message buffers<br/>+ key registry + sequence state"]
+    INIT_STATE --> FLUSH_MBOX["Flush mailbox FIFOs (single boot flush)"]
+    FLUSH_MBOX --> CLR_MBOX_IRQ["Clear mailbox IRQ status"]
+    CLR_MBOX_IRQ --> EN_MBOX_IRQ["Enable mailbox IRQ sources"]
+    EN_MBOX_IRQ --> SEND_READY["Send RESP_KM_READY"]
+    SEND_READY --> MAIN["Enter main event loop"]
+```
+
+## Memory Layout
+
+| Region | Address Range | Size | Contents |
+|--------|--------------|------|----------|
+| ROM | 0x0000_0000 – 0x0000_3FFF | 16KB | Boot code + constants |
+| SRAM | 0x0000_4000 – 0x0000_7FFF | 16KB | Runtime `.data`, `.bss`, main stack, IRQ stack |
+| KPV | 0x0000_D000 – 0x0000_DFFF | 4KB | Key Provisioning Vault |
+| KMCSR | 0x0000_E000 – 0x0000_EFFF | 4KB | KM Control/Status |
+| DRBG | 0x0000_F000 – 0x0000_FFFF | 4KB | DRBG Sampler |
+| Mailbox | 0x0001_0000 – 0x0001_0FFF | 4KB | Mailbox FIFOs |
+| OTBN | 0x0001_8000 – 0x0001_8FFF | 4KB | OTBN key wrapper |
+| AES | 0x0001_9000 – 0x0001_9FFF | 4KB | AES key wrapper |
+| KMAC | 0x0001_A000 – 0x0001_AFFF | 4KB | KMAC key wrapper |
+| HMAC | 0x0001_B000 – 0x0001_BFFF | 4KB | HMAC key wrapper |
+| ABR | 0x0001_C000 – 0x0001_CFFF | 4KB | ABR key wrapper |
+
+### SRAM Packing
+
+Production and test linker scripts both pack runtime SRAM from the top down:
+
+- `.bss` is placed at the top of SRAM.
+- `.data` is placed immediately below `.bss`.
+- `_stack` is set to `ADDR(.data)`, so the main stack grows downward below `.data`.
+- The IRQ path uses a separate IRQ frame plus a 256-byte IRQ stack allocated in `.bss`; `crt0.s` switches `sp` to `irq_stack_top` on IRQ entry.
+
+This means the main C stack and the IRQ stack are distinct:
+
+- Main stack: below `.data`, grows downward toward `0x0000_4000`
+- IRQ stack: inside `.bss`, near the top of SRAM
+
+```text
+0x0000_8000  +--------------------------------------+
+             | Top of SRAM                          |
+             +--------------------------------------+
+             | .bss                                 |
+             | - zero-initialized globals           |
+             | - irq_frame                          |
+             | - IRQ stack                          |
+             |   irq_stack_top                      |
+             |   grows downward within .bss         |
+             +--------------------------------------+
+             | .data                                |
+             | - initialized globals                |
+             +--------------------------------------+
+             | _stack = ADDR(.data)                 |
+             | main stack grows downward            |
+             | toward lower SRAM addresses          |
+             |                                      |
+             | free SRAM / stack space              |
+             |                                      |
+             +--------------------------------------+
+             | Base of SRAM                         |
+0x0000_4000  +--------------------------------------+
+```
+
+## File Organization
+
+### Headers (include/)
+
+| File | Description |
+|------|-------------|
+| `rom_defs.h` | Memory map, version, command/response/fault enums, message header layout |
+| `rom_state.h` | Global firmware state symbol declarations (`rom_prng_state`, `rom_rx_msgbuf`, `rom_tx_msgbuf`, `rom_keyreg_state`, sequence counters) |
+| `rom_crc.h` | Public CRC-8/ROHC and CRC-32C APIs backed by PicoRV32 PCPI helpers |
+| `rom_sha256.h` | Software SHA-256 and HMAC-SHA256 API |
+| `rom_secutil.h` | Side-channel/fault-hardened helpers |
+| `rom_picorv32.h` | Low-level PicoRV32 helper wrappers, including custom instructions |
+| `rom_prng.h` | xoshiro128++ PRNG |
+| `rom_shuffle.h` | Fisher-Yates shuffle with bit-masked rejection sampling |
+| `rom_drbg.h` | DRBG hardware sampler driver |
+| `rom_kpv.h` | KPV driver (scrambler, shred, read/write key, lock) |
+| `rom_sideload.h` | HMAC/KMAC/AES/OTBN and Adams Bridge seed sideload drivers (dual XOR-masked shares); ML-KEM shared-key read + IRQ accessors |
+| `rom_msgbuf.h` | Linear message buffer (single frame at a time, each frame at index 0) |
+| `rom_keyreg.h` | Key registry (handle ↔ KPV slot mapping) |
+| `rom_msg_rx.h` | Incoming message handler (8-step validation) |
+| `rom_msg_tx.h` | Outgoing message handler (buffer + direct FIFO) |
+| `rom_cmd.h` | Command dispatch |
+| `rom_keymgmt.h` | Key lifecycle operations (generate, transfer, revoke) |
+| `rom_isr.h` | ISR dispatch, fault triggers, wipe handler, ABR shared-key notify flag |
+| `irq_common.h` | KMCSR and mailbox IRQ register accessors |
+| `rom_kmcsr.h` | KMCSR helpers: version, recoverable error, SRAM scrambler, SRAM write-lock (`rom_kmcsr_sram_lock_set`/`rom_kmcsr_sram_lock_read`), IRQ entry address/lock |
+| `rom_otp.h` | OTP readout driver: life-cycle/demotion readers, dual-rail 256-bit field readers, read-lock, change-status |
+| `rom_persist.h` | ROM warm-persistent SRAM region (`rom_persist_t` at `0x7E00–0x7FFF`, region 31): cold-init, `sram_fw_size` accessors, write-lock helper |
+| `rom_handover.h` | ROM-to-SRAM handover declarations |
+
+### Sources (src/)
+
+| File | Description |
+|------|-------------|
+| `rom_main.c` | Boot sequence (`rom_boot_init`) + main event loop |
+| `rom_cmd.c` | Command dispatch + all 13 command handlers |
+| `rom_keymgmt.c` | Key management: generate, check, transfer, revoke |
+| `rom_isr.c` | ISR entry point, KMCSR dispatch, mailbox ISR, ABR shared-key ISR, fault triggers |
+| `rom_msg_rx.c` | Inbound frame processing with strict validation ordering |
+| `rom_msg_tx.c` | Outbound frame construction (buffered + direct) |
+| `rom_wipe.S` | SRAM shred assembly (xoshiro128++ in registers, noreturn) |
+| `rom_handover.c` | ROM-to-SRAM handover: bounds check, direct confirmation, FIFO image stream, CRC-32C verify, sensitive-data locking, SRAM write-lock mask, IRQ disable + vector, PRNG seed capture |
+| `rom_handover_jump.S` | Stack-less assembly handoff: scrambles entire SRAM with xoshiro128++, clears GPRs, jumps to 0x4000 (noreturn) |
+| `rom_crc.c` | Public CRC-8/ROHC + CRC-32C drivers routed through PCPI update helpers |
+| `rom_sha256.c` | Software SHA-256 + HMAC-SHA256 with length/overflow hardening |
+| `rom_secutil.c` | Constant-time compare, pointer-equality check, and non-elided secure memzero |
+| `rom_picorv32.c` | Low-level PicoRV32 helper wrappers and custom-instruction shims |
+| `rom_prng.c` | xoshiro128++ seed + next |
+| `rom_shuffle.c` | Fisher-Yates shuffle with bit pool |
+| `rom_drbg.c` | DRBG init, get_word, get_block |
+| `rom_kpv.c` | KPV scrambler, shred, key I/O, locking |
+| `rom_sideload.c` | HMAC/KMAC/AES/OTBN and Adams Bridge seed sideload |
+| `rom_msgbuf.c` | Linear buffer operations |
+| `rom_keyreg.c` | Handle allocation, lookup, destruction |
+| `rom_memcpy.c` | Word-aligned rom_memcpy (and memcpy alias) |
+| `rom_memset.c` | Word-aligned rom_memset (and memset alias) |
+| `rom_kmcsr.c` | KMCSR drivers for version, recoverable error, scrambler, IRQ entry address and lock |
+| `rom_otp.c` | OTP readout driver implementation (dual-rail readers, read-lock triple-write, change-status W1C, `rom_otp_on_change` weak hook) |
+| `rom_persist.c` | ROM warm-persistent region driver: cold-init, `sram_fw_size` accessors, `rom_persist_lock()` |
+| `irq_common.c` | `rom_kmcsr_irq_*` / `rom_mailbox_irq_*` IRQ path |
+
+### Startup
+
+| File | Description |
+|------|-------------|
+| `startup/crt0.s` | Reset vector, IRQ vector, BSS clear, calls `main()` (existing) |
+
+### Tests
+
+Firmware-driven and cocotb hardware tests live under
+`hw/comp/key_manager/tb/firmware/tests/` and are auto-discovered by that
+directory's `Makefile` (the `test_*.c` glob), so that directory is the
+complete, authoritative list of tests. See `hw/comp/key_manager/tb/README.md`
+for how to build and run a test.
+
+## Build Instructions
+
+```bash
+cd hw/comp/key_manager/tb/firmware
+
+# Production build
+make build_production FW_SRC=../../firmware/src/rom_main.c
+
+# Debug build (with VUART)
+make build_production FW_SRC=../../firmware/src/rom_main.c DEBUG=1
+
+# Production build with boot-time wipe disabled
+make build_production FW_SRC=../../firmware/src/rom_main.c PROD_BOOT_WIPE=0
+
+# Production build with both boot-time and unrecoverable wipe disabled
+make build_production FW_SRC=../../firmware/src/rom_main.c PROD_BOOT_WIPE=0 PROD_UNREC_WIPE=0
+
+# Check ROM/SRAM usage (ROM image includes loaded .data; SRAM holds .data + .bss + stacks)
+riscv64-unknown-elf-size build/rom_main.elf
+```
+
+`build_production` also accepts these optional control variables:
+
+- `PROD_BOOT_WIPE=0` disables the weak-default boot-time KPV/engine wipe path.
+- `PROD_UNREC_WIPE=0` disables the weak-default unrecoverable-fault wipe path.
+
+Tests can still override the same hooks directly in C as before.
+
+## Code size optimization
+
+The production build is tuned for minimum ROM footprint:
+
+- **Compiler:** `-Os`, `-ffreestanding`, `-fno-builtin`, `-fno-tree-loop-distribute-patterns`, `-fdata-sections`, `-ffunction-sections`, `-Wl,--gc-sections`, `-fno-unwind-tables`, `-fomit-frame-pointer`, `-flto` (production only).
+- **CRC:** Public CRC APIs use PicoRV32 PCPI custom instructions for CRC-32C word/byte updates and CRC-8/ROHC byte updates, avoiding ROM-resident CRC lookup tables in the production image.
+- **Binary analysis:** Use `riscv64-unknown-elf-nm -S --size-sort build/rom_main.elf` and `riscv64-unknown-elf-size -A build/rom_main.elf` to inspect section and symbol sizes. See `doc/ROM_CODESIZE_ANALYSIS.md` in this directory for the current measured footprint and remaining headroom.
+
+## CRC acceleration
+
+The public firmware entry points stay the same:
+
+- `rom_crc32c(const uint8_t *data, uint32_t len_bytes)`
+- `rom_crc8_rohc(const uint8_t *data, uint32_t len_bytes)`
+
+Under the hood, the hot update loops use three PicoRV32 custom instructions exposed
+through `rom_picorv32.c`:
+
+- `rom_picorv32_crc32c_word_update(state, word)`
+- `rom_picorv32_crc32c_byte_update(state, byte)`
+- `rom_picorv32_crc8_rohc_update(state, byte)`
+
+`rom_crc32c()` handles unaligned entry by consuming leading bytes until the buffer is
+4-byte aligned, processing the aligned bulk with word updates, and finishing any tail
+bytes with byte updates. `rom_crc8_rohc()` stays byte-oriented and routes every update
+through the CRC-8 PCPI helper.
+
+## Running Tests
+
+```bash
+cd hw/comp/key_manager/tb/firmware
+
+# Build a single test image
+make run_fw FW_TEST=test_rom_crc
+
+# Build all test ELF/hex images (firmware tree only; does not run VCS)
+make regression
+
+# Build an integration-test image
+make run_fw FW_TEST=test_km_boot
+```
+
+`hw/comp/key_manager/tb/firmware/Makefile` only builds firmware artifacts under
+`build/<test>/` (default goal builds `.rom.hex` from `.elf`). To **run** a test in simulation, use the testbench Makefile:
+
+```bash
+cd hw/comp/key_manager/tb
+make run_fw FW_TEST=test_rom_crc
+make run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
+make run_fw FW_TEST=test_mailbox_msgbuf
+```
+
+## Toolchain
+
+| Setting | Value |
+|---------|-------|
+| Compiler | `riscv64-unknown-elf-gcc` |
+| Architecture | `rv32emc` (16 registers, multiply, compressed) |
+| ABI | `ilp32e` |
+| Optimization | `-Os` (+ LTO and size flags for production) |
+| Warnings | `-Wall -Wextra` |

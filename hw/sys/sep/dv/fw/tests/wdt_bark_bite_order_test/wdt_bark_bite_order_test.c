@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_008 (V3, P1) - WDT Bark/Bite Order Test
  *
@@ -9,7 +12,6 @@
  * 2. Confirm BITE has not fired yet
  * 3. Signal test_pass, then let BITE fire (cocotb verifies reset request)
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

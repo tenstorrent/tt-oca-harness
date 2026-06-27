@@ -136,11 +136,11 @@ for the `make regen-regs` targets, generated output layout, and firmware/DV head
 ## DV Firmware
 
 Per-subsystem DV firmware (the runtime **drivers** ported from `tt-oca-hw`, not the tests) is
-built via `make dv-fw [TARGET=km|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk` under
+built via `make dv-fw [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk` under
 `hw/{ip,sys}/<name>/dv/fw/` and is built as an independent recursive sub-make so the three target
 CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state. The RISC-V
 toolchain (including picolibc for SEP) is provided by the project Docker image and selected via
-`RISCV_TOOLCHAIN` (empty by default; no proprietary paths committed). See
+`RISCV_TOOLCHAIN` (empty by default; no site-local paths committed). See
 [`doc/dv-firmware.md`](doc/dv-firmware.md) for the build-flow architecture, the toolchain
 contract, the ported driver sets + provenance, and the deferred register-header reconciliation.
 

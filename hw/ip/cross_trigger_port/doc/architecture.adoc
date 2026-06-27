@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[ctp-architecture]]
+==== Architecture
+
+The Cross Trigger Port architecture separates the register interface from core logic to enable reuse. The full `cross_trigger_port` module includes CSRs for runtime configuration, while the `cross_trigger_port_core` module provides the core functionality without registers, allowing instantiation for internal cross-trigger connections without AXI-Lite overhead.
+
+image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
+
+===== Submodule Hierarchy
+
+The CTP core instantiates four specialized submodules for different aspects of cross-trigger operation:
+
+[width="100%",cols="<30%,<70%",options="header"]
+|===
+|Module |Purpose
+
+|`ctp_synchronizer`
+|Implements 2-FF synchronizers for asynchronous GPIO inputs (ct_req_out_din, ct_req_in_din, ct_ack_in_din) from remote chiplets
+
+|`ctp_pulse_stretcher`
+|Extends source pulse duration for Wire-OR mode transmission, with configurable stretch multiplier (0-65535 cycles)
+
+|`ctp_edge_detector`
+|Detects positive edges on synchronized ct_req_in signal for Point-to-Point mode receiver operation
+
+|`ctp_handshake_ctrl`
+|Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
+|===
+
+===== Wire-OR Mode
+
+Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many existing cross triggering implementations. This scheme is very resource efficient, as it only requires a single pin per chiplet connected to the network. However, the performance of the network decreases as the number of connected chiplets increase. Also, the duration of the cross trigger pulse must be pre-arranged across all connected chiplets.
+
+====== Pulse Stretcher Operation
+
+The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO assertions lasting `stretch_mult + 1` clock cycles. The module implements a 16-bit countdown counter that loads the stretch multiplier value when a new pulse arrives and decrements to zero. If a new pulse arrives before the counter reaches zero, the counter restarts from the stretch multiplier value, ensuring that rapid successive pulses merge into an extended assertion.
+
+The output `stretched_pulse` remains asserted as long as the counter is non-zero. This stretched pulse drives the output enable control for the open-drain CT_Req_out GPIO pad, effectively pulling the shared wire low for the configured duration.
+
+Each chiplet has an open-drain I/O connected to a single shared wire. Any connected chiplet may pull this signal low to assert a cross trigger. Depending on the electrical requirements, one or more internal pad pull-ups or external keepers ensure the cross trigger request signal remains high when no cross trigger is asserted. To ensure no connected chiplet misses a cross trigger pulse, all chiplets transmitting a trigger pulse must stretch the pulse a mutually agreed upon length of time.
+
+Note that in wire-OR mode the _CT_Req_out_ signal is connected to an open-drain configured I/O pad. For I/O pads that do have explicit open-drain control, the request data signal should connect to the output-enable control pin of the I/O pad, and the output data signal of the I/O pin should be driven statically low.
+
+image::ctp_wireor_diagram.png[CTP Wire-OR Mode Diagram,scaledwidth=90.0%]
+
+Any number of chiplets may have their _CT_Req_out_ pads interconnected as shown in the following example diagram:
+
+image::sip_wireor_diagram.png[SiP Wire-OR Cross Trigger Diagram,scaledwidth=90.0%]
+
+===== Point-to-Point Mode
+
+Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a cross trigger quickly and reliably between two chiplets without pulse stretching. While this scheme is simple and fast, it requires a dedicated CTP for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads for bi-directional communication, or two pads for unidirectional communication. All output pads are configured for push-pull operation.
+
+image::ctp_p2p_diagram.png[CTP Point-to-Point Mode Diagram,scaledwidth=90.0%]
+
+Any two chiplets may have their four cross trigger pads cross-coupled as shown in the following example diagram:
+
+image::sip_p2p_diagram.png[SiP Point-to-Point Cross Trigger Diagram,scaledwidth=90.0%]
+
+On the sender side, the receiver's _CT_Ack_out_ is connected to the sender's _CT_Ack_in_ pad. _CT_Req_out_ asserts whenever _CT_Src_ asserts. _CT_Req_out_ will then remain asserted until _CT_Ack_in_ asserts.
+
+On the receiver side, the sender's _CT_Req_out_ is connected to the receiver's _CT_Req_in_ pad. On any positive edge of _CT_Req_in_, the receiver generates a pulse on _CT_Dst_ and asserts _CT_Ack_out_. Deassertion proceeds in exactly the same sequence.
+
+The timing of the request/acknowledge handshake is shown in the diagram below:
+
+image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
+
+====== Synchronization and CDC Handling
+
+All GPIO input signals are asynchronous with respect to the CTP system clock and require synchronization to prevent metastability. The `ctp_synchronizer` module implements three independent 2-FF synchronizer chains using the `prim_flop_2sync` primitive:
+
+[width="100%",cols="<35%,<30%,<35%",options="header"]
+|===
+|Signal |Used In Mode |Synchronization Purpose
+
+|`ct_req_out_din`
+|Wire-OR
+|Synchronizes open-drain wire state from remote chiplets before edge detection
+
+|`ct_req_in_din`
+|Point-to-Point
+|Synchronizes request signal from remote sender before receiver FSM
+
+|`ct_ack_in_din`
+|Point-to-Point
+|Synchronizes acknowledge signal from remote receiver before sender FSM
+|===
+
+After synchronization, an optional inversion is applied if the `INVERT` configuration bit is set. This allows adaptation to GPIO pads with different polarity requirements. Edge detection and state machine processing occur only on synchronized (and optionally inverted) signals, ensuring all CTP core logic operates on glitch-free inputs.
+
+====== Handshake State Machines
+
+Point-to-point mode implements two independent state machines within the `ctp_handshake_ctrl` module, enabling full-duplex cross-triggering. The sender state machine controls outgoing cross-trigger requests, while the receiver state machine handles incoming requests. Both state machines operate synchronously in the system clock domain on synchronized GPIO inputs.
+
+*Sender State Machine:*
+
+[width="100%",cols="<25%,<25%,<25%,<25%",options="header"]
+|===
+|Current State |Condition |Next State |Output Actions
+
+|SENDER_IDLE
+|`ct_src_i` asserted
+|SENDER_REQ_ASSERTED
+|Assert `ct_req_out=1`
+
+|SENDER_REQ_ASSERTED
+|`ct_ack_in_sync` asserted
+|SENDER_WAIT_ACK_DEASSERT
+|De-assert `ct_req_out=0`
+
+|SENDER_WAIT_ACK_DEASSERT
+|`ct_ack_in_sync` de-asserted
+|SENDER_IDLE
+|None (remain idle)
+
+|Any state
+|`reset_i` asserted
+|SENDER_IDLE
+|Force `ct_req_out=0`
+|===
+
+*Receiver State Machine:*
+
+[width="100%",cols="<30%,<25%,<25%,<20%",options="header"]
+|===
+|Current State |Condition |Next State |Output Actions
+
+|RECEIVER_IDLE
+|`ct_req_in_sync` asserted
+|RECEIVER_ACK_ASSERTED
+|Assert `ct_ack_out=1`, generate `ct_dst` pulse
+
+|RECEIVER_ACK_ASSERTED
+|`ct_req_in_sync` de-asserted
+|RECEIVER_WAIT_REQ_DEASSERT
+|De-assert `ct_ack_out=0`, clear `ct_dst`
+
+|RECEIVER_WAIT_REQ_DEASSERT
+|`ct_req_in_sync` remains low
+|RECEIVER_IDLE
+|None
+
+|RECEIVER_WAIT_REQ_DEASSERT
+|`ct_req_in_sync` goes high
+|Remain in state
+|Continue waiting
+|===
+
+The `ct_dst` output pulse is generated for a single clock cycle when the receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is asserted whenever either state machine is not in its IDLE state, indicating an active cross-trigger transfer.

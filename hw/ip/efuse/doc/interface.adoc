@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[efuse-interface]]
+===== Interface
+
+====== Configuration Parameters
+
+[width="100%",cols="30%,20%,50%",options="header",]
+|===================================================
+|Parameter |Default |Description
+|OTP_SIZE |3KB |Total OTP storage capacity
+|WORD_WIDTH |32 bits |OTP word width
+|NUM_WORDS |768 |Total number of OTP words
+|===================================================
+
+====== Signal Interfaces
+
+====== Clock and Reset
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|==========================================================
+|Signal Name |Direction |Width |Description
+|`clk_i` |Input |1 |System clock input
+|`rst_ni` |Input |1 |Active-low asynchronous reset
+|==========================================================
+
+====== Main AXI4-Lite Interfaces
+
+The eFuse controller provides two AXI4-Lite interfaces for register
+access:
+
+====== SMC Interface (Functional Access)
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|==================================================================================
+|Signal Name |Direction |Type |Description
+|`axil_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from SMC
+|`axil_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to SMC
+|==================================================================================
+
+====== JTAG Interface (Debug Access)
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|=====================================================================================
+|Signal Name |Direction |Type |Description
+|`axil_jtag_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from
+JTAG
+
+|`axil_jtag_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to
+JTAG
+|=====================================================================================
+
+====== Fuse Bank Control Interface
+
+APB interface for communicating with the eFuse bank model:
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|=====================================================================================
+|Signal Name |Direction |Type |Description
+|`fuse_bank_ctrl_req_o` |Output |`efuse_apb_req_t` |APB request to eFuse
+bank
+
+|`fuse_bank_ctrl_resp_i` |Input |`efuse_apb_resp_t` |APB response from
+eFuse bank
+|=====================================================================================
+
+====== Fuse Command Interface
+
+Custom interface for SHIM state machine communication:
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|=====================================================================================
+|Signal Name |Direction |Type |Description
+|`fuse_command_req_o` |Output |`fuse_command_req_t` |Command request to
+SHIM
+
+|`fuse_command_resp_i` |Input |`fuse_command_resp_t` |Command response
+from SHIM
+|=====================================================================================
+
+====== Security and Control Signals
+
+[width="100%",cols="20%,15%,15%,50%",options="header",]
+|=====================================================================================
+|Signal Name |Direction |Width |Description
+|`lc_state_i` |Input |4 |Life cycle state from SEP
+
+|`secure_tm_i` |Input |1 |Secure test mode enable
+
+|`test_en_i` |Input |1 |Test enable signal
+
+|`security_disable_i` |Input |1 |Security disable override
+
+|`efuse_field_map_i` |Input |`rule_t [EFUSE_FIELDS-1:0]` |Field access
+control rules
+
+|`fuse_sense_done_o` |Output |1 |Shadow register loading complete
+
+|`security_disable_o` |Output |1 |Security disable status
+
+|`shadow_regs_o` |Output |`efuse_map_t` |Shadow register contents
+|=====================================================================================
+
+====== Debug and Status Signals
+
+[width="100%",cols="30%,12%,13%,45%",options="header",]
+|=====================================================================================
+|Signal Name |Direction |Width |Description
+|`is_write_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are write locked
+
+|`is_read_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are read locked
+
+|`is_program_locked_o` |Output |1 |eFuse program operations are locked
+
+|`is_read_locked_o` |Output |1 |eFuse read operations are locked
+
+|`is_write_setup_only_o` |Output |1 |Field is in write set-only mode (bits may be set, not cleared)
+
+|`is_lc_state_access_o` |Output |1 |Access is gated by the current lifecycle state
+
+|`is_read_timeout_debug_o` |Output |1 |A read command timed out waiting on the SHIM/bank
+
+|`is_program_timeout_debug_o` |Output |1 |A program command timed out waiting on the SHIM/bank
+
+|`is_efuse_req_err_o` |Output |1 |A request was blocked/errored by the eFuse guard
+
+|`is_secure_tm_blocked_o` |Output |1 |Access blocked because secure test mode is not active
+
+|`is_rma_sip_token_match_debug` |Output |6 |RMA SiP token match status code
+
+|`is_rma_chiplet_token_match_debug` |Output |6 |RMA chiplet token match status code
+
+|`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
+|=====================================================================================
+
+====== Fuse Command Protocol
+
+Custom command interface between controller and SHIM:
+
+*Request Structure* (`fuse_command_req_t`):
+
+[source,sourceCode,systemverilog]
+----
+typedef struct packed {
+    addr_t                    address;           // Target address in bits
+    logic                     program_data;      // Data to program (1'b1)
+    access_length_words_t     access_length_words; // Transfer size
+    command_t                 command;           // Command type
+    logic                     valid;             // Request valid
+} fuse_command_req_t;
+----
+
+*Response Structure* (`fuse_command_resp_t`):
+
+[source,sourceCode,systemverilog]
+----
+typedef struct packed {
+    data_t              data;       // Read data
+    logic               status;     // Operation status
+    logic               valid;      // Response valid
+} fuse_command_resp_t;
+----
+
+*Command Types*:
+
+* `FUSE_COMMAND_READ (2'b00)`: Read operation
+* `FUSE_COMMAND_PROGRAM (2'b01)`: Program operation
+* `FUSE_COMMAND_PROGRAM_READ_BACK (2'b10)`: Program with verification

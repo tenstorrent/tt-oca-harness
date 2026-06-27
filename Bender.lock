@@ -1,1 +1,84 @@
-packages: {}
+packages:
+  apb:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/apb
+    dependencies:
+    - common_cells
+  axi:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/axi
+    dependencies:
+    - common_cells
+    - common_verification
+  axi_stream:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/axi_stream
+    dependencies:
+    - common_cells
+  common_cells:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/common_cells
+    dependencies:
+    - common_verification
+  common_verification:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/common_verification
+    dependencies: []
+  el2:
+    revision: null
+    version: null
+    source:
+      Path: vendor/chipsalliance/Cores-VeeR-EL2
+    dependencies: []
+  i3c-core:
+    revision: null
+    version: null
+    source:
+      Path: vendor/chipsalliance/i3c-core
+    dependencies: []
+  idma:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/idma
+    dependencies:
+    - axi
+    - axi_stream
+    - common_cells
+    - common_verification
+    - obi
+    - register_interface
+  obi:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/obi
+    dependencies:
+    - common_cells
+    - common_verification
+  opentitan:
+    revision: null
+    version: null
+    source:
+      Path: vendor/lowRISC/opentitan
+    dependencies: []
+  register_interface:
+    revision: null
+    version: null
+    source:
+      Path: vendor/pulp-platform/register_interface
+    dependencies:
+    - apb
+    - axi
+    - common_cells
+    - common_verification

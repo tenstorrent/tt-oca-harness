@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_011 (V3, P2) - WDT Interrupt Clear Test
  *
@@ -18,7 +21,6 @@
  * 3. Disable WDT, verify no further triggers
  * 4. INTR_TEST W1C verification
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

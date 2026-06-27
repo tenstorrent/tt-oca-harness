@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Flash Dual Fast Read Test - TC_SPIOT_023 (P1)
  *
@@ -28,7 +31,6 @@
  *   make test-sep TEST_NAME=sep_spi_ot_flash_dual_read_test STACK=sim \
  *       EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

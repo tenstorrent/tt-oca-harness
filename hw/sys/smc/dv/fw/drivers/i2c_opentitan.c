@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /**
  * @file i2c_opentitan.c
  * @brief OpenTitan I2C Driver Implementation
@@ -279,7 +282,7 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
     i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_ctrl.w);
 
     // Step 2: Verify FIFO levels are 0 (Crucial Step per OpenTitan FIFO guide)
-    // Reference: /proj_soc/user_dev/minshaoho/aiset/doc/ot_i2c_docs/i2c_ot_fifo.md Section 2.1
+    // Reference: OpenTitan I2C FIFO documentation, Section 2.1
     // "驗證 (Crucial Step): 讀取 HOST_FIFO_STATUS 或 TARGET_FIFO_STATUS 暫存器。
     //  確認 RX/ACQ FIFO Level 為 0。確認 FMT/TX FIFO Level 為 0 (且 TX 應標示為 Empty)。"
 

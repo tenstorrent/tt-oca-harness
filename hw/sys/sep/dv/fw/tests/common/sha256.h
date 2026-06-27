@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //
 // SHA-256 software reference (public-domain implementation by Brad Conte,
 // brad AT bradconte.com, "presented as is"). Used as the golden reference the

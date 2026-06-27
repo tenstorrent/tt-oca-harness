@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef SMC_AVSBUS_H
 #define SMC_AVSBUS_H
 

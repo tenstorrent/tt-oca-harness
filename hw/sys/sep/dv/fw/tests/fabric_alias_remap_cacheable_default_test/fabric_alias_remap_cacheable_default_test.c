@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * Fabric Alias Remap Cacheable Default Test - TC_FABRIC_051
  *

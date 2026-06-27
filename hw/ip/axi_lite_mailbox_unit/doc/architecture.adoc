@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[mailbox-unit-architecture]]
+===== Architecture
+
+The SMC Mailbox IP provides inter-processor and inter-chiplet
+communication through a register-based interface. The design separates
+protocol handling from storage implementation, allowing system
+integrators to choose appropriate FIFO implementations while maintaining
+consistent software interfaces.
+
+====== Configuration Parameters
+
+[width="100%",cols="25%,15%,60%",options="header",]
+|=======================================================================
+|Parameter |Default |Description
+|`NUM_MAILBOXES` |2 (max: 32) |Scales from point-to-point to
+multi-processor coordination
+
+|`MAILBOX_DEPTH` |8 entries |External FIFO depth for buffering
+
+|`MAX_TRANS` |32 |Maximum outstanding AXI4-Lite transactions
+
+|`MAILBOX_SIZE` |0x800 (2KB) |Register space per mailbox for control and
+status
+|=======================================================================
+
+====== Address Space
+
+The architecture supports up to 64 mailbox instances (32 bidirectional
+pairs):
+
+* *Address Width*: 18 bits (0x20008 bytes total)
+* *Data Width*: 64 bits
+* *Per-Mailbox Space*: 0x800 bytes (2KB)
+* *Decoding*: Efficient address decode logic for up to 32 pairs
+
+The 64-bit data width optimizes handling of addresses, data payloads,
+and status information without multi-word transfers. The 2KB allocation
+per mailbox enables threshold configuration, priority handling, and
+diagnostic features.
+
+====== Hardware Interface
+
+The SystemRDL-generated register block provides hardware interfaces to
+external FIFO implementations through two signal structures:
+
+====== Hardware Input Interface (mailbox_wrap__in_t)
+
+[width="100%",cols="25%,75%",options="header",]
+|====================================================
+|Signal |Description
+|`rd_ack` |Read acknowledge for handshake protocol
+|`wr_ack` |Write acknowledge for handshake protocol
+|`rd_data[63:0]` |64-bit read data from external FIFO
+|====================================================
+
+The acknowledge signals implement handshake protocol for reliable data
+transfer regardless of external FIFO timing. The 64-bit read data
+interface eliminates width conversion overhead.
+
+====== Hardware Output Interface (mailbox_wrap__out_t)
+
+[width="100%",cols="25%,75%",options="header",]
+|===================================================
+|Signal |Description
+|`req` |Transaction request to external FIFO
+|`addr[6:0]` |Local address within mailbox space
+|`req_is_wr` |Transaction type (1=write, 0=read)
+|`wr_data[63:0]` |64-bit write data to external FIFO
+|`wr_biten[63:0]` |Byte enable for write data
+|===================================================
+
+The 7-bit local address enables multiple registers per mailbox. Byte
+enables provide granular write control for external FIFO optimization.
+
+====== Transaction Processing
+
+AXI4-Lite transactions follow this flow:
+
+1.  *Address Decode*: Register block decodes mailbox instance and
+operation type
+2.  *Hardware Interface*: Generates `req`, `addr`, `req_is_wr` signals
+to external FIFO
+3.  *FIFO Processing*: External logic processes request according to
+timing characteristics
+4.  *Acknowledge*: External FIFO asserts `rd_ack`/`wr_ack` when complete
+5.  *AXI Response*: Register block completes AXI4-Lite protocol
+
+This coordination mechanism maintains consistent AXI4-Lite timing while
+allowing external FIFOs to optimize internal operations for specific
+performance or resource requirements.
+
+====== Bidirectional Communication
+
+Each mailbox pair provides separate inbound and outbound register
+spaces:
+
+* *Inbound Space*: Optimized for low-latency command processing
+* *Outbound Space*: Optimized for high-throughput status/telemetry
+transfer
+* *Independence*: No mutual interference or resource contention
+
+Separate register spaces enable different optimization strategies per
+direction. Interrupt generation integrates with external FIFO status
+reporting for event notification.
+
+====== Clock and Reset
+
+The mailbox uses a single clock domain for integration reliability:
+
+[width="100%",cols="20%,30%,50%",options="header",]
+|=======================================================================
+|Signal |Type |Description
+|`clk_i` |Single clock |Unifies functional logic and AXI4-Lite interface
+
+|`rst_ni` |Asynchronous, active-low |Primary reset, initializes all
+mailbox state
+
+|`test_en_i` |Test enable |DFT support
+|=======================================================================
+
+No internal clock domain crossings eliminates CDC complexity. Single
+clock domain simplifies timing analysis and integration verification.
+
+====== Interrupt Architecture
+
+The mailbox provides independent interrupt outputs for each mailbox
+instance:
+
+* `inbound_interrupt_o[NUM_MAILBOXES-1:0]`: Inbound communication events
+* `outbound_interrupt_o[NUM_MAILBOXES-1:0]`: Outbound communication
+events
+
+Separate inbound/outbound interrupts reflect different processing
+requirements. Inbound interrupts indicate incoming commands requiring
+immediate processing; outbound interrupts indicate successful
+transmission or buffer availability.
+
+The following table reports the interrupt sources.
+
+[width="100%",cols="30%,70%",options="header",]
+|=======================================================================
+|Source |Description
+|Write Threshold |FIFO fill level exceeds configured threshold
+(proactive buffer management)
+
+|Read Threshold |FIFO data available for efficient retrieval scheduling
+
+|Overflow Error |Write to full FIFO (fault detection)
+
+|Underflow Error |Read from empty FIFO (fault detection)
+|=======================================================================
+
+Each interrupt output aggregates these sources. Threshold-based
+interrupts reduce polling overhead. Error interrupts enable fault
+recovery and diagnostic analysis.

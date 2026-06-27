@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_disable_during_xfer_test
 //
 // Sanity-style check that clearing CTRL.EN mid-transfer cleanly halts the

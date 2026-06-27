@@ -1,0 +1,80 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | DATA_CTRL | RW a| -
+| 0x4 | DATA_CTRL_ENABLE | RW a| -
+| 0x8 | ACCESS_FILTER | RW a| GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+the filter may not update before your next transaction, causing unexpected behavior.
+| 0x10 | CONTROL | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DATA_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `pad2core` | R | 0x0 a| PAD2SOC Value
+| 30:26 | `Reserved` | - | - a| Reserved
+| 25 | `lsio_enable` | R | 0x0 a| When set, this bit indicates that the pad being driving by the LSIO
+| 24:22 | `Reserved` | - | - a| Reserved
+| 21:20 | `interrupt_type` | RW | 0x0 a| Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge
+| 19 | `lsio_disable` | RW | 0x0 a| When set, LSIO acceses will be blocked from the GPIO interface
+| 18 | `interrupt_enable` | RW | 0x0 a| Interrupt Enable.
+| 17 | `lsio_select` | RW | 0x0 a| Force LSIO interface to be used. interface_enable has higher priority over this
+| 16 | `interface_enable` | RW | 0x0 a| Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core
+| 15:6 | `Reserved` | - | - a| Reserved
+| 5:4 | `enable_rx_tx` | RW | 0x0 a| Direction control. 2'b00: Neither RX nor TX enabled. 2'b01: TX enabled. 2'b10: RX enabled. 2'b11: Both enabled
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `core2pad` | RW | 0x0 a| Register-driven data to send to the pad.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DATA_CTRL_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `use_reg_rx` | RW | 0x0 a| Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR'd with interface_enable.
+| 4 | `use_reg_tx` | RW | 0x0 a| Per-field register override. When set, the TX direction (output enable) is taken from enable_rx_tx[0]. OR'd with interface_enable.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `use_reg_core2pad` | RW | 0x0 a| Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.ACCESS_FILTER Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:19 | `Reserved` | - | - a| Reserved
+| 18:16 | `arprot_requirement` | RW | 0x1 a| When read_filter_enable is set, only allow read accesses with this prot value
+WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+the filter may not update before your next transaction, causing unexpected behavior.
+| 15:11 | `Reserved` | - | - a| Reserved
+| 10:8 | `awprot_requirement` | RW | 0x1 a| When write_filter_enable is set, only allow write accesses with this prot value
+WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+the filter may not update before your next transaction, causing unexpected behavior.
+| 7:2 | `Reserved` | - | - a| Reserved
+| 1 | `read_filter_enable` | RW | 0x0 a| Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+the filter may not update before your next transaction, causing unexpected behavior.
+| 0 | `write_filter_enable` | RW | 0x0 a| Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+the filter may not update before your next transaction, causing unexpected behavior.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CONTROL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:25 | `Reserved` | - | - a| Reserved
+| 24 | `hw2_ovrd` | RW | 0x0 a| Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
+| 23:22 | `Reserved` | - | - a| Reserved
+| 21 | `strap_value` | R | 0x0 a| This register holds the captured value that was applied to the pad when reset was de-asserted.
+| 20 | `strap_valid` | R | 0x1 a| When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
+| 19:17 | `Reserved` | - | - a| Reserved
+| 16 | `config_enable` | RW | 0x0 a| Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
+| 15:11 | `Reserved` | - | - a| Reserved
+| 10 | `schmitt_select` | RW | 0x0 a| Register-driven schmitt select.
+| 9 | `pull_select` | RW | 0x0 a| Register-driven pull select - by default we pull down
+| 8 | `pull_enable_n0_scan` | RW | 0x0 a| Register-driven pull enable. Default is disabled
+| 7:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `drive_strength` | RW | 0x2 a| Register-driven drive-strength.
+|===

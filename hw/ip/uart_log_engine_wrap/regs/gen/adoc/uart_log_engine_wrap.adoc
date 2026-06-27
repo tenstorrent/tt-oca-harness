@@ -1,1280 +1,299 @@
-[[uart_log_engine_wrap-address-map]]
-uart_log_engine_wrap address map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
 
-* Absolute Address: 0x0
-* Base Offset: 0x0
-* Size: 0x280
+* *LOG_CTRL[16]*: 16 registers
+  ** Base Address: 0x240
+  ** Address Increment: 0x4 per register
 
-[cols=",,",options="header",]
-|========================================
-|Offset |Identifier |Name
-|0x000 |uart_log_engine_ctrl |—
-|0x100 |uart |UART 16550 Main Address Map
-|0x200 |log_engine |—
-|========================================
+======
 
-[[uart_log_engine_ctrl-address-map]]
-uart_log_engine_ctrl address map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | CTRL | RW a| Control Register
+| 0x100 | RBR | R a| Receiver Buffer Register
+| 0x104 | IER | RW a| Interrupt Enable Register
+| 0x108 | IIR | R a| Interrupt Identification Register
+| 0x10C | LCR | RW a| Line Control Register
+| 0x110 | MCR | RW a| Modem Control Register
+| 0x114 | LSR | R a| Line Status Register
+| 0x118 | MSR | R a| Modem Status Register
+| 0x11C | SCR | RW a| Scratch Register
+| 0x120 | ECR | RW a| Extended Control Register
+| 0x124 | ITR | RW a| Interrupt Test Register
+| 0x204 | LOG_REGION_SIZE | RW a| Log Region Size Register
+| 0x208 | LOG_REGION_ADDR | RW a| Log Region Address Register
+| 0x210 | LOG_WRITE_ADDR | RW a| Log Write Address Register
+| 0x214 | INTR_STATUS | RW a| Interrupt Status Register
+| 0x218 | INTR_ENABLE | RW a| Interrupt Enable Register
+| 0x21C | INTR_TEST | W a| Interrupt Test Register
+| 0x240 - 0x27C | LOG_CTRL[16] | RW a| Log Control Register
+|===
 
-* Absolute Address: 0x0
-* Base Offset: 0x0
-* Size: 0x4
+[cols="1,1,1,1,3", options="header"]
+.CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `UART_EN` | RW | 0x0 a| UART Enable. When set, the pad-mux downstream will be forced to accept UART
+traffic.
+|===
 
-[cols=",,",options="header",]
-|========================
-|Offset |Identifier |Name
-|0x0 |CTRL |—
-|========================
+[cols="1,1,1,1,3", options="header"]
+.RBR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | R | 0x0 a| Received Data. Contains a received character. If FIFOs are enabled, this field
+points to the bottom of the RX FIFO. Otherwise, this field points to a single-
+byte Receiver Buffer Register.
+|===
 
-[[ctrl-register]]
-CTRL register
-^^^^^^^^^^^^^
-
-* Absolute Address: 0x0
-* Base Offset: 0x0
-* Size: 0x4
-
-Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |UART_EN |rw |0x0 |—
-|=====================================
-
-[[uart_en-field]]
-UART_EN field
-+++++++++++++
-
-UART Enable. When set, the pad-mux downstream will be forced to accept
-UART traffic.
-
-[[uart-address-map]]
-uart address map
-~~~~~~~~~~~~~~~~
-
-* Absolute Address: 0x100
-* Base Offset: 0x100
-* Size: 0x28
-
-Contains the mode-independent registers and the read-only registers
-accessible only when DLAB = 0.
-
-[cols=",,",options="header",]
-|========================
-|Offset |Identifier |Name
-|0x00 |RBR |—
-|0x04 |IER |—
-|0x08 |IIR |—
-|0x0C |LCR |—
-|0x10 |MCR |—
-|0x14 |LSR |—
-|0x18 |MSR |—
-|0x1C |SCR |—
-|0x20 |ECR |—
-|0x24 |ITR |—
-|========================
-
-[[rbr-register]]
-RBR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x100
-* Base Offset: 0x0
-* Size: 0x4
-
-Receiver Buffer Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|7:0 |DATA |r, ruser |0x0 |—
-|=====================================
-
-[[data-field]]
-DATA field
-++++++++++
-
-Received Data. Contains a received character. If FIFOs are enabled, this
-field points to the bottom of the RX FIFO. Otherwise, this field points
-to a single- byte Receiver Buffer Register.
-
-[[ier-register]]
-IER register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x104
-* Base Offset: 0x4
-* Size: 0x4
-
-Interrupt Enable Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |ERBFI |rw |0x0 |—
-|1 |ETBEI |rw |0x0 |—
-|2 |ELSI |rw |0x0 |—
-|3 |EDSSI |rw |0x0 |—
-|4 |EFEI |rw |0x0 |—
-|=====================================
-
-[[erbfi-field]]
-ERBFI field
-+++++++++++
-
-Enable Receiver Buffer Full (Received Data Ready) Interrupt.
-
-[[etbei-field]]
-ETBEI field
-+++++++++++
-
-Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)
+[cols="1,1,1,1,3", options="header"]
+.IER Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `EFEI` | RW | 0x0 a| Enable FIFO Error Interrupt.
+| 3 | `EDSSI` | RW | 0x0 a| Enable (Delta Status of) Modem Status Interrupt.
+| 2 | `ELSI` | RW | 0x0 a| Enable (Receiver) Line Status Interrupt.
+| 1 | `ETBEI` | RW | 0x0 a| Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)
 Interrupt.
+| 0 | `ERBFI` | RW | 0x0 a| Enable Receiver Buffer Full (Received Data Ready) Interrupt.
+|===
 
-[[elsi-field]]
-ELSI field
-++++++++++
+[cols="1,1,1,1,3", options="header"]
+.IIR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:6 | `FIFOS_ENABLED` | R | 0x0 a| FIFOs Enabled:
+* `0x0` - FIFOs are disabled
+* `0x3` - FIFOs are enabled
+| 5:4 | `Reserved` | - | - a| Reserved
+| 3:1 | `INTERRUPT_ID` | R | 0x0 a| Interrupt ID:
+* `0x7` - FIFO Error Interrupt                         (priority 0)
+* `0x3` - Receiver Line Status Interrupt               (priority 1)
+* `0x6` - Reception Timeout Interrupt                  (priority 2)
+* `0x2` - Received Data Ready Interrupt                (priority 3)
+* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
+* `0x0` - Modem Status Interrupt                       (priority 5)
+| 0 | `INTERRUPT_PENDING` | R | 0x1 a| Interrupt Pending. Active-low.
+|===
 
-Enable (Receiver) Line Status Interrupt.
+[cols="1,1,1,1,3", options="header"]
+.LCR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `DLAB` | RW | 0x0 a| Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
+when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
+to the `THR`, `RBR`, and `IIR` registers.
+| 6 | `SET_BREAK` | RW | 0x0 a| Set Break. If set, forces the `tx_o` output to `0` to cause a break condition
+on the receiving UART.
+| 5 | `STICK_PARITY` | RW | 0x0 a| Stick Parity. If set, forces the transmit and received parity bits to be `0` if
+even parity is selected and `1` if odd parity is selected.
+| 4 | `EPS` | RW | 0x0 a| Even Parity Select:
+* `1` - even parity
+* `0` - odd parity
+| 3 | `PEN` | RW | 0x0 a| Parity Enable.
+| 2 | `STB` | RW | 0x0 a| Stop Bits:
+* `0` - 1 stop bit.
+* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
+| 1:0 | `WLS` | RW | 0x0 a| Word Length Select:
+* `0x0` - 5 bits per character
+* `0x1` - 6 bits per character
+* `0x2` - 7 bits per character
+* `0x3` - 8 bits per character
+|===
 
-[[edssi-field]]
-EDSSI field
-+++++++++++
-
-Enable (Delta Status of) Modem Status Interrupt.
-
-[[efei-field]]
-EFEI field
-++++++++++
-
-Enable FIFO Error Interrupt.
-
-[[iir-register]]
-IIR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x108
-* Base Offset: 0x8
-* Size: 0x4
-
-Interrupt Identification Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |INTERRUPT_PENDING |r |0x1 |—
-|3:1 |INTERRUPT_ID |r |0x0 |—
-|7:6 |FIFOS_ENABLED |r |0x0 |—
-|=====================================
-
-[[interrupt_pending-field]]
-INTERRUPT_PENDING field
-+++++++++++++++++++++++
-
-Interrupt Pending. Active-low.
-
-[[interrupt_id-field]]
-INTERRUPT_ID field
-++++++++++++++++++
-
-Interrupt ID: * 0x7 - FIFO Error Interrupt (priority 0) * 0x3 - Receiver
-Line Status Interrupt (priority 1) * 0x6 - Reception Timeout Interrupt
-(priority 2) * 0x2 - Received Data Ready Interrupt (priority 3) * 0x1 -
-Transmitter Holding Register Empty Interrupt (priority 4) * 0x0 - Modem
-Status Interrupt (priority 5)
-
-[[fifos_enabled-field]]
-FIFOS_ENABLED field
-+++++++++++++++++++
-
-FIFOs Enabled: * 0x0 - FIFOs are disabled * 0x3 - FIFOs are enabled
-
-[[lcr-register]]
-LCR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x10C
-* Base Offset: 0xC
-* Size: 0x4
-
-Line Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|1:0 |WLS |rw |0x0 |—
-|2 |STB |rw |0x0 |—
-|3 |PEN |rw |0x0 |—
-|4 |EPS |rw |0x0 |—
-|5 |STICK_PARITY |rw |0x0 |—
-|6 |SET_BREAK |rw |0x0 |—
-|7 |DLAB |rw |0x0 |—
-|=====================================
-
-[[wls-field]]
-WLS field
-+++++++++
-
-Word Length Select: * 0x0 - 5 bits per character * 0x1 - 6 bits per
-character * 0x2 - 7 bits per character * 0x3 - 8 bits per character
-
-[[stb-field]]
-STB field
-+++++++++
-
-Stop Bits: * 0 - 1 stop bit. * 1 - 2 stop bits (or 1.5 stop bits if word
-length is set to 5 bits)
-
-[[pen-field]]
-PEN field
-+++++++++
-
-Parity Enable.
-
-[[eps-field]]
-EPS field
-+++++++++
-
-Even Parity Select: * 1 - even parity * 0 - odd parity
-
-[[stick_parity-field]]
-STICK_PARITY field
-++++++++++++++++++
-
-Stick Parity. If set, forces the transmit and received parity bits to be
-0 if even parity is selected and 1 if odd parity is selected.
-
-[[set_break-field]]
-SET_BREAK field
-+++++++++++++++
-
-Set Break. If set, forces the tx_o output to 0 to cause a break
-condition on the receiving UART.
-
-[[dlab-field]]
-DLAB field
-++++++++++
-
-Divisor Latch Access Bit. If set, allows access to the DLL and DLM
-registers when accessing addresses 0x0 and 0x4, respectively. If unset,
-allows access to the THR, RBR, and IIR registers.
-
-[[mcr-register]]
-MCR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x110
-* Base Offset: 0x10
-* Size: 0x4
-
-Modem Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |DTR |rw |0x0 |—
-|1 |RTS |rw |0x0 |—
-|2 |OUT1 |rw |0x0 |—
-|3 |OUT2 |rw |0x0 |—
-|4 |LOOP |rw |0x0 |—
-|5 |LINE_LOOPBACK |rw |0x0 |—
-|=====================================
-
-[[dtr-field]]
-DTR field
-+++++++++
-
-Data Terminal Ready. Writing to this bit drives the dtr_no output in the
-opposite polarity.
-
-[[rts-field]]
-RTS field
-+++++++++
-
-Request to Send. Writing to this bit drives the rts_no output in the
-opposite polarity.
-
-[[out1-field]]
-OUT1 field
-++++++++++
-
-User Output 1. Writing to this bit drives the out1_no in the opposite
+[cols="1,1,1,1,3", options="header"]
+.MCR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `LINE_LOOPBACK` | RW | 0x0 a| Line Loopback. If set, the `rx_i` input is internally connected to the
+`tx_o` output.
+| 4 | `LOOP` | RW | 0x0 a| System Loopback. If set, the transmitter is internally connected to the
+receiver. The `tx_o` output is set to `1`.
+| 3 | `OUT2` | RW | 0x0 a| User Output 2. Writing to this bit drives the `out2_no` in the opposite
 polarity.
-
-[[out2-field]]
-OUT2 field
-++++++++++
-
-User Output 2. Writing to this bit drives the out2_no in the opposite
+| 2 | `OUT1` | RW | 0x0 a| User Output 1. Writing to this bit drives the `out1_no` in the opposite
 polarity.
+| 1 | `RTS` | RW | 0x0 a| Request to Send. Writing to this bit drives the `rts_no` output in the opposite
+polarity.
+| 0 | `DTR` | RW | 0x0 a| Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the
+opposite polarity.
+|===
 
-[[loop-field]]
-LOOP field
-++++++++++
-
-System Loopback. If set, the transmitter is internally connected to the
-receiver. The tx_o output is set to 1.
-
-[[line_loopback-field]]
-LINE_LOOPBACK field
-+++++++++++++++++++
-
-Line Loopback. If set, the rx_i input is internally connected to the
-tx_o output.
-
-[[lsr-register]]
-LSR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x114
-* Base Offset: 0x14
-* Size: 0x4
-
-Line Status Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |DR |r |0x0 |—
-|1 |OE |r, rclr |0x0 |—
-|2 |PE |r, rclr |0x0 |—
-|3 |FE |r, rclr |0x0 |—
-|4 |BI |r, rclr |0x0 |—
-|5 |THRE |r |0x1 |—
-|6 |TEMT |r |0x1 |—
-|7 |ERROR_IN_RCVR_FIFO |r |0x0 |—
-|=====================================
-
-[[dr-field]]
-DR field
-++++++++
-
-Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
+[cols="1,1,1,1,3", options="header"]
+.LSR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `ERROR_IN_RCVR_FIFO` | R | 0x0 a| Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in
+non-FIFO mode) has the parity, framing, or break error. In other words, at
+least one of the PE, FE, and BI bits is set.
+| 6 | `TEMT` | R | 0x1 a| Transmitter Empty. When set, indicates that the transmitter shift register and
+the transmitter FIFO (or THR in non-FIFO mode) are empty.
+| 5 | `THRE` | R | 0x1 a| Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
+THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
+Interrupt does NOT clear this bit.
+| 4 | `BI` | R | 0x0 a| Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
+when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
+bit is set when the character enters the RBR. This bit triggers the Receiver
+Line Status Interrupt.
+| 3 | `FE` | R | 0x0 a| Framing Error. When set, indicates that the received character is missing a
+stop bit. In FIFO mode, this bit is set when the character reaches the top of
+the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
+This bit triggers the Receiver Line Status Interrupt.
+| 2 | `PE` | R | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
+FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
+Receiver Line Status Interrupt.
+| 1 | `OE` | R | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
+is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
+This bit triggers the Receiver Line Status Interrupt.
+| 0 | `DR` | R | 0x0 a| Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
 mode) contains data.
+|===
 
-[[oe-field]]
-OE field
-++++++++
-
-Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
-Register in Non-FIFO Mode) is full when new character is received. In
-FIFO Mode, the new character is dropped. In non-FIFO mode, the existing
-character in the RBR is overwritten. This bit triggers the Receiver Line
-Status Interrupt.
-
-[[pe-field]]
-PE field
-++++++++
-
-Parity Error. When set, indicates that the character at the top of the
-receiver FIFO (or RBR in non-FIFO mode) has a parity error. This bit
-triggers the Receiver Line Status Interrupt.
-
-[[fe-field]]
-FE field
-++++++++
-
-Framing Error. When set, indicates that the received character is
-missing a stop bit. In FIFO mode, this bit is set when the character
-reaches the top of the FIFO. In non-FIFO mode, this bit is set when the
-character enters the RBR. This bit triggers the Receiver Line Status
-Interrupt.
-
-[[bi-field]]
-BI field
-++++++++
-
-Break Interrupt. When set, indicates that the rx_i input is 0 for an
-entire frame’s time (start + data + parity + stop bits). In FIFO mode,
-this bit set when the character reaches the top of the receiver FIFO. In
-non-FIFO mode, this bit is set when the character enters the RBR. This
-bit triggers the Receiver Line Status Interrupt.
-
-[[thre-field]]
-THRE field
-++++++++++
-
-Transmitter Holding Register Empty. When set, indicates that the TX FIFO
-(or THR in non-FIFO mode) is empty. Clearing the Transmitter Holding
-Register Empty Interrupt does NOT clear this bit.
-
-[[temt-field]]
-TEMT field
-++++++++++
-
-Transmitter Empty. When set, indicates that the transmitter shift
-register and the transmitter FIFO (or THR in non-FIFO mode) are empty.
-
-[[error_in_rcvr_fifo-field]]
-ERROR_IN_RCVR_FIFO field
-++++++++++++++++++++++++
-
-Error in Receiver FIFO. When set, indicates that the receiver FIFO or
-(RBR in non-FIFO mode) has the parity, framing, or break error. In other
-words, at least one of the PE, FE, and BI bits is set.
-
-[[msr-register]]
-MSR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x118
-* Base Offset: 0x18
-* Size: 0x4
-
-Modem Status Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |DCTS |r, rclr |0x0 |—
-|1 |DDSR |r, rclr |0x0 |—
-|2 |TERI |r, rclr |0x0 |—
-|3 |DDCD |r, rclr |0x0 |—
-|4 |CTS |r |0x0 |—
-|5 |DSR |r |0x0 |—
-|6 |RI |r |0x0 |—
-|7 |DCD |r |0x0 |—
-|=====================================
-
-[[dcts-field]]
-DCTS field
-++++++++++
-
-Delta Clear to Send. When set, indicates that the CTS bit has changed
-since the last time this register was read. This bit triggers the Modem
-Status Interrupt.
-
-[[ddsr-field]]
-DDSR field
-++++++++++
-
-Delta Data Set Ready. When set, indicates that the DSR bit has changed
-since the last time this register was read. This bit triggers the Modem
-Status Interrupt.
-
-[[teri-field]]
-TERI field
-++++++++++
-
-Trailing Edge Ring Indicator. When set, indicates that the RI bit has
-changed from a 1 to a 0. This bit triggers the Modem Status Interrupt.
-
-[[ddcd-field]]
-DDCD field
-++++++++++
-
-Delta Data Carrier Detect. When set, indicates that the DCD bit has
-changed since the last time this register was read. This bit triggers
-the Modem Status Interrupt.
-
-[[cts-field]]
-CTS field
-+++++++++
-
-Clear to Send. This bit is the active-low version of the cts_ni input.
-
-[[dsr-field]]
-DSR field
-+++++++++
-
-Data Set Ready. This bit is the active-low version of the dsr_ni input.
-
-[[ri-field]]
-RI field
-++++++++
-
-Ring Indicator. This bit is the active-low version of the ri_ni input.
-
-[[dcd-field]]
-DCD field
-+++++++++
-
-Data Carrier Detect. This bit is the active-low version of the dcd_ni
+[cols="1,1,1,1,3", options="header"]
+.MSR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `DCD` | R | 0x0 a| Data Carrier Detect. This bit is the active-low version of the `dcd_ni`
 input.
+| 6 | `RI` | R | 0x0 a| Ring Indicator. This bit is the active-low version of the `ri_ni` input.
+| 5 | `DSR` | R | 0x0 a| Data Set Ready. This bit is the active-low version of the `dsr_ni` input.
+| 4 | `CTS` | R | 0x0 a| Clear to Send. This bit is the active-low version of the `cts_ni` input.
+| 3 | `DDCD` | R | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+since the last time this register was read. This bit triggers the Modem Status
+Interrupt.
+| 2 | `TERI` | R | 0x0 a| Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+from a `1` to a `0`. This bit triggers the Modem Status Interrupt.
+| 1 | `DDSR` | R | 0x0 a| Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+the last time this register was read. This bit triggers the Modem Status
+Interrupt.
+| 0 | `DCTS` | R | 0x0 a| Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+the last time this register was read. This bit triggers the Modem Status
+Interrupt.
+|===
 
-[[scr-register]]
-SCR register
-^^^^^^^^^^^^
+[cols="1,1,1,1,3", options="header"]
+.SCR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `SCR` | RW | 0x0 a| Scratch. Holds user data.
+|===
 
-* Absolute Address: 0x11C
-* Base Offset: 0x1C
-* Size: 0x4
+[cols="1,1,1,1,3", options="header"]
+.ECR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1:0 | `RCVR_TRIGGER_MS2B` | RW | 0x0 a| Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least
+significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The
+configurations for the trigger levels are:
+* `0x0` -    1 character
+* `0x1` -    4 characters
+* `0x2` -    8 characters
+* `0x3` -   14 characters
+* `0x4` -   32 characters
+* `0x5` -   64 characters
+* `0x6` -  128 characters
+* `0x7` -  256 characters
+* `0x8` -  512 characters
+* `0x9` - 1024 characters
+* `0xA` - 2048 characters
+* `0xB` - 4096 characters
+|===
 
-Scratch Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|7:0 |SCR |rw |0x0 |—
-|=====================================
-
-[[scr-field]]
-SCR field
-+++++++++
-
-Scratch. Holds user data.
-
-[[ecr-register]]
-ECR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x120
-* Base Offset: 0x20
-* Size: 0x4
-
-Extended Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|1:0 |RCVR_TRIGGER_MS2B |rw |0x0 |—
-|=====================================
-
-[[rcvr_trigger_ms2b-field]]
-RCVR_TRIGGER_MS2B field
-+++++++++++++++++++++++
-
-Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the
-least significant 2 bits, use the FCR.RCVR_TRIGGER register field. The
-configurations for the trigger levels are: * 0x0 - 1 character * 0x1 - 4
-characters * 0x2 - 8 characters * 0x3 - 14 characters * 0x4 - 32
-characters * 0x5 - 64 characters * 0x6 - 128 characters * 0x7 - 256
-characters * 0x8 - 512 characters * 0x9 - 1024 characters * 0xA - 2048
-characters * 0xB - 4096 characters
-
-[[itr-register]]
-ITR register
-^^^^^^^^^^^^
-
-* Absolute Address: 0x124
-* Base Offset: 0x24
-* Size: 0x4
-
-Interrupt Test Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |TRBFI |rw |0x0 |—
-|1 |TTBEI |rw |0x0 |—
-|2 |TLSI |rw |0x0 |—
-|3 |TDSSI |rw |0x0 |—
-|4 |TFEI |rw |0x0 |—
-|5 |TRTI |rw |0x0 |—
-|=====================================
-
-[[trbfi-field]]
-TRBFI field
-+++++++++++
-
-Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing 1
-forces the interrupt and writing 0 releases it.
-
-[[ttbei-field]]
-TTBEI field
-+++++++++++
-
-Test Transmitter Buffer Empty (Transmitter Holding Register Empty)
-Interrupt. Writing 1 forces the interrupt and writing 0 releases it.
-
-[[tlsi-field]]
-TLSI field
-++++++++++
-
-Test (Receiver) Line Status Interrupt. Writing 1 forces the interrupt
-and writing 0 releases it.
-
-[[tdssi-field]]
-TDSSI field
-+++++++++++
-
-Test (Delta Status of) Modem Status Interrupt. Writing 1 forces the
-interrupt and writing 0 releases it.
-
-[[tfei-field]]
-TFEI field
-++++++++++
-
-Test FIFO Error Interrupt. Writing 1 forces the interrupt and writing 0
+[cols="1,1,1,1,3", options="header"]
+.ITR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5 | `TRTI` | RW | 0x0 a| Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and
+writing `0` releases it.
+| 4 | `TFEI` | RW | 0x0 a| Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`
 releases it.
-
-[[trti-field]]
-TRTI field
-++++++++++
-
-Test Reception Timeout Interrupt. Writing a 1 forces the interrupt and
-writing 0 releases it.
-
-[[log_engine-address-map]]
-log_engine address map
-~~~~~~~~~~~~~~~~~~~~~~
-
-* Absolute Address: 0x200
-* Base Offset: 0x200
-* Size: 0x80
-
-Log Engine
-
-[cols=",,",options="header",]
-|========================
-|Offset |Identifier |Name
-|0x00 |CTRL |—
-|0x04 |LOG_REGION_SIZE |—
-|0x08 |LOG_REGION_ADDR |—
-|0x10 |LOG_WRITE_ADDR |—
-|0x14 |INTR_STATUS |—
-|0x18 |INTR_ENABLE |—
-|0x1C |INTR_TEST |—
-|0x40 |LOG_CTRL[0] |—
-|0x44 |LOG_CTRL[1] |—
-|0x48 |LOG_CTRL[2] |—
-|0x4C |LOG_CTRL[3] |—
-|0x50 |LOG_CTRL[4] |—
-|0x54 |LOG_CTRL[5] |—
-|0x58 |LOG_CTRL[6] |—
-|0x5C |LOG_CTRL[7] |—
-|0x60 |LOG_CTRL[8] |—
-|0x64 |LOG_CTRL[9] |—
-|0x68 |LOG_CTRL[10] |—
-|0x6C |LOG_CTRL[11] |—
-|0x70 |LOG_CTRL[12] |—
-|0x74 |LOG_CTRL[13] |—
-|0x78 |LOG_CTRL[14] |—
-|0x7C |LOG_CTRL[15] |—
-|========================
-
-[[ctrl-register-1]]
-CTRL register
-^^^^^^^^^^^^^
-
-* Absolute Address: 0x200
-* Base Offset: 0x0
-* Size: 0x4
-
-Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |EN |rw |0x0 |—
-|=====================================
-
-[[en-field]]
-EN field
-++++++++
-
-Log Engine Enable. When set, enables the Log Engine. When unset,
-disables the Log Engine and resets all FSMs, flops, and FIFOs.
-
-[[log_region_size-register]]
-LOG_REGION_SIZE register
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x204
-* Base Offset: 0x4
-* Size: 0x4
-
-Log Region Size Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|19:0 |LOG_REGION_SIZE |rw |0x0 |—
-|=====================================
-
-[[log_region_size-field]]
-LOG_REGION_SIZE field
-+++++++++++++++++++++
-
-Log Region Size. Specified in bytes. Needs to be a multiple of 16.
-
-[[log_region_addr-register]]
-LOG_REGION_ADDR register
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x208
-* Base Offset: 0x8
-* Size: 0x8
-
-Log Region Address Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |LOG_REGION_ADDR_LO |rw |0x0 |—
-|63:32 |LOG_REGION_ADDR_HI |rw |0x0 |—
-|=====================================
-
-[[log_region_addr_lo-field]]
-LOG_REGION_ADDR_LO field
-++++++++++++++++++++++++
-
-Log Region Start Address Low.
-
-[[log_region_addr_hi-field]]
-LOG_REGION_ADDR_HI field
-++++++++++++++++++++++++
-
-Log Region Start Address High.
-
-[[log_write_addr-register]]
-LOG_WRITE_ADDR register
-^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x210
-* Base Offset: 0x10
-* Size: 0x4
-
-Log Write Address Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |LOG_WRITE_ADDR |rw |0x0 |—
-|=====================================
-
-[[log_write_addr-field]]
-LOG_WRITE_ADDR field
-++++++++++++++++++++
-
-Log Write Address. This is the address where the log data is written to.
-
-[[intr_status-register]]
-INTR_STATUS register
-^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x214
-* Base Offset: 0x14
-* Size: 0x4
-
-Interrupt Status Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |LOG_FETCH_ERR |rw, woclr |0x0 |—
-|4 |LOG_WRITE_ERR |rw, woclr |0x0 |—
-|=====================================
-
-[[log_fetch_err-field]]
-LOG_FETCH_ERR field
-+++++++++++++++++++
-
-Log Fetch Error Interrupt. Asserted when the bus for fetching log data
-returns an error.
-
-[[log_write_err-field]]
-LOG_WRITE_ERR field
-+++++++++++++++++++
-
-Log Write Error Interrupt. Asserted when the bus for writing log data
-returns an error.
-
-[[intr_enable-register]]
-INTR_ENABLE register
-^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x218
-* Base Offset: 0x18
-* Size: 0x4
-
-Interrupt Enable Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |LOG_FETCH_ERR |rw |0x0 |—
-|4 |LOG_WRITE_ERR |rw |0x0 |—
-|=====================================
-
-[[log_fetch_err-field-1]]
-LOG_FETCH_ERR field
-+++++++++++++++++++
-
-Log Fetch Error Interrupt Enable.
-
-[[log_write_err-field-1]]
-LOG_WRITE_ERR field
-+++++++++++++++++++
-
-Log Write Error Interrupt Enable.
-
-[[intr_test-register]]
-INTR_TEST register
-^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x21C
-* Base Offset: 0x1C
-* Size: 0x4
-
-Interrupt Test Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |LOG_FETCH_ERR |w |0x0 |—
-|4 |LOG_WRITE_ERR |w |0x0 |—
-|=====================================
-
-[[log_fetch_err-field-2]]
-LOG_FETCH_ERR field
-+++++++++++++++++++
-
-Log Fetch Error Interrupt Test. Writing 1 forces the interrupt.
-
-[[log_write_err-field-2]]
-LOG_WRITE_ERR field
-+++++++++++++++++++
-
-Log Write Error Interrupt Test. Writing 1 forces the interrupt.
-
-[[log_ctrl-register]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x240
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-1]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x244
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-1]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-2]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x248
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-2]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-3]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x24C
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-3]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-4]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x250
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-4]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-5]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x254
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-5]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-6]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x258
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-6]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-7]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x25C
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-7]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-8]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x260
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-8]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-9]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x264
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-9]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-10]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x268
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-10]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-11]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x26C
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-11]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-12]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x270
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-12]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-13]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x274
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-13]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-14]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x278
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-14]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
-
-[[log_ctrl-register-15]]
-LOG_CTRL register
-^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x27C
-* Base Offset: 0x40
-* Size: 0x4
-* Array Dimensions: [16]
-* Array Stride: 0x4
-* Total Size: 0x40
-
-Log Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|15:0 |LOG_LEN |rw |0x0 |—
-|=====================================
-
-[[log_len-field-15]]
-LOG_LEN field
-+++++++++++++
-
-Log Length. Writing a nonzero value representing the log length in bytes
-to this field starts the log transfer process. There are 16 copies of
-this register, each representing a log entry. The log entries go through
-round robin arbitration.
+| 3 | `TDSSI` | RW | 0x0 a| Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the
+interrupt and writing `0` releases it.
+| 2 | `TLSI` | RW | 0x0 a| Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and
+writing `0` releases it.
+| 1 | `TTBEI` | RW | 0x0 a| Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.
+Writing `1` forces the interrupt and writing `0` releases it.
+| 0 | `TRBFI` | RW | 0x0 a| Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces
+the interrupt and writing `0` releases it.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOG_REGION_SIZE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19:0 | `LOG_REGION_SIZE` | RW | 0x0 a| Log Region Size. Specified in bytes. Needs to be a multiple of 16.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOG_REGION_ADDR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:32 | `LOG_REGION_ADDR_HI` | RW | 0x0 a| Log Region Start Address High.
+| 31:0 | `LOG_REGION_ADDR_LO` | RW | 0x0 a| Log Region Start Address Low.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOG_WRITE_ADDR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `LOG_WRITE_ADDR` | RW | 0x0 a| Log Write Address. This is the address where the log data is written to.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.INTR_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `LOG_WRITE_ERR` | RW | 0x0 a| Log Write Error Interrupt. Asserted when the bus for writing log data returns
+an error.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `LOG_FETCH_ERR` | RW | 0x0 a| Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+an error.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.INTR_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `LOG_WRITE_ERR` | RW | 0x0 a| Log Write Error Interrupt Enable.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `LOG_FETCH_ERR` | RW | 0x0 a| Log Fetch Error Interrupt Enable.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.INTR_TEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `LOG_WRITE_ERR` | W | 0x0 a| Log Write Error Interrupt Test. Writing `1` forces the interrupt.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `LOG_FETCH_ERR` | W | 0x0 a| Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOG_CTRL[16] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `Reserved` | - | - a| Reserved
+| 15:0 | `LOG_LEN` | RW | 0x0 a| Log Length. Writing a nonzero value representing the log length in bytes to this field
+starts the log transfer process. There are 16 copies of this register, each representing
+a log entry. The log entries go through round robin arbitration.
+|===

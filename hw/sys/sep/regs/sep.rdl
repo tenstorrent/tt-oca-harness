@@ -1,9 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 // OCH SEP Top-Level Address Map
 // This file defines the complete address map for the OCH SEP subsystem
 // Base addresses are derived from hw/sep/sep_crypto_pkg.sv and hw/sep/sep_pkg.sv
-
-// OpenTitan UDP definitions (required for exported RDL properties)
-`include "opentitan_udps.rdl"
 
 // Include all peripheral RDL files
 `include "otbn.rdl"
@@ -27,8 +27,8 @@
 `include "remapped_region.rdl"
 
 // System Peripherals RDL files
-`include "axi_alias_remap.rdl"
-`include "axi_filter.rdl"
+`include "alias_remap.rdl"
+`include "filter_ctrl.rdl"
 `include "axil_mailbox_sep_wrap.rdl"
 `include "sep_cpu_ctrl.rdl"
 `include "sep_reset_ctrl.rdl"
@@ -171,8 +171,8 @@ addrmap och_sep_top #(
     // AXI Extension Region (adopter-populated; e.g. external xSPI/I3C peripherals)
     // Base: 0x2000_0000, Size: 512 MB (0x2000_0000)
     // =========================================================================
-    // Open-source builds reserve the region; an overlay may override
-    // sep_axi_extension.rdl to instantiate proprietary peripherals.
+    // Open-source builds reserve the region; an adopter overlay may override
+    // sep_axi_extension.rdl to instantiate external peripherals.
 
     sep_axi_extension           sep_axi_extension        @BASE_ADDR + 0x2000_0000;
 

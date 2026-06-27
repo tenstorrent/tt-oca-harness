@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
@@ -21,7 +24,7 @@ int main(void)
     uint32_t num_uarts = num_ctrlrs + num_tgts;
     uint32_t uart_spacing = 0x400; // each UART allocated 0x400 of space
 
-    uint32_t synopsys_uart_base_addr = SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
+    uint32_t uart_base_addr = SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
     uint32_t uart_ctrl_base_addr = SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0);
     uint32_t uart_engine_base_addr = SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0);
 
@@ -46,14 +49,14 @@ int main(void)
     int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); // DOUBLE CHECK FREQ
 
     //---------------------------//
-    // Synopsys Controller Setup //
+    // UART 16550 Controller Setup //
     //---------------------------//
 
     uint32_t ip_addr_indexed;
 
     for (int i = 0; i < num_uarts; i++)
     {
-        ip_addr_indexed = synopsys_uart_base_addr + (i * uart_spacing);
+        ip_addr_indexed = uart_base_addr + (i * uart_spacing);
 
         uart_16550_main__MCR_t mcr;
         uart_16550_main__LCR_t lcr;
@@ -142,7 +145,7 @@ int main(void)
         this_ctrlr = uart_ctrlrs[i];
         this_tgt = uart_tgts[i];
         engine_addr_indexed = uart_engine_base_addr + (this_ctrlr * uart_spacing); // engine needed for controllers only
-        ip_addr_indexed = synopsys_uart_base_addr + (this_tgt * uart_spacing);     // synopsys uart handle only needed for target -- uart engine triggers controller UART send
+        ip_addr_indexed = uart_base_addr + (this_tgt * uart_spacing);     // UART handle only needed for target -- uart engine triggers controller UART send
 
         for (int j = 0; j < num_logs; j++)
         {

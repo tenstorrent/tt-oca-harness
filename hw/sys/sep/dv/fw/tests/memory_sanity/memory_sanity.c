@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // Memory Sanity Test
 //
 // Tests basic read/write operations to SRAM memory
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /**
  * @file main.c
  * @brief I2C P0 FIFO Threshold Interrupt Test

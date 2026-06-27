@@ -1,0 +1,11 @@
+--- a/hw/ip/prim/rtl/prim_count.sv
++++ b/hw/ip/prim/rtl/prim_count.sv
+@@ -134,7 +134,7 @@
+     );
+ 
+     // fpv_force is only used during FPV.
+-    assign cnt_q[k] = fpv_force[k] + cnt_unforced_q;
++    assign cnt_q[k] = Width'(fpv_force[k] + cnt_unforced_q);
+   end
+ 
+   // The sum of both counters must always equal the counter maximum.

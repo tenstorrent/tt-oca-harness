@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[uart-16550-programming]]
+===== Programming
+
+====== Baud Rate Configuration
+
+To configure the baud rate:
+
+1.  Set DLAB=1 in LCR register (0x0C)
+2.  Calculate divisor:
+`divisor = clock_frequency / (16 * desired_baud_rate)`
+3.  Write low byte of divisor to DLL (0x00)
+4.  Write high byte of divisor to DLM (0x04)
+5.  Clear DLAB=0 in LCR register to resume normal operation
+
+Example for 115200 baud with 50MHz clock:
+`divisor = 50000000 / (16 * 115200) = 27 (0x001B)` - Write 0x1B to DLL -
+Write 0x00 to DLM
+
+====== FIFO Configuration
+
+To enable and configure FIFOs:
+
+1.  Write to FCR register (0x08): Set FIFOEN=1
+2.  Configure receive trigger level in RXTRIG field
+3.  Reset FIFOs if needed using RFIFORST and TFIFORST bits
+4.  Select DMA mode if using DMA transfers
+
+====== Interrupt Configuration
+
+To configure interrupts:
+
+1.  Enable desired interrupt sources in IER register (0x04)
+2.  Configure OUT2 in MCR register if needed for interrupt enable
+3.  Read IIR register (0x08) to identify pending interrupts
+4.  Service interrupts by reading appropriate status/data registers
+
+The memory map provides comprehensive control over all UART 16550
+functions while maintaining backward compatibility with the original
+16550 standard. The dynamic register mapping through DLAB provides
+efficient access to both normal operation and baud rate configuration
+registers.

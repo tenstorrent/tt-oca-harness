@@ -1,0 +1,242 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[system-timer-octs-architecture]]
+===== Architecture
+
+The System Timer OCTS (Open Chiplet Time Synchronization) IP provides
+precise time coordination across distributed multi-chiplet systems. The
+design implements a hierarchical PRIMARY/SECONDARY architecture for
+nanosecond-level timing precision across chiplets that may operate with
+different clock domains, processing loads, and environmental conditions.
+
+The PRIMARY/SECONDARY architecture separates centralized time authority
+from distributed time management. PRIMARY timers generate master
+timelines while SECONDARY timers maintain local temporal alignment using
+credit-based counting. This approach maintains system-wide
+synchronization under varying operational conditions, network latencies,
+and component performance variations.
+
+The implementation follows Open Chiplet Architecture (OCA)
+specifications, version , using credit-based synchronization for
+continuous maintenance that adapts to varying system loads and
+communication delays.
+
+====== Timer Core Processing
+
+The timer core implements 64-bit counter management supporting both
+PRIMARY and SECONDARY operational modes.
+
+In *PRIMARY* mode, the timer acts as the central timekeeper for the
+system. It maintains a continuously incrementing 64-bit counter,
+advancing with each clock cycle to provide an accurate global timeline.
+
+As the system authority, the PRIMARY timer generates synchronization
+pulses, including both sync_load and credit signals, which are
+distributed to SECONDARY timers to ensure coordinated operation across
+chiplets. During initialization, the timer supports preset loading,
+enabling simultaneous start and consistent alignment throughout the
+system.
+
+By combining precise counting and periodic synchronization outputs, the
+PRIMARY timer anchors time coordination for multi-chiplet environments.
+
+*SECONDARY* timers sustain local time alignment across chiplets using a
+credit-based scheme. The timer maintains an internal credit accumulator
+(cur_credits) that increments by the step input value (`timer_cnt_step_i`)
+each clock cycle when credits are available. When cur_credits reaches or
+exceeds the programmed credit value (CREDIT_VAL), the timer halts
+counting until new credit pulses arrive from the PRIMARY timer.
+
+The step input (`timer_cnt_step_i`) is an 8-bit external signal that
+controls the increment rate per clock cycle, typically set to 1 for
+standard per-cycle increment but can be tuned for different clock ratios
+or calibration needs. The system continuously tracks an expected counter
+value that gets updated on sync_load or credit pulse events, validating
+alignment with the overall timeline. Credit expiration is monitored via a
+32-bit counter that increments when cur_credits exceeds CREDIT_VAL,
+providing diagnostics for synchronization health.
+
+====== Clock Domain Crossing
+
+The CDC architecture maintains signal integrity and timing precision
+across clock domains with different frequencies, phase relationships,
+and jitter characteristics.
+
+====== Edge Detection
+
+To ensure robust metastability protection during clock domain crossing,
+the design employs prim_edge_detector modules. These modules reliably
+convert level-based synchronization signals into single-cycle pulses,
+minimizing hold time constraints and simplifying timing requirements. As
+a result, they enable precise temporal coordination across clock domains
+and maintain stable operation despite potential variations in signal
+arrival times or delays.
+
+====== Synchronization Protocol
+
+The synchronization protocol relies on a two-level mechanism to
+establish and maintain timer alignment across chiplets. During
+initialization, a global *sync_load* pulse resets all timers
+simultaneously, ensuring they start in a coordinated state.
+
+For ongoing operation, periodic *credit pulses* are issued to secondary
+timers, enabling them to resynchronize and compensate for any
+accumulated clock drift or environmental variations such as temperature
+changes. Edge-triggered signaling is used throughout, removing tight
+timing dependencies and promoting robust synchronization regardless of
+clock differences.
+
+====== Credit-Based Synchronization
+
+Credit-based synchronization balances autonomous operation with
+centralized coordination, allowing SECONDARY timers to maintain temporal
+progression during communication interruptions while ensuring long-term
+accuracy through periodic resynchronization.
+
+====== Credit Management
+
+The credit management system operates differently in PRIMARY and SECONDARY modes:
+
+[width="100%",cols="30%,70%",options="header",]
+|======================================================================
+|Feature |Description
+|PRIMARY Credit Counter |8-bit counter (0 to CREDIT_VAL-1) that increments each cycle when enabled. When it reaches CREDIT_VAL-1, it resets to 0 and generates a credit pulse output.
+|SECONDARY Credit Accumulator |8-bit accumulator (cur_credits) that increments by step input value each cycle when cur_credits < CREDIT_VAL. Resets to 0 on sync_load or credit pulse events.
+|Credit Value |Software-programmable via CTRL.CREDIT_VAL register (8-bit, range 1-255)
+|Step Input |8-bit external signal (timer_cnt_step_i) controlling increment rate in SECONDARY mode
+|Expiration Tracking |32-bit counter that increments when cur_credits >= CREDIT_VAL in SECONDARY mode, providing diagnostics
+|======================================================================
+
+====== Synchronization Logic
+
+In SECONDARY mode, the timer advances when credits are available. The
+credit accumulator (cur_credits) increments by the step input value
+(`timer_cnt_step_i`) each clock cycle as long as cur_credits < CREDIT_VAL.
+When cur_credits reaches or exceeds CREDIT_VAL, the timer halts counting
+and the credit_expired counter increments, indicating that synchronization
+credits have been exhausted.
+
+Credits are replenished when a credit pulse arrives from the PRIMARY timer
+or when a sync_load pulse is received, both of which reset cur_credits to 0
+and reset the credit_expired counter. The expected counter value is
+updated on these synchronization events: on sync_load, it's set to the
+preset value; on credit pulse, it's incremented by CREDIT_VAL using a
+carry-select adder. This expected value provides a basis for
+synchronization validation and helps detect drift between the actual timer
+count and the expected timeline.
+
+====== Pulse Generation
+
+PRIMARY timers generate synchronization signals for SECONDARY timer
+coordination.
+
+====== Pulse State Machine
+
+[width="100%",cols="25%,75%",options="header",]
+|=======================================================================
+|State |Description
+|PULSE_IDLE |Normal operation, monitors for synchronization events
+
+|PULSE_SYNC_LOAD |Generates sync_load pulses for coordinated timer
+initialization
+
+|PULSE_CREDIT |Generates credit pulses for ongoing synchronization
+maintenance
+|=======================================================================
+
+====== Pulse Width Control
+
+The pulse width for synchronization can be configured between 1 and 255
+cycles using the CTRL.PULSE_WIDTH register. If PULSE_WIDTH is set to 0, it
+defaults to 1 cycle. A pulse counter tracks the active pulse duration,
+incrementing from 0 to (PULSE_WIDTH - 1) before returning to idle state.
+This flexibility ensures that synchronization pulses are long enough for
+reliable clock domain crossing (CDC), while minimizing any overhead to
+system performance. By allowing adjustment of the pulse duration, the
+design supports robust operation across different clock ratios and
+propagation delays.
+
+The credit value (CREDIT_VAL) must be greater than the pulse width
+(PULSE_WIDTH) to ensure credit pulses are not missed during pulse
+generation.
+
+====== Data Flow and Control Path
+
+In PRIMARY mode, the timer core begins with software issuing a preset
+value and asserting the START register. This action loads the counter
+with the specified preset (from \{reg_preset_hi, reg_preset_lo}),
+establishing a consistent starting point across the system.
+
+Once enabled, the timer increments the counter by one each clock cycle
+using a 64-bit carry-select adder, maintaining precise progression.
+Throughout operation, the timer autonomously generates synchronization
+pulses: periodic credit pulses are issued when the credit counter reaches
+CREDIT_VAL-1, and sync_load pulses are produced whenever START is
+asserted. The width of these pulses is tunable via the PULSE_WIDTH setting,
+allowing adaptation to varying system requirements and ensuring reliable
+communication between chiplets.
+
+In SECONDARY mode, the timer remains idle until it detects a sync_load
+pulse from the PRIMARY timer. Upon receiving this pulse, it loads its
+counter with the preset value to achieve initial alignment. Thereafter,
+the timer advances based on a credit-based mechanism: it increments the
+counter by the step input value (`timer_cnt_step_i`) each cycle when
+cur_credits < CREDIT_VAL, using a 64-bit carry-select adder for the
+addition. The credit accumulator (cur_credits) increments by the step
+value each cycle as long as credits are available.
+
+Credits are replenished automatically when a credit pulse arrives from the
+PRIMARY or when a sync_load pulse is received, both of which reset
+cur_credits to 0. Throughout operation, the timer continuously tracks its
+expected count using a separate 64-bit counter that gets updated on
+synchronization events, providing a basis for synchronization validation.
+The expected count is incremented by CREDIT_VAL on credit pulse events
+using a carry-select adder.
+
+====== Control Path Overview
+
+The control path of the System Timer OCTS integrates subsystems for
+enabling, mode selection, and credit tracking. The global enable signal
+is managed through software (via the START register), by detecting
+sync_load pulses in SECONDARY mode, or by retaining its previous enabled
+state for sticky operation.
+
+The timer's behavior is determined at runtime by the `is_primary_i` input
+signal, which defines whether the timer operates as PRIMARY or SECONDARY.
+In PRIMARY mode, the timer increments its counter by 1 each cycle and
+generates synchronization pulses. In SECONDARY mode, the timer increments
+by the step input value and receives synchronization pulses. This runtime
+mode selection allows flexible system configuration and dynamic mode
+switching if needed.
+
+Credit management operates at the heart of ongoing time alignment. In
+PRIMARY mode, an 8-bit credit counter increments from 0 to CREDIT_VAL-1
+each cycle when enabled, generating a credit pulse when it reaches
+CREDIT_VAL-1 and then resetting to 0. In SECONDARY mode, an 8-bit credit
+accumulator (cur_credits) increments by the step input value each cycle
+when cur_credits < CREDIT_VAL, and resets to 0 on sync_load or credit
+pulse events. The system ensures reliable, edge-triggered credit
+reception using prim_edge_detector modules, updates expected timer values
+with each credit using carry-select adders, and provides a real-time
+32-bit counter (credit_expired_o) that increments when cur_credits >=
+CREDIT_VAL—essential for synchronization health diagnostics.
+
+====== Pulse Generation in PRIMARY Mode
+
+In PRIMARY mode, the timer autonomously produces two kinds of
+synchronization pulses: sync_load, which resets all timers system-wide
+(e.g., after START assertion), and periodic credit pulses distributed to
+SECONDARY timers. Both pulses feature a programmable width (1–255 cycles
+via the PULSE_WIDTH register, defaulting to 1 if set to 0), ensuring
+timing integrity across clock domains.
+
+Pulse emission is governed by a dedicated state machine with three
+states: PULSE_IDLE, PULSE_SYNC_LOAD, and PULSE_CREDIT. A pulse counter
+tracks the active pulse duration, incrementing from 0 to (PULSE_WIDTH - 1)
+before the state machine returns to PULSE_IDLE. Sync_load pulses are
+triggered when START is asserted and the state machine is idle. Credit
+pulses are triggered when the credit counter reaches CREDIT_VAL-1, the
+timer is enabled, and the state machine is idle. This mechanism
+guarantees reliable and flexible pulse delivery, supporting seamless
+multi-chiplet synchronization even in complex environments.

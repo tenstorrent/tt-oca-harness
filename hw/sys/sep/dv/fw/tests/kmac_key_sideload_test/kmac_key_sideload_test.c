@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * TC_KMAC_015 — KMAC Key Sideload Mode Test (P1, GitHub #1301)
  *
@@ -29,7 +32,6 @@
  *   [7-8] unused (reserved)
  *   [9] Phase 4 digest matches Phase 2 (determinism)
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

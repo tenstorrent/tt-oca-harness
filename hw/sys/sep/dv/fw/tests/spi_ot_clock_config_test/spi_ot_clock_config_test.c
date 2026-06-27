@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Clock Config Test - TC_SPIOT_004 (P1)
  *
@@ -14,7 +17,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_clock_config_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

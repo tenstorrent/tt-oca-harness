@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #include <stdint.h>
 #include <time.h>
 
@@ -39,7 +42,7 @@ int main(void)
     int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); // DOUBLE CHECK FREQ
 
     //---------------------------//
-    // Synopsys Controller Setup //
+    // UART 16550 Controller Setup //
     //---------------------------//
 
     for (int i = 0; i < num_uarts; i++)

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /* SMC Status Reporting
  * Status reporting using fixed ring buffers in SRAM.
  */

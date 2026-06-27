@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * HMAC Long Message Test - TC_HMAC_015 (P1)
  *
@@ -13,7 +16,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_hmac_long_message_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

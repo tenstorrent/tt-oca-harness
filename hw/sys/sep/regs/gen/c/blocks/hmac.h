@@ -10,273 +10,278 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - hmac::INTR_STATE
-#define HMAC__INTR_STATE__HMAC_DONE_bm 0x1
-#define HMAC__INTR_STATE__HMAC_DONE_bp 0
-#define HMAC__INTR_STATE__HMAC_DONE_bw 1
-#define HMAC__INTR_STATE__HMAC_DONE_reset 0x0
-#define HMAC__INTR_STATE__FIFO_EMPTY_bm 0x2
-#define HMAC__INTR_STATE__FIFO_EMPTY_bp 1
-#define HMAC__INTR_STATE__FIFO_EMPTY_bw 1
-#define HMAC__INTR_STATE__FIFO_EMPTY_reset 0x0
-#define HMAC__INTR_STATE__HMAC_ERR_bm 0x4
-#define HMAC__INTR_STATE__HMAC_ERR_bp 2
-#define HMAC__INTR_STATE__HMAC_ERR_bw 1
-#define HMAC__INTR_STATE__HMAC_ERR_reset 0x0
+// reg - hmac::none::INTR_STATE
+#define HMAC__NONE__INTR_STATE__HMAC_DONE_bm 0x1
+#define HMAC__NONE__INTR_STATE__HMAC_DONE_bp 0
+#define HMAC__NONE__INTR_STATE__HMAC_DONE_bw 1
+#define HMAC__NONE__INTR_STATE__HMAC_DONE_reset 0x0
+#define HMAC__NONE__INTR_STATE__FIFO_EMPTY_bm 0x2
+#define HMAC__NONE__INTR_STATE__FIFO_EMPTY_bp 1
+#define HMAC__NONE__INTR_STATE__FIFO_EMPTY_bw 1
+#define HMAC__NONE__INTR_STATE__FIFO_EMPTY_reset 0x0
+#define HMAC__NONE__INTR_STATE__HMAC_ERR_bm 0x4
+#define HMAC__NONE__INTR_STATE__HMAC_ERR_bp 2
+#define HMAC__NONE__INTR_STATE__HMAC_ERR_bw 1
+#define HMAC__NONE__INTR_STATE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hmac_done :1;
-        uint32_t fifo_empty :1;
-        uint32_t hmac_err :1;
+        uint32_t HMAC_DONE :1;
+        uint32_t FIFO_EMPTY :1;
+        uint32_t HMAC_ERR :1;
         uint32_t :29;
     } f;
     uint32_t w;
-} hmac__INTR_STATE_t;
+} hmac__none__INTR_STATE_t;
 
-// reg - hmac::INTR_ENABLE
-#define HMAC__INTR_ENABLE__HMAC_DONE_bm 0x1
-#define HMAC__INTR_ENABLE__HMAC_DONE_bp 0
-#define HMAC__INTR_ENABLE__HMAC_DONE_bw 1
-#define HMAC__INTR_ENABLE__HMAC_DONE_reset 0x0
-#define HMAC__INTR_ENABLE__FIFO_EMPTY_bm 0x2
-#define HMAC__INTR_ENABLE__FIFO_EMPTY_bp 1
-#define HMAC__INTR_ENABLE__FIFO_EMPTY_bw 1
-#define HMAC__INTR_ENABLE__FIFO_EMPTY_reset 0x0
-#define HMAC__INTR_ENABLE__HMAC_ERR_bm 0x4
-#define HMAC__INTR_ENABLE__HMAC_ERR_bp 2
-#define HMAC__INTR_ENABLE__HMAC_ERR_bw 1
-#define HMAC__INTR_ENABLE__HMAC_ERR_reset 0x0
+// reg - hmac::none::INTR_ENABLE
+#define HMAC__NONE__INTR_ENABLE__HMAC_DONE_bm 0x1
+#define HMAC__NONE__INTR_ENABLE__HMAC_DONE_bp 0
+#define HMAC__NONE__INTR_ENABLE__HMAC_DONE_bw 1
+#define HMAC__NONE__INTR_ENABLE__HMAC_DONE_reset 0x0
+#define HMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bm 0x2
+#define HMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bp 1
+#define HMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bw 1
+#define HMAC__NONE__INTR_ENABLE__FIFO_EMPTY_reset 0x0
+#define HMAC__NONE__INTR_ENABLE__HMAC_ERR_bm 0x4
+#define HMAC__NONE__INTR_ENABLE__HMAC_ERR_bp 2
+#define HMAC__NONE__INTR_ENABLE__HMAC_ERR_bw 1
+#define HMAC__NONE__INTR_ENABLE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hmac_done :1;
-        uint32_t fifo_empty :1;
-        uint32_t hmac_err :1;
+        uint32_t HMAC_DONE :1;
+        uint32_t FIFO_EMPTY :1;
+        uint32_t HMAC_ERR :1;
         uint32_t :29;
     } f;
     uint32_t w;
-} hmac__INTR_ENABLE_t;
+} hmac__none__INTR_ENABLE_t;
 
-// reg - hmac::INTR_TEST
-#define HMAC__INTR_TEST__HMAC_DONE_bm 0x1
-#define HMAC__INTR_TEST__HMAC_DONE_bp 0
-#define HMAC__INTR_TEST__HMAC_DONE_bw 1
-#define HMAC__INTR_TEST__HMAC_DONE_reset 0x0
-#define HMAC__INTR_TEST__FIFO_EMPTY_bm 0x2
-#define HMAC__INTR_TEST__FIFO_EMPTY_bp 1
-#define HMAC__INTR_TEST__FIFO_EMPTY_bw 1
-#define HMAC__INTR_TEST__FIFO_EMPTY_reset 0x0
-#define HMAC__INTR_TEST__HMAC_ERR_bm 0x4
-#define HMAC__INTR_TEST__HMAC_ERR_bp 2
-#define HMAC__INTR_TEST__HMAC_ERR_bw 1
-#define HMAC__INTR_TEST__HMAC_ERR_reset 0x0
+// reg - hmac::none::INTR_TEST
+#define HMAC__NONE__INTR_TEST__HMAC_DONE_bm 0x1
+#define HMAC__NONE__INTR_TEST__HMAC_DONE_bp 0
+#define HMAC__NONE__INTR_TEST__HMAC_DONE_bw 1
+#define HMAC__NONE__INTR_TEST__HMAC_DONE_reset 0x0
+#define HMAC__NONE__INTR_TEST__FIFO_EMPTY_bm 0x2
+#define HMAC__NONE__INTR_TEST__FIFO_EMPTY_bp 1
+#define HMAC__NONE__INTR_TEST__FIFO_EMPTY_bw 1
+#define HMAC__NONE__INTR_TEST__FIFO_EMPTY_reset 0x0
+#define HMAC__NONE__INTR_TEST__HMAC_ERR_bm 0x4
+#define HMAC__NONE__INTR_TEST__HMAC_ERR_bp 2
+#define HMAC__NONE__INTR_TEST__HMAC_ERR_bw 1
+#define HMAC__NONE__INTR_TEST__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hmac_done :1;
-        uint32_t fifo_empty :1;
-        uint32_t hmac_err :1;
+        uint32_t HMAC_DONE :1;
+        uint32_t FIFO_EMPTY :1;
+        uint32_t HMAC_ERR :1;
         uint32_t :29;
     } f;
     uint32_t w;
-} hmac__INTR_TEST_t;
+} hmac__none__INTR_TEST_t;
 
-// reg - hmac::ALERT_TEST
-#define HMAC__ALERT_TEST__FATAL_FAULT_bm 0x1
-#define HMAC__ALERT_TEST__FATAL_FAULT_bp 0
-#define HMAC__ALERT_TEST__FATAL_FAULT_bw 1
-#define HMAC__ALERT_TEST__FATAL_FAULT_reset 0x0
+// reg - hmac::none::ALERT_TEST
+#define HMAC__NONE__ALERT_TEST__FATAL_FAULT_bm 0x1
+#define HMAC__NONE__ALERT_TEST__FATAL_FAULT_bp 0
+#define HMAC__NONE__ALERT_TEST__FATAL_FAULT_bw 1
+#define HMAC__NONE__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t fatal_fault :1;
+        uint32_t FATAL_FAULT :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} hmac__ALERT_TEST_t;
+} hmac__none__ALERT_TEST_t;
 
-// reg - hmac::CFG
-#define HMAC__CFG__HMAC_EN_bm 0x1
-#define HMAC__CFG__HMAC_EN_bp 0
-#define HMAC__CFG__HMAC_EN_bw 1
-#define HMAC__CFG__SHA_EN_bm 0x2
-#define HMAC__CFG__SHA_EN_bp 1
-#define HMAC__CFG__SHA_EN_bw 1
-#define HMAC__CFG__ENDIAN_SWAP_bm 0x4
-#define HMAC__CFG__ENDIAN_SWAP_bp 2
-#define HMAC__CFG__ENDIAN_SWAP_bw 1
-#define HMAC__CFG__ENDIAN_SWAP_reset 0x0
-#define HMAC__CFG__DIGEST_SWAP_bm 0x8
-#define HMAC__CFG__DIGEST_SWAP_bp 3
-#define HMAC__CFG__DIGEST_SWAP_bw 1
-#define HMAC__CFG__DIGEST_SWAP_reset 0x0
-#define HMAC__CFG__KEY_SWAP_bm 0x10
-#define HMAC__CFG__KEY_SWAP_bp 4
-#define HMAC__CFG__KEY_SWAP_bw 1
-#define HMAC__CFG__KEY_SWAP_reset 0x0
-#define HMAC__CFG__DIGEST_SIZE_bm 0x1e0
-#define HMAC__CFG__DIGEST_SIZE_bp 5
-#define HMAC__CFG__DIGEST_SIZE_bw 4
-#define HMAC__CFG__DIGEST_SIZE_reset 0x8
-#define HMAC__CFG__KEY_LENGTH_bm 0x7e00
-#define HMAC__CFG__KEY_LENGTH_bp 9
-#define HMAC__CFG__KEY_LENGTH_bw 6
-#define HMAC__CFG__KEY_LENGTH_reset 0x20
+// reg - hmac::none::CFG
+#define HMAC__NONE__CFG__HMAC_EN_bm 0x1
+#define HMAC__NONE__CFG__HMAC_EN_bp 0
+#define HMAC__NONE__CFG__HMAC_EN_bw 1
+#define HMAC__NONE__CFG__SHA_EN_bm 0x2
+#define HMAC__NONE__CFG__SHA_EN_bp 1
+#define HMAC__NONE__CFG__SHA_EN_bw 1
+#define HMAC__NONE__CFG__ENDIAN_SWAP_bm 0x4
+#define HMAC__NONE__CFG__ENDIAN_SWAP_bp 2
+#define HMAC__NONE__CFG__ENDIAN_SWAP_bw 1
+#define HMAC__NONE__CFG__ENDIAN_SWAP_reset 0x0
+#define HMAC__NONE__CFG__DIGEST_SWAP_bm 0x8
+#define HMAC__NONE__CFG__DIGEST_SWAP_bp 3
+#define HMAC__NONE__CFG__DIGEST_SWAP_bw 1
+#define HMAC__NONE__CFG__DIGEST_SWAP_reset 0x0
+#define HMAC__NONE__CFG__KEY_SWAP_bm 0x10
+#define HMAC__NONE__CFG__KEY_SWAP_bp 4
+#define HMAC__NONE__CFG__KEY_SWAP_bw 1
+#define HMAC__NONE__CFG__KEY_SWAP_reset 0x0
+#define HMAC__NONE__CFG__DIGEST_SIZE_bm 0x1e0
+#define HMAC__NONE__CFG__DIGEST_SIZE_bp 5
+#define HMAC__NONE__CFG__DIGEST_SIZE_bw 4
+#define HMAC__NONE__CFG__DIGEST_SIZE_reset 0x8
+#define HMAC__NONE__CFG__KEY_LENGTH_bm 0x7e00
+#define HMAC__NONE__CFG__KEY_LENGTH_bp 9
+#define HMAC__NONE__CFG__KEY_LENGTH_bw 6
+#define HMAC__NONE__CFG__KEY_LENGTH_reset 0x20
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hmac_en :1;
-        uint32_t sha_en :1;
-        uint32_t endian_swap :1;
-        uint32_t digest_swap :1;
-        uint32_t key_swap :1;
-        uint32_t digest_size :4;
-        uint32_t key_length :6;
+        uint32_t HMAC_EN :1;
+        uint32_t SHA_EN :1;
+        uint32_t ENDIAN_SWAP :1;
+        uint32_t DIGEST_SWAP :1;
+        uint32_t KEY_SWAP :1;
+        uint32_t DIGEST_SIZE :4;
+        uint32_t KEY_LENGTH :6;
         uint32_t :17;
     } f;
     uint32_t w;
-} hmac__CFG_t;
+} hmac__none__CFG_t;
 
-// reg - hmac::CMD
-#define HMAC__CMD__HASH_START_bm 0x1
-#define HMAC__CMD__HASH_START_bp 0
-#define HMAC__CMD__HASH_START_bw 1
-#define HMAC__CMD__HASH_PROCESS_bm 0x2
-#define HMAC__CMD__HASH_PROCESS_bp 1
-#define HMAC__CMD__HASH_PROCESS_bw 1
-#define HMAC__CMD__HASH_STOP_bm 0x4
-#define HMAC__CMD__HASH_STOP_bp 2
-#define HMAC__CMD__HASH_STOP_bw 1
-#define HMAC__CMD__HASH_CONTINUE_bm 0x8
-#define HMAC__CMD__HASH_CONTINUE_bp 3
-#define HMAC__CMD__HASH_CONTINUE_bw 1
+// reg - hmac::none::CMD
+#define HMAC__NONE__CMD__HASH_START_bm 0x1
+#define HMAC__NONE__CMD__HASH_START_bp 0
+#define HMAC__NONE__CMD__HASH_START_bw 1
+#define HMAC__NONE__CMD__HASH_PROCESS_bm 0x2
+#define HMAC__NONE__CMD__HASH_PROCESS_bp 1
+#define HMAC__NONE__CMD__HASH_PROCESS_bw 1
+#define HMAC__NONE__CMD__HASH_STOP_bm 0x4
+#define HMAC__NONE__CMD__HASH_STOP_bp 2
+#define HMAC__NONE__CMD__HASH_STOP_bw 1
+#define HMAC__NONE__CMD__HASH_CONTINUE_bm 0x8
+#define HMAC__NONE__CMD__HASH_CONTINUE_bp 3
+#define HMAC__NONE__CMD__HASH_CONTINUE_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hash_start :1;
-        uint32_t hash_process :1;
-        uint32_t hash_stop :1;
-        uint32_t hash_continue :1;
+        uint32_t HASH_START :1;
+        uint32_t HASH_PROCESS :1;
+        uint32_t HASH_STOP :1;
+        uint32_t HASH_CONTINUE :1;
         uint32_t :28;
     } f;
     uint32_t w;
-} hmac__CMD_t;
+} hmac__none__CMD_t;
 
-// reg - hmac::STATUS
-#define HMAC__STATUS__HMAC_IDLE_bm 0x1
-#define HMAC__STATUS__HMAC_IDLE_bp 0
-#define HMAC__STATUS__HMAC_IDLE_bw 1
-#define HMAC__STATUS__HMAC_IDLE_reset 0x1
-#define HMAC__STATUS__FIFO_EMPTY_bm 0x2
-#define HMAC__STATUS__FIFO_EMPTY_bp 1
-#define HMAC__STATUS__FIFO_EMPTY_bw 1
-#define HMAC__STATUS__FIFO_EMPTY_reset 0x1
-#define HMAC__STATUS__FIFO_FULL_bm 0x4
-#define HMAC__STATUS__FIFO_FULL_bp 2
-#define HMAC__STATUS__FIFO_FULL_bw 1
-#define HMAC__STATUS__FIFO_DEPTH_bm 0x3f0
-#define HMAC__STATUS__FIFO_DEPTH_bp 4
-#define HMAC__STATUS__FIFO_DEPTH_bw 6
+// reg - hmac::none::STATUS
+#define HMAC__NONE__STATUS__HMAC_IDLE_bm 0x1
+#define HMAC__NONE__STATUS__HMAC_IDLE_bp 0
+#define HMAC__NONE__STATUS__HMAC_IDLE_bw 1
+#define HMAC__NONE__STATUS__HMAC_IDLE_reset 0x1
+#define HMAC__NONE__STATUS__FIFO_EMPTY_bm 0x2
+#define HMAC__NONE__STATUS__FIFO_EMPTY_bp 1
+#define HMAC__NONE__STATUS__FIFO_EMPTY_bw 1
+#define HMAC__NONE__STATUS__FIFO_EMPTY_reset 0x1
+#define HMAC__NONE__STATUS__FIFO_FULL_bm 0x4
+#define HMAC__NONE__STATUS__FIFO_FULL_bp 2
+#define HMAC__NONE__STATUS__FIFO_FULL_bw 1
+#define HMAC__NONE__STATUS__FIFO_DEPTH_bm 0x3f0
+#define HMAC__NONE__STATUS__FIFO_DEPTH_bp 4
+#define HMAC__NONE__STATUS__FIFO_DEPTH_bw 6
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hmac_idle :1;
-        uint32_t fifo_empty :1;
-        uint32_t fifo_full :1;
+        uint32_t HMAC_IDLE :1;
+        uint32_t FIFO_EMPTY :1;
+        uint32_t FIFO_FULL :1;
         uint32_t :1;
-        uint32_t fifo_depth :6;
+        uint32_t FIFO_DEPTH :6;
         uint32_t :22;
     } f;
     uint32_t w;
-} hmac__STATUS_t;
+} hmac__none__STATUS_t;
 
-// reg - hmac::ERR_CODE
-#define HMAC__ERR_CODE__ERR_CODE_bm 0xffffffff
-#define HMAC__ERR_CODE__ERR_CODE_bp 0
-#define HMAC__ERR_CODE__ERR_CODE_bw 32
-#define HMAC__ERR_CODE__ERR_CODE_reset 0x0
+// reg - hmac::none::ERR_CODE
+#define HMAC__NONE__ERR_CODE__ERR_CODE_bm 0xffffffff
+#define HMAC__NONE__ERR_CODE__ERR_CODE_bp 0
+#define HMAC__NONE__ERR_CODE__ERR_CODE_bw 32
+#define HMAC__NONE__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t err_code :32;
+        uint32_t ERR_CODE :32;
     } f;
     uint32_t w;
-} hmac__ERR_CODE_t;
+} hmac__none__ERR_CODE_t;
 
-// reg - hmac::WIPE_SECRET
-#define HMAC__WIPE_SECRET__SECRET_bm 0xffffffff
-#define HMAC__WIPE_SECRET__SECRET_bp 0
-#define HMAC__WIPE_SECRET__SECRET_bw 32
+// reg - hmac::none::WIPE_SECRET
+#define HMAC__NONE__WIPE_SECRET__SECRET_bm 0xffffffff
+#define HMAC__NONE__WIPE_SECRET__SECRET_bp 0
+#define HMAC__NONE__WIPE_SECRET__SECRET_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t secret :32;
+        uint32_t SECRET :32;
     } f;
     uint32_t w;
-} hmac__WIPE_SECRET_t;
+} hmac__none__WIPE_SECRET_t;
 
-// reg - hmac::KEY
-#define HMAC__KEY__KEY_0_bm 0xffffffff
-#define HMAC__KEY__KEY_0_bp 0
-#define HMAC__KEY__KEY_0_bw 32
+// reg - hmac::none::KEY_0
+#define HMAC__NONE__KEY_0__KEY_0_bm 0xffffffff
+#define HMAC__NONE__KEY_0__KEY_0_bp 0
+#define HMAC__NONE__KEY_0__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t key_0 :32;
+        uint32_t KEY_0 :32;
     } f;
     uint32_t w;
-} hmac__KEY_t;
+} hmac__none__KEY_0_t;
 
-// reg - hmac::DIGEST
-#define HMAC__DIGEST__DIGEST_0_bm 0xffffffff
-#define HMAC__DIGEST__DIGEST_0_bp 0
-#define HMAC__DIGEST__DIGEST_0_bw 32
+// reg - hmac::none::DIGEST_0
+#define HMAC__NONE__DIGEST_0__DIGEST_0_bm 0xffffffff
+#define HMAC__NONE__DIGEST_0__DIGEST_0_bp 0
+#define HMAC__NONE__DIGEST_0__DIGEST_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t digest_0 :32;
+        uint32_t DIGEST_0 :32;
     } f;
     uint32_t w;
-} hmac__DIGEST_t;
+} hmac__none__DIGEST_0_t;
 
-// reg - hmac::MSG_LENGTH_LOWER
-#define HMAC__MSG_LENGTH_LOWER__V_bm 0xffffffff
-#define HMAC__MSG_LENGTH_LOWER__V_bp 0
-#define HMAC__MSG_LENGTH_LOWER__V_bw 32
+// reg - hmac::none::MSG_LENGTH_LOWER
+#define HMAC__NONE__MSG_LENGTH_LOWER__V_bm 0xffffffff
+#define HMAC__NONE__MSG_LENGTH_LOWER__V_bp 0
+#define HMAC__NONE__MSG_LENGTH_LOWER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t v :32;
+        uint32_t V :32;
     } f;
     uint32_t w;
-} hmac__MSG_LENGTH_LOWER_t;
+} hmac__none__MSG_LENGTH_LOWER_t;
 
-// reg - hmac::MSG_LENGTH_UPPER
-#define HMAC__MSG_LENGTH_UPPER__V_bm 0xffffffff
-#define HMAC__MSG_LENGTH_UPPER__V_bp 0
-#define HMAC__MSG_LENGTH_UPPER__V_bw 32
+// reg - hmac::none::MSG_LENGTH_UPPER
+#define HMAC__NONE__MSG_LENGTH_UPPER__V_bm 0xffffffff
+#define HMAC__NONE__MSG_LENGTH_UPPER__V_bp 0
+#define HMAC__NONE__MSG_LENGTH_UPPER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t v :32;
+        uint32_t V :32;
     } f;
     uint32_t w;
-} hmac__MSG_LENGTH_UPPER_t;
+} hmac__none__MSG_LENGTH_UPPER_t;
 
-// mem - hmac::MSG_FIFO
+// mem - hmac::none::MSG_FIFO
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1024];
-} hmac__MSG_FIFO_t;
+    uint4_t mem[1];
+} hmac__none__MSG_FIFO_t;
+
+// addrmap - hmac::none
+typedef struct __attribute__ ((__packed__)) {
+    hmac__none__INTR_STATE_t INTR_STATE;
+    hmac__none__INTR_ENABLE_t INTR_ENABLE;
+    hmac__none__INTR_TEST_t INTR_TEST;
+    hmac__none__ALERT_TEST_t ALERT_TEST;
+    hmac__none__CFG_t CFG;
+    hmac__none__CMD_t CMD;
+    hmac__none__STATUS_t STATUS;
+    hmac__none__ERR_CODE_t ERR_CODE;
+    hmac__none__WIPE_SECRET_t WIPE_SECRET;
+    hmac__none__KEY_0_t KEY_0[32];
+    hmac__none__DIGEST_0_t DIGEST_0[16];
+    hmac__none__MSG_LENGTH_LOWER_t MSG_LENGTH_LOWER;
+    hmac__none__MSG_LENGTH_UPPER_t MSG_LENGTH_UPPER;
+    uint8_t RESERVED_ec_fff[0xf14];
+    hmac__none__MSG_FIFO_t MSG_FIFO[1024];
+} hmac__none_t;
 
 // addrmap - hmac
 typedef struct __attribute__ ((__packed__)) {
-    hmac__INTR_STATE_t INTR_STATE;
-    hmac__INTR_ENABLE_t INTR_ENABLE;
-    hmac__INTR_TEST_t INTR_TEST;
-    hmac__ALERT_TEST_t ALERT_TEST;
-    hmac__CFG_t CFG;
-    hmac__CMD_t CMD;
-    hmac__STATUS_t STATUS;
-    hmac__ERR_CODE_t ERR_CODE;
-    hmac__WIPE_SECRET_t WIPE_SECRET;
-    hmac__KEY_t KEY[32];
-    hmac__DIGEST_t DIGEST[16];
-    hmac__MSG_LENGTH_LOWER_t MSG_LENGTH_LOWER;
-    hmac__MSG_LENGTH_UPPER_t MSG_LENGTH_UPPER;
-    uint8_t RESERVED_ec_fff[0xf14];
-    hmac__MSG_FIFO_t MSG_FIFO;
+    hmac__none_t none;
 } hmac_t;
 
 
-static_assert(sizeof(hmac_t) == 0x2000, "Packing error");
+static_assert(sizeof(hmac_t) == 0x1400, "Packing error");
 
 #ifdef __cplusplus
 }

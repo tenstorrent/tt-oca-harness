@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* (c) 2026 Tenstorrent USA Inc */
+
 #include "sep_fabric.h"
 
-/* Open no-op placeholders for the SEP fabric alias/remap setup helpers; the
- * real programming sequences are proprietary and can override these. */
+/* Open no-op placeholders for the SEP fabric alias/remap setup helpers;
+ * adopter overlays can override these with implementation-specific setup. */
 
 int write_alias_csr_register() { return 0; }
 int read_alias_csr_register() { return 0; }

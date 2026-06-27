@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[mailbox-unit]]
+==== Mailbox Unit
+
+===== Overview
+
+This document specifies the Mailbox Unit hardware IP functionality. The
+Mailbox Unit provides FIFO-based bidirectional communication channels
+for inter-processor or inter-chiplet communication using AXI4-Lite
+interfaces. It enables efficient data exchange between processing
+elements through dedicated hardware channels with minimal software
+overhead.
+
+===== Description and Features
+
+The Mailbox Unit enables secure, FIFO-based, bidirectional communication
+between processing elements or chiplets in multicore systems. Each
+configurable mailbox instance consists of paired inbound and outbound
+channels, allowing simultaneous data transfer with a 64-bit data path.
+Multiple independent mailbox pairs are supported, each equipped with
+dedicated control registers, status monitoring, and programmable
+interrupt thresholds.
+
+The architecture uses standard AXI4-Lite interfaces for integration and
+provides robust error detection, reporting, and software-controllable
+FIFO flushing. Channel depth is adjustable per instance to suit system
+needs, while hardware minimizes software overhead for efficient,
+low-latency data exchange.
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]

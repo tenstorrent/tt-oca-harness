@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
 
 // #include <stdint.h>
 
@@ -16,23 +18,23 @@
 // {
 //     int hartid = metal_cpu_get_current_hartid();
 
-//     dft_ctrl_status__STATUS_t dft_soc_status = {.w = DFT_CTRL_STATUS_STATUS_REG_DEFAULT};
-//     dft_ctrl_status__STATUS_t dft_sep_smc_status = {.w = DFT_CTRL_STATUS_STATUS_REG_DEFAULT};
+//     dfx_ctrl_status__STATUS_t dfx_soc_status = {.w = DFX_CTRL_STATUS_STATUS_REG_DEFAULT};
+//     dfx_ctrl_status__STATUS_t dfx_sep_smc_status = {.w = DFX_CTRL_STATUS_STATUS_REG_DEFAULT};
 
-//     dft_soc_status.w = read_reg(SMC_TOP_DFT_CTRL_STATUS_SMU_BASE_ADDR);
+//     dfx_soc_status.w = read_reg(SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR);
 
-//     write_scratch(1, dft_soc_status.w);
-//     if (dft_soc_status.w == 0xbadcab1e)
+//     write_scratch(1, dfx_soc_status.w);
+//     if (dfx_soc_status.w == 0xbadcab1e)
 //     {
 //         test_fail(hartid);
 //     }
 
-//     write_reg(DFT_CTRL_CTRL_SOC_REG_ADDR, 0x1);
+//     write_reg(DFX_CTRL_CTRL_SOC_REG_ADDR, 0x1);
 
-//     dft_sep_smc_status.w = read_reg(SMC_TOP_DFT_CTRL_STATUS_SMU_BASE_ADDR);
+//     dfx_sep_smc_status.w = read_reg(SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR);
 
-//     write_scratch(1, dft_sep_smc_status.w);
-//     if (dft_sep_smc_status.w == 0xbadcab1e)
+//     write_scratch(1, dfx_sep_smc_status.w);
+//     if (dfx_sep_smc_status.w == 0xbadcab1e)
 //     {
 //         test_fail(hartid);
 //     }

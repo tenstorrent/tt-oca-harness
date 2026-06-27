@@ -11,7 +11,6 @@ ocah_regs_mk := 1
 OCAH_REGBLOCK_UDP ?= $(OCAH_ROOT)/hw/common/regs/regblock_udps.rdl
 OCAH_REG_CPU_IF ?= axi4-lite-flat
 OCAH_REG_DEFAULT_RESET ?= arst_n
-OCAH_PANDOC ?= pandoc
 OCAH_REGGEN_WRAPPER ?= $(OCAH_ROOT)/tools/regs/reggen_wrapper.py
 OCAH_REGEN_REG_JOBS ?= 8
 

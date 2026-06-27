@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT RX FIFO Test - TC_SPIOT_006 (P0)
  *
@@ -19,7 +22,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_rx_fifo_test STACK=cgen,sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

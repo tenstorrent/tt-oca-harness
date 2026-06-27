@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+= Revision History
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+This document tracks major revisions and updates to the OCAH
+documentation.
+
+.Revision History
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2025-10-23 |Alessandro Ottaviano |Initial documentation
+structure setup. Added methodology, microarchitecture, dependencies,
+tools, and history sections. Reorganized documentation system with
+distributed IP documentation approach. Added SMC documentation draft.
+|0.0.2 |2026-01-08 |Alessandro Ottaviano |Added SMC Integration guideline.
+Added SMC eFuse shadow register address mapping. Fixed eFuse
+memory map to include detailed register field mappings (I2C/I3C_ID, CHIPLET_ID,
+etc.).
+|0.0.3 |2026-01-28 |Alessandro Ottaviano |Clarified OCTS timer architecture:
+runtime primary/secondary distinction via strap.
+|0.1.0 |2026-01-29 |Alessandro Ottaviano |Added DTP architecture and
+microarchitecture specs.
+|0.2.0 |2026-02-12 |Alessandro Ottaviano |Added OCAH SMC FuSa specs. Clarified
+SMC fabric protocols in CPU cluster and memory system size.
+|0.3.0 |2026-02-20 |Alessandro Ottaviano |Added OCAH SEP specs. Added OCAH top-level
+figure and brief description.
+|0.3.1 |2026-03-10 |Alessandro Ottaviano |Fixed SMC memory map doc (memmap.adoc) to
+match RDL: corrected ECAM, M-mode, Xvisor, PLIC, CLINT, BEU addresses/sizes;
+added missing components (DTP, DFT, CLA, I3C, Mailbox).
+|0.3.2 |2026-03-18 |Alessandro Ottaviano |Added FuSa requirement mapping to FuSa specs;
+Added SMC peripheral clock specs; updated SMC top figure with highlighted clock domains;
+updated SEP specs.
+|0.3.3 |2026-03-24 |Alessandro Ottaviano |Clarified bus and register parity generation and checking;
+Clarified strobe gating for masked (partial) writes.
+|0.3.4 |2026-03-24 |Alessandro Ottaviano |Add detailed breakdown of register types for register parity checking.
+|0.3.5 |2026-03-31 |Alessandro Ottaviano |Added parity handling for protocol converters (ID remap, burst splitter, ID prepend, address fixer).
+|0.4.0 |2026-04-09 |Alessandro Ottaviano |Expanded DTP and SEP documentation with
+microarchitecture details. Expanded Scrambler, Key Manager, Entropy Source, and DRBG
+DTP architecture specs with RTL-derived parameter tables, algorithm details, and integration
+descriptions. Enriched SEP crypto accelerator sections (OTBN, AES, KMAC, HMAC) and peripheral
+sections (SPI, WDT, eFuse) with wrapper integration details and OpenTitan cross-references.
+|0.4.1 |2026-04-11 |Alessandro Ottaviano |Refactored OCAH Architecture chapter
+with Power Domains, Clock Domains, Reset, and Address Map sections.
+Added RTL-backed port tables for SMU, SMC, SEP, and DTP. Renamed and
+streamlined Integration Guide. Replaced placeholder files with proper
+content (Motivation, OCA Compliance, Use Cases). Added cover page
+version and date.
+|0.5.0 |2026-04-11 |Alessandro Ottaviano |Open to internal review.
+|0.5.1 |2026-04-22 |Alessandro Ottaviano |Refreshed SEP crypto entropy routing
+description: AES, KMAC, and OTBN EDN ports now fed from post-CSRNG DRBG bits; generic external-entropy-stream option documented.
+|0.5.2 |2026-05-12 |Alessandro Ottaviano |Corrected SIB acronym expansion in DTP/JTAG
+architecture docs.
+|0.5.3 |2026-05-25 |Haohao Liao |Updated SEP Lifecycle Controller chapter with feedback from F2F meeting.
+|0.5.4 |2026-05-29 |Alessandro Ottaviano |Removed legacy-design
+references from OCAH AsciiDoc documentation and rewrote provenance-only
+third-party references as OCAH-owned requirements and behavior.
+|0.5.5 |2026-06-06 |Haohao Liao |Added Key Manager key-management architecture:
+per-UID software/hardware root keys, deterministic UID-derived key hierarchy,
+requester-selected chip configuration, configuration-tied key revocation, ECC
+key metadata in signatures, and user input keys.
+|0.5.6 |2026-06-06 |Haohao Liao |Refined the SEP Lifecycle Controller
+feature-control section per review: reordered it to define the disable vector
+(SIP_DIS / SYS_DIS) before the per-LC-state feature-control result, added an
+Overrides and Final Gates description (SEC_DIS override and the SECURE_TM final
+gate on the test group), and removed the obsolete screening/diagnostic test
+definitions.
+|0.5.7 |2026-06-07 |Haohao Liao |Key Manager: moved UID and hardware-root-key
+read-locks to the warm reset domain (re-applied by ROM on every boot), matching
+the warm-reset KM CPU.
+|0.5.8 |2026-06-09 |Haohao Liao |Updated Key Manager spec per review feedback:
+clarified OTP inputs (UIDs and life-cycle hardwired; demotion from LCC), the
+eFuse access path, KDF concatenation notation, 512-bit user_input, and
+mailbox-only user-input-key injection.
+|0.5.9 |2026-06-10 |Haohao Liao |SEP Lifecycle Controller per review: corrected
+DEMOTE feature-control scope (TEST_DEV honours SIP_DIS/SYS_DIS; RMA_CHIPLET
+already opens debug), unified the T/F convention (T = feature enabled), and
+reframed scan protection (removed the secure_tm shadow-register disconnect;
+Class 1 non-scannable, Class 2 scandump-gated).
+|0.5.10 |2026-06-11 |Alessandro Ottaviano |Documented PLIC and `mie` CSR
+software initialization requirements before enabling external interrupts.
+|0.5.11 |2026-06-12 |Haohao Liao |Fixed contradictory descriptions across the
+SEP spec following the Lifecycle Controller update.
+|0.5.12 |2026-06-17 |Haohao Liao |Aligned SEP scan / scan-dump asset
+protection in the Lifecycle Controller and Key Manager chapters: crypto / KM
+secret-bearing storage (including the KPV key vault) is scannable but never
+scan-dumpable (secure_tm-gated), and reconciled the Attack Countermeasures
+chapter to match.
+|=======================================================================

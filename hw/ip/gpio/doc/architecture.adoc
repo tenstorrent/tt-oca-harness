@@ -1,0 +1,132 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[gpio-architecture]]
+===== Architecture
+
+At the heart of the OCH system’s digital I/O lies the GPIO peripheral, a
+controller designed for both versatility and robust security. Its
+dual-mode operation allows it to seamlessly switch between
+register-driven control and direct hardware guidance via the LSIO
+interface, all while maintaining strict access governance and flexible
+interrupt handling throughout.
+
+====== Functional Blocks
+
+The top-level GPIO controller (gpio.sv) sits at the center of the
+architecture, orchestrating the actions of all internal components. It
+elegantly arbitrates incoming bus transactions, mediates between
+register and LSIO modes, fuses interrupt sources into a unified signal,
+and ensures strap values are captured properly when the system starts.
+Address spaces are kept distinct and the transition between control
+modes is smooth and automatic.
+
+Security is enforced by the Access Control Filter (gpio_filter.sv). True
+to its name, it inspects every AXI read and write transaction,
+confirming the proper permission levels before allowing access. The
+protection requirements are software-programmable, allowing enforcement
+policies to adapt to changing system needs on the fly.
+
+The filter implements full 3-bit AXI protection matching, comparing the
+transaction's protection bits (`aw.prot[2:0]` for writes,
+`ar.prot[2:0]` for reads) against configurable requirement values. The
+protection bits encode privilege level (bit 0), security domain (bit 1),
+and transaction type (bit 2). When protection filtering is enabled, only
+transactions with matching protection attributes are allowed through;
+unauthorized attempts are blocked and receive an immediate error response,
+all while keeping performance unaffected for legitimate accesses.
+
+Protection filtering is configured via the `ACCESS_FILTER` register
+fields: `awprot_requirement` and `arprot_requirement` specify the
+required protection values, while `write_filter_enable` and
+`read_filter_enable` control whether filtering is active. See the
+Programming section for configuration details.
+
+Between the hardware and software is the GPIO Shim (gpio_shim.sv). This
+block translates software-side register programming into model-specific
+control signals, maintaining a consistent state across the register
+interface and the underlying physical I/O. The shim also abstracts
+model-specific details so different pad implementations can coexist
+under a unified interface.
+
+Finally, the GPIO Model (gpio_model/) is where electrical attributes and
+physical pad behavior live. It offers programmable drive strengths,
+pull-up and pull-down configuration, signal conditioning to guard
+against glitches, and fully independent TX/RX enables, making true
+bidirectional I/O possible.
+
+====== Data Flow Architecture
+
+In typical register-driven mode, the data path forms a tight,
+predictable loop: software writes an output value into a DATA_CTRL
+register, the mode selector switches to software control, and the
+register’s value flows to the model, driving the I/O pad. Input values
+are always readable via a separate field, ensuring software insight into
+pad state.
+
+When LSIO mode is engaged, control shifts: the LSIO hardware asserts its
+selection input, and from this moment, it directly governs the pad’s
+output and enable signals. The regular register pathway is bypassed, and
+the status of LSIO is reflected back to software for monitoring
+purposes. Thanks to the clear priority scheme, LSIO always wins control
+if contention arises.
+
+====== Control Path and Mode Selection
+
+Configuration sources follow a strict ranking: LSIO commands always take
+the highest precedence, overriding any register settings when active. If
+LSIO is not in control, the system defers to register-directed
+configuration. If neither is in play, safe hardware defaults ensure the
+pad remains in a benign state.
+
+The logic for this selection is straightforward but decisive:
+
+[source,sourceCode,]
+----
+if (lsio_interface_select_i && !lsio_disable) {
+    // LSIO mode: hardware takes over
+    pad_control_source = LSIO;
+} else if (interface_enable) {
+    // Register mode: software control
+    pad_control_source = REGISTERS;
+} else {
+    // Defaults: pad is idle and safe
+    pad_control_source = DEFAULTS;
+}
+----
+
+====== Interrupts: Flexible and Responsive
+
+The GPIO’s interrupt subsystem is engineered for flexibility. It
+supports both level and edge detection, allowing software to choose
+between active-high/low levels or rising/falling edges. Interrupts can
+be enabled or masked at runtime, and the state is always visible to
+software.
+
+Here’s a look at the internal decision logic:
+
+[source,sourceCode,]
+----
+interrupt_trigger = case (interrupt_type)
+    2'b00: pad2core;              // Active-high level
+    2'b01: !pad2core;             // Active-low level
+    2'b10: pad2core_rising_edge;  // Rising edge
+    2'b11: pad2core_falling_edge; // Falling edge
+endcase
+
+interrupt_o = interrupt_enable && interrupt_trigger;
+----
+
+====== Clocking and Reset: Safe and Predictable
+
+All GPIO logic is synchronized to a single system clock (clk_i). There
+are no internal clock domains or generated clocks to complicate timing—
+everything operates in lockstep, rising edge after rising edge.
+
+Reset is provided as a synchronous active-low input (rst_ni). When
+asserted, every flip-flop in the design is immediately reset to a known
+baseline. During the reset period, the pad value is continuously
+monitored; once reset is released (on a clock edge), the final pad state
+is latched as a configuration strap. Only after this carefully ordered
+process does the GPIO begin normal operation, fully configured and
+secure.

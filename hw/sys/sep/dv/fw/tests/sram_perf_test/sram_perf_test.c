@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // SRAM Performance Test - Side-Effect vs Normal Mode
 //
 // Compares SRAM access performance between side-effect mode and normal mode
 // by configuring the MRAC register and measuring clock cycles.
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

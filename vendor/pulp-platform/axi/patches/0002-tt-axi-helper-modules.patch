@@ -1,0 +1,641 @@
+diff --git a/src/axi_cdc_clearable.sv b/src/axi_cdc_clearable.sv
+new file mode 100644
+index 0000000..36d9508
+--- /dev/null
++++ b/src/axi_cdc_clearable.sv
+@@ -0,0 +1,231 @@
++// Copyright (c) 2026 Tenstorrent Inc.
++//
++// Licensed under the Solderpad Hardware License, Version 0.51 (the "License");
++// you may not use this file except in compliance with the License. You may
++// obtain a copy of the License at http://solderpad.org/licenses/SHL-0.51.
++// Unless required by applicable law or agreed to in writing, software, hardware
++// and materials distributed under this License is distributed on an "AS IS"
++// BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
++// implied. See the License for the specific language governing permissions and
++// limitations under the License.
++
++`include "axi/assign.svh"
++
++/// A clock-domain-crossing for an AXI interface that tolerates one-sided warm
++/// resets and supports explicit flush via `src_clear_i` / `dst_clear_i`.
++///
++/// This is a clearable counterpart to `axi_cdc`: each of the five AXI channels
++/// is crossed through a `cdc_fifo_gray_clearable` instance, and each FIFO
++/// embeds its own `cdc_reset_ctrlr` so that an asynchronous reset on one side
++/// (or a synchronous clear pulse) atomically isolates and flushes the opposite
++/// side without leaving the gray pointers out of step.
++///
++/// The default `ClearOnAsyncReset = 1` makes `src_rst_ni` and `dst_rst_ni`
++/// independent: either may assert asynchronously without corrupting the CDC.
++/// This requires `SyncStages >= 3` per the `cdc_fifo_gray_clearable` contract.
++///
++/// `src_clear_pending_o` / `dst_clear_pending_o` are high whenever any channel
++/// is still executing an isolate-and-clear sequence on the respective side.
++///
++/// For SDC constraints on the internal async pointer paths, follow the rules
++/// documented in the header of `cdc_fifo_gray_clearable`.
++module axi_cdc_clearable #(
++  parameter type aw_chan_t  = logic, // AW channel type
++  parameter type w_chan_t   = logic, //  W channel type
++  parameter type b_chan_t   = logic, //  B channel type
++  parameter type ar_chan_t  = logic, // AR channel type
++  parameter type r_chan_t   = logic, //  R channel type
++  parameter type axi_req_t  = logic, // encapsulates AW, W, AR request channels + B, R ready
++  parameter type axi_resp_t = logic, // encapsulates B, R response channels + AW, W, AR ready
++  /// Depth of each per-channel FIFO, given as 2**LogDepth.
++  parameter int unsigned LogDepth          = 1,
++  /// Number of synchronization registers to insert on the async pointers.
++  /// Must be >=3 when ClearOnAsyncReset is enabled.
++  parameter int unsigned SyncStages        = 3,
++  /// When 1, an asynchronous reset on either side triggers a coordinated
++  /// isolate+clear on the other side via the embedded cdc_reset_ctrlr.
++  parameter bit          ClearOnAsyncReset = 1'b1
++) (
++  // Source side (AXI master) - clocked by `src_clk_i`
++  input  logic      src_clk_i,
++  input  logic      src_rst_ni,
++  input  logic      src_clear_i,
++  output logic      src_clear_pending_o,
++  input  axi_req_t  src_req_i,
++  output axi_resp_t src_resp_o,
++  // Destination side (AXI slave) - clocked by `dst_clk_i`
++  input  logic      dst_clk_i,
++  input  logic      dst_rst_ni,
++  input  logic      dst_clear_i,
++  output logic      dst_clear_pending_o,
++  output axi_req_t  dst_req_o,
++  input  axi_resp_t dst_resp_i
++);
++
++  // Pending aggregation. Index mapping follows channel order {AW,W,AR,B,R}.
++  // For each FIFO we expose two pending flags (one per domain); we route them
++  // to whichever module-side domain that FIFO half lives in.
++  logic [4:0] src_pending;
++  logic [4:0] dst_pending;
++
++  assign src_clear_pending_o = |src_pending;
++  assign dst_clear_pending_o = |dst_pending;
++
++  //////////////////////////////////////////////////////////////////////////////
++  // src -> dst channels: AW, W, AR
++  //   fifo.src_* = module.src_* ; fifo.dst_* = module.dst_*
++  //////////////////////////////////////////////////////////////////////////////
++
++  cdc_fifo_gray_clearable #(
++`ifdef QUESTA
++    // Workaround for a bug in Questa: pass a flat logic vector to the type
++    // parameter rather than the struct typedef.
++    .T                    ( logic [$bits(aw_chan_t)-1:0] ),
++`else
++    .T                    ( aw_chan_t                    ),
++`endif
++    .LOG_DEPTH            ( LogDepth                     ),
++    .SYNC_STAGES          ( SyncStages                   ),
++    .CLEAR_ON_ASYNC_RESET ( ClearOnAsyncReset            )
++  ) i_cdc_fifo_gray_clearable_aw (
++    .src_clk_i           ( src_clk_i           ),
++    .src_rst_ni          ( src_rst_ni          ),
++    .src_clear_i         ( src_clear_i         ),
++    .src_clear_pending_o ( src_pending[0]      ),
++    .src_data_i          ( src_req_i.aw        ),
++    .src_valid_i         ( src_req_i.aw_valid  ),
++    .src_ready_o         ( src_resp_o.aw_ready ),
++    .dst_clk_i           ( dst_clk_i           ),
++    .dst_rst_ni          ( dst_rst_ni          ),
++    .dst_clear_i         ( dst_clear_i         ),
++    .dst_clear_pending_o ( dst_pending[0]      ),
++    .dst_data_o          ( dst_req_o.aw        ),
++    .dst_valid_o         ( dst_req_o.aw_valid  ),
++    .dst_ready_i         ( dst_resp_i.aw_ready )
++  );
++
++  cdc_fifo_gray_clearable #(
++`ifdef QUESTA
++    .T                    ( logic [$bits(w_chan_t)-1:0] ),
++`else
++    .T                    ( w_chan_t                    ),
++`endif
++    .LOG_DEPTH            ( LogDepth                    ),
++    .SYNC_STAGES          ( SyncStages                  ),
++    .CLEAR_ON_ASYNC_RESET ( ClearOnAsyncReset           )
++  ) i_cdc_fifo_gray_clearable_w (
++    .src_clk_i           ( src_clk_i          ),
++    .src_rst_ni          ( src_rst_ni         ),
++    .src_clear_i         ( src_clear_i        ),
++    .src_clear_pending_o ( src_pending[1]     ),
++    .src_data_i          ( src_req_i.w        ),
++    .src_valid_i         ( src_req_i.w_valid  ),
++    .src_ready_o         ( src_resp_o.w_ready ),
++    .dst_clk_i           ( dst_clk_i          ),
++    .dst_rst_ni          ( dst_rst_ni         ),
++    .dst_clear_i         ( dst_clear_i        ),
++    .dst_clear_pending_o ( dst_pending[1]     ),
++    .dst_data_o          ( dst_req_o.w        ),
++    .dst_valid_o         ( dst_req_o.w_valid  ),
++    .dst_ready_i         ( dst_resp_i.w_ready )
++  );
++
++  cdc_fifo_gray_clearable #(
++`ifdef QUESTA
++    .T                    ( logic [$bits(ar_chan_t)-1:0] ),
++`else
++    .T                    ( ar_chan_t                    ),
++`endif
++    .LOG_DEPTH            ( LogDepth                     ),
++    .SYNC_STAGES          ( SyncStages                   ),
++    .CLEAR_ON_ASYNC_RESET ( ClearOnAsyncReset            )
++  ) i_cdc_fifo_gray_clearable_ar (
++    .src_clk_i           ( src_clk_i           ),
++    .src_rst_ni          ( src_rst_ni          ),
++    .src_clear_i         ( src_clear_i         ),
++    .src_clear_pending_o ( src_pending[2]      ),
++    .src_data_i          ( src_req_i.ar        ),
++    .src_valid_i         ( src_req_i.ar_valid  ),
++    .src_ready_o         ( src_resp_o.ar_ready ),
++    .dst_clk_i           ( dst_clk_i           ),
++    .dst_rst_ni          ( dst_rst_ni          ),
++    .dst_clear_i         ( dst_clear_i         ),
++    .dst_clear_pending_o ( dst_pending[2]      ),
++    .dst_data_o          ( dst_req_o.ar        ),
++    .dst_valid_o         ( dst_req_o.ar_valid  ),
++    .dst_ready_i         ( dst_resp_i.ar_ready )
++  );
++
++  //////////////////////////////////////////////////////////////////////////////
++  // dst -> src channels: B, R
++  //   fifo.src_* = module.dst_* (producer lives in dst domain)
++  //   fifo.dst_* = module.src_*
++  //////////////////////////////////////////////////////////////////////////////
++
++  cdc_fifo_gray_clearable #(
++`ifdef QUESTA
++    .T                    ( logic [$bits(b_chan_t)-1:0] ),
++`else
++    .T                    ( b_chan_t                    ),
++`endif
++    .LOG_DEPTH            ( LogDepth                    ),
++    .SYNC_STAGES          ( SyncStages                  ),
++    .CLEAR_ON_ASYNC_RESET ( ClearOnAsyncReset           )
++  ) i_cdc_fifo_gray_clearable_b (
++    .src_clk_i           ( dst_clk_i          ),
++    .src_rst_ni          ( dst_rst_ni         ),
++    .src_clear_i         ( dst_clear_i        ),
++    .src_clear_pending_o ( dst_pending[3]     ),
++    .src_data_i          ( dst_resp_i.b       ),
++    .src_valid_i         ( dst_resp_i.b_valid ),
++    .src_ready_o         ( dst_req_o.b_ready  ),
++    .dst_clk_i           ( src_clk_i          ),
++    .dst_rst_ni          ( src_rst_ni         ),
++    .dst_clear_i         ( src_clear_i        ),
++    .dst_clear_pending_o ( src_pending[3]     ),
++    .dst_data_o          ( src_resp_o.b       ),
++    .dst_valid_o         ( src_resp_o.b_valid ),
++    .dst_ready_i         ( src_req_i.b_ready  )
++  );
++
++  cdc_fifo_gray_clearable #(
++`ifdef QUESTA
++    .T                    ( logic [$bits(r_chan_t)-1:0] ),
++`else
++    .T                    ( r_chan_t                    ),
++`endif
++    .LOG_DEPTH            ( LogDepth                    ),
++    .SYNC_STAGES          ( SyncStages                  ),
++    .CLEAR_ON_ASYNC_RESET ( ClearOnAsyncReset           )
++  ) i_cdc_fifo_gray_clearable_r (
++    .src_clk_i           ( dst_clk_i          ),
++    .src_rst_ni          ( dst_rst_ni         ),
++    .src_clear_i         ( dst_clear_i        ),
++    .src_clear_pending_o ( dst_pending[4]     ),
++    .src_data_i          ( dst_resp_i.r       ),
++    .src_valid_i         ( dst_resp_i.r_valid ),
++    .src_ready_o         ( dst_req_o.r_ready  ),
++    .dst_clk_i           ( src_clk_i          ),
++    .dst_rst_ni          ( src_rst_ni         ),
++    .dst_clear_i         ( src_clear_i        ),
++    .dst_clear_pending_o ( src_pending[4]     ),
++    .dst_data_o          ( src_resp_o.r       ),
++    .dst_valid_o         ( src_resp_o.r_valid ),
++    .dst_ready_i         ( src_req_i.r_ready  )
++  );
++
++  // Compile-time sanity: when async-reset coupling is active the embedded
++  // reset controller requires at least three synchronizer stages.
++`ifndef SYNTHESIS
++  initial begin : p_param_check
++    if (ClearOnAsyncReset && (SyncStages < 3)) begin
++      $error("axi_cdc_clearable: ClearOnAsyncReset=1 requires SyncStages >= 3 ",
++             "(got %0d).", SyncStages);
++    end
++    if (!ClearOnAsyncReset && (SyncStages < 2)) begin
++      $error("axi_cdc_clearable: SyncStages must be >= 2 (got %0d).", SyncStages);
++    end
++  end
++`endif
++
++endmodule
+diff --git a/src/axi_hidestrb.sv b/src/axi_hidestrb.sv
+new file mode 100644
+index 0000000..d2bfe6f
+--- /dev/null
++++ b/src/axi_hidestrb.sv
+@@ -0,0 +1,300 @@
++
++// Author: Michael Rogenmoser <mrogenmoser@tenstorrent.com>
++
++/// This module hides fully zero strobes at the start and the end of a transfer.
++module axi_hidestrb #(
++  parameter int unsigned MaxNumBeats    = 256,
++  parameter type         axi_req_t      = logic,
++  parameter type         axi_aw_chan_t  = logic,
++  parameter type         axi_w_chan_t   = logic,
++  parameter type         axi_resp_t     = logic
++) (
++  input  logic clk_i,
++  input  logic rst_ni,
++
++  input  axi_req_t  slv_port_req_i,
++  output axi_resp_t slv_port_resp_o,
++
++  output axi_req_t  mst_port_req_o,
++  input  axi_resp_t mst_port_resp_i
++);
++
++  // TODO!!! Figure out full transfer of '0 strb (currently leads to single beat transfer)
++
++  localparam int unsigned LogMaxNumWBeats = 9; // 256 beats + 1 bit for statekeeping
++
++  axi_aw_chan_t next_aw_d, next_aw_q, next_aw_out;
++  logic slv_port_aw_ready, mst_port_aw_valid;
++  logic slv_port_w_ready, slv_allow_w;
++
++  logic mst_port_w_valid, mst_port_w_ready;
++  axi_w_chan_t mst_port_w;
++
++  logic updating_aw_d, updating_aw_q;
++  logic updating_aw_done_d, updating_aw_done_q;
++
++  logic [LogMaxNumWBeats-1:0] start_zero_d, start_zero_q;
++  logic [$clog2(MaxNumBeats)-1:0] end_zero_d, end_zero_q;
++  logic start_done_d, start_done_q;
++  logic end_done_d, end_done_q;
++
++  logic [LogMaxNumWBeats-1:0] beats_sent_d, beats_sent_q;
++  logic [LogMaxNumWBeats-1:0] beats_to_send_d, beats_to_send_q;
++  logic ready_to_send_d, ready_to_send_q;
++
++  logic len_too_long_d, len_too_long_q;
++
++  // AR, R channels feedthrough
++  assign mst_port_req_o.ar_valid  = slv_port_req_i.ar_valid;
++  assign slv_port_resp_o.ar_ready = mst_port_resp_i.ar_ready;
++  assign mst_port_req_o.ar        = slv_port_req_i.ar;
++  assign slv_port_resp_o.r_valid  = mst_port_resp_i.r_valid;
++  assign mst_port_req_o.r_ready   = slv_port_req_i.r_ready;
++  assign slv_port_resp_o.r        = mst_port_resp_i.r;
++
++  always @(posedge clk_i) begin
++    if (rst_ni) begin
++      if (slv_port_req_i.aw_valid) begin
++        // Only allow INCR bursts
++        assert (slv_port_req_i.aw.burst == axi_pkg::BURST_INCR)
++          else $error("Only INCR AW bursts are supported for now.");
++      end
++    end
++  end
++
++  // No burst splitting or transfer dropping, feed through B channel
++  assign slv_port_resp_o.b_valid  = mst_port_resp_i.b_valid;
++  assign mst_port_req_o.b_ready   = slv_port_req_i.b_ready;
++  assign slv_port_resp_o.b        = mst_port_resp_i.b;
++
++  assign slv_port_resp_o.aw_ready = slv_port_aw_ready;
++  assign mst_port_req_o.aw_valid = mst_port_aw_valid;
++  assign mst_port_req_o.aw = end_done_q ? next_aw_out : next_aw_q;
++
++  // This might violate dependencies in AXI spec
++  assign slv_port_resp_o.w_ready = slv_port_w_ready && slv_allow_w;
++
++  assign slv_allow_w = ~slv_port_req_i.w.last | ready_to_send_d;
++
++  // Block handles sending of W
++  always_comb begin
++    // Default assignment passes through
++    beats_sent_d = beats_sent_q;
++    ready_to_send_d = ready_to_send_q;
++    mst_port_req_o.w = mst_port_w;
++    mst_port_req_o.w_valid = 1'b0;
++    mst_port_w_ready = 1'b0;
++
++    // This triggers to start sending Ws (also triggers AW send)
++    if ((end_done_q || len_too_long_q) && ready_to_send_q) begin
++      ready_to_send_d = 1'b0;
++    end
++
++    // This is the last element we're sending
++    if ((beats_sent_q == (beats_to_send_q - 1)) && (beats_to_send_d == beats_to_send_q) || beats_to_send_d == 1) begin
++      mst_port_req_o.w.last = 1'b1;
++    end
++
++    // If the AW is sending or was sent, send the Ws
++    if ((end_done_q || updating_aw_done_q || len_too_long_q) || !ready_to_send_q) begin
++      // MIM-470 added the "if" condition on the next line based on mst_port_req/mst_port_resp:
++      if(mst_port_req_o.aw_valid && !mst_port_resp_i.aw_ready && mst_port_req_o.w.last) begin
++        mst_port_req_o.w_valid = 1'b0;
++        mst_port_w_ready = 1'b0;
++      end else begin
++        mst_port_req_o.w_valid = mst_port_w_valid;
++        mst_port_w_ready = mst_port_resp_i.w_ready;
++      end
++    end
++
++
++    // These elements are '0 and should be dropped
++    if ((beats_sent_q == beats_to_send_q) && !ready_to_send_q) begin
++      mst_port_req_o.w_valid = 1'b0;
++      mst_port_w_ready = 1'b1;
++      if (mst_port_w.last) begin
++        beats_sent_d = '0;
++        ready_to_send_d = 1'b1;
++      end
++    end
++
++    // When sending a beat
++    if (mst_port_req_o.w_valid && mst_port_resp_i.w_ready) begin
++      beats_sent_d = beats_sent_q + 1;
++      // If this is anyway the last transfer
++      if (mst_port_w.last) begin
++        beats_sent_d = '0;
++        ready_to_send_d = 1'b1;
++      end
++    end
++  end
++
++  // Buffer for W
++  stream_fifo #(
++    // MIM-466 disabled FALL_THROUGH, and added 1 to DEPTH:
++    .FALL_THROUGH(1'b0),
++    .DEPTH        (MaxNumBeats+1),
++    .T            (axi_w_chan_t)
++  ) i_w_fifo (
++    .clk_i      (clk_i),
++    .rst_ni     (rst_ni),
++    .flush_i    ('0),
++    .testmode_i ('0),
++    .usage_o    (),
++
++    // Input all nonzero strb W beats
++    .data_i  (slv_port_req_i.w),
++    .valid_i (slv_port_req_i.w_valid && // valid from handshake
++              ( slv_port_req_i.w.strb != '0 || // keep nonzero strobe
++		// MIM-462 changed to start_done_d from start_done_q:
++                start_done_d || // keep when start is complete
++                slv_port_req_i.w.last) &&  // keep final
++              slv_allow_w), // allow external stalling
++    .ready_o (slv_port_w_ready),
++
++    // No delay on W, assuming downstream will stall, may violate dependencies in AXI spec
++    .data_o  (mst_port_w),
++    .valid_o (mst_port_w_valid), // mst_port_req_o.w_valid),
++    .ready_i (mst_port_w_ready) // mst_port_resp_i.w_ready)
++  );
++
++  // Count zero strobe W beats on arrival
++  always_comb begin
++    // Default keep previous state
++    start_zero_d = start_zero_q;
++    end_zero_d = end_zero_q;
++    start_done_d = start_done_q;
++    end_done_d = '0;
++
++    // If we're done, zero out the state
++    if (end_done_q) begin
++      start_zero_d = '0;
++      end_zero_d = '0;
++      start_done_d = '0;
++    end
++
++    // New handshake
++    if (slv_port_req_i.w_valid && slv_port_resp_o.w_ready) begin
++      // If we get a last handshake in a burst, we indicate we are done.
++      end_done_d = slv_port_req_i.w.last;
++
++      if (!start_done_q || end_done_q) begin
++        // When counting the starting '0s
++        if (slv_port_req_i.w.strb == '0) begin
++          // If '0, add 1
++          if (end_done_q) begin
++            // If end_done_q, then this is the first beat (start_zero_q still has old data)
++            start_zero_d = 1;
++          end else begin
++            // Otherwise we know that the start_zero_q has correct state
++            start_zero_d = start_zero_q + 1;
++          end
++
++          // Handle complete zero transfer
++          if (slv_port_req_i.w.last) begin
++            // Ensure we execute a single beat
++	    // MIM-472 fix adds the aw_ready && aw_valid setting for corner case of one-beat burst:
++            start_zero_d = (slv_port_resp_o.aw_ready && slv_port_req_i.aw_valid) ? slv_port_req_i.aw.len : start_zero_q;
++          end
++        end else begin
++          // otherwise we're done counting the start
++          start_done_d = 1'b1;
++        end
++      end else begin
++        // When attempting to count the trailing zeros
++        if (slv_port_req_i.w.strb == '0 && !len_too_long_q) begin
++          // If '0, add 1
++          end_zero_d = end_zero_q + 1;
++        end else begin
++          // otherwise zero out, as this wasn't the end.
++          end_zero_d = '0;
++        end
++      end
++    end
++  end
++
++  // Handle AW
++  always_comb begin
++    updating_aw_d = updating_aw_q;
++    updating_aw_done_d = updating_aw_done_q;
++    next_aw_d = next_aw_q;
++    next_aw_out = next_aw_q;
++    mst_port_aw_valid = 1'b0;
++    slv_port_aw_ready = 1'b0;
++    beats_to_send_d = beats_to_send_q;
++    len_too_long_d = len_too_long_q;
++
++    // Add new AW if not updating
++    if (!updating_aw_q || (mst_port_req_o.aw_valid && mst_port_resp_i.aw_ready)) begin
++      next_aw_d = slv_port_req_i.aw;
++      slv_port_aw_ready = 1'b1;
++      if (slv_port_req_i.aw_valid) begin
++        updating_aw_d = 1'b1;
++      end else begin
++        updating_aw_d = 1'b0;
++      end
++    end
++
++    // Update AW
++    if (!updating_aw_done_q) begin // MIM-469 added the !updating_aw_done_q condition
++      next_aw_out.addr = axi_pkg::beat_addr(next_aw_q.addr, next_aw_q.size, next_aw_q.len, next_aw_q.burst, start_zero_q);
++      next_aw_out.len = next_aw_q.len - start_zero_q - end_zero_q; // no_rollover assertion added below
++    end
++
++    if (updating_aw_q && start_done_q && next_aw_out.len >= MaxNumBeats) begin
++      len_too_long_d = 1'b1;
++    end
++
++    if (end_done_q) begin
++      len_too_long_d = 1'b0;
++    end
++
++    // Send AW downstream
++    if (((end_done_q || len_too_long_q) && ready_to_send_q) || updating_aw_done_q) begin
++      mst_port_aw_valid = 1'b1;
++      beats_to_send_d = {1'b0, next_aw_out.len} + 1;
++      // Ensure AW sticks around to be properly handshaked
++      if (mst_port_resp_i.aw_ready) begin
++        updating_aw_done_d = 1'b0;
++      end else begin
++        updating_aw_done_d = 1'b1;
++        // Keep constant as start_zero_q and end_zero_q are zeroed
++        next_aw_d.addr = next_aw_out.addr;
++        next_aw_d.len = next_aw_out.len;
++      end
++    end
++
++  end
++  no_rollover : assert property(
++    @(posedge clk_i) (rst_ni !== 1'b1) || updating_aw_done_q || (next_aw_q.len >= start_zero_q + end_zero_q))
++      else $error("next_aw_q.len must always be at least as big as start_zero_q - end_zero_q.");
++
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      next_aw_q <= '{ default: '0};
++      updating_aw_q <= '0;
++      updating_aw_done_q <= '0;
++      start_zero_q <= '0;
++      end_zero_q <= '0;
++      start_done_q <= '0;
++      end_done_q <= '0;
++      beats_sent_q <= '0;
++      beats_to_send_q <= '0;
++      ready_to_send_q <= 1'b1;
++      len_too_long_q <= '0;
++    end else begin
++      next_aw_q <= next_aw_d;
++      updating_aw_q <= updating_aw_d;
++      updating_aw_done_q <= updating_aw_done_d;
++      start_zero_q <= start_zero_d;
++      end_zero_q <= end_zero_d;
++      start_done_q <= start_done_d;
++      end_done_q <= end_done_d;
++      beats_sent_q <= beats_sent_d;
++      beats_to_send_q <= beats_to_send_d;
++      ready_to_send_q <= ready_to_send_d;
++      len_too_long_q <= len_too_long_d;
++    end
++  end
++
++endmodule
+diff --git a/src/axi_spill_regs.sv b/src/axi_spill_regs.sv
+new file mode 100644
+index 0000000..1f8c905
+--- /dev/null
++++ b/src/axi_spill_regs.sv
+@@ -0,0 +1,92 @@
++module axi_spill_regs
++#(
++    parameter type aw_chan_t = logic,
++    parameter type w_chan_t = logic,
++    parameter type b_chan_t = logic,
++    parameter type ar_chan_t = logic,
++    parameter type r_chan_t = logic,
++    parameter type req_t = logic,
++    parameter type rsp_t = logic
++) (
++    input  req_t axi_req_i,
++    output req_t axi_req_o,
++    input  rsp_t axi_rsp_i,
++    output rsp_t axi_rsp_o,
++    input  clk,
++    input  reset_n
++);
++
++  // --------------------------------------
++  // Spill Registers for each AXI channels
++  // --------------------------------------
++    spill_register #(
++      .T       ( aw_chan_t  )
++    ) i_aw_spill_reg (
++      .clk_i   ( clk                    ),
++      .rst_ni  ( reset_n                ),
++      .valid_i ( axi_req_i.aw_valid  ),
++      .ready_o ( axi_rsp_o.aw_ready ),
++      .data_i  ( axi_req_i.aw        ),
++      .valid_o ( axi_req_o.aw_valid       ),
++      .ready_i ( axi_rsp_i.aw_ready      ),
++      .data_o  ( axi_req_o.aw             )
++    );
++    spill_register #(
++      .T       ( w_chan_t )
++    ) i_w_spill_reg (
++      .clk_i   ( clk                    ),
++      .rst_ni  ( reset_n                ),
++      .valid_i ( axi_req_i.w_valid   ),
++      .ready_o ( axi_rsp_o.w_ready  ),
++      .data_i  ( axi_req_i.w         ),
++      .valid_o ( axi_req_o.w_valid        ),
++      .ready_i ( axi_rsp_i.w_ready       ),
++      .data_o  ( axi_req_o.w              )
++    );
++    spill_register #(
++      .T       ( b_chan_t )
++    ) i_b_spill_reg (
++      .clk_i   ( clk                    ),
++      .rst_ni  ( reset_n                ),
++      .valid_i ( axi_rsp_i.b_valid       ),
++      .ready_o ( axi_req_o.b_ready        ),
++      .data_i  ( axi_rsp_i.b             ),
++      .valid_o ( axi_rsp_o.b_valid  ),
++      .ready_i ( axi_req_i.b_ready   ),
++      .data_o  ( axi_rsp_o.b        )
++    );
++    spill_register #(
++      .T       ( ar_chan_t )
++    ) i_ar_spill_reg (
++      .clk_i   ( clk                    ),
++      .rst_ni  ( reset_n                ),
++      .valid_i ( axi_req_i.ar_valid  ),
++      .ready_o ( axi_rsp_o.ar_ready ),
++      .data_i  ( axi_req_i.ar        ),
++      .valid_o ( axi_req_o.ar_valid       ),
++      .ready_i ( axi_rsp_i.ar_ready      ),
++      .data_o  ( axi_req_o.ar             )
++    );
++    spill_register #(
++      .T       ( r_chan_t )
++    ) i_r_spill_reg (
++      .clk_i   ( clk                    ),
++      .rst_ni  ( reset_n                ),
++      .valid_i ( axi_rsp_i.r_valid       ),
++      .ready_o ( axi_req_o.r_ready        ),
++      .data_i  ( axi_rsp_i.r             ),
++      .valid_o ( axi_rsp_o.r_valid  ),
++      .ready_i ( axi_req_i.r_ready   ),
++      .data_o  ( axi_rsp_o.r        )
++    );
++
++endmodule // spill_regs
++// Local Variables:
++// verilog-library-directories:(".")
++// verilog-library-extensions:(".sv" ".svh" ".vh" ".h" ".v")
++// verilog-typedef-regexp: "_[sute]$"
++// End:
++
++
++
++

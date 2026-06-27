@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /**
  * @file main.c
  * @brief OCTS P1 Credit Mechanism Test - DUT as PRIMARY, BFM as SECONDARY

@@ -1,0 +1,87 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | CAUSE | RW a| -
+| 0x8 | PHYS_ADDR | R a| -
+| 0x10 | ENABLE | RW a| -
+| 0x18 | PLIC_ENABLE | RW a| -
+| 0x20 | ACCRUED_ENABLE | RW a| -
+| 0x28 | LOCAL_ENABLE | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CAUSE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `data` | RW | 0x0 a| Cause register. Enumerates different kinds of errors
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PHYS_ADDR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `value` | R | - a| Physical address of error event. No reset value
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `dcache_uncorrectable` | RW | 0x1 a| Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.
+| 6 | `dcache_correctable` | RW | 0x1 a| Enable recording error information for DCache ECC correctable bus error. Enabled on reset.
+| 5 | `dcache_tlbus` | RW | 0x1 a| Enable recording error information for DCache Tilelink bus error. Enabled on reset.
+| 4 | `rsvd4` | RW | 0x0 a| Reserved
+| 3 | `rsvd3` | RW | 0x0 a| Reserved
+| 2 | `icache_correctable` | RW | 0x1 a| Enable recording error information for ICache ECC correctable bus error. Enabled on reset.
+| 1 | `icache_tlbus` | RW | 0x1 a| Enable recording error information for ICache Tilelink bus error. Enabled on reset.
+| 0 | `rsvd0` | RW | 0x0 a| Reserved
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PLIC_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `dcache_uncorrectable` | RW | 0x0 a| PLIC interrupt enable mask for DCache ECC uncorrectable bus error.
+| 6 | `dcache_correctable` | RW | 0x0 a| PLIC interrupt enable mask for DCache ECC correctable bus error.
+| 5 | `dcache_tlbus` | RW | 0x0 a| PLIC interrupt enable mask for DCache Tilelink bus error.
+| 4 | `rsvd4` | RW | 0x0 a| Reserved
+| 3 | `rsvd3` | RW | 0x0 a| Reserved
+| 2 | `icache_correctable` | RW | 0x0 a| PLIC interrupt enable mask for ICache ECC correctable bus error.
+| 1 | `icache_tlbus` | RW | 0x0 a| PLIC interrupt enable mask for ICache Tilelink bus error.
+| 0 | `rsvd0` | RW | 0x0 a| Reserved
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.ACCRUED_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `dcache_uncorrectable` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.
+| 6 | `dcache_correctable` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache ECC correctable bus error.
+| 5 | `dcache_tlbus` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache Tilelink bus error.
+| 4 | `rsvd4` | RW | 0x0 a| Reserved
+| 3 | `rsvd3` | RW | 0x0 a| Reserved
+| 2 | `icache_correctable` | RW | 0x0 a| Coarse grain interrupt enable mask for ICache ECC correctable bus error.
+| 1 | `icache_tlbus` | RW | 0x0 a| Coarse grain interrupt enable mask for ICache Tilelink bus error.
+| 0 | `rsvd0` | RW | 0x0 a| Reserved
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOCAL_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `dcache_uncorrectable` | RW | 0x0 a| Core local interrupt enable mask for DCache ECC uncorrectable bus error.
+| 6 | `dcache_correctable` | RW | 0x0 a| Core local interrupt enable mask for DCache ECC correctable bus error.
+| 5 | `dcache_tlbus` | RW | 0x0 a| Core local interrupt enable mask for DCache Tilelink bus error.
+| 4 | `rsvd4` | RW | 0x0 a| Reserved
+| 3 | `rsvd3` | RW | 0x0 a| Reserved
+| 2 | `icache_correctable` | RW | 0x0 a| Core local interrupt enable mask for ICache ECC correctable bus error.
+| 1 | `icache_tlbus` | RW | 0x0 a| Core local interrupt enable mask for ICache Tilelink bus error.
+| 0 | `rsvd0` | RW | 0x0 a| Reserved
+|===

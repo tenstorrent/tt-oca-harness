@@ -1,0 +1,15 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | CTRL | RW a| Control Register
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `UART_EN` | RW | 0x0 a| UART Enable. When set, the pad-mux downstream will be forced to accept UART
+traffic.
+|===

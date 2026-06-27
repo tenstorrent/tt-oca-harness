@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * Common helpers for SEP eFuse firmware tests.
  ******************************************************************************/
@@ -62,11 +65,9 @@ static inline void efuse_clear_req_error(void)
 }
 
 /*
- * efuse_config_program_clock() programs the Samsung eFuse shim programming
- * clock (divider/duty/enable/set), which lives in the vendor (nonfree) register
- * map. Tests that program the eFuse macro (and therefore need the clock running)
- * are vendor-specific and supply the full implementation in nonfree; this open
- * helper intentionally only provides the OpenTitan EFUSE_INTERFACE_CTRL surface.
+ * efuse_config_program_clock() is implemented by adopter overlays that need a
+ * macro programming clock. This open helper intentionally only provides the
+ * OpenTitan EFUSE_INTERFACE_CTRL surface.
  */
 
 static inline int efuse_program_bit(uint32_t bit_addr)

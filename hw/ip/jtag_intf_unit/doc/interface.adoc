@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[jtag-intf-unit-interface]]
+==== Interface
+
+===== Instruction Encodings
+
+The JTAG interface unit uses 6-bit instruction encodings:
+
+[cols="<,<,<,<",options="header"]
+|===
+|Encoding |Name |Register Size |Security
+|0x00 |BYPASS (IEEE 1149.1, Section 8.4) |1 |
+|0x01 |IDCODE (IEEE 1149.1, Section 8.13) |32 |
+|0x02 |RUNBIST (IEEE 1149.1, Section 8.10) |BIST |
+|0x03 |SAMPLE_PRELOAD (IEEE 1149.1, Sections 8.6 and 8.7) |BSR |
+|0x04 |EXTEST (IEEE 1149.1, Section 8.8) |BSR |
+|0x05 |EXTEST_TRAIN |BSR |
+|0x06 |EXTEST_PULSE |BSR |
+|0x07 |CLAMP (IEEE 1149.1, Section 8.11) |1 |
+|0x08 |HIGHZ (IEEE 1149.1, Section 8.16) |1 |
+|0x09 |INTEST (IEEE 1149.1, Section 8.9) |BSR |
+|0x0A |CLAMP_HOLD (IEEE 1149.1, Section 8.20) |2 |
+|0x0B |CLAMP_RELEASE (IEEE 1149.1, Section 8.20) |2 |
+|0x0C |TMP_STATUS (IEEE 1149.1, Section 8.20) |2 |
+|0x0D |IC_RESET (IEEE 1149.1, Section 8.21) |Variable |
+|0x0E |TAP_3DCR (IEEE 1838, Section 5.5.1) |2 |
+|0x10-0x17 |_Reserved for RISC-V_ | |
+|0x18 |DEBUG_CONTROL |5 |
+|0x19 |JTAG_CAPS |40 |
+|0x1A |SELECT_IJTAG |Variable |
+|0x1B |SMC_OTP_JTAG2AXI_CAPS | |
+|0x1C |SMC_OTP_AXI_SINGLE_OP | |
+|0x1D |SMC_OTP_AXI_SERIES_CTRL | |
+|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR | |
+|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR | |
+|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
+|0x21 |SEP_OTP_JTAG2AXI_CAPS | |
+|0x22 |SEP_OTP_AXI_SINGLE_OP | |
+|0x23 |SEP_OTP_AXI_SERIES_CTRL | |
+|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR | |
+|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR | |
+|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
+|0x27 |SMC_JTAG2AXI_CAPS | |
+|0x28 |SMC_AXI_SINGLE_OP | |
+|0x29 |SMC_AXI_SERIES_CTRL | |
+|0x2A |SMC_AXI_SERIES_DATA_INCR | |
+|0x2B |SMC_AXI_SERIES_DATA_NO_INCR | |
+|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
+|0x3D |ZERO_LENGTH_BYPASS |0 |
+|0x3E |INV_BYPASS | |
+|0x3F |BYPASS (IEEE 1149.1, Section 8.4) |1 |
+|===
+
+**NOTE:** All instruction encodings _not_ explicitly defined in this table map to the BYPASS instruction.
+
+===== Signal Interface
+
+[cols="<,<,<,<",options="header"]
+|===
+|Signal |Direction |Width |Description
+|clk_i |Input |1 |System clock for AXI interfaces
+|rst_ni |Input |1 |Active-low system reset
+|pwr_on_rst_ni |Input |1 |Power-on reset for JTAG logic
+|tck_i |Input |1 |JTAG TCK
+|tdi_i |Input |1 |JTAG TDI
+|tdo_o |Output |1 |JTAG TDO
+|tms_i |Input |1 |JTAG TMS
+|trst_ni |Input |1 |JTAG TRST
+|tdo_en_o |Output |1 |TDO output enable
+|jtag_clock_stop_o |Output |1 |Clock stop from DEBUG_CONTROL
+|cla_clock_stop_en_o |Output |1 |CLA clock stop enable from DEBUG_CONTROL
+|cla_clock_stop_i |Input |1 |CLA clock stop status for readback
+|boot_stall_o |Output |1 |Boot stall control
+|boot_stall_ovrd_o |Output |1 |Boot stall override enable
+|security_disable_i |Input |1 |Lifecycle security disable
+|stap_ext_* |Bidirectional | |Extended STAP chain interface
+|ijtag_ext_* |Bidirectional | |Extended iJTAG interface
+|smc_axi_* |Output | |SMC AXI master interface
+|smc_otp_axil_* |Output | |SMC OTP AXI-Lite interface
+|sep_otp_axil_* |Output | |SEP OTP AXI-Lite interface
+|===
+
+===== Dependencies
+
+The JTAG Interface Unit depends on the following components:
+
+* `hw/ip/jtag_ptap` - Primary TAP
+* `hw/ip/jtag_stap` - Secondary TAP
+* `hw/common/prim` - Primitive cells

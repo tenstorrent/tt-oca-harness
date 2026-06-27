@@ -1,5 +1,7 @@
-/* Copyright 2021 SiFive, Inc */
 /* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
+/* Copyright 2021 SiFive, Inc */
 
 #ifndef METAL__PRCI_H
 #define METAL__PRCI_H

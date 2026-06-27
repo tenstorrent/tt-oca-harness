@@ -1,0 +1,500 @@
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen.sv b/src/frontend/desc64/idma_desc64_ar_gen.sv
+index ef97f2d3d..c489907c9 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen.sv
+@@ -122,9 +122,9 @@ always_comb begin : proc_ar
+     axi_ar_chan_o.burst = axi_pkg::BURST_INCR;
+ end
+ 
+-`FF(inflight_q, inflight_d, 1'b0);
+-`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0);
+-`FF(next_addr_q, next_addr_d, '1);
++`FF(inflight_q, inflight_d, 1'b0)
++`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0)
++`FF(next_addr_q, next_addr_d, '1)
+ 
+ assign feedback_addr_o       = ar_addr;
+ assign feedback_addr_valid_o = axi_ar_chan_ready_i && axi_ar_chan_valid_o;
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+index b4ba4a700..56aba4250 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+@@ -231,11 +231,11 @@ end
+ 
+ assign queued_address_ready_o = !take_from_next && (!base_valid_q || next_addr_valid_this_cycle);
+ 
+-`FF(inflight_counter_q, inflight_counter_d, '0);
+-`FF(base_addr_q, base_addr_d, '0);
+-`FF(next_addr_valid_q, next_addr_valid_d, 1'b0);
+-`FF(base_valid_q, base_valid_d, 1'b0);
+-`FF(flush_q, flush_d, 1'b0);
++`FF(inflight_counter_q, inflight_counter_d, '0)
++`FF(base_addr_q, base_addr_d, '0)
++`FF(next_addr_valid_q, next_addr_valid_d, 1'b0)
++`FF(base_valid_q, base_valid_d, 1'b0)
++`FF(flush_q, flush_d, 1'b0)
+ assign flush_d = flush;
+ 
+ stream_fifo #(
+diff --git a/src/frontend/desc64/idma_desc64_reader.sv b/src/frontend/desc64/idma_desc64_reader.sv
+index d1975bf0a..29402b7ca 100644
+--- a/src/frontend/desc64/idma_desc64_reader.sv
++++ b/src/frontend/desc64/idma_desc64_reader.sv
+@@ -97,8 +97,8 @@ end else if (DataWidth == 128) begin : gen_128_data_path
+         end
+     end
+ 
+-    `FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0);
+-    `FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0);
++    `FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0)
++    `FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0)
+ end else if (DataWidth == 64) begin : gen_64_data_path
+     logic [1:0]       fetch_counter_q, fetch_counter_d;
+     logic [2:0][63:0] descriptor_data_q, descriptor_data_d;
+@@ -128,8 +128,8 @@ end else if (DataWidth == 64) begin : gen_64_data_path
+         end
+     end
+ 
+-    `FF(descriptor_data_q, descriptor_data_d, 192'b0);
+-    `FF(fetch_counter_q, fetch_counter_d, 2'b0);
++    `FF(descriptor_data_q, descriptor_data_d, 192'b0)
++    `FF(fetch_counter_q, fetch_counter_d, 2'b0)
+ end else if (DataWidth == 32) begin : gen_32_data_path
+     logic [2:0]       fetch_counter_q, fetch_counter_d;
+     logic [6:0][31:0] descriptor_data_q, descriptor_data_d;
+diff --git a/src/frontend/desc64/idma_desc64_reader_gater.sv b/src/frontend/desc64/idma_desc64_reader_gater.sv
+index f0ba964f5..cce23db27 100644
+--- a/src/frontend/desc64/idma_desc64_reader_gater.sv
++++ b/src/frontend/desc64/idma_desc64_reader_gater.sv
+@@ -50,8 +50,8 @@ always_comb begin
+     end
+ end
+ 
+-`FF(n_to_flush_q, n_to_flush_d, 'b0);
+-`FF(engage_q, engage_d, 'b0);
++`FF(n_to_flush_q, n_to_flush_d, 'b0)
++`FF(engage_q, engage_d, 'b0)
+ 
+ assign r_valid_o = flush ? 1'b0 : r_valid_i;
+ assign r_ready_o = flush ? 1'b1 : r_ready_i;
+diff --git a/src/frontend/desc64/idma_desc64_reg_wrapper.sv b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+index 44ac8ae2d..6bc59009f 100644
+--- a/src/frontend/desc64/idma_desc64_reg_wrapper.sv
++++ b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+@@ -79,6 +79,6 @@ import idma_desc64_reg_pkg::idma_desc64_hw2reg_t; #(
+             input_addr_valid_d = '0;
+         end
+     end
+-    `FF(input_addr_valid_q, input_addr_valid_d, '0);
++    `FF(input_addr_valid_q, input_addr_valid_d, '0)
+ 
+ endmodule
+diff --git a/src/frontend/desc64/idma_desc64_top.sv b/src/frontend/desc64/idma_desc64_top.sv
+index 629ed6a27..b9fcea0b8 100644
+--- a/src/frontend/desc64/idma_desc64_top.sv
++++ b/src/frontend/desc64/idma_desc64_top.sv
+@@ -458,7 +458,7 @@ stream_fifo #(
+     .ready_i   (master_rsp_i.aw_ready)
+ );
+ 
+-`FF(w_counter_q, w_counter_d, '0);
++`FF(w_counter_q, w_counter_d, '0)
+ 
+ 
+ assign idma_rsp_ready_o = next_wb_addr_ready && next_wb_addr_valid;
+@@ -468,8 +468,8 @@ assign irq_o            = do_irq_out && master_req_o.b_ready && master_rsp_i.b_v
+ // and empty in lockstep. Capacity is tested at the idma_req fifo, the
+ // other two ready signals are ignored.
+ // pragma translate_off
+-`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid);
+-`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid);
++`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
++`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
+ // pragma translate_on
+ 
+ endmodule
+diff --git a/src/frontend/reg/tpl/idma_reg.hjson.tpl b/src/frontend/reg/tpl/idma_reg.hjson.tpl
+index 5a5a4c33e..5262a4af6 100644
+--- a/src/frontend/reg/tpl/idma_reg.hjson.tpl
++++ b/src/frontend/reg/tpl/idma_reg.hjson.tpl
+@@ -80,24 +80,247 @@ ${params}
+         ]
+       }
+     },
+-    { multireg:
+-      { name: "next_id",
+-        desc: "Next ID, launches transfer, returns 0 if transfer not set up properly.",
+-        swaccess: "ro",
+-        hwaccess: "hrw",
+-        hwre: "true",
+-        count: "16",
+-        cname: "next_id",
+-        hwext: "true",
+-        compact: "false",
+-        fields: [
+-          { bits: "31:0",
+-            name: "next_id",
+-            desc: "Next ID, launches transfer, returns 0 if transfer not set up properly."
+-          }
+-        ]
+-      }
++    { skipto: "0x48" },
++    { name: "next_id_0"
++      desc: "Next ID 0, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_0",
++          desc: "Next ID 0, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x50" },
++    { name: "next_id_1"
++      desc: "Next ID 1, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_1",
++          desc: "Next ID 1, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x58" },
++    { name: "next_id_2"
++      desc: "Next ID 2, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_2",
++          desc: "Next ID 2, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x60" },
++    { name: "next_id_3"
++      desc: "Next ID 3, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_3",
++          desc: "Next ID 3, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x68" },
++    { name: "next_id_4"
++      desc: "Next ID 4, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_4",
++          desc: "Next ID 4, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x70" },
++    { name: "next_id_5"
++      desc: "Next ID 5, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_5",
++          desc: "Next ID 5, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x78" },
++    { name: "next_id_6"
++      desc: "Next ID 6, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_6",
++          desc: "Next ID 6, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
+     },
++    { skipto: "0x80" },
++    { name: "next_id_7"
++      desc: "Next ID 7, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_7",
++          desc: "Next ID 7, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x88" },
++    { name: "next_id_8"
++      desc: "Next ID 8, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_8",
++          desc: "Next ID 8, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x90" },
++    { name: "next_id_9"
++      desc: "Next ID 9, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_9",
++          desc: "Next ID 9, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0x98" },
++    { name: "next_id_10"
++      desc: "Next ID 10, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_10",
++          desc: "Next ID 10, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xA0" },
++    { name: "next_id_11"
++      desc: "Next ID 11, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_11",
++          desc: "Next ID 11, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xA8" },
++    { name: "next_id_12"
++      desc: "Next ID 12, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_12",
++          desc: "Next ID 12, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xB0" },
++    { name: "next_id_13"
++      desc: "Next ID 13, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_13",
++          desc: "Next ID 13, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xB8" },
++    { name: "next_id_14"
++      desc: "Next ID 14, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_14",
++          desc: "Next ID 14, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xC0" },
++    { name: "next_id_15"
++      desc: "Next ID 15, launches transfer, returns 0 if transfer not set up properly.",
++      swaccess: "ro",
++      hwaccess: "hrw",
++      hwre: "true",
++      hwext: "true",
++      fields: [
++        { bits: "31:0",
++          name: "next_id_15",
++          desc: "Next ID 15, launches transfer, returns 0 if transfer not set up properly.",
++          resval: "0"
++        }
++      ]
++    },
++    { skipto: "0xC8" },
+     { multireg:
+       { name: "done_id",
+         desc: "Get ID of finished transactions.",
+@@ -106,7 +329,6 @@ ${params}
+         count: "16",
+         cname: "done_id",
+         hwext: "true",
+-        compact: "false",
+         fields: [
+           { bits: "31:0",
+             name: "done_id",
+diff --git a/src/frontend/reg/tpl/idma_reg.sv.tpl b/src/frontend/reg/tpl/idma_reg.sv.tpl
+index 27de593fd..3e67945e9 100644
+--- a/src/frontend/reg/tpl/idma_reg.sv.tpl
++++ b/src/frontend/reg/tpl/idma_reg.sv.tpl
+@@ -64,9 +64,6 @@ module idma_${identifier} #(
+       stream_idx_o = '0;
+       for (int r = 0; r < NumRegs; r++) begin
+           for (int c = 0; c < NumStreams; c++) begin
+-              if (dma_reg2hw[r].next_id[c].re) begin
+-                  stream_idx_o = c;
+-              end
+           end
+       end
+   end
+@@ -84,7 +81,7 @@ module idma_${identifier} #(
+       .reg_rsp_o ( dma_ctrl_rsp     [i] ),
+       .reg2hw    ( dma_reg2hw       [i] ),
+       .hw2reg    ( dma_hw2reg       [i] ),
+-      .devmode_i ( 1'b1                 )
++      .devmode_i ( 1'b0                 )
+     );
+ 
+     logic read_happens;
+@@ -92,15 +89,41 @@ module idma_${identifier} #(
+     always_comb begin : proc_dma_backpressure
+       // ready signal
+       dma_ctrl_rsp_o[i]       = dma_ctrl_rsp[i];
+-      dma_ctrl_rsp_o[i].ready = read_happens ? arb_ready[i] : dma_ctrl_rsp[i];
++      //Two cases for setting ready:
++      // 1. Reading next_id: Detected by read_happens == 1 and use the backpressure from arbiter
++      //        read_happens && arb_ready[i] ()
++      // 2. Reading or writing to other registers Detected by read_happens == 0 and respond immediately on receiving a request
++      //        dma_ctrl_req_i[i].valid && ~read_happens
++      dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
+     end
+ 
++    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
++    assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
++    assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
++    assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
++    assign next_id_re_temp[3] = dma_reg2hw[i].next_id_3.re;
++    assign next_id_re_temp[4] = dma_reg2hw[i].next_id_4.re;
++    assign next_id_re_temp[5] = dma_reg2hw[i].next_id_5.re;
++    assign next_id_re_temp[6] = dma_reg2hw[i].next_id_6.re;
++    assign next_id_re_temp[7] = dma_reg2hw[i].next_id_7.re;
++    assign next_id_re_temp[8] = dma_reg2hw[i].next_id_8.re;
++    assign next_id_re_temp[9] = dma_reg2hw[i].next_id_9.re;
++    assign next_id_re_temp[10] = dma_reg2hw[i].next_id_10.re;
++    assign next_id_re_temp[11] = dma_reg2hw[i].next_id_11.re;
++    assign next_id_re_temp[12] = dma_reg2hw[i].next_id_12.re;
++    assign next_id_re_temp[13] = dma_reg2hw[i].next_id_13.re;
++    assign next_id_re_temp[14] = dma_reg2hw[i].next_id_14.re;
++    assign next_id_re_temp[15] = dma_reg2hw[i].next_id_15.re;
++
+     // valid signals
+ 
+     always_comb begin : proc_launch
+         read_happens = 1'b0;
+         for (int c = 0; c < NumStreams; c++) begin
+-            read_happens |= dma_reg2hw[i].next_id[c].re;
++            read_happens |= next_id_re_temp[c];
++            if (next_id_re_temp[c]) begin
++                stream_idx_o = c;
++            end
+         end
+         arb_valid[i] = read_happens;
+     end
+@@ -173,20 +196,38 @@ module idma_${identifier} #(
+ % endif
+     end
+ 
++    cnt_width_t [MaxNumStreams-1:0] next_id_temp;
+     // observational registers
+     for (genvar c = 0; c < NumStreams; c++) begin : gen_hw2reg_connections
+         assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+-        assign dma_hw2reg[i].next_id[c] = next_id_i;
++        assign next_id_temp[c] = next_id_i;
+         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
+     end
+ 
+     // tie-off unused channels
+     for (genvar c = NumStreams; c < MaxNumStreams; c++) begin : gen_hw2reg_unused
+         assign dma_hw2reg[i].status[c]  = '0;
+-        assign dma_hw2reg[i].next_id[c] = '0;
++        assign next_id_temp[c] = '0;
+         assign dma_hw2reg[i].done_id[c] = '0;
+     end
+ 
++    assign dma_hw2reg[i].next_id_0 = next_id_temp[0];
++    assign dma_hw2reg[i].next_id_1 = next_id_temp[1];
++    assign dma_hw2reg[i].next_id_2 = next_id_temp[2];
++    assign dma_hw2reg[i].next_id_3 = next_id_temp[3];
++    assign dma_hw2reg[i].next_id_4 = next_id_temp[4];
++    assign dma_hw2reg[i].next_id_5 = next_id_temp[5];
++    assign dma_hw2reg[i].next_id_6 = next_id_temp[6];
++    assign dma_hw2reg[i].next_id_7 = next_id_temp[7];
++    assign dma_hw2reg[i].next_id_8 = next_id_temp[8];
++    assign dma_hw2reg[i].next_id_9 = next_id_temp[9];
++    assign dma_hw2reg[i].next_id_10 = next_id_temp[10];
++    assign dma_hw2reg[i].next_id_11 = next_id_temp[11];
++    assign dma_hw2reg[i].next_id_12 = next_id_temp[12];
++    assign dma_hw2reg[i].next_id_13 = next_id_temp[13];
++    assign dma_hw2reg[i].next_id_14 = next_id_temp[14];
++    assign dma_hw2reg[i].next_id_15 = next_id_temp[15];
++
+   end
+ 
+   // arbitration

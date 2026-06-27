@@ -1,0 +1,428 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | LOCKS | RW a| -
+| 0x8 | LC_STATE | R a| -
+| 0xC | SBOOT_DIS | R a| -
+| 0x10 | TRANSIENT_RMA_EN | R a| -
+| 0x14 | SiP_DIS | RW a| An owner's (SiP or System) feature control vector. When set, the corresponding feature is disabled
+| 0x1C | SYS_DIS | RW a| An owner's (SiP or System) feature control vector. When set, the corresponding feature is disabled
+| 0x24 | RMA_SIP_TOKEN_DIGEST | R a| -
+| 0x44 | RMA_CHIPLET_TOKEN_DIGEST | R a| -
+| 0x64 | CLASS_KEY | R a| -
+| 0x84 | CHIPLET_PUBK_REVOKE | R a| -
+| 0x88 | BL1_VERSION | R a| -
+| 0xA8 | BL2_VERSION | R a| -
+| 0xC8 | CHIPLET_UID | R a| -
+| 0xE8 | SiP_PUBK_DIGEST | R a| -
+| 0x108 | SiP_UID | R a| -
+| 0x128 | SYS_PUBK_DIGEST | R a| -
+| 0x148 | SYS_UID | R a| -
+| 0x168 | STATUS_RPT | R a| -
+| 0x16C | SEP_ROM_CTRL | R a| -
+| 0x170 | SEP_SPI_CTRL_FIELD_EN | R a| -
+| 0x174 | SPI_DISCOVERY_CTRL | R a| -
+| 0x178 | SPI_PHY_DQ_TIMING | R a| -
+| 0x17C | SPI_PHY_DQS_TIMING | R a| -
+| 0x180 | SPI_PHY_GATE_LPBK | R a| -
+| 0x184 | SPI_PHY_DLL_SLAVE | R a| -
+| 0x188 | SPI_PHY_DLL_MASTER | R a| -
+| 0x18C | SPI_PHY_MISC | R a| -
+| 0x190 | SPI_RB_VALID_TIME | R a| -
+| 0x194 | PUBLIC_KEY_0 | R a| -
+| 0x1B4 | PUBLIC_KEY_1 | R a| -
+| 0x1D4 | RESERVED_0 | R a| -
+| 0x214 | RESERVED_1 | R a| -
+| 0x254 | RESERVED_2 | R a| -
+| 0x294 | RESERVED_3 | R a| -
+| 0x2D4 | RESERVED_4 | R a| -
+| 0x314 | RESERVED_5 | R a| -
+| 0x354 | RESERVED_6 | R a| -
+| 0x394 | RESERVED_7 | R a| -
+| 0x3D4 | RESERVED_LAST_256 | R a| -
+| 0x3F4 | RESERVED_LAST_64 | R a| -
+| 0x3FC | RESERVED_LAST_32 | R a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOCKS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63 | `RESERVED_LAST_32_READ_LOCK` | RW | 0x0 a| RESERVED_LAST_32_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 62 | `RESERVED_LAST_32_WRITE_LOCK` | RW | 0x0 a| RESERVED_LAST_32_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 61 | `RESERVED_LAST_64_READ_LOCK` | RW | 0x0 a| RESERVED_LAST_64_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 60 | `RESERVED_LAST_64_WRITE_LOCK` | RW | 0x0 a| RESERVED_LAST_64_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 59 | `RESERVED_LAST_256_READ_LOCK` | RW | 0x0 a| RESERVED_LAST_256_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 58 | `RESERVED_LAST_256_WRITE_LOCK` | RW | 0x0 a| RESERVED_LAST_256_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 57 | `RESERVED_7_READ_LOCK` | RW | 0x0 a| RESERVED_7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 56 | `RESERVED_7_WRITE_LOCK` | RW | 0x0 a| RESERVED_7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 55 | `RESERVED_6_READ_LOCK` | RW | 0x0 a| RESERVED_6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 54 | `RESERVED_6_WRITE_LOCK` | RW | 0x0 a| RESERVED_6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 53 | `RESERVED_5_READ_LOCK` | RW | 0x0 a| RESERVED_5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 52 | `RESERVED_5_WRITE_LOCK` | RW | 0x0 a| RESERVED_5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 51 | `RESERVED_4_READ_LOCK` | RW | 0x0 a| RESERVED_4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 50 | `RESERVED_4_WRITE_LOCK` | RW | 0x0 a| RESERVED_4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 49 | `RESERVED_3_READ_LOCK` | RW | 0x0 a| RESERVED_3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 48 | `RESERVED_3_WRITE_LOCK` | RW | 0x0 a| RESERVED_3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 47 | `RESERVED_2_READ_LOCK` | RW | 0x0 a| RESERVED_2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 46 | `RESERVED_2_WRITE_LOCK` | RW | 0x0 a| RESERVED_2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 45 | `RESERVED_1_READ_LOCK` | RW | 0x0 a| RESERVED_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 44 | `RESERVED_1_WRITE_LOCK` | RW | 0x0 a| RESERVED_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 43 | `RESERVED_0_READ_LOCK` | RW | 0x0 a| RESERVED_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 42 | `RESERVED_0_WRITE_LOCK` | RW | 0x0 a| RESERVED_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 41 | `SEP_PUBLIC_KEY_HASH_1_READ_LOCK` | RW | 0x0 a| SEP_PUBLIC_KEY_HASH_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 40 | `SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK` | RW | 0x0 a| SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 39 | `SEP_PUBLIC_KEY_HASH_0_READ_LOCK` | RW | 0x0 a| SEP_PUBLIC_KEY_HASH_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 38 | `SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK` | RW | 0x0 a| SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 37 | `SEP_SPI_CTRL_READ_LOCK` | RW | 0x0 a| sep_spi_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 36 | `SEP_SPI_CTRL_WRITE_LOCK` | RW | 0x0 a| sep_spi_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 35 | `SEP_ROM_CTRL_READ_LOCK` | RW | 0x0 a| sep_rom_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 34 | `SEP_ROM_CTRL_WRITE_LOCK` | RW | 0x0 a| sep_rom_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 33 | `STATUS_RPT_READ_LOCK` | RW | 0x0 a| status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 32 | `STATUS_RPT_WRITE_LOCK` | RW | 0x0 a| status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 31 | `SYS_UID_READ_LOCK` | RW | 0x0 a| sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 30 | `SYS_UID_WRITE_LOCK` | RW | 0x0 a| sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 29 | `SYS_PUBK_DIGEST_READ_LOCK` | RW | 0x0 a| sys_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 28 | `SYS_PUBK_DIGEST_WRITE_LOCK` | RW | 0x0 a| sys_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 27 | `SiP_UID_READ_LOCK` | RW | 0x0 a| sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 26 | `SiP_UID_WRITE_LOCK` | RW | 0x0 a| sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 25 | `SiP_PUBK_DIGEST_READ_LOCK` | RW | 0x0 a| sip_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 24 | `SiP_PUBK_DIGEST_WRITE_LOCK` | RW | 0x0 a| sip_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 23 | `CHIPLET_UID_READ_LOCK` | RW | 0x0 a| chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 22 | `CHIPLET_UID_WRITE_LOCK` | RW | 0x0 a| chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 21 | `BL2_VERSION_READ_LOCK` | RW | 0x0 a| bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 20 | `BL2_VERSION_WRITE_LOCK` | RW | 0x0 a| bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 19 | `BL1_VERSION_READ_LOCK` | RW | 0x0 a| bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 18 | `BL1_VERSION_WRITE_LOCK` | RW | 0x0 a| bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 17 | `CHIPLET_PUBK_REVOKE_READ_LOCK` | RW | 0x0 a| chiplet_pubk_revoke_sel_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 16 | `CHIPLET_PUBK_REVOKE_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_revoke_sel_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 15 | `CLASS_KEY_READ_LOCK` | RW | 0x0 a| class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 14 | `CLASS_KEY_WRITE_LOCK` | RW | 0x0 a| class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 13 | `RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK` | RW | 0x0 a| rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 12 | `RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK` | RW | 0x0 a| rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 11 | `RMA_SIP_TOKEN_DIGEST_READ_LOCK` | RW | 0x0 a| rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 10 | `RMA_SIP_TOKEN_DIGEST_WRITE_LOCK` | RW | 0x0 a| rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 9 | `SYS_DIS_READ_LOCK` | RW | 0x0 a| sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 8 | `SYS_DIS_WRITE_LOCK` | RW | 0x0 a| sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 7 | `SiP_DIS_READ_LOCK` | RW | 0x0 a| sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 6 | `SiP_DIS_WRITE_LOCK` | RW | 0x0 a| sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 5 | `TRANSIENT_RMA_EN_READ_LOCK` | RW | 0x0 a| TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 4 | `TRANSIENT_RMA_EN_WRITE_LOCK` | RW | 0x0 a| TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 3 | `SBOOT_DIS_READ_LOCK` | RW | 0x0 a| sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 2 | `SBOOT_DIS_WRITE_LOCK` | RW | 0x0 a| sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 1 | `LC_STATE_READ_LOCK` | RW | 0x0 a| lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 0 | `LC_STATE_WRITE_LOCK` | RW | 0x0 a| lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LC_STATE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `rsvd` | R | 0x0 a| Unused
+| 7:0 | `lc_state` | R | 0xF0 a| Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SBOOT_DIS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Unused
+| 0 | `disable_secure_boot` | R | 0x0 a| Chicken bit to disable secure boot in SEP ROM.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.TRANSIENT_RMA_EN Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Unused
+| 0 | `transient_rma_en` | R | 0x0 a| When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SiP_DIS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:48 | `func_reserved` | RW | 0x0 a| Reserved
+| 47:37 | `test_reserved` | RW | 0x0 a| Reserved
+| 36 | `ap_dtest` | RW | 0x0 a| When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.
+| 35 | `ap_stest` | RW | 0x0 a| When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.
+| 34 | `sep_dtest` | RW | 0x0 a| When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.
+| 33 | `sep_stest` | RW | 0x0 a| When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.
+| 32 | `fuse_test` | RW | 0x0 a| When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.
+| 31:5 | `debug_reserved` | RW | 0x0 a| Reserved
+| 4 | `sip_debug` | RW | 0x0 a| When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.
+| 3 | `ap_trace` | RW | 0x0 a| When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.
+| 2 | `ap_debug` | RW | 0x0 a| When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.
+| 1 | `soc_debug` | RW | 0x0 a| Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.
+| 0 | `sep_debug` | RW | 0x0 a| SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SYS_DIS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:48 | `func_reserved` | RW | 0x0 a| Reserved
+| 47:37 | `test_reserved` | RW | 0x0 a| Reserved
+| 36 | `ap_dtest` | RW | 0x0 a| When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.
+| 35 | `ap_stest` | RW | 0x0 a| When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.
+| 34 | `sep_dtest` | RW | 0x0 a| When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.
+| 33 | `sep_stest` | RW | 0x0 a| When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.
+| 32 | `fuse_test` | RW | 0x0 a| When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.
+| 31:5 | `debug_reserved` | RW | 0x0 a| Reserved
+| 4 | `sip_debug` | RW | 0x0 a| When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.
+| 3 | `ap_trace` | RW | 0x0 a| When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.
+| 2 | `ap_debug` | RW | 0x0 a| When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.
+| 1 | `soc_debug` | RW | 0x0 a| Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.
+| 0 | `sep_debug` | RW | 0x0 a| SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RMA_SIP_TOKEN_DIGEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RMA_CHIPLET_TOKEN_DIGEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CLASS_KEY Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `key` | R | 0x0 a| Class key that could be used for FW encryption/decryption
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CHIPLET_PUBK_REVOKE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `select` | R | 0x0 a| Revoke public key used to verify BL1/ SEP ROM Should reject using the corresponding public key when associated bit is set to 1
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.BL1_VERSION Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `version` | R | 0x0 a| Minimum BL1 version that can be loaded by SEPROM
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.BL2_VERSION Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `version` | R | 0x0 a| Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CHIPLET_UID Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `uid` | R | 0x0 a| Silicon creator's confidential device unique ID.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SiP_PUBK_DIGEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `key_digest` | R | 0x0 a| Hash digest of SiP owner's root public key for secure boot.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SiP_UID Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `uid` | R | 0x0 a| SiP owner's confidential device unique ID.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SYS_PUBK_DIGEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `key_digest` | R | 0x0 a| Hash digest of system owner's root public key for secure boot.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SYS_UID Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `uid` | R | 0x0 a| System owner's confidential device unique ID.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.STATUS_RPT Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `reserved` | R | 0x0 a| reserved
+| 1:0 | `rpt` | R | 0x0 a| BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SEP_ROM_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:6 | `reserved` | R | 0x0 a| reserved
+| 5:1 | `rom_swap_ctrl` | R | 0x0 a| controls how the rom slices are swapped
+| 0 | `rom_endianness_ctrl` | R | 0x0 a| controls the endianness of the rom data out. 0->little endian; 1->big endian
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SEP_SPI_CTRL_FIELD_EN Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:19 | `spi_control_field_en_rsvd` | R | 0x0 a| Reserved 13 bits
+| 18:8 | `smu_pll_sysclk` | R | 0x0 a| 11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0
+| 7:0 | `spi_control_field_en` | R | 0x0 a| 8 bit which indicates the following 8 spi config regs are enabled or not. 1->enabled; 0->disabled
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_DISCOVERY_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `discovery` | R | 0x0 a| spi discovery control reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_DQ_TIMING Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dq_timing` | R | 0x0 a| spi phy dq timing reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_DQS_TIMING Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dqs_timing` | R | 0x0 a| spi phy dqs timing reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_GATE_LPBK Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `gate_lpbk` | R | 0x0 a| spi phy gate lpbk ctrl reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_DLL_SLAVE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dll_slave` | R | 0x0 a| spi phy dll slv ctrl reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_DLL_MASTER Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `dll_master` | R | 0x0 a| spi phy dll mst ctrl reg
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_PHY_MISC Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `misc` | R | 0x0 a| spi init phy misc
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SPI_RB_VALID_TIME Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `rb_valid_time` | R | 0x0 a| spi init rb valid time
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PUBLIC_KEY_0 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `key_hash` | R | 0x0 a| Extra public key hash digest
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PUBLIC_KEY_1 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `key_hash` | R | 0x0 a| Extra public key hash digest
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_0 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_1 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_2 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_3 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_4 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_5 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_6 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_7 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_LAST_256 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_LAST_64 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED_LAST_32 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `rsvd` | R | 0x0 a| Reserved region for future use
+|===

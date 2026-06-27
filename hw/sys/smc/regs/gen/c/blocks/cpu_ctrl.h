@@ -105,90 +105,6 @@ typedef union {
     uint64_t w;
 } cpu_ctrl__CORE_RESET_PULSE_COUNT_t;
 
-// reg - cpu_ctrl::CLOCK_GATE_CONTROL
-#define CPU_CTRL__CLOCK_GATE_CONTROL__DMA_CG_EN_bm 0x1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__DMA_CG_EN_bp 0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__DMA_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__DMA_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bm 0x2
-#define CPU_CTRL__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bp 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bm 0x4
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bp 2
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_AXI_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bm 0x8
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bp 3
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_OB_REG_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bm 0x10
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bp 4
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_AXI_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bm 0x20
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bp 5
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__FILTER_IB_REG_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bm 0x40
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bp 6
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ADDR_REMAP_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bm 0x80
-#define CPU_CTRL__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bp 7
-#define CPU_CTRL__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__OUTPUT_FABRIC_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bm 0x100
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bp 8
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__ZEROER_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I3C_CG_EN_bm 0x200
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I3C_CG_EN_bp 9
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I3C_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I3C_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__AVS_CG_EN_bm 0x400
-#define CPU_CTRL__CLOCK_GATE_CONTROL__AVS_CG_EN_bp 10
-#define CPU_CTRL__CLOCK_GATE_CONTROL__AVS_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__AVS_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I2C_CG_EN_bm 0x800
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I2C_CG_EN_bp 11
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I2C_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__I2C_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__UART_CG_EN_bm 0x1000
-#define CPU_CTRL__CLOCK_GATE_CONTROL__UART_CG_EN_bp 12
-#define CPU_CTRL__CLOCK_GATE_CONTROL__UART_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__UART_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm 0x2000
-#define CPU_CTRL__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bp 13
-#define CPU_CTRL__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bw 1
-#define CPU_CTRL__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_reset 0x0
-#define CPU_CTRL__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bm 0x3f000000
-#define CPU_CTRL__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp 24
-#define CPU_CTRL__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bw 6
-#define CPU_CTRL__CLOCK_GATE_CONTROL__CG_HYSTERESIS_reset 0x1f
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t dma_cg_en :1;
-        uint64_t mailbox_cg_en :1;
-        uint64_t filter_ob_axi_cg_en :1;
-        uint64_t filter_ob_reg_cg_en :1;
-        uint64_t filter_ib_axi_cg_en :1;
-        uint64_t filter_ib_reg_cg_en :1;
-        uint64_t addr_remap_cg_en :1;
-        uint64_t output_fabric_cg_en :1;
-        uint64_t zeroer_cg_en :1;
-        uint64_t i3c_cg_en :1;
-        uint64_t avs_cg_en :1;
-        uint64_t i2c_cg_en :1;
-        uint64_t uart_cg_en :1;
-        uint64_t telemetry_cg_en :1;
-        uint64_t :10;
-        uint64_t cg_hysteresis :6;
-        uint64_t :34;
-    } f;
-    uint64_t w;
-} cpu_ctrl__CLOCK_GATE_CONTROL_t;
-
 // reg - cpu_ctrl::RESET_TIMEOUT
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bm 0xffff
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp 0
@@ -218,45 +134,6 @@ typedef union {
     } f;
     uint64_t w;
 } cpu_ctrl__RESET_TIMEOUT_t;
-
-// reg - cpu_ctrl::GLOBAL_BASE
-#define CPU_CTRL__GLOBAL_BASE__BASE_bm 0xffffffffffffff
-#define CPU_CTRL__GLOBAL_BASE__BASE_bp 0
-#define CPU_CTRL__GLOBAL_BASE__BASE_bw 56
-#define CPU_CTRL__GLOBAL_BASE__BASE_reset 0x40000000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t base :56;
-        uint64_t :8;
-    } f;
-    uint64_t w;
-} cpu_ctrl__GLOBAL_BASE_t;
-
-// reg - cpu_ctrl::LOCAL_BASE
-#define CPU_CTRL__LOCAL_BASE__BASE_bm 0xffffffffffffff
-#define CPU_CTRL__LOCAL_BASE__BASE_bp 0
-#define CPU_CTRL__LOCAL_BASE__BASE_bw 56
-#define CPU_CTRL__LOCAL_BASE__BASE_reset 0xc0000000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t base :56;
-        uint64_t :8;
-    } f;
-    uint64_t w;
-} cpu_ctrl__LOCAL_BASE_t;
-
-// reg - cpu_ctrl::REGION_SIZE
-#define CPU_CTRL__REGION_SIZE__SIZE_bm 0xffffffff
-#define CPU_CTRL__REGION_SIZE__SIZE_bp 0
-#define CPU_CTRL__REGION_SIZE__SIZE_bw 32
-#define CPU_CTRL__REGION_SIZE__SIZE_reset 0x1000000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t size :32;
-        uint64_t :32;
-    } f;
-    uint64_t w;
-} cpu_ctrl__REGION_SIZE_t;
 
 // reg - cpu_ctrl::REFERENCE_COUNTER
 #define CPU_CTRL__REFERENCE_COUNTER__RC_bm 0xffffffffffffffff
@@ -310,19 +187,6 @@ typedef union {
     uint32_t w;
 } cpu_ctrl__WDT_TIMEOUT_RESET_t;
 
-// reg - cpu_ctrl::SCRATCH
-#define CPU_CTRL__SCRATCH__DATA_bm 0xffffffff
-#define CPU_CTRL__SCRATCH__DATA_bp 0
-#define CPU_CTRL__SCRATCH__DATA_bw 32
-#define CPU_CTRL__SCRATCH__DATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t data :32;
-        uint64_t :32;
-    } f;
-    uint64_t w;
-} cpu_ctrl__SCRATCH_t;
-
 // reg - cpu_ctrl::TEST_CTRL
 #define CPU_CTRL__TEST_CTRL__DATA_bm 0xffffffff
 #define CPU_CTRL__TEST_CTRL__DATA_bp 0
@@ -336,115 +200,18 @@ typedef union {
     uint64_t w;
 } cpu_ctrl__TEST_CTRL_t;
 
-// reg - cpu_ctrl::DEBUG_CTRL
-#define CPU_CTRL__DEBUG_CTRL__CHIPLET_ENABLE_bm 0x3
-#define CPU_CTRL__DEBUG_CTRL__CHIPLET_ENABLE_bp 0
-#define CPU_CTRL__DEBUG_CTRL__CHIPLET_ENABLE_bw 2
-#define CPU_CTRL__DEBUG_CTRL__CHIPLET_ENABLE_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__GPIO_EN_bm 0x4
-#define CPU_CTRL__DEBUG_CTRL__GPIO_EN_bp 2
-#define CPU_CTRL__DEBUG_CTRL__GPIO_EN_bw 1
-#define CPU_CTRL__DEBUG_CTRL__GPIO_EN_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__CG_EN_bm 0x8
-#define CPU_CTRL__DEBUG_CTRL__CG_EN_bp 3
-#define CPU_CTRL__DEBUG_CTRL__CG_EN_bw 1
-#define CPU_CTRL__DEBUG_CTRL__CG_EN_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__FORCE_CLK_EN_bm 0x10
-#define CPU_CTRL__DEBUG_CTRL__FORCE_CLK_EN_bp 4
-#define CPU_CTRL__DEBUG_CTRL__FORCE_CLK_EN_bw 1
-#define CPU_CTRL__DEBUG_CTRL__FORCE_CLK_EN_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__DTB_NS_EN_bm 0x20
-#define CPU_CTRL__DEBUG_CTRL__DTB_NS_EN_bp 5
-#define CPU_CTRL__DEBUG_CTRL__DTB_NS_EN_bw 1
-#define CPU_CTRL__DEBUG_CTRL__DTB_NS_EN_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__DTB_EW_EN_bm 0x40
-#define CPU_CTRL__DEBUG_CTRL__DTB_EW_EN_bp 6
-#define CPU_CTRL__DEBUG_CTRL__DTB_EW_EN_bw 1
-#define CPU_CTRL__DEBUG_CTRL__DTB_EW_EN_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bm 0x7fff80
-#define CPU_CTRL__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bp 7
-#define CPU_CTRL__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_bw 16
-#define CPU_CTRL__DEBUG_CTRL__XTRIG_CLK_HALT_MASK_reset 0x0
-#define CPU_CTRL__DEBUG_CTRL__DEBUG_MARKER_bm 0x7f800000
-#define CPU_CTRL__DEBUG_CTRL__DEBUG_MARKER_bp 23
-#define CPU_CTRL__DEBUG_CTRL__DEBUG_MARKER_bw 8
-#define CPU_CTRL__DEBUG_CTRL__DEBUG_MARKER_reset 0x0
+// reg - cpu_ctrl::SCRATCH
+#define CPU_CTRL__SCRATCH__DATA_bm 0xffffffff
+#define CPU_CTRL__SCRATCH__DATA_bp 0
+#define CPU_CTRL__SCRATCH__DATA_bw 32
+#define CPU_CTRL__SCRATCH__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t chiplet_enable :2;
-        uint32_t gpio_en :1;
-        uint32_t cg_en :1;
-        uint32_t force_clk_en :1;
-        uint32_t dtb_ns_en :1;
-        uint32_t dtb_ew_en :1;
-        uint32_t xtrig_clk_halt_mask :16;
-        uint32_t debug_marker :8;
-        uint32_t :1;
-    } f;
-    uint32_t w;
-} cpu_ctrl__DEBUG_CTRL_t;
-
-// reg - cpu_ctrl::DEBUG_BUS_MUX
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMMODE_bm 0x3
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMMODE_bp 0
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMMODE_bw 2
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMMODE_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMID_bm 0xfc
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMID_bp 2
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMID_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__DBMID_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__RSVD158_bm 0xff00
-#define CPU_CTRL__DEBUG_BUS_MUX__RSVD158_bp 8
-#define CPU_CTRL__DEBUG_BUS_MUX__RSVD158_bw 8
-#define CPU_CTRL__DEBUG_BUS_MUX__RSVD158_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG0_bm 0x3f0000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG0_bp 16
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG0_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG0_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG1_bm 0xfc00000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG1_bp 22
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG1_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG1_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG2_bm 0x3f0000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG2_bp 28
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG2_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG2_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG3_bm 0xfc00000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG3_bp 34
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG3_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG3_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG4_bm 0x3f0000000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG4_bp 40
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG4_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG4_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG5_bm 0xfc00000000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG5_bp 46
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG5_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG5_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG6_bm 0x3f0000000000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG6_bp 52
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG6_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG6_reset 0x0
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG7_bm 0xfc00000000000000
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG7_bp 58
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG7_bw 6
-#define CPU_CTRL__DEBUG_BUS_MUX__MUXSELSEG7_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint64_t Dbmmode :2;
-        uint64_t Dbmid :6;
-        uint64_t Rsvd158 :8;
-        uint64_t Muxselseg0 :6;
-        uint64_t Muxselseg1 :6;
-        uint64_t Muxselseg2 :6;
-        uint64_t Muxselseg3 :6;
-        uint64_t Muxselseg4 :6;
-        uint64_t Muxselseg5 :6;
-        uint64_t Muxselseg6 :6;
-        uint64_t Muxselseg7 :6;
+        uint64_t data :32;
+        uint64_t :32;
     } f;
     uint64_t w;
-} cpu_ctrl__DEBUG_BUS_MUX_t;
+} cpu_ctrl__SCRATCH_t;
 
 // reg - cpu_ctrl::WB_PC
 #define CPU_CTRL__WB_PC__PC_bm 0x3ffffffffffffff
@@ -586,99 +353,39 @@ typedef union {
     uint64_t w;
 } cpu_ctrl__DUMMY_ROM_NULL_t;
 
-// reg - cpu_ctrl::HANG_DET_CTRL
-#define CPU_CTRL__HANG_DET_CTRL__ENABLE_bm 0x1
-#define CPU_CTRL__HANG_DET_CTRL__ENABLE_bp 0
-#define CPU_CTRL__HANG_DET_CTRL__ENABLE_bw 1
-#define CPU_CTRL__HANG_DET_CTRL__ENABLE_reset 0x0
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_EN_bm 0x10
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_EN_bp 4
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_EN_bw 1
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_EN_reset 0x0
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_TEST_bm 0x100
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_TEST_bp 8
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_TEST_bw 1
-#define CPU_CTRL__HANG_DET_CTRL__IRQ_TEST_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t enable :1;
-        uint32_t :3;
-        uint32_t irq_en :1;
-        uint32_t :3;
-        uint32_t irq_test :1;
-        uint32_t :23;
-    } f;
-    uint32_t w;
-} cpu_ctrl__HANG_DET_CTRL_t;
-
-// reg - cpu_ctrl::HANG_DET_TIMEOUT_THRESHOLD
-#define CPU_CTRL__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bm 0xfffff
-#define CPU_CTRL__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bp 0
-#define CPU_CTRL__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bw 20
-#define CPU_CTRL__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset 0x1000
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t value :20;
-        uint32_t :12;
-    } f;
-    uint32_t w;
-} cpu_ctrl__HANG_DET_TIMEOUT_THRESHOLD_t;
-
 // addrmap - cpu_ctrl
 typedef struct __attribute__ ((__packed__)) {
     cpu_ctrl__RESET_VECTOR_t RESET_VECTOR[4];
     cpu_ctrl__RESET_CTRL_t RESET_CTRL;
     cpu_ctrl__CORE_RESET_PULSE_COUNT_t CORE_RESET_PULSE_COUNT;
-    cpu_ctrl__CLOCK_GATE_CONTROL_t CLOCK_GATE_CONTROL;
     cpu_ctrl__RESET_TIMEOUT_t RESET_TIMEOUT;
-    cpu_ctrl__GLOBAL_BASE_t GLOBAL_BASE;
-    cpu_ctrl__LOCAL_BASE_t LOCAL_BASE;
-    cpu_ctrl__REGION_SIZE_t REGION_SIZE;
-    uint8_t RESERVED_58_5f[0x8];
+    uint8_t RESERVED_38_3f[0x8];
     cpu_ctrl__REFERENCE_COUNTER_t REFERENCE_COUNTER;
-    uint8_t RESERVED_68_6f[0x8];
+    uint8_t RESERVED_48_4f[0x8];
     cpu_ctrl__WDT_TIMEOUT_t WDT_TIMEOUT;
-    uint8_t RESERVED_74_77[0x4];
+    uint8_t RESERVED_54_57[0x4];
     cpu_ctrl__WDT_TIMEOUT_RESET_t WDT_TIMEOUT_RESET;
-    uint8_t RESERVED_7c_ff[0x84];
-    cpu_ctrl__SCRATCH_t SCRATCH[16];
-    uint8_t RESERVED_180_1ff[0x80];
+    uint8_t RESERVED_5c_5f[0x4];
     cpu_ctrl__TEST_CTRL_t TEST_CTRL;
-    cpu_ctrl__DEBUG_CTRL_t DEBUG_CTRL;
-    uint8_t RESERVED_20c_20f[0x4];
-    cpu_ctrl__DEBUG_BUS_MUX_t DEBUG_BUS_MUX;
-    uint8_t RESERVED_218_2ff[0xe8];
+    uint8_t RESERVED_68_7f[0x18];
+    cpu_ctrl__SCRATCH_t SCRATCH[16];
     cpu_ctrl__WB_PC_t WB_PC_CORE0[8];
     cpu_ctrl__WB_PC_t WB_PC_CORE1[8];
     cpu_ctrl__WB_PC_t WB_PC_CORE2[8];
     cpu_ctrl__WB_PC_t WB_PC_CORE3[8];
-    uint8_t RESERVED_400_fff[0xc00];
     cpu_ctrl__SMC_ATTRIBUTES_t SMC_ATTRIBUTES;
-    uint8_t RESERVED_1008_103f[0x38];
+    uint8_t RESERVED_208_23f[0x38];
     cpu_ctrl__MUTEX_t MUTEX[4];
     cpu_ctrl__SEMA_t SEMA[4];
-    uint8_t RESERVED_1080_117f[0x100];
     cpu_ctrl__DUMMY_ROM_0_t DUMMY_ROM_0;
     cpu_ctrl__DUMMY_ROM_1_t DUMMY_ROM_1;
     cpu_ctrl__DUMMY_ROM_2_t DUMMY_ROM_2;
     cpu_ctrl__DUMMY_ROM_3_t DUMMY_ROM_3;
     cpu_ctrl__DUMMY_ROM_NULL_t DUMMY_ROM_NULL[4];
-    uint8_t RESERVED_11c0_11ff[0x40];
-    cpu_ctrl__HANG_DET_CTRL_t HANG_DET_SYS_AXI_CTRL;
-    uint8_t RESERVED_1204_1207[0x4];
-    cpu_ctrl__HANG_DET_TIMEOUT_THRESHOLD_t HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD;
-    uint8_t RESERVED_120c_120f[0x4];
-    cpu_ctrl__HANG_DET_CTRL_t HANG_DET_SEP_AXI_CTRL;
-    uint8_t RESERVED_1214_1217[0x4];
-    cpu_ctrl__HANG_DET_TIMEOUT_THRESHOLD_t HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD;
-    uint8_t RESERVED_121c_121f[0x4];
-    cpu_ctrl__HANG_DET_CTRL_t HANG_DET_DATA_ACCEL_CTRL;
-    uint8_t RESERVED_1224_1227[0x4];
-    cpu_ctrl__HANG_DET_TIMEOUT_THRESHOLD_t HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD;
 } cpu_ctrl_t;
 
 
-static_assert(sizeof(cpu_ctrl_t) == 0x122c, "Packing error");
+static_assert(sizeof(cpu_ctrl_t) == 0x2c0, "Packing error");
 
 #ifdef __cplusplus
 }

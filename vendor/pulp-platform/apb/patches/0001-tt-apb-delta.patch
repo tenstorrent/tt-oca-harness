@@ -1,0 +1,13 @@
+diff --git a/apb_demux.sv b/apb_demux.sv
+index 0d76cce..a3af5be 100644
+--- a/apb_demux.sv
++++ b/apb_demux.sv
+@@ -44,7 +44,7 @@ module apb_demux #(
+     end
+ 
+     always_comb begin
+-      if (select_i < NoMstPorts) begin
++      if ({1'b0, select_i} < NoMstPorts[SelectWidth:0]) begin
+         slv_resp_o.pready  = mst_resp_i[select_i].pready;
+         slv_resp_o.prdata  = mst_resp_i[select_i].prdata;
+         slv_resp_o.pslverr = mst_resp_i[select_i].pslverr;

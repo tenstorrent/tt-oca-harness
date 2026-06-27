@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[uart-16550-architecture]]
+===== Architecture
+
+====== Overview
+
+The UART 16550 IP uses a hierarchical architecture with three main
+layers: a top-level wrapper handling the register interface, the core
+UART logic with FIFO management, and the transmit/receive engines. This
+separation allows for clear division between interface, data flow, and
+serial processing.
+
+====== Hierarchical Structure
+
+*Top Level* (uart_16550)
+
+The `uart_16550` top-level module acts as an interface wrapper. It
+manages AXI4-Lite transactions and register map routing, ensuring
+protocol compliance and reliable integration.
+
+*UART Core* (uart_core)
+
+The `uart_core` module handles the main UART functions. It manages
+transmit and receive FIFOs with configurable depths from 4 to 4096
+entries, supporting diverse use cases from low-latency to
+high-throughput. Baud rate generation uses 16x oversampling with a
+programmable divisor for timing precision.
+
+The interrupt controller handles six prioritized interrupt sources, and
+modem control supports all standard modem signals. DMA is supported in
+both immediate and hysteresis modes for efficient data transfers. Both
+internal and external loopback modes are supported for testing and
+diagnostics.
+
+The core works together with the transmit engine (serialization),
+receive engine (deserialization), FIFO controllers for buffering, and
+timeout detection logic, providing a balance of performance and
+reliability.
+
+*Transmit Engine* (uart_tx)
+
+The `uart_tx` module serializes parallel data for transmission,
+maintaining timing accuracy and signal integrity. It generates frames
+with selectable start, parity, and stop bits to match protocol
+requirements and legacy compatibility. Baud rate alignment uses 16x
+oversampling for precise timing. Flow control honors CTS signals to
+avoid overrunning the receiver. It also supports break signal generation
+for protocol control or device reset.
+
+*Receive Engine* (uart_rx)
+
+The `uart_rx` module deserializes incoming data, maintaining integrity
+and providing error detection. It detects start bits, validates stop
+bits, and checks parity where enabled, reporting errors for diagnostic
+use. Error detection covers framing errors, parity errors, and break
+conditions. Sampling uses 16x oversampling with majority voting for
+noise immunity. Timeout detection flags when reception exceeds 4
+character periods.
+
+====== Data Flow Architecture
+
+====== Transmit Data Flow
+
+1.  *CPU Write*: Software writes data to THR or FIFO
+2.  *FIFO Buffering*: Data goes into transmit FIFO
+3.  *Serialization*: Transmit engine converts to serial
+4.  *Output*: Data is sent via `tx_o`
+
+====== Receive Data Flow
+
+1.  *Input Sampling*: Receive engine samples `rx_i` at 16x baud rate
+2.  *Frame Processing*: Detects start bit, extracts data, checks parity
+and stop bit
+3.  *FIFO Storage*: Stores valid data in receive FIFO with error flags
+4.  *CPU Read*: Software reads data from RBR or FIFO
+
+When DLAB (Divisor Latch Access Bit) = 0: - Address 0x0: RBR (read), THR
+(write) - Address 0x4: IER - Standard UART 16550 register layout is
+active
+
+====== Divisor Latch Access Mode
+
+When DLAB = 1: - Address 0x0: DLL (Divisor Latch Low) - Address 0x4: DLM
+(Divisor Latch High) - Used for baud rate divisor programming
+
+====== Clock Domain Considerations
+
+UART 16550 operates in a single system clock domain (`clk_i`), with all
+external asynchronous inputs synchronized to prevent metastability. This
+simplifies integration and maintains reliable timing.
+
+Modem control inputs (CTS, DSR, RI, DCD) are synchronized to avoid
+errors. Serial input sampling uses 16x oversampling and majority voting,
+which also helps with synchronization. Reset is asserted asynchronously
+for immediate response but deasserts synchronously for safe recovery and
+predictable operation.
+
+====== Error Handling Architecture
+
+The design includes thorough error detection and reporting:
+
+====== FIFO Parity Protection
+
+FIFO parity protection covers stored data and pointers, detecting
+single-bit errors and maintaining integrity in FIFO control structures.
+Errors generate interrupts and error outputs for quick response by
+system software.
+
+====== Serial Communication Errors
+
+.Serial Communication Errors
+[cols=",",options="header",]
+|=======================================================================
+|Error Type |Description
+|*Framing Errors* |Detection of invalid stop bits
+
+|*Parity Errors* |Validation of received parity bits (when enabled)
+
+|*Overrun Errors* |Detection of FIFO overflow conditions
+
+|*Break Detection* |Recognition of extended low periods indicating break
+signals
+|=======================================================================

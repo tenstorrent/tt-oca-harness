@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[ctn-memory-map]]
+==== Memory Map
+
+The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and
+Cross Trigger Port (CTP) registers into a unified address space:
+
+* 0x0000 - 0x01FF: Cross Trigger Matrix (CTM) - 512 bytes
+* 0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each
+
+// NOTE: The Cross Trigger Network has no generated register block (the Cross
+// Trigger Matrix RDL is template-only and not ported; see Plan A). The combined
+// CTM/CTP register table is therefore not auto-included here. Per-port registers
+// are documented under the Cross Trigger Port IP.

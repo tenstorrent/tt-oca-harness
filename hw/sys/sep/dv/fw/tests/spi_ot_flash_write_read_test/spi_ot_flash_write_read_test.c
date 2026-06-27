@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Flash Write+Read Test - TC_SPIOT_021 (P0)
  *
@@ -35,7 +38,6 @@
  *   make test-sep TEST_NAME=sep_spi_ot_flash_write_read_test STACK=sim \
  *       EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

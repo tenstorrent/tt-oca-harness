@@ -1,0 +1,32 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | DEST_ADDR | RW a| -
+| 0x8 | SIZE | RW a| -
+| 0x10 | CTRL_STATUS | RW a| Writing this register will trigger start of zeroer
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DEST_ADDR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SIZE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `SIZE` | RW | 0x0 a| Size in bytes of zeros to write
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CTRL_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:33 | `Reserved` | - | - a| Reserved
+| 32 | `STATUS` | R | 0x0 a| Returns status of whether zeroer has completed.
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `INT_EN` | RW | 0x0 a| If enabled, an interrupt will be outputted once zeroer completes.
+|===

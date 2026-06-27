@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[memory-zeroer]]
+=== Zeroer
+
+The SMC Memory Zeroer efficiently initializes large memory regions to
+zero without CPU intervention. The unit uses a state machine-based
+architecture with dual clock domains.
+
+.Memory Zeroer Integration
+[width="100%",cols="30%,70%",options="header",]
+|===================================================================
+|Parameter |Description
+|Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
+|Control Interface |AXI4-Lite
+|Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
+|Maximum Burst Length |255 beats (AXI maximum)
+|Outstanding Transactions |Up to 32 concurrent AXI transactions
+|===================================================================
+
+==== Use Cases
+
+* *System Initialization*: Clear memory regions during boot or reset
+sequences
+* *Security Operations*: Sanitize sensitive data areas
+* *Memory Management*: Initialize allocated memory blocks
+* *Error Recovery*: Clear corrupted memory regions
+
+==== Architecture
+
+===== State Machine
+
+The zeroer implements a three-state operation model:
+
+.State Machine States
+[width="100%",cols="25%,75%",options="header",]
+|======================================================================
+|State |Description
+|ST_IDLE (3'b001) |Idle state waiting for configuration and trigger
+|ST_ISSUE_ADDR (3'b010) |Address phase - issuing AXI write addresses
+|ST_ISSUE_DATA (3'b100) |Data phase - streaming zero data for all beats
+|======================================================================
+
+===== Operation Flow
+
+1.  *Configuration*: Software writes destination address and size to
+registers
+2.  *Trigger*: Write to control/status register initiates operation
+3.  *Address Phase*: Hardware calculates optimal burst patterns and
+issues write addresses
+4.  *Data Phase*: Hardware streams zero data matching issued address
+beats
+5.  *Completion*: State machine returns to idle with status update and
+optional interrupt
+
+===== AXI Master Interface
+
+.AXI4 Master Characteristics
+[width="100%",cols="30%,70%",options="header",]
+|====================================================================
+|Parameter |Specification
+|Address Width |56-bit addressing for large system integration
+|Data Width |64-bit data path
+|ID Width |4-bit transaction ID (internal 3-bit usage)
+|User Signals |12-bit user field for system-specific attributes
+|Maximum Burst Length |255 beats for optimal memory efficiency
+|Burst Calculation |Automatic optimal burst sizing
+|Address Alignment |Intelligent handling of unaligned start addresses
+|Boundary Handling |Automatic burst fragmentation at page boundaries
+|====================================================================
+
+===== Outstanding Transaction Management
+
+The zeroer efficiently manages outstanding AXI transactions using a
+32-bit counter to track in-flight writes. When the number of pending
+transactions reaches the allowed maximum, built-in flow control applies
+back-pressure until resources become available. Write responses are
+tracked to ensure accurate completion status, while AXI error responses
+are processed to handle faults robustly.
+
+Multiple write addresses can be pipelined to maximize throughput, and
+the zero data stream operates independently of response timing, allowing
+continuous operation. By supporting multiple bursts in flight, the
+zeroer achieves high parallelism and optimal memory bandwidth
+utilization.
+
+===== Dual Clock Domain Architecture
+
+The zeroer implements dual clock domain operation for power management
+and interface isolation.
+
+===== Clock Domains
+
+.Clock Domain Characteristics
+[width="100%",cols="25%,75%",options="header",]
+|=======================================================================
+|Clock Domain |Description
+|AXI Clock (axi_clk) |Dedicated clock for AXI master operations, enabled
+only during active zeroing
+
+|Register Clock (reg_clk) |Separate clock for register interface,
+independent of AXI activity
+|=======================================================================
+
+===== Clock Gating
+
+.Clock Gating Control
+[width="100%",cols="30%,70%",options="header",]
+|=======================================================================
+|Domain |Gating Logic
+|AXI Clock |axi_clk_enable = disable_cg \| zeroer_busy_o \| ~rst_ni
+
+|Register Clock
+|reg_clk_enable = disable_cg \| register_activity \| ~rst_ni
+
+|Implementation |prim_clkgater for glitch-free operation
+
+|Test Support |Test enable override for manufacturing test
+
+|Reset Override |Ensures proper reset domain operation
+|=======================================================================
+
+===== Control and Status
+
+====== Operation Control
+
+.Configuration and Control
+[width="100%",cols="30%,70%",options="header",]
+|===============================================================
+|Register |Description
+|DEST_ADDR |64-bit byte address for destination memory region
+|SIZE |64-bit byte count for zeroing operation
+|CTRL_STATUS |Control and status register (trigger, busy status)
+|Interrupt Enable |Optional completion interrupt enable
+|Validation |Hardware validates configuration parameters
+|===============================================================
+
+====== Status Features
+
+* *Busy Status*: Real-time indication of zeroing operation in progress
+* *Completion Status*: Updates when all write responses received
+* *Error Status*: AXI error response detection and reporting
+* *Interrupt Generation*: Optional interrupt on operation completion
+
+==== Operation Details
+
+.Data Generation and Control
+[width="100%",cols="30%,70%",options="header",]
+|=======================================================================
+|Feature |Description
+|Zero Data Generation |Hardware generates zero data for all beats
+
+|Strobe Calculation |Correct byte strobes for partial transfers and
+unaligned addresses
+
+|Last Beat Handling |Proper w_last assertion for burst completion
+
+|Size Tracking |Accurate remaining size calculation throughout operation
+
+|Overflow Protection |Size overflow detection and handling
+
+|Safe Abort |Ability to safely abort operation if needed
+|=======================================================================
+
+==== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$zeroer/regs/gen/html/zeroer_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc[]
+endif::backend-pdf[]

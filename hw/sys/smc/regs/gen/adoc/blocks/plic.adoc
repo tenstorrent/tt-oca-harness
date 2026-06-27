@@ -1,0 +1,303 @@
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
+
+* *PRIORITY[337]*: 337 registers
+  ** Base Address: 0x0
+  ** Address Increment: 0x4 per register
+
+* *PENDING[11]*: 11 registers
+  ** Base Address: 0x1000
+  ** Address Increment: 0x4 per register
+
+* *CORE0_MEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2000
+  ** Address Increment: 0x4 per register
+
+* *CORE1_MEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2080
+  ** Address Increment: 0x4 per register
+
+* *CORE2_MEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2100
+  ** Address Increment: 0x4 per register
+
+* *CORE3_MEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2180
+  ** Address Increment: 0x4 per register
+
+* *CORE0_SEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2200
+  ** Address Increment: 0x4 per register
+
+* *CORE1_SEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2280
+  ** Address Increment: 0x4 per register
+
+* *CORE2_SEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2300
+  ** Address Increment: 0x4 per register
+
+* *CORE3_SEIP_ENABLE[11]*: 11 registers
+  ** Base Address: 0x2380
+  ** Address Increment: 0x4 per register
+
+======
+
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 - 0x540 | PRIORITY[337] | RW a| -
+| 0x1000 - 0x1028 | PENDING[11] | R a| -
+| 0x2000 - 0x2028 | CORE0_MEIP_ENABLE[11] | RW a| -
+| 0x2080 - 0x20A8 | CORE1_MEIP_ENABLE[11] | RW a| -
+| 0x2100 - 0x2128 | CORE2_MEIP_ENABLE[11] | RW a| -
+| 0x2180 - 0x21A8 | CORE3_MEIP_ENABLE[11] | RW a| -
+| 0x2200 - 0x2228 | CORE0_SEIP_ENABLE[11] | RW a| -
+| 0x2280 - 0x22A8 | CORE1_SEIP_ENABLE[11] | RW a| -
+| 0x2300 - 0x2328 | CORE2_SEIP_ENABLE[11] | RW a| -
+| 0x2380 - 0x23A8 | CORE3_SEIP_ENABLE[11] | RW a| -
+| 0x200000 | CORE0_MEIP_THRESHOLD | RW a| -
+| 0x200004 | CORE0_MEIP_CLAIM_COMPLETE | RW a| -
+| 0x201000 | CORE1_MEIP_THRESHOLD | RW a| -
+| 0x201004 | CORE1_MEIP_CLAIM_COMPLETE | RW a| -
+| 0x202000 | CORE2_MEIP_THRESHOLD | RW a| -
+| 0x202004 | CORE2_MEIP_CLAIM_COMPLETE | RW a| -
+| 0x203000 | CORE3_MEIP_THRESHOLD | RW a| -
+| 0x203004 | CORE3_MEIP_CLAIM_COMPLETE | RW a| -
+| 0x204000 | CORE0_SEIP_THRESHOLD | RW a| -
+| 0x204004 | CORE0_SEIP_CLAIM_COMPLETE | RW a| -
+| 0x205000 | CORE1_SEIP_THRESHOLD | RW a| -
+| 0x205004 | CORE1_SEIP_CLAIM_COMPLETE | RW a| -
+| 0x206000 | CORE2_SEIP_THRESHOLD | RW a| -
+| 0x206004 | CORE2_SEIP_CLAIM_COMPLETE | RW a| -
+| 0x207000 | CORE3_SEIP_THRESHOLD | RW a| -
+| 0x207004 | CORE3_SEIP_CLAIM_COMPLETE | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PRIORITY[337] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Priority of interrupt. The higher the set value, the higher the priority.
+For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PENDING[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | R | 0x0 a| Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_MEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_MEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_MEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_MEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_SEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_SEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_SEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_SEIP_ENABLE[11] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
+Interrupts start counting at 1.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_MEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_MEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_MEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_MEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_MEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_MEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_MEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_MEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_SEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE0_SEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_SEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE1_SEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_SEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE2_SEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_SEIP_THRESHOLD Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
+Any interrupt with a priority less than the threshold cannot interrupt the cpu
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CORE3_SEIP_CLAIM_COMPLETE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `value` | RW | - a| Claim/Complete register.
+Reading this register returns the claimed interrupt number and makes it no longer pending.
+Writing the interrupt number back completes the interrupt.
+|===

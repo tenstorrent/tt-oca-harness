@@ -1,0 +1,421 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+// Copyright 2026 Tenstorrent Inc.
+
+`default_nettype none
+
+
+/**
+ * @file km_kpv.sv
+ * @brief Key and Policy Vault (KPV) -- secure key storage.
+ *
+ * @details Key data lives in a dedicated register file (km_kpv_regfile) with
+ *          one write port (KM CPU) and one read port (KM only).
+ *          A PeakRDL-generated CSR block exposes per-slot external req/ack
+ *          interfaces (no internal flops for key data), which this module
+ *          bridges to the register file through an optional 512x32 scrambler.
+ *
+ *          Per-slot CTRL registers implement:
+ *          - lock_write / lock_use sticky W1S bits.
+ *          - extend, dest_valid, last_dword: software-programmed per slot.
+ *
+ *          Scrambler key/ctrl lock: the stored scrambler key is held in a
+ *          local flop; when locked the CSR returns zero to software but
+ *          hardware scramblers continue using the provisioned value.
+ *
+ *          Wipe: wipe_pulse_i zeroes key data, CTRL sticky bits
+ *          (via hwclr), hw=rw fields (via next=0), and scrambler key/ctrl.
+ *
+ * @param axil_req_t          KM-side AXI-Lite request type.
+ * @param axil_resp_t         KM-side AXI-Lite response type.
+ */
+module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
+    import km_kpv_reg_pkg::*; #(
+    parameter type axil_req_t  = km_axil_req_t,
+    parameter type axil_resp_t = km_axil_resp_t
+) (
+    input  wire logic clk_i,
+    input  wire logic cold_rst_ni,   // Cold reset: AASD — resets entire KPV
+    input  wire logic warm_rst_ni,   // Warm reset: synchronous — resets KM-port CPUIF + lock bits
+
+    // KM port (from crossbar, base 0x0000_D000)
+    input  wire axil_req_t  km_axil_req_i,
+    output axil_resp_t      km_axil_resp_o,
+
+    // Wipe: pulse high for one cycle to zero entire KPV next cycle
+    input  wire logic        wipe_pulse_i
+);
+
+    `include "km_kpv_reg.svh"
+
+    /** @brief Internal register address width (12 bits = 4 KB per port). */
+    localparam int unsigned ADDR_W = 12;
+
+    // =========================================================================
+    // KM: AXI struct -> flat (to KPV reg block)
+    //==========================================================================
+    logic km_reg_awready, km_reg_awvalid;
+    logic [ADDR_W-1:0] km_reg_awaddr;
+    logic [2:0] km_reg_awprot;
+    logic km_reg_wready, km_reg_wvalid;
+    logic [31:0] km_reg_wdata;
+    logic [3:0] km_reg_wstrb;
+    logic km_reg_bready, km_reg_bvalid;
+    logic [1:0] km_reg_bresp;
+    logic km_reg_arready, km_reg_arvalid;
+    logic [ADDR_W-1:0] km_reg_araddr;
+    logic [2:0] km_reg_arprot;
+    logic km_reg_rready, km_reg_rvalid;
+    logic [31:0] km_reg_rdata;
+    logic [1:0] km_reg_rresp;
+
+    assign km_reg_awvalid = km_axil_req_i.aw_valid;
+    assign km_reg_awaddr  = km_axil_req_i.aw.addr[ADDR_W-1:0];
+    assign km_reg_awprot  = km_axil_req_i.aw.prot;
+    assign km_reg_wvalid  = km_axil_req_i.w_valid;
+    assign km_reg_wdata   = km_axil_req_i.w.data;
+    assign km_reg_wstrb   = km_axil_req_i.w.strb;
+    assign km_reg_bready  = km_axil_req_i.b_ready;
+    assign km_reg_arvalid = km_axil_req_i.ar_valid;
+    assign km_reg_araddr  = km_axil_req_i.ar.addr[ADDR_W-1:0];
+    assign km_reg_arprot  = km_axil_req_i.ar.prot;
+    assign km_reg_rready  = km_axil_req_i.r_ready;
+
+    //==========================================================================
+    // KPV register block (KM port) -- CTRL, scrambler, and external key data
+    //==========================================================================
+    km_kpv__in_t  kpv_hwif_in;
+    km_kpv__out_t kpv_hwif_out;
+
+    // Drive warm reset into the KM-port regblock via hwif_in struct field
+    assign kpv_hwif_in.WARM_RST_N = warm_rst_ni;
+
+    km_kpv_reg u_km_kpv_reg (
+        .clk            (clk_i),
+        .arst_n         (cold_rst_ni),
+        .s_axil_awready (km_reg_awready),
+        .s_axil_awvalid (km_reg_awvalid),
+        .s_axil_awaddr  (km_reg_awaddr),
+        .s_axil_awprot  (km_reg_awprot),
+        .s_axil_wready  (km_reg_wready),
+        .s_axil_wvalid  (km_reg_wvalid),
+        .s_axil_wdata   (km_reg_wdata),
+        .s_axil_wstrb   (km_reg_wstrb),
+        .s_axil_bready  (km_reg_bready),
+        .s_axil_bvalid  (km_reg_bvalid),
+        .s_axil_bresp   (km_reg_bresp),
+        .s_axil_arready (km_reg_arready),
+        .s_axil_arvalid (km_reg_arvalid),
+        .s_axil_araddr  (km_reg_araddr),
+        .s_axil_arprot  (km_reg_arprot),
+        .s_axil_rready  (km_reg_rready),
+        .s_axil_rvalid  (km_reg_rvalid),
+        .s_axil_rdata   (km_reg_rdata),
+        .s_axil_rresp   (km_reg_rresp),
+        .hwif_in        (kpv_hwif_in),
+        .hwif_out       (kpv_hwif_out)
+    );
+
+    //==========================================================================
+    // KPV hwif_in: CTRL swwel, scrambler key/ctrl lock, wipe via hwclr/next
+    //==========================================================================
+
+    // Scrambler key stored separately for HW use.
+    // When locked, the CSR register is zeroed via hwif_in.next so SW reads 0;
+    // scramblers use this stored copy which preserves the provisioned value.
+    logic        scrambler_lock_q;
+    logic [31:0] scrambler_key_stored;
+
+    always_ff @(posedge clk_i or negedge cold_rst_ni) begin
+        if (!cold_rst_ni) begin
+            scrambler_lock_q     <= 1'b0;
+            scrambler_key_stored <= 32'h0;
+        end else if (wipe_pulse_i) begin
+            scrambler_lock_q     <= 1'b0;
+            scrambler_key_stored <= 32'h0;
+        end else begin
+            if (kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value && !scrambler_lock_q)
+                scrambler_lock_q <= 1'b1;
+            if (!scrambler_lock_q)
+                scrambler_key_stored <= kpv_hwif_out.KPV_SCRAMBLER_KEY.key.value;
+        end
+    end
+
+    logic        kpv_scrambler_enable;
+    assign kpv_scrambler_enable =
+        kpv_hwif_out.KPV_SCRAMBLER_CTRL.enable.value;
+
+    always_comb begin
+        for (int i = 0; i < 32; i++) begin
+            // SW write lock.
+            kpv_hwif_in.CTRL[i].extend.swwel =
+                kpv_hwif_out.CTRL[i].lock_write.value;
+            kpv_hwif_in.CTRL[i].dest_valid.swwel =
+                kpv_hwif_out.CTRL[i].lock_write.value;
+            kpv_hwif_in.CTRL[i].last_dword.swwel =
+                kpv_hwif_out.CTRL[i].lock_write.value;
+            // Wipe: clear sticky W1S fields via hwclr
+            kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i;
+            kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i;
+        end
+        // Scrambler key/ctrl lock
+        kpv_hwif_in.KPV_SCRAMBLER_KEY.key.swwel =
+            kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
+        kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.swwel =
+            kpv_hwif_out.KPV_SCRAMBLER_CTRL.lock.value;
+        // Scrambler key: when locked, zero CSR so SW reads 0; else hold value.
+        // Wipe also clears via hwclr.
+        kpv_hwif_in.KPV_SCRAMBLER_KEY.key.hwclr = wipe_pulse_i;
+        kpv_hwif_in.KPV_SCRAMBLER_KEY.key.next  =
+            scrambler_lock_q ? 32'h0 :
+            kpv_hwif_out.KPV_SCRAMBLER_KEY.key.value;
+        // Scrambler ctrl: wipe clears enable and lock via hwclr
+        kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.hwclr = wipe_pulse_i;
+        kpv_hwif_in.KPV_SCRAMBLER_CTRL.lock.hwclr   = wipe_pulse_i;
+    end
+
+    //==========================================================================
+    // CTRL hwif_in: hold hw=rw fields; zero on wipe
+    //==========================================================================
+    always_comb begin
+        for (int i = 0; i < 32; i++) begin
+            if (wipe_pulse_i) begin
+                kpv_hwif_in.CTRL[i].extend.next     = 3'h0;
+                kpv_hwif_in.CTRL[i].dest_valid.next  = 8'h0;
+                kpv_hwif_in.CTRL[i].last_dword.next  = 4'h0;
+            end else begin
+                kpv_hwif_in.CTRL[i].extend.next =
+                    kpv_hwif_out.CTRL[i].extend.value;
+                kpv_hwif_in.CTRL[i].dest_valid.next =
+                    kpv_hwif_out.CTRL[i].dest_valid.value;
+                kpv_hwif_in.CTRL[i].last_dword.next =
+                    kpv_hwif_out.CTRL[i].last_dword.value;
+            end
+        end
+    end
+
+    //==========================================================================
+    // KM external key data bridge
+    //
+    // PeakRDL generates 32 per-slot external interfaces.  At most one
+    // KEY_ENTRY[i].req is active per cycle.  We mux to find the active
+    // slot, feed through the scrambler, access the register file, and
+    // respond with ack + rd_data.
+    //==========================================================================
+    // Mux: find active KM external slot
+    logic        km_ext_active;
+    logic        km_ext_is_wr;
+    logic [4:0]  km_ext_slot;
+    logic [3:0]  km_ext_word;
+    logic [31:0] km_ext_wr_data;
+
+    always_comb begin
+        km_ext_active  = 1'b0;
+        km_ext_is_wr   = 1'b0;
+        km_ext_slot    = 5'd0;
+        km_ext_word    = 4'd0;
+        km_ext_wr_data = 32'h0;
+        for (int i = 0; i < 32; i++) begin
+            if (!km_ext_active &&
+                kpv_hwif_out.KEY_ENTRY[i].req) begin
+                km_ext_active  = 1'b1;
+                km_ext_is_wr   = kpv_hwif_out.KEY_ENTRY[i].req_is_wr;
+                km_ext_slot    = i[4:0];
+                km_ext_word    = kpv_hwif_out.KEY_ENTRY[i].addr[5:2];
+                km_ext_wr_data = kpv_hwif_out.KEY_ENTRY[i].wr_data;
+            end
+        end
+    end
+
+    // KM lock / read-zero checks (at external req time)
+    logic km_ext_lock_write, km_ext_lock_use, km_ext_read_zero;
+    assign km_ext_lock_write =
+        kpv_hwif_out.CTRL[km_ext_slot].lock_write.value;
+    assign km_ext_lock_use =
+        kpv_hwif_out.CTRL[km_ext_slot].lock_use.value;
+    assign km_ext_read_zero = km_ext_word >
+        kpv_hwif_out.CTRL[km_ext_slot].last_dword.value;
+
+    // --- KM scrambler (write path: scramble; read path: descramble) ---
+    logic [8:0]  km_scrambler_addr;
+    logic [8:0]  km_scrambler_phys_addr;
+    logic [31:0] km_scrambler_write_out;
+    logic [31:0] km_scrambler_read_out;
+    logic [31:0] rf_rd_data;
+
+    assign km_scrambler_addr = {km_ext_slot, km_ext_word};
+
+    scrambler_512x32 #(
+        .ADDR_WIDTH(9),
+        .DATA_WIDTH(32)
+    ) u_scrambler_km (
+        .addr_i                (km_scrambler_addr),
+        .scrambler_key_i       (scrambler_key_stored),
+        .scrambled_addr_o      (km_scrambler_phys_addr),
+        .write_data_i          (km_ext_wr_data),
+        .scrambled_write_data_o(km_scrambler_write_out),
+        .scrambled_read_data_i (rf_rd_data),
+        .read_data_o           (km_scrambler_read_out)
+    );
+
+    // KM external read data: handle lock_use and read_zero in rd_data
+    logic [31:0] km_ext_rd_data;
+    assign km_ext_rd_data =
+        (km_ext_lock_use || km_ext_read_zero) ? 32'h0 :
+        kpv_scrambler_enable                  ? km_scrambler_read_out :
+                                                rf_rd_data;
+
+    // Respond to all 32 per-slot interfaces (only active one matters)
+    always_comb begin
+        for (int i = 0; i < 32; i++) begin
+            kpv_hwif_in.KEY_ENTRY[i].rd_ack =
+                kpv_hwif_out.KEY_ENTRY[i].req &
+                ~kpv_hwif_out.KEY_ENTRY[i].req_is_wr;
+            kpv_hwif_in.KEY_ENTRY[i].rd_data = km_ext_rd_data;
+            kpv_hwif_in.KEY_ENTRY[i].wr_ack =
+                kpv_hwif_out.KEY_ENTRY[i].req &
+                kpv_hwif_out.KEY_ENTRY[i].req_is_wr;
+        end
+    end
+
+    //==========================================================================
+    // Key data register file (KM write + read)
+    //==========================================================================
+    logic        rf_wr_a_en;
+    logic [8:0]  rf_wr_a_addr;
+    logic [31:0] rf_wr_a_data;
+    logic [8:0]  rf_rd_addr;
+
+    // KM write port: external req, write, !lock_write
+    assign rf_wr_a_en = km_ext_active & km_ext_is_wr & ~km_ext_lock_write;
+    assign rf_wr_a_addr = kpv_scrambler_enable ?
+        km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
+    assign rf_wr_a_data = kpv_scrambler_enable ?
+        km_scrambler_write_out : km_ext_wr_data;
+
+    // KM read port: physical addr when scrambled, else logical
+    assign rf_rd_addr = kpv_scrambler_enable ?
+        km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
+
+    km_kpv_regfile #(
+        .NUM_SLOTS     (32),
+        .WORDS_PER_SLOT(16),
+        .DATA_WIDTH    (32)
+    ) u_key_regfile (
+        .clk_i           (clk_i),
+        .wipe_i          (wipe_pulse_i),
+        .wr_a_en_i       (rf_wr_a_en),
+        .wr_a_addr_i     (rf_wr_a_addr),
+        .wr_a_data_i     (rf_wr_a_data),
+        .rd_addr_i       (rf_rd_addr),
+        .rd_data_o       (rf_rd_data)
+    );
+
+    //==========================================================================
+    // KM response override: SLVERR on violation
+    //
+    // Key read data is served directly by the external rd_data path
+    // (lock_use and read_zero are handled there).  The FIFO tracks
+    // only SLVERR information.
+    //==========================================================================
+    logic km_is_key, km_is_ctrl;
+    logic [4:0] km_slot;
+    logic km_wr_violation, km_rd_violation;
+    logic [11:0] km_addr_accept;
+
+    assign km_addr_accept =
+        km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
+    assign km_is_key =
+        (km_addr_accept < 12'(CTRL_0__REG_OFFSET));
+    assign km_is_ctrl =
+        (km_addr_accept >= 12'(CTRL_0__REG_OFFSET)) &&
+        (km_addr_accept <= 12'(CTRL_31__REG_OFFSET));
+    assign km_slot =
+        km_is_key ? km_addr_accept[10:6] : km_addr_accept[9:2];
+
+    always_comb begin
+        // Key data writes to write-locked slots are protocol violations.
+        // CTRL writes are always AXI-OKAY so lock_use can still be set after
+        // lock_write; other fields retain their existing field-level behavior.
+        km_wr_violation = km_is_key &
+            kpv_hwif_out.CTRL[km_slot].lock_write.value;
+        km_rd_violation = km_is_key &
+            kpv_hwif_out.CTRL[km_slot].lock_use.value;
+    end
+
+    /** @brief KM-port response override metadata (tracks SLVERR for lock violations). */
+    typedef struct packed {
+        logic       is_wr;
+        logic       wr_violation;
+        logic       rd_violation;
+    } km_resp_override_t;
+
+    km_resp_override_t km_fifo [2];
+    logic [1:0] km_fifo_wptr, km_fifo_rptr;
+    logic km_fifo_push, km_fifo_pop;
+    km_resp_override_t km_override;
+
+    assign km_fifo_push =
+        (km_reg_awready && km_reg_awvalid) ||
+        (km_reg_arready && km_reg_arvalid);
+    assign km_fifo_pop =
+        (km_reg_bvalid && km_reg_bready) ||
+        (km_reg_rvalid && km_reg_rready);
+
+    always_ff @(posedge clk_i or negedge cold_rst_ni) begin
+        if (!cold_rst_ni) begin
+            km_fifo_wptr <= '0;
+            km_fifo_rptr <= '0;
+            for (int i = 0; i < 2; i++)
+                km_fifo[i] <= '0;
+        end else if (!warm_rst_ni) begin
+            km_fifo_wptr <= '0;
+            km_fifo_rptr <= '0;
+            for (int i = 0; i < 2; i++)
+                km_fifo[i] <= '0;
+        end else begin
+            if (km_fifo_push) begin
+                if (km_reg_awready && km_reg_awvalid)
+                    km_fifo[km_fifo_wptr[0]] <= '{
+                        is_wr: 1'b1,
+                        wr_violation: km_wr_violation,
+                        rd_violation: 1'b0
+                    };
+                else
+                    km_fifo[km_fifo_wptr[0]] <= '{
+                        is_wr: 1'b0,
+                        wr_violation: 1'b0,
+                        rd_violation: km_rd_violation
+                    };
+                km_fifo_wptr <= km_fifo_wptr + 1'b1;
+            end
+            if (km_fifo_pop)
+                km_fifo_rptr <= km_fifo_rptr + 1'b1;
+        end
+    end
+
+    assign km_override = km_fifo[km_fifo_rptr[0]];
+
+    // KM response output
+    assign km_axil_resp_o.aw_ready = km_reg_awready;
+    assign km_axil_resp_o.w_ready  = km_reg_wready;
+    assign km_axil_resp_o.b_valid  = km_reg_bvalid;
+    assign km_axil_resp_o.b.resp =
+        (km_override.is_wr && km_override.wr_violation) ?
+        2'b10 : km_reg_bresp;
+    assign km_axil_resp_o.ar_ready = km_reg_arready;
+    assign km_axil_resp_o.r_valid  = km_reg_rvalid;
+
+    // Key reads: CSR returns external rd_data (already handles
+    // lock_use->0 and read_zero->0).  Non-key reads: CSR returns
+    // internal flop data.  No override needed.
+    assign km_axil_resp_o.r.data = km_reg_rdata;
+
+    assign km_axil_resp_o.r.resp =
+        (!km_override.is_wr && km_override.rd_violation) ?
+        2'b10 : km_reg_rresp;
+
+endmodule : km_kpv
+
+`default_nettype wire

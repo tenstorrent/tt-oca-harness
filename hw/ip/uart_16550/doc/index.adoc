@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[uart-16550]]
+==== UART 16550
+
+===== Overview
+
+This document specifies the UART 16550 hardware Component functionality.
+The UART 16550 implements the National Semiconductor UART 16550 standard
+with additional enhancements including independently-configurable
+Transmitter and Receiver FIFO depths and FIFO data and pointer parity
+protection. It provides a full-featured serial communication interface
+compatible with industry-standard UART protocols.
+
+===== Description and Features
+
+* Full UART 16550 compatibility and functionality
+* 32-bit AXI4-Lite register interface
+* Independently-configurable Transmitter and Receiver FIFO depths (4 to
+4096 entries)
+* FIFO parity protection for data and pointers with error reporting
+* Comprehensive interrupt support with 6 priority levels
+* Direct Memory Access (DMA) signaling with immediate and hysteresis
+modes
+* Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2)
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[system-timer-octs]]
+==== System Timer OCTS
+
+===== Overview
+
+The System Timer OCTS (Open Chiplet Time Synchronization) IP is a
+sophisticated 64-bit timer designed specifically for multi-chiplet
+systems requiring precise time synchronization across different clock
+domains. It implements OCA's OCTS protocol as defined in the OCA
+specification, version .
+
+This hardware IP provides a robust solution for coordinated timing
+operations between multiple timer instances, enabling accurate
+timestamping and synchronized operations in distributed chiplet
+architectures.
+
+===== Description and Features
+
+The System Timer OCTS offers both PRIMARY and SECONDARY modes to serve
+as either a timing master or follower within a synchronized network of
+chiplets. It features a 64-bit high-precision counter for
+nanosecond-level accuracy, supports both APB4 and AXI4-Lite interfaces
+for flexible integration, and incorporates reliable clock domain
+crossing with a 2FF synchronizer.
+
+Periodic resynchronization is achieved through a programmable
+credit-based mechanism, while the width of synchronization pulses can be
+easily adjusted. Real-time status and timer values are always available
+through readable registers.
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

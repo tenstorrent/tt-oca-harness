@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Standard SPI TX/RX Test - TC_SPIOT_008 (P0)
  *
@@ -19,7 +22,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_standard_spi_txrx_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

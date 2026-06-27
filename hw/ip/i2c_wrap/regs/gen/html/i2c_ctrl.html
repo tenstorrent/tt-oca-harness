@@ -1,0 +1,28 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: i2c_ctrl</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>I2C_CTRL[3]</strong>: 3 registers, base 0x0, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x8</td><td><a href="#I2C_CTRL_3_">I2C_CTRL[3]</a></td><td>RW</td><td>Control Register</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="I2C_CTRL_3_">I2C_CTRL[3]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>SMBUS_EN</td><td>RW</td><td>0x0</td><td>SMBus Enable. Gates the SMBus Alert signal.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>I2C_CONTROLLER_MODE_EN</td><td>RW</td><td>0x0</td><td>I2C Controller Mode Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>I2C_EN</td><td>RW</td><td>0x0</td><td>I2C Enable.</td></tr>
+</table>
+</div>

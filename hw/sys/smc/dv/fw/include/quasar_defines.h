@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
 
 #ifndef __QUASAR_DEFINES_DEFINED__
 #define __QUASAR_DEFINES_DEFINED__

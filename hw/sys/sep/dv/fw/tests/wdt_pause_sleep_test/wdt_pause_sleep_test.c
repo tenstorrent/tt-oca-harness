@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_003 (V2, P1) - WDT Pause in Sleep Test
  *
@@ -11,7 +14,6 @@
  * 3. Configure with pause_in_sleep=0, verify counter still counts
  * 4. Verify count is monotonically increasing in both configurations
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

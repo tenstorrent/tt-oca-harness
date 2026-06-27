@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Error Handling Test - TC_SPIOT_012 (P0)
  *
@@ -16,7 +19,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_error_handling_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #define TX_FIFO_DEPTH 73  /* effective capacity: 72 FIFO slots + 1 byte_select stage */

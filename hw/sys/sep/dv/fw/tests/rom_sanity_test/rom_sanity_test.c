@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // ROM IFU Sanity Test
 //
@@ -59,7 +62,6 @@
 //   ROM_MEM[ 9] = 64'h00008067_04D00513   // Func5 addi + ret
 //   ROM_MEM[10] = 64'h00008067_00B50533   // Func6
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

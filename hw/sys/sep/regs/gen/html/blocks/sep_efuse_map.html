@@ -1,0 +1,354 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_efuse_map</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#SiP_DIS">SiP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set, the corresponding feature is disabled</td></tr>
+<tr><td>0x1C</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set, the corresponding feature is disabled</td></tr>
+<tr><td>0x24</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x64</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x84</td><td><a href="#CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#BL1_VERSION">BL1_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xA8</td><td><a href="#BL2_VERSION">BL2_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#CHIPLET_UID">CHIPLET_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xE8</td><td><a href="#SiP_PUBK_DIGEST">SiP_PUBK_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#SiP_UID">SiP_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x128</td><td><a href="#SYS_PUBK_DIGEST">SYS_PUBK_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x148</td><td><a href="#SYS_UID">SYS_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x168</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x16C</td><td><a href="#SEP_ROM_CTRL">SEP_ROM_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x170</td><td><a href="#SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x174</td><td><a href="#SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x17C</td><td><a href="#SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x180</td><td><a href="#SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x184</td><td><a href="#SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x188</td><td><a href="#SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18C</td><td><a href="#SPI_PHY_MISC">SPI_PHY_MISC</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x190</td><td><a href="#SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x194</td><td><a href="#PUBLIC_KEY_0">PUBLIC_KEY_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1B4</td><td><a href="#PUBLIC_KEY_1">PUBLIC_KEY_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1D4</td><td><a href="#RESERVED_0">RESERVED_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x214</td><td><a href="#RESERVED_1">RESERVED_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x254</td><td><a href="#RESERVED_2">RESERVED_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x294</td><td><a href="#RESERVED_3">RESERVED_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2D4</td><td><a href="#RESERVED_4">RESERVED_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x314</td><td><a href="#RESERVED_5">RESERVED_5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x354</td><td><a href="#RESERVED_6">RESERVED_6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x394</td><td><a href="#RESERVED_7">RESERVED_7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3D4</td><td><a href="#RESERVED_LAST_256">RESERVED_LAST_256</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3F4</td><td><a href="#RESERVED_LAST_64">RESERVED_LAST_64</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3FC</td><td><a href="#RESERVED_LAST_32">RESERVED_LAST_32</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="LOCKS">LOCKS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>RESERVED_LAST_32_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_32_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>62</td><td>RESERVED_LAST_32_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_32_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>61</td><td>RESERVED_LAST_64_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_64_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>60</td><td>RESERVED_LAST_64_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_64_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>59</td><td>RESERVED_LAST_256_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_256_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>58</td><td>RESERVED_LAST_256_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_256_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>57</td><td>RESERVED_7_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>56</td><td>RESERVED_7_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>55</td><td>RESERVED_6_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>54</td><td>RESERVED_6_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>53</td><td>RESERVED_5_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>52</td><td>RESERVED_5_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>51</td><td>RESERVED_4_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>50</td><td>RESERVED_4_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>49</td><td>RESERVED_3_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>48</td><td>RESERVED_3_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>47</td><td>RESERVED_2_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>46</td><td>RESERVED_2_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>45</td><td>RESERVED_1_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>44</td><td>RESERVED_1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>43</td><td>RESERVED_0_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>42</td><td>RESERVED_0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>41</td><td>SEP_PUBLIC_KEY_HASH_1_READ_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>40</td><td>SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>39</td><td>SEP_PUBLIC_KEY_HASH_0_READ_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>38</td><td>SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>37</td><td>SEP_SPI_CTRL_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_spi_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>36</td><td>SEP_SPI_CTRL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_spi_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>35</td><td>SEP_ROM_CTRL_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_rom_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>34</td><td>SEP_ROM_CTRL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_rom_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>32</td><td>STATUS_RPT_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>31</td><td>SYS_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>30</td><td>SYS_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>29</td><td>SYS_PUBK_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>28</td><td>SYS_PUBK_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>27</td><td>SiP_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>26</td><td>SiP_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>25</td><td>SiP_PUBK_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>24</td><td>SiP_PUBK_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>23</td><td>CHIPLET_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>22</td><td>CHIPLET_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>21</td><td>BL2_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>20</td><td>BL2_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>19</td><td>BL1_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>18</td><td>BL1_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>17</td><td>CHIPLET_PUBK_REVOKE_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_sel_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>16</td><td>CHIPLET_PUBK_REVOKE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_sel_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>15</td><td>CLASS_KEY_READ_LOCK</td><td>RW</td><td>0x0</td><td>class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>14</td><td>CLASS_KEY_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>13</td><td>RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>12</td><td>RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>11</td><td>RMA_SIP_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>10</td><td>RMA_SIP_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>9</td><td>SYS_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>8</td><td>SYS_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>7</td><td>SiP_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>6</td><td>SiP_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>5</td><td>TRANSIENT_RMA_EN_READ_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>4</td><td>TRANSIENT_RMA_EN_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>3</td><td>SBOOT_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>2</td><td>SBOOT_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>1</td><td>LC_STATE_READ_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>0</td><td>LC_STATE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+</table>
+<h3 id="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF0</td><td>Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}</td></tr>
+</table>
+<h3 id="SBOOT_DIS">SBOOT_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>disable_secure_boot</td><td>R</td><td>0x0</td><td>Chicken bit to disable secure boot in SEP ROM.</td></tr>
+</table>
+<h3 id="TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>transient_rma_en</td><td>R</td><td>0x0</td><td>When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg</td></tr>
+</table>
+<h3 id="SiP_DIS">SiP_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>47:37</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>36</td><td>ap_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.</td></tr>
+<tr><td>35</td><td>ap_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.</td></tr>
+<tr><td>34</td><td>sep_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.</td></tr>
+<tr><td>33</td><td>sep_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.</td></tr>
+<tr><td>32</td><td>fuse_test</td><td>RW</td><td>0x0</td><td>When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.</td></tr>
+<tr><td>31:5</td><td>debug_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.</td></tr>
+<tr><td>3</td><td>ap_trace</td><td>RW</td><td>0x0</td><td>When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.</td></tr>
+<tr><td>2</td><td>ap_debug</td><td>RW</td><td>0x0</td><td>When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.</td></tr>
+<tr><td>1</td><td>soc_debug</td><td>RW</td><td>0x0</td><td>Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.</td></tr>
+</table>
+<h3 id="SYS_DIS">SYS_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>47:37</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>36</td><td>ap_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.</td></tr>
+<tr><td>35</td><td>ap_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.</td></tr>
+<tr><td>34</td><td>sep_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.</td></tr>
+<tr><td>33</td><td>sep_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.</td></tr>
+<tr><td>32</td><td>fuse_test</td><td>RW</td><td>0x0</td><td>When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.</td></tr>
+<tr><td>31:5</td><td>debug_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.</td></tr>
+<tr><td>3</td><td>ap_trace</td><td>RW</td><td>0x0</td><td>When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.</td></tr>
+<tr><td>2</td><td>ap_debug</td><td>RW</td><td>0x0</td><td>When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.</td></tr>
+<tr><td>1</td><td>soc_debug</td><td>RW</td><td>0x0</td><td>Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field</td></tr>
+</table>
+<h3 id="CLASS_KEY">CLASS_KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key</td><td>R</td><td>0x0</td><td>Class key that could be used for FW encryption/decryption</td></tr>
+</table>
+<h3 id="CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>select</td><td>R</td><td>0x0</td><td>Revoke public key used to verify BL1/ SEP ROM Should reject using the corresponding public key when associated bit is set to 1</td></tr>
+</table>
+<h3 id="BL1_VERSION">BL1_VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL1 version that can be loaded by SEPROM</td></tr>
+</table>
+<h3 id="BL2_VERSION">BL2_VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.</td></tr>
+</table>
+<h3 id="CHIPLET_UID">CHIPLET_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>Silicon creator&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="SiP_PUBK_DIGEST">SiP_PUBK_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_digest</td><td>R</td><td>0x0</td><td>Hash digest of SiP owner&#x27;s root public key for secure boot.</td></tr>
+</table>
+<h3 id="SiP_UID">SiP_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>SiP owner&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="SYS_PUBK_DIGEST">SYS_PUBK_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_digest</td><td>R</td><td>0x0</td><td>Hash digest of system owner&#x27;s root public key for secure boot.</td></tr>
+</table>
+<h3 id="SYS_UID">SYS_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>System owner&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="STATUS_RPT">STATUS_RPT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>1:0</td><td>rpt</td><td>R</td><td>0x0</td><td>BOOTROM report status based on the bit. 2&#x27;b00-&gt; bootrom report status based on GPIO; 2&#x27;b01-&gt;bootrom report status;otherwise, bootrom does not report status</td></tr>
+</table>
+<h3 id="SEP_ROM_CTRL">SEP_ROM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>5:1</td><td>rom_swap_ctrl</td><td>R</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
+<tr><td>0</td><td>rom_endianness_ctrl</td><td>R</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
+</table>
+<h3 id="SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:19</td><td>spi_control_field_en_rsvd</td><td>R</td><td>0x0</td><td>Reserved 13 bits</td></tr>
+<tr><td>18:8</td><td>smu_pll_sysclk</td><td>R</td><td>0x0</td><td>11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0</td></tr>
+<tr><td>7:0</td><td>spi_control_field_en</td><td>R</td><td>0x0</td><td>8 bit which indicates the following 8 spi config regs are enabled or not. 1-&gt;enabled; 0-&gt;disabled</td></tr>
+</table>
+<h3 id="SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>discovery</td><td>R</td><td>0x0</td><td>spi discovery control reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dq_timing</td><td>R</td><td>0x0</td><td>spi phy dq timing reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dqs_timing</td><td>R</td><td>0x0</td><td>spi phy dqs timing reg</td></tr>
+</table>
+<h3 id="SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>gate_lpbk</td><td>R</td><td>0x0</td><td>spi phy gate lpbk ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dll_slave</td><td>R</td><td>0x0</td><td>spi phy dll slv ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dll_master</td><td>R</td><td>0x0</td><td>spi phy dll mst ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_MISC">SPI_PHY_MISC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>misc</td><td>R</td><td>0x0</td><td>spi init phy misc</td></tr>
+</table>
+<h3 id="SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>rb_valid_time</td><td>R</td><td>0x0</td><td>spi init rb valid time</td></tr>
+</table>
+<h3 id="PUBLIC_KEY_0">PUBLIC_KEY_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Extra public key hash digest</td></tr>
+</table>
+<h3 id="PUBLIC_KEY_1">PUBLIC_KEY_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Extra public key hash digest</td></tr>
+</table>
+<h3 id="RESERVED_0">RESERVED_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_1">RESERVED_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_2">RESERVED_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_3">RESERVED_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_4">RESERVED_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_5">RESERVED_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_6">RESERVED_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_7">RESERVED_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_256">RESERVED_LAST_256</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_64">RESERVED_LAST_64</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_32">RESERVED_LAST_32</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+</div>

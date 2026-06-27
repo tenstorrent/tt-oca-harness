@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI Sanity Test for OCH SEP - OpenTitan SPI Host
  *
@@ -10,7 +13,6 @@
  *   2. Try writing to some registers in the OpenTitan SPI Host
  * TODO: Finish this test
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>
@@ -28,7 +30,7 @@
  * Configure SPI mux - select OpenTitan SPI Host controller and release CS force
  *
  * The SPI mux has two important control bits:
- *   - spi_sel: 0 = Cadence xSPI, 1 = OpenTitan SPI Host
+ *   - spi_sel: selects an adopter SPI overlay or the OpenTitan SPI Host
  *   - cs_force_high: 1 = force all CS# pins high (deasserted)
  *
  * The default value has cs_force_high=1 for safety during power-up.

@@ -1,0 +1,270 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[smc-memory-map]]
+=== Memory Map
+
+This section provides a comprehensive overview of the SMC memory map.
+The SMC address space is organized to provide access to various
+functional units including CPU control, peripheral interfaces, system
+management functions, and fabric control mechanisms.
+
+All addresses below are expressed as `BASE + offset`, where `BASE` can
+be either the local alias (`LOCAL_BASE`, fixed read-only at
+`0xC000_0000`) or the global system address (`GLOBAL_BASE`,
+programmable by firmware). The fabric routes transactions to SMC
+resources identically regardless of which base is used, as long as the
+access falls inside the relevant local or global aperture. The current
+SMC `REGION_SIZE` CSR reset is 16 MiB for the chiplet-global aperture;
+the input fabric's internal local-alias window is controlled by the RTL
+`LOCAL_ALIAS_REGION_SIZE` parameter, currently fixed at 16 MiB.
+Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
+conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
+and how an adopter maps this aperture into the system address space,
+refer to the
+ifdef::backend-html5[]
+SMC Address Map Integration
+endif::backend-html5[]
+ifdef::backend-pdf[]
+SMC Address Map Integration
+endif::backend-pdf[]
+section of the Integration Guide.
+
+==== Address Space Organization
+
+The SMC address space is divided into several major functional regions:
+
+.SMC Address Space Layout
+[width="100%",cols="20%,20%,15%,45%",options="header",]
+|=======================================================================
+|Address Range |Size |Function |Description
+|BASE + 0x000_0000 - BASE + 0x000_0FFF |4KB |Watchdog Timers |Per-core watchdog
+timer interfaces (4 cores, 1KB each)
+
+|BASE + 0x000_1000 - BASE + 0x000_1FFF |4KB |Debug Unit |RISC-V Debug Module
+interface
+
+|BASE + 0x000_2000 - BASE + 0x000_3FFF |8KB |System Control |Reset unit and
+miscellaneous system control registers
+
+|BASE + 0x000_4000 - BASE + 0x000_4FFF |4KB |GPIO Interface |General Purpose I/O
+control and configuration (68 GPIO instances)
+
+|BASE + 0x000_7000 - BASE + 0x000_AFFF |16KB |Peripheral Controllers |PVT, AVSBus,
+I2C, and UART interfaces
+
+|BASE + 0x000_B000 - BASE + 0x000_FFFF |20KB |Security, Timing & DFT |eFuse,
+telemetry, system timer, DTP control, and DFT status
+
+|BASE + 0x001_0000 - BASE + 0x001_7FFF |32KB |Fabric Control |CPU control, address
+remapping, and filtering
+
+|BASE + 0x001_8000 - BASE + 0x003_7FFF |128KB |Mailbox |Inter-processor
+communication mailbox (32 channels: 16 inbound + 16 outbound)
+
+|BASE + 0x003_8000 - BASE + 0x003_83FF |1KB |Data Processing |DMA controller and
+memory zeroer
+
+|BASE + 0x004_0000 - BASE + 0x007_FFFF |256KB |Memory Regions |ROM and scratchpad
+memory spaces
+
+|BASE + 0x016_0000 - BASE + 0x016_8FFF |36KB |CLA |Debug and trace (CLA) module
+
+|BASE + 0x040_0000 - BASE + 0x040_17FF |6KB |I3C Interface (Reserved) |I3C controller
+instances (6 planned) - NOT YET IMPLEMENTED
+
+|BASE + 0x080_0000 - BASE + 0x1FF_FFFF |24MB |Address Remapping |M-mode and Xvisor
+remapped address regions
+
+|BASE + 0x400_0000 - BASE + 0x43F_FFFF |4MB |Interrupt Controller |RISC-V PLIC
+(Platform-Level Interrupt Controller)
+
+|BASE + 0x800_0000 - BASE + 0x801_3FFF |80KB |Timer & Bus Error |CLINT and per-core
+Bus Error Units
+|=======================================================================
+
+==== Detailed Address Map
+
+The following table provides specific address assignments for all SMC
+components:
+
+.SMC Component Address Map
+[width="100%",cols="25%,25%,20%,30%",options="header",]
+|=======================================================================
+|Component |Address Range |Instance |Description
+|WDT Core 0-3 |BASE + 0x000_0000 + (N×0x400) |4 instances |Watchdog timers for
+each CPU core
+
+|Debug Module |BASE + 0x000_1000 - BASE + 0x000_1FFF |1 instance |RISC-V debug
+interface
+
+|Reset Unit |BASE + 0x000_2000 - BASE + 0x000_27FF |1 instance |System reset control
+
+|Miscellaneous Wrapper |BASE + 0x000_2800 - BASE + 0x000_2FFF |1 instance |System
+configuration registers
+
+|PLL Wrapper |BASE + 0x000_3000 - BASE + 0x000_3FFF |1 instance |Clock generation
+and management
+
+|GPIO Interface |BASE + 0x000_4000 + (N×0x10) |68 instances |GPIO interface
+control
+
+|GPIO Control |BASE + 0x000_4440 + (N×0x20) |68 instances |GPIO pad
+configuration
+
+|GPIO Refclk Control |BASE + 0x000_4CC0 |1 instance |Reference clock GPIO
+control
+
+|GPIO PoC/PBias Control |BASE + 0x000_4DE0 |1 instance |Power-on and pad bias
+control
+
+|PVT Wrapper |BASE + 0x000_7000 - BASE + 0x000_7FFF |1 instance |Process, Voltage,
+Temperature monitoring
+
+|AVSBus Controller |BASE + 0x000_8000 - BASE + 0x000_8FFF |1 instance |Adaptive
+voltage scaling control
+
+|I2C Wrapper |BASE + 0x000_9000 - BASE + 0x000_9FFF |1 instance |I2C/SMBus
+communication interface
+
+|UART Wrapper |BASE + 0x000_A000 - BASE + 0x000_AFFF |1 instance |UART communication
+interface
+
+|eFuse Map |BASE + 0x000_B000 - BASE + 0x000_BFFF |1 instance |eFuse memory mapping
+interface
+
+|eFuse Interface |BASE + 0x000_C000 - BASE + 0x000_C0FF |1 instance |eFuse interface
+controller
+
+|eFuse SHIM |BASE + 0x000_C100 - BASE + 0x000_C1FF |1 instance |eFuse hardware
+abstraction layer
+
+|Telemetry Receiver |BASE + 0x000_D000 - BASE + 0x000_DFFF |1 instance |Telemetry
+data processing
+
+|System Timer OCTS |BASE + 0x000_E000 - BASE + 0x000_EFFF |1 instance |Multi-chiplet
+time synchronization
+
+|DTP Control Registers |BASE + 0x000_F000 - BASE + 0x000_F7FF |512 entries |DTP
+control register block
+
+|DFT Control/Status |BASE + 0x000_F800 - BASE + 0x000_FFFF |1 instance |DFT control
+and status for ROM
+
+|CPU Control |BASE + 0x001_0000 - BASE + 0x001_1FFF |1 instance |CPU cluster
+management
+
+|Alias Remap |BASE + 0x001_2000 + (N×0x20) |8 instances |Address alias
+remapping
+
+|M-mode Remap |BASE + 0x001_3000 + (N×0x8) |8 instances |Machine mode
+address remapping
+
+|Xvisor Remap |BASE + 0x001_4000 + (N×0x8) |8 instances |Hypervisor address
+remapping
+
+|Inbound Filters |BASE + 0x001_5000 + (N×0x20) |16 instances |Inbound traffic
+filtering
+
+|Outbound Filters |BASE + 0x001_6000 + (N×0x20) |16 instances |Outbound traffic
+filtering
+
+|Mailbox |BASE + 0x001_8000 - BASE + 0x003_7FFF |32 channels |Inter-processor
+communication (16 inbound + 16 outbound)
+
+|DMA Controller |BASE + 0x003_8000 - BASE + 0x003_81FF |1 instance |Direct memory
+access controller
+
+|Memory Zeroer |BASE + 0x003_8200 - BASE + 0x003_83FF |1 instance |Memory
+initialization unit
+
+|SPM ROM Memory |BASE + 0x004_0000 - BASE + 0x005_FFFF |128KB |Scratchpad ROM memory
+space
+
+|SPM Memory |BASE + 0x006_0000 - BASE + 0x007_FFFF |128KB |Scratchpad memory space
+
+|SMC CLA |BASE + 0x016_0000 - BASE + 0x016_8FFF |1 instance |Debug and trace (CLA)
+module
+
+|I3C Wraps (Reserved) |BASE + 0x040_0000 + (N×0x400) |6 planned |I3C controller
+interfaces - NOT YET IMPLEMENTED
+
+|M-mode Region |BASE + 0x100_0000 - BASE + 0x17F_FFFF |8MB |Machine mode remapped
+space
+
+|Xvisor Region |BASE + 0x180_0000 - BASE + 0x1FF_FFFF |8MB |Hypervisor remapped
+space
+
+|PLIC |BASE + 0x400_0000 - BASE + 0x43F_FFFF |4MB |Platform-Level Interrupt
+Controller
+
+|CLINT |BASE + 0x800_0000 - BASE + 0x800_FFFF |64KB |Core Local Interruptor
+
+|Bus Error Units |BASE + 0x801_0000 + (N×0x1000) |4 instances |Per-core bus
+error handling
+|=======================================================================
+
+==== Register Interface Standards
+
+All SMC components use standard AMBA interfaces. We summarize the
+interfaces in the following table:
+
+.Register Interface Standards
+[width="100%",cols="25%,25%,20%,30%",options="header",]
+|=======================================================================
+|Interface |Address Width |Data Width |Description
+|AXI4-Lite |32-bit |64-bit |High-performance components
+|APB4 |32-bit |32-bit |Peripheral components
+4+|*Address Alignment:* 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries
+4+|*Endianness:* Little-endian byte ordering throughout
+4+|*Protection:* AXI protection bits used for secure/non-secure access control
+|=======================================================================
+
+==== Access Control and Security
+
+The SMC implements the following access control mechanisms:
+
+.Access Control Mechanisms
+[width="100%",cols="25%,75%",options="header",]
+|=======================================================================
+|Mechanism |Description
+|Address Filtering |Configurable inbound and outbound address filters
+
+|Protection Levels |AXI protection attribute enforcement
+
+|Secure Regions |eFuse and security-critical registers require elevated
+privileges
+
+|Error Handling |Bus error units provide comprehensive error logging and
+reporting
+|=======================================================================
+
+==== Component-Specific Register Documentation
+
+For detailed register-level documentation of each SMC component, refer
+to the individual component documentation:
+
+.SMC Component Documentation
+[width="100%",cols="30%,50%,20%",options="header",]
+|=======================================================================
+|Category |Description |Reference
+|CPU and System Control |CPU Control, PLIC, CLINT, Watchdog Timers, and
+Bus Error Units |cpu
+
+|Interrupt Controller |Platform-Level Interrupt Controller (PLIC)
+details |interrupts
+
+|DMA Controller |DMA Controller detailed register interface |dma
+
+|Memory Zeroer |Memory Zeroer control registers |zeroer
+
+|Fabric Control |Address remapping, inbound/outbound filters, and fabric
+control registers |fabric
+
+|Peripherals and I/O |GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
+Timer registers |periphs
+
+|Reset Management |Reset unit and system control registers |clk_rst
+
+|Clock Generation |PLL wrapper and clock generation registers |pll
+|=======================================================================

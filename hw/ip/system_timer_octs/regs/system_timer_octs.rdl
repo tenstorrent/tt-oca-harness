@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef SYSTEM_TIMER_OCTS_RDL
 `define SYSTEM_TIMER_OCTS_RDL
 

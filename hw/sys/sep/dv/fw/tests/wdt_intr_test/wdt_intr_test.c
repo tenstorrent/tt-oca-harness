@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_006 (V3, P2) - WDT Interrupt Test (INTR_TEST injection)
  *
@@ -13,7 +16,6 @@
  * Note: NMI handler kept minimal (no printf) to avoid timing issues with
  * level-triggered NMI re-entry while INTR_STATE is still being cleared.
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

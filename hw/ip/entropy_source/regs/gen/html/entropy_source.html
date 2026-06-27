@@ -1,0 +1,533 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: entropy_source</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Component Identification</td></tr>
+<tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Entropy Source Control</td></tr>
+<tr><td>0x8</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Entropy Source Status (currently unused, reserved for future expansion)</td></tr>
+<tr><td>0xC</td><td><a href="#DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>Debug control to monitor internal entropy noise source signals.</td></tr>
+<tr><td>0x10</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status (write 1 to clear)</td></tr>
+<tr><td>0x14</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable (individual enable bits for each interrupt source)</td></tr>
+<tr><td>0x18</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test (write 1 to manually trigger interrupt for testing)</td></tr>
+<tr><td>0x1C</td><td><a href="#SHA256_STATUS">SHA256_STATUS</a></td><td>R</td><td>SHA-256 Whitening Status</td></tr>
+<tr><td>0x20</td><td><a href="#FIFO_CTRL">FIFO_CTRL</a></td><td>RW</td><td>FIFO Control (32-entry x 32-bit entropy collection buffer)</td></tr>
+<tr><td>0x24</td><td><a href="#FIFO_STATUS">FIFO_STATUS</a></td><td>R</td><td>FIFO Status (real-time buffer occupancy and pointers)</td></tr>
+<tr><td>0x28</td><td><a href="#FIFO_RDATA">FIFO_RDATA</a></td><td>R</td><td>FIFO Read Data (auto-incrementing read port)</td></tr>
+<tr><td>0x30</td><td><a href="#HEALTH_TEST_CTRL">HEALTH_TEST_CTRL</a></td><td>RW</td><td>Health Test Control (NIST SP 800-90B compliant continuous tests)</td></tr>
+<tr><td>0x34</td><td><a href="#HEALTH_TEST_WINDOW_SIZE">HEALTH_TEST_WINDOW_SIZE</a></td><td>RW</td><td>Health Test Window Size (sample count per test window)</td></tr>
+<tr><td>0x38</td><td><a href="#MARKOV_TEST_PROB_THRESHOLDS">MARKOV_TEST_PROB_THRESHOLDS</a></td><td>RW</td><td>Markov Test Transition Count Thresholds (16-bit direct count thresholds)</td></tr>
+<tr><td>0x40</td><td><a href="#HEALTH_TEST_STATUS">HEALTH_TEST_STATUS</a></td><td>RW</td><td>Health Test Status for 32-bit Entropy Stream (Write-1-to-Clear). Latches health test failures until firmware clears by writing 1. Bit allocation: [0]=Repetition, [1:2]=Reserved, [3]=APT, [4]=Markov-Hi, [5]=Markov-Lo, [6:7]=Reserved.</td></tr>
+<tr><td>0x44</td><td><a href="#REPETITION_TEST_COUNT">REPETITION_TEST_COUNT</a></td><td>R</td><td>Repetition Test Count (current consecutive repetition streak)</td></tr>
+<tr><td>0x50</td><td><a href="#APT_PATTERN_COUNT_1BIT">APT_PATTERN_COUNT_1BIT</a></td><td>R</td><td>Adaptive Proportion Test (APT) 1-bit Pattern Count (real-time statistics)</td></tr>
+<tr><td>0x54</td><td><a href="#APT_PATTERN_COUNT_2BIT">APT_PATTERN_COUNT_2BIT</a></td><td>R</td><td>Adaptive Proportion Test (APT) 2-bit Pattern Count (real-time statistics)</td></tr>
+<tr><td>0x58</td><td><a href="#APT_PATTERN_COUNT_3BIT">APT_PATTERN_COUNT_3BIT</a></td><td>R</td><td>Adaptive Proportion Test (APT) 3-bit Pattern Count (real-time statistics)</td></tr>
+<tr><td>0x5C</td><td><a href="#APT_PATTERN_COUNT_4BIT">APT_PATTERN_COUNT_4BIT</a></td><td>R</td><td>Adaptive Proportion Test (APT) 4-bit Pattern Count (real-time statistics)</td></tr>
+<tr><td>0x60</td><td><a href="#APT_PROPORTION_1BIT">APT_PROPORTION_1BIT</a></td><td>RW</td><td>Adaptive Proportion Test 1-bit Proportion Limit (16-bit direct count threshold)</td></tr>
+<tr><td>0x64</td><td><a href="#APT_PROPORTION_2BIT">APT_PROPORTION_2BIT</a></td><td>RW</td><td>Adaptive Proportion Test 2-bit Proportion Limit (NIST SP 800-90B Window=256)</td></tr>
+<tr><td>0x68</td><td><a href="#APT_PROPORTION_3BIT">APT_PROPORTION_3BIT</a></td><td>RW</td><td>Adaptive Proportion Test 3-bit Proportion Limit (NIST SP 800-90B Window=170)</td></tr>
+<tr><td>0x6C</td><td><a href="#APT_PROPORTION_4BIT">APT_PROPORTION_4BIT</a></td><td>RW</td><td>Adaptive Proportion Test 4-bit Proportion Limit (NIST SP 800-90B Window=128)</td></tr>
+<tr><td>0x70</td><td><a href="#APT_PROPORTION_LO">APT_PROPORTION_LO</a></td><td>RW</td><td>Adaptive Proportion Test Low Threshold (two-sided NIST SP 800-90B compliance). Detects low-bias noise where too few 1s are observed per bit lane. The APT counts 1s per bit lane over a health test window; if the minimum count across all lanes falls below this threshold, the test fails (apt_test_fail_lo). For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=848 (41.4% of 2048, symmetric 5-sigma margin below mean, matching the high threshold at 1200=58.6%).</td></tr>
+<tr><td>0x80</td><td><a href="#MARKOV_TEST_COUNTS_0">MARKOV_TEST_COUNTS_0</a></td><td>R</td><td>Markov Test Counts 0</td></tr>
+<tr><td>0x84</td><td><a href="#MARKOV_TEST_COUNTS_1">MARKOV_TEST_COUNTS_1</a></td><td>R</td><td>Markov Test Counts 1</td></tr>
+<tr><td>0x88</td><td><a href="#MARKOV_TEST_PROBABILITIES">MARKOV_TEST_PROBABILITIES</a></td><td>R</td><td>Markov Test Probabilities (legacy register - values are always 0, not implemented in current RTL)</td></tr>
+<tr><td>0x90</td><td><a href="#RING_OSC_ENABLE">RING_OSC_ENABLE</a></td><td>RW</td><td>Ring Oscillator Enables (independent on/off control for all 12 generators)</td></tr>
+<tr><td>0x94</td><td><a href="#RING_OSC_TUNE">RING_OSC_TUNE</a></td><td>RW</td><td>Ring Oscillator Tune Control (frequency adjustment via tap point selection)</td></tr>
+<tr><td>0x98</td><td><a href="#RING_OSC_CTRL">RING_OSC_CTRL</a></td><td>RW</td><td>Ring Oscillator Sample Clock Select (per-generator clock source mux)</td></tr>
+<tr><td>0xA0</td><td><a href="#DECORRELATOR_CTRL">DECORRELATOR_CTRL</a></td><td>RW</td><td>Decorrelator Control (LFSR-based entropy conditioning)</td></tr>
+<tr><td>0xA4</td><td><a href="#DECORRELATOR_MASK">DECORRELATOR_MASK</a></td><td>RW</td><td>Decorrelator Mask</td></tr>
+<tr><td>0xB0</td><td><a href="#STARTUP_CTRL">STARTUP_CTRL</a></td><td>RW</td><td>Startup Control (ring oscillator stabilization delay)</td></tr>
+<tr><td>0xC0</td><td><a href="#GENERATOR_0_HEALTH_STATUS">GENERATOR_0_HEALTH_STATUS</a></td><td>RW</td><td>Generator 0 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xC4</td><td><a href="#GENERATOR_1_HEALTH_STATUS">GENERATOR_1_HEALTH_STATUS</a></td><td>RW</td><td>Generator 1 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xC8</td><td><a href="#GENERATOR_2_HEALTH_STATUS">GENERATOR_2_HEALTH_STATUS</a></td><td>RW</td><td>Generator 2 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xCC</td><td><a href="#GENERATOR_3_HEALTH_STATUS">GENERATOR_3_HEALTH_STATUS</a></td><td>RW</td><td>Generator 3 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xD0</td><td><a href="#GENERATOR_4_HEALTH_STATUS">GENERATOR_4_HEALTH_STATUS</a></td><td>RW</td><td>Generator 4 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xD4</td><td><a href="#GENERATOR_5_HEALTH_STATUS">GENERATOR_5_HEALTH_STATUS</a></td><td>RW</td><td>Generator 5 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xD8</td><td><a href="#GENERATOR_6_HEALTH_STATUS">GENERATOR_6_HEALTH_STATUS</a></td><td>RW</td><td>Generator 6 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xDC</td><td><a href="#GENERATOR_7_HEALTH_STATUS">GENERATOR_7_HEALTH_STATUS</a></td><td>RW</td><td>Generator 7 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xE0</td><td><a href="#GENERATOR_8_HEALTH_STATUS">GENERATOR_8_HEALTH_STATUS</a></td><td>RW</td><td>Generator 8 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xE4</td><td><a href="#GENERATOR_9_HEALTH_STATUS">GENERATOR_9_HEALTH_STATUS</a></td><td>RW</td><td>Generator 9 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xE8</td><td><a href="#GENERATOR_10_HEALTH_STATUS">GENERATOR_10_HEALTH_STATUS</a></td><td>RW</td><td>Generator 10 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0xEC</td><td><a href="#GENERATOR_11_HEALTH_STATUS">GENERATOR_11_HEALTH_STATUS</a></td><td>RW</td><td>Generator 11 Health Test Status (Write-1-to-Clear)</td></tr>
+<tr><td>0x100</td><td><a href="#GENERATOR_0_SAMPLE_CLK_CONFIG">GENERATOR_0_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 0 Sample Clock Configuration</td></tr>
+<tr><td>0x104</td><td><a href="#GENERATOR_1_SAMPLE_CLK_CONFIG">GENERATOR_1_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 1 Sample Clock Configuration</td></tr>
+<tr><td>0x108</td><td><a href="#GENERATOR_2_SAMPLE_CLK_CONFIG">GENERATOR_2_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 2 Sample Clock Configuration</td></tr>
+<tr><td>0x10C</td><td><a href="#GENERATOR_3_SAMPLE_CLK_CONFIG">GENERATOR_3_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 3 Sample Clock Configuration</td></tr>
+<tr><td>0x110</td><td><a href="#GENERATOR_4_SAMPLE_CLK_CONFIG">GENERATOR_4_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 4 Sample Clock Configuration</td></tr>
+<tr><td>0x114</td><td><a href="#GENERATOR_5_SAMPLE_CLK_CONFIG">GENERATOR_5_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 5 Sample Clock Configuration</td></tr>
+<tr><td>0x118</td><td><a href="#GENERATOR_6_SAMPLE_CLK_CONFIG">GENERATOR_6_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 6 Sample Clock Configuration</td></tr>
+<tr><td>0x11C</td><td><a href="#GENERATOR_7_SAMPLE_CLK_CONFIG">GENERATOR_7_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 7 Sample Clock Configuration</td></tr>
+<tr><td>0x120</td><td><a href="#GENERATOR_8_SAMPLE_CLK_CONFIG">GENERATOR_8_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 8 Sample Clock Configuration</td></tr>
+<tr><td>0x124</td><td><a href="#GENERATOR_9_SAMPLE_CLK_CONFIG">GENERATOR_9_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 9 Sample Clock Configuration</td></tr>
+<tr><td>0x128</td><td><a href="#GENERATOR_10_SAMPLE_CLK_CONFIG">GENERATOR_10_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 10 Sample Clock Configuration</td></tr>
+<tr><td>0x12C</td><td><a href="#GENERATOR_11_SAMPLE_CLK_CONFIG">GENERATOR_11_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 11 Sample Clock Configuration</td></tr>
+<tr><td>0x130</td><td><a href="#HT_WATERMARK_NUM">HT_WATERMARK_NUM</a></td><td>RW</td><td>Health Test Watermark Selector. Selects which health test watermark to display in HT_WATERMARK register.</td></tr>
+<tr><td>0x134</td><td><a href="#HT_WATERMARK">HT_WATERMARK</a></td><td>R</td><td>Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Low watermarks are initialized to all-1s after enabling entropy source.</td></tr>
+<tr><td>0x138</td><td><a href="#REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</a></td><td>R</td><td>Repetition Count Test Total Failures. Counts the total number of test failures since module enable. Increments at health_test_done_pulse when threshold is exceeded. Cleared on health_test_clr.</td></tr>
+<tr><td>0x13C</td><td><a href="#APT_HI_TOTAL_FAILS">APT_HI_TOTAL_FAILS</a></td><td>R</td><td>Adaptive Proportion Test High Threshold Total Failures. Counts the total number of APT high test failures since module enable.</td></tr>
+<tr><td>0x140</td><td><a href="#APT_LO_TOTAL_FAILS">APT_LO_TOTAL_FAILS</a></td><td>R</td><td>Adaptive Proportion Test Low Threshold Total Failures. Counts the total number of APT low test failures since module enable.</td></tr>
+<tr><td>0x144</td><td><a href="#MARKOV_HI_TOTAL_FAILS">MARKOV_HI_TOTAL_FAILS</a></td><td>R</td><td>Markov Test High Threshold Total Failures. Counts the total number of Markov high test failures since module enable.</td></tr>
+<tr><td>0x148</td><td><a href="#MARKOV_LO_TOTAL_FAILS">MARKOV_LO_TOTAL_FAILS</a></td><td>R</td><td>Markov Test Low Threshold Total Failures. Counts the total number of Markov low test failures since module enable.</td></tr>
+<tr><td>0x14C</td><td><a href="#ALERT_SUMMARY_FAIL_COUNTS">ALERT_SUMMARY_FAIL_COUNTS</a></td><td>R</td><td>Alert Summary Fail Counter. Counts the number of health test windows that had any failure. Clears automatically after passing window.</td></tr>
+<tr><td>0x150</td><td><a href="#ALERT_FAIL_COUNTS">ALERT_FAIL_COUNTS</a></td><td>R</td><td>Alert Per-Test Fail Counters. 4-bit counters tracking failures in current alert window. Auto-clears after passing window.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="COMPONENT_ID">COMPONENT_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>MAJOR_VERSION</td><td>R</td><td>0x0</td><td>Major Version</td></tr>
+<tr><td>27:24</td><td>MINOR_VERSION</td><td>R</td><td>0x1</td><td>Minor Version</td></tr>
+<tr><td>23:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>NAME</td><td>R</td><td>0x1</td><td>Entropy Source</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>SHA256_WHITENING_ENABLE</td><td>RW</td><td>0x1</td><td>Enable SHA-256 whitening stage after BIW compression. When enabled, 16 × 32-bit BIW outputs (512 bits) are accumulated and hashed using SHA-256, producing 8 × 32-bit digest words (256 bits). This provides cryptographic conditioning per NIST SP 800-90B. When disabled, BIW output goes directly to FIFO (passthrough mode). Default=1 (enabled).</td></tr>
+<tr><td>27:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>25:16</td><td>DOWNSAMPLE_RATE</td><td>RW</td><td>0x0</td><td>Downsample Rate for the decorrelator output. Specifies additional clock cycles to wait between entropy byte outputs. Value of N means output every (N+1) cycles. Applied after DECORRELATOR_CTRL.SAMPLE_CLK_DIV. Example: if SAMPLE_CLK_DIV=63 (div64) and DOWNSAMPLE_RATE=3, effective rate is div256 (64*(3+1)). Default=0 (no additional downsampling).</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>BYPASS_ENTROPY_COMPRESSOR</td><td>RW</td><td>0x0</td><td>Bypass Entropy Compressor (BIW extractor) when asserted high. When bypassed, all 96 bytes from the 12 generators (8 bytes each) are pushed directly into the FIFO without compression, increasing FIFO fill rate by 3x (96 bytes vs 32 bits per cycle). Used for raw entropy analysis and testing. Disabled by default (32-bit compressed output).</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>AUTOTUNE_ENABLE</td><td>RW</td><td>0x0</td><td>Enable automatic detuning of individual ring oscillator noise generators when corresponding per-generator health tests fail. When enabled, a failing health test causes the generator&#x27;s noise RO to switch to its detuned (higher frequency) tap point. The shared sampling RO also detunes if ANY generator requests it. Automatic detuning is disabled by default (manual tuning via RING_OSC_TUNE required).</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>RESET</td><td>RW</td><td>0x0</td><td>Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, and decorrelator shift registers. Ring oscillators continue running. Self-clearing after 1 clock cycle.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>RSVD</td><td>R</td><td>0x0</td><td>Reserved for future use. Always reads 0.</td></tr>
+</table>
+<h3 id="DEBUG_CTRL">DEBUG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>SELECT_FREQ_DIV</td><td>RW</td><td>0x0</td><td>Select Frequency Divider for debug monitor output pin. Division ratios: 0=div1 (no division), 1=div2, 2=div4, 3=div8, 4=div16, 5=div32, 6=div64, 7=div128. Used to slow down high-frequency signals for external observation. Default=0 (no division).</td></tr>
+<tr><td>7:0</td><td>SELECT_SIGNAL</td><td>RW</td><td>0x0</td><td>Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved/padding. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved/padding. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved/padding. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved/padding.</td></tr>
+</table>
+<h3 id="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW</td><td>0x0</td><td>FIFO Underflow Interrupt. Set when software reads from an empty FIFO. Read returns stale/undefined data. Write 1 to clear.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW</td><td>0x0</td><td>FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (32 entries deep). Data is discarded on overflow. Write 1 to clear.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>RW</td><td>0x0</td><td>FIFO Error Interrupt. Set on FIFO read/write protocol violations. Write 1 to clear.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW</td><td>0x0</td><td>Health Test Failed Interrupt. Set when any enabled health test (Repetition, APT, or Markov) fails on the 32-bit entropy stream or any per-generator test fails. Check HEALTH_TEST_STATUS and GENERATOR_*_HEALTH_STATUS for details. Write 1 to clear.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW</td><td>0x0</td><td>FIFO Underflow Interrupt Enable. Set to 1 to enable interrupt generation on FIFO underflow. Default=0 (disabled).</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW</td><td>0x0</td><td>FIFO Overflow Interrupt Enable. Set to 1 to enable interrupt generation on FIFO overflow. Default=0 (disabled).</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>RW</td><td>0x0</td><td>FIFO Error Interrupt Enable. Set to 1 to enable interrupt generation on FIFO errors. Default=0 (disabled).</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW</td><td>0x0</td><td>Health Test Failed Interrupt Enable. Set to 1 to enable interrupt generation on health test failures. Default=0 (disabled).</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>W</td><td>0x0</td><td>FIFO Underflow Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_UNDERFLOW for interrupt handler testing. Self-clearing.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>W</td><td>0x0</td><td>FIFO Overflow Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_OVERFLOW for interrupt handler testing. Self-clearing.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>W</td><td>0x0</td><td>FIFO Error Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_ERROR for interrupt handler testing. Self-clearing.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>W</td><td>0x0</td><td>Health Test Failed Interrupt Test. Write 1 to manually set INTR_STATUS.HEALTH_TEST_FAILED for interrupt handler testing. Self-clearing.</td></tr>
+</table>
+<h3 id="SHA256_STATUS">SHA256_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining to be output (0-7). When hashing completes, 8 words are available for output. This counter decrements as words are consumed by downstream FIFO. 0 indicates all digest words have been output.</td></tr>
+<tr><td>7:4</td><td>INPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit words accumulated in SHA-256 input buffer (0-15). When this reaches 15 and the next word arrives, hashing begins. Useful for monitoring whitener activity and throughput.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>SHA-256 is actively hashing. Set when accumulating input buffer is complete and hash computation is in progress. Cleared when digest output phase completes.</td></tr>
+</table>
+<h3 id="FIFO_CTRL">FIFO_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>ENTROPY_CHURN_ENABLE</td><td>RW</td><td>0x0</td><td>Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (16 entries earlier for DEPTH=32). Churning operation: write_data = incoming_data XOR mem[(wptr + 16) % 32]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>FIFO write enable control. When enabled (1=default), entropy data flows into FIFO and write pointer updates normally. When disabled (set to 0), write operations are blocked: no entropy pushed, write pointer frozen, data collection paused. IMPORTANT: Read operations remain functional when disabled - software can still drain the FIFO by reading FIFO_RDATA. This allows capturing a snapshot of entropy and reading it out without new data being added. Use case: Stop entropy collection, drain FIFO for analysis, re-enable collection. Default=1 (enabled).</td></tr>
+</table>
+<h3 id="FIFO_STATUS">FIFO_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20:16</td><td>RPTR</td><td>R</td><td>0x0</td><td>Read Pointer. Current FIFO read address (0-31). Updated by hardware when FIFO_RDATA is read. Read-only for software.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:8</td><td>WPTR</td><td>R</td><td>0x0</td><td>Write Pointer. Current FIFO write address (0-31). Updated by hardware when entropy data is pushed. Read-only for software.</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>LEVEL</td><td>R</td><td>0x0</td><td>Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-32). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=32 means FIFO full.</td></tr>
+</table>
+<h3 id="FIFO_RDATA">FIFO_RDATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R</td><td>0x0</td><td>Data read from the FIFO. Reading this register automatically advances the read pointer and decrements FIFO_STATUS.LEVEL by 1. Returns 32-bit entropy word (compressed BIW output or raw generator bytes depending on CTRL.BYPASS_ENTROPY_COMPRESSOR setting). Reading from empty FIFO triggers INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Always check FIFO_STATUS.LEVEL before reading.</td></tr>
+</table>
+<h3 id="HEALTH_TEST_CTRL">HEALTH_TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>REPETITION_LIMIT</td><td>RW</td><td>0x19</td><td>Repetition Count Test threshold. Maximum allowed consecutive repetitions of the same value before test fails. NIST SP 800-90B recommends 15-30 for typical entropy sources. Lower values (5-10) increase sensitivity but may cause false alarms. Higher values (20-40) reduce false alarms but may miss stuck-at faults. Default=25 (covers 32 per-bit counters with &lt;1% false positive rate).</td></tr>
+<tr><td>7:0</td><td>ENABLE</td><td>RW</td><td>0x7</td><td>Enable bits for health tests [7:0]. Bit allocation: [0]=Repetition Count Test, [1:2]=Reserved, [3]=Adaptive Proportion Test (APT), [4:7]=Markov Test. Set bit to 1 to enable corresponding test. When a test is disabled (bit=0), its internal state (counters, windows) is reset. Tests run on 32-bit entropy stream. Default=0x7 (Repetition, APT, Markov enabled).</td></tr>
+</table>
+<h3 id="HEALTH_TEST_WINDOW_SIZE">HEALTH_TEST_WINDOW_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>SIZE</td><td>RW</td><td>0x800</td><td>Number of samples per health test window. Health tests (APT, Markov) reset their counters every WINDOW_SIZE samples to provide continuous monitoring. Default=2048 samples. Valid range: 256-8192. Smaller windows (256-1024) provide faster failure detection but may increase false positives. Larger windows (4096-8192) reduce noise but delay failure detection. NIST SP 800-90B recommends 512-2048 for typical entropy sources.</td></tr>
+</table>
+<h3 id="MARKOV_TEST_PROB_THRESHOLDS">MARKOV_TEST_PROB_THRESHOLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>PROB_10_THRESHOLD</td><td>RW</td><td>0x64</td><td>Low transition count threshold (1-&gt;0 transitions). Test fails if transition count falls below this value. Detects stuck-at or severely degraded noise (near-zero transitions). Default=100 (5% of window=2048).</td></tr>
+<tr><td>15:0</td><td>PROB_01_THRESHOLD</td><td>RW</td><td>0x4B0</td><td>High transition count threshold (0-&gt;1 transitions). Test fails if transition count exceeds this value. For window_size=2048 with good entropy, expect ~1024 transitions. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192.</td></tr>
+</table>
+<h3 id="HEALTH_TEST_STATUS">HEALTH_TEST_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>HEALTH_STATUS</td><td>RW</td><td>0x0</td><td>Health test status bits. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="REPETITION_TEST_COUNT">REPETITION_TEST_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>REPETITION_COUNT</td><td>R</td><td>0x0</td><td>Current count of consecutive identical values observed in the 32-bit entropy stream. Increments on each match, resets to 0 on mismatch. Read this register to monitor real-time repetition behavior. Compare to HEALTH_TEST_CTRL.REPETITION_LIMIT (default 15). If count reaches limit, test fails and INTR_STATUS.HEALTH_TEST_FAILED is set. Widened to 16-bit to support full counter range without wrapping.</td></tr>
+</table>
+<h3 id="APT_PATTERN_COUNT_1BIT">APT_PATTERN_COUNT_1BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:20</td><td>SAMPLES_PROCESSED</td><td>R</td><td>0x0</td><td>Number of 1-bit samples processed in current window (0-512). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 512.</td></tr>
+<tr><td>19:16</td><td>TARGET_PATTERN</td><td>R</td><td>0x0</td><td>Current 1-bit target pattern being tracked (0 or 1). Hardware automatically selects the most common pattern. Read to identify which bit value is dominant.</td></tr>
+<tr><td>15:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Current count of the most frequently occurring 1-bit pattern in the sliding 512-sample window. For good entropy, expect ~256 (50% of 512). Values &gt;280 indicate potential bias. Compare to APT_PROPORTION_1BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.</td></tr>
+</table>
+<h3 id="APT_PATTERN_COUNT_2BIT">APT_PATTERN_COUNT_2BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:20</td><td>SAMPLES_PROCESSED</td><td>R</td><td>0x0</td><td>Number of 2-bit samples processed in current window (0-256). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 256.</td></tr>
+<tr><td>19:16</td><td>TARGET_PATTERN</td><td>R</td><td>0x0</td><td>Current 2-bit target pattern being tracked (0b00, 0b01, 0b10, or 0b11). Hardware automatically selects the most common pattern. Read to identify which 2-bit value is dominant.</td></tr>
+<tr><td>15:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Current count of the most frequently occurring 2-bit pattern in the sliding 256-sample window. For good entropy, expect ~64 (25% of 256). Values &gt;75 indicate potential bias. Compare to APT_PROPORTION_2BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.</td></tr>
+</table>
+<h3 id="APT_PATTERN_COUNT_3BIT">APT_PATTERN_COUNT_3BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:20</td><td>SAMPLES_PROCESSED</td><td>R</td><td>0x0</td><td>Number of 3-bit samples processed in current window (0-170). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 170.</td></tr>
+<tr><td>19:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13:10</td><td>TARGET_PATTERN</td><td>R</td><td>0x0</td><td>Current 3-bit target pattern being tracked (0b000 through 0b111). Hardware automatically selects the most common pattern. Read to identify which 3-bit value is dominant.</td></tr>
+<tr><td>9:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Current count of the most frequently occurring 3-bit pattern in the sliding 170-sample window. For good entropy, expect ~21 (12.5% of 170). Values &gt;28 indicate potential bias. Compare to APT_PROPORTION_3BIT.LIMIT. Updates continuously as window slides.</td></tr>
+</table>
+<h3 id="APT_PATTERN_COUNT_4BIT">APT_PATTERN_COUNT_4BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:20</td><td>SAMPLES_PROCESSED</td><td>R</td><td>0x0</td><td>Number of 4-bit samples processed in current window (0-128). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 128.</td></tr>
+<tr><td>19:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13:10</td><td>TARGET_PATTERN</td><td>R</td><td>0x0</td><td>Current 4-bit target pattern being tracked (0x0 through 0xF). Hardware automatically selects the most common pattern. Read to identify which 4-bit value is dominant.</td></tr>
+<tr><td>9:0</td><td>PATTERN_COUNT</td><td>R</td><td>0x0</td><td>Current count of the most frequently occurring 4-bit pattern in the sliding 128-sample window. For good entropy, expect ~8 (6.25% of 128). Values &gt;12 indicate potential bias. Compare to APT_PROPORTION_4BIT.LIMIT. Updates continuously as window slides.</td></tr>
+</table>
+<h3 id="APT_PROPORTION_1BIT">APT_PROPORTION_1BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LIMIT</td><td>RW</td><td>0x4B0</td><td>APT high count threshold. Test fails if count of ones exceeds this value. For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192. Both 8-bit and 32-bit health test instances use the same threshold value.</td></tr>
+</table>
+<h3 id="APT_PROPORTION_2BIT">APT_PROPORTION_2BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>LIMIT</td><td>RW</td><td>0x80</td><td>APT proportion threshold for 2-bit samples. Maximum allowed count of most common 2-bit pattern in a 256-sample window. For unbiased source, expect ~64 (25%). Default=128 allows up to 50%. Reduce to ~75-85 to detect 2-bit pattern bias. Test fails if pattern count exceeds this limit.</td></tr>
+</table>
+<h3 id="APT_PROPORTION_3BIT">APT_PROPORTION_3BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>LIMIT</td><td>RW</td><td>0x40</td><td>APT proportion threshold for 3-bit samples. Maximum allowed count of most common 3-bit pattern in a 170-sample window. For unbiased source, expect ~21 (12.5%). Default=64 allows up to 38%. Reduce to ~28-32 to detect 3-bit pattern bias. Test fails if pattern count exceeds this limit.</td></tr>
+</table>
+<h3 id="APT_PROPORTION_4BIT">APT_PROPORTION_4BIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>LIMIT</td><td>RW</td><td>0x20</td><td>APT proportion threshold for 4-bit samples. Maximum allowed count of most common 4-bit pattern in a 128-sample window. For unbiased source, expect ~8 (6.25%). Default=32 allows up to 25%. Reduce to ~12-15 to detect 4-bit pattern bias. Test fails if pattern count exceeds this limit.</td></tr>
+</table>
+<h3 id="APT_PROPORTION_LO">APT_PROPORTION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LIMIT</td><td>RW</td><td>0x350</td><td>APT low count threshold. Test fails if the minimum per-bit-lane ones count falls below this value at window wrap. Set to 0 to disable the low-side test. 16-bit width supports window sizes up to 8192.</td></tr>
+</table>
+<h3 id="MARKOV_TEST_COUNTS_0">MARKOV_TEST_COUNTS_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>COUNT_10</td><td>R</td><td>0x0</td><td>Count of 1-&gt;0 transitions.</td></tr>
+<tr><td>15:0</td><td>COUNT_01</td><td>R</td><td>0x0</td><td>Count of 0-&gt;1 transitions.</td></tr>
+</table>
+<h3 id="MARKOV_TEST_COUNTS_1">MARKOV_TEST_COUNTS_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>COUNT_11</td><td>R</td><td>0x0</td><td>Count of 1-&gt;1 transitions.</td></tr>
+<tr><td>15:0</td><td>COUNT_00</td><td>R</td><td>0x0</td><td>Count of 0-&gt;0 transitions.</td></tr>
+</table>
+<h3 id="MARKOV_TEST_PROBABILITIES">MARKOV_TEST_PROBABILITIES</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>PROB_11</td><td>R</td><td>0x0</td><td>Unused - not tracked by OpenTitan Markov test. Always reads 0.</td></tr>
+<tr><td>23:16</td><td>PROB_00</td><td>R</td><td>0x0</td><td>Unused - not tracked by OpenTitan Markov test. Always reads 0.</td></tr>
+<tr><td>15:8</td><td>PROB_10</td><td>R</td><td>0x0</td><td>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_10 for raw transition count.</td></tr>
+<tr><td>7:0</td><td>PROB_01</td><td>R</td><td>0x0</td><td>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_01 for raw transition count.</td></tr>
+</table>
+<h3 id="RING_OSC_ENABLE">RING_OSC_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_ENABLE</td><td>RW</td><td>0xFFF</td><td>Enable for shared sampling ring oscillator (12 bits, one per generator [23:12]). Shared RO (109 stages) is enabled if ANY bit is set (OR-based control). Setting a bit to 0 disables that generator&#x27;s use of the shared RO (must use external clock via RING_OSC_CTRL.SAMPLE_CLK_SELECT). All enabled by default (0xFFF). Note: This is not 12 separate ROs, but per-generator enable bits for the single shared RO.</td></tr>
+<tr><td>11:0</td><td>ENABLE</td><td>RW</td><td>0xFFF</td><td>Enable for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to enable oscillator, 0 to disable. Disabling stops entropy generation from that generator. RO lengths: Gen0=5, Gen1=7, Gen2=11, Gen3=13, Gen4=17, Gen5=19, Gen6=6, Gen7=8, Gen8=12, Gen9=14, Gen10=18, Gen11=20 stages. All enabled by default (0xFFF).</td></tr>
+</table>
+<h3 id="RING_OSC_TUNE">RING_OSC_TUNE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Detune control for shared sampling ring oscillator (12 bits, one per generator [23:12]). Shared RO detunes if ANY bit is set (OR-based control). Detuning changes RO from 109-&gt;101 stages, increasing frequency from 264 MHz to 285 MHz (~8% increase). Used to adjust sampling frequency ratio when per-generator health tests indicate issues. Always manual control, independent of CTRL.AUTOTUNE_ENABLE. Default=0x0 (shared RO at normal 109-stage frequency).</td></tr>
+<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Detune control for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to detune (increase frequency by selecting shorter tap point in RO chain). Frequency increase: ~40-67% depending on RO length. Example: Gen0 (5-&gt;3 stages) increases from 2.88 GHz to 4.80 GHz. Used for manual tuning when CTRL.AUTOTUNE_ENABLE=0, or automatically set by hardware when AUTOTUNE_ENABLE=1 and health test fails. Default=0x0 (all ROs at normal frequency).</td></tr>
+</table>
+<h3 id="RING_OSC_CTRL">RING_OSC_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:0</td><td>SAMPLE_CLK_SELECT</td><td>RW</td><td>0xFFF</td><td>Select sample clock source for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to use shared internal sampling ring oscillator (109 stages, 264 MHz), set to 0 to use external sampling clock input (rosc_sample_clk_i port, typically 400 MHz). Shared RO provides area/power savings and consistent sampling across generators. External clock useful for characterization and debug. Each generator&#x27;s clock is further divided by GENERATOR_*_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE (div1 to div32). Default=0xFFF (all generators use internal shared RO).</td></tr>
+</table>
+<h3 id="DECORRELATOR_CTRL">DECORRELATOR_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>SAMPLE_CLK_DIV</td><td>RW</td><td>0x3F</td><td>Sample Clock Divider for decorrelator shift registers. Specifies clock cycles between entropy byte captures. Actual division = value + 1. Examples: 63-&gt;div64 (default), 7-&gt;div8 (bypass mode), 127-&gt;div128 (slow). This controls the byte capture rate from each generator&#x27;s decorrelator. Higher values increase decorrelation but reduce throughput. Lower values capture more raw bits. Applies to all 12 generators. Default=63 (div64, ~4 kHz byte rate per generator at 264 MHz sampling).</td></tr>
+<tr><td>11:0</td><td>BYPASS</td><td>RW</td><td>0x0</td><td>Decorrelator bypass for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to bypass LFSR decorrelator and capture raw noise bits directly. When bypassed, feedback loop is broken and shift register captures raw entropy stream. Useful for raw entropy analysis and NIST test suite validation. Bypass mode recommendation: set SAMPLE_CLK_DIV=7 (div8) to capture one byte every 8 cycles (all raw bits). Normal mode: keep default SAMPLE_CLK_DIV=63 (div64) for LFSR decorrelation. Default=0x0 (all decorrelators enabled).</td></tr>
+</table>
+<h3 id="DECORRELATOR_MASK">DECORRELATOR_MASK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ENTROPY_BYTE_MASK</td><td>RW</td><td>0xFF</td><td>-</td></tr>
+</table>
+<h3 id="STARTUP_CTRL">STARTUP_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>DELAY_CYCLES</td><td>RW</td><td>0x0</td><td>Startup delay in system clock cycles after power-on reset before entropy collection begins. A 16-bit countdown timer is loaded with this value on reset and decrements each cycle. When counter reaches 0, entropy collection activates. GATED (blocked until delay expires): (1) FIFO writes - no entropy data pushed to collection FIFO, (2) Health test processing - counters frozen, no samples processed, (3) External entropy valid signal (entropy_stream_vld_o) - remains low, (4) Downsample counter - does not advance. NOT GATED (continues running during delay): (1) Ring oscillators - all 12 noise ROs and shared sampling RO oscillate immediately, (2) Entropy generation - raw bits produced from metastable sampling, (3) Decorrelators - LFSR processing continues internally, (4) BIW extractor - compression logic remains active, (5) Synchronizers - clock domain crossing continues. Purpose: Allow ROs to reach thermal/electrical steady-state (frequency settling, jitter stabilization, bias settling, metastability equilibrium). Early transient samples are discarded. Recommended values: 1000-10000 cycles (1-10 uss at 1 GHz) for standard startup, 10000-100000 cycles (10-100 uss at 1 GHz) for high-assurance applications. Set to 0 to disable delay (use with caution - initial entropy may have reduced quality). Default=0 (no startup delay).</td></tr>
+</table>
+<h3 id="GENERATOR_0_HEALTH_STATUS">GENERATOR_0_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 0 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_1_HEALTH_STATUS">GENERATOR_1_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 1 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_2_HEALTH_STATUS">GENERATOR_2_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 2 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_3_HEALTH_STATUS">GENERATOR_3_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 3 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_4_HEALTH_STATUS">GENERATOR_4_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 4 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_5_HEALTH_STATUS">GENERATOR_5_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 5 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_6_HEALTH_STATUS">GENERATOR_6_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 6 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_7_HEALTH_STATUS">GENERATOR_7_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 7 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_8_HEALTH_STATUS">GENERATOR_8_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 8 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_9_HEALTH_STATUS">GENERATOR_9_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 9 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_10_HEALTH_STATUS">GENERATOR_10_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 10 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_11_HEALTH_STATUS">GENERATOR_11_HEALTH_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 11 health test status. Latches on failure, write 1 to clear.</td></tr>
+</table>
+<h3 id="GENERATOR_0_SAMPLE_CLK_CONFIG">GENERATOR_0_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Sample clock division factor for generator 0. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 21.8x).</td></tr>
+</table>
+<h3 id="GENERATOR_1_SAMPLE_CLK_CONFIG">GENERATOR_1_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Sample clock division factor for generator 1. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 15.6x).</td></tr>
+</table>
+<h3 id="GENERATOR_2_SAMPLE_CLK_CONFIG">GENERATOR_2_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Sample clock division factor for generator 2. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 19.8x).</td></tr>
+</table>
+<h3 id="GENERATOR_3_SAMPLE_CLK_CONFIG">GENERATOR_3_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Sample clock division factor for generator 3. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 16.8x).</td></tr>
+</table>
+<h3 id="GENERATOR_4_SAMPLE_CLK_CONFIG">GENERATOR_4_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Sample clock division factor for generator 4. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 25.6x).</td></tr>
+</table>
+<h3 id="GENERATOR_5_SAMPLE_CLK_CONFIG">GENERATOR_5_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Sample clock division factor for generator 5. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 22.8x).</td></tr>
+</table>
+<h3 id="GENERATOR_6_SAMPLE_CLK_CONFIG">GENERATOR_6_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Sample clock division factor for generator 6. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 18.2x).</td></tr>
+</table>
+<h3 id="GENERATOR_7_SAMPLE_CLK_CONFIG">GENERATOR_7_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x0</td><td>Sample clock division factor for generator 7. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 13.6x).</td></tr>
+</table>
+<h3 id="GENERATOR_8_SAMPLE_CLK_CONFIG">GENERATOR_8_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Sample clock division factor for generator 8. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 18.2x).</td></tr>
+</table>
+<h3 id="GENERATOR_9_SAMPLE_CLK_CONFIG">GENERATOR_9_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x1</td><td>Sample clock division factor for generator 9. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 15.6x).</td></tr>
+</table>
+<h3 id="GENERATOR_10_SAMPLE_CLK_CONFIG">GENERATOR_10_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Sample clock division factor for generator 10. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 24.4x).</td></tr>
+</table>
+<h3 id="GENERATOR_11_SAMPLE_CLK_CONFIG">GENERATOR_11_SAMPLE_CLK_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>SAMPLE_CLK_DIVIDE</td><td>RW</td><td>0x2</td><td>Sample clock division factor for generator 11. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 21.8x).</td></tr>
+</table>
+<h3 id="HT_WATERMARK_NUM">HT_WATERMARK_NUM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>WATERMARK_NUM</td><td>RW</td><td>0x0</td><td>Watermark test selector</td></tr>
+</table>
+<h3 id="HT_WATERMARK">HT_WATERMARK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>WATERMARK_VALUE</td><td>R</td><td>0x0</td><td>Current watermark value for selected test</td></tr>
+</table>
+<h3 id="REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total repetition test failures</td></tr>
+</table>
+<h3 id="APT_HI_TOTAL_FAILS">APT_HI_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total APT high test failures</td></tr>
+</table>
+<h3 id="APT_LO_TOTAL_FAILS">APT_LO_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total APT low test failures</td></tr>
+</table>
+<h3 id="MARKOV_HI_TOTAL_FAILS">MARKOV_HI_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total Markov high test failures</td></tr>
+</table>
+<h3 id="MARKOV_LO_TOTAL_FAILS">MARKOV_LO_TOTAL_FAILS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FAIL_COUNT</td><td>R</td><td>0x0</td><td>Total Markov low test failures</td></tr>
+</table>
+<h3 id="ALERT_SUMMARY_FAIL_COUNTS">ALERT_SUMMARY_FAIL_COUNTS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>ANY_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Number of windows with any failure</td></tr>
+</table>
+<h3 id="ALERT_FAIL_COUNTS">ALERT_FAIL_COUNTS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:16</td><td>REPCNT_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Repetition test alert failures (4-bit, saturates at 15)</td></tr>
+<tr><td>15:12</td><td>MARKOV_HI_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Markov high test alert failures (4-bit, saturates at 15)</td></tr>
+<tr><td>11:8</td><td>MARKOV_LO_FAIL_COUNT</td><td>R</td><td>0x0</td><td>Markov low test alert failures (4-bit, saturates at 15)</td></tr>
+<tr><td>7:4</td><td>APT_HI_FAIL_COUNT</td><td>R</td><td>0x0</td><td>APT high test alert failures (4-bit, saturates at 15)</td></tr>
+<tr><td>3:0</td><td>APT_LO_FAIL_COUNT</td><td>R</td><td>0x0</td><td>APT low test alert failures (4-bit, saturates at 15)</td></tr>
+</table>
+</div>

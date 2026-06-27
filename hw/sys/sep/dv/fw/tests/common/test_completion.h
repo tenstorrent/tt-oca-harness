@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // Test completion protocol for SEP firmware tests.
 //
 // This header is intended for C/C++ only (do not include from assembly).
