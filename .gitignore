@@ -9,6 +9,39 @@ nonfree/
 # Transient per-block build outputs.
 **/build/
 
-# Generated register HTML docs are transient PeakRDL viewer output.
+# Legacy generated register markdown is not part of the current doc flow.
+**/regs/gen/adoc/**/*.md
+**/regs/gen/adoc/*.md
+
+# Generated register HTML docs: track the compact single-file fragments used by
+# Antora, but keep the old PeakRDL mini-site layout (`index.html` + `content/`)
+# ignored/removed.
 **/regs/gen/html/**
+!**/regs/gen/html/
+!**/regs/gen/html/*.html
+!**/regs/gen/html/blocks/
+!**/regs/gen/html/blocks/*.html
+**/regs/gen/html/index.html
+**/regs/gen/html/blocks/index.html
+**/regs/gen/html/**/content/**
+
+# Documentation builds: staged Antora module sources and rendered output. Product
+# builds stage pages/partials/images from product src/meta trees and the hw tree
+# (see doc/stage-docs.sh); source of truth stays outside staged module output.
+doc/*/_build/
+doc/*/dist/
+doc/*/assets/*
+doc/*/src/assets
+!doc/trm/assets/
+!doc/trm/assets/.gitignore
+!doc/trm/assets/*.png
+!doc/integrator/assets/
+!doc/integrator/assets/*.png
+doc/*/modules/ROOT/pages/
+doc/*/modules/ROOT/partials/hw/
+doc/*/modules/ROOT/assets/
+doc/*/modules/smc/
+doc/*/modules/sep/
+doc/*/modules/dtp/
+doc/*/modules/ip/
 

@@ -1,0 +1,18 @@
+--- a/hw/ip/prim/rtl/prim_subreg_pkg.sv
++++ b/hw/ip/prim/rtl/prim_subreg_pkg.sv
+@@ -2,6 +2,9 @@
+ // Licensed under the Apache License, Version 2.0, see LICENSE for details.
+ // SPDX-License-Identifier: Apache-2.0
+ 
++`ifndef PRIM_SUBREG_PKG_SV
++`define PRIM_SUBREG_PKG_SV
++
+ package prim_subreg_pkg;
+ 
+   // Register access specifier
+@@ -15,3 +18,5 @@
+     SwAccessRC  = 3'd6  // Read to clear. Do not use, only exists for compatibility.
+   } sw_access_e;
+ endpackage
++
++`endif // PRIM_SUBREG_PKG_SV

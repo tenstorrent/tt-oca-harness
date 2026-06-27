@@ -1,0 +1,130 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[mailbox-unit-interface]]
+===== Interface
+
+The Mailbox Unit provides both struct-based and flattened AXI4-Lite
+interfaces (selectable via generation template).
+
+====== AXI4-Lite Interface
+
+[source,sourceCode,systemverilog]
+----
+input  mailbox_axil_req_t  mailbox_axi_req_i,
+output mailbox_axil_resp_t mailbox_axi_resp_o
+----
+
+====== Flattened Interface
+
+[source,sourceCode,systemverilog]
+----
+// Write Address Channel
+input  logic            awvalid_i,
+output logic            awready_o,
+input  addr_t           awaddr_i,
+input  axi_pkg::prot_t  awprot_i,
+
+// Write Data Channel
+input  logic            wvalid_i,
+output logic            wready_o,
+input  data_t           wdata_i,
+input  strb_t           wstrb_i,
+
+// Write Response Channel
+output logic            bvalid_o,
+input  logic            bready_i,
+output axi_pkg::resp_t  bresp_o,
+
+// Read Address Channel
+input  logic            arvalid_i,
+output logic            arready_o,
+input  addr_t           araddr_i,
+input  axi_pkg::prot_t  arprot_i,
+
+// Read Data Channel
+output logic            rvalid_o,
+input  logic            rready_i,
+output data_t           rdata_o,
+output axi_pkg::resp_t  rresp_o
+----
+
+.Interface Characteristics
+[width="100%",cols="30%,70%",options="header",]
+|==============================================================
+|Parameter |Value
+|Address Width |18 bits (s_axil_araddr[17:0])
+|Data Width |64 bits
+|Strobe Width |8 bits
+|Total Address Space |0x20008 bytes (up to 32 mailbox pairs)
+|Protocol |Standard AXI4-Lite with separate read/write channels
+|==============================================================
+
+====== Interrupt Outputs
+
+[source,sourceCode,systemverilog]
+----
+output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
+output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
+----
+
+.Interrupt Characteristics
+[width="100%",cols="30%,70%",options="header",]
+|=============================================================
+|Parameter |Value
+|Type |Configurable (default: level-triggered)
+|Polarity |Active high
+|Sources |Write threshold, read threshold, overflow, underflow
+|=============================================================
+
+====== Control Signals
+
+[source,sourceCode,systemverilog]
+----
+input logic clk_i,       // System clock
+input logic rst_ni,      // Active-low asynchronous reset
+input logic test_en_i    // Test enable for DFT
+----
+
+.Control Signal Descriptions
+[width="100%",cols="20%,80%",options="header",]
+|=====================================================================
+|Signal |Description
+|`clk_i` |Primary system clock for all mailbox logic and AXI interface
+|`rst_ni` |Asynchronous reset (active low), resets all mailbox state
+|`test_en_i` |Test enable for design-for-test (DFT) functionality
+|=====================================================================
+
+====== Timing Characteristics
+
+[width="100%",cols="30%,70%",options="header",]
+|========================================================
+|Parameter |Value
+|Latency |Single-cycle FIFO access (when not full/empty)
+|Throughput |One 64-bit transfer per clock cycle
+|Pipeline Depth |Configurable via MAX_TRANS (default: 32)
+|========================================================
+
+====== Error Handling
+
+[width="100%",cols="30%,70%",options="header",]
+|===================================================================
+|Error Condition |Behavior
+|Read from empty FIFO |Sets `read_error` flag, returns previous data
+|Write to full FIFO |Sets `write_error` flag, discards new data
+|Interrupt Generation |Triggered if enabled via IRQEN register
+|===================================================================
+
+====== Integration Requirements
+
+[width="100%",cols="30%,70%",options="header",]
+|=======================================================================
+|Requirement |Description
+|*Address Space* |4KB per mailbox pair; Total = 4KB × NUM_MAILBOXES × 2
+
+|*Software* |Poll STATUS or use interrupts for data availability;
+configure WIRQT/RIRQT thresholds; check ERROR register
+
+|*Hardware* |Connect interrupts to system controller; proper reset
+sequencing; single clock domain (no CDC required)
+|=======================================================================

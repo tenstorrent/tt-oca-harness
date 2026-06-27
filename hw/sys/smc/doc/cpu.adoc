@@ -1,0 +1,251 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[cpu-memory-system]]
+=== CPU & Memory System
+
+This section describes the SMC's CPU subsystem, which is based on the
+Rocket RV64GC RISC-V processor core (see:
+https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket
+Chip]). The cluster is generated using the Chipyard Rocket-chip
+generator and supports 1 to 4 processor cores, each with private L1
+cache and access to a shared local SRAM.
+
+Key features include:
+
+* Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
+* Core-local L1 instruction and data caches, each configurable in size
+and associativity
+* Shared local SRAM/Scratchpad and Boot ROM
+* Multi-core system management, deterministic performance for embedded
+management workloads
+* Full support for RISC-V privilege levels (Machine, Supervisor, User)
+
+==== Processor Core Overview
+
+The table below summarizes the key features of the Rocket CPU core, and
+its cache hierarchy
+
+[cols=",",options="header",]
+|========================================================
+|Attribute |Description
+|Cores |1–4, Rocket RV64GC
+|ISA |RV64GC (I, M, A, F, D, C extensions)
+|Microarchitecture |In-order, 5-stage pipeline
+|Privilege Levels |M/S/U
+|Phys. Address |56 bits
+|Reset Vector |Per-core, independently configurable (56b)
+|========================================================
+
+==== Cache and Memory Hierarchy
+
+[cols="25%,15%,35%,25%",options="header",]
+|=======================================================================
+|Component |Default Size |Notes |Configurability
+|L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Write-through, Parity
+|icache_tag/data_cfg
+
+|L1 D-Cache per core |4 KiB (32 sets × 2 ways) |Write-back, SECDED ECC
+|dcache_tag/data_cfg
+
+|Local SRAM/Scratchpad |1 MiB (32 banks) |Deterministic access, SECDED ECC, bank power gating
+|scratch_ram_cfg
+
+|Boot ROM |128 KiB |Read-only, stores boot firmware |rom_cfg
+|=======================================================================
+
+All memory components (SRAM, caches, ROM) are configurable via top-level
+parameters. The scratchpad SRAM allows deterministic accesses,
+independent of cache state, and supports per-bank sizing and power
+management.
+
+Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
+At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see <<fabric>>).
+
+==== Reset, Boot, and Initialization
+
+Each CPU core supports an independent reset mechanism and a programmable
+reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
+for cores N=0 to 3. The design provides separate reset controls for the
+uncore logic and debug subsystems, enabling flexible platform management
+and debug flows.
+
+SRAM initialization is handled automatically by hardware on reset,
+ensuring memory consistency and error-free operation at startup; this
+feature can be disabled using disable_sram_auto_init_i to support
+specialized or custom boot procedures. The completion of SRAM
+initialization is reported through the init_mem_done_o status signal,
+allowing software to reliably detect when memory is ready for use.
+
+==== Memory Repair
+
+The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
+support to address manufacturing defects in SRAM arrays. Repair uses redundant
+memory elements configured with data stored in eFuse memory, applied during the
+boot sequence.
+
+Memory repair executes automatically after eFuse sensing completes and before
+MBIST operations. The process reads repair data from the eFuse BIRA register
+(16-kilobit `repair_data` field) and configures redundant memory elements,
+ensuring SRAM arrays are functional before the CPU cluster begins execution.
+
+**Control Mechanisms:**
+
+* `fuse_sense_done_o`: eFuse controller output indicating sensing completion.
+  External DFT logic monitors this signal to trigger repair operations.
+
+* `skip_mem_repair_o`: Reset unit output that bypasses repair when asserted,
+  activating during FLR operations or when the `BYPASS_SRAM_REPAIR` strap is set.
+
+* `BYPASS_SRAM_REPAIR` strap (GPIO pin 13): Hardware-level bypass control that
+  bypasses repair logic when asserted, assuming SRAM arrays are defect-free.
+
+**Status Reporting:**
+
+Repair completion and success are reported through DFT Control Status registers
+(`DFX_CTRL_STATUS_SOC` at `0xC000F800` and `DFX_CTRL_STATUS_SEP_SMC` at
+`0xC000F80C`). The `mem_repair_done` bit indicates completion, while
+`mem_repair_success` indicates successful repair. The SMC ROM firmware monitors
+these bits during initialization to verify repair completion before proceeding
+with boot operations.
+
+**Boot Sequence Integration:**
+
+Memory repair integrates into the boot sequence as follows: after power-on reset
+deasserts and eFuse sensing begins, `fuse_sense_done_o` assertion triggers
+repair operations. Repair data is read from eFuse shadow registers and applied
+to SRAM, with completion reported through DFT Control Status registers. MBIST
+operations begin after repair completes (or is bypassed), and the CPU cluster
+reset releases after both repair and MBIST complete. The repair process must
+complete successfully before the CPU cluster can safely access SRAM arrays.
+
+During FLR operations, repair is automatically bypassed via `skip_mem_repair_o`
+to enable rapid reset sequences. Normal cold reset sequences always execute
+repair unless explicitly bypassed via strap configuration.
+
+==== System Interfaces
+
+[cols=",,",options="header",]
+|==============================================
+|Interface |Protocol |Description
+|MMIO |AXI4-Lite |56b addressing, low-latency
+|L2 Frontend |AXI4 |For shared memory/coherency
+|Debug |APB, JTAG |Non-intrusive, per-core
+|==============================================
+
+==== Cluster Boundary Isolation
+
+The cluster is reset independently of the surrounding SMC fabric.
+If the cluster were reset while a transaction on one of its AXI ports
+was still in flight, the fabric on the other side would be left
+ waiting on a response that never returns, hanging the bus, and could
+sample boundary signals while they glitch through reset. To avoid this, each
+AXI port is wrapped in an `axi_isolate` block that drains the outstanding
+transactions and holds the boundary at safe values before the reset is allowed
+to take effect.
+
+Two instances wrap the AXI ports listed above, each sized for up to four
+outstanding transactions:
+
+* the *L2 frontend* slave port, which blocks new transactions rather than
+  terminating them, and
+* the *MMIO* master port, which terminates outstanding transactions with an
+  error response to keep reset-time X values from propagating into the fabric.
+
+The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
+`wdt_reset`) are clamped to constants over the same window so they cannot leak
+glitches either. The boundary also self-isolates on cold boot, releasing only
+once SRAM initialization completes and the cores and uncore are out of reset.
+
+===== Drain Handshake
+
+Isolation is coordinated with the control logic
+(`smc_cpu_ctrl_wrap`) through two signals:
+
+* `isolate_req_i` — asserted by the control logic whenever a software reset of
+  the cluster is pending. The control logic withholds the reset itself until
+  the cluster reports that it is safe to apply.
+* `drained_o` — asserted once both `axi_isolate` instances have drained and
+  isolated their ports, telling the control logic the withheld reset may now be
+  released.
+
+===== Reset-Domain Crossing
+
+The flops driving the isolate-control logic are held by the cluster's
+uncore/core reset, while the flops inside `axi_isolate` are held by the Primary
+Reset (see <<clock-and-reset-management,Clock and Reset Management>>). The
+uncore/core reset is driven from two sources:
+
+* a Warm Reset from a watchdog timeout, which is *asynchronous* to the isolate
+  logic, and
+* a CPU CSR write (the reset-control register in `smc_cpu_ctrl_wrap`), which is
+  *synchronous*.
+
+Because the two sets of flops sit in different reset domains, the asynchronous
+warm-reset path is a reset-domain crossing into `axi_isolate`. This is
+acceptable: only the watchdog asserts the warm reset asynchronously, and a
+watchdog timeout is followed by a cold reset, so the
+brief crossing window has no functional consequence. The CSR path is
+synchronous and crosses no domains.
+
+==== Interrupt and Control Integration
+
+All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
+units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
+documentation; and BEU NMI delivery—is documented in <<interrupts,Interrupts>>.
+
+==== Watchdog Timer System
+
+Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
+0x400), enabling per-core fault detection and recovery without impacting
+other cores. Base addresses and interrupt-related context for the WDT are
+summarized in <<interrupts,Interrupts>>.
+
+Timeouts are configurable to suit different workloads, and staged
+warnings (followed by reset) allow software intervention before hardware
+reset is triggered.
+
+Watchdog monitoring can be disabled during debugging to prevent false
+triggers, supporting uninterrupted development and troubleshooting.
+
+==== Advanced Bus Infrastructure Monitoring and Error Management
+
+Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
+transactions, allowing the system to quickly detect and respond to
+infrastructure faults that could impact system management.
+
+AXI error capture detects and logs decode, slave, and timeout errors so
+management software has clear insight into infrastructure health and can
+tailor its response.
+
+Classifying errors lets software address each type effectively: decode
+errors may need reconfiguration; timeout errors may require isolating
+faults and recovery procedures.
+
+Error address and transaction capture aid debugging, preserving context
+like addresses and data to support thorough fault analysis and recovery
+coordination.
+
+==== Debug
+
+Debugging is facilitated by a dedicated APB interface and JTAG, enabling
+per-core access to registers, memory, and both hardware and software
+breakpoints. These debug capabilities function independently of
+functional resets and allow override of reset vectors to support
+firmware development and diagnostics.
+
+==== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/debug_module.html[]
+include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
+include::partial$smc/regs/gen/html/blocks/wdt.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/debug_module.adoc[]
+include::../regs/gen/adoc/blocks/bus_error_unit.adoc[]
+include::../regs/gen/adoc/blocks/wdt.adoc[]
+endif::backend-pdf[]

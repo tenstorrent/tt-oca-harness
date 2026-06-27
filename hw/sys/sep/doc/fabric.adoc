@@ -1,0 +1,227 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[sep-interconnect]]
+=== SEP Interconnect
+
+The interconnect of SEP components and subsystems is done with a
+hierarchical AXI4 crossbar fabric. Masters drive traffic onto the
+interconnect fabric and receive responses from the addressed slave.
+Slave components are directly connected to the AXI4 fabric or via a
+bridging shim. The shim translates either AXI4-lite or the legacy
+Tilelink TL-UL used in OpenTitan. The goal is to eventually convert all
+TL-UL slaves into AXI4-lite slaves.
+
+AXI4-lite slave bridges will need to perform the following tasks in
+order to mate with AXI4:
+
+* Bursts are not supported: convert burst transactions to single
+transactions
+* Write strobe (WSTRB) for partial write is not supported: TBD how to
+handle
+* Transaction IDs (AxID) handling
+
+[[top-level-axi4]]
+==== Top Level AXI4
+
+*C* = Connected, *N/C* = Not Connected.
+
+The table below reflects the generated crossbar connectivity defined in
+`meta/crossbars/configs/sep_local_axi_xbar.yaml`, along with the dedicated
+Boot ROM path that lies outside the crossbar. The crossbar has five
+initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
+and eight targets.
+
+A few access paths are intentionally outside this crossbar:
+
+* *Boot ROM* is accessed by the CPU IFI and LSU through a dedicated
+point-to-point path, not through this crossbar.
+* The CPU's own *ICCM/DCCM* are tightly coupled to the core and are not
+reached through this crossbar by the IFI/LSU. The *CPU TCM* target below
+is a backdoor AXI path into the ICCM/DCCM, used by the DMA engine to
+preload code/data.
+* The _Alarm AGP is a feature deferred to the next generation_ and is
+not present.
+
+The *System Periph* target aggregates the System Bus interface, the dual
+scratch register bank, the AP/STEE remap regions, and the outbound
+routing to SMC/SMN resources.
+
+[%autowidth,cols="<,^,^,^,^,^,^,^,^,^",frame=all,grid=all]
+|===
+.2+h|Masters 8+^h|Crossbar ^h|Dedicated Path
+h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Crypto Periph h|System Periph h|IO Periph h|AXI Extension h|Boot ROM
+
+|CPU IFI |N/C |C |N/C |N/C |N/C |N/C |N/C |N/C |C
+|CPU LSU |N/C |C |C |C |C |C |C |C |C
+|CPU DBG |N/C |C |C |C |C |C |C |C |N/C
+|DMA |C |C |N/C |C |C |C |C |C |N/C
+|System I/F |N/C |C |C |C |C |N/C |C |C |N/C
+|===
+
+[[subsystem-external-interfaces]]
+==== Subsystem External Interfaces
+
+* Memory interfaces: BL0 ROM, DCCM, ICCM, Scratch SRAM, KM SRAM, KM ROM,
+OTBN IMEM, OTBN DMEM
+* Fuse controller interface
+* Entropy source interface
+* JTAG interfaces
+* _RAS Interface - Alarm Processor is deferred to next generation_
+
+[[local-and-external-axi4-traffic-remapping]]
+==== Local and External AXI4 Traffic Remapping
+
+The figure below illustrates the AXI4 traffic management performed by
+the Systems Peripheral block. The AXI4 slave port is driven by one of
+the local masters from the SEP i.e. the CPU or the DMA controller.
+Traffic may be local to the SEP or outbound to external resources either
+within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
+the chiplet or remote chiplets will bridge to the system NOC also known
+as the SMN.
+
+[[transaction-routing]]
+===== Transaction Routing
+
+Local resources can be addressed by SEP CPU direct internal addresses
+or by the SEP CPU local-alias view. Local resources include CSRs in SEP
+components and subsystems, SRAM, and the AP- and STEE-controlled
+remappers. The local-alias view is an internal CPU-side naming
+convention: for example, addresses in the high alias range can be
+translated back to the direct internal `0x1000_0000` and `0x2000_0000`
+regions. This high local-alias window has a fixed SEP-local size of
+768 MiB.
+
+External masters use chiplet-global addresses. The `SEP_GLOBAL_BASE_ADDR`
+and `SEP_REGION_SIZE` CSRs define the global SEP aperture used by the
+SMU crossbar and by SEP inbound global-to-local remap. The current `SEP_REGION_SIZE` reset is `0x0100_0000` (16 MiB); firmware may
+program a larger or different aperture during early boot to match the
+chiplet address assignment.
+
+Neighboring SMC resources are accessed through the SMC global aperture
+programmed by SMC firmware and supplied to SEP/SMU integration logic.
+That aperture is independent from the SEP CPU local-alias range.
+
+As stated earlier, any transaction which is not routed to local SEP
+resources or to neighboring SMC resources is directly routed out to the
+SMN system NoC.
+
+SEP’s outbound traffic serves to:
+
+1.  Provide security services and
+2.  extend its protection to the reset of the system
+
+For 1 the outbound traffic traverses the AP controlled remappers and for
+2 the traffic goes directly to the SMN system fabric. SEP differentiates
+between the two scenarios 1 and 2 and enforces that the correct path is
+used.
+
+When SEP accesses shared resources such as shared memory for example,
+the traffic goes through the AP or STEE controlled remappers to get the
+address translation service. These remappers are controlled by external
+resources such as Ascalon AP. The inbound traffic filter ensures that
+only STEE has access to the STEE address remapper.
+
+When SEP accesses external private memory or the system’s memory mapped
+IO, the SEP traffic is directly routed to SMN.
+
+SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
+uses SEP’s unique source ID. Traffic that traverses through the AP
+controlled remapper uses the regular source ID termed ``others''.
+Traffic then traverses the outbound filter after traversing the
+remapper. SEP works with M-mode software to program the outbound filters
+so that traffic with source ID ``others'' cannot access M-mode assets.
+The outbound filter enables filtering based on address, NS and source
+ID.
+
+The SEP’s inbound traffic filter is configured by default to block all
+traffic from entering the SEP. Only the SEP CPU can program these
+filters. Again, these filters enable filtering based on address, NS and
+source ID.
+
+[[address-remapping]]
+===== Address Remapping
+
+Sixteen remap regions are available, each supported by an address
+remapper. Remappers define the following attributes:
+
+* Input address range
+* Remapped output address offset
+* Cacheable flag
+
+The programmable remap regions accomplish several jobs. First, they
+expand local 32-bit addresses to the global 56-bit address space.
+Second, they provide software-programmed translation and cacheability
+attributes for locally initiated transactions. Out of reset, these
+programmable remap entries are invalid and therefore behave as
+transparent pass-through entries until firmware programs them.
+
+After the alias remap, traffic routing is done as follows:
+
+* External or cross-subsystem traffic reaches SEP through the global
+  aperture described by `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE`.
+  The current `SEP_REGION_SIZE` reset is `0x0100_0000` (16 MiB), and
+  firmware programs the runtime value during early boot to match the
+  chiplet map. Barrier is recommended between programming these routing
+  CSRs and issuing later MMIO accesses.
+* SEP CPU local-alias traffic is an internal CPU-side view of the SEP
+  map. It exists so software can use high alias addresses such as
+  `0xD000_0000` for resources whose direct internal addresses begin at
+  `0x1000_0000`. This high local alias span has a fixed SEP-local size
+  of 768 MiB.
+* Any transaction that doesn’t get routed to local resources is directly
+routed out to the SMN.
+
+To compute global addresses for external agents, firmware needs the
+chiplet ID or chiplet BAR for the integration. Both the chiplet ID and
+chiplet BAR are available in SMC as MMRs.
+
+SEPs outbound traffic to the main fabric serves the purposes of 1)
+providing services and 2) extending its protection to the rest of the
+system. For the former purpose, SEP’s outbound traffic goes through an
+AP-controlled remap logic. For the latter purpose, SEP’s outbound
+traffic directly goes to the NoC. SEP software shall differentiate these
+two purposes and choose/enforce the correct traffic path to be used.
+
+* When SEP accesses shared resources (e.g. shared memory) with the rest
+of the system, SEP’s traffic goes through the AP-controlled or
+STEE-controlled remap logic to get address translation. Such remap logic
+is supposed to be controlled by the rest of the system, like Ascalon.
+The inbound traffic filter ensures only STEE has access to the
+STEE-controlled remap logic.
+* When SEP accesses its external private memory or the system’s memory
+mapped IO, SEP’s traffic directly goes to the system fabric.
+
+[[mailboxes]]
+===== Mailboxes
+
+SEP uses mailboxes to communicate with the rest of the system such as AP
+cores for example. Each different agent has its own private mailbox in
+order to separate the contexts. Each mailbox resides in its own 4 kB
+address space. Each mailbox is configured according to the inbound
+traffic filter and has an inbox and outbox pair. When the inbox is
+written, an interrupt is sent to the SEP CPU to notify it of an incoming
+service request. Similarly, when the outbox is written by the SEP, an
+interrupt is sent out of the SMU to the system’s interrupt controller
+(APLIC). The outbox is only used for communication with AP cores. For
+all other resources we only use inboxes on both ends of the transaction.
+
+The SEP mailboxes have 64-bit data inputs while SEP is a 32-bit system. This means that each 64-bit input word is mapped to two 32-bit words. The SEP host can access both the low-order and high-order words.
+
+[width="100%",cols="<50%,<50%",options="header",]
+|=======================================================================
+|Mailbox Type |Description
+|ISS |Uses fabric source ID to qualify incoming transactions. Legal
+source ID is programmable, lockable and reset by SEP reset.
+
+|STEE |Relies on STEE indicator in the transactions (NS bit) to qualify
+incoming transactions.
+
+|DTEE |Reserved. Relies on the DTEE indicator in the transactions
+(confidential bit) to qualify incoming transactions.
+
+|Regular |Relies on PMA/PMP or page table for protection. No special
+action required by SEP.
+|=======================================================================
+
+image::SEP_System.png[SEP_System,scaledwidth=90.0%]

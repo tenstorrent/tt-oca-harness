@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[telemetry-receiver]]
+==== Telemetry Receiver
+
+===== Overview
+
+The Telemetry Receiver is a high-performance hardware component designed
+to decode, buffer, and process telemetry data from telemetry
+transmitters in multi-chiplet systems. The component implements a
+specialized receiver for Tenstorrent-specific telemetry message formats
+while maintaining modularity for adaptation to other telemetry protocols
+and message structures.
+
+===== Description and Features
+
+* *32-bit APB4 or AXI4-Lite Register Interface*: Standard bus interfaces
+for system integration and configuration access
+* *8-bit ATB Telemetry Interface*: High-speed telemetry data reception
+with ATB protocol compliance
+* *Configurable Circular Buffer*: Programmable buffer depth (default 8
+entries) with threshold-based monitoring
+* *Multi-Counter Message Support*: Decodes messages with probe ID and up
+to 4 counter values per message
+* *Flexible Message Format*: Modular design allows easy adaptation to
+different telemetry message formats
+* *Comprehensive Interrupt System*: Event-driven notifications for
+buffer thresholds and error conditions
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]

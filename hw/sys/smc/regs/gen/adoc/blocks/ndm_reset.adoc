@@ -1,0 +1,32 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | NDMRESET_REQUEST | R a| -
+| 0x4 | NDMRESET_PROCESS | RW a| -
+| 0x8 | NDMRESET_CLUSTER_COUNT | R a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.NDMRESET_REQUEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `ndmreset_request` | R | 0x0 a| NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.
+Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.NDMRESET_PROCESS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `ndmreset_process` | RW | 0x0 a| NDM Response Firmware writes to this field to respond to NDM reset requests.
+Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.NDMRESET_CLUSTER_COUNT Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `ndmreset_cluster_count` | R | 0x0 a| Number of NDM Clusters supported. Can be read to mask the ndmreset_request register
+|===

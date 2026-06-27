@@ -1,0 +1,12 @@
+`ifndef OCA_I3C_WRAP_RDL_DEFINED
+`define OCA_I3C_WRAP_RDL_DEFINED
+
+`include "registers.rdl"
+
+addrmap oca_i3c_wrap {
+    desc = "OCA I3C Controller wrapper (i3c-core-fork)";
+
+    I3CCSR    i3c_csr    @0x0;
+};
+
+`endif

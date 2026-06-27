@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_single_entry_test
 //
 // Engine golden path: pre-load SRAM, configure engine to feed the UART via

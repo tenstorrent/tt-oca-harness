@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_015 (V3, P2) - WDT Counter 32-bit Overflow Test
  *
@@ -18,7 +21,6 @@
  *   At count=0xFFFFFFFF: +1 = 0x00000000 (32-bit wrap, no saturation).
  *   wdog_intr_o deasserts when count < bark_thold (after wrap, 0 < 0xFFFFFFF0).
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

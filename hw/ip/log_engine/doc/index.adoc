@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[log-engine]]
+==== Log Engine
+
+===== Overview
+
+The OCA Log Engine is a DMA-based logging system that efficiently
+transfers log messages from a configured memory region to a UART
+interface. It provides a scalable solution for system-level logging with
+hardware acceleration, reducing CPU overhead for log transmission. The
+engine supports up to 16 independent log entries with fair round-robin
+arbitration, making it suitable for multi-threaded or multi-core logging
+scenarios.
+
+===== Description and Features
+
+The Log Engine features a multi-interface architecture, combining a
+32-bit AXI4-Lite register interface with both 64-bit log fetch and
+32-bit log write AXI4-Lite interfaces for efficient data movement. Its
+design scales to manage up to 16 independent log entries, each with
+flexible, configurable memory regions and 64-bit addressing.
+
+Round-robin arbitration ensures fair scheduling among logs, and hardware
+integration with the UART transmitter—including flow control—streamlines
+log data output. Error conditions in log fetch or write operations are
+tracked via a comprehensive interrupt system for robust monitoring.
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

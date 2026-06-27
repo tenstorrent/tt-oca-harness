@@ -1,0 +1,1471 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[key-manager-km-key-manager-km]]
+==== Key Manager (KM)
+
+The KM module aims to support a superset of the
+https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key
+Manager] use cases. It utilizes a small RISC-V CPU for control which
+provides flexibility to implement all currently required key management
+operations:
+
+* Derivation
+* Storage and destruction
+* Policy Checking
+* Transfer to cryptographic accelerator
+
+The CPU implementation enables future key management feature
+enhancements to be delivered with firmware. One example of this is TPM
+2.0 attestation.
+
+The OpenTitan documentation details the theory of operation for key
+derivation. To summarize, KM uses a collection of device identity and
+root key data to generate a set of keys using a derivation function.
+This data comes from the following sources:
+
+* Entropy stream from DRBG
+* Life Cycle (LC) state stored in OTP and managed by the LC controller
+* Demotion state (CSR)
+* OTP fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY
+** Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values
+* Test control signals
+* Configuration parameters e.g. version numbers
+
+The SEP cryptographic subsystem physically separates key and data
+processing facilities. The KM straddles the two domains and enforces
+separation for enhanced security. The KM can receive SEP host command
+requests via the mailbox interface. The KM firmware reads those
+requests, determines whether the actions are permitted and performs
+those in an isolated environment. The host never has direct access to
+any of the generated keys.
+
+Key material provisioned into the KPV by SEP is handled via the mailbox
+command protocol; the KM firmware writes into KPV slots on the SEP's
+behalf.
+
+KM communicates with the cryptographic accelerators (OTBN, AES, KMAC,
+HMAC, and the Adams Bridge post-quantum engine) and the SEP OTP/eFuse
+controller via a single AXI4-Lite crossbar that routes transactions to
+internal slaves and external master ports based on address decoding. The crossbar enforces address-based
+separation between internal peripherals and external engine master
+ports. All secret data such as keys are transferred over internal bus
+paths mastered by the KM CPU and are not directly accessible by any
+other external hosts. SEP host firmware communicates with the KM via
+the mailbox component. SEP host can send commands and data argument
+messages into the KM and receive response data in return. KM can also
+send unsolicited messages to the SEP host via the mailbox response
+data.
+
+Both the KM ROM and SRAM memories are protected byte-wise odd parity
+bits to detect errors. When an error is detected, IRQ is issued
+automatically and a notification is also sent to the Alarm Processor
+(AP). No attempt is made to correct errors. The SEP CPU receives the IRQ
+and can force a remedial action through a command message. If faster
+response time is required to initiate countermeasures, the SEP CPU can
+configure the AP as a delegate. The AP can automatically initiate a
+wiping action of all secret data and force a reset of the KM.
+
+image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
+
+===== Parameters
+
+[cols="<25%,<15%,<15%,<45%",options="header"]
+|===
+|Parameter |Type |Default |Description
+|`ROM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM boot ROM in bytes (16 KB).
+|`SRAM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM data SRAM in bytes (16 KB).
+|`MAILBOX_DEPTH` |`int unsigned` |16 |Minimum FIFO depth for each mailbox direction (must be a power of two).
+|`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
+|===
+
+===== Memory Map
+
+The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
+
+[cols="<25%,<25%,<50%",options="header"]
+|===
+|Address Range |Component |Description
+|`0x0000_0000` – `0x0000_3FFF` |ROM |16 KB boot ROM (read-only, parity-protected).
+|`0x0000_4000` – `0x0000_7FFF` |SRAM |16 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).
+|`0x0000_D000` – `0x0000_DFFF` |KPV |Key and Policy Vault register and key storage region.
+|`0x0000_E000` – `0x0000_EFFF` |KMCSR |Key Manager Control and Status Registers.
+|`0x0000_F000` – `0x0000_FFFF` |DRBG Sampler |DRBG random data, configuration, and status registers.
+|`0x0001_0000` – `0x0001_0FFF` |Mailbox |KM-side mailbox read/write and control registers.
+|`0x0001_1000` – `0x0001_1FFF` |OTP/eFuse |External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to `OTP_EFUSE_REMAP_BASE`.
+|`0x0001_8000` – `0x0001_CFFF` |Crypto Masters |External AXI4-Lite master ports: OTBN, AES, KMAC, HMAC, ABR (4 KB each).
+|===
+
+===== Reset Conditioning
+
+The KM exposes two independent external reset inputs that map to two
+distinct reset domains. This split allows the SEP host to recover the KM
+CPU and volatile state without disturbing non-volatile configuration or
+forcing a full power-on style reset of the subsystem.
+
+[cols="<20%,<15%,<15%,<50%",options="header"]
+|===
+|Input port |Polarity |Synchronicity |Integration tie-off (SEP)
+|`cold_rst_ni` |Active-low |Asynchronous |SEP system cold reset (`sep_reset_n`).
+|`warm_rst_ni` |Active-low |Synchronous to `clk_i` |SEP KM sub-component software-reset CSR bit (`km_sw_rst_ni`).
+|===
+
+The `km_reset_conditioner` submodule conditions these inputs and the
+KMCSR-sourced soft reset into two clean, glitch-free, active-low output
+resets:
+
+*Cold path (`rst_cold_aasd_no`)*
+
+* Source: `cold_rst_ni` only.
+* Conditioning: a single `prim_rst_sync` synchronizer providing
+asynchronous assert / synchronous deassert (AASD). The raw incoming cold
+reset is used directly — there is no pulse-stretching hold counter on the
+cold path.
+* Scope: resets the *entire* KM (all components and all reset domains).
+
+*Warm path (`rst_warm_sync_no`)*
+
+* Synchronous sources: `warm_rst_ni` (external pulse from the integrator)
+or `soft_rst_ni` (the KMCSR software-triggered reset, see below). Both are
+assumed synchronous to `clk_i`.
+* Cold coupling: `rst_cold_aasd_no` is wired as the asynchronous reset of
+the warm-path hold counter flop. A cold-reset event therefore immediately
+asserts `rst_warm_sync_no` as well, guaranteeing that all warm-reset state
+is also cleared on a cold reset. (Cold reset is deliberately kept out of
+the synchronous trigger term to avoid a CDC hazard inside the
+posedge-only counter.)
+* Pulse extension: the warm reset is held asserted for a minimum of
+`MIN_RESET_CYCLES` clock cycles (default 10) after the trigger deasserts.
+* Scope: resets the KM CPU and volatile state only — see the domain table
+below.
+
+Scan-mode multiplexers (`scan_rst_ni` / `scanmode_i`) allow the DFT
+infrastructure to override both output paths consistently. An assertion
+guarantees that the warm reset is always asserted whenever the cold reset
+is asserted.
+
+*Reset domain assignment*
+
+The two output resets are distributed across the KM components as follows:
+
+[cols="<25%,<75%",options="header"]
+|===
+|Reset domain |Components
+|Cold only (`rst_cold_aasd_no`)
+|ROM/SRAM memory interfaces and parity logic; non-volatile SRAM scrambler
+lock state (`SCRAMBLER_CTRL.lock`, `SCRAMBLER_KEY`); the SEP-facing mailbox
+FIFOs and state machines; shared mailbox
+separator/status bits; the `BOOT_STATUS.COLD_BOOT_DONE` flag.
+|Warm + cold (`rst_warm_sync_no`)
+|PicoRV32 CPU core; the KM-internal AXI4-Lite crossbar/fabric (reset to
+guarantee no in-flight transaction lingers across a warm reset — see
+below); the KMCSR warm subset (`IRQ_STATUS`/`IRQ_ENABLE`/`IRQ_SET`,
+`SOFT_RST_CODE`, `RECOVERABLE_ERR`, `SRAM_LOCK` write-lock bits,
+`SRAM_LOCK` violation bits, `SRAM_EXEC_MODE`,
+`IRQ_ENTRY_ADDR`/`IRQ_ENTRY_LOCK`, and the firmware test-bench registers);
+all DRBG sampler CSRs and datapath-control state; the KPV per-slot lock
+bits (`lock_write`, `lock_use`); and the KM-side mailbox
+write/read state machines, IRQ, control, and status fields.
+|===
+
+*Fabric quiescence across a warm reset*
+
+Because the warm reset is applied to the entire KM-internal AXI4-Lite
+crossbar in addition to the CPU, no outstanding read or write transaction
+can linger on the KM system fabric across a warm reset. In the
+PeakRDL-generated register blocks this is reinforced by the `WARM_RST_N`
+reset signal carrying `cpuif_reset`, which resets each block's AXI CPU
+interface state machine so that a partially completed transaction does not
+survive the warm reset.
+
+As discussed earlier, the KM acts as a server to the SEP host CPU and
+does not provide it with direct access to its private resources. The SEP
+CPU requests service by sending command messages to KM via the Mailbox
+component which queues them up and notifies the KM CPU.
+
+Command messages correspond to function calls in the KM CPU firmware.
+The messages encapsulate a function call identifier, a sequence number
+along with a declared number of arguments. Commands can perform a number
+of different programmable operations such as
+
+* Key generation
+* Key destruction
+* Key transfer
+* Software key provisioning
+* Key Manager Instruction and Data Memory loading
+
+The command/response message format is intended to be very general to
+facilitate adoption of new features when required. The message format is
+illustrated below. It is flexible and can be redefined in future
+firmware versions. The message format, CRC verification, and command
+legality checks are entirely firmware-defined. The mailbox hardware does
+not parse message headers, compute or verify CRCs, or enforce command
+legality — it behaves as a raw 32-bit word FIFO transport.
+
+[width="100%",cols="^25%,^25%,^25%,^25%",options="header",]
+|===
+|header_crc8[31:24] |message_length[23:16] |function_id[15:8]
+|sequence_number[7:0]
+
+4+|Data_1[31:0]
+4+|Data_2[31:0]
+4+|…
+4+|Data_N[31:0]
+4+|CRC32[31:0] - checksum
+|===
+
+Command/response messages without a data payload (message_length = 0x00)
+drop the payload CRC32 and only contain the header:
+
+[cols="^,^,^,^",options="header",]
+|=================================================================
+|header_crc8[31:24] |0x00 |function_id[15:8] |sequence_number[7:0]
+|=================================================================
+
+The mailbox consists of two FIFO queues (inbound: SEP→KM, outbound:
+KM→SEP, minimum depth 16 words each) which buffer message words. Each
+word stored in the FIFOs has an associated separator bit; the sender
+sets this bit when writing the last word of a message into the FIFO
+(write-only for sender). The receiver can compare the length field in
+the message header to the number of words read and check the separator
+bit to verify message completeness.
+
+When a new word is written on the inbound channel, the mailbox asserts a
+level-sensitive interrupt to the KM CPU that remains asserted while the
+inbound queue is non-empty. The CPU firmware reads (pops) the message
+out of the mailbox, checks the header and message CRC in firmware, and
+decides whether or not to execute the corresponding function. When the
+function has completed, the CPU firmware pushes a response into the
+outbound channel; the mailbox asserts a level-sensitive interrupt to the
+SEP CPU that remains asserted while the outbound queue is non-empty.
+
+The mailbox provides status registers indicating queue fill levels and
+empty/full conditions. When a write is attempted to a full FIFO, the
+mailbox returns an AXI error response (SLVERR by default, configurable
+to OKAY), drops the new data, and preserves all existing FIFO contents.
+Reads from an empty FIFO also return an AXI error response (SLVERR by
+default, configurable to OKAY). Overflow and underflow conditions set
+sticky interrupt status bits (one per FIFO direction per condition).
+
+Both KM and SEP sides have a flush control bit (write-1-to-trigger).
+Writing 1 flushes all FIFOs (inbound and outbound). When SEP flushes, KM
+receives a sticky interrupt (if enabled). When KM flushes, SEP receives
+a sticky FLUSHED\_BY\_KM interrupt (if enabled).
+
+All mailbox interrupt sources on each side (data available, overflow,
+underflow, flushed-by-other) are aggregated into a single IRQ output per
+side: one to KMCSR, one to the SEP interrupt controller.
+
+The mailbox and command processing firmware act as a firewall and the KM
+will only execute legal commands. The number of framed message words
+received must be consistent with the header’s message_length field, and
+the CRC checks for both the header and message payload must be valid.
+When illegal commands are detected, the receiver firmware will issue an
+interrupt as well as push an illegal/abort message into the status FIFO.
+When corrupt or improperly framed messages are received, the receiver
+will flush the entire mailbox and an interrupt will be transmitted to
+the sender. The SEP will perform the exact same message validations as
+the KM.
+
+image::SEP_KM_Mailbox.png[SEP_KM_Mailbox,scaledwidth=90.0%]
+
+Cryptographic keys are stored in the Key and Policy Vault (KPV) block.
+The life cycle, demotion and test mode (`secure_tm`) states are input to
+the KM CSR register block. The KPV key-entry contents are secret-bearing:
+they may be placed on a scan chain for test coverage but must never be
+scan-dumpable (see <<km-scan-and-scan-dump-protection>>).
+
+The HMAC-SHA256 algorithm is used as the Key Derivation Function (KDF).
+It is implemented in firmware running on the KM CPU. This function is
+stored in the KM ROM. Other KDFs could also be implemented in firmware
+loaded into the instruction/data SRAM.
+
+The 32-bit memory map of the KM subsystem is shown below. KM only
+consumes the bottom 4MB of address space leaving the remaining space
+unallocated.
+
+[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
+|=======================================================================
+|Base Address |End Address |Size |Unit |Description
+|0x0000_0000 |0x0000_3FFF |16 kB |KM ROM |Key Manager Program ROM
+
+|0x0000_4000 |0x0000_7DFF |~15.5 kB |KM SRAM |Key Manager Prgm/Data SRAM
+
+|0x0000_7E00 |0x0000_7FFF |512 B |KM SRAM (warm-persist) |ROM warm-persistent region (`rom_persist`)
+
+|0x0000_8000 |0x0000_CFFF | | |_Reserved_
+
+|0x0000_D000 |0x0000_DFFF |4kB |KPV |Key and Policy Vault
+
+|0x0000_E000 |0x0000_EFFF |4kB |KMCSR |Configuration, Status, Interrupt
+and Interrupt Mask Registers
+
+|0x0000_F000 |0x0000_FFFF |4kB |DRBG |DRBG Sampling Interface
+
+|0x0001_0000 |0x0001_0FFF |4kB |MB |Mailbox Message
+
+|0x0001_1000 |0x0001_1FFF |4kB |OTP/eFuse |SEP eFuse pass-through. KM-local addresses remapped to SEP the value of `OTP_EFUSE_REMAP_BASE`.
+
+|0x0001_2000 |0x0001_7FFF | | |_Reserved_
+
+|0x0001_8000 |0x0001_8FFF |4kB |OTBN |Public Key Cryptography
+Accelerator key storage
+
+|0x0001_9000 |0x0001_9FFF |4kB |AES |AES block cipher key storage
+
+|0x0001_A000 |0x0001_AFFF |4kB |KMAC |KMAC key storage
+
+|0x0001_B000 |0x0001_BFFF |4kB |HMAC |HMAC key storage
+
+|0x0001_C000 |0x0001_CFFF |4kB |Adams Bridge |ABR key storage
+
+|0x0001_D000 |0xFFFF_FFFF | | |_Reserved_
+|=======================================================================
+
+Separating the key and data domains explicitly as described above
+increases security as it makes it more difficult for an adversary to
+compromise the secret key information via a software based attack. In
+the figure below, the secrets which must be protected reside in the red
+blocks. The secret data is physically separated from the software
+accessible bus.
+
+Physical key recovery attacks such as side channel analysis and
+differential fault injection are still possible, but these require
+direct access to the device and are more difficult to achieve. These
+types of attacks are, for the most part, only possible on physically
+accessible devices such as automobiles and not those in data centers. To
+detect faults, we recommend including a CRC32 checksum field to the key
+data structure as described below.
+
+image::SEP_Crypto_Block.png[SEP_Crypto_Block,scaledwidth=90.0%]
+
+[[adams-bridge-key-sideload]]
+===== Adams Bridge Key Sideload Interfaces
+
+The KM provides dedicated sideload interfaces to the Adams Bridge (ABR)
+post-quantum engine, exposed as a single AXI4-Lite register block mapped at
+`0x0001_C000`–`0x0001_CFFF`. The block has two directions: four seed inputs
+the KM drives into ABR, and one shared-key output ABR drives back into the KM.
+
+*Seed sideload inputs (KM → ABR).* The four seed inputs carry key material the
+KM side-loads into ABR:
+
+[cols="<32%,<10%,<58%",options="header"]
+|===
+|Interface |Width |Description
+|ML-DSA seed |256-bit |Seed for ML-DSA key generation.
+|ML-KEM seed D |256-bit |ML-KEM seed D.
+|ML-KEM seed Z |256-bit |ML-KEM seed Z.
+|ML-KEM message |256-bit |ML-KEM message input.
+|===
+
+Each seed uses the two-share masked layout (two key-share register banks
+whose XOR is the real value, plus a `key_valid` bit) and is write-only to KM
+firmware. The seeds are valid `dest_valid` destinations (bits 4–7), so they
+are targets of `CMD_KEY_TRANSFER` and `CMD_ENGINE_SHRED`, and ROM shreds them
+during the mutable-firmware handover.
+
+*ML-KEM shared-key output (ABR → KM).* ABR computes an ML-KEM shared key and
+presents it to the KM. The interface comprises a 256-bit (8-word) key register
+array, a `KEY_CTRL` register holding `key_valid`, and an `IRQ_STATUS` /
+`IRQ_ENABLE` interrupt pair.
+
+* The key words and `KEY_CTRL.key_valid` are read-only to KM firmware:
+hardware sets `key_valid` and loads the key words when ABR delivers a new
+shared key. Firmware consumes the key by writing `KEY_CTRL = 0`, which clears
+`key_valid` and hardware-zeroizes (`hwclr`) the key words. Software can clear
+`key_valid` but cannot set it.
+
+* `IRQ_STATUS.key_valid` is a sticky, write-one-to-clear bit (`hwset` +
+`stickybit` + `onwrite=woclr`). Hardware sets it on the key-ready event;
+firmware clears it by writing 1. The masked interrupt to the KM CPU is
+`IRQ_STATUS & IRQ_ENABLE`, on a dedicated PicoRV32 interrupt (bit 5).
+
+The KM firmware ISR acknowledges the IRQ by clearing `IRQ_STATUS` and flags the
+main loop; it does not consume the key. The shared key is later captured into a
+KPV slot in response to a SEP `CMD_ABR_SK_TRANSFER` command (see the firmware
+documentation).
+
+[[key-manager-cpu-interrupt-processing]]
+===== Key Manager CPU Interrupt Processing
+
+The KM receives interrupts from the KM Management CSR register block.
+The register block collects error and information status from the
+following sources and aggregates these into a single interrupt:
+
+* ROM parity error
+* SRAM parity error
+* ROM write attempt
+* SRAM write-lock violation
+* AXI SLVERR (read and write response monitoring)
+* AXI DECERR (read and write response monitoring)
+* DRBG sampler error (aggregated from timeout or stream error)
+* CPU software writeable via IRQ\SET register (for ISR testing)
+* Wipe state (rising edge of wipe\state input)
+* Mailbox inbound data available (from mailbox aggregated IRQ)
+* Demote - debug in product LC mode
+
+These events are captured in sticky interrupt status registers (WOC) and
+aggregated into an interrupt signal which is forwarded to the KM CPU.
+All event signals can also be triggered by a parallel software interrupt
+register to enable testing of interrupt service routines (ISR).
+
+[[key-and-policy-vault-kpv]]
+===== Key and Policy Vault (KPV)
+
+The Key and Policy Vault (KPV) is a custom implementation with a
+single-port AXI4-Lite interface for full read/write access by KM
+firmware.
+
+KPV has the following registers:
+
+* 32 Key Entry registers, each of 512 bits (16 words)
+* 32 corresponding 32-bit control registers
+
+RSA3K keys will not naturally fit into a single key entry, so will be
+concatenated into several as indicated by the new control register field
+xxx[2:0].
+
+KM control registers for each slot have the following fields:
+
+* Lock_write[0]
+** Prevents KM firmware from overwriting this key entry’s data register
+and the control fields _extend_, _dest_valid_, and _last_dword_ until
+the next KM reset (cleared by either a cold or a warm reset — the KPV
+per-slot lock bits are in the warm reset domain). The control bits
+_lock_write_ and _lock_use_ (lower two bits) remain writable even when _lock_write_
+is set. Writes to the CTRL register when _lock_write_ is set block all
+but the lower three bits (no update to blocked fields). Writes to key
+entry data when _lock_write_ is set trigger AXI SLVERR and do not update
+storage. This field is read-any, write-one-only.
+* Lock_use[1]
+** Prevents KM firmware from reading this key entry’s data register
+until the next KM reset (cold or warm). Key entry reads when _lock_use_
+is set return AXI SLVERR with read data 0. This field is read-any,
+write-one-only.
+* Reserved[3:2]
+* Extend[6:4]
+** Indicates the zero-indexed number of slots for wide key fields. For
+example, RSA3K modulus requires 3kbit, so occupies 6 consecutive key
+slot entries with _extend_ set to 5. This is enforced by firmware.
+* Reserved[8:7]
+** TBD
+* Dest_valid[16:9]
+** Restricts which cryptographic block can consume this key entry. This
+is enforced by firmware. The eight destination bits select HMAC, KMAC,
+AES, and OTBN (bits 0–3) plus the four Adams Bridge seed sideload inputs
+— ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, and ML-KEM message
+(bits 4–7).
+* Last_dword[20:17]
+** Last valid key entry word index [1,15] e.g. last_dword=7 for a
+256-bit AES key. All invalid key words return 0 if read.
+* Reserved[31:21]
+** TBD
+
+Reset values: All KPV control registers (CTRL) reset to 0. All KPV key
+entry data registers (32 slots × 512 bits) have no reset value: they
+power up with random (undefined) values for security. The implementation
+must not connect reset to key entry storage flops.
+
+
+[[kpv-scrambling]]
+===== KPV Scrambling
+
+The KPV supports address and data scrambling during normal operation for
+all key entry data reads and writes, using the same PRESENT-based
+approach as SRAM scrambling. When enabled, the stored representation of
+key data is scrambled; the KM port sees the logical (unscrambled) data
+on the bus, with scrambling/descrambling performed transparently by the KPV.
+
+The KPV has a scrambler key register (32-bit) and a scrambler control
+register with an enable bit and a lock bit. These registers are
+accessible only via the KM port. The lock
+bit is write-one-only (0→1): software sets lock by writing 1; writing 0
+has no effect; lock cannot be cleared until the next *cold* KM reset. The
+KPV scrambler enable and lock are non-volatile state in the cold reset
+domain — they are preserved across a warm reset and cleared only by a cold
+reset. Scrambling is disabled by default after a cold reset.
+
+When scrambling is enabled, the KPV uses the same scrambler algorithm as
+SRAM but sized for 512×32 words (32 slots × 16 words). The scrambler
+address input is the linear register index (0..511): _slot_index_ × 16 +
+_word_index_. Address scrambling maps the logical index to a scrambled
+physical storage index. Data is scrambled before storage and descrambled
+after retrieval. Only key entry data words are scrambled; CTRL registers
+are not scrambled.
+
+The KPV scrambler key register has no reset value (powers up
+random/undefined for security). The scrambler control register (enable
+and lock) resets to 0. On an emergency wipe (rising edge of
+_wipe_state_), the entire KPV is reset to zero including key data,
+control registers, and the KPV scrambler key and control registers.
+
+[[wipe-state]]
+===== Wipe State
+
+The KM has a _wipe_state_ control input for emergency wipe. The
+_wipe_state_ signal must be held high for at least one complete KM clock
+period.
+
+On every rising edge of this signal, the KM sets the wipe state
+interrupt in the KMCSR.
+
+On the next clock cycle after the rising edge, the KPV is synchronously
+reset to zero: all 512 key entry data registers, all 32 KPV control
+registers, and the KPV scrambler key and scrambler control registers
+(enable and lock) are cleared to zero.
+
+[[km-scan-and-scan-dump-protection]]
+===== Scan and Scan-Dump Protection
+
+KM secret-bearing storage -- the KPV key-entry data registers, the KPV scrambler
+key, derived/round keys, and any downstream logic that holds key material -- is
+treated as *Class 2* in the SEP scan-chain protection model (see the SEP
+Lifecycle Controller chapter, _Asset and Scan-Chain Protection_):
+
+* *Scannable for test.* These registers may be placed on a scan chain so DFT
+achieves maximum coverage. During scan test the secure-test-mode signal
+`secure_tm = 1` disconnects the secret-source shadow registers (`*_UID`,
+`CLASS_KEY`) from downstream logic and inhibits key derivation, so
+the KPV and key consumers hold no real key material while being shifted.
+
+* *Never scan-dumpable.* During debug (`secure_tm = 0`) the dedicated
+secret-bearing scan chain is tied off, so KM key material can never be extracted
+via scan dump -- in any LC state and for any owner (chiplet or SiP). This
+protection is governed solely by `secure_tm`; it is *not* gated by, and cannot be
+overridden by, the `*_DBG` feature-control bits.
+
+The secret _source_ values the KM consumes from OTP (`CHIPLET_UID`, `SIP_UID`,
+`SYS_UID`, `CLASS_KEY`) are *Class 1* and are excluded from every scan chain
+entirely (never scannable); see the LCC chapter. KM firmware-visible policy (KPV
+`lock_use` / `lock_write`, scrambler lock, wipe) governs runtime _software_
+access and is independent of the scan / scan-dump protection described here.
+
+The `*_DBG` feature-control bits (`SEP_DBG`, `SIP_DBG`, `CHIPLET_DBG`, defined in
+the LCC chapter) are coarse-grained, per-scope debug enables for _general_ logic;
+they do not apply to the KM secret-bearing chain.
+
+[[remote-attestation-support-in-kpv-and-pcrv]]
+===== Remote Attestation Support in KPV and PCRV
+
+This section describes facilities to support TPM 2.0 attestation. Here
+are the basic constraints and procedures:
+
+The Endorsement Key (EK) is a public-private key pair. We will support
+ECDSA P256 and P384, but not RSA. The public and private keys are
+injected into the device (or generated on the device) and stored in OTP.
+The public key is recorded in the HSM database. The EK is only used for
+proving identity. It only performs decryption operations and no signing.
+
+The Attestation Key (AK) is also a ECDSA public-private key pair but is
+generated inside the device during device manufacturing. The private key
+is stored in the OTP while the public key is exported for recording in
+the HSM database. The private key is used as a limited signing key of
+internal device measurements such as PCR quotes.
+
+The EK and AK are stored in the KPV storage structure described above.
+
+Platform Configuration Registers (PCR) are a set of registers which
+store system integrity measurement data. These are stored in a separate
+component called the PCR Vault (PCRV) described in more detail below.
+
+Another use case is loading the EK and AK attestation keys into KPV.
+
+The mechanism is very simple. The SEP host has write-only access to KPV
+through a backdoor interface. It can address and write to any of the
+Entry and Control registers to which the KM has granted access.
+Typically, after writing the key entries, the firmware will assert the
+lock control register field. The KM can read the entries and derive
+further keys from the data and populate other key entries with the KDF
+processing results.
+
+[[pk-key-generation-support]]
+===== PK Key Generation support
+
+KM must be able to generate a public-private key pair during device test
+and provisioning manufacturing steps. RSA is a complicated process as
+two primes need to be generated and this requires running the
+Miller-Rabin test on large random numbers. It is also much larger than
+equivalent security ECC keys. The primary use case is TPM 2.0
+attestation signing keys and we primarily will be using ECDSA P256 and
+possibly P384. The keys are only 256 or 384 bits long and are relatively
+simple to generate. Once generated, the private key stays on the device
+and the public key is exported. Export is performed through the outbound
+mailbox path.
+
+[[key-manager-control-and-status-kmcsr]]
+===== Key Manager Control and Status (KMCSR)
+
+This block of 32-bit registers is separate from the Key and Policy
+register block. Its purpose is to manage the configuration and operation
+of the Key Manager. It receives a number of external inputs described
+below which alter the state or operation of the Key Manager. Behavior is
+changed for example, when the device finds itself in different Life
+Cycle states and in debug mode. Inputs from the OTP such as UDI and DRBG
+random data are used in the key derivation process.
+
+Any differentially encoded register fields are checked for validity. An
+error will be triggered if the encoding is violated on any of those
+fields and will be forwarded to the interrupt status register.
+
+The KMCSR is implemented in `km_csr` using a PeakRDL-generated register block (`km_csr_reg`). The register set contains the following functional groups.
+
+The `VERSION` register (offset `0x000`) is a read-only register that reports
+the Key Manager hardware revision using semantic versioning. It uses the
+following canonical 32-bit layout, mandated so all software and testbenches
+decode the version identically:
+
+[cols="<20%,<20%,<60%",options="header"]
+|===
+|Bits |Field |Description
+|`[7:0]` |`PATCH` |Patch version component.
+|`[15:8]` |`MINOR` |Minor version component.
+|`[23:16]` |`MAJOR` |Major version component.
+|`[31:24]` |`RESERVED` |Reserved; reads as 0.
+|===
+
+The current hardware revision reads as version `1.0.0` (`MAJOR=1`, `MINOR=0`,
+`PATCH=0`) after reset with no software initialization. The register is
+read-only: a write completes with an AXI SLVERR response and does not change
+the value.
+
+The interrupt aggregation logic collects eleven hardware event sources into a single CPU interrupt. Each source has a sticky status bit in `IRQ_STATUS` (write-one-to-clear), a mask bit in `IRQ_ENABLE`, and a software-trigger bit in `IRQ_SET` for ISR testing. The aggregated interrupt output is the logical OR of `IRQ_STATUS` and `IRQ_ENABLE`.
+
+[cols="<10%,<30%,<60%",options="header"]
+|===
+|Bit |Source |Description
+|0 |ROM Parity Error |Parity mismatch detected on a ROM read.
+|1 |SRAM Parity Error |Parity mismatch detected on an SRAM read.
+|2 |ROM Write Error |A write was attempted to the read-only ROM region.
+|3 |SRAM Write-Lock Violation |A write targeted a locked 512-byte SRAM region.
+|4 |AXI SLVERR |An AXI4-Lite slave returned SLVERR.
+|5 |AXI DECERR |An AXI4-Lite slave returned DECERR.
+|6 |DRBG Error |The DRBG sampler reported a timeout or stream error.
+|7 |Wipe State |Rising edge detected on the `wipe_state_i` input.
+|8 |OTP Change |A monitored OTP readout field's decoded value changed (see `OTP_CHANGE_STATUS`).
+|9 |OTP Integrity Violation |OTP dual-rail integrity violation (value and complement not complementary).
+|10 |Execute Violation |Instruction fetch from a non-whitelisted (non-executable) memory region.
+|===
+
+Bits `[31:11]` of `IRQ_STATUS` are reserved. Two interrupt sources are not part
+of the KMCSR `IRQ_STATUS` aggregation and are serviced separately: the mailbox
+sources (FIFO data-available/space-available and overflow/underflow/flush
+conditions), and the Adams Bridge ML-KEM shared-key interrupt on its own
+PicoRV32 interrupt (bit 5, see <<adams-bridge-key-sideload>>).
+
+The CPU IRQ entry vector is programmable through two registers. `IRQ_ENTRY_ADDR`
+holds the effective IRQ entry address and resets to the built-in default
+`0x0000_0010`; firmware may write any 32-bit value (the hardware performs no
+alignment or validity checking) and the register is always readable, returning
+the current effective entry address. `IRQ_ENTRY_LOCK` is a write-one-only lock
+bit that can only transition from 0 to 1: while it is 0 firmware may reprogram
+`IRQ_ENTRY_ADDR` freely; once it is 1, writes to `IRQ_ENTRY_ADDR` are ignored
+(the value remains readable and unchanged) and further writes to
+`IRQ_ENTRY_LOCK` have no effect. Both registers are in the warm reset domain:
+every reset that re-enters ROM (cold, external asynchronous, and KM soft reset)
+restores `IRQ_ENTRY_ADDR` to `0x0000_0010` and clears `IRQ_ENTRY_LOCK`.
+
+The scrambler lock logic in the KMCSR is described in the SRAM Scrambling section of this document. The SRAM write-lock uses the `SRAM_LOCK` register, which is implemented as write-one-to-set (RDL `woset`). Each bit corresponds to a 512-byte SRAM region. Once a bit is set, it is cleared by the next warm or cold KM reset — `SRAM_LOCK` is in the warm reset domain. The SRAM scrambler key/enable/lock (`SCRAMBLER_KEY`, `SCRAMBLER_CTRL`) remain non-volatile state in the cold reset domain and are preserved across a warm reset. Because `SRAM_LOCK` clears on warm reset, the ROM is responsible for re-applying the write-lock policy on every boot (cold and warm) before handing control to mutable firmware.
+
+The soft reset mechanism is guarded by a magic code. Firmware must write the value `0x53525354` (ASCII `"SRST"`) to the `SOFT_RST_CODE` register; when the code matches, the KMCSR asserts an active-low soft reset (`soft_rst_n`) that feeds the *warm* path of the reset conditioner. This produces a synchronous warm reset of the KM CPU and volatile state (see Reset Conditioning) — it does not reset the cold-only domain. The warm reset remains asserted until the hold counter expires (`MIN_RESET_CYCLES`).
+
+The `BOOT_STATUS` register (offset `0x02C`) carries a single
+`COLD_BOOT_DONE` flag. It is a write-one-only (RDL `woset`-style) status
+bit: ROM firmware writes 1 at the end of its cold-boot initialization
+sequence (in `rom_boot_init`), and the bit then remains set until the next
+cold reset. `COLD_BOOT_DONE` deliberately uses the default (cold) reset
+and is *not* tagged with the warm reset signal, so it survives warm
+resets. Firmware reads this bit to distinguish a cold boot (reads 0) from
+a warm reboot (reads 1) and can branch its initialization accordingly.
+
+[[execute-permission-whitelist]]
+*Execute-Permission Whitelist (NX)*
+
+The PicoRV32 enforces a whitelist of executable memory regions on every
+committed instruction fetch (`mem_valid && mem_instr`).  Any fetch from
+outside the whitelist immediately pulses `KMCSR.IRQ_STATUS.EXEC_VIOLATION`,
+which (if unmasked) routes to the ISR and triggers the unrecoverable fault
+`ROM_KM_UFAULT_EXEC`.
+
+The whitelist mode is controlled by the `KMCSR.SRAM_EXEC_MODE.enable` bit
+(write-1-only, warm-reset domain):
+
+[width="100%",cols="^15%,55%,30%",options="header"]
+|===
+|`enable` |Executable regions |Forbidden regions
+|`0` (ROM mode) |ROM (`0x0000`–`0x1FFF`) and VROM* |All SRAM; Peripheral/AXI
+|`1` (SRAM mode) |ROM, VROM*, and write-locked SRAM regions (`SRAM_LOCK.lock_bits`) |Unlocked SRAM; Peripheral/AXI
+|===
+
+* VROM (`0x1000_0000`) is a testbench-only virtual ROM used in the block TB.
+  It is treated as always executable in both modes so that firmware running
+  from VROM in simulation is not falsely faulted.  VROM does not exist in
+  production silicon.
+
+`SRAM_EXEC_MODE.enable` is set by the stack-less handover assembly
+(`rom_handover_jump.S`) immediately before the `jalr` to mutable firmware,
+after SRAM write-lock regions have already been committed.  This minimises
+the window between enabling SRAM execution and the first fetch from SRAM.
+The bit is write-1-only and cleared by warm reset, so the ROM-only
+whitelist is re-applied on every boot cycle.
+
+[[error-events]]
+*Error Events*
+
+[[unrecoverable-faults]]
+*Unrecoverable Faults*
+
+These events cause the CPU to halt when the corresponding interrupt is
+unmasked and the ISR determines recovery is not possible. They include,
+but are not limited to, the following conditions:
+
+* CPU trap events
+* ROM or SRAM parity errors
+* Invalid writes to ROM or SRAM
+* AXI bus faults (SLVERR or DECERR)
+* Instruction fetch from a non-whitelisted (non-executable) memory region
+* Any other unhandled exception or fault
+
+The PicoRV32 includes a trap state that asserts a trap signal. When the
+CPU enters this state execution halts. The CPU will enter this state
+under the following conditions:
+
+* An EBREAK or other illegal instruction is encountered _and_ the
+associated interrupt is masked.
+* The CPU encounters a misaligned access _and_ the associated interrupt
+is masked.
+* An EBREAK or other illegal instruction is encountered within an ISR.
+
+If an ISR determines that an error event is not recoverable, it will
+call the EBREAK instruction to trap and halt the core. The CPU trap
+signal is passed out of KM to indicate an unrecoverable fault. This
+signal indicates the KM has encountered an unrecoverable fault and is no
+longer executing (it will not respond to further commands). The signal
+remains asserted for as long as the KM remains in the trap state. The
+trap is cleared by resetting the KM CPU — either a cold reset or a warm
+reset (the PicoRV32 core is in the warm reset domain) restarts the core
+and clears this signal.
+
+[[recoverable-faults]]
+*Recoverable Faults*
+
+These events do not cause the CPU to halt. They include:
+
+* Receiving corrupt or malformed command messages.
+* Detection of possible tampering or attack conditions that are not
+immediately terminal.
+* Any one of the previously listed error interrupts from which the
+corresponding ISR is able to gracefully recover.
+
+The KM provides an output signal that indicates when a recoverable fault
+has been successfully handled. This signal is driven by a dedicated
+register bit in the KMCSR. When an ISR recovers gracefully from an
+error, it sets this register bit. The bit remains set until the SEP
+sends a firmware command to the KM to clear it (KM firmware clears the
+register bit in response to that command).
+
+[[drbg-sampler]]
+*DRBG Sampler*
+
+There are four DRBG Sampler registers: a DRBG data register, a
+configuration register, a status register, and a prefetch data register.
+The data register is read by the KM firmware to obtain random words
+provided by the DRBG component. The data is transferred into the sampler
+via the AXI4-Stream interface. The Key Manager (sampler) is the slave
+device on that interface; the DRBG is the master device. The KM slave
+interface has the following signals to manage flow control and data
+transfer:
+
+* TREADY (output)
+** The sampler asserts TREADY when it is requesting data from the DRBG.
+We expect that TVALID from the DRBG should almost always be asserted
+(data available) so when TREADY is asserted, the sampler can immediately
+accept TDATA. Consider this signal equivalent to a request.
+* TVALID (input)
+** DRBG asserts when valid data words are being transferred. It is
+illegal for the DRBG to assert TVALID and then deassert it before TREADY
+is asserted; if this occurs, the sampler treats it as an error.
+* TDATA[31:0] (input)
+** DRBG sends the data words to the sampler.
+* TSTRB[3:0] (input)
+** DRBG can indicate individual byte validity. This will generally be
+tied to 0xF with all bytes being valid. When TSTRB is not 0xF, the
+sampler collects only the valid bytes and issues further requests until
+a full 32-bit word is assembled before returning data to the CPU or
+updating the prefetch register.
+
+The DRBG data register is read by the KM firmware to obtain a word of
+random data. A read triggers the sampler to assert TREADY and wait for
+the DRBG to assert TVALID; if the DRBG has not yet provided data, the
+sampler holds the KM system bus until a word is received or a
+configurable timeout expires (then the read completes with SLVERR and
+zero data). The sampler may prefetch up to one word; when prefetch is
+disabled, the prefetch data register is cleared. Every read returns a
+fresh random sample or an error; the same sample is never returned
+twice. Prefetching is not subject to timeout; only active KM CPU read
+transactions are subject to timeout.
+
+TSTRB handling: When the DRBG indicates TSTRB not equal to 0xF, the
+sampler collects only the valid bytes and issues further requests to the
+DRBG until a full 32-bit word is assembled before responding to a CPU
+read or updating the prefetch register. Byte order of the random data is
+not significant.
+
+TVALID protocol violation: In AXI-Stream it is illegal for the source
+(DRBG) to assert TVALID and then deassert it before TREADY is asserted.
+If this occurs, the sampler treats it as a protocol violation: it
+responds SLVERR for the active read (RDATA zero), sets STREAM_ERR (W1C)
+in the status register, increments COUNT_BAD, and sends the aggregated
+error interrupt to the KMCSR (IRQ_STATUS.DRBG_ERR).
+
+Error interrupt aggregation: The DRBG Sampler sends an aggregated pulsed
+interrupt to KMCSR whenever a sampler error occurs (timeout or stream
+error). KMCSR sets IRQ_STATUS.DRBG_ERR (sticky, W1C) when this interrupt
+is received; KMCSR provides a corresponding IRQ_ENABLE bit and IRQ_SET
+bit for testing.
+
+Write rejection: Write requests to the DRBG sampler receive an AXI
+SLVERR response.
+
+The configuration register is written by the KM firmware; the status
+register is read-only and updated by the sampler hardware. The
+configuration register has the following fields:
+
+* PREFETCH[0]
+** Enables prefetching. When disabled, the prefetch data register is
+cleared. Default: 0 (disabled).
+* TIMEOUT[31:16]
+** The number of cycles to wait for the DRBG before timing out an active
+CPU read. A value of 0 disables timeout. Default: 256. On timeout, the
+response is SLVERR with RDATA zero.
+
+The status register holds the following read-only fields:
+
+* DRBG_READY[0]
+** TVALID is asserted on the AXI-Stream bus from the DRBG.
+* PREFETCHED[1]
+** The sampler has prefetched data available.
+* TIMEOUT_ERR[2]
+** Set whenever a DRBG read from the KM CPU times out. Write one to
+clear.
+* STREAM_ERR[3]
+** Set when there is an error on the DRBG AXI-Stream interface
+(e.g. TVALID deasserted before TREADY). Write one to clear.
+* COUNT_BAD[15:8]
+** The number of failed transactions (timeout or other error).
+** Saturates at 0xFF.
+** Clearing: writing any value other than 0 to this field resets the
+counter to 0; writing 0 has no effect.
+* COUNT_GOOD[31:16]
+** The number of successful words transferred to the KM CPU (excludes
+prefetched words).
+** Saturates at 0xFFFF.
+** Clearing: writing any value other than 0 to this field resets the
+counter to 0; writing 0 has no effect.
+
+The prefetch data register is exposed as a read-only register in the
+DRBG sampler memory map for debugging.
+
+Reset behavior: On KM reset (cold or warm — all DRBG Sampler CSRs are in
+the warm reset domain), DRBG Sampler control and status state
+(counters COUNT_GOOD and COUNT_BAD, TIMEOUT_ERR and STREAM_ERR status
+bits, CFG register PREFETCH and TIMEOUT, and any in-flight request or
+byte-assembly FSM state) are cleared or set to defined reset/default
+values. DRBG Sampler datapath registers (prefetch data register,
+assembled word buffer, response data slot) have no reset value: they
+power up with random (undefined) values.
+
+The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in the table below.
+
+[cols="<20%,<80%",options="header"]
+|===
+|State |Description
+|`StIdle` |No active request. If a CPU read arrives for the DATA register and a prefetched word is available, the FSM returns the prefetched value and transitions to `StRespond`. Otherwise it advances to `StRequest`.
+|`StRequest` |The sampler asserts `tready` toward the DRBG. If `tvalid` is asserted simultaneously, a data beat is captured and the FSM moves to `StByteAssembly`. A cycle counter tracks elapsed time against the timeout threshold.
+|`StByteAssembly` |Valid bytes indicated by `tstrb` are accumulated into a 32-bit word. When all four bytes have been collected (`tstrb` = `4'b1111` on a single beat, or multiple partial beats), the FSM proceeds to `StRespond`. Additional `tready` pulses are issued for each partial beat.
+|`StRespond` |The assembled word is returned on the AXI read data channel with OKAY. The `COUNT_GOOD` counter increments. If prefetch is enabled and no prefetched word is stored, the FSM re-enters `StRequest` to prefetch the next word; otherwise it returns to `StIdle`.
+|`StTimeout` |Entered from `StRequest` or `StByteAssembly` when the cycle counter exceeds `CFG.TIMEOUT` (and timeout is enabled). The read completes with SLVERR, `RDATA` = 0, `TIMEOUT_ERR` is set, and `COUNT_BAD` increments. The FSM returns to `StIdle`.
+|===
+
+[[otp]]
+*OTP*
+
+The KM consumes two things from the OTP/eFuse, both delivered over private
+hardwired paths so their values cannot be spoofed by software:
+
+* the fuse-provisioned UIDs — `CHIPLET_UID`, `SiP_UID`, `SYS_UID` — the root
+secrets from which the KM derives the root keys; and
+* the life-cycle state, one of the contexts a derived key is bound to (see
+<<chip-configuration>>).
+
+*UID delivery and protection.* The UIDs are held in a KM-local copy. ROM reads
+that copy to derive the root keys, after which it is protected by the KM's own
+warm-domain read-lock (see <<uid-provisioning-and-access>>) so mutable firmware
+cannot read it. This KM-local lock is separate from, and additional to, the
+eFuse controller's own locks.
+
+*Life-cycle state.* The life-cycle state is hardwired into the KM as
+authoritative, software-readable status. Being non-secret it is neither locked
+nor wiped; the KM uses it directly when binding a key, and ROM can compare it
+against the value a live key was bound to (see <<key-revocation>>).
+
+*eFuse access path.* The KM also has a programmatic (AXI-Lite) path to the eFuse
+controller — for example to request a read or a program operation. That path is
+treated exactly like a system-host access: same access filtering, and it honors
+the eFuse controller's native per-field read/write locks, so the KM gains no
+read privilege over the fuse array beyond the SEP host's. Key binding always
+uses the hardwired life-cycle value above, not a value fetched over this path.
+
+*Demotion and PCR.* The owner demotion state is hardwired from the Lifecycle
+Controller (LCC); PCR values come from the KM's internal PCR Vault (PCRV).
+Together with the life-cycle state, these are the life-cycle/runtime contexts a
+key can be bound to (see <<chip-configuration>>).
+
+*KMCSR readout registers.* The OTP-derived fields above are exposed to KM
+firmware in the KMCSR region as hardware-driven, read-only registers. Each field
+is delivered to the KMCSR as dual-rail complementary values (`{~value, value}`)
+and decoded within the KMCSR, which continuously verifies the complement
+relationship.
+
+[cols="2,1,3", options="header"]
+|===
+|Register |Width |Contents
+|`OTP_LIFE_CYCLE` |8-bit |Differential-encoded life-cycle state `{~lc[3:0], lc[3:0]}`.
+|`OTP_DEMOTION_STATE` |4-bit |Two 1-bit demotion flags, each differentially encoded into 2 bits: `{demote_2[1:0], demote_1[1:0]}`.
+|`OTP_CHIPLET_UID_VAL/CPL_0..7` |8 × 32-bit |256-bit CHIPLET_UID dual-rail words.
+|`OTP_SIP_UID_VAL/CPL_0..7` |8 × 32-bit |256-bit SIP_UID dual-rail words.
+|`OTP_SYS_UID_VAL/CPL_0..7` |8 × 32-bit |256-bit SYS_UID dual-rail words.
+|`OTP_CLASS_KEY_VAL/CPL_0..7` |8 × 32-bit |256-bit CLASS_KEY dual-rail words.
+|`OTP_READ_LOCK` |6-bit |Write-one-to-set read-lock bits (warm reset domain), one per field.
+|`OTP_CHANGE_STATUS` |6-bit |Sticky write-1-to-clear flags: set when a monitored field's decoded value changes.
+|===
+
+*Dual-rail integrity.* The hardware continuously checks that each value word is
+the bitwise inverse of its complement word. Any violation raises the
+`OTP_SIGINT` interrupt, which ROM firmware treats as an unrecoverable fault.
+
+*Change detection.* When a monitored field's decoded value changes, the hardware
+sets the corresponding `OTP_CHANGE_STATUS` bit and raises the `OTP_CHANGE`
+interrupt. ROM firmware reads the status, invokes an overridable change hook, and
+clears the flag. Spurious change events are suppressed until a valid OTP value
+has been captured after cold reset.
+
+[[uid-provisioning-and-access]]
+*Unique Identifiers (UID) — provisioning and access*
+
+The KM consumes three fuse-provisioned Unique Identifiers — `CHIPLET_UID`,
+`SIP_UID`, and `SYS_UID` (256 bits each) — provisioned respectively by the
+chiplet creator, the SiP owner, and the system owner. Each UID is the root
+secret from which the KM derives that owner's software and hardware root
+keys (see the *Root keys and the key hierarchy* section below).
+
+The KM is a *ROM-firmware-based key server*: its CPU runs immutable ROM
+firmware as its steady-state firmware, at cold boot and throughout run time,
+and keeps servicing commands from ROM while the main SEP CPU is in its own
+run time. SRAM-loaded firmware is an *optional future extension* for adding
+KM functions; the baseline performs all required key-management functions,
+including run-time key derivation, from ROM alone. Consequently the UIDs and
+hardware root keys are only ever handled by trusted, immutable code.
+
+UIDs and hardware root keys are *ROM-only secrets*: they must never be
+readable by *mutable* (SRAM-loaded) KM firmware, nor by the SEP host. In the
+ROM-only baseline this holds by construction — no mutable firmware runs — and
+the SEP host has no access path to them. For the future SRAM-firmware
+extension the KM provides a confidentiality safeguard: a read-lock
+(write-one-to-set, *warm* reset domain) on the UID and hardware-root-key
+registers. Before ROM ever transfers control to SRAM-loaded firmware it wipes
+the hardware secrets and sets these locks, so the mutable firmware cannot read
+them; once locked, reads return zero and the lock cannot be cleared by
+software — only a reset clears it.
+
+The read-locks live in the *warm* (not cold) reset domain because the KM CPU
+core is itself warm-reset: any cold, warm, or soft reset restarts the CPU at
+its ROM reset vector and re-runs boot before any SRAM-loaded firmware can
+execute. ROM therefore re-establishes the protection on *every* boot — it
+re-reads the UIDs, re-derives key material, wipes the hardware key from any
+downstream crypto engine, and re-applies the read-locks before handing control
+to mutable firmware. Because
+the CPU is always forced back into ROM first, there is no window in which
+mutable firmware can run with the locks clear; the locks need not survive a
+warm reset, and no cold reset is required to restore keys in the ROM-only
+baseline.
+
+Concretely, this safeguard is the `OTP_READ_LOCK` register: one
+write-one-to-set bit per OTP readout field (life-cycle, demotion, and the four
+256-bit secrets). Setting a bit causes the hardware to return zero for that
+field's value and complement words. ROM applies the lock using a triple-write
+convention (three consecutive writes) so it commits even under a single-bit
+glitch. `OTP_CHANGE_STATUS` shares the same warm reset domain for the same
+reasons.
+
+[[root-keys-and-hierarchy]]
+*Root keys and the key hierarchy*
+
+From each UID the KM (ROM firmware) derives two domain-separated root keys:
+
+* a *software root key* — `SW_root = KDF(UID, "SW_ROOT")`
+* a *hardware root key* — `HW_root = KDF(UID, "HW_ROOT")`
+
+The distinct domain-separation labels make the two roots cryptographically
+independent even though they share a UID. The roots are then used, with
+additional context, to derive the *key hierarchy*. A leaf key is
+`KDF(selected_root, context || user_input || label)`, where `||` denotes
+concatenation and `context` is the selected configuration (life-cycle state,
+demotion, PCR, ...).
+
+A core KM principle applies throughout: *derived secret keys are never
+returned to the requester and are never readable by any agent other than the
+consuming crypto engine.* The KM side-loads each derived key into the
+engine's write-only key registers; only non-secret results (for example a
+generated public key) are returned over the mailbox. Side-loading — not key
+return — is the reason the KM exists.
+
+Because ROM is the KM's steady-state firmware, derivation runs on demand at
+run time, and both branches can bind to *run-time* inputs: PCR values, read by
+the KM directly from the PCR Vault, and `user_input`, supplied in the mailbox
+command that requests the derivation. After a warm reset ROM re-reads the UID
+and re-derives keys as needed; no cold reset is required in the ROM-only
+baseline.
+
+The two roots differ only in their exposure to *mutable* KM firmware (the
+optional SRAM-loaded extension):
+
+* *Software root* (`SW_root`) — may be read by KM software, including future
+mutable firmware, so an extension can derive further keys from it.
+* *Hardware root* (`HW_root`) — never readable by mutable firmware; it is used
+only by immutable ROM and side-loaded into crypto engines over a private
+hardware path into their write-only key registers (never returned to software).
+If the SRAM extension is ever used, before transferring control ROM wipes the
+hardware key from any downstream crypto engine still consuming it and read-locks
+the UID copy and the KPV slot(s) holding `HW_root` (ROM cannot clear a KPV slot,
+but a read-lock renders it inaccessible and unusable), preserving this property.
+
+[[chip-configuration]]
+*Chip configuration and key lifetime*
+
+The *chip configuration* is the named bundle of context that a derived key is
+bound to. The requester *selects the chip configuration* for a derivation;
+together with `user_input` it determines the key:
+
+[cols="<22%,<78%",options="header"]
+|===
+|Field |Description
+|`uid_select` |Which owner's root is used: chiplet, SiP, or system.
+|`hw_only` |Hardware-only flag: selects the hardware root (a hardware-confined key) versus the software root, and sets the key's confidentiality policy.
+|`lc_state` |Life-cycle state the key is bound to.
+|`demote_1` |Chiplet-owner demotion state the key is bound to.
+|`demote_2` |SiP-owner demotion state the key is bound to.
+|`pcr` |Which PCR(s), if any, the key is bound to; the KM reads their authentic digests from the PCR Vault. Omitted for keys that are not PCR-bound.
+|===
+
+`user_input` (a 512-bit value carried in the mailbox derivation command) is a
+further per-derivation input.
+
+*Selection.* The requester chooses *which configuration fields to bind* — any
+subset of the fields above (for example `lc_state` only, or `lc_state` plus a
+PCR) — and there is no restriction on the values it may select (access control
+over `uid_select` is left open for a future revision). The KM derives the key
+bound to exactly that selected subset, and ROM records the binding so the
+key's lifetime can be tracked.
+
+*Lifetime.* The lifetime of every UID-derived key is tied to the specific
+fields it is bound to. When any bound field's value changes, that key becomes
+stale and is revoked; keys that do not bind the changed field are unaffected.
+A revoked key must be re-derived before use. The mechanism is described in
+*Key revocation* below.
+
+[[key-revocation]]
+*Key revocation*
+
+ROM maintains a registry of every derived key, recording its configuration
+binding (the specific fields and values it was derived under), its KPV storage
+location, its crypto-engine binding, and its derivation parent.
+
+*Triggers.* A key is revoked when either:
+
+* any configuration field it is bound to changes value — a life-cycle
+transition, a demotion, or (for a PCR-bound key) an extend of the bound PCR; or
+* its derivation parent is revoked — revocation cascades to every key derived
+from it. (This is also how an explicitly revoked user key takes its derived
+keys with it.)
+
+*Action.* Revoking a key wipes it from its KPV slot and shreds its
+crypto-engine binding (zeroes the side-loaded key and drops its valid
+indication). A revoked key must be re-derived before it can be used again.
+
+*Mechanism.* Revocation is performed entirely by ROM firmware; there is no
+hardware key-use interlock. On *any* change to a bound configuration field, ROM
+walks its key registry and revokes the affected keys — wiping them from the KPV
+and shredding their crypto-engine bindings — together with any keys derived
+from them; the keys are re-derived on next use. Hardware support is limited to
+the interrupts that notify the KM CPU:
+
+* *Life-cycle state and demotion* — typically configured per boot, but ROM does
+not assume they are immutable at run time: a change at any time triggers the
+same registry walk and revocation.
+* *PCR* — a run-time field. A PCR change raises an interrupt to the KM CPU,
+which then revokes the keys that bound that PCR.
+* *Parent revocation* — an explicit revoke (for example of a user input key,
+requested over the mailbox) raises the KM inbound interrupt and triggers the
+same sweep, cascading to derived keys.
+
+_Future enhancement:_ the PCR Vault is presently a standalone component that the
+KM reads over the fabric; a future revision may relocate the PCR Vault into the
+KM, simplifying the PCR-change interrupt and read path.
+
+A cold reset wipes all key material unconditionally; a warm reset re-enters
+ROM, which re-establishes keys under the current configuration.
+
+[[user-input-keys]]
+*User input keys*
+
+Besides the UID-derived hierarchy, the SEP host may *inject* its own keys —
+*user input keys* — for the KM to manage and derive from. Unlike the UID keys
+and hardware root keys, user input keys are *software-visible*: they are
+supplied by the host and live in the software-accessible key domain, not in the
+ROM-only secret class.
+
+*Injection.* The host injects a user input key over the mailbox command
+protocol; KM firmware writes it into a KPV slot and registers the key (integrity
+check and slot write-lock) so it can be tracked, derived from, and revoked.
+
+*Derivation.* A user input key may serve as a derivation root: the KM offers
+the same derivation support for user input keys as for UID roots, deriving
+child keys with the same chip-configuration context and domain-separation
+labels. Keys derived from a user input key bind to the selected configuration
+exactly as UID-derived keys do, and therefore carry the same configuration-tied
+lifetime. As with all derived keys, the resulting secret keys are side-loaded
+into the crypto engines and are never returned.
+
+*Revocation.* The SEP host revokes a user input key by a request over the
+mailbox, which raises the KM inbound interrupt; ROM then removes the key and
+*cascades* to every key derived from it — those derived keys are wiped from KM
+key storage and shredded in the crypto engines — using the same parent-revoke
+mechanism as configuration-driven revocation (see *Key revocation* above).
+
+[[ecc-key-metadata]]
+*ECC key metadata in signatures*
+
+The *metadata* associated with a derived ECC private key is the *selected chip
+configuration* under which that key was generated (the same configuration
+fields recorded for the key's lifetime; see *Chip configuration and key
+lifetime*).
+
+When the key signs, this metadata may optionally be *included in the hash that
+is signed* — the KM hashes the message together with the metadata. This binds
+the configuration into the signature, so a relying party can determine from the
+signature how the signing key was generated (under which life-cycle state,
+demotion, PCR, and so on). Inclusion is selected per signing operation; only
+inclusion in the signed hash cryptographically attests the configuration.
+
+[[crc-accelerator]]
+===== CRC Accelerator
+
+The KM CPU is fitted with a CRC accelerator attached through the PicoRV32
+PCPI (Pico Co-Processor Interface). It provides hardware versions of the
+CRC functions the firmware uses on its high-value integrity paths —
+message header CRC-8/ROHC, message payload CRC-32C, and key-data
+integrity CRC-32C — so these computations consume far less CPU time than a
+software loop. The accelerator is always present in the KM build;
+firmware invokes it unconditionally and does not retain a software
+fallback path.
+
+The accelerator exposes three R-type custom instructions on the PicoRV32
+`custom0` opcode. Each instruction takes two operands — the current CRC
+chaining state (`rs1`) and the next input unit (`rs2`) — and writes the
+updated chaining state to `rd`.
+
+.CRC Accelerator Instructions
+[cols="<30%,^10%,^12%,^12%,<36%",options="header"]
+|===
+| Instruction | `funct7` | `funct3` | opcode | Input unit
+| CRC-32C word update | `7'b0101100` | `3'b000` | `custom0` | `rs2[31:0]`, four bytes little-endian
+| CRC-32C byte update | `7'b0101100` | `3'b001` | `custom0` | `rs2[7:0]` (`rs2[31:8]` ignored)
+| CRC-8/ROHC byte update | `7'b0101100` | `3'b010` | `custom0` | `rs2[7:0]` (`rs2[31:8]` ignored)
+|===
+
+Behavioral properties:
+
+* The CRC-32C word-update instruction consumes its 32-bit operand as four
+bytes in little-endian order (`[7:0]`, `[15:8]`, `[23:16]`, `[31:24]`).
+* The CRC-32C instructions expose the internal running remainder *before*
+the final XOR. Firmware seeds the chaining state with `0xFFFF_FFFF` and
+applies the final XOR only when it needs the externally visible CRC value,
+so word updates, byte updates, and intermediate states chain freely.
+* For non-word-sized buffers, firmware processes whole words with the
+word-update instruction and any remaining `1`–`3` tail bytes with the
+byte-update instruction; no software tail path is used.
+* The CRC-8/ROHC instruction carries its 8-bit state in `rd[7:0]` and
+zero-extends `rd[31:8]`.
+* Empty-input results are identical to the software definitions: with no
+input units consumed, the seeded state (after the firmware's final XOR for
+CRC-32C) is the empty-input CRC.
+
+The three instructions share a single byte-update datapath. CRC-32C word
+mode runs four byte-update cycles per operation; the two byte modes run
+one cycle each. The datapath uses reflected CRC update behavior with the
+reflected polynomial `0x82F6_3B78` for CRC-32C and `0x0000_00E0` for
+CRC-8/ROHC (the reflection of the `0x07` CRC-8/ROHC polynomial), and never
+applies the CRC-32C final XOR. The CRC parameter definitions (init,
+reflection, and final XOR) are given in the firmware CRC function library
+documentation.
+
+Any other encoding in the `custom0` CRC instruction family is not
+recognized by the accelerator: it does not assert the PCPI ready/wait/write
+handshakes, so PicoRV32's normal illegal-instruction handling is
+preserved. The feature introduces no new top-level KM ports or CSRs, and
+the PicoRV32 built-in multiply/divide support remains enabled and
+unchanged.
+
+[[key-manager-rom-code]]
+===== Key Manager ROM Code
+
+The KM ROM will be as minimal as possible and support just a few
+functions described next. Any other functions will be loaded dynamically
+into the Instruction/Data SRAM by BL1 software or higher via the SEP
+CPU.
+
+[[memory-scrambler-provisioning]]
+Memory Scrambler Provisioning
+
+Instruction and data SRAM contents are protected by a simple, key based
+scrambler.
+
+* Provision the key by reading the DRBG register and moving the data
+into the scrambler key slot
+* Set the write-lock bit to prevent any updates on this key slot until
+the next cold reset (the scrambler key and its lock are non-volatile,
+cold-domain state preserved across warm resets)
+* Enable data content _and_ address scrambling on write and descrambling
+on read operations
+
+[[basic-interrupt-service-handler]]
+*Basic Interrupt Service Handler*
+
+Support inbound mailbox message handling.
+
+[[mailbox-message-handler]]
+*Mailbox Message Handler*
+
+This utility is triggered by the ISR and will support handling all
+inbound mailbox message processing tasks. The most important message
+task type is supporting the ability for the SEP host CPU to load KM CPU
+program images into SRAM. This is the method by which we bootstrap more
+KM functionality. Below are _some_ of the tasks the message handler must
+support.
+
+* Respond to interrupt, and determine it comes from the inbound
+mailbox
+* Retrieve inbound mailbox data from the mailbox by copying it to a
+segment of local SRAM
+* Check validity of the data and command encapsulated in the message and
+unlock data or perform action if message is deemed to be valid and legal
+
+[[hmac-kdf]]
+*Key derivation function (HMAC-SHA256)*
+
+HMAC-SHA256 is the underlying primitive for both deterministic key
+derivation and random key generation. The two uses are kept distinct:
+
+*Deterministic derivation (root keys and the key hierarchy).* Root keys and
+all UID-derived hierarchy keys are derived deterministically: the inputs are
+the UID / root-key material plus a fixed context (domain-separation label,
+life-cycle state, demotion, PCR, user input, ...), and *no* fresh DRBG
+entropy is mixed in. Determinism is required so the same inputs always
+reproduce the same key — it lets ROM re-derive keys after a warm reset and
+binds each key to its selected configuration. When a derived key must
+incorporate randomness, the requester supplies it as `user_input`, which
+keeps derivation deterministic; the KM mixes DRBG entropy into a derivation
+only in rare cases. The derivation:
+
+* Collects the input arguments from the management CSRs and root-key
+storage into dedicated KDF argument locations.
+* Computes the HMAC-SHA256 digest and writes the result to its destination
+(a KPV slot, or a side-load to a crypto engine).
+* Optionally repeats the computation and compares the two digests to detect
+a fault attack, reporting pass/fail as an interrupt-status error event.
+
+*Random key generation.* When a fresh, non-reproducible key is required
+(rather than a derived one), the KM instead draws DRBG entropy (via the DRBG
+sampler) as the key material. Such keys are random, not re-derivable, and are
+not tied to a configuration; they are used where a unique secret — not a
+deterministic derivation — is needed.
+
+[[rom-and-sram-error-detection]]
+===== ROM and SRAM Error Detection
+
+Data will be stored with byte-wise odd parity. This feature cannot be
+turned off, but the interrupt mask register can disable this event from
+propagating up the interrupt tree to the KM CPU as well as to the
+external error event signal output.
+
+[[parity-error-protection]]
+===== Parity Error Protection
+
+Parity bits will be ``out-of-band'' from the data and hence not part of
+the scrambled word. The motivation for this is to minimize any data path
+extra latency on top of what is already added by scrambling and
+descrambling. Parity is on a byte-wise basis so will add an additional 4
+bits next to the 32-bit data word.
+
+[[sram-write-locking]]
+===== SRAM Write Locking
+
+The SRAM interface incorporates a write-locking mechanism to designate
+specific 512-byte memory regions as read-only. This feature is primarily
+designed to protect dynamically loaded KM firmware from unauthorized
+modification.
+
+Control of this functionality resides within the KM Control and Status
+Registers (CSRs). Once a memory region is locked, it cannot be unlocked
+within the current boot session. It will remain in the read-only state
+until the next warm or cold reset of the KM. The write-lock state is in
+the warm reset domain and is cleared on every warm or cold reset.
+
+Protection across warm resets is maintained by the ROM, which is
+responsible for re-applying the full write-lock policy on every boot
+(both cold and warm) before handing control to mutable firmware. Because
+the KM CPU always re-enters ROM after a warm reset, mutable firmware never
+executes against an unlocked SRAM region.
+
+[[rom-warm-persist-region]]
+===== ROM Warm-Persistent SRAM Region
+
+The highest 512 bytes of KM SRAM (region 31, `0x0000_7E00`–`0x0000_7FFF`) are
+reserved as a ROM-managed warm-persistent data structure (`rom_persist`). The
+mutable-firmware load area, stack, and BSS/data occupy the SRAM below it.
+
+This region is owned exclusively by ROM firmware: it holds ROM state that must
+survive warm reset and is not general-purpose scratch for mutable (SRAM-loaded)
+firmware. Mutable firmware must not place its own data here, and once ROM
+write-locks the region it cannot write it at all (see *Write-lock policy*
+below).
+
+SRAM storage is cold-domain hardware: its contents survive any warm or soft
+reset and are erased only by a cold (power-on) reset. ROM firmware exploits
+this property to carry state across warm resets without requiring non-volatile
+storage beyond the SRAM macro itself.
+
+*Cold initialization.* On every cold boot, `rom_boot_init()` detects a cold
+boot via the `COLD_BOOT_DONE` flag (reads 0 before it is set at the end of
+boot) and calls `rom_persist_cold_init()`, which writes known-zero values to
+all fields. On a warm or soft reset, `COLD_BOOT_DONE` already reads 1 and
+`rom_persist_cold_init()` is skipped, preserving the contents of the region.
+
+*Contents.* The `rom_persist_t` structure currently contains one field:
+
+[cols="<20%,<20%,<60%",options="header"]
+|===
+|Field |Type |Description
+|`sram_fw_size` |`uint32_t` |Byte count of the mutable firmware image currently loaded in SRAM (`FW_WORDS × 4`). Zero means no mutable firmware is present. Written by `CMD_SRAM_LOAD_EXEC` on a successful load and verified by `CMD_SRAM_EXEC` before jumping.
+|===
+
+*Write-lock policy.* Before handing control to mutable (SRAM-loaded) firmware,
+ROM must call `rom_persist_lock()`, which sets SRAM_LOCK bit 31 via a triple
+write for glitch resistance. After locking, any write into `0x7E00`–`0x7FFF`
+is silently dropped and a `SRAM_WRITE_LOCK_VIOLATION` IRQ is raised. The lock
+is cleared on the next warm or cold reset; ROM re-establishes it
+before transferring control to mutable code.
+
+[[mutable-firmware-model]]
+===== Mutable Firmware Model
+
+The KM ROM supports loading and executing a mutable software image from SRAM,
+controlled by the `CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC` mailbox commands.
+
+*Memory map.* Mutable firmware is loaded into SRAM starting at `0x4000` (SRAM
+word-address 0) and ROM jumps to `0x4000` as the entry point.  ROM does not
+program the CPU IRQ entry vector for the loaded image; the mutable firmware is
+responsible for setting `IRQ_ENTRY_ADDR` to its own handler before it
+re-enables interrupts.
+
+*SRAM region write-locking.* After a successful load, ROM write-locks the 512-byte
+SRAM regions that contain the firmware image (regions 0 through
+`ceil(fw_size_bytes / 512) - 1`).  These locks are applied immediately before the
+handover jump and remain active for the lifetime of that execution epoch.
+`SRAM_LOCK` is in the warm-reset domain and is cleared by a warm reset; ROM
+re-applies the write-lock on each subsequent warm boot when `CMD_SRAM_EXEC` is
+processed, before handing control to mutable firmware.
+The `rom_persist` region (region 31) is always locked separately.
+
+*Load bounds.* The firmware image must fit entirely below a _static_ load
+ceiling, `__km_fw_load_limit`, rather than below the live stack pointer at load
+time.  This matters because the ROM stack is in volatile SRAM and grows
+downward toward the image: after a warm reset that follows mutable-firmware
+execution, the ROM re-runs and a `CMD_SRAM_EXEC` restart may drive the stack
+deeper than it was at original load, so a live-SP bound could let the ROM stack
+later overwrite executable image words.  The linker computes the ceiling as
+`STACK - __rom_max_stack` (rounded down to a 512-byte write-lock region), where
+`__rom_max_stack` is the worst-case ROM stack depth validated against the
+production ELF by a post-link call-graph analyzer; the firmware build is gated
+on the analyzer.  `CMD_SRAM_LOAD_EXEC` rejects oversized images, and a per-word
+guard during streaming provides defense-in-depth.
+
+The region-disjointness invariant guarantees that no ROM runtime region (stack,
+`.data`, `.bss`) shares a 512-byte block with any firmware-image region.  This
+ensures that write-locking the firmware regions does not accidentally lock
+ROM-owned data, which must remain erasable by the whole-SRAM scramble during
+handover.  Aligning the load ceiling down to a write-lock region boundary is
+what enforces this invariant.
+
+*Sideload key shred.* Before locking and the stack-less handoff, ROM shreds the
+HMAC, KMAC, AES, and OTBN sideload key-share registers, as well as the four
+Adams Bridge seed sideload interfaces (ML-DSA seed, ML-KEM seed D, ML-KEM seed
+Z, and ML-KEM message), overwriting them with PRNG data and clearing each
+`key_valid`.  These crypto-engine register banks are outside the SRAM address
+space, so the whole-SRAM scramble cannot reach them; shredding them explicitly
+prevents mutable firmware from reading any key material the ROM previously
+sideloaded.
+
+*KPV lock/shred.* KPV key-entry data has no warm reset and is descrambled on
+KM-port reads, and the load path only write-locks (not read-locks) provisioned
+keys, so live key material would otherwise be plaintext-readable by mutable
+firmware at the KPV KM-port window.  During handover ROM walks every KPV slot,
+using the firmware key registry to distinguish live slots from free ones: each
+registered slot is read-locked (`lock_use`, which is independent of
+`lock_write`, so the hardware returns zero for KM-port key reads), and each free
+slot is overwritten with PRNG data (falling back to a read-lock if a free slot
+is already write-locked, such as a revoked key, and so cannot be shredded).
+
+*Mailbox flush.* After the outbound `RESP_CMD` confirmation has been sent and
+consumed by the SEP (and, for `CMD_SRAM_LOAD_EXEC`, after the image stream has
+been fully drained), ROM flushes both mailbox FIFOs.  This erases any residual
+inbound payload — for example key material from an earlier `CMD_KEY_LOAD` — so
+mutable firmware cannot recover it from the shared mailbox.
+
+*IRQ vector.* ROM does not program `IRQ_ENTRY_ADDR` during handoff.  Before the
+stack-less assembly handoff ROM masks all CPU IRQ sources and clears all
+KMCSR/mailbox IRQ enables, then jumps with the vector left at the ROM default
+(`0x10`, re-asserted by ROM at boot).  The loaded firmware is responsible for
+programming `IRQ_ENTRY_ADDR` to its own handler before it re-enables interrupts;
+because every CPU IRQ is masked across the jump, the vector value is immaterial
+until the firmware does so.  `IRQ_ENTRY_LOCK` is left unset so the firmware can
+program the vector freely.
+
+`IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK` are warm-reset-domain registers: every
+reset that re-enters ROM (cold, external async, and KM soft reset) restores the
+vector to the ROM default (`0x10`) and clears the lock, and ROM re-asserts that
+value at boot before unmasking interrupts.  ROM therefore never executes with a
+mutable-firmware-chosen vector, and an attacker-controlled vector cannot coexist
+with ROM-privileged execution.
+
+*`sram_fw_size` semantics.* ROM sets `sram_fw_size = 0` at the start of a load
+command (before image transfer) and updates it to `FW_WORDS × 4` only after
+a successful CRC-32C verification.  `CMD_SRAM_EXEC` rejects execution if
+`sram_fw_size == 0`, preventing jumps when no valid image is present.  The
+field persists across warm resets so mutable firmware can be restarted without
+reloading the image.
+
+*Post-handover IRQ state.* ROM clears all KMCSR and mailbox IRQ enables and
+clears any pending sticky IRQ status bits before the assembly handoff.  This
+ensures mutable firmware does not inherit spurious pending interrupts (in
+particular, the `sram_write_lock_err` that would otherwise be raised by the
+whole-SRAM scramble writing into locked firmware regions).
+
+
+ifdef::backend-html5[]
+xref:ip:scrambler/doc/index.adoc[Scrambler]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../../../ip/scrambler/doc/architecture.adoc[]
+endif::backend-pdf[]

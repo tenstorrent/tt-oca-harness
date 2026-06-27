@@ -12,7 +12,6 @@
 
 ## Regenerate non-documentation register collateral for all OCAH register blocks.
 ## @param OCAH_REG_BLOCKS Registered block roots to regenerate
-## @param OCAH_HJSON_REG_BLOCKS HJSON-backed block roots that are converted to RDL first
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs
 ocah-regen-regs: $(OCAH_REGEN_ALL) $(OCAH_REGEN_REG_STAMPS)
@@ -53,6 +52,20 @@ ocah-regen-regs-html: $(OCAH_REGEN_REG_HTML)
 ocah-regen-regs-clean:
 	@rm -rf $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(foreach path,$(call ocah_reg_clean_paths,$(block)),"$(path)"))
 
+## Refresh the committed vendored register RDLs from their upstream OpenTitan hjson.
+## On-demand only: a clean checkout already has the RDLs and regen-regs never runs
+## this (the committed RDL is never a make prerequisite of the hjson). Re-serializes
+## with tt-oca's reggen, so expect a format diff vs the checked-in tt-oca-hw output.
+## @param RDL=aes Optional vendored RDL basename to refresh (default: all). A
+## separate selector from TARGET, which classify.mk validates against top blocks.
+ocah_vhr_name = $(notdir $(basename $(call ocah_vhr_rdl,$(1))))
+OCAH_SELECTED_VENDOR_HJSON_RDLS = $(if $(RDL),$(foreach e,$(OCAH_VENDOR_HJSON_RDLS),$(if $(filter $(RDL),$(call ocah_vhr_name,$(e))),$(e))),$(OCAH_VENDOR_HJSON_RDLS))
+.PHONY: ocah-regen-vendor-rdl
+ocah-regen-vendor-rdl: | uv-sync
+	@$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
+		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
+		$(call ocah_vendor_hjson_rdl_regen,$(e)); )
+
 OCAH_PHONY += \
   ocah-regen-regs \
   ocah-regen-regs-sv \
@@ -61,4 +74,5 @@ OCAH_PHONY += \
   ocah-regen-regs-py \
   ocah-regen-regs-adoc \
   ocah-regen-regs-html \
-  ocah-regen-regs-clean
+  ocah-regen-regs-clean \
+  ocah-regen-vendor-rdl

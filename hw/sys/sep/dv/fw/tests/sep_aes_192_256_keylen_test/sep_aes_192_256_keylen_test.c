@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * AES-192/256 Key Lengths Test (FUNC-003)
  *

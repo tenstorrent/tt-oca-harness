@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef RESET_CTRL_SEQUENCE_H
 #define RESET_CTRL_SEQUENCE_H
 

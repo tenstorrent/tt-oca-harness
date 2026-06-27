@@ -1,0 +1,55 @@
+# idma (vendored, patched)
+
+Upstream: [`pulp-platform/iDMA`](https://github.com/pulp-platform/iDMA) @
+`b248755b3265ff88b826eeec5e23eef012ba61b5` (the `v0.6.5-src` release). The `-src`
+tag ships only the iDMA **source** (templates); its `target/rtl/` is empty
+(`.gitignore` only). The sibling `v0.6.5` release does ship a generated `target/rtl`,
+but it is a different, generic config — not the bundle TT compiles — so we vendor the
+source and keep TT's generated RTL as overlay collateral (see below).
+
+## Layout
+
+- `upstream/` — bender-managed copy of upstream `src/` only.
+- `overlay/target/rtl/` — TT-owned generated RTL OCA compiles (`idma_generated.sv`,
+  `include/idma/tracer.svh`), produced from the patched templates with a TT generator
+  config. No upstream equivalent; committed directly, not touched by `bender vendor init`.
+- `overlay/rdl/` — TT-owned register description (`dma_ctrl.rdl`) for the iDMA CSR
+  block. Hand-maintained today; future home for RDL exported from the patched
+  `idma_reg.hjson.tpl` via `regtool --systemrdl`. Generated C/adoc/html collateral
+  stays under `hw/comp/idma_wrapper/data/registers/`.
+- `Bender.yml`, `patches/`, this `README.md` — hand-authored at the package root.
+
+The hand-authored `Bender.yml` is a slimmed manifest exposing only the `idma_rtl`
+set tt-oca-hw compiles; the fork's project-specific `tt_custom`/DFC tree, project
+bender targets, and the `tt_tensix_common` dependency are intentionally dropped.
+
+## Patches
+
+The TT delta — all in-place edits to upstream files (no new modules) — is split
+into atomic, numbered patches **by subsystem** (applied in sorted filename order;
+each touches a distinct set of files, so the order is not load-bearing):
+
+### `patches/0001-tt-idma-backend.patch` — protocol backends + their templates
+
+Channel-field wiring and fixes for the AXI (`idma_axi_{read,write}`), AXI-Stream
+(`idma_axis_write`), OBI (`idma_obi_write`), and TileLink (`idma_tilelink_*`)
+backends, the channel coupler / dataflow element / error handler, plus the mirrored
+`backend/tpl/{idma_backend,idma_legalizer,idma_transport_layer}.sv.tpl` generators.
+
+### `patches/0002-tt-idma-frontend.patch` — desc64 frontend + reg templates
+
+Edits to the `frontend/desc64/*` descriptor engine and the
+`frontend/reg/tpl/idma_reg.{hjson,sv}.tpl` register generators.
+
+### `patches/0003-tt-idma-typedef.patch` — shared typedef header
+
+Edits to `src/include/idma/typedef.svh`.
+
+### `patches/0004-tt-idma-midend.patch` — midend
+
+Edits to the `midend/idma_{nd,mp_dist,mp_split}_midend` modules.
+
+The `.tpl` edits are kept with their subsystem so that regenerating from the
+patched templates reproduces the generated bundle in `overlay/target/rtl/`. When
+rebasing, regenerate from the patched templates rather than hand-editing the
+generated `idma_*` files.

@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[ctm-interface]]
+==== Interface
+
+===== Signal Interface
+
+[cols="<,<,<,<",options="header"]
+|===
+|Signal |Direction |Width |Description
+|clk_i |Input |1 |System clock
+|rst_ni |Input |1 |Active-low asynchronous reset
+|ct_dst_i |Input |N+M |Cross trigger inputs from CTPs and internal sources
+|ct_src_o |Output |N+M |Cross trigger outputs to CTPs and internal sinks
+|ct_src_ack_i |Input |M |Acknowledge from internal sinks (for handshake mode)
+|ct_dst_ack_o |Output |M |Acknowledge to internal sources (for handshake mode)
+|route_cfg_i |Input |varies |Routing configuration per output port
+|===
+
+Where N = NUM_CTP and M = NUM_INT_CT.
+
+===== Data Ports
+
+The CTM has the following data ports:
+
+* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs, CTPs, or other cross trigger sinking devices, where N is the number of these cross trigger sinks.
+* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs, CTPs, or other cross trigger generating devices, where M is the number of these cross trigger sources.
+
+===== Dependencies
+
+The CTM depends on the following components:
+
+* `hw/common/prim` - Primitive cells

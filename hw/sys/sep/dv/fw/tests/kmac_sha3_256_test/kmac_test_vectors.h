@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /* Auto-generated test vectors - DO NOT EDIT BY HAND
  *
  * Use 'make generate-test-vectors' to regenerate this file.

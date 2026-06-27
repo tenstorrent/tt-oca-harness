@@ -41,7 +41,7 @@ ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1))
 ocah_reg_sv_block_outputs = $(foreach b,$(call ocah_reg_sv_blocks,$(1)),$(call ocah_reg_sv_block_dir,$(1))/$(b)_reg.sv)
 ocah_reg_c_block_outputs = $(foreach b,$(call ocah_reg_ch_blocks,$(1)),$(call ocah_reg_c_block_dir,$(1))/$(b).h)
 ocah_reg_adoc_block_outputs = $(foreach b,$(call ocah_reg_doc_blocks,$(1)),$(call ocah_reg_adoc_block_dir,$(1))/$(b).adoc)
-ocah_reg_html_block_outputs = $(foreach b,$(call ocah_reg_doc_blocks,$(1)),$(call ocah_reg_html_block_dir,$(1))/$(b)/index.html)
+ocah_reg_html_block_outputs = $(foreach b,$(call ocah_reg_doc_blocks,$(1)),$(call ocah_reg_html_block_dir,$(1))/$(b).html)
 
 # Output selectors per block: composite -> sub-block lists, RTL-elsewhere leaf ->
 # stamp, plain leaf -> files.
@@ -52,7 +52,7 @@ ocah_reg_html_target = $(if $(call ocah_reg_is_composite,$(1)),$(call ocah_reg_h
 ocah_reg_html_dir = $(patsubst %/,%,$(dir $(call ocah_reg_html_output,$(1))))
 ocah_reg_is_file_backed = $(OCAH_REG_GEN_OVERRIDE_$(call ocah_reg_key,$(1)))
 ocah_reg_file_clean_outputs = \
-  $(call ocah_reg_sv_outputs,$(1)) \
+  $(if $(call ocah_reg_sv_skipped,$(1)),,$(call ocah_reg_sv_outputs,$(1))) \
   $(call ocah_reg_svpkg_output,$(1)) \
   $(call ocah_reg_c_output,$(1)) \
   $(call ocah_reg_raw_c_output,$(1)) \

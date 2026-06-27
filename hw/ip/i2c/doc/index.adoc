@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[i2c-controller]]
+==== I2C Controller
+
+===== Overview
+
+The OCA I2C Interface Component is a comprehensive I2C/SMBus/PMBus
+communication controller that provides full-featured support for both
+controller (master) and target (slave) operation modes. Based on
+industry standards and featuring robust error handling, configurable
+FIFOs, and extensive interrupt support, this component enables reliable
+inter-chip communication in complex system-on-chip designs.
+
+===== Description and Features
+
+* *Multi-Protocol Support*: Full compliance with I2C Rev. 7.0, SMBus
+Rev. 3.2, and PMBus Rev. 1.4 specifications
+* *Dual Operating Modes*: Configurable as controller-only, target-only,
+controller-target, or bus monitor
+* *High-Speed Operation*: Support for Standard-mode (100 kbaud),
+Fast-mode (400 kbaud), and Fast-mode Plus (1 Mbaud)
+* *Advanced Controller Features*: Clock stretching support, automatic
+ACK control, multi-controller arbitration
+* *Flexible Target Capabilities*: Automatic clock stretching,
+programmable ACK control, broadcast transfer support
+* *Configurable FIFO Architecture*: Independent TX/RX FIFO depths for
+both controller and target modes
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

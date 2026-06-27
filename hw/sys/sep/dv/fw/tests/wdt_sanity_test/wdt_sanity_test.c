@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * WDT Sanity Test - Watchdog Timer Functionality Test
  *
@@ -18,7 +21,6 @@
  *
  * Note: NMI mechanism verification is done in nmi_sanity_test.
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

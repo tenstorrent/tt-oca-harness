@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT ACCESSINVAL Test - TC_SPIOT_021 (P1)
  *
@@ -31,7 +34,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

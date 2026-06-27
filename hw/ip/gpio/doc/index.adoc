@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[gpio-peripheral]]
+==== GPIO Peripheral
+
+===== Overview
+
+The GPIO (General Purpose Input/Output) peripheral provides programmable
+digital I/O capabilities for the OCH system. It serves as a flexible
+interface for configuration straps, general-purpose signaling, and
+bit-banging protocols. The peripheral features dual-mode operation
+supporting both register-driven control and LSIO (Low Speed
+Input/Output) interface control with comprehensive access filtering and
+interrupt generation capabilities.
+
+===== Description and Features
+
+* *Dual Control Modes*: Register-driven control or LSIO interface
+selection with programmable direction control
+* *Flexible I/O Configuration*: Bidirectional data path with independent
+RX/TX enable controls
+* *Security & Access Control*: Advanced register access filtering with
+AXI protection level requirements
+* *Configuration Strap Support*: Hardware strap capture during system
+reset for boot-time configuration
+* *Comprehensive Interrupt System*: Configurable interrupt generation
+with multiple trigger modes
+* *Programmable Electrical Characteristics*: Software-configurable drive
+strength and pull resistors
+* *Standard Bus Interfaces*: Support for both APB4 and AXI4-Lite
+register interfaces
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

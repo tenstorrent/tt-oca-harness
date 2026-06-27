@@ -1,0 +1,69 @@
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
+
+* *WORD[16]*: 16 registers
+  ** Base Address: 0x0
+  ** Address Increment: 0x4 per register
+
+* *CTRL[32]*: 32 registers
+  ** Base Address: 0x800
+  ** Address Increment: 0x4 per register
+
+======
+
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 - 0x3C | WORD[16] | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x800 - 0x87C | CTRL[32] | RW a| Per-slot control: lock bits (W1S), Extend, Dest_valid, Last_dword
+| 0x880 | KPV_SCRAMBLER_KEY | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
+| 0x884 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.WORD[16] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CTRL[32] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:21 | `rsvd_31_21` | R | 0x0 a| Reserved
+| 20:17 | `last_dword` | RW | 0x0 a| Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.
+| 16:9 | `dest_valid` | RW | 0x0 a| Which crypto block may consume this key. Firmware enforced.
+bit 0: HMAC-SHA2 engine
+bit 1: KMAC-SHA3 engine
+bit 2: AES engine
+bit 3: OTBN engine
+bit 4: Adams Bridge ML-DSA seed
+bit 5: Adams Bridge ML-KEM seed D
+bit 6: Adams Bridge ML-KEM seed Z
+bit 7: Adams Bridge ML-KEM message
+| 8:7 | `rsvd_8_7` | R | 0x0 a| Reserved
+| 6:4 | `extend` | RW | 0x0 a| Zero-indexed number of additional slots for wide keys. Firmware enforced.
+| 3:2 | `rsvd_3_2` | R | 0x0 a| Reserved
+| 1 | `lock_use` | RW | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+| 0 | `lock_write` | RW | 0x0 a| Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KPV_SCRAMBLER_KEY Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `key` | RW | - a| Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KPV_SCRAMBLER_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `rsvd` | R | 0x0 a| Reserved
+| 1 | `lock` | RW | 0x0 a| Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
+| 0 | `enable` | RW | 0x0 a| 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
+|===

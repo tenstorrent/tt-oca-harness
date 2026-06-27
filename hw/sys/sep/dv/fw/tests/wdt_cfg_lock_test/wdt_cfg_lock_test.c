@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * WDT Config Lock Test
  *
@@ -11,7 +14,6 @@
  * 5. Pet the watchdog (write 0 to WDOG_COUNT), verify that still works
  * 6. Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared by the interrupt handler
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

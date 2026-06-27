@@ -1,0 +1,44 @@
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
+
+* *MSIP[4]*: 4 registers
+  ** Base Address: 0x0
+  ** Address Increment: 0x4 per register
+
+* *MTIMECMP[4]*: 4 registers
+  ** Base Address: 0x4000
+  ** Address Increment: 0x8 per register
+
+======
+
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 - 0xC | MSIP[4] | RW a| -
+| 0x4000 - 0x4018 | MTIMECMP[4] | RW a| -
+| 0xBFF8 | MTIME | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.MSIP[4] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd0` | R | 0x0 a| Reserved
+| 0 | `value` | RW | 0x0 a| MSIP bit for core
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.MTIMECMP[4] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `count` | RW | - a| Cycle count value to be used for comparison, triggers interrupt once count value matches this
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.MTIME Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `count` | RW | - a| Cycle count (time) value
+|===

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_005 (V2, P1) - WDT Pet/Reset Test
  *
@@ -10,7 +13,6 @@
  * 4. Pet just before threshold → verify no interrupt fires
  * 5. Verify counter resumes incrementing after pet
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

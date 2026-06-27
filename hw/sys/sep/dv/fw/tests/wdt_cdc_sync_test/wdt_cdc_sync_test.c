@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_009 (V3, P2) - WDT CDC Sync / Register Consistency Test
  *
@@ -14,7 +17,6 @@
  *
  * Note: True CDC delay measurement not possible from firmware.
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

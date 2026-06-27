@@ -1,0 +1,28 @@
+diff --git a/hw/ip/prim_generic/rtl/prim_ram_1p.sv b/hw/ip/prim/rtl/prim_ram_1p.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_ram_1p.sv
+rename to hw/ip/prim/rtl/prim_ram_1p.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_ram_1p_pkg.sv b/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_ram_1p_pkg.sv
+rename to hw/ip/prim/rtl/prim_ram_1p_pkg.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_ram_1r1w.sv b/hw/ip/prim/rtl/prim_ram_1r1w.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_ram_1r1w.sv
+rename to hw/ip/prim/rtl/prim_ram_1r1w.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_ram_2p.sv b/hw/ip/prim/rtl/prim_ram_2p.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_ram_2p.sv
+rename to hw/ip/prim/rtl/prim_ram_2p.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_ram_2p_pkg.sv b/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_ram_2p_pkg.sv
+rename to hw/ip/prim/rtl/prim_ram_2p_pkg.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_rom_pkg.sv b/hw/ip/prim/rtl/prim_rom_pkg.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_rom_pkg.sv
+rename to hw/ip/prim/rtl/prim_rom_pkg.sv
+diff --git a/hw/ip/prim_generic/rtl/prim_rst_sync.sv b/hw/ip/prim/rtl/prim_rst_sync.sv
+similarity index 100%
+rename from hw/ip/prim_generic/rtl/prim_rst_sync.sv
+rename to hw/ip/prim/rtl/prim_rst_sync.sv

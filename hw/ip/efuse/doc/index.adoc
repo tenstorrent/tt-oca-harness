@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[efuse-peripheral-module]]
+==== eFuse
+
+===== Description and Features
+
+include::architecture.adoc[]
+include::interface.adoc[]
+include::memmap.adoc[]
+include::programming.adoc[]

@@ -1,0 +1,23 @@
+--- a/hw/ip/prim_generic/rtl/prim_generic_flash_bank.sv
++++ b/hw/ip/prim_generic/rtl/prim_generic_flash_bank.sv
+@@ -42,12 +42,6 @@
+   input                                           flash_power_down_h_i
+ );
+ 
+-  `ifdef SYNTHESIS
+-    localparam int ReadLatency   = 1;
+-    localparam int ProgLatency   = 50;
+-    localparam int EraseLatency  = 200;
+-
+-  `else
+     int ReadLatency   = 1;
+     int ProgLatency   = 50;
+     int EraseLatency  = 200;
+@@ -67,7 +61,6 @@
+       $display("%m: ReadLatency:%0d ProgLatency:%0d EraseLatency:%0d",
+                ReadLatency, ProgLatency, EraseLatency);
+     end
+-  `endif
+ 
+   // Emulated flash macro values
+   localparam int BkEraseCycles = 2000;

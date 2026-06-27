@@ -1,0 +1,40 @@
+# Copyright 2022 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+# Sources are vendored from upstream pulp-platform/axi_stream into upstream/ via
+# the `vendor_package` entry in the root Bender.yml (bender vendor init), pinned
+# at v0.1.1. No TT patch is carried; do not hand-edit upstream/ files.
+
+package:
+  name: axi_stream
+  authors:
+    - "Thomas Benz <tbenz@iis.ee.ethz.ch>"
+    - "Tim Fischer <fischeti@iis.ee.ethz.ch>"
+    - "Noah Huetter <huettern@iis.ee.ethz.ch>"
+    - "Nils Wistoff <nwistoff@iis.ee.ethz.ch>"
+
+# common_cells is forced to the locally vendored path package for every consumer
+# via Bender.local overrides; this declaration is inert and records the upstream
+# dependency that axi_stream declares.
+dependencies:
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+
+export_include_dirs:
+  - upstream/include
+
+sources:
+  # Level 0
+  - upstream/src/axi_stream_intf.sv
+  # Level 1
+  - upstream/src/axi_stream_cut.sv
+  - upstream/src/axi_stream_dw_downsizer.sv
+  - upstream/src/axi_stream_dw_upsizer.sv
+  # Level 2
+  - upstream/src/axi_stream_multicut.sv
+
+  - target: test
+    files:
+      - upstream/test/axi_stream_test.sv
+      - upstream/test/tb_axi_stream_dw_downsizer.sv
+      - upstream/test/tb_axi_stream_dw_upsizer.sv

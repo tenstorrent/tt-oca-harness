@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_ctrl_en_test
 //
 // Exercise the wrapper-level CTRL.UART_EN bit (offset 0 of the

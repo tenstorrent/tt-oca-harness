@@ -1,0 +1,18 @@
+--- a/hw/ip/prim/rtl/prim_diff_decode.sv
++++ b/hw/ip/prim/rtl/prim_diff_decode.sv
+@@ -182,7 +182,14 @@
+             else       fall_o = 1'b1;
+           end
+         end
+-        default : ;
++        default : begin
++          state_d    = state_q;
++          level_d    = level_q;
++          skew_cnt_d = skew_cnt_q;
++          rise_o     = 1'b0;
++          fall_o     = 1'b0;
++          sigint_o   = 1'b0;
++        end
+       endcase
+     end
+ 

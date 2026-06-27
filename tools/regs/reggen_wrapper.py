@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 # Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
@@ -74,6 +77,12 @@ def main() -> int:
         default="",
         help="Regblock node to export. Defaults to all nodes.",
     )
+    parser.add_argument(
+        "--name",
+        default="",
+        help="Override the top addrmap name (e.g. export dma.hjson as 'secure_dma'). "
+        "Defaults to the hjson 'name' field.",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-q", "--quiet", action="store_true")
 
@@ -95,6 +104,12 @@ def main() -> int:
     except ValueError as err:
         log.error(str(err))
         return 1
+
+    # Vendored IPs whose TT name differs from the upstream hjson name (e.g.
+    # dma -> secure_dma, spi_host -> spi_controller): override the top addrmap
+    # name so the emitted RDL matches the committed/included block name.
+    if args.name:
+        block.name = args.name
 
     return SystemrdlExporter(block).export(args.outfile)
 

@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[peripherals]]
+[[peripherals]]
+=== Peripherals
+
+This section documents the main peripherals integrated within the System
+Management Controller (SMC). These peripherals provide essential I/O and
+communication capabilities for the OCH system, supporting various
+protocols and interfaces required for system operation and external
+connectivity.
+
+The following table summarizes the key peripherals, their communication
+protocols, and default instance counts:
+
+.SMC Peripheral Summary
+[width="100%",cols="25%,47%,17%,11%",options="header",]
+|=======================================================================
+|Peripheral |Description |Protocol |Instances
+ifdef::backend-html5[]
+|xref:ip:axi_lite_mailbox_unit/doc/index.adoc[Mailbox] |FIFO-based bidirectional
+communication channels for inter-processor or inter-chiplet
+communication. |AXI4-Lite |32
+
+|xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS] |64-bit
+timer for multi-chiplet time synchronization with PRIMARY/SECONDARY
+modes. |APB4/AXI4-Lite |1
+
+|xref:ip:efuse/doc/index.adoc[eFuse] |Secure access to One-Time
+Programmable (OTP) memory with layered security architecture.
+|APB4/AXI4-Lite |1
+
+|xref:ip:uart_16550/doc/index.adoc[UART 16550] |Industry-standard
+UART with enhanced FIFO capabilities and comprehensive interrupt
+support. |AXI4-Lite |4
+
+|xref:ip:log_engine/doc/index.adoc[Log Engine] |DMA-based logging
+system for efficient transfer of log messages to UART interface.
+|AXI4-Lite |4
+
+|xref:ip:i2c/doc/index.adoc[I2C] |Full I2C/SMBus/PMBus communication
+controller supporting both controller and target modes. |AXI4-Lite |3
+
+|xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
+|Adaptive voltage scaling communication controller for managing voltage
+rails and power conditions. |APB4/AXI4-Lite |1
+
+|xref:ip:gpio/doc/index.adoc[GPIO] |General Purpose Input/Output
+with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).
+|APB4/AXI4-Lite |68
+
+|xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
+|Hardware component for decoding and processing telemetry data from
+multi-chiplet systems. |APB4/AXI4-Lite |3
+
+|I3C |I3C controller for enhanced serial communication (RESERVED - NOT YET
+IMPLEMENTED). |AXI4-Lite |6
+
+|Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
+subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
+
+|SMC Misc |Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.
+|AXI4-Lite |1
+endif::backend-html5[]
+ifdef::backend-pdf[]
+|Mailbox |FIFO-based bidirectional
+communication channels for inter-processor or inter-chiplet
+communication. |AXI4-Lite |32
+
+|System Timer OCTS |64-bit
+timer for multi-chiplet time synchronization with PRIMARY/SECONDARY
+modes. |APB4/AXI4-Lite |1
+
+|eFuse |Secure access to One-Time
+Programmable (OTP) memory with layered security architecture.
+|APB4/AXI4-Lite |1
+
+|UART 16550 |Industry-standard
+UART with enhanced FIFO capabilities and comprehensive interrupt
+support. |AXI4-Lite |4
+
+|Log Engine |DMA-based logging
+system for efficient transfer of log messages to UART interface.
+|AXI4-Lite |4
+
+|I2C |Full I2C/SMBus/PMBus communication
+controller supporting both controller and target modes. |AXI4-Lite |3
+
+|AVSBus Controller
+|Adaptive voltage scaling communication controller for managing voltage
+rails and power conditions. |APB4/AXI4-Lite |1
+
+|GPIO |General Purpose Input/Output
+with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).
+|APB4/AXI4-Lite |68
+
+|Telemetry Receiver
+|Hardware component for decoding and processing telemetry data from
+multi-chiplet systems. |APB4/AXI4-Lite |3
+
+|I3C |I3C controller for enhanced serial communication (RESERVED - NOT YET
+IMPLEMENTED). |AXI4-Lite |6
+
+|Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
+subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
+
+|SMC Misc |Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.
+|AXI4-Lite |1
+endif::backend-pdf[]
+|=======================================================================
+
+ifdef::backend-html5[]
+xref:ip:axi_lite_mailbox_unit/doc/index.adoc[Mailbox]
+xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
+xref:ip:efuse/doc/index.adoc[EFuse]
+xref:ip:uart_16550/doc/index.adoc[UART 16550]
+xref:ip:log_engine/doc/index.adoc[Log Engine]
+xref:ip:i2c/doc/index.adoc[I2C]
+xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
+xref:ip:gpio/doc/index.adoc[GPIO]
+xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[]
+
+include::../../../ip/system_timer_octs/doc/index.adoc[]
+
+include::../../../ip/efuse/doc/index.adoc[]
+
+include::../../../ip/uart_16550/doc/index.adoc[]
+
+include::../../../ip/log_engine/doc/index.adoc[]
+
+include::../../../ip/i2c/doc/index.adoc[]
+
+include::../../../ip/avsbus_controller/doc/index.adoc[]
+
+include::../../../ip/gpio/doc/index.adoc[]
+
+include::../../../ip/telemetry_receiver/doc/index.adoc[]
+endif::backend-pdf[]

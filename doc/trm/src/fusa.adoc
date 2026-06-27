@@ -1,0 +1,795 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+= Functional Safety (FuSa)
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+// For PDF backend, we include inline every subsection of a subsystem's documentation through its fusa.adoc. For HTML backend (webpage), we let the user use the navigation sidebar. Navigation sidebar is defined in `doc/trm/modules/ROOT/nav.adoc`
+
+[[fusa-introduction]]
+== Introduction
+
+This document describes the functional safety architecture and implementation of the Open Chiplet Atlas Harness (OCAH) IP.
+It covers the hardware safety mechanisms chosen for each functional block within the design scope, targeting ASIL-D certification as a Safety Element out of Context (SEooC) in accordance with ISO 26262.
+
+The purpose of the described safety mechanisms is to detect, protect against, and report permanent and transient faults occurring in all safety-critical blocks, including sequential and combinational logic as well as SRAM memories.
+Upon detection of a fault, OCAH enters a fault-detected state and notifies an external safety agent — the Safety Monitor (SMO), integrated within the same chiplet — which is responsible for managing the transition to a safe state at the system level.
+
+[[fusa-fault-tolerance]]
+=== Fault Tolerance
+
+Fault tolerance refers to a system's ability to continue operating correctly even when one or more of its components fail.
+In the context of ISO 26262, electronic systems shall be designed to prevent hazardous failures that could compromise safety.
+For OCAH, the primary focus is the design of a safety architecture that detects faults and notifies an external safety agent for further handling.
+
+Fault tolerance in OCAH is structured around the following four stages:
+
+* *Fault Event*: A random hardware fault occurs in a safety-critical component. This includes transient faults (e.g., single-event upsets from radiation or voltage noise) and permanent faults (e.g., stuck-at defects from aging or manufacturing). Fault events can affect any element in the design: CPU pipeline logic, SRAM memory cells, configuration registers, interconnect wiring, FSM state encoding, or IO peripheral logic.
+* *Fault Detection*: A diagnostic mechanism detects the fault. Each safety-critical component in OCAH is paired with a dedicated detection mechanism appropriate to its structure. Lockstep comparators detect mismatches in redundant CPU pipelines, ECC decoders detect bit errors in SRAM on every read, parity checkers detect bit flips in registers and bus payloads, and timeout monitors detect stopped clocks or hung bus transactions. Detection occurs within the Diagnostic Test Time Interval (DTTI).
+* *Fault Detected State*: Upon detection, the affected component enters a fault-detected state where its outputs are isolated to prevent the fault from propagating to other parts of the system. For example, a lockstep mismatch triggers a manager isolation mechanism that blocks the faulty CPU from issuing transactions on the fabric; a parity error on an interrupt controller causes the affected interrupt line to be clamped. The fault-detected state persists until the system completes the fault reaction.
+* *Fault Reaction*: The system restores safe operation. OCAH signals the fault to the SMO via a level-sensitive, active-high error interrupt. The error signal remains asserted until the SMO acknowledges the fault. The SMO then orchestrates a recovery action, typically a reset of the affected subsystem or component. The complete sequence from fault event to safe state must occur within the Fault Tolerant Time Interval (FTTI).
+
+In silicon design, fault tolerance — where a fault is corrected without entering a fault-detected state — is possible in a limited set of cases.
+SRAM memories protected with SECDED ECC can correct single-bit errors transparently: the faulty bit is corrected by the ECC decoder, and the system continues normal operation.
+If a multi-bit error occurs, the fault is detected but not corrected, and the system proceeds through the full fault-detected state and fault reaction sequence.
+
+[[fusa-fault-classification]]
+=== Fault Classification
+
+OCAH distinguishes between two categories of random hardware faults based on how they are exercised.
+
+* *Primary faults* (single points of failure) are faults that, if present, directly cause a violation of a safety goal during normal operation.
+These faults are addressed by *diagnostic* mechanisms: hardware circuits that continuously monitor the protected component and detect the fault at runtime.
+Examples include lockstep comparators, ECC decoders, parity checkers, and timeout monitors.
+When a diagnostic mechanism detects a primary fault, OCAH enters the fault-detected state and triggers the fault reaction sequence described above.
+
+* *Latent faults* are faults that reside in the diagnostic mechanism itself, remaining hidden because the mechanism is not exercised during normal operation.
+A latent fault in a lockstep comparator, for example, would cause it to remain in the "match" state even when the redundant cores diverge — the comparator's inability to signal a mismatch remains invisible as long as the CPUs produce identical outputs.
+These faults are addressed by *test for diagnostics*: software-initiated self-test routines that deliberately inject errors into the protected path to verify that the diagnostic hardware detects them.
+Test for diagnostics are typically executed at system startup or periodically during runtime.
+If the diagnostic mechanism fails to detect the injected error, the test identifies the mechanism as faulty and reports a latent fault to the SMO.
+
+[[fusa-assumed-safety-goals]]
+=== Assumed Safety Goals
+
+OCAH is developed as a Safety Element out of Context (SEooC) in accordance with ISO 26262.
+As such, no item-level Hazard and Risk Analysis (HARA) is performed and no item-level safety goals are defined.
+Instead, safety goals are assumed based on representative target use cases and the intended function of the element.
+The safety integrity level targeted for OCAH is ASIL-D.
+
+Based on the assumed use cases, the following safety goals are assumed.
+The assumed safety goals define the top-level safety properties that the element must preserve.
+They are the basis from which all technical safety requirements, hardware safety requirements, and safety mechanisms described in this document are derived.
+
+ifdef::backend-html5[]
+include::meta/ocah_hsr_table.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../meta/ocah_hsr_table.adoc[]
+endif::backend-pdf[]
+
+[[fusa-assumptions-of-use]]
+=== Assumptions of Use
+
+Based on the assumed use cases and assumed safety goals, the following assumptions of use are specified.
+As a SEooC, OCAH relies on these assumptions being fulfilled by the system integrator.
+Compliance with these assumptions is necessary to ensure the effectiveness of the safety concept described in this document.
+Any deviation from these assumptions requires the system integrator to perform additional analysis and justification to demonstrate that no safety goal is violated.
+
+.Assumptions of Use
+[cols="1,4", options="header"]
+|===
+| Identifier | Assumption of Use
+
+| OCAH-AOU01
+| The element is developed as an SEooC. The system integrator must ensure compliance to all assumptions of use. Any deviation will require the system integrator to perform additional analysis and justification.
+
+| OCAH-AOU02
+| The system shall integrate and use the element per all instructions in the integration and user guide
+
+| OCAH-AOU03
+| The system shall comply with all stated requirements in the data sheet
+
+| OCAH-AOU04
+| The system shall implement an external watchdog to protect against the element failing to progress.
+
+| OCAH-AOU05
+| The element assumes error-free inputs including a correct clock, reset sequence, and error-free bus transactions. It is up to the system integrator to monitor these.
+
+| OCAH-AOU06
+| The element assumes error free data and instructions. i.e. the integrity of the data supplied on the incoming busses is assumed
+
+| OCAH-AOU07
+| The system integrator shall monitor and respond to all interrupts, including error indication interrupts, per the user guide and safety manual
+
+| OCAH-AOU08
+| Availability of the element is not a safety goal. i.e. transitioning to reset is an acceptable safe state.
+
+| OCAH-AOU09
+| Real time performance deadlines are not safety critical. If a missed processing deadline may cause the violation of a safety goal, this must be handled at the system level.
+
+| OCAH-AOU10
+| When the element indicates a fault detected state, the system will take appropriate action such as moving to a safe state.
+
+| OCAH-AOU11
+| When the element is unavailable due to loss of power or communication, the system shall transition itself into a safe state.
+
+| OCAH-AOU12
+| All internal diagnostics are enabled, and all recommended diagnostics are implemented. If any diagnostics are not enabled or implemented, the system integrator must perform further analysis to ensure that safety goals are met.
+
+| OCAH-AOU13
+| The system integrator is responsible for synthesis, physical implementation, production and testing. The element is provided as a soft IP.
+
+| OCAH-AOU14
+| An error in any single arithmetic operation will not lead to the violation of a safety goal
+
+| OCAH-AOU15
+| FTTI shall be defined at the system level with the element being an allocated part of the overall FTTI calculation for fault detection and fault reporting
+
+| OCAH-AOU16
+| Multipoint fault detection interval shall be defined at the system level with the element being an allocated part of the overall time interval.
+
+| OCAH-AOU17
+| Analysis for fault reading frequencies from the element shall be done at the system level
+
+| OCAH-AOU18
+| The system integrator shall provide evidence of the fulfillment of the assumptions
+
+| OCAH-AOU19
+| If any assumptions are disregarded, the system integrator shall provide an argument of how disregarding an assumption will not violate any safety requirement
+|===
+
+[[fusa-hardware-safety-requirements]]
+=== Hardware Safety Requirements
+
+The high-level safety requirements above are decomposed into detailed hardware safety requirements (HWSRs).
+The table below lists the full set of HWSRs for OCAH.
+Subsequent sections reference individual HWSR IDs to establish forward traceability from requirements to the safety mechanisms that implement them.
+
+ifdef::backend-html5[]
+include::meta/ocah_hwsr_table.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../meta/ocah_hwsr_table.adoc[]
+endif::backend-pdf[]
+
+[[fusa-high-level-architecture]]
+=== OCAH High-Level FuSa Architecture
+
+The figure below shows the OCAH SEooC within the SiP. Failure Model Analysis and requirements hierarchy assume an external safety element is tasked to aggregate error signal interrupts from OCAH, bring it to a safe state, and drive latent fault test diagnostics and error logging through a dedicated safety bus.
+This safety element is shown in the figure as Safety Monitor (SMO).
+
+image::ocah-high-level-diagram-fusa.png[OCAH High-Level Block Diagram with FuSa Features,scaledwidth=90.0%]
+
+The remainder of this document is organized as follows.
+The next sections describe the shared functional safety infrastructure integrated across all OCAH subsystems: the safety bus and the self-test interface.
+Subsequent sections address each subsystem individually, detailing the diagnostic mechanisms for primary faults and the test-for-diagnostic mechanisms for latent faults applied to each resource.
+
+Several resource types — general-purpose CPU, memory system, interconnect fabric — appear in more than one subsystem with identical protection requirements.
+To avoid redundancy, each such mechanism is described in detail for the first subsystem that integrates it and cross-referenced in subsequent subsystems.
+
+[[fusa-safety-bus]]
+=== Safety Bus
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-GENERAL-000, OCAH-HWSR-GENERAL-002, OCAH-HWSR-GENERAL-003
+--
+
+OCAH includes a dedicated safety bus using the AXI4-Lite protocol, connecting the SMO to safety-related control and status registers within all subsystems (SMC, SEP, AoU), as shown in the figure above. This bus enables error reporting and control of safety mechanisms across the design.
+
+The safety bus carries two categories of traffic:
+
+* *Configuration writes* from the SMO to enable, disable, or configure safety mechanisms and test-for-diagnostic routines within each subsystem.
+* *Status reads* from the SMO to query error flags, error logs, and eventually self-test outcomes.
+
+Freedom From Interference (FFI) is essential for the safety bus. It is physically and architecturally separate from the main data fabric, using dedicated AXI4-Lite ports and an independent interconnect that shares no arbitration or buffering resources with functional data paths.
+
+The safety bus fabric applies the same protection mechanisms described for the functional fabric to ensure its own integrity. We refer to the SMC subsystem (Sec. 15) for a description of fabric protection.
+
+[[fusa-error-injection]]
+=== Self-Test Interface
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-GENERAL-001, OCAH-HWSR-SMC-158, OCAH-HWSR-SMC-172, OCAH-HWSR-SMC-173, OCAH-HWSR-SMC-174, OCAH-HWSR-SMC-175, OCAH-HWSR-SMC-176
+--
+
+To detect latent faults in diagnostic mechanisms, OCAH implements a hardware self-test interface.
+This interface provides a controlled means for software to exercise the error detection and correction logic of a protected component, verifying its ability to detect and report faults across all bit positions.
+
+The interface is instantiated wherever a latent fault test is required, including:
+
+* ECC checkers on SRAM (caches, scratchpad)
+* Network element parity checkers on fabric payloads (bus wires)
+* Local parity checkers on HW-readable configuration registers
+* Lockstep comparators on CPU pipelines
+* Lockstep comparators on interrupt arbitration
+* Lockstep comparators on interrupt address generation
+* Lockstep counter logic in system Timer
+* Parity on FSM state registers
+
+The self-test architecture is organized into two categories, matching the two principal diagnostic mechanisms:
+
+* *ECC Self-Test* — for SECDED-protected SRAM memories.
+Each ECC decoder is paired with a dedicated per-instance self-test module instantiated inside the memory wrapper.
+The self-test injects both single-bit and double-bit errors and verifies that the decoder reports the correct error type and bit position.
+* *Parity Self-Test* — for parity-protected configuration registers and bus payloads.
+This category includes both network element parity checkers (shared instance with target-selection demux) and local register parity checkers (per-register instance for HW-readable registers).
+The self-test injects single-bit errors only (parity cannot detect double-bit errors) and verifies that the checker flags an error.
+
+The interface and microarchitecture of the self-test module varies according to the category; both are described below.
+
+[[fusa-ecc-selftest]]
+==== ECC Self-Test (SRAM)
+
+Each ECC SECDED decoder is paired with a dedicated self-test module instantiated inside the memory wrapper, alongside the SRAM macro and the ECC encoder/decoder.
+The self-test module sits on the read path between the memory output and the decoder input, enabling it to inject synthetic error patterns without disturbing the stored contents.
+
+The following figures illustrate the ECC self-test architecture (figure credits Tensix team).
+
+.Self-Test Top-Level Block Diagram
+image::self-test-1.png[Self-Test Block Diagram,scaledwidth=90.0%]
+
+.Self-Test Sequencer State Machine
+image::self-test-2.png[Self-Test Sequencer FSM,scaledwidth=90.0%]
+
+.Self-Test Mask Generation and Injection Logic
+image::self-test-3.png[Self-Test Mask Generation and Injection,scaledwidth=90.0%]
+
+.Self-Test Compare Logic
+image::self-test-4.png[Self-Test Compare Logic,scaledwidth=90.0%]
+
+===== Data Path
+
+The self-test module sits between the memory output (`mem_out`) and the diagnostic decoder input (`decoder_in`).
+The `mem_out` bus is organized as three concatenated fields: _E_ bits of ECC/parity in the upper positions, _D_ data bits in the middle, and _A_ address bits (when address protection is enabled) in the lower positions.
+
+During normal operation, the decoder input is driven directly by `mem_out`.
+When the self-test is active, a multiplexer switches the decoder input to a synthetic test word constructed by the injection logic.
+The test word is formed as follows:
+
+. A 2-bit `selftest_pattern` input selects one of four base patterns. The pattern bits are replicated (expanded) across the full _D_+_A_ width.
+. An XOR mask — produced by the sequencer — flips one or two bit positions within the expanded pattern. Error injection is applied only to data and address bit fields; ECC/parity bits are never masked.
+. The correct ECC/parity for each of the four expanded patterns is provided as a compile-time parameter (`PAT_ECC0`–`PAT_ECC3`). The selected ECC/parity value is concatenated with the corrupted data+address field to form the complete decoder input.
+
+This produces exactly the error signature a real hardware fault would cause: corrupted data or address bits with matching (valid) redundancy bits.
+
+===== Sequencer
+
+The self-test is driven by a sequencer that autonomously walks through all bit positions once triggered.
+The sequencer comprises four functional units: the state machine, mask generation, inject, and compare.
+
+*State Machine.* The sequencer starts in IDLE and activates on a single-cycle pulse on `selftest_start`.
+It exits back to IDLE only when an error is detected or mask generation completes all positions.
+The state machine initiates single-bit error generation first, optionally followed by double-bit error generation when configured.
+
+*Mask Generation.* Two nested counters generate the injection mask of _D_+_A_ bits width:
+
+* During the *ACTIVE1* phase, a single outer-loop counter walks a one-hot mask from bit 0 through bit _D_+_A_−1, testing all single-bit error positions. This phase completes in _D_+_A_ clock cycles (assuming no stalls from functional traffic).
+* During the *ACTIVE2* phase (when double-bit injection is configured), two nested counters produce all unique two-bit combinations. The outer counter generates `mask1` and the inner counter generates `mask2`; they are bitwise OR'ed to form the composite two-bit mask. This phase completes in ∑~i=1~^D+A−1^ _i_ clock cycles.
+
+*Inject.* Injection occurs only on cycles when the memory is idle (`mem_active` = 0).
+When a functional access is in progress, the sequencer holds its current position and defers injection until the next idle cycle.
+This guarantees that self-test never corrupts live data and that functional correctness is preserved throughout the test.
+
+*Compare.* The compare logic determines the expected error outcome for each injected pattern and checks it against the actual decoder response:
+
+* If any address bit is inverted, an address error is expected.
+* If exactly one data bit is inverted, a correctable error is expected, and the decoder shall report the correct bit position.
+* If two data bits are inverted, an uncorrectable error is expected.
+
+Any mismatch between expected and actual error indication results in assertion of the corresponding `selftest_err` bit. The sequencer terminates on the first detected failure, asserts `selftest_done`, and latches the error status and bit position for software to read.
+
+===== Control and Status Interface
+
+Each ECC self-test instance is controlled through memory-mapped registers accessible via the safety bus.
+The register interface follows a common structure across all OCAH modules.
+The precise register layout is defined in the design specification of each module; the architectural contract specifies the following fields:
+
+* A start trigger (pulse) that initiates the sequencer from idle.
+* A pattern select field (2 bits) that selects the base pattern and corresponding pre-calculated ECC.
+* A hardware-set done flag indicating the sequencer has returned to idle and results are valid.
+* A hardware-set error status field (`selftest_err`) reporting whether any injection step failed to produce the expected decoder response, distinguishing between correctable error failures, uncorrectable error failures, and address error failures.
+* A hardware-set bit-position field (`selftest_bitpos`) identifying the location of the first injected bit that produced a failure.
+
+[[fusa-network-parity]]
+==== Network Element Parity Protection
+
+All parity protection in OCAH uses *odd parity*.
+Parity is generated at each network element output, checked at each network element input, and flows end-to-end through the AXI USER sideband.
+This provides point-to-point single-bit error detection on the wires between any two connected components (manager-to-subordinate, subordinate-to-manager).
+
+[IMPORTANT]
+====
+When the AXI USER field is shared with other functional uses (e.g., security attributes such as source ID or group ID), the system integrator must ensure that the parity bit positions do not overlap with these other fields.
+The parity bits should be allocated to dedicated bit positions within the USER field, and the total USER field width must accommodate both the parity bits and any other required sideband information.
+====
+
+This section describes the network element parity scheme and its self-test architecture.
+
+===== Odd Parity — Generation and Checking
+
+Given a data word _d_ of _n_ bits, the parity generator computes a single parity bit _p_ such that the total number of 1s in the concatenation {_p_, _d_~n−1~, …, _d_~0~} is always odd:
+
+ p = !(d[n-1] ^ d[n-2] ^ ... ^ d[0])
+
+Equivalently, _p_ is the inverted XOR-reduction of _d_.
+The checker recomputes the XOR-reduction over the received {_p'_, _d'_} and verifies the invariant:
+
+ parity_err = !(p' ^ d'[n-1] ^ d'[n-2] ^ ... ^ d'[0])
+
+If no bits are corrupted, the XOR-reduction yields 1 (odd count) and `parity_err` = 0.
+If exactly one bit — whether in _d'_ or _p'_ — is flipped, the XOR-reduction yields 0 (even count) and `parity_err` = 1.
+Odd parity detects all single-bit errors but cannot detect even-numbered multi-bit errors and provides no information about which bit was corrupted.
+
+For grouped signals (e.g., byte-granularity data parity), the scheme is applied independently to each group, producing one parity bit per group.
+
+===== Partial Writes and Strobe Handling
+
+Data parity on the AXI W channel is computed at byte granularity, with one parity bit per data byte.
+This granularity matches the AXI write strobe (`WSTRB`), which enables or disables writes at byte boundaries.
+
+When a partial write occurs (i.e., `WSTRB` has some bytes disabled), the parity scheme handles each byte independently:
+
+* *Parity generation* produces valid parity bits only for bytes where `WSTRB[n] = 1`.
+For bytes where `WSTRB[n] = 0`, the corresponding `WDATA` bytes are undefined per the AXI protocol, and the parity bits in `WUSER` for those bytes are similarly undefined ("don't care").
+The generator may compute parity for all bytes (simpler logic) or only for strobed bytes (power optimization); the values for non-strobed bytes are ignored downstream.
+
+* *Parity checking* validates parity only for bytes where `WSTRB[n] = 1`.
+For non-strobed bytes, the checker ignores both the data and parity values.
+This prevents false error reports on the undefined "don't care" values.
+
+This byte-granular, strobe-aware approach ensures correct parity coverage for all AXI write patterns — full-word, half-word, and byte writes.
+The network element checker validates data and parity integrity on the bus wires; register storage of parity bits is described separately in <<fusa-register-parity>>.
+
+===== Modified Transactions
+
+When protocol converters modify transaction fields between the parity generator and checker, the end-to-end parity chain is broken.
+A fault occurring within the converter logic could corrupt the modified field, and regenerating parity after the converter would mask the fault from downstream checkers.
+The protection strategy depends on whether the transformation is deterministic.
+
+*Deterministic transformations.* Converters that apply fixed, input-independent transformations allow parity to be passed through or selectively recomputed without coverage loss:
+
+* *ID prepend* (adding constant high-order bits): Prepending any even number of identical bits (all 0s or all 1s) preserves the XOR parity of the original field. The input parity bit is passed through unchanged.
+* *Address truncation* (dropping high-order bits): The parity of the truncated output equals the subset of input parity bits corresponding to the retained address bytes. Lower parity bits are passed through; upper parity bits are discarded.
+
+For these converters, the input parity is checked at the converter input to detect wire faults before the transformation.
+The unmodified parity bits are forwarded to the output USER field, preserving end-to-end coverage.
+
+*Non-deterministic transformations.* Converters whose outputs depend on internal state or complex computation cannot reliably predict output parity from input:
+
+* *ID remap* maps input transaction IDs to output IDs using an internal table tracking outstanding transactions. The same input ID may map to different output IDs depending on allocation state, making parity prediction equivalent to duplicating the full remapping logic.
+* *Burst splitter* divides long bursts into smaller segments based on address alignment, 4 KB page boundaries, and maximum burst length constraints. The transformation involves multi-step address arithmetic that cannot be efficiently replicated for parity prediction alone.
+
+For these converters, OCAH implements *lockstep replication*: two identical converter instances process the same input, and a comparator checks their outputs before parity is regenerated.
+A mismatch indicates a fault in the converter logic, triggering the fault-detected state.
+This approach provides full coverage of faults within the converter at the cost of doubled area for the converter logic.
+
+Lockstep-protected converters are guarded by a configuration parameter that allows the replication and comparison logic to be disabled in non-safety-critical builds.
+
+===== Network Element Self-Test Architecture
+
+The network element parity self-test reuses the same architectural principles as the ECC self-test — a sequencer walks a one-hot mask through all bit positions, injects a corrupted pattern, and compares the checker's response against the expected outcome — but differs in several respects:
+
+[%autowidth,cols="<,^,^",options="header",frame=all,grid=all]
+|===
+|Aspect |ECC (SRAM) |Network Element Parity
+
+|Instance topology
+|One dedicated module per SRAM wrapper
+|One shared module per network element, with demux target selection
+
+|Injection phases
+|Single-bit (ACTIVE1) + double-bit (ACTIVE2)
+|Single-bit only (parity cannot detect double-bit errors)
+
+|Expected checker output
+|Error type (CE / UE / address) + bit position
+|Binary error / no-error
+
+|Error collection
+|Direct from the specific decoder instance
+|OR of all target `parity_err` outputs (valid because only the selected target is injected)
+
+|Status fields
+|`selftest_err` (multi-bit: CE, UE, addr) + `selftest_bitpos`
+|`selftest_err` (single bit) — no bit-position field
+
+|Additional CSRs
+|—
+|`sel_target`, `selftest_ack`
+|===
+
+The remaining interface — start trigger, pattern select, done flag, `port_active` / `mem_active` stall, and programming model — is architecturally identical.
+
+Each AXI channel's parity checker at each network element port is a *separate target*.
+`DATA_W` equals the width of that channel's payload signals (e.g., 99 bits for the AW channel at the widest SMC fabric point); `PARITY_W` equals the number of parity groups for that channel (e.g., 12 for AW — see <<smc-fusa-fabric>> for the full parity bit budget).
+
+Channels are tested individually, not concatenated, because:
+
+. AXI channels are physically independent paths with separate handshakes (`xVALID`/`xREADY`) and separate parity checkers.
+. Request channels (AW, W, AR) flow manager to subordinate and are checked at the subordinate input; response channels (R, B) flow subordinate→manager and are checked at the manager input. A single injection point cannot reach both directions.
+. Per-channel targeting allows `port_active` to stall only the channel under test, minimizing impact on concurrent functional traffic on other channels.
+
+In all cases the self-test walks a one-hot mask through the target's `DATA_W` bit positions.
+At each position, the injected pattern consists of the correct parity concatenated with the corrupted data, producing the exact error signature that a real single-bit fault would cause.
+The parity checker should assert a single-bit error output on every injection step; failure to do so indicates a latent fault in the checker.
+
+The following figure illustrates the shared parity self-test architecture on the request path of a point-to-point AXI connection with two subordinate ports.
+The same scheme applies symmetrically to the response path (R, B), with parity checkers at the manager input.
+
+.Shared Parity Self-Test Architecture — request path on a point-to-point bus
+image::ocah-master-slave-p2p-connection-fusa-self-test.png[Shared Parity Self-Test,scaledwidth=90.0%]
+
+===== Shared Instance and Target Selection
+
+A single self-test FSM and error injection (XOR chain) block is shared across multiple parity checkers within a network element.
+Each parity checker is assigned a numeric target index.
+Every AXI channel checker at every port is a separate target.
+A `sel_target` CSR selects which target receives the injected pattern through a demultiplexer.
+
+As a concrete example, a demux with two subordinate ports would expose the following target map:
+
+[%autowidth,cols="^,<",options="header",frame=all,grid=all]
+|===
+|`sel_target` |Target
+
+|0 |Subordinate 0 — AW channel checker
+|1 |Subordinate 0 — W channel checker
+|2 |Subordinate 0 — AR channel checker
+|3 |Subordinate 0 — R channel checker
+|4 |Subordinate 0 — B channel checker
+|5 |Subordinate 1 — AW channel checker
+|6 |Subordinate 1 — W channel checker
+|7 |Subordinate 1 — AR channel checker
+|8 |Subordinate 1 — R channel checker
+|9 |Subordinate 1 — B channel checker
+|===
+
+This architecture avoids instantiating a dedicated self-test module per parity checker, reducing area while preserving full bit-position coverage.
+Software exercises each target in turn by writing the corresponding index to `sel_target` before triggering the sequencer.
+
+===== Error Collection
+
+All target `parity_err` outputs are OR'd into a single error signal that feeds the compare logic.
+This is valid because during self-test, only the selected target receives a corrupted pattern; all non-selected targets see idle (clean) inputs and therefore hold `parity_err` at 0.
+The OR therefore reduces to the selected target's error output.
+
+[NOTE]
+====
+OR-based error collection is specific to parity.
+It does not apply to ECC, where the compare logic requires the full decoder response (error type, syndrome, bit position) from a specific decoder instance.
+====
+
+*Precondition.* Before starting the self-test, software must verify that the baseline OR'd error is 0 (no pre-existing parity faults).
+If any target has a persistent error, the system should already be in a fault-detected state and the self-test should not be initiated until the fault is resolved.
+
+===== Error Gating
+
+During self-test, the selected target's parity checker will assert `parity_err` by design — this is the expected outcome of error injection, not a real fault.
+To prevent this expected error from propagating through the normal fault-detected state and interrupt path, the error reporting logic is gated:
+
+* When `selftest_active` is asserted, all target `parity_err` signals are routed *only* to the self-test compare logic and masked from the normal FDS/interrupt path.
+* When `selftest_active` is de-asserted, the normal error reporting path is restored.
+
+===== Functional Traffic Coexistence
+
+The self-test sequencer yields to functional traffic, analogously to the `mem_active` signal in the ECC self-test.
+Each target provides a `port_active` signal that stalls the sequencer when the target's functional path is in use.
+For bus parity targets, `port_active` is the `xVALID` signal of the specific AXI channel under test.
+Because each channel is a separate target, only traffic on the channel being tested causes a stall; concurrent traffic on other channels of the same port proceeds unimpeded.
+
+When `port_active` is asserted, the sequencer holds its current mask position and defers injection until the next idle cycle.
+This guarantees that the self-test never corrupts a live transaction.
+
+===== Compare Logic
+
+The compare logic verifies a single invariant: on every injection step, the OR'd `parity_err` must be 1.
+If the error signal is 0 when a single-bit flip was injected, the compare logic asserts `selftest_err` and the sequencer terminates.
+
+No bit-position tracking is required — unlike ECC, parity does not report which bit was corrupted.
+The self-test result is binary: pass (all positions detected) or fail (at least one position missed).
+
+*Error reporting.* When `selftest_err` asserts, it is latched in the `selftest_status` register alongside the `sel_target` value that identified the faulty checker.
+No dedicated error interrupt is generated — the self-test is software-initiated, so the CPU is always in the loop and will read the result after the sequencer signals completion.
+If `selftest_err` is set, software is responsible for escalating the latent fault to the SMO through the normal error signaling path.
+If the CPU fails before reading the result, the windowed watchdog timer catches the hang and triggers a subsystem reset, which notifies the SMO regardless.
+
+*Demux integrity check (`selftest_ack`).* Each target asserts a `selftest_ack` signal when it receives an injected pattern.
+The `selftest_ack` bits are individually readable via a status register.
+After the self-test completes, software can read this register to confirm that the correct target was exercised.
+If `selftest_ack` is not asserted for the selected target, the demux routing logic may have a fault.
+
+===== Programming Model
+
+Sequencer completion is reported through the `selftest_done` flag in the status register.
+Software can either poll this flag or enable a `selftest_done` interrupt (`int_en` bit in the control register) to avoid blocking the CPU.
+Polling is recommended at boot (deterministic, no ISR dependency); interrupt-driven completion is useful during periodic runtime DTTI routines.
+
+When completion is signaled (by poll or interrupt), software reads the `selftest_err` field in the same status register.
+If the field is set, the parity checker at the selected target has a latent fault and software must escalate the error to the SMO.
+
+Software exercises the shared parity self-test with the following loop:
+
+. Verify the baseline OR'd error signal is 0.
+. Write `sel_target` with the target index.
+. Write `selftest_pattern` with the 2-bit base pattern.
+. Pulse `selftest_start`.
+. Wait for completion (poll `selftest_done`, or wait for interrupt).
+. Read `selftest_err`. If non-zero, the parity checker at `sel_target` has a latent fault — escalate to SMO.
+. Optionally read the `selftest_ack` status register to confirm the correct target was exercised.
+. Repeat from step 2 for the next target.
+
+The following C snippet illustrates the polling sequence.
+Register names are illustrative; the actual offsets are defined in each module's register specification.
+
+[source,c]
+----
+#include <stdint.h>
+
+/* Self-test CSR offsets (module-specific, illustrative) */
+#define SELFTEST_SEL_TARGET  0x00
+#define SELFTEST_PATTERN     0x04
+#define SELFTEST_CTRL        0x08   /* bit 0: start (W1S), bit 1: int_en */
+#define SELFTEST_STATUS      0x0C   /* bit 0: done, bit 1: err */
+#define SELFTEST_ACK         0x10   /* one bit per target */
+
+static inline void     reg_wr(uintptr_t base, uint32_t off, uint32_t v)
+                       { *(volatile uint32_t *)(base + off) = v; }
+static inline uint32_t reg_rd(uintptr_t base, uint32_t off)
+                       { return *(volatile uint32_t *)(base + off); }
+
+/*
+ * parity_selftest - run parity self-test across all targets (polling)
+ * @base:        base address of the self-test CSR block
+ * @num_targets: number of parity-checker targets in this instance
+ * @pattern:     2-bit base pattern (0-3)
+ *
+ * Returns 0 on success, or the 1-based target index of the first failure.
+ */
+int parity_selftest(uintptr_t base, unsigned num_targets, uint8_t pattern)
+{
+    /* Step 1: verify baseline — no pre-existing parity errors */
+    if (reg_rd(base, SELFTEST_STATUS) & 0x2)
+        return -1;  /* baseline error present */
+
+    for (unsigned tgt = 0; tgt < num_targets; tgt++) {
+        /* Step 2: select target */
+        reg_wr(base, SELFTEST_SEL_TARGET, tgt);
+
+        /* Step 3: select base pattern */
+        reg_wr(base, SELFTEST_PATTERN, pattern & 0x3);
+
+        /* Step 4: pulse start (interrupt disabled) */
+        reg_wr(base, SELFTEST_CTRL, 0x1);
+
+        /* Step 5: poll done */
+        while (!(reg_rd(base, SELFTEST_STATUS) & 0x1))
+            ;
+
+        /* Step 6: check error — escalate to SMO if latent fault */
+        if (reg_rd(base, SELFTEST_STATUS) & 0x2)
+            return (int)(tgt + 1);  /* latent fault at this target */
+
+        /* Step 7: optional — verify correct target was exercised */
+        if (!(reg_rd(base, SELFTEST_ACK) & (1u << tgt)))
+            return (int)(tgt + 1);  /* demux routing fault */
+    }
+
+    return 0;  /* all targets passed */
+}
+----
+
+For the interrupt-driven variant, software sets bit 1 (`int_en`) of the control register alongside the start pulse.
+The `selftest_done` interrupt fires when the sequencer finishes.
+The ISR reads `selftest_err` from the status register, clears the interrupt, and either advances to the next target or escalates the error to the SMO.
+
+===== Control and Status Interface
+
+The parity self-test shares the same base register fields as the ECC self-test (start trigger, pattern select, done flag, error status), with the following additions:
+
+* A `sel_target` register that selects which parity checker receives the injected pattern.
+* An `int_en` bit in the control register. When set, hardware asserts an interrupt on `selftest_done` (sequencer completion), allowing interrupt-driven operation instead of polling. The interrupt signals completion only — the ISR must read `selftest_err` from the status register to determine pass/fail.
+* A `selftest_ack` status register with one bit per target, hardware-set when a target receives an injected pattern.
+
+The `selftest_err` field is a single bit (error detected / not detected), since network element parity checking does not distinguish between correctable and uncorrectable failures.
+The `selftest_bitpos` field is not required.
+
+===== Coverage Boundary
+
+The network element parity self-test exercises the parity *checker* (the receiving/read-back path) only.
+The parity *generator* (the transmitting/write path) is not directly covered.
+
+Generator faults are detected by a complementary software-driven read-back test: software writes known data through the fabric, reads it back, and verifies end-to-end integrity.
+This exercises the generator → wire → checker path and is recommended as part of the Diagnostic Test Time Interval (DTTI) routine.
+
+[[fusa-register-parity]]
+==== Register Parity Protection
+
+Configuration registers store parity bits alongside data to protect against storage faults (single-event upsets in the register flip-flops).
+The parity protection strategy integrates with the network element parity scheme described in <<fusa-network-parity>>: for SW-writable registers, parity arrives via WUSER and is validated by network element checkers; for HW-writable registers, parity is generated locally at the HW write source.
+
+The parity checking strategy depends on register accessibility (software via bus, hardware via direct wires, or both).
+
+===== Register Accessibility Patterns
+
+Configuration registers are classified by their write and read accessibility:
+
+.Register Accessibility and Parity Protection
+[cols="1,2,2,2,2,3", options="header"]
+|===
+| Type | Write Access | Read Access | Examples | Parity Generation | Parity Checking
+
+| Status
+| *SW*
+| SW only
+| Error logs, debug counters
+| Network element at manager output
+| Network element checker (when `RVALID` asserted)
+
+| Control
+| *SW*
+| HW only
+| Clock gate enables, reset controls
+| Network element at manager output
+| Local checker (continuous, every cycle)
+
+| Control
+| *SW*
+| SW & HW
+| Threshold values, enable bits
+| Network element at manager output
+| Network element checker (when `RVALID` asserted) +
+Local checker (continuous, every cycle)
+
+| Control
+| *SW*
+| None
+| Trigger registers (W1S/W1C)
+| Network element at manager output
+| N/A — data not consumed
+
+| Status
+| *HW*
+| SW & HW
+| eFuse shadow registers (HW loads from OTP)
+| Local at HW write source (fuse sensing FSM output)
+| Network element checker (when `RVALID` asserted) +
+Local checker (continuous, every cycle)
+|===
+
+===== Write Path — Software Writes
+
+When data is written to a register via the AXI bus, the parity bits from WUSER are stored in dedicated parity storage flip-flops alongside the data bits.
+No local parity computation occurs during bus writes — the register simply captures the parity that was generated and validated upstream by the network element.
+
+*Partial writes.* When a partial write occurs (`WSTRB` has some bytes disabled), the register updates only the data bytes and their corresponding parity bits indicated by the strobe mask, using the strobe-aware mechanism described in <<fusa-network-parity>>.
+Each `WSTRB[n]` bit gates both data byte `n` and parity bit `n` write-enables.
+Unchanged bytes retain both their data and parity values.
+
+===== Write Path — Hardware Writes
+
+When data is written to a register by hardware (bypassing the bus), the HW write source must generate parity locally before driving the register.
+
+The parity generation logic is instantiated at the HW write source and computes odd parity at byte granularity for the data being written.
+Both data and parity are driven to the register storage flip-flops.
+
+*Example: eFuse shadow registers.* The fuse sensing FSM reads data from the OTP macro and loads it into shadow registers.
+The FSM includes local parity generation logic that computes byte-granular odd parity for each word read from OTP.
+
+HW-writable registers do not support partial writes (no byte strobes in HW write paths).
+Each HW write updates the entire register and all parity bits atomically.
+
+===== Read Path — Software Reads
+
+When a register is read via the AXI bus (software access), the stored parity bits are returned in RUSER alongside the data.
+The downstream network element's parity checker validates both the data and the parity, detecting any bit flip that occurred while the data was at rest in the register.
+
+This leverages the network element checking described in <<fusa-network-parity>> and applies to all SW-readable registers.
+
+===== Read Path — Hardware Reads
+
+When a register is read by hardware via the reg2hw interface (direct wires to consuming logic), the bus parity checker is not in the path.
+To detect storage faults in HW-readable registers, a local parity checker is instantiated at the register output.
+
+The local checker operates continuously:
+
+* On every clock cycle, it recomputes the parity of the current register value (byte-granular)
+* Compares the computed parity against the stored parity bits
+* Asserts an error signal if a mismatch is detected
+* The error signal is routed to the module's fault-detected state and error interrupt logic
+
+This continuous checking ensures that storage faults are detected within one clock cycle of the HW logic consuming the corrupted data, meeting the DTTI requirement.
+
+For registers accessible by both SW and HW, storage faults are caught by whichever path is exercised first.
+
+===== Test for Diagnostic
+
+The test strategy depends on the register's write and read accessibility:
+
+*SW-writable, SW-readable registers:*
+Storage fault detection is covered by the network element parity checker self-test described in <<fusa-network-parity>>.
+When the register is read via the bus during the self-test sequence, any storage fault manifests as a parity mismatch at the network element.
+
+*SW-writable, HW-readable registers:*
+The local parity checker requires a dedicated self-test using an error injection interface.
+Software injects a bit flip into the stored data or parity bits and verifies that the local checker asserts the parity error signal.
+This test exercises all byte positions to ensure full coverage of the local checking logic.
+
+*SW-writable, both SW & HW readable:*
+Both test methods apply.
+The network element test covers the SW read path; the local checker test covers the HW read path.
+
+*HW-writable registers:*
+The HW parity generator at the write source requires verification through a read-back test: software reads the HW-written register via the bus and verifies correct parity was generated and stored.
+The local parity checker (for HW reads) is tested using error injection as described above.
+
+// -------------------------------------------------------------------
+// Subsystem-specific FuSa sections
+// -------------------------------------------------------------------
+
+// SMC
+ifdef::backend-html5[]
+[[fusa-system-management-controller]]
+== System Management Controller
+
+The System Management Controller (SMC) implements functional safety mechanisms
+including dual-core lockstep, ECC memory protection, parity-protected registers,
+watchdog timers, and self-test interfaces for latent fault diagnostics.
+
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../hw/sys/smc/doc/fusa.adoc[leveloffset=0]
+endif::backend-pdf[]
+
+
+
+// SEP
+[[fusa-security-processor-sep]]
+== Security Enclave Processor
+
+[WARNING]
+====
+This section is currently under development. FuSa content for SEP will be added
+as the specification is completed.
+====
+
+// DTP
+[[fusa-debug-test-ports]]
+== Debug and Test Ports
+
+[WARNING]
+====
+This section is currently under development. FuSa content for DTP will be added
+as the specification is completed.
+====
+
+// SMN
+[[fusa-system-management-network]]
+== System Management Network
+
+[WARNING]
+====
+This section is currently under development. FuSa content for SMN will be added
+as the specification is completed.
+====
+
+// AOU
+[[fusa-axi-over-ucie-bridge]]
+== AXI-over-UCIe Bridge
+
+[WARNING]
+====
+This section is currently under development. FuSa content for AoU will be added
+as the specification is completed.
+====

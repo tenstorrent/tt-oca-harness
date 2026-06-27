@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_010 (V3, P1) - WDT Stress All Test
  *
@@ -11,7 +14,6 @@
  * 4. Combined: enable, change threshold, pet, bark, pet, disable
  * 5. Verify no register corruption throughout
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

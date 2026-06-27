@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef OTBN_SMOKE_OTBN_H
 #define OTBN_SMOKE_OTBN_H
 #include <stddef.h>

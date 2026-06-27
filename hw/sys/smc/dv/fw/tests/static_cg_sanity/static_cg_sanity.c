@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #include <stdint.h>
 
 #include "smc_io.h"
@@ -13,7 +16,7 @@ int main(void) {
     write_scratch(5, 0x55555555);
 
     // Enable all peripheral clock gating simultaneously (static and dynamic)
-    cpu_ctrl__CLOCK_GATE_CONTROL_t clock_gate_ctrl;
+    smc_base_config__CLOCK_GATE_CONTROL_t clock_gate_ctrl;
 
     // Enable static clock gaters (peripheral clocks)
     clock_gate_ctrl.f.avs_cg_en = 0x1;
@@ -22,7 +25,7 @@ int main(void) {
     clock_gate_ctrl.f.telemetry_cg_en = 0x1;
     clock_gate_ctrl.f.cg_hysteresis = 0x2e;
 
-    write_reg(SMC_TOP_SMC_CPU_CTRL_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
 
     // Clocks should now be gated
     write_scratch(5, TEST_COMPLETE_PHASE1);
@@ -35,7 +38,7 @@ int main(void) {
 
     // Disable all peripheral clock gating (static and dynamic)
     clock_gate_ctrl.w = 0;  // Clear all clock gating enables
-    write_reg(SMC_TOP_SMC_CPU_CTRL_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
 
     write_scratch(5, TEST_COMPLETE_PHASE2);
 

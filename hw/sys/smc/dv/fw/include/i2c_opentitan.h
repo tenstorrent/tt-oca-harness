@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /**
  * @file i2c_opentitan.h
  * @brief OpenTitan I2C Driver Function Library

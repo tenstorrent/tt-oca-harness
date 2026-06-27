@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
+`ifndef ROM_RDL_DEFINED
+`define ROM_RDL_DEFINED
+
+`include "example_rom_macro_csr.rdl"
+`include "example_rom.rdl"
+
+addrmap example_rom_wrap {
+
+   desc = "Example ROM Wrap";
+
+   ////////////////////////////////////////////////////////////////////////////
+   // Address Map
+   ////////////////////////////////////////////////////////////////////////////
+
+   external example_rom 				example_rom 							      @0x0;
+            example_rom_macro_csr 	example_rom_macro_csr 			      @0x2000;
+
+};
+`endif
+

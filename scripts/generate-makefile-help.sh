@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
 
 rule_color="$(tput setaf 6 2>/dev/null || true)"
 section_color="$(tput setaf 3 2>/dev/null || true)"

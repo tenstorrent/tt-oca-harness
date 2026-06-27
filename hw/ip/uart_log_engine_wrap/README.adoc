@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+= OCAH UART 16550 IP
+
+== Documentation
+
+The documentation is link:doc/uart_log_engine_wrap.adoc[here].
+
+== Generating the IP
+
+To generate the IP, run the following command:
+
+```bash
+python3 generate_ip.py -i <io-port-type>
+```
+
+Replace `<io-port-type>` with one of the following options:
+
+- `apb4`
+- `axi4-lite`
+- `apb4-flattened`
+- `axi4-lite-flattened`

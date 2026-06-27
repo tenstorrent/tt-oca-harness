@@ -1,8 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef CROSS_TRIGGER_PORT_RDL
 `define CROSS_TRIGGER_PORT_RDL
 
 //------------------------------------------------------------------------------
-// Copyright 2025 Tenstorrent Inc.
 // Cross Trigger Port Configuration and Status Registers
 //------------------------------------------------------------------------------
 

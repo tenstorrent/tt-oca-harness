@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * TC_KMAC_013 - STATE Share Verification Test (P1)
  *

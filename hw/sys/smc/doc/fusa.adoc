@@ -1,0 +1,1355 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[fusa-system-management-controller]]
+== System Management Controller (SMC)
+
+This section describes the functional safety architecture of the System Management Controller (SMC) subsystem.
+The SMC is the primary management microcontroller within OCAH, responsible for power sequencing, clock management, thermal monitoring, and chiplet-level orchestration.
+For a complete description of the SMC functional architecture, including its CPU and memory system, fabric, DMA engine, peripherals, and clock/reset infrastructure, refer to <<system-management-controller>>.
+The present section builds on that architectural baseline and focuses exclusively on the safety mechanisms applied to each SMC resource.
+
+The SMC safety architecture employs a defense-in-depth strategy that matches each resource type to the most appropriate diagnostic mechanism:
+
+* Dual-Core Lockstep protects the CPU execution pipeline
+* ECC SECDED protects all SRAM macros
+* Odd parity protects configuration registers and fabric payloads
+* Lockstep replication protects interrupt arbitration and timer counting logic
+* CRC verification protects boot ROM and eFuse contents
+* Timeout monitors protect clock liveness
+
+Every diagnostic mechanism is paired with a hardware self-test interface for latent fault testing, following the architecture principles described in <<fusa-error-injection>>.
+
+[[smc-fusa-fault-detected-states]]
+=== Fault Detected States
+
+Upon detection of a fault, the SMC transitions the affected component into a fault-detected state that isolates its outputs and prevents the fault from propagating.
+The SMC defines four categories of fault-detected states, selected based on the role of the faulty component in the system.
+
+.SMC Fault Detected States
+[cols="1,2,4", options="header"]
+|===
+| ID | Title | Description
+
+| FDS-01
+| Manager isolation
+| A hardware mechanism (e.g., clock gating and bus clamping) prevents a manager — such as a CPU, DMA engine, or accelerator — from injecting further corrupted data into the subsystem.
+
+| FDS-02
+| Subordinate isolation
+| A hardware mechanism prevents corrupted data from reaching a subordinate device such as a peripheral.
+
+| FDS-03
+| Memory system isolation
+| A hardware mechanism prevents corrupted storage from being propagated in or out of the memory system, terminating corrupted read or write transactions.
+
+| FDS-04
+| Signal clamping
+| A hardware mechanism de-asserts and disables a wired signal upon fault detection. Examples include clamping an active-high interrupt line or a quasi-static reset line.
+
+| FDS-05
+| Reference clock fallback
+| A hardware mechanism switches the affected clock domain from the failed system clock to the always-on reference clock, preserving basic operation at a reduced frequency while the fault is reported and a recovery sequence is initiated.
+|===
+
+[[smc-fusa-fault-reactions]]
+=== Fault Reactions
+
+The fault reaction restores the element to a known-good state (called a *safe state*) after a fault-detected state has been entered.
+The SMC supports the following fault reaction levels, ordered by scope.
+
+.SMC Fault Reactions
+[cols="1,2,4", options="header"]
+|===
+| ID | Components Reset | Description
+
+| FR-01
+| CPU Core
+| Resets a specific CPU core. Applicable only when the fault is localized within core boundaries.
+
+| FR-01a
+| CPU Cluster
+| Resets the entire CPU cluster including all cores, caches, PLIC, and CLINT.
+
+| FR-02
+| Whole SMC Subsystem
+| Resets everything within the SMC: CPU, fabric, DMA, Zeroer, all peripherals, and all registers. This is the only option for faults originating outside the CPU cluster.
+|===
+
+[[smc-fusa-summary]]
+=== Fault Management Summary
+
+The following table summarizes the fault management techniques applied to each SMC resource.
+Each row identifies the runtime diagnostic mechanism, the corresponding test for diagnostic (latent fault detection), the fault-detected state, the fault reaction, and the error severity.
+Subsequent sections describe each mechanism in detail.
+
+.SMC Fault Management Summary
+[cols="2,2,2,1,1,1", options="header"]
+|===
+| Component | Runtime Diagnostic | Test for Diagnostic | FDS | FR | Severity
+
+| CPU pipeline
+| Dual-Core Lockstep (DCLS)
+| SW self-test (error injection into comparator)
+| FDS-01
+| FR-01
+| Uncorrectable
+
+| CPU interface
+| Windowed WDT (dual-stage)
+| WDT self-test (force timeout / early feed)
+| FDS-01
+| FR-01
+| Uncorrectable / Fatal
+
+| CPU I$/D$ controller logic
+| Dual-Core Lockstep (DCLS)
+| SW self-test (error injection into comparator)
+| FDS-01
+| FR-01
+| Uncorrectable
+
+| CPU I-Cache SRAM (data)
+| ECC SECDED
+| Single/multi-bit error injection
+| FDS-03
+| FR-01
+| Correctable / Uncorrectable
+
+| CPU I-Cache SRAM (tag)
+| ECC SECDED
+| Single/multi-bit error injection
+| FDS-03
+| FR-01
+| Correctable / Uncorrectable
+
+| CPU D-Cache SRAM (data)
+| ECC SECDED
+| Single/multi-bit error injection
+| FDS-03
+| FR-01
+| Correctable / Uncorrectable
+
+| CPU D-Cache SRAM (tag)
+| ECC SECDED
+| Single/multi-bit error injection
+| FDS-03
+| FR-01
+| Correctable / Uncorrectable
+
+| Scratchpad SRAM
+| ECC SECDED
+| Single/multi-bit error injection
+| FDS-03
+| FR-02
+| Correctable / Uncorrectable
+
+| PLIC (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-04
+| FR-01a
+| Uncorrectable
+
+| PLIC (arbitration)
+| Lockstep arbitration
+| Lockstep comparator check (error injection)
+| FDS-04
+| FR-01a
+| Uncorrectable
+
+| PLIC (generation)
+| Lockstep generation
+| Lockstep comparator check (error injection)
+| FDS-04
+| FR-01a
+| Uncorrectable
+
+| CLINT (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-04
+| FR-01a
+| Uncorrectable
+
+| CLINT (generation)
+| Lockstep generation
+| Lockstep comparator check (error injection)
+| FDS-04
+| FR-01a
+| Uncorrectable
+
+| DMA (address generation)
+| Address generation lockstep
+| Address generation lockstep check (error injection)
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| DMA (registers/FIFOs)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| DMA (address range)
+| Address range legalizer
+| Address range legalizer test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| DMA (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Uncorrectable / Fatal
+
+| Zeroer (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| Zeroer (address range)
+| Address range legalizer
+| Address range legalizer test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| Zeroer (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Uncorrectable / Fatal
+
+| Log Engine (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| Log Engine (address range)
+| Address range legalizer
+| Address range legalizer test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| Mailbox Unit (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| Mailbox Unit (generation)
+| Lockstep interrupt generation
+| Lockstep comparator check (error injection)
+| FDS-04
+| FR-02
+| Uncorrectable
+
+| Memory-mapped registers
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| Reset Unit (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Fatal
+
+| Reset Unit (generation)
+| Lockstep reset signal generation
+| Lockstep comparator check (error injection)
+| FDS-04
+| FR-02
+| Fatal
+
+| Clock control (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Fatal
+
+| Clock control (monitor)
+| Handshake monitor (timeout)
+| Clock stop simulation test
+| FDS-05
+| FR-02
+| Fatal
+
+| Fabric (payloads)
+| Odd parity per AXI5 A16 (byte-granularity on data/address, single-bit on controls)
+| Parity self-test (error injection)
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| Fabric (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| Fabric (address filtering)
+| Address filtering
+| —
+| —
+| —
+| —
+
+| Fabric (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Uncorrectable / Fatal
+
+| ROM
+| Boot integrity CRC check
+| ROM integrity logic verification (read path injection)
+| FDS-03
+| FR-02
+| Fatal
+
+| GPIO (straps)
+| Redundant latch compare
+| Strap logic mismatch test (bit-flip injection)
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| GPIO (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| eFuse (shadow registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| eFuse (integrity)
+| CRC integrity check (SW, golden CRC in eFuse)
+| CRC integrity logic test
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| eFuse (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Fatal
+
+| System Timer (registers)
+| Parity storage (checked at network boundary)
+| Network element parity self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| System Timer (counter)
+| Lockstep counter logic
+| Lockstep counter self-test
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| I2C (registers/FIFOs/FSM)
+| Parity protection
+| Parity self-test (error injection)
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| I2C (protocol)
+| Protocol CRC/parity (SW)
+| N/A (standard protocol checks)
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| I2C (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Uncorrectable / Fatal
+
+| AVSBus (CRC)
+| Protocol CRC (HW)
+| N/A (standard protocol checks)
+| FDS-02
+| FR-02
+| Uncorrectable
+
+| AVSBus (registers/FIFOs/FSM)
+| Parity protection
+| Parity self-test (error injection)
+| FDS-01
+| FR-02
+| Uncorrectable
+
+| AVSBus (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Uncorrectable / Fatal
+
+| Telemetry (liveness)
+| Windowed WDT (dual-stage)
+| WDT self-test
+| FDS-01
+| FR-02
+| Fatal
+|===
+
+[[smc-fusa-crosscutting]]
+=== Cross-Cutting Fault Management Techniques
+
+Several fault management techniques appear in more than one SMC component (e.g., register parity is instantiated independently in every module that has configuration registers).
+To avoid redundancy, this section describes each technique once; subsequent per-module sections reference these descriptions rather than repeating the architectural details.
+
+[[smc-fusa-register-parity]]
+==== Register Parity Storage
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-162
+--
+
+The SMC implements register parity protection following the OCAH-wide scheme described in <<fusa-register-parity>>.
+
+Control and status registers in the SMC use the following patterns from the generic architecture:
+
+* *SW-writable, SW-readable*: Status registers, error logs — parity from WUSER, checked by network element on bus read
+* *SW-writable, HW-readable*: Clock gate enables, reset controls — parity from WUSER, checked by local checker (continuous)
+* *SW-writable, SW & HW readable*: Threshold values, enable bits — dual coverage (network element + local checker)
+* *HW-writable, SW & HW readable*: eFuse shadow registers — local parity generation at fuse sensing FSM, dual coverage on reads
+
+For complete details on register accessibility patterns, parity generation/checking strategies, partial write handling, and test approaches, refer to <<fusa-register-parity>>.
+
+When a parity error is detected in an SMC register, the fault-detected state and fault reaction are:
+
+* *FDS-01* (manager isolation): For registers that control manager-side logic
+* *FDS-02* (subordinate isolation): For registers in subordinate devices
+* *Fault reaction*: CPU cluster registers trigger FR-01a (cluster reset); all other registers trigger FR-02 (subsystem reset)
+
+The module asserts an uncorrectable error interrupt to the SMO.
+
+[[smc-fusa-fsm-parity]]
+==== FSM State Parity Protection
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-145, OCAH-HWSR-SMC-146, OCAH-HWSR-SMC-147, OCAH-HWSR-SMC-164, OCAH-HWSR-SMC-177, OCAH-HWSR-SMC-178
+--
+
+All safety-critical finite state machines in the SMC encode their state registers with an odd parity bit computed over all state bits.
+On each clock cycle, the FSM verifies the parity of the current state register against the stored parity bit.
+If a mismatch is detected — indicating a single-bit upset that has driven the FSM into an unintended state — the FSM transitions to a known safe state and asserts an error signal.
+
+In addition to parity protection, all FSMs implement a default catch-all case in their state transition logic.
+If the FSM reaches an undefined state (whether from a multi-bit upset or a logic fault), the catch-all case forces a transition to the safe state and asserts an error signal.
+This provides a second layer of defense against state corruption beyond what parity alone can detect.
+
+Latent faults in the FSM parity checker are detected using the error injection interface.
+The self-test injects invalid state patterns and verifies that the FSM correctly detects them and transitions to the safe state.
+
+[[smc-fusa-lockstep]]
+==== Lockstep Replication and Comparison
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-163
+--
+
+Lockstep protection is applied to combinational logic paths where the complexity or criticality of the function warrants redundancy rather than parity.
+The protected logic is replicated into two identical copies that receive the same inputs.
+A comparator checks the outputs of both copies on every clock cycle.
+If the outputs diverge, the comparator asserts an error signal and the module enters the fault-detected state.
+
+The comparator itself is a potential single point of failure for latent faults: if the comparator becomes stuck in the "match" state, it will not detect a divergence between the two copies.
+To detect this, the error injection interface injects a known mismatch into one copy and verifies that the comparator asserts an error.
+
+Lockstep protection is used for CPU pipeline execution (DCLS), PLIC interrupt arbitration, PLIC and CLINT interrupt generation, Mailbox interrupt generation, DMA address generation, System Timer counter logic, and Reset Unit signal generation.
+
+[[smc-fusa-error-signaling]]
+==== Error Signal Propagation
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-GENERAL-000, OCAH-HWSR-SMC-148
+--
+
+The SMC uses point-to-point, active-high, level-sensitive wired interrupt lines for hierarchical error signal propagation.
+Each safety-critical module within the SMC asserts a dedicated error output when a fault is detected.
+These per-module error signals are collected and routed to the SMC's top-level error output port, which connects to the chiplet-level Safety Monitor (SMO).
+The error signal remains asserted until the SMO acknowledges the fault and initiates the fault reaction (typically a reset).
+
+The SMC provides memory-mapped registers for configuring safety mechanisms, enabling test-for-diagnostic routines, and reading error status and statistics.
+These registers are accessible via the safety bus.
+
+[[smc-fusa-wdt]]
+==== Windowed Watchdog Timer
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-005, OCAH-HWSR-SMC-006, OCAH-HWSR-SMC-007, OCAH-HWSR-SMC-008, OCAH-HWSR-SMC-160, OCAH-HWSR-SMC-187, OCAH-HWSR-SMC-188, OCAH-HWSR-SMC-189, OCAH-HWSR-SMC-190, OCAH-HWSR-SMC-191
+--
+
+The SMC integrates a dual-stage windowed watchdog timer (WDT) for each CPU core.
+The same WDT architecture is reused as a system-level liveness monitor for other components — DMA, Zeroer, Fabric, I2C, AVSBus, eFuse, and Telemetry — by routing the WDT timeout through the CPU's interrupt and reset paths.
+The WDT combines a dual-stage escalation model (bark interrupt followed by bite reset) with a windowed service mechanism that prevents runaway software from inadvertently keeping the timer alive.
+
+===== Counter and Clock Domain
+
+The WDT is built around a 32-bit up-counter that increments on every tick of an always-on (AON) clock.
+The AON clock is independent of the main system clock: it continues to run when the main clock is gated or during low-power sleep, guaranteeing that the WDT remains active even if the CPU or its clock infrastructure fails.
+
+The counter resets to zero on power-on reset.
+During normal operation, firmware periodically *services* (also called *pets* or *feeds*) the watchdog by writing zero to the count register, resetting the counter back to zero.
+If the firmware fails to service the watchdog before the counter reaches the configured threshold, the WDT triggers a fault response.
+
+The counter does not increment when any of the following conditions is true:
+
+* The WDT enable bit is cleared.
+* The system is in sleep mode and the `pause_in_sleep` configuration bit is set. This prevents the watchdog from firing spuriously during intentional low-power periods where the CPU is not executing.
+* A lifecycle escalation signal is asserted, indicating that the system is in an escalated (killed) state and the watchdog must not interfere with the escalation sequence.
+
+===== Dual-Stage Operation (Bark and Bite)
+
+The WDT provides two independently configurable 32-bit threshold registers that define two escalation stages:
+
+* *Stage 1 — Bark (interrupt):* When the counter value reaches or exceeds the *bark threshold*, the WDT asserts a level interrupt to the PLIC.
+This interrupt is also routable to a non-maskable interrupt (NMI) pin, allowing bark notification even when maskable interrupts are disabled.
+In addition, if the system is in a low-power state, the WDT asserts a wakeup request to the power manager so the CPU can wake and service the bark.
+The bark gives firmware a *grace period* to take corrective action (log the event, attempt recovery, or prepare for reset).
+The bark interrupt remains asserted as long as the counter is at or above the bark threshold; firmware clears it by writing to the interrupt status register *and* servicing the watchdog (resetting the counter to zero).
+
+* *Stage 2 — Bite (reset):* If the counter continues to increment past the bark threshold and reaches or exceeds the *bite threshold*, the WDT asserts a reset request to the reset manager.
+The bite is the terminal escalation: it triggers the fault reaction — FR-01 (CPU core reset) for CPU-local WDTs, or FR-02 (full SMC subsystem reset) for system-level WDTs.
+The reset also resets the WDT itself, so no software acknowledgement is required after a bite.
+
+The bite threshold must be programmed strictly greater than the bark threshold (`bite_threshold > bark_threshold`) to ensure a valid grace period between bark and bite.
+The designer shall enforce this invariant either in hardware (rejecting writes that violate the ordering) or through a software convention documented in the programming guide.
+
+===== Windowed Service Mechanism
+
+A simple watchdog that accepts a service at any time can be defeated by a runaway firmware loop that happens to pet the watchdog in every iteration, preventing the timeout even though the system is not executing its intended function.
+The *windowed* watchdog addresses this by dividing the count range into four regions, illustrated in the figure below.
+
+.Windowed Watchdog Timer — Counter Regions
+image::ocah_wdt_window.png[Windowed WDT Counter Regions,scaledwidth=80.0%]
+
+The following table summarizes the four regions and the behavior in each.
+
+.Windowed WDT Counter Regions
+[cols="2,3,4", options="header"]
+|===
+| Region | Counter Range | Behavior
+
+| Closed window
+| `0` → `open_window_threshold`
+| Service is *forbidden*. Writing the count register here triggers an early feed violation: the WDT asserts a bark interrupt and, optionally, immediately advances to the bite stage.
+
+| Open window
+| `open_window_threshold` → `bark_threshold`
+| Service is *required*. Firmware must write zero to the count register in this interval. A valid service resets the counter to 0 and the cycle restarts from the closed window.
+
+| Grace period
+| `bark_threshold` → `bite_threshold`
+| The bark interrupt is active (routed to PLIC and NMI). Firmware has this interval to log the fault and attempt recovery before the bite fires.
+
+| Bite
+| `≥ bite_threshold`
+| Terminal escalation. The WDT asserts a hardware reset request (FR-01 or FR-02).
+|===
+
+The WDT enforces the window as follows:
+
+. After reset or a valid service, the counter starts at zero and increments. The closed window is active.
+. If firmware writes the count register while the counter is below the open-window threshold, the WDT treats this as an early feed violation: it asserts a bark interrupt (identical to a timeout bark) and, optionally, immediately advances to the bite stage.
+. Once the counter reaches the open-window threshold, the open window begins. Firmware should service the watchdog in this region.
+. If the counter reaches the bark threshold without being serviced, a timeout bark fires and the grace period begins.
+. If the counter reaches the bite threshold, the bite fires and a reset is requested.
+
+The open-window threshold is a separate configurable register.
+Setting it to zero disables the windowed behavior and reverts to a standard (non-windowed) watchdog, which is useful during boot or debug when strict timing cannot be guaranteed.
+
+===== Configuration Lock
+
+The WDT provides a write-once-clear lock register (`WDOG_REGWEN`).
+Once firmware clears this register, the watchdog configuration — enable, pause-in-sleep, bark threshold, bite threshold, and open-window threshold — becomes read-only and cannot be modified until the next reset.
+This prevents accidental or malicious reconfiguration of the watchdog after the system has entered its safety-critical operating phase.
+
+===== Fault Management
+
+The fault-detected state for a WDT violation (timeout or early feed) is FDS-01 (manager isolation), preventing the hung component from issuing further transactions.
+
+* *Bark:* Asserts an uncorrectable error interrupt routable to PLIC and NMI (the latter if applicable). Software has the grace period between bark and bite to log the fault and attempt recovery.
+* *Bite:* Asserts a hardware reset request — FR-01 for CPU-local WDTs, FR-02 for system-level WDTs.
+
+===== Test for Diagnostic
+
+Latent faults in the WDT are detected by a software-driven self-test that exercises all three detection paths:
+
+. *Timeout test:* Software configures the bark and bite thresholds to minimum values and allows the counter to expire, verifying that the bark interrupt and the bite reset request are correctly asserted.
+. *Early feed test:* Software configures a non-zero open-window threshold, immediately writes the count register (before the counter reaches the open-window threshold), and verifies that the early feed violation triggers a bark interrupt.
+. *NMI routing test (if applicable):* Software triggers a bark with maskable interrupts disabled and verifies that the NMI output asserts.
+
+// ---------------------------------------------------------------
+// Per-module sections
+// ---------------------------------------------------------------
+
+[[smc-fusa-cpu-pipeline]]
+=== CPU Pipeline — Dual-Core Lockstep
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-000, OCAH-HWSR-SMC-001, OCAH-HWSR-SMC-002, OCAH-HWSR-SMC-003, OCAH-HWSR-SMC-004, OCAH-HWSR-SMC-159, OCAH-HWSR-SMC-183, OCAH-HWSR-SMC-184, OCAH-HWSR-SMC-185, OCAH-HWSR-SMC-186
+--
+
+The SMC CPU cluster implements Dual-Core Lockstep (DCLS) to detect random transient faults in the CPU execution path.
+For each logical CPU core, two identical tile instances — a *master* and a *checker* — execute the same instruction stream in lock-step.
+A comparator continuously monitors the outputs of both instances and asserts an error when they diverge.
+
+==== Replication Boundary
+
+The lockstep replication boundary is the *tile boundary*.
+Each tile instance contains the full Rocket pipeline and all surrounding control logic.
+The following elements are replicated (i.e., independently instantiated in both master and checker):
+
+* *Rocket 5-stage pipeline* — fetch, decode, execute, memory, and writeback stages, including the ALU, multiplier/divider, CSR file, and register file.
+* *I-Cache controller logic* — tag lookup, hit/miss detection, refill FSM, and TLB (ITLB).
+* *D-Cache controller logic* — tag lookup, hit/miss detection, refill/writeback FSM, Miss Status Holding Registers (MSHR), and TLB (DTLB).
+* *Page Table Walker (PTW)* — hardware page table walk logic and PMP checkers.
+* *Branch predictor* — Branch Target Buffer (BTB) and Branch History Table (BHT).
+* *Bus Error Unit (BEU)* — per-tile error capture logic.
+
+The following elements are *not* replicated but shared between master and checker:
+
+* *SRAM macros* — I-Cache data arrays, I-Cache tag array, D-Cache data arrays, D-Cache tag array. These are shared and protected by ECC SECDED (see <<smc-fusa-cache-ecc>>). Both tile instances receive the same SRAM read-back data; both issue SRAM requests that are checked by the comparator before being forwarded to the physical arrays.
+
+This partitioning concentrates lockstep coverage on the logic most susceptible to transient faults (combinational and sequential logic in the pipeline and cache controllers), while avoiding the area cost of duplicating large SRAM macros, which are instead covered by ECC.
+
+==== Comparator Architecture
+
+The comparator sits between the tile boundary and the shared resources (SRAM macros, TileLink fabric).
+On every clock cycle, it compares all output signals from the master tile against the corresponding outputs from the checker tile.
+The comparison covers:
+
+* *Bus interface outputs* — all TileLink channel signals (A-channel requests, C-channel writebacks, E-channel acknowledgements), including opcode, address, data, size, and source fields.
+* *SRAM request interfaces* — address, data, write-enable, and chip-select for each I-Cache and D-Cache array (tag and data), ensuring both tiles agree on every memory access before it reaches the shared SRAM.
+* *Control and status outputs* — halt, cease, wait-for-interrupt (WFI), and outward interrupt signals.
+
+The master tile's outputs drive the actual system (fabric, SRAMs).
+The checker tile's outputs are consumed only by the comparator and are not connected to the rest of the system.
+Both tiles receive identical inputs: same clock, same reset, same interrupt lines, same SRAM read-back data, and same bus responses.
+
+If the comparator detects a mismatch on any compared signal, it asserts a corruption-detected error signal (`haltNodeOut`).
+This signal drives the following fault management sequence:
+
+. *Fault-detected state (FDS-01)*: A manager isolation mechanism activates to block the faulty tile from issuing further transactions on the fabric. The error signal remains asserted until the tile is reset.
+. *Error reporting*: An uncorrectable error interrupt is signalled to the SMO. The SMC records the writeback-stage program counter from both master and checker for diagnostic purposes.
+. *Fault reaction (FR-01)*: The specific CPU core is reset to restore safe operation.
+
+==== Test for Diagnostic
+
+A latent fault in the DCLS comparator would cause it to remain in the "match" state even when the two tile instances diverge, making the entire lockstep mechanism ineffective.
+To detect this, a software-based self-test uses the error injection interface to inject a known mismatch into the comparator path and verifies that the comparator correctly asserts the error signal.
+
+[[smc-fusa-cache-ecc]]
+=== Cache and Scratchpad SRAM — ECC SECDED
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-009, OCAH-HWSR-SMC-010, OCAH-HWSR-SMC-011, OCAH-HWSR-SMC-012, OCAH-HWSR-SMC-013, OCAH-HWSR-SMC-014, OCAH-HWSR-SMC-015, OCAH-HWSR-SMC-016, OCAH-HWSR-SMC-017, OCAH-HWSR-SMC-018, OCAH-HWSR-SMC-019, OCAH-HWSR-SMC-020, OCAH-HWSR-SMC-021, OCAH-HWSR-SMC-022, OCAH-HWSR-SMC-023, OCAH-HWSR-SMC-024, OCAH-HWSR-SMC-025, OCAH-HWSR-SMC-026, OCAH-HWSR-SMC-027, OCAH-HWSR-SMC-028, OCAH-HWSR-SMC-029, OCAH-HWSR-SMC-030, OCAH-HWSR-SMC-161, OCAH-HWSR-SMC-218, OCAH-HWSR-SMC-219, OCAH-HWSR-SMC-220
+--
+
+All SRAM macros in the SMC — Instruction Cache data and tag, Data Cache data and tag, and Scratchpad — are protected with ECC SECDED (Single Error Correction, Double Error Detection).
+
+The ECC encoder generates check bits for each data word written to the SRAM and stores the check bits alongside the data.
+On each read, the ECC decoder reads the data word and check bits, computes syndrome bits, and determines the error status:
+
+* *No error*: The data is passed through unmodified.
+* *Single-bit error (correctable)*: The decoder corrects the faulty bit using the syndrome, outputs the corrected data, and asserts a correctable error signal. The system continues normal operation.
+* *Double-bit error (uncorrectable)*: The decoder asserts an uncorrectable error signal. The module enters the memory system isolation state (FDS-03) to prevent corrupted data from propagating.
+
+For uncorrectable errors, the SMC signals an uncorrectable error interrupt to the SMO.
+The fault reaction for cache SRAM errors is FR-01 (CPU core reset); for Scratchpad errors, the fault reaction is FR-02 (whole SMC subsystem reset), because the Scratchpad is shared and a localized core reset would not be sufficient.
+
+*Error logging.* When a single-bit or double-bit error is detected, the SMC records the faulty address and increments the corresponding error counter.
+When the count of single-bit errors exceeds a programmable threshold, the SMC triggers an additional interrupt to alert the SMO to a potential degradation trend.
+The SMC provides memory-mapped registers for reading ECC error counts, last corrected address, and last uncorrectable address for each protected SRAM.
+
+*Test for diagnostic.* Latent faults in the ECC encoder and decoder logic are detected using the standard error injection interface.
+The self-test sequencer injects single-bit errors at every bit position and verifies that the decoder reports a correctable error with the correct bit-position indication.
+For SECDED structures, the sequencer proceeds to a second phase that injects all two-bit error combinations and verifies that the decoder reports an uncorrectable error at each step.
+
+[[smc-fusa-beu]]
+=== Bus Error Unit
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-096, OCAH-HWSR-SMC-097, OCAH-HWSR-SMC-098, OCAH-HWSR-SMC-192, OCAH-HWSR-SMC-193, OCAH-HWSR-SMC-194, OCAH-HWSR-SMC-195, OCAH-HWSR-SMC-196, OCAH-HWSR-SMC-197
+--
+
+The SMC integrates a Bus Error Unit (BEU) per CPU core to capture and report bus-level error responses.
+The BEU is a non-intrusive monitor: it observes bus transactions without modifying them and records errors in an internal FIFO, shown in the figure below.
+
+.Bus Error Unit
+image::bus_err_unit.png[Bus Error Unit,scaledwidth=70.0%]
+
+
+When a bus error response is received (e.g., AXI4 `SLVERR` or `DECERR`), the BEU stores both the error source address and the error code in its FIFO.
+For burstive protocols such as AXI, the recorded address is always the address of the original request.
+The BEU asserts an interrupt signal that remains high while errors are stored in the FIFO.
+Reading the error code register pops the FIFO; if only a single error was present, this clears the interrupt.
+To obtain the address associated with an error, software should read the address register before reading the error code.
+
+The BEU FIFO depth is configurable to match the maximum number of outstanding transactions.
+If the outstanding transaction bound is exceeded, the address information will no longer update until the unit is reset.
+
+The BEU is also the error recording endpoint for address-filtered transactions on the fabric (see <<smc-fusa-fabric>>).
+
+[[smc-fusa-plic]]
+=== Platform-Level Interrupt Controller (PLIC)
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-031, OCAH-HWSR-SMC-032, OCAH-HWSR-SMC-033, OCAH-HWSR-SMC-034, OCAH-HWSR-SMC-035, OCAH-HWSR-SMC-036, OCAH-HWSR-SMC-037, OCAH-HWSR-SMC-038, OCAH-HWSR-SMC-039, OCAH-HWSR-SMC-040, OCAH-HWSR-SMC-041, OCAH-HWSR-SMC-042, OCAH-HWSR-SMC-171, OCAH-HWSR-SMC-203, OCAH-HWSR-SMC-204, OCAH-HWSR-SMC-205, OCAH-HWSR-SMC-206
+--
+
+The PLIC is protected by three complementary safety mechanisms: register parity, lockstep arbitration, and lockstep interrupt generation.
+
+*Register parity.* The PLIC implements odd parity protection on its priority, enable, and threshold configuration registers, following the common register parity scheme described in <<smc-fusa-register-parity>>.
+
+*Lockstep arbitration.* The interrupt arbitration logic — which evaluates priority, enable, and pending status to select the highest-priority interrupt for each CPU context — is replicated into two identical copies.
+A comparator checks the outputs of the two arbiters on every clock cycle, following the lockstep scheme described in <<smc-fusa-lockstep>>.
+
+*Lockstep interrupt generation.* The logic that asserts the final interrupt signal to the CPU is similarly replicated and compared.
+
+When any of these mechanisms detects a fault — parity mismatch, arbitration divergence, or generation divergence — the PLIC enters the signal clamping state (FDS-04): the affected interrupt line is clamped to a safe (de-asserted) state.
+The SMC asserts an uncorrectable error interrupt to the SMO, and the fault reaction is FR-01a (cluster reset, including all cores, caches, and interrupt controllers).
+
+*Test for diagnostic.* Parity self-test uses the standard error injection interface.
+Lockstep self-test injects a mismatch into one of the redundant copies and verifies that the comparator detects the divergence.
+Interrupt controller functional self-test allows software to trigger test interrupt events and verify prioritization and clearing.
+
+[[smc-fusa-clint]]
+=== Core-Local Interruptor (CLINT)
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-043, OCAH-HWSR-SMC-044, OCAH-HWSR-SMC-045, OCAH-HWSR-SMC-046, OCAH-HWSR-SMC-047, OCAH-HWSR-SMC-048, OCAH-HWSR-SMC-049, OCAH-HWSR-SMC-050, OCAH-HWSR-SMC-207, OCAH-HWSR-SMC-208, OCAH-HWSR-SMC-209
+--
+
+The CLINT implements parity protection on timer compare registers and software interrupt registers, and lockstep interrupt generation logic.
+These mechanisms are identical in principle to those described for the PLIC in <<smc-fusa-plic>>; the key difference is that the CLINT does not perform priority arbitration, so the lockstep applies only to the interrupt generation path.
+
+When a parity or lockstep error is detected, the CLINT enters the signal clamping state (FDS-04) and the affected interrupt line is clamped to a safe state.
+The fault reaction is FR-01a (cluster reset).
+
+*Test for diagnostic.* Identical to the PLIC: parity self-test via error injection and lockstep self-test via mismatch injection.
+
+[[smc-fusa-dma]]
+=== DMA Engine
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-051, OCAH-HWSR-SMC-052, OCAH-HWSR-SMC-053, OCAH-HWSR-SMC-054, OCAH-HWSR-SMC-055, OCAH-HWSR-SMC-056, OCAH-HWSR-SMC-057, OCAH-HWSR-SMC-058, OCAH-HWSR-SMC-059, OCAH-HWSR-SMC-060, OCAH-HWSR-SMC-061, OCAH-HWSR-SMC-062, OCAH-HWSR-SMC-063, OCAH-HWSR-SMC-170, OCAH-HWSR-SMC-198, OCAH-HWSR-SMC-199, OCAH-HWSR-SMC-200, OCAH-HWSR-SMC-201, OCAH-HWSR-SMC-202
+--
+
+The DMA engine is protected by four mechanisms: address generation lockstep, address range legalization, register and FIFO buffer parity, and a windowed watchdog timer for liveness.
+
+*Address generation lockstep.* The address generation logic — which computes source and destination addresses for each beat of a transfer — is replicated using Dual Modular Redundancy (DMR).
+A comparator checks the outputs of both copies on every cycle, following the lockstep scheme described in <<smc-fusa-lockstep>>.
+When a mismatch is detected, the DMA enters FDS-01 (manager isolation), the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+The SMC records the invalid address and error cause for diagnostic purposes.
+
+*Address range legalizer.* The DMA implements a legalizer module that validates generated addresses against configured allowed ranges and splits transfers at 4 KB page boundaries as required by the AXI protocol.
+When an address falls outside the configured legal range, the DMA enters FDS-01, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.
+
+*Register and FIFO parity.* Configuration registers and internal FIFO buffers are protected with odd parity following the common scheme described in <<smc-fusa-register-parity>>.
+A parity error triggers FDS-01, an uncorrectable error interrupt, and FR-02.
+
+*Error handling.* The DMA error handler supports CONTINUE and ABORT actions in response to bus errors.
+When ABORT is selected, the error handler flushes the legalizer and terminates the active transfer.
+The error handler tracks outstanding transfers in the datapath using a credit counter.
+
+*Windowed WDT.* The DMA is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>.
+A DMA hang manifests as a CPU hang (the CPU is waiting for the DMA to complete) and is therefore caught by the WDT.
+
+*Test for diagnostic.* Address generation lockstep is tested via mismatch injection.
+Address range legalizer is tested by configuring boundaries and attempting out-of-range accesses.
+Register and FIFO parity are tested via the standard error injection interface.
+
+[[smc-fusa-zeroer]]
+=== Zeroer
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-064, OCAH-HWSR-SMC-065, OCAH-HWSR-SMC-066, OCAH-HWSR-SMC-067, OCAH-HWSR-SMC-068, OCAH-HWSR-SMC-069, OCAH-HWSR-SMC-070, OCAH-HWSR-SMC-071
+--
+
+The Zeroer performs bulk memory zeroing operations and is protected by register parity, address range legalization, and the windowed watchdog timer.
+All three mechanisms are identical to those described for the DMA in <<smc-fusa-dma>>.
+
+A parity error on configuration registers triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+An address outside the configured legal range triggers the same sequence.
+Liveness is monitored by the CPU's WDT as described in <<smc-fusa-wdt>>.
+
+*Test for diagnostic.* Parity self-test via error injection, address range test via boundary configuration, WDT self-test via forced timeout.
+
+[[smc-fusa-log-engine]]
+=== Log Engine
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-072, OCAH-HWSR-SMC-073, OCAH-HWSR-SMC-074, OCAH-HWSR-SMC-075, OCAH-HWSR-SMC-076, OCAH-HWSR-SMC-077, OCAH-HWSR-SMC-078, OCAH-HWSR-SMC-079
+--
+
+The Log Engine implements parity protection on configuration registers and address range checking to validate memory access ranges.
+These mechanisms follow the common schemes described in <<smc-fusa-register-parity>> and the address range legalizer approach described for the DMA in <<smc-fusa-dma>>.
+
+A parity error on configuration registers triggers FDS-02 (subordinate isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+An address outside the configured legal range triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.
+The out-of-bound address is recorded for diagnostic purposes.
+
+*Test for diagnostic.* Parity self-test via error injection, address range test via boundary configuration.
+
+[[smc-fusa-mailbox]]
+=== Mailbox Unit
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-080, OCAH-HWSR-SMC-081, OCAH-HWSR-SMC-082, OCAH-HWSR-SMC-083, OCAH-HWSR-SMC-084, OCAH-HWSR-SMC-085, OCAH-HWSR-SMC-086, OCAH-HWSR-SMC-087
+--
+
+The Mailbox Unit implements register parity storage and lockstep interrupt generation.
+
+*Register parity storage.* Configuration registers store parity bits from WUSER alongside data, following the scheme described in <<smc-fusa-register-parity>>.
+A parity error detected by the network element checker on read triggers FDS-02 (subordinate isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+
+*Lockstep interrupt generation.* The interrupt generation logic — which asserts doorbell interrupt signals from control register writes — is replicated and compared following the lockstep scheme described in <<smc-fusa-lockstep>>.
+When a mismatch is detected, the Mailbox enters FDS-04 (signal clamping), the affected interrupt line is clamped, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.
+
+*Test for diagnostic.* Register storage faults are covered by network element parity self-test; lockstep self-test via mismatch injection.
+
+[[smc-fusa-fabric]]
+=== Fabric
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-088, OCAH-HWSR-SMC-089, OCAH-HWSR-SMC-090, OCAH-HWSR-SMC-091, OCAH-HWSR-SMC-092, OCAH-HWSR-SMC-093, OCAH-HWSR-SMC-094, OCAH-HWSR-SMC-095, OCAH-HWSR-SMC-169, OCAH-HWSR-SMC-213, OCAH-HWSR-SMC-214, OCAH-HWSR-SMC-215
+--
+
+The SMC fabric is protected by point-to-point parity on all AXI channel signals, parity on configuration registers, address filtering, and a windowed watchdog timer for liveness.
+
+==== Point-to-Point Parity Protection
+
+The fabric implements odd parity protection on all AXI interface signals following the `Odd_Parity_Byte_All` scheme defined in AXI5 A16.2.1 (https://developer.arm.com/documentation/ihi0022/latest/[AMBA AXI and ACE Protocol Specification^]).
+All interface signals — data, address, control, and strobe — are covered on every channel.
+Parity is generated at every manager output port and checked at the corresponding subordinate input port on the request path (AW, W, AR), and vice-versa on the response path (R, B), providing end-to-end single-bit error detection on the wires between any two connected components.
+
+The general parity self-test architecture, per-channel target selection, OR'd error collection, and programming model are described in <<fusa-network-parity>>.
+For one-to-many topologies (crossbar, demux), a parity checker is instantiated on each subordinate branch and on each AXI channel within that branch.
+Each channel checker is a separate self-test target.
+During normal operation, all per-branch error signals are aggregated via a logical OR into a single interrupt, with per-branch status bits readable via a register.
+
+Rather than adding dedicated check wires (the `xCHK` signals defined in AXI5), the SMC fabric transports parity bits inside the AXI USER sideband field (`AWUSER`, `WUSER`, `ARUSER`, `RUSER`, `BUSER`).
+This repurposes the existing user-defined signal fields already present on every AXI channel, avoiding extra wires while preserving the same protection semantics.
+The USER field width on each channel is sized to accommodate the required number of parity bits for that channel's payload.
+When the USER field carries functional sideband information (e.g., security attributes such as source ID or group ID), these bits shall also be protected with parity, and the corresponding parity bits are stored in the USER field alongside the other parity bits.
+
+The parity computation rules are as follows:
+
+* *Odd parity* is used throughout: parity bits are driven such that there is always an odd number of asserted bits in each parity group.
+* *Data signals* (`WDATA`, `RDATA`) are covered at byte granularity — each parity bit protects up to 8 data bits. For a 64-bit data bus, this yields 8 parity bits. If the data width is not a multiple of 8, the most significant parity bit covers fewer than 8 bits.
+* *Address signals* (`AWADDR`, `ARADDR`) are covered at byte granularity, yielding ceil(ADDR_WIDTH/8) parity bits.
+* *Strobe signals* (`WSTRB`) are covered at byte granularity — each parity bit protects up to 8 strobe bits. For a 64-bit data bus with 8 strobe bits, this yields ceil(DATA_WIDTH/64) = 1 parity bit.
+* *Control signals* (`AWVALID`, `ARVALID`, `WVALID`, `RVALID`, `BVALID`, `xREADY`, etc.) are each covered by a single odd parity bit, which is the inversion of the original signal.
+* *Grouped control fields* (e.g., size, burst, lock, prot, and NSE concatenated into a single group; or region, cache, and QoS) are protected by a single parity bit covering the concatenated group.
+
+===== Worked Example — USER Field Sizing for the SMC Fabric
+
+This section derives the parity bit budget for each AXI channel using the default SMC fabric configuration.
+Refer to <<fabric>> for the complete fabric specification, including interface widths and ID width assignments at each fabric stage.
+
+The SMC fabric uses AXI4+ATOP interfaces with the following default signal widths:
+
+.Default SMC AXI Signal Widths
+[cols="3,1,5", options="header"]
+|===
+| Signal | Width (bits) | Notes
+| Address (system-facing) | 56 | External ports (sys_axi_in, output_axi, etc.)
+| Address (local) | 32 | SMC-internal interfaces (local fabric to peripherals)
+| Data | 64 | All AXI4 interfaces
+| Strobe | 8 | DATA_WIDTH / 8
+| User | 14 | All AXI4 channels
+| ID | 2, 4, 6, or 8 | Varies by fabric stage (see <<fabric-axi-id-widths>>)
+|===
+
+The ID width varies across the fabric due to crossbar ID expansion: 2 bits at the JTAG input, 4 bits at the input fabric slave side, 6 bits at the system/SEP inputs and local/output fabric slave side, and 8 bits at the local fabric crossbar master side, output fabric master side, and system output.
+
+The parity budget below is computed for the widest configuration (ADDR_WIDTH = 56, ID_WIDTH = 8), which yields the maximum USER field requirement.
+
+Check signals follow Table A16.4 of the AXI5 specification.
+A check signal is included only when at least one of its covered signals is present on the interface.
+The following AXI5-only check groups are therefore omitted from the AXI4+ATOP interface: `AWCTLCHK2` (domain, snoop), `ARCTLCHK2` (domain, snoop), `ARCTLCHK3` (chunken, tagop), `xPENDINGCHK`, `xCRDTCHK`, `xRPCHK`, `xSHAREDCRDCHK`, `WTAGCHK`, `WPOISONCHK`, `RTAGCHK`, `RPOISONCHK`, `RCHUNKCHK`, and all loop, MMU, MPAM, trace, PAS, MECID, NSAID, subsysid, and act check signals.
+Where a check group covers a mix of present and absent signals, the absent signals are assumed at their protocol-defined default value per A16.2.3.
+
+Handshake signal parity (`xVALIDCHK`, `xREADYCHK`) is also transported via USER.
+Each channel's `xVALIDCHK` travels in that channel's USER (same direction as the data).
+Each channel's `xREADYCHK` travels in a USER signal flowing the opposite direction: request-channel READY parity (`AWREADYCHK`, `WREADYCHK`, `ARREADYCHK`) travels in a response-channel USER, and response-channel READY parity (`RREADYCHK`, `BREADYCHK`) travels in a request-channel USER.
+
+.Parity Bit Budget per AXI Channel
+[cols="1,2,4,2", options="header"]
+|===
+| Channel | Check Signal | Covered Signals | Width
+
+| AW | `AWIDCHK`    | `AWID`                                       | ceil(ID_WIDTH/8) = 1
+| AW | `AWADDRCHK`  | `AWADDR`                                     | ceil(ADDR_WIDTH/8) = 7
+| AW | `AWLENCHK`   | `AWLEN`                                      | 1
+| AW | `AWCTLCHK0`  | {`AWSIZE`, `AWBURST`, `AWLOCK`, `AWPROT`}    | 1
+| AW | `AWCTLCHK1`  | {`AWREGION`, `AWCACHE`, `AWQOS`}             | 1
+| AW | `AWCTLCHK3`  | `AWATOP`                                     | 1
+| AW | `AWVALIDCHK` | `AWVALID`                                    | 1
+| AW | `BREADYCHK`  | `BREADY`                                     | 1
+4+| *AWUSER parity total: 14 bits*
+
+| W  | `WDATACHK`   | `WDATA`                                      | DATA_WIDTH/8 = 8
+| W  | `WSTRBCHK`   | `WSTRB`                                      | ceil(DATA_WIDTH/64) = 1
+| W  | `WLASTCHK`   | `WLAST`                                      | 1
+| W  | `WVALIDCHK`  | `WVALID`                                     | 1
+4+| *WUSER parity total: 11 bits*
+
+| AR | `ARIDCHK`    | `ARID`                                       | ceil(ID_WIDTH/8) = 1
+| AR | `ARADDRCHK`  | `ARADDR`                                     | ceil(ADDR_WIDTH/8) = 7
+| AR | `ARLENCHK`   | `ARLEN`                                      | 1
+| AR | `ARCTLCHK0`  | {`ARSIZE`, `ARBURST`, `ARLOCK`, `ARPROT`}    | 1
+| AR | `ARCTLCHK1`  | {`ARREGION`, `ARCACHE`, `ARQOS`}             | 1
+| AR | `ARVALIDCHK` | `ARVALID`                                    | 1
+| AR | `RREADYCHK`  | `RREADY`                                     | 1
+4+| *ARUSER parity total: 13 bits*
+
+| R  | `RIDCHK`     | `RID`                                        | ceil(ID_WIDTH/8) = 1
+| R  | `RDATACHK`   | `RDATA`                                      | DATA_WIDTH/8 = 8
+| R  | `RRESPCHK`   | `RRESP`                                      | 1
+| R  | `RLASTCHK`   | `RLAST`                                      | 1
+| R  | `RVALIDCHK`  | `RVALID`                                     | 1
+| R  | `ARREADYCHK` | `ARREADY`                                    | 1
+4+| *RUSER parity total: 13 bits*
+
+| B  | `BIDCHK`     | `BID`                                        | ceil(ID_WIDTH/8) = 1
+| B  | `BRESPCHK`   | `BRESP`                                      | 1
+| B  | `BVALIDCHK`  | `BVALID`                                     | 1
+| B  | `AWREADYCHK` | `AWREADY`                                    | 1
+| B  | `WREADYCHK`  | `WREADY`                                     | 1
+4+| *BUSER parity total: 5 bits*
+|===
+
+The maximum parity requirement across all channels is *14 bits* (AW channel, due to the `AWATOP` field and handshake parity).
+The SMC fabric USER_WIDTH of 14 bits exactly accommodates the required parity bits.
+The AR and R channels require 13 bits each, the W channel requires 11 bits, and the B channel requires 5 bits; all fit within the same 14-bit USER field.
+
+[NOTE]
+====
+In the AXI5 specification, `BRESPCHK` is a single 1-bit parity signal covering the concatenation of {`BRESP`, `BCOMP`, `BPERSIST`, `BTAGMATCH`, `BBUSY`}, and `RRESPCHK` is a single 1-bit parity signal covering {`RRESP`, `RBUSY`}.
+On the AXI4+ATOP interface used by SMC only `BRESP` (2 bits) and `RRESP` (2 bits) are present; the parity is therefore computed over `BRESP` and `RRESP` alone.
+For strict AXI5 interoperability, the absent signals would be included at their protocol-defined defaults (notably `BCOMP` = 1), but in a closed fabric where both endpoints omit the same signals the defaults cancel out and have no effect on the check.
+====
+
+[NOTE]
+====
+The ID width varies across fabric stages (2, 4, 6, or 8 bits depending on the port).
+Because ID parity is computed at byte granularity (⌈ID_WIDTH / 8⌉), any ID width ≤ 8 requires only 1 parity bit, so the per-channel totals remain unchanged across all SMC fabric stages.
+====
+
+Parity is synchronous to `ACLK`.
+Control signal parity must be driven correctly in every cycle that the interface is out of reset (`ARESETn` asserted).
+Payload signal parity must be driven correctly in every cycle that the corresponding `xVALID` is asserted, regardless of whether all byte lanes are actively used in the transfer.
+
+When a parity error is detected at the receiving end, the fabric enters FDS-02 (subordinate isolation), the SMC signals an uncorrectable error interrupt to the SMO, and the fault reaction is FR-02 (subsystem reset).
+
+==== End-to-End Parity and Register Storage
+
+The parity scheme provides end-to-end protection that covers both wire faults and storage faults in a unified architecture.
+The following figure illustrates the data flow for a write followed by a read to a configuration register.
+
+.End-to-End Parity Flow for Register Access
+[source]
+----
+WRITE PATH:
+  Manager → [gen parity] → WDATA + WUSER(parity) → Network Element
+         → [check parity] → WDATA + WUSER(parity) → Register Block
+         → [store data + parity]
+
+READ PATH:
+  Register Block → [return stored data + parity] → RDATA + RUSER(parity)
+                → Network Element → [check parity] → RDATA + RUSER(parity)
+                → Manager
+----
+
+On the write path, parity is generated at the manager, checked at the network element input, and then the data and parity are stored in the register block.
+On the read path, the stored data and parity are returned; the network element's parity checker validates integrity before forwarding to the manager.
+
+A storage fault (bit flip in a register flip-flop) corrupts either the data bits or the stored parity bits.
+Either corruption causes a parity mismatch when the register is read, which the network element checker detects.
+This unified approach eliminates redundant parity computation and checking at the register level while maintaining full coverage of both transient wire faults and persistent storage faults.
+
+==== Register Parity Storage
+
+Fabric configuration registers store parity bits from WUSER alongside data, following the scheme described in <<smc-fusa-register-parity>>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.
+
+==== Address Filtering
+
+The fabric implements address filtering at its input to block transactions targeting unmapped regions or performing illegal access types based on programmable regions and attributes.
+When an inbound transaction is blocked by the address filter, the fabric routes the transaction to an error slave.
+The error slave generates an AXI error response (`DECERR`), which is captured by the Bus Error Unit (see <<smc-fusa-beu>>) for error recording and interrupt generation.
+
+==== Liveness
+
+Fabric liveness is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>.
+A fabric hang manifests as a CPU hang and is caught by the WDT.
+
+==== Test for Diagnostic
+
+Payload parity is tested via the shared parity self-test interface described in <<fusa-network-parity>>, using OR'd error collection with per-channel target selection.
+Each AXI channel checker at each network element port is an individual target; software iterates over all targets and, for each one, the sequencer walks all bit positions of that channel's payload to verify the checker detects every single-bit error.
+Register storage faults are covered by the same network element parity checker self-test — when a register is read back, any storage fault manifests as a parity error at the network element.
+The WDT is tested via forced timeout.
+
+[[smc-fusa-rom]]
+=== Boot ROM
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-107, OCAH-HWSR-SMC-108, OCAH-HWSR-SMC-109, OCAH-HWSR-SMC-110, OCAH-HWSR-SMC-165, OCAH-HWSR-SMC-216, OCAH-HWSR-SMC-217
+--
+
+The SMC calculates a CRC checksum over the entire ROM address range at startup and compares it against a golden CRC stored in eFuse.
+A mismatch indicates that the ROM contents have been corrupted, whether by a manufacturing defect, a storage fault, or a read-path error.
+
+When a CRC mismatch is detected, the SMC enters FDS-03 (memory system isolation) to prevent execution of corrupted instructions, signals a fatal error interrupt to the SMO, halts the boot process, and triggers FR-02 (subsystem reset).
+The SMC provides a memory-mapped status register indicating the ROM integrity error state.
+
+==== Boot-Time CRC Verification Order
+
+The ROM and eFuse CRC checks are ordered to establish a linear trust chain with no external dependencies.
+Both golden CRC values are stored in eFuse, which is available immediately after the hardware fuse-sensing FSM completes and before the CPU begins execution.
+The verification order is as follows:
+
+. *eFuse CRC first:* ROM firmware computes a CRC over the eFuse shadow register contents (excluding the CRC word itself) and compares it against the golden eFuse CRC stored in eFuse.
+This is the first integrity check the ROM performs after CPU reset release, before reading any eFuse configuration fields (lifecycle state, I2C/I3C addresses, PLL settings, etc.).
+A mismatch halts the boot process immediately.
+
+. *ROM CRC second:* ROM firmware computes a CRC over the entire ROM address range and compares it against the golden ROM CRC stored in the now-verified eFuse.
+A mismatch halts the boot process.
+
+. *Proceed:* Only after both checks pass does the ROM begin using eFuse configuration data and proceed with the normal boot sequence.
+
+This ordering avoids a chicken-and-egg problem that would arise if the golden eFuse CRC were stored in an external bootloader manifest: loading the manifest requires communication interfaces whose addresses come from eFuse, and authenticating the manifest requires keys from eFuse — making it impossible to verify eFuse integrity before depending on it.
+Storing both golden CRCs in eFuse (32 bits each, negligible relative to the 24576-bit eFuse capacity) ensures that the earliest software-visible integrity checks require only on-chip resources that are already populated by hardware.
+
+[NOTE]
+====
+Hardware-consumed eFuse fields — BIRA memory repair data and CGM PLL init codes — are applied by the fuse-sensing and DFT hardware before the CPU is released from reset.
+These fields are therefore consumed before any software CRC check can run.
+Detecting corruption in those fields at the earliest software-possible point and halting before further damage is the best mitigation short of adding a hardware CRC checker in the fuse-sensing FSM.
+====
+
+*Test for diagnostic.* The ROM integrity verification logic is tested by injecting errors into the read path and verifying that the CRC checker reports a mismatch.
+Additionally, software can corrupt the golden CRC reference value and trigger the integrity check to verify that the comparison logic itself detects the discrepancy.
+
+[[smc-fusa-gpio]]
+=== GPIO
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-111, OCAH-HWSR-SMC-112, OCAH-HWSR-SMC-113, OCAH-HWSR-SMC-114, OCAH-HWSR-SMC-115, OCAH-HWSR-SMC-116, OCAH-HWSR-SMC-117, OCAH-HWSR-SMC-166
+--
+
+The GPIO module implements two safety mechanisms: redundant strap latch comparison and register parity storage.
+
+*Redundant strap latch.* Upon Power-on-Reset, the GPIO module captures strap values into two redundant copies.
+A comparator continuously checks the two copies against each other.
+If a mismatch is detected — indicating a fault in one of the latch circuits — the GPIO enters FDS-02 (subordinate isolation) to prevent corrupted strap values from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+
+*Register parity storage.* Configuration registers store parity bits from WUSER alongside data, following the scheme described in <<smc-fusa-register-parity>>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.
+
+*Test for diagnostic.* The strap logic mismatch test injects bit flips into one of the redundant latch copies and verifies that the comparator detects the mismatch.
+Register storage faults are covered by network element parity self-test.
+
+[[smc-fusa-efuse]]
+=== eFuse Controller
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-118, OCAH-HWSR-SMC-119, OCAH-HWSR-SMC-120, OCAH-HWSR-SMC-121, OCAH-HWSR-SMC-122, OCAH-HWSR-SMC-167
+--
+
+The eFuse controller implements parity storage on shadow registers and a CRC integrity check on the eFuse bank contents.
+
+*Shadow register parity storage.* After the fuse sensing FSM loads the eFuse bank contents into shadow registers, the shadow registers store parity bits alongside data following the scheme described in <<smc-fusa-register-parity>>.
+A parity error detected by the network element checker on read triggers FDS-02 (subordinate isolation) to prevent corrupted fuse data from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+The faulty address is recorded for diagnostic purposes.
+
+*CRC integrity check.* At startup, ROM firmware calculates a CRC over the eFuse shadow register contents (excluding the CRC word) and compares it against a golden CRC stored in a dedicated eFuse field.
+This is the first integrity check the ROM performs after CPU reset release (see <<smc-fusa-rom>> for the full verification order).
+A mismatch triggers FDS-02, a fatal error interrupt, and FR-02.
+
+Storing the golden eFuse CRC in eFuse rather than in an external bootloader manifest eliminates a circular dependency: loading and authenticating a manifest requires eFuse-sourced configuration (communication interface addresses, cryptographic keys), so eFuse integrity cannot be verified through the manifest without first trusting the very data under test.
+The 32-bit CRC field consumes 0.13% of the 24576-bit eFuse capacity.
+CRC-32 detects all single-bit, double-bit, and odd-number-of-bit errors, as well as all burst errors up to 32 bits, providing adequate coverage for the random bit-upset threat model addressed by functional safety.
+
+*Windowed WDT.* The eFuse fuse-sensing FSM is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>, protecting against a hung sensing sequence.
+
+*Test for diagnostic.* Shadow register storage faults are covered by network element parity self-test.
+The CRC integrity logic is tested by injecting data and verifying that the CRC checker reports a mismatch.
+The eFuse FSM timeout is tested by allowing software to manipulate the timeout threshold.
+
+[[smc-fusa-system-timer]]
+=== System Timer
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-123, OCAH-HWSR-SMC-124, OCAH-HWSR-SMC-125, OCAH-HWSR-SMC-126, OCAH-HWSR-SMC-127, OCAH-HWSR-SMC-128, OCAH-HWSR-SMC-129, OCAH-HWSR-SMC-130, OCAH-HWSR-SMC-210, OCAH-HWSR-SMC-211, OCAH-HWSR-SMC-212
+--
+
+The System Timer implements register parity storage and lockstep counter logic.
+
+*Register parity storage.* Configuration registers store parity bits from WUSER alongside data, following the scheme described in <<smc-fusa-register-parity>>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+
+*Lockstep counter.* The timer counter is implemented using dual replicated counters that increment simultaneously from the same clock source.
+A comparator checks the two counter values on each clock cycle, following the lockstep scheme described in <<smc-fusa-lockstep>>.
+When a mismatch is detected, the timer enters FDS-01, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.
+
+*Test for diagnostic.* Register storage faults are covered by network element parity self-test.
+The lockstep counter is tested by injecting a mismatch into one of the replicated counters and verifying that the comparator detects the divergence.
+
+[[smc-fusa-i2c]]
+=== I2C Controller
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-131, OCAH-HWSR-SMC-132, OCAH-HWSR-SMC-133, OCAH-HWSR-SMC-134, OCAH-HWSR-SMC-135
+--
+
+The I2C controller implements parity protection on registers, FIFO buffers, and FSM state encoding, as well as protocol-level integrity checking and watchdog monitoring.
+
+*Register, FIFO, and FSM parity.* Configuration registers, internal FIFO buffers, and the FSM state register are all protected with odd parity.
+Register and FIFO parity follow the common scheme described in <<smc-fusa-register-parity>>.
+FSM state parity follows the scheme described in <<smc-fusa-fsm-parity>>.
+When any parity error is detected, the I2C controller enters FDS-01 (manager isolation), the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+If the FSM enters an illegal state, it transitions to a known safe state and signals an uncorrectable error.
+
+*Protocol integrity.* I2C protocol-level integrity (CRC or parity on the wire) is handled in software.
+The hardware provides the raw received data; software is responsible for computing and verifying the CRC over the payload.
+
+*Windowed WDT.* The I2C controller is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>, protecting against bus hangs or protocol stalls.
+
+*Test for diagnostic.* Register, FIFO, and FSM parity are tested via the error injection interface.
+The FSM state parity test injects invalid state patterns and verifies that the FSM correctly detects them and transitions to the safe state.
+
+[[smc-fusa-avsbus]]
+=== AVSBus Controller
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-136, OCAH-HWSR-SMC-137, OCAH-HWSR-SMC-138, OCAH-HWSR-SMC-139, OCAH-HWSR-SMC-140, OCAH-HWSR-SMC-141, OCAH-HWSR-SMC-142, OCAH-HWSR-SMC-143, OCAH-HWSR-SMC-144
+--
+
+The AVSBus controller implements hardware CRC checking on received frames, parity protection on registers, FIFO buffers, and FSM state encoding, and watchdog monitoring.
+
+*Hardware CRC.* The AVSBus controller computes a CRC-3 checksum on every received frame and compares it against the CRC field in the frame.
+When a CRC mismatch is detected, the controller enters FDS-02 (subordinate isolation) to prevent corrupted data from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+
+*Register, FIFO, and FSM parity.* These protections are identical in principle to those described for the I2C controller in <<smc-fusa-i2c>>.
+A parity error triggers FDS-01, an uncorrectable error interrupt, and FR-02.
+If the FSM enters an illegal state, it transitions to a known safe state and signals an uncorrectable error.
+
+*Windowed WDT.* The AVSBus controller is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>.
+
+*Test for diagnostic.* Register, FIFO, and FSM parity are tested via the error injection interface.
+FSM state parity test injects invalid state patterns.
+The hardware CRC checker is exercised during normal protocol operation; no additional latent fault test is required because the CRC is computed on every frame.
+
+[[smc-fusa-telemetry]]
+=== Telemetry Interface
+
+The Telemetry interface is monitored by the CPU's windowed watchdog timer as described in <<smc-fusa-wdt>>.
+A telemetry interface hang manifests as a CPU hang (the CPU is polling or waiting for sensor data) and is caught by the WDT.
+The fault reaction is FR-02 (subsystem reset).
+
+[[smc-fusa-pvt]]
+=== PVT and Power Management
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-152, OCAH-HWSR-SMC-153, OCAH-HWSR-SMC-154
+--
+
+PVT monitoring and power management safety functions are primarily software-driven.
+When an over-voltage, under-voltage, or over-current condition occurs on a main power rail, the SMC firmware overrides actuation commands and initiates a safe state transition.
+The SMC periodically monitors voltage sensors on high-current rails via AVSBus and autonomously triggers power capping if a defined safety threshold is exceeded.
+The SMC also monitors, detects, and reports sensor faults such as values stuck at minimum or maximum or rapid unrealistic toggling.
+
+These functions rely on the integrity of the underlying hardware (AVSBus controller, CPU, fabric, registers) which is protected by the mechanisms described in the preceding sections.
+
+[[smc-fusa-d2d]]
+=== Die-to-Die Communication (I3C / I2C)
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-155, OCAH-HWSR-SMC-156, OCAH-HWSR-SMC-157
+--
+
+When data is transmitted between chiplets via I3C or I2C, the SMC enforces a software-computed CRC check to ensure reliable error detection.
+When payload data is transmitted to or received from a remote chiplet, the SMC verifies the integrity of the payload using the CRC.
+These integrity checks are performed in software and do not require dedicated hardware diagnostics or latent fault testing.
+
+[[smc-fusa-reset-unit]]
+=== Reset Unit
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-099, OCAH-HWSR-SMC-100, OCAH-HWSR-SMC-101, OCAH-HWSR-SMC-150, OCAH-HWSR-SMC-151
+--
+
+The Reset Unit implements register parity protection and lockstep reset signal generation.
+
+*Register parity.* Configuration registers are protected with odd parity following the common scheme described in <<smc-fusa-register-parity>>.
+A parity error on the Reset Unit is classified as fatal: it triggers FDS-01 (manager isolation), a fatal error interrupt to the SMO, and FR-02 (subsystem reset).
+
+*Lockstep reset signal generation.* The logic that generates reset signals for each component is replicated and compared following the lockstep scheme described in <<smc-fusa-lockstep>>.
+A mismatch triggers FDS-04 (reset signal clamping), a fatal error interrupt, and FR-02.
+
+The Reset Unit coordinates hierarchical reset sequencing to ensure all chiplet resources achieve a safe, known initial state.
+When any clock or reset signal is asserted or de-asserted, the SMC guarantees the signal is glitch-free.
+
+*Test for diagnostic.* Register parity is tested via the standard error injection interface.
+Lockstep reset signal generation is tested by injecting a mismatch into one of the replicated copies and verifying that the comparator detects the divergence.
+
+[[smc-fusa-clock-control]]
+=== Clock Control
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-102, OCAH-HWSR-SMC-103, OCAH-HWSR-SMC-104, OCAH-HWSR-SMC-105, OCAH-HWSR-SMC-106, OCAH-HWSR-SMC-168, OCAH-HWSR-SMC-179, OCAH-HWSR-SMC-180, OCAH-HWSR-SMC-181, OCAH-HWSR-SMC-182
+--
+
+The Clock Control logic implements register parity protection and a clock handshake monitor with a timeout counter.
+
+*Register parity.* Configuration registers are protected with odd parity following the common scheme described in <<smc-fusa-register-parity>>.
+A parity error on Clock Control registers is classified as fatal: it triggers FDS-01 (manager isolation), a fatal error interrupt, and FR-02 (subsystem reset).
+
+*Clock handshake monitor.* The SMC implements a clock handshake monitor that detects stopped or non-responsive clocks.
+The monitor uses a reference clock to measure whether a target clock is still ticking.
+A synchronous request-acknowledge handshake protocol is used: the monitor sends a request on the reference clock domain and expects an acknowledge on the target clock domain.
+A configurable timeout counter increments while the target clock is not responding.
+When the timeout threshold is exceeded, the monitor enters the reference clock fallback state (FDS-05): a glitch-free clock multiplexer switches the affected clock domain from the failed system clock to the always-on reference clock, so that the SMC retains basic operation at a reduced frequency.
+The monitor simultaneously asserts a fatal error interrupt to the SMO, and the fault reaction is FR-02.
+When the target clock resumes, the timeout counter resets to zero and the clock multiplexer may be switched back to the system clock under firmware control.
+The following figure shows the block diagram of the clock handshake timeout monitor, including the request-acknowledge synchronization logic and the configurable timeout counter.
+
+.Clock Handshake Timeout Monitor
+image::ocah-clock-timeout.png[Clock Handshake Timeout Monitor,scaledwidth=90.0%]
+
+*Test for diagnostic.* Register storage faults are covered by network element parity self-test.
+The clock handshake monitor is tested by simulating a stopped subsystem clock (e.g., via clock gating) and verifying that the monitor correctly asserts a timeout.
+
+[[smc-fusa-mmr]]
+=== Memory-Mapped Registers
+
+
+[sidebar]
+.Traced Requirements
+--
+OCAH-HWSR-SMC-149
+--
+
+System-level memory-mapped registers that are not within the boundary of a specific IP — such as clock gate control registers — store parity bits from WUSER alongside data, following the scheme described in <<smc-fusa-register-parity>>.
+
+Clock gate control registers are HW-readable (consumed directly by clock gating logic) and therefore implement a local parity checker at the register output that continuously validates the stored data against stored parity on every clock cycle.
+A parity error detected by the local checker triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+
+For memory-mapped registers that are also SW-readable, parity errors may be detected by either the local checker (when HW consumes the data) or the network element checker (when SW reads the register via the bus).
+
+*Test for diagnostic.* The local parity checker is tested via error injection (software injects bit flips into stored data or parity and verifies the checker detects the fault).
+For SW-readable memory-mapped registers, network element parity self-test also provides coverage of the bus read path.

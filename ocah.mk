@@ -42,6 +42,8 @@ OCAH_PHONY += ocah-nonfree-init
 ## Core hardware collateral and DV firmware build targets.
 include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
+## Documentation build targets (after regs.mk so the register accessors exist).
+include $(OCAH_ROOT)/doc/doc.mk
 ## Yosys synthesis flow targets.
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 

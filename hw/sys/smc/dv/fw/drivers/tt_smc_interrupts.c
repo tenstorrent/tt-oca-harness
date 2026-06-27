@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #include "tt_smc_interrupts.h"
 
 #include "metal/cpu.h"

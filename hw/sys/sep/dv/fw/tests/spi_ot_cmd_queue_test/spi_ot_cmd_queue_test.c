@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * SPI OT Command Queue Test - TC_SPIOT_007 (P0)
  *
@@ -15,7 +18,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

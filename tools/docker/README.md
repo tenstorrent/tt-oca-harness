@@ -1,12 +1,17 @@
-# OCAH firmware toolchain container
+# OCAH toolchain container
 
-Cross-compiles RISC-V DV firmware (SEP, KM, SMC). Host OS does not matter;
-only Docker or Podman is required.
+Provides containerized open tools used by OCAH:
 
-There is no separate toolchain build step: `docker build` runs `apt install`
-inside the image, pulling pre-built Debian packages (`gcc-riscv64-unknown-elf`,
-`picolibc-riscv64-unknown-elf`, and `python3` for artifact postprocessing).
-Image build typically takes 1–2 minutes.
+- The local Dockerfile builds only the RISC-V DV firmware image
+  (`ocah-toolchain`) from Debian's prebuilt `gcc-riscv64-unknown-elf` and
+  `picolibc-riscv64-unknown-elf` packages.
+- Documentation uses pulled public images directly:
+  `docker.io/antora/antora:3.1.10` for HTML and
+  `docker.io/asciidoctor/docker-asciidoctor:latest` for PDF.
+
+Host OS does not matter; only Docker or Podman is required. Partners building
+PDF/HTML docs do not need to build an OCAH image or install the firmware
+toolchain.
 
 ## Prerequisites
 
@@ -17,37 +22,63 @@ Image build typically takes 1–2 minutes.
 From `tt-oca/` (or anywhere — the script resolves the repo root):
 
 ```bash
-./scripts/fw-toolchain-docker.sh build
-./scripts/fw-toolchain-docker.sh verify
-./scripts/fw-toolchain-docker.sh run make ocah-dv-fw TARGET=sep
+./scripts/docker-run.sh doc-html trm
+./scripts/docker-run.sh doc-pdf trm
+./scripts/docker-run.sh doc-html integrator
+./scripts/docker-run.sh doc-pdf integrator
+
+./scripts/docker-run.sh build
+./scripts/docker-run.sh verify
+./scripts/docker-run.sh run make ocah-dv-fw TARGET=sep
 ```
 
 Build all subsystems:
 
 ```bash
-./scripts/fw-toolchain-docker.sh run make ocah-dv-fw
+./scripts/docker-run.sh run make ocah-dv-fw
+```
+
+Build both documentation products:
+
+```bash
+./scripts/docker-run.sh doc-html trm
+./scripts/docker-run.sh doc-html integrator
+./scripts/docker-run.sh doc-pdf trm
+./scripts/docker-run.sh doc-pdf integrator
 ```
 
 Interactive shell for debugging:
 
 ```bash
-./scripts/fw-toolchain-docker.sh shell
+./scripts/docker-run.sh shell
 ```
 
-Override the image tag with `OCAH_FW_DOCKER_IMAGE=my-tag`.
+Override the image tag with `OCAH_DOCKER_IMAGE=my-tag`.
 
 ## Manual docker commands
 
 Equivalent commands without the helper (run from `tt-oca/`):
 
 ```bash
-docker build -t ocah-fw-toolchain tools/docker
+docker build -t ocah-toolchain tools/docker
 
-docker run --rm ocah-fw-toolchain riscv64-unknown-elf-gcc --version
-docker run --rm ocah-fw-toolchain riscv64-unknown-elf-gcc -print-multi-lib
+docker run --rm docker.io/antora/antora:3.1.10 --version
+docker run --rm docker.io/asciidoctor/docker-asciidoctor:latest asciidoctor-pdf --version
+docker run --rm ocah-toolchain riscv64-unknown-elf-gcc --version
+docker run --rm ocah-toolchain riscv64-unknown-elf-gcc -print-multi-lib
 
-docker run --rm -v "$PWD":/work:Z -w /work ocah-fw-toolchain \
+docker run --rm -v "$PWD":/work:Z -w /work ocah-toolchain \
     make ocah-dv-fw TARGET=sep
+
+docker run --rm -v "$PWD":/work:Z -w /work \
+    docker.io/asciidoctor/docker-asciidoctor:latest \
+    env OCAH_DOC_REGEN_REGS=0 make ocah-doc-trm-setup
+docker run --rm -v "$PWD":/work:Z -w /work \
+    docker.io/antora/antora:3.1.10 \
+    --attribute basedir=doc/trm antora-trm-playbook.yml
+docker run --rm -v "$PWD":/work:Z -w /work \
+    docker.io/asciidoctor/docker-asciidoctor:latest \
+    env OCAH_DOC_REGEN_REGS=0 make ocah-doc-trm-pdf
 ```
 
 On hosts without SELinux (typical Docker Desktop), omit `:Z` from the volume
@@ -55,13 +86,17 @@ mount.
 
 ## How it works
 
-- The container runs on x86_64 or arm64 Linux; the compiler produces RISC-V
-  object code (cross-compilation).
-- `riscv64-unknown-elf-gcc` is on `PATH`; leave `RISCV_TOOLCHAIN` empty.
+- The firmware container runs on x86_64 or arm64 Linux; the compiler produces
+  RISC-V object code (cross-compilation).
+- In `ocah-toolchain`, `riscv64-unknown-elf-gcc` is on `PATH`; leave
+  `RISCV_TOOLCHAIN` empty.
 - SEP uses picolibc via `--specs=picolibc.specs` (from
   `picolibc-riscv64-unknown-elf`).
+- Documentation helpers set `OCAH_DOC_REGEN_REGS=0` because generated register
+  docs are checked in. Regenerate register docs before building the doc products
+  when the RDL changes.
 - Users with a compatible host toolchain can skip Docker and run
-  `make ocah-dv-fw TARGET=sep` directly.
+  the same `make` targets directly.
 
 ## Verification (Debian trixie image)
 
@@ -91,5 +126,5 @@ container covers the full driver-archive milestone.
 | Path | Role |
 |------|------|
 | `tools/docker/Dockerfile` | Image definition |
-| `scripts/fw-toolchain-docker.sh` | Helper script |
+| `scripts/docker-run.sh` | Helper script for running repo commands in the image |
 | `hw/common/dv/fw/compile.mk` | Firmware build engine (toolchain contract) |

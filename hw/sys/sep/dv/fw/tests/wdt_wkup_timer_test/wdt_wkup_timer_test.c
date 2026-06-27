@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_013 (V2, P1) - AON Wakeup Timer Test
  *
@@ -18,7 +21,6 @@
  * time it equals prescaler.q). INTR_STATE[0]=wkup_timer_expired is a normal
  * (not NMI) interrupt; polling is used here.
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

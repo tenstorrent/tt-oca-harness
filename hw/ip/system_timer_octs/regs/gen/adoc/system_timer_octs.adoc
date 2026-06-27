@@ -1,254 +1,89 @@
-[[system_timer_octs-address-map]]
-system_timer_octs address map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | TIMER_START | RW a| System Timer Start Register
+| 0x4 | CTRL | RW a| System Timer Control Register
+| 0x8 | STATUS | R a| System Timer Status Register
+| 0xC | TIMER_PRESET_LO | RW a| System Timer Preset Value [31:0]
+| 0x10 | TIMER_PRESET_HI | RW a| System Timer Preset Value [63:32]
+| 0x14 | TIMER_COUNT_LO | R a| Current System Timer Count [31:0]
+| 0x18 | TIMER_COUNT_HI | R a| Current System Timer Count [63:32]
+| 0x1C | CREDIT_EXPIRED | RW a| Credit Expired Register
+| 0x20 | TIMER_GPIO_ENABLE | RW a| System Timer GPIO Enable Register
+|===
 
-* Absolute Address: 0x0
-* Base Offset: 0x0
-* Size: 0x24
+[cols="1,1,1,1,3", options="header"]
+.TIMER_START Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `START` | RW | 0x0 a| Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
+both primary and secondary are out of reset.
+|===
 
-Open Chiplet Time Synchronization (OCTS) System Timer Registers
+[cols="1,1,1,1,3", options="header"]
+.CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:24 | `Reserved` | - | - a| Reserved
+| 23:16 | `STEP` | RW | 0x1 a| Step amount for secondary timer
+| 15:8 | `PULSE_WIDTH` | RW | 0x2 a| Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL
+| 7:0 | `CREDIT_VAL` | RW | 0xA a| Credit value factor. WARNING: This value must be greater than PULSE_WIDTH
+|===
 
-[cols=",,",options="header",]
-|==========================
-|Offset |Identifier |Name
-|0x00 |TIMER_START |—
-|0x04 |CTRL |—
-|0x08 |STATUS |—
-|0x0C |TIMER_PRESET_LO |—
-|0x10 |TIMER_PRESET_HI |—
-|0x14 |TIMER_COUNT_LO |—
-|0x18 |TIMER_COUNT_HI |—
-|0x1C |CREDIT_EXPIRED |—
-|0x20 |TIMER_GPIO_ENABLE |—
-|==========================
+[cols="1,1,1,1,3", options="header"]
+.STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `RUNNING` | R | 0x0 a| Timer is currently enabled and running
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `MODE` | R | 0x0 a| Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)
+|===
 
-[[timer_start-register]]
-TIMER_START register
-^^^^^^^^^^^^^^^^^^^^
+[cols="1,1,1,1,3", options="header"]
+.TIMER_PRESET_LO Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `PRESET_LO` | RW | 0x0 a| Lower 32 bits of preset value
+|===
 
-* Absolute Address: 0x0
-* Base Offset: 0x0
-* Size: 0x4
+[cols="1,1,1,1,3", options="header"]
+.TIMER_PRESET_HI Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `PRESET_HI` | RW | 0x0 a| Upper 32 bits of preset value
+|===
 
-System Timer Start Register
+[cols="1,1,1,1,3", options="header"]
+.TIMER_COUNT_LO Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `COUNT_LO` | R | 0x0 a| Lower 32 bits of current timer count
+|===
 
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |START |rw |0x0 |—
-|=====================================
+[cols="1,1,1,1,3", options="header"]
+.TIMER_COUNT_HI Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `COUNT_HI` | R | 0x0 a| Upper 32 bits of current timer count
+|===
 
-[[start-field]]
-START field
-+++++++++++
+[cols="1,1,1,1,3", options="header"]
+.CREDIT_EXPIRED Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `MAX_CYCLES_EXPIRED` | RW | 0x0 a| Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+This register can also be used to determine the clock skew between the primary and secondary.
+If PRIMARY, this field is always 0.
+|===
 
-Start the system timer. Asserts the sync_load signal to start
-synchronization (only does anything if primary mode). Ensure both
-primary and secondary are out of reset.
-
-[[ctrl-register]]
-CTRL register
-^^^^^^^^^^^^^
-
-* Absolute Address: 0x4
-* Base Offset: 0x4
-* Size: 0x4
-
-System Timer Control Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|7:0 |CREDIT_VAL |rw |0xA |—
-|15:8 |PULSE_WIDTH |rw |0x2 |—
-|23:16 |STEP |rw |0x1 |—
-|=====================================
-
-[[credit_val-field]]
-CREDIT_VAL field
-++++++++++++++++
-
-Credit value factor. WARNING: This value must be greater than
-PULSE_WIDTH
-
-[[pulse_width-field]]
-PULSE_WIDTH field
-+++++++++++++++++
-
-Pulse width for sync load and credit signals. A value of 0 will be
-rounded up to 1. WARNING: This value must be less than CREDIT_VAL
-
-[[step-field]]
-STEP field
-++++++++++
-
-Step amount for secondary timer
-
-[[status-register]]
-STATUS register
-^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x8
-* Base Offset: 0x8
-* Size: 0x4
-
-System Timer Status Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |MODE |r |0x0 |—
-|4 |RUNNING |r |0x0 |—
-|=====================================
-
-[[mode-field]]
-MODE field
-++++++++++
-
-Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)
-
-[[running-field]]
-RUNNING field
-+++++++++++++
-
-Timer is currently enabled and running
-
-[[timer_preset_lo-register]]
-TIMER_PRESET_LO register
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0xC
-* Base Offset: 0xC
-* Size: 0x4
-
-System Timer Preset Value [31:0]
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |PRESET_LO |rw |0x0 |—
-|=====================================
-
-[[preset_lo-field]]
-PRESET_LO field
-+++++++++++++++
-
-Lower 32 bits of preset value
-
-[[timer_preset_hi-register]]
-TIMER_PRESET_HI register
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x10
-* Base Offset: 0x10
-* Size: 0x4
-
-System Timer Preset Value [63:32]
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |PRESET_HI |rw |0x0 |—
-|=====================================
-
-[[preset_hi-field]]
-PRESET_HI field
-+++++++++++++++
-
-Upper 32 bits of preset value
-
-[[timer_count_lo-register]]
-TIMER_COUNT_LO register
-^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x14
-* Base Offset: 0x14
-* Size: 0x4
-
-Current System Timer Count [31:0]
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |COUNT_LO |r |0x0 |—
-|=====================================
-
-[[count_lo-field]]
-COUNT_LO field
-++++++++++++++
-
-Lower 32 bits of current timer count
-
-[[timer_count_hi-register]]
-TIMER_COUNT_HI register
-^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x18
-* Base Offset: 0x18
-* Size: 0x4
-
-Current System Timer Count [63:32]
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |COUNT_HI |r |0x0 |—
-|=====================================
-
-[[count_hi-field]]
-COUNT_HI field
-++++++++++++++
-
-Upper 32 bits of current timer count
-
-[[credit_expired-register]]
-CREDIT_EXPIRED register
-^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x1C
-* Base Offset: 0x1C
-* Size: 0x4
-
-Credit Expired Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|31:0 |MAX_CYCLES_EXPIRED |rw |0x0 |—
-|=====================================
-
-[[max_cycles_expired-field]]
-MAX_CYCLES_EXPIRED field
-++++++++++++++++++++++++
-
-Maximum number of clock cycles since a count credit expired (SECONDARY
-only). To reset the value of this register, write anything to it. If
-this number is very high (exact value depends on clock speed and credit
-value), this indicates that the secondary has not recieved a count
-credit pulse in a while, and is likely not syncing properly with the
-primary. This register can also be used to determine the clock skew
-between the primary and secondary. If PRIMARY, this field is always 0.
-
-[[timer_gpio_enable-register]]
-TIMER_GPIO_ENABLE register
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Absolute Address: 0x20
-* Base Offset: 0x20
-* Size: 0x4
-
-System Timer GPIO Enable Register
-
-[cols=",,,,",options="header",]
-|=====================================
-|Bits |Identifier |Access |Reset |Name
-|0 |GPIO_ENABLE |rw |0x0 |—
-|=====================================
-
-[[gpio_enable-field]]
-GPIO_ENABLE field
-+++++++++++++++++
-
-Enable the GPIO pad lsio interface for the system timer. This is done to
-prevent X-prop on reset into the secondary timer, which can cause the
-secondary timer to start counting early.
+[cols="1,1,1,1,3", options="header"]
+.TIMER_GPIO_ENABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `GPIO_ENABLE` | RW | 0x0 a| Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.
+|===

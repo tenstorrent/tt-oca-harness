@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * WDT Threshold Jump Test
  *
@@ -9,7 +12,6 @@
  * 2. BARK test: count=50, bark=1000 -> start -> bark=20 -> verify interrupt
  * 3. BITE test: count=100, bite=1000 -> start -> bite=20 -> verify reset (cocotb)
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

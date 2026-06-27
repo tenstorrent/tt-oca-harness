@@ -17,8 +17,8 @@
 
 #include "smc_addr.h"
 #include "avsbus_controller.h"
-#include "perf_dma.h"
-#include "dft_ctrl_status.h"
+#include "dma_ctrl.h"
+#include "dfx_ctrl_status.h"
 #include "axi_filter.h"
 #include "gpio_wrap.h"
 #include "gpio_poc_pbias_ctrl.h"
@@ -39,6 +39,7 @@
 #include "oca_i3c_wrap.h"
 #include "plic.h"
 #include "cpu_ctrl.h"
+#include "smc_base_config.h"
 #include "smc_efuse_map.h"
 #include "wdt.h"
 #include "pll_wrap.h"

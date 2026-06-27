@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[jtag-interface-unit]]
+=== JTAG Interface Unit
+
+==== Overview
+
+The JTAG Interface Unit serves as the top-level JTAG control module, managing the primary JTAG port for the chiplet and all supporting instrument logic. It contains the following design blocks and features:
+
+* One PTAP
+** Chiplet IDCODE register
+** Boundary scan control
+** BIST control
+** Reset control
+* A configurable number of STAPs
+** Downstream chiplet JTAG
+** SMC TAP interface
+** SEP TAP Interface
+** An optional number of additional STAPs
+** Extended STAP scan interface
+* An iJTAG network
+** A debug port for the SMC fabric
+** A debug port for the SMC OTP
+** A debug port for the SEP OTP
+** A port for extending the iJTAG network outside the interface unit
+
+The PTAP, STAP and all other supporting logic conform to IEEE standards 1149.1-2013 _Test Access Port and Boundary-Scan Architecture_, 1687-2014 _Access and Control of Instrumentation Embedded within a Semiconductor Device_, and 1838-2019 _Test Access Architecture for Three-Dimensional Stacked Integrated Circuits_.
+
+==== Configuration Parameters
+
+[cols="<,<,<,<",options="header"]
+|===
+|Parameter |Range |Default |Description
+|NUM_STAP |0-8 |4 |Number of STAP interfaces
+|STAP_IO_EN |0/1 |1 |Enable I/O STAP for chiplet-to-chiplet connectivity
+|SMC_DBG_EN |0/1 |1 |Enable SMC debug STAP
+|SEP_DBG_EN |0/1 |1 |Enable SEP debug STAP
+|NUM_XTRA_STAP |0-4 |0 |Number of additional STAPs
+|===
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+include::architecture.adoc[]
+include::interface.adoc[]

@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef UART_SANITY_SEQUENCE_H
 #define UART_SANITY_SEQUENCE_H
 
 /* UART sanity sequence for the cpu_traffic super-loop.
  *
  * Ported verbatim from tt-oca-hw/fw/smc/test_sequences/uart_sanity_sequence.h
- * (4-UART reset/enable, Synopsys 16550 controller setup, controller->target
+ * (4-UART reset/enable, UART 16550 controller setup, controller->target
  * data transfer + readback compare). The only change is the mechanical
  * migration of the legacy UART_*_reg_u unions and
  * SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_N__* macros to the native PeakRDL
@@ -59,7 +60,7 @@ int uart_sanity_sequence(int hartid)
     int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); // DOUBLE CHECK FREQ
 
     //---------------------------//
-    // Synopsys Controller Setup //
+    // UART 16550 Controller Setup //
     //---------------------------//
 
     for (int i = 0; i < num_uarts; i++)

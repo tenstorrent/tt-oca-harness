@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // Local Alias Sanity Test
 //
@@ -7,7 +10,6 @@
 //   - 0xD000_0000 -> 0x1000_0000 (offset = 0xD000_0000 - 0xC000_0000 = 0x1000_0000)
 //   - 0xD080_2000 -> 0x1080_2000 (scratch registers)
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

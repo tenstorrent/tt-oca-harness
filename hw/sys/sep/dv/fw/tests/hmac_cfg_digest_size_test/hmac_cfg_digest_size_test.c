@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * HMAC CFG Digest Size Test - TC_HMAC_003 (P0)
  *
@@ -6,7 +9,6 @@
  * Execution:
  *   make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_012 (V3, P2) - WDT Poll Consistency Test
  *
@@ -10,7 +13,6 @@
  * 3. Verify overall progress (start != end)
  * 4. Verify counter stops when disabled
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

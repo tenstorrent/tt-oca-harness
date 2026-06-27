@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_decode_err_test
 //
 // Verify wrapper axi_lite_demux + prim_axi_lite_err_slv behavior on undefined

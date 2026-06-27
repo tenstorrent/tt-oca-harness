@@ -8,7 +8,7 @@ ocah_fw_common_mk := 1
 # includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
 # Inputs a subsystem defines before including this file:
-#   FW_NAME          - short subsystem name (e.g. km, sep, smc)
+#   FW_NAME          - short subsystem name (e.g. key_manager, sep, smc)
 #   FW_DIR           - absolute path to the subsystem dv/fw directory
 #   FW_C_SRCS        - library C sources (no entry/main)
 #   FW_ASM_SRCS      - library .s/.S startup/helper sources

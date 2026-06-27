@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_reg_rw_test
 //
 // FW-driven register RW walk for the OCAH UART & Log Engine Wrapper on SMC.

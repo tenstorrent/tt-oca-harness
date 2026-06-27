@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * TC_KMAC_016 — KMAC cSHAKE Arbitration / Back-to-Back Test (P1, GitHub #1302)
  *
@@ -22,7 +25,6 @@
  *   [5] digest_B != digest_A  (different inputs produce different outputs)
  *   [6] digest_C == digest_A  (same inputs produce same output; determinism)
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #include <stdint.h>

@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[dtp-overview]]
+=== Overview
+
+The Debug and Test Ports (DTP) module provides the debug and test infrastructure
+for Tenstorrent chiplets. It implements IEEE 1149.1 (JTAG) and IEEE 1687 (iJTAG)
+compliant interfaces along with cross-trigger capabilities for multi-chiplet
+debugging.
+
+The DTP has two major blocks, the JTAG Interface Unit and Cross Trigger Network,
+shown in the figure below.
+
+image::dtp_arch_diagram.drawio.svg[DTP Architecture Diagram,scaledwidth=90.0%]
+
+==== Purpose
+
+The DTP serves as the central hub for:
+
+* *Debug Access*: JTAG-based access to on-chip registers and memory
+* *Boundary Scan*: IEEE 1149.1 boundary scan for board-level testing
+* *Cross Triggering*: Die-to-die and internal trigger coordination
+* *Clock Control*: Debug clock-stop controls and CLA clock-stop request aggregation
+
+==== Key Features
+
+*JTAG Interface*
+
+* IEEE 1149.1-2013 compliant TAP controller
+* Configurable instruction register
+* Support for standard instructions (BYPASS, IDCODE, EXTEST, etc.)
+* Optional JTAG-to-AXI bridges for register access
+
+*Cross Trigger Network*
+
+* Configurable number of external Cross Trigger Ports (1-32)
+* Configurable number of internal cross triggers (0-32)
+* Cross Trigger Matrix for flexible routing
+* Wire-OR and Point-to-Point signaling modes
+* OR aggregation of incoming CLA clock-stop request sources, OR-combined with JTAG clock stop for clock control gating
+
+*iJTAG Support*
+
+* IEEE 1687 compliant scan chain management
+* Separate chains for BSR, DFD, and DFT
+* SIB-based hierarchical access
+
+*Secondary TAPs*
+
+* I/O STAP for chiplet-to-chiplet JTAG connectivity
+* SEP debug STAP for secure enclave access
+* Configurable number of extra STAPs
+
+==== Specifications
+
+[cols="<,<",options="header"]
+|===
+|Feature |Specification
+|JTAG Standard |IEEE 1149.1-2013
+|iJTAG Standard |IEEE 1687-2014
+|Cross Trigger Protocol |OCH Cross Trigger v1.0
+|CSR Interface |AXI4-Lite (32-bit)
+|Debug AXI Interface |AXI4 (configurable width)
+|Maximum CTPs |32
+|Maximum Internal CTs |32
+|===

@@ -1,0 +1,11 @@
+# Generated from PeakRDL raw-header C output.
+# Do not edit by hand.
+
+EFUSE_BANK_BASE_ADDR = 0x00000000
+
+EFUSE_BANK_SIZE = 0x00001000
+
+def EFUSE_BANK_EFUSE_BANK_REG_BASE_ADDR(EFUSE_BANK_REG_idx):
+    return (0x00000000 + (EFUSE_BANK_REG_idx * 0x00000004))
+
+EFUSE_BANK_EFUSE_BANK_REG_NUM = 0x00000400

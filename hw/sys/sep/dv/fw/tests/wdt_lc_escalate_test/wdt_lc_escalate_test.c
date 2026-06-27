@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * TC_WDT_007 (V3, P2) - WDT LC Escalate Test
  *
@@ -12,7 +15,6 @@
  * 2. Verify bark interrupt fires normally
  * 3. Report result - pass with documented limitation
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

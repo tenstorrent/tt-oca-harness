@@ -1,0 +1,8 @@
+# Generated from PeakRDL raw-header C output.
+# Do not edit by hand.
+
+UART_LOG_ENGINE_CTRL_BASE_ADDR = 0x00000000
+
+UART_LOG_ENGINE_CTRL_SIZE = 0x00000004
+
+UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR = 0x00000000

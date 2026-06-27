@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[test-mode-entry]]
+=== Test Mode Entry
+
+Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
+latched when SEP fuse sensing is done if SEC_DIS is not asserted.
+TEST_EN is latched on chiplet cold reset release if SEC_DIS is asserted.
+
+The latched value becomes an internal signal SECURE_TM. Only when
+SECURE_TM is asserted to 1 can any tests be enabled. While Table tbd
+defines the static enablement of different tests, SECURE_TM provides
+dynamic control on top of that.
+
+The test feature control signals sent from SEP to TAP are qualified by
+SECURE_TM == 1 in order to enable the tests. The SECURE_TM is also used
+in SEP to protect secrets that cannot be erased before entering RMA
+modes. SECURE_TM TDR can only be cleared by chip reset.

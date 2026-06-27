@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[cross-trigger-matrix]]
+=== Cross Trigger Matrix
+
+==== Overview
+
+The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically routes cross trigger pulses between various sources and sinks. Typical connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs), including other miscellaneous devices.
+
+The CTM is compatible with CTPs operating in either of the two signaling modes, point-to-point or wire-OR. Typically, each device or logic module connected to the CTM will act as both a source and a sink for cross trigger pulses.
+
+==== Configuration Parameters
+
+[cols="<,<,<,<",options="header"]
+|===
+|Parameter |Range |Default |Description
+|NUM_CTP |1-32 |16 |Number of external Cross Trigger Ports
+|NUM_INT_CT |0-32 |1 |Number of internal cross triggers (to CLAs)
+|===
+
+ifdef::backend-pdf[]
+:imagesdir: assets
+endif::backend-pdf[]
+
+include::architecture.adoc[]
+include::interface.adoc[]

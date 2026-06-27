@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*******************************************************************************
  * NMI Sanity Test - Non-Maskable Interrupt Mechanism Verification
  *
@@ -19,7 +22,6 @@
  * 8. Trigger NMI using WDT bark interrupt
  * 9. NMI handler verifies NMI fired and passes test
  *
- * Copyright 2025 Tenstorrent Inc.
  ******************************************************************************/
 
 #include <stdio.h>

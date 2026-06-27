@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+// Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright and related rights are licensed under the Solderpad Hardware
+// License, Version 0.51 (the "License"); you may not use this file except in
+// compliance with the License. You may obtain a copy of the License at
+// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
+// or agreed to in writing, software, hardware and materials distributed under
+// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
+// Antonio Pullini <pullinia@iis.ee.ethz.ch>
+
+// -------------------------------------------------------------
+// This is a multi-width multi-stage configurable synchronizer
+// - This has been modified from pulp to use prim cells
+// -------------------------------------------------------------
+
+module sync #(
+    parameter WIDTH = 1,
+    parameter STAGES = 3,
+    parameter ResetValue = 0,
+    parameter RANDOM_DELAY_GRAY_CODE = 0,
+    parameter USE_ASYNC_RST_FF = 1,    // 0: Synchronous reset FF, 1: Asynchronous reset FF
+    parameter USE_NON_RST_FF = 0       // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue 
+) (
+    input  logic clk_i,
+    input  logic rst_ni,
+    input  logic [WIDTH-1:0] serial_i,
+    output logic [WIDTH-1:0] serial_o
+);
+
+   (* dont_touch = "true" *)
+   (* async_reg = "true" *)
+
+  logic  [WIDTH-1:0] din;
+
+  generate
+
+    //////////////////////////////////////////////////////////////////
+    // Two stage synchronizer
+    //////////////////////////////////////////////////////////////////
+
+    // Two stage synchronizer: Non reset
+    if ((STAGES == 2) && (USE_NON_RST_FF == 1)) begin:g_tt_sync2_non_rst
+      prim_sync2 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync2 (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .o_q(serial_o)
+      );
+    end
+
+    // Two stage synchronizer: Sync reset
+    else if ((STAGES == 2) && (USE_ASYNC_RST_FF == 0)) begin:g_tt_sync2_sync_rst
+      assign din = rst_ni ? serial_i : WIDTH'(ResetValue);
+      prim_sync2 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync2 (
+        .i_clk(clk_i),
+        .i_d(din),
+        .o_q(serial_o)
+      );
+    end
+
+    // Two stage synchronizer: Async clear
+    else if ((STAGES == 2) && (USE_ASYNC_RST_FF == 1) && (ResetValue == 0)) begin:g_tt_sync2_async_clr
+      prim_sync2r #(
+        .WIDTH(WIDTH)
+      ) prim_sync2r (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_reset_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    // Two stage synchronizer: Async set
+    else if ((STAGES == 2) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:g_tt_sync2_async_set
+      prim_sync2s #(
+        .WIDTH(WIDTH)
+      ) prim_sync2s (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_set_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    //////////////////////////////////////////////////////////////////
+    // Three stage synchronizer
+    //////////////////////////////////////////////////////////////////
+
+    // Three stage synchronizer: Non Reset
+    else if ((STAGES == 3) && (USE_NON_RST_FF == 1)) begin:g_tt_sync3_non_rst
+      prim_sync3 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync3 (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .o_q(serial_o)
+      );
+    end
+
+    // Three stage synchronizer: Sync reset
+    else if ((STAGES == 3) && (USE_ASYNC_RST_FF == 0)) begin:g_tt_sync3_sync_rst
+      assign din = rst_ni ? serial_i : WIDTH'(ResetValue);
+      prim_sync3 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync3 (
+        .i_clk(clk_i),
+        .i_d(din),
+        .o_q(serial_o)
+      );
+    end
+
+    // Three stage synchronizer: Async clr
+    else if ((STAGES == 3) && (USE_ASYNC_RST_FF == 1) && (ResetValue == 0)) begin:g_tt_sync3_async_clr
+      prim_sync3r #(
+        .WIDTH(WIDTH)
+      ) prim_sync3r (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_reset_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    // Three stage synchronizer: Async set
+    else if ((STAGES == 3) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:g_tt_sync3_async_set
+      prim_sync3s #(
+        .WIDTH(WIDTH)
+      ) prim_sync3s (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_set_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    //////////////////////////////////////////////////////////////////
+    // Four stage synchronizer
+    //////////////////////////////////////////////////////////////////
+
+    // Four stage synchronizer: Non Reset
+    else if ((STAGES == 4) && (USE_NON_RST_FF == 1)) begin:g_tt_sync4_non_rst
+      prim_sync4 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync4 (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .o_q(serial_o)
+      );
+    end
+
+    // Four stage synchronizer: Sync reset
+    else if ((STAGES == 4) && (USE_ASYNC_RST_FF == 0)) begin:g_tt_sync4_sync_rst
+      assign din = rst_ni ? serial_i : WIDTH'(ResetValue);
+      prim_sync4 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync4 (
+        .i_clk(clk_i),
+        .i_d(din),
+        .o_q(serial_o)
+      );
+    end
+
+    // Four stage synchronizer: Async clr
+    else if ((STAGES == 4) && (USE_ASYNC_RST_FF == 1) && (ResetValue == 0)) begin:g_tt_sync4_async_clr
+      prim_sync4r #(
+        .WIDTH(WIDTH)
+      ) prim_sync4r (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_reset_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    // Four stage synchronizer: Async set
+    else if ((STAGES == 4) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:g_tt_sync4_async_set
+      prim_sync4s #(
+        .WIDTH(WIDTH)
+      ) prim_sync4s (
+        .i_clk(clk_i),
+        .i_d(serial_i),
+        .i_set_n(rst_ni),
+        .o_q(serial_o)
+      );
+    end
+
+    else begin: g_default
+      // Two stage synchronizer: Sync reset
+      assign din = rst_ni ? serial_i : WIDTH'(ResetValue);
+      prim_sync2 #(
+        .WIDTH(WIDTH),
+        .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+      ) prim_sync2 (
+        .i_clk(clk_i),
+        .i_d(din),
+        .o_q(serial_o)
+      );
+    end
+
+  endgenerate
+
+endmodule

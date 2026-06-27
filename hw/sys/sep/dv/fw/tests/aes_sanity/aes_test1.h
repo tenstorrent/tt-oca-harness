@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 printf("NIST Known Answer Test #1 - encrypt and then decrypt\n");
 
 /*

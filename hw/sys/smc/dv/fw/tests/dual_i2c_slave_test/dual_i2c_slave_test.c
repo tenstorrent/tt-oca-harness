@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /**
  * @file main.c
  * @brief DUT I2C Master Test - Sends write to BFM I2C Slave

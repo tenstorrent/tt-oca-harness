@@ -1,0 +1,37 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: clint</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
+<li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBFF8</td><td><a href="#MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="MSIP_4_">MSIP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
+</table>
+<h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count value to be used for comparison, triggers interrupt once count value matches this</td></tr>
+</table>
+<h3 id="MTIME">MTIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
+</table>
+</div>

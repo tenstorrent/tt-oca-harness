@@ -1,0 +1,33 @@
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | FEAT_CTRL | R a| -
+| 0x8 | DEMOTE_1 | RW a| -
+| 0x10 | DEMOTE_2 | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.FEAT_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `feature_control` | R | 0x0 a| Lifecycle feature control bits,
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DEMOTE_1 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `rsvd` | RW | 0x0 a| Not used
+| 1 | `lock` | RW | 0x0 a| Demote lock bit. Once locked, demote can no longer be changed
+| 0 | `demote` | RW | 0x0 a| Demote bit to enter PROD_DBG state
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.DEMOTE_2 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `rsvd` | RW | 0x0 a| Not used
+| 1 | `lock` | RW | 0x0 a| Demote lock bit. Once locked, demote can no longer be changed
+| 0 | `demote` | RW | 0x0 a| Demote bit to enter PROD_DBG state
+|===

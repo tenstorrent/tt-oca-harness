@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 /*
  * NMI (Non-Maskable Interrupt) Handler Registration
  *
@@ -26,7 +29,6 @@
  *       // ... enable NMI source ...
  *   }
  *
- * Copyright 2025 Tenstorrent Inc.
  */
 
 #ifndef NMI_H

@@ -1,14 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# (c) 2026 Tenstorrent USA Inc
+
 `ifndef PLL_WRAP_REG_RDL
 `define PLL_WRAP_REG_RDL
 
-// OCAH: proprietary PLL hard-IP. Placeholder reserves the map slot only
+// OCAH: adopter clock-control placeholder. This reserves the map slot only
 // (see smc_top @ +0x3000); no CSRs are modeled. A uniquely named footprint mem
 // keeps the generated C type distinct from the other placeholder wrappers.
 mem pll_wrap_placeholder_mem #(
     longint unsigned NUM_ENTRIES = 954,
     longint unsigned WIDTH       = 32
 ) {
-    desc = "Placeholder footprint (proprietary PLL hard-IP; no CSRs modeled)";
+    desc = "Placeholder footprint (adopter clock-control block; no CSRs modeled)";
 
     mementries = NUM_ENTRIES;
     memwidth   = WIDTH;

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 //-----------------------------------------------------------------------------
 // Global Alias Remap Sanity Test
 //
@@ -17,7 +20,6 @@
 //   4. Cocotb signals done via scratch register
 //   5. CPU reads SRAM at local address 0x1000_0000 and verifies
 //
-// Copyright 2025 Tenstorrent Inc.
 //-----------------------------------------------------------------------------
 
 #include <stdio.h>

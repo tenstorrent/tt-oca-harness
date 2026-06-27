@@ -1,0 +1,155 @@
+[NOTE]
+======
+*Register Arrays:* This register map contains the following register arrays:
+
+* *I2C_I3C_ID[9]*: 9 registers
+  ** Base Address: 0x8AC
+  ** Address Increment: 0x8 per register
+
+* *RESERVED[65]*: 65 registers
+  ** Base Address: 0xAFC
+  ** Address Increment: 0x4 per register
+
+======
+
+[cols="1,1,1,3", options="header"]
+.Register Map
+|===
+| Address | Name | Access | Description
+| 0x0 | LOCKS | RW a| Lock controls for each fuse field. When write locked, the corresponding field is not
+programmable. When read locked, the shadow register is not readable.
+| 0x8 | CHIPLET_ID | RW a| Chiplet ID register
+| 0x28 | PACKAGE_ID | RW a| Package ID register
+| 0x48 | BIRA | RW a| Built-In Repair Analysis data
+| 0x848 | CLUSTER | RW a| CPU cluster configuration
+| 0x888 | FABRIC | RW a| Fabric configuration
+| 0x8A8 | SOP_TOPOLOGY | RW a| System on Package topology
+| 0x8AC - 0x8EC | I2C_I3C_ID[9] | RW a| I2C/I3C interface ID
+| 0x8F4 | I2C_CLOCK_GATING | RW a| I2C clock gating control
+| 0x8F8 | I3C_DISABLE | RW a| I3C interface disable control
+| 0x8FC | PLL_AND_SENSOR | RW a| PLL and sensor configuration
+| 0xAFC - 0xBFC | RESERVED[65] | RW a| Reserved register
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.LOCKS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:26 | `unused_lock_bits` | RW | 0x0 a| Unused lock bits for future expansion.
+| 25 | `reserved_read_lock` | RW | 0x0 a| Reserved read lock. When set, reserved field is not readable.
+| 24 | `reserved_write_lock` | RW | 0x0 a| Reserved write lock. When set, reserved field is not writable.
+| 23 | `spi_config_read_lock` | RW | 0x0 a| SPI config read lock. When set, SPI config field is not readable.
+| 22 | `spi_config_write_lock` | RW | 0x0 a| SPI config write lock. When set, SPI config field is not writable.
+| 21 | `spi_ctrl_field_enable_read_lock` | RW | 0x0 a| SPI control field enable read lock. When set, SPI control field is not readable.
+| 20 | `spi_ctrl_field_enable_write_lock` | RW | 0x0 a| SPI control field enable write lock. When set, SPI control field is not writable.
+| 19 | `pll_and_sensor_read_lock` | RW | 0x0 a| PLL and sensor read lock. When set, PLL and sensor field is not readable.
+| 18 | `pll_and_sensor_write_lock` | RW | 0x0 a| PLL and sensor write lock. When set, PLL and sensor field is not writable.
+| 17 | `i3c_disable_read_lock` | RW | 0x0 a| I3C disable read lock. When set, I3C disable field is not readable.
+| 16 | `i3c_disable_write_lock` | RW | 0x0 a| I3C disable write lock. When set, I3C disable field is not writable.
+| 15 | `i2c_clock_gating_read_lock` | RW | 0x0 a| I2C clock gating read lock. When set, I2C clock gating field is not readable.
+| 14 | `i2c_clock_gating_write_lock` | RW | 0x0 a| I2C clock gating write lock. When set, I2C clock gating field is not writable.
+| 13 | `i2c_i3c_id_read_lock` | RW | 0x0 a| I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.
+| 12 | `i2c_i3c_id_write_lock` | RW | 0x0 a| I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.
+| 11 | `sop_topology_read_lock` | RW | 0x0 a| SOP topology read lock. When set, SOP topology field is not readable.
+| 10 | `sop_topology_write_lock` | RW | 0x0 a| SOP topology write lock. When set, SOP topology field is not writable.
+| 9 | `fabric_read_lock` | RW | 0x0 a| Fabric read lock. When set, fabric field is not readable.
+| 8 | `fabric_write_lock` | RW | 0x0 a| Fabric write lock. When set, fabric field is not writable.
+| 7 | `cluster_read_lock` | RW | 0x0 a| Cluster read lock. When set, cluster field is not readable.
+| 6 | `cluster_write_lock` | RW | 0x0 a| Cluster write lock. When set, cluster field is not writable.
+| 5 | `bira_dis_read_lock` | RW | 0x0 a| BIRA disable read lock. When set, BIRA field is not readable.
+| 4 | `bira_dis_write_lock` | RW | 0x0 a| BIRA disable write lock. When set, BIRA field is not writable.
+| 3 | `package_id_read_lock` | RW | 0x0 a| Package ID read lock. When set, package ID field is not readable.
+| 2 | `package_id_write_lock` | RW | 0x0 a| Package ID write lock. When set, package ID field is not writable.
+| 1 | `chiplet_id_read_lock` | RW | 0x0 a| Chiplet ID read lock. When set, chiplet ID field is not readable.
+| 0 | `chiplet_id_write_lock` | RW | 0x0 a| Chiplet ID write lock. When set, chiplet ID field is not writable.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CHIPLET_ID Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `chiplet_id_value` | RW | 0x0 a| Chiplet ID stored in fuse, divided into 8 words and defined as follows:
+[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;
+[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID, e.g. Athena/Quasar/…​;
+[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);
+[5]: Chiplet User Group ID;
+[7:6]: Reserved for extension.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PACKAGE_ID Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `package_id_value` | RW | 0x0 a| Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:
+[1:0]: Serial number of the package;
+[2]: Package Design Version, e.g. A1Q1/…​;
+[3]: Package Design ID, e.g. Grendel;
+[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);
+[5]: Package User Group ID;
+[7:6]: Reserved for extension
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.BIRA Register
+|===
+| Bits | Field | Access | Reset | Description
+| 16383:0 | `repair_data` | RW | 0x0 a| 16KB memory repair data for SMC and SEP SRAMs
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.CLUSTER Register
+|===
+| Bits | Field | Access | Reset | Description
+| 511:0 | `cluster_config` | RW | 0x0 a| 512-bit fuses reserved for CPU cluster configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.FABRIC Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `fabric_config` | RW | 0x0 a| 256-bit fuses reserved for fabric configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.SOP_TOPOLOGY Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `topology_serial` | RW | 0x0 a| Serial number of topology configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.I2C_I3C_ID[9] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `interface_id` | RW | 0x0 a| I2C or I3C ID configuration:
+* Static ID mode: [6:0] contains ID, [63:7] reserved
+* Provisional ID mode: [63:0] full ID
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.I2C_CLOCK_GATING Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `clock_gating_config` | RW | 0x0 a| I2C clock gating configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.I3C_DISABLE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `disable_config` | RW | 0x0 a| I3C interface disable configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.PLL_AND_SENSOR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 4095:0 | `pll_sensor_config` | RW | 0x0 a| 4KB fuses reserved for PLL and sensor configuration
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RESERVED[65] Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `reserved_data` | RW | 0x0 a| Reserved for future use
+|===

@@ -1,33 +1,5 @@
-/*
- * Tenstorrent CONFIDENTIAL
- * Copyright (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
- *
- * SS-9.4 (subsystem interconnect edge E8): secure_dma vs CPU-LSU SRAM TARGET
- * CONTENTION, self-contained firmware.
- *
- * Two real fabric masters drive the scratch SRAM at the same instant:
- *   - secure_dma  : an SRAM->SRAM block copy (DMA engine as fabric master),
- *   - CPU LSU     : a store loop into a SEPARATE SRAM region,
- * both kicked off WITHOUT the CPU waiting on DMA DONE. This is the only path in
- * the SEP DV suite where the CPU and the DMA contend at a shared target at once
- * (every existing DMA test uses the blocking sep_dma_copy / dma_copy, which parks
- * the CPU on DONE -> single master at a time -> no overlap).
- *
- * Oracle (every check designed to FAIL on a broken arbiter; no vacuous pass):
- *   [concurrency] DMA STATUS.BUSY==1 (and !DONE) observed right after the CPU
- *                 store loop  -> proves the two masters actually OVERLAPPED.
- *                 Without this, a too-fast DMA could finish before the CPU writes
- *                 and the data checks would pass vacuously.
- *   [dma_integ]   DST region == known source pattern (DMA copy not corrupted /
- *                 not starved-to-wrong-data by the contending CPU writes).
- *   [cpu_integ]   CONT region == known CPU-written values (CPU stores not dropped
- *                 / not corrupted by the contending DMA traffic).
- *   [no_error]    DMA STATUS.ERROR==0 (no bus/range fault under contention).
- *
- * Address map (CPU view): SRAM 0x10000000 (OCH-active 64 KB backed),
- * DMA CSR 0x10800000. mrac region1 set side-effect so SRAM/MMIO are uncached and
- * the CPU stores become real bus traffic concurrent with the DMA.
- */
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
 
 #include <stdio.h>
 #include <stdint.h>

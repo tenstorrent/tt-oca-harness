@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[mailbox-unit-memory-map]]
+===== Memory Map
+
+====== Address Space Organization
+
+Each mailbox instance occupies a dedicated 2KB (0x800) address space.
+The total address space is 0x20008 bytes supporting up to 64 mailbox
+instances (32 pairs):
+
+[source,sourceCode,text]
+----
+Base + 0x00000 - 0x007FF: Outbound Mailbox 0
+Base + 0x00800 - 0x00FFF: Inbound Mailbox 0
+Base + 0x01000 - 0x017FF: Outbound Mailbox 1
+Base + 0x01800 - 0x01FFF: Inbound Mailbox 1
+Base + 0x02000 - 0x027FF: Outbound Mailbox 2
+Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
+...
+Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
+Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31
+Base + 0x20000 - 0x20007: MAILBOX_RSVD (Reserved space)
+----
+
+*Address Space Characteristics:*::
+  * *Per-Mailbox Size*: 2KB (0x800)
+  * *Total Address Space*: 0x20008 bytes
+  * *Address Width*: 18 bits
+  * *Maximum Mailboxes*: 32 pairs (64 instances)
+
+====== Per-Mailbox Register Map
+
+Within each 4KB mailbox address space, registers are organized as
+follows:
+
+.Register Address Map
+[width="100%",cols="15%,20%,10%,15%,40%",options="header",]
+|==============================================================
+|Offset |Register Name |Width |Access |Description
+|0x00 |WRITE_DATA |64-bit |WO |Write data to mailbox FIFO
+|0x08 |READ_DATA |64-bit |RO |Read data from mailbox FIFO
+|0x10 |STATUS |64-bit |RO |FIFO status (empty, full, threshold)
+|0x18 |ERROR_FLAGS |64-bit |RO |Error flags (write/read errors)
+|0x20 |WIRQT |64-bit |RW |Write interrupt threshold
+|0x28 |RIRQT |64-bit |RW |Read interrupt threshold
+|0x30 |IRQS |64-bit |RW |Interrupt status (write-1-to-clear)
+|0x38 |IRQEN |64-bit |RW |Interrupt enable control
+|0x40 |IRQP |64-bit |RO |Interrupt pending status
+|0x48 |CTRL |64-bit |WO |Control register (FIFO flush)
+|==============================================================
+
+====== Address Examples
+
+For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
+0x10000000:
+
+.Address Map Example (2 Mailbox Pairs)
+[width="100%",cols="20%,30%,50%",options="header"]
+|===============================================================
+|Mailbox Pair |Address Range                |Description
+|0            |0x10000000 - 0x100007FF     |Outbound Mailbox 0
+|0            |0x10000800 - 0x10000FFF     |Inbound Mailbox 0
+|1            |0x10001000 - 0x100017FF     |Outbound Mailbox 1
+|1            |0x10001800 - 0x10001FFF     |Inbound Mailbox 1
+|===============================================================
+
+====== Specific Register Examples:
+
+.Register Address Example (Mailbox Pair 0)
+[width="60%",cols="20%,40%,40%",options="header"]
+|=================================================
+|Address      |Register Name   |Mailbox Direction
+|0x10000000   |WRITE_DATA      |Outbound
+|0x10000008   |READ_DATA       |Outbound
+|0x10000010   |STATUS          |Outbound
+|0x10000018   |ERROR_FLAGS     |Outbound
+|...          |...             |Outbound
+|0x10000800   |WRITE_DATA      |Inbound
+|0x10000808   |READ_DATA       |Inbound
+|0x10000810   |STATUS          |Inbound
+|0x10000818   |ERROR_FLAGS     |Inbound
+|...          |...             |Inbound
+|=================================================
+
+====== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$axi_lite_mailbox_unit/regs/gen/html/axil_mailbox.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/axil_mailbox.adoc[]
+endif::backend-pdf[]

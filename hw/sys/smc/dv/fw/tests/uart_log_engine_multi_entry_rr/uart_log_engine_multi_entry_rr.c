@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 // smc_uart_log_engine_multi_entry_rr_test
 //
 // Best-effort round-robin arbitration test. Pre-loads 3 distinct slots (0, 5,

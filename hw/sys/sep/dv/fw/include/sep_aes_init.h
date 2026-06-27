@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* (c) 2026 Tenstorrent USA Inc */
+
 #ifndef SEP_AES_INIT_H
 #define SEP_AES_INIT_H
 

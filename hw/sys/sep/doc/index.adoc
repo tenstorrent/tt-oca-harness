@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[security-processor-sep]]
+== Security Processor (SEP)
+
+// PDF only: Include all sections to build complete document
+ifdef::backend-pdf[]
+:imagesdir: assets
+
+include::introduction.adoc[leveloffset=0]
+include::threat_model.adoc[leveloffset=0]
+include::attack_countermeasures.adoc[leveloffset=0]
+include::overview.adoc[leveloffset=0]
+include::fabric.adoc[leveloffset=0]
+include::memory_map.adoc[leveloffset=0]
+include::cpu.adoc[leveloffset=0]
+include::crypto.adoc[leveloffset=0]
+include::periphs.adoc[leveloffset=0]
+include::token_processing.adoc[leveloffset=0]
+include::security_disable.adoc[leveloffset=0]
+include::lifecycle_controller.adoc[leveloffset=0]
+include::test_mode.adoc[leveloffset=0]
+
+endif::backend-pdf[]

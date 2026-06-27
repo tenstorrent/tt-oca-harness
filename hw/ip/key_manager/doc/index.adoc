@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+// Key Manager component documentation
+include::architecture.adoc[]
+include::firmware.adoc[]

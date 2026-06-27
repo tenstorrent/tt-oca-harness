@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
+
+[[gpio-memory-map]]
+===== Memory Map
+
+The GPIO peripheral provides two separate register banks for
+comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
+for high-level GPIO functionality and the Control Register Bank
+(gpio_ctrl_reg) for physical layer characteristics. Both banks are
+accessed through 32-bit AXI4-Lite interfaces with independent address
+spaces.
+
+====== Address Space Organization
+
+The GPIO peripheral uses a dual-bank register architecture:
+
+* *Interface Register Bank*: High-level GPIO control, data path, and
+security filtering
+* *Control Register Bank*: Physical layer configuration, drive strength,
+and termination
+
+Each bank operates independently with separate AXI4-Lite interfaces to
+enable concurrent access and modular functionality.
+
+====== Reset Behavior
+
+When the system reset (rst_ni) is asserted, the GPIO peripheral
+initializes each register bank to well-defined, safe starting values. In
+the Interface Register Bank, the ACCESS_FILTER register is set to
+0x00010100, enforcing default security protection levels, while the
+DATA_CTRL register clears all control bits to 0x00000000, ensuring no
+data path is active by default. Simultaneously, the Control Register
+Bank's CONTROL register is initialized to 0x00100002, establishing a 6mA
+drive strength and enabling strap validity as the hardware default for the physical I/O.
+
+During reset deassertion, the peripheral captures the pad state for
+configuration strap functionality, updating both the strap_valid and
+strap_value fields based on the observed pad logic level. At this stage,
+all GPIO operation modes remain inactive, and explicit software
+configuration is required to enable any functional path. Throughout
+reset, the hardware maintains a safe low-current output condition on the
+pads, minimizing the risk of unintended external drive or contention.
+
+====== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$gpio/regs/gen/html/gpio_intf.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/gpio_intf.adoc[]
+endif::backend-pdf[]
