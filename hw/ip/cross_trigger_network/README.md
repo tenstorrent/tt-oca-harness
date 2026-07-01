@@ -40,7 +40,7 @@ This generates CTN-specific files:
 **CTN files**:
 - `rtl/cross_trigger_network_pkg.sv` - Package with matching NUM_CTP/NUM_INT_CT
 - `tb_vcs/test/test_base.py` - Test utilities with matching configuration
-- `data/registers/rdl/cross_trigger_network.rdl` - Address map RDL
+- `regs/cross_trigger_network.rdl` - Address map RDL
 
 **Note**: CTP and CTM are generated separately by `tools/generate_all.py` or their
 respective `generate_ip.py` scripts. When using `generate_all.py`, CTP/CTM/CTN are

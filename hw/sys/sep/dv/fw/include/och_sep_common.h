@@ -8,7 +8,7 @@
  * Similar to tt_sep's sep_common.h but without the address offset.
  *
  * In tt_sep, WRITE_EXT/READ_EXT add SEP_EXT_BASE (0xc000_0000) to addresses.
- * In och_sep, WRITE_REG/READ_REG use addresses directly since och_sep_top_reg.h
+ * In och_sep, WRITE_REG/READ_REG use addresses directly since sep.h / sep_addr.h
  * already provides absolute addresses.
  *
  ******************************************************************************/
@@ -25,7 +25,7 @@
 /**
  * Write a 32-bit value to a register at the specified address
  *
- * @param addr  Absolute address of the register (from och_sep_top_reg.h)
+ * @param addr  Absolute address of the register (from sep.h / sep_addr.h)
  * @param value 32-bit value to write
  *
  * Example:
@@ -37,7 +37,7 @@
 /**
  * Read a 32-bit value from a register at the specified address
  *
- * @param addr Absolute address of the register (from och_sep_top_reg.h)
+ * @param addr Absolute address of the register (from sep.h / sep_addr.h)
  * @return     32-bit value read from the register
  *
  * Example:
@@ -63,7 +63,7 @@
 /**
  * Write a 64-bit value to a register at the specified address
  *
- * @param addr  Absolute address of the register (from och_sep_top_reg.h)
+ * @param addr  Absolute address of the register (from sep.h / sep_addr.h)
  * @param value 64-bit value to write
  *
  * Example:
@@ -75,7 +75,7 @@
 /**
  * Read a 64-bit value from a register at the specified address
  *
- * @param addr Absolute address of the register (from och_sep_top_reg.h)
+ * @param addr Absolute address of the register (from sep.h / sep_addr.h)
  * @return     64-bit value read from the register
  *
  * Example:
@@ -214,7 +214,7 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask,
  *   #define READ_REG(addr) \
  *     (*((volatile uint32_t *)(uintptr_t)(addr)))
  *
- * This is because och_sep_top_reg.h already provides absolute addresses:
+ * This is because sep.h / sep_addr.h already provides absolute addresses:
  *   #define OCH_SEP_TOP_OTBN_CMD_BASE_ADDR (0x40000010)  // Already absolute!
  *
  * Usage in firmware/tests:

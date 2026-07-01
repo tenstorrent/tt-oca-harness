@@ -40,12 +40,6 @@ packages:
     source:
       Path: vendor/chipsalliance/Cores-VeeR-EL2
     dependencies: []
-  i3c-core:
-    revision: null
-    version: null
-    source:
-      Path: vendor/chipsalliance/i3c-core
-    dependencies: []
   idma:
     revision: null
     version: null
@@ -71,6 +65,12 @@ packages:
     version: null
     source:
       Path: vendor/lowRISC/opentitan
+    dependencies: []
+  picorv32:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/tt-picorv32
     dependencies: []
   register_interface:
     revision: null

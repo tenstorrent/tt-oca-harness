@@ -24,7 +24,7 @@ Quick Start
 
 1. Generate register files:
    ```bash
-   cd ../data/registers
+   cd ../regs
    ./generate_register_files.sh
    ```
 

@@ -12,7 +12,125 @@
  */
 
 package smc_efuse_pkg;
-  `include "smc_efuse_map_reg.svh"
+  import smc_top_addrmap_pkg::*;
+
+  function automatic longint unsigned efuse_offset(input longint unsigned addr);
+    return addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR;
+  endfunction
+
+  // Shadow register layout preserved from the legacy generated sub-block header.
+  typedef struct packed {
+      logic [37:0]   unused_lock_bits ;
+      logic [0:0]   reserved_read_lock ;
+      logic [0:0]   reserved_write_lock ;
+      logic [0:0]   spi_config_read_lock ;
+      logic [0:0]   spi_config_write_lock ;
+      logic [0:0]   spi_ctrl_field_enable_read_lock ;
+      logic [0:0]   spi_ctrl_field_enable_write_lock ;
+      logic [0:0]   pll_and_sensor_read_lock ;
+      logic [0:0]   pll_and_sensor_write_lock ;
+      logic [0:0]   i3c_disable_read_lock ;
+      logic [0:0]   i3c_disable_write_lock ;
+      logic [0:0]   i2c_clock_gating_read_lock ;
+      logic [0:0]   i2c_clock_gating_write_lock ;
+      logic [0:0]   i2c_i3c_id_read_lock ;
+      logic [0:0]   i2c_i3c_id_write_lock ;
+      logic [0:0]   sop_topology_read_lock ;
+      logic [0:0]   sop_topology_write_lock ;
+      logic [0:0]   fabric_read_lock ;
+      logic [0:0]   fabric_write_lock ;
+      logic [0:0]   cluster_read_lock ;
+      logic [0:0]   cluster_write_lock ;
+      logic [0:0]   bira_dis_read_lock ;
+      logic [0:0]   bira_dis_write_lock ;
+      logic [0:0]   package_id_read_lock ;
+      logic [0:0]   package_id_write_lock ;
+      logic [0:0]   chiplet_id_read_lock ;
+      logic [0:0]   chiplet_id_write_lock ;
+  } smc_efuse_map_locks_reg_t;
+
+
+
+  typedef struct packed {
+      logic [255:0]   chiplet_id_value ;
+  } smc_efuse_map_chiplet_id_reg_t;
+
+
+
+  typedef struct packed {
+      logic [255:0]   package_id_value ;
+  } smc_efuse_map_package_id_reg_t;
+
+
+
+  typedef struct packed {
+      logic [16383:0]   repair_data ;
+  } smc_efuse_map_bira_reg_t;
+
+
+
+  typedef struct packed {
+      logic [511:0]   cluster_config ;
+  } smc_efuse_map_cluster_reg_t;
+
+
+
+  typedef struct packed {
+      logic [255:0]   fabric_config ;
+  } smc_efuse_map_fabric_reg_t;
+
+
+
+  typedef struct packed {
+      logic [31:0]   topology_serial ;
+  } smc_efuse_map_sop_topology_reg_t;
+
+
+
+  typedef struct packed {
+      logic [63:0]   interface_id ;
+  } smc_efuse_map_i2c_i3c_id_reg_t;
+
+
+
+  typedef struct packed {
+      logic [31:0]   clock_gating_config ;
+  } smc_efuse_map_i2c_clock_gating_reg_t;
+
+
+
+  typedef struct packed {
+      logic [31:0]   disable_config ;
+  } smc_efuse_map_i3c_disable_reg_t;
+
+
+
+  typedef struct packed {
+      logic [4095:0]   pll_sensor_config ;
+  } smc_efuse_map_pll_and_sensor_reg_t;
+
+
+
+  typedef struct packed {
+      logic [31:0]   reserved_data ;
+  } smc_efuse_map_reserved_reg_t;
+
+
+
+  typedef struct packed {
+      smc_efuse_map_reserved_reg_t [64:0] reserved;
+      smc_efuse_map_pll_and_sensor_reg_t pll_and_sensor;
+      smc_efuse_map_i3c_disable_reg_t i3c_disable;
+      smc_efuse_map_i2c_clock_gating_reg_t i2c_clock_gating;
+      smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
+      smc_efuse_map_sop_topology_reg_t sop_topology;
+      smc_efuse_map_fabric_reg_t fabric;
+      smc_efuse_map_cluster_reg_t cluster;
+      smc_efuse_map_bira_reg_t bira;
+      smc_efuse_map_package_id_reg_t package_id;
+      smc_efuse_map_chiplet_id_reg_t chiplet_id;
+      smc_efuse_map_locks_reg_t locks;
+  } smc_efuse_map_regmap_t;
   `include "apb/typedef.svh"
   `include "axi/typedef.svh"
   `include "efuse_typedef.svh"
@@ -69,84 +187,84 @@ package smc_efuse_pkg;
   localparam efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] EfuseFieldMap = '{
        '{idx: 5'd14,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: RESERVED_49__REG_OFFSET,
-         end_addr: SMC_EFUSE_MAP_REG_MAP_SIZE-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(49)),
+         end_addr: smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE-1
        },
        '{idx: 5'd13,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: RESERVED_33__REG_OFFSET,
-         end_addr: RESERVED_49__REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(33)),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(49))-1
        },
        '{idx: 5'd12,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: RESERVED_17__REG_OFFSET,
-         end_addr: RESERVED_33__REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(17)),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(33))-1
        },
        '{idx: 5'd11,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: RESERVED_1__REG_OFFSET,
-         end_addr: RESERVED_17__REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(1)),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(17))-1
        },
        '{idx: 5'd10,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: RESERVED_0__REG_OFFSET,
-         end_addr: RESERVED_1__REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(0)),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(1))-1
        },
       '{idx: 5'd9,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: PLL_AND_SENSOR_REG_OFFSET,
-        end_addr: RESERVED_0__REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(0))-1
        },
       '{idx: 5'd8,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: I3C_DISABLE_REG_OFFSET,
-        end_addr: PLL_AND_SENSOR_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR)-1
        },
       '{idx: 5'd7,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: I2C_CLOCK_GATING_REG_OFFSET,
-        end_addr: I3C_DISABLE_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR)-1
        },
        '{idx: 5'd6,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: I2C_I3C_ID_0__REG_OFFSET,
-         end_addr: I2C_CLOCK_GATING_REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0)),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR)-1
         },
       '{idx: 5'd5,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: SOP_TOPOLOGY_REG_OFFSET,
-        end_addr: I2C_I3C_ID_0__REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0))-1
        },
       '{idx: 5'd4,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: FABRIC_REG_OFFSET,
-        end_addr: SOP_TOPOLOGY_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR)-1
        },
       '{idx: 5'd3,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: CLUSTER_REG_OFFSET,
-        end_addr: FABRIC_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR)-1
        },
       '{idx: 5'd2,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: BIRA_REG_OFFSET,
-        end_addr: CLUSTER_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR)-1
        },
        '{idx: 5'd1,
          lock: {WRITE_UNLOCK, READ_UNLOCK},
-         start_addr: PACKAGE_ID_REG_OFFSET,
-         end_addr: BIRA_REG_OFFSET-1
+         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR),
+         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR)-1
         },
       '{idx: 5'd0,
         lock: {WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: CHIPLET_ID_REG_OFFSET,
-        end_addr: PACKAGE_ID_REG_OFFSET-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR)-1
        },
       '{
           idx: 5'h1f,
           lock: {WRITE_SET_ONLY, READ_UNLOCK},
-          start_addr: LOCKS_REG_OFFSET,
-          end_addr: CHIPLET_ID_REG_OFFSET-1
+          start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
+          end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR)-1
       }
   };
 

@@ -42,7 +42,7 @@ tb_vcs/
 ├── doc/                     # Documentation
 │   ├── TEST_PLAN.txt       # Test plan with pass criteria
 │   └── REGISTER_MAP.md     # Register documentation
-└── data/registers/          # SystemRDL sources & generated files
+└── regs/          # SystemRDL sources & generated files
     ├── rdl/                # SystemRDL source files
     └── reg_update.sh       # RDL regeneration script
 
@@ -151,10 +151,10 @@ cat latest_regr.log                 # Quick results
 
 ```bash
 # 1. Edit RDL source
-vim ../data/registers/rdl/entropy_source_reg.rdl
+vim ../regs/entropy_source_reg.rdl
 
 # 2. Regenerate all artifacts (RTL, docs, headers)
-cd ../data/registers
+cd ../regs
 ./reg_update.sh
 
 # 3. Verify changes
@@ -294,7 +294,7 @@ cat latest_regr.log
 ./run.sh -t test_name --force
 
 # Regenerate registers from RDL
-cd ../data/registers && ./reg_update.sh
+cd ../regs && ./reg_update.sh
 ```
 
 ## Test Suites

@@ -102,7 +102,7 @@ module smc_cpu_ctrl_wrap
 	localparam int unsigned NUM_PC_REGS = 8;
 	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][NUM_PC_REGS-1:0][58-1:0] wb_reg_pc_sr;
 	always_ff @(posedge clk_smc_i) begin
-		for (int c = 0; c < NumCPUCores; c = c + 1) begin
+		for (int c = 0; c < smc_4core_cpu_pkg::NUM_CPU_CORES; c = c + 1) begin
 			if (~rst_primary_ni) begin
 				wb_reg_pc_sr[c] <= {(NUM_PC_REGS*58){1'b0}};
 			end else begin
@@ -133,7 +133,9 @@ module smc_cpu_ctrl_wrap
 
 	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] reset_wdt_count;
 
-	assign reset_wdt_count = ~{(NumCPUCores){rst_primary_ni}} | count_reset[NumCPUCores-1:0] | ~wdt_timeout_cluster_i[NumCPUCores-1:0];
+	assign reset_wdt_count = ~{(smc_4core_cpu_pkg::NUM_CPU_CORES){rst_primary_ni}} |
+	                         count_reset[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] |
+	                         ~wdt_timeout_cluster_i[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0];
 
 	// wdt_timeout_cluster_i is from the rst_uncore_ni domain, which can be async reset, being captured on clk_smc_i
 	generate
@@ -436,9 +438,9 @@ module smc_cpu_ctrl_wrap
 		end
 	end
 
-	smc_pkg::cpu_ctrl_reset_ctrl_reg_t reset_ctrl_reset_value;
-	smc_pkg::cpu_ctrl_reset_ctrl_reg_t reset_ctrl_wr_data;
-	smc_pkg::cpu_ctrl_reset_ctrl_reg_t reset_ctrl_reg_value_n0_scan;
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reset_value;
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_wr_data;
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reg_value_n0_scan;
 
 	assign int_core_reset_n[0] = core_reset_pulse_done[0] ? reset_ctrl_reg_value_n0_scan.core0_reset_n_n0_scan : core_reset_pulse_out[0];
 	assign int_core_reset_n[1] = core_reset_pulse_done[1] ? reset_ctrl_reg_value_n0_scan.core1_reset_n_n0_scan : core_reset_pulse_out[1];
@@ -450,10 +452,10 @@ module smc_cpu_ctrl_wrap
 
 	assign reset_ctrl_reset_value = smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS;
 	// never write the value for the pulse start bits
-	assign reset_ctrl_wr_data = {((reset_ctrl_reg_value_n0_scan[$bits(smc_pkg::cpu_ctrl_reset_ctrl_reg_t)-1:8] &
-					~external_wr_bit_mask[$bits(smc_pkg::cpu_ctrl_reset_ctrl_reg_t)-1:8]) |
-				(external_wr_data[$bits(smc_pkg::cpu_ctrl_reset_ctrl_reg_t)-1:8] &
-					external_wr_bit_mask[$bits(smc_pkg::cpu_ctrl_reset_ctrl_reg_t)-1:8])),
+	assign reset_ctrl_wr_data = {((reset_ctrl_reg_value_n0_scan[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
+					~external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8]) |
+				(external_wr_data[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
+					external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8])),
 			4'd0,
 			((reset_ctrl_reg_value_n0_scan[MaxCPUCores-1:0] &
 					~external_wr_bit_mask[MaxCPUCores-1:0]) |
@@ -471,7 +473,7 @@ module smc_cpu_ctrl_wrap
 		end
 	end
 
-	assign reset_ctrl_rd_data = {{(64-$bits(smc_pkg::cpu_ctrl_reset_ctrl_reg_t)){1'b0}}, reset_ctrl_reg_value_n0_scan};
+	assign reset_ctrl_rd_data = {{(64-$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)){1'b0}}, reset_ctrl_reg_value_n0_scan};
 
 	/////////////////////////////
 	// Mutex & Semaphore Logic //

@@ -36,7 +36,7 @@ The component supports both APB4 and AXI4-Lite interfaces:
 The register maps are defined using SystemRDL and can be regenerated using:
 
 ```bash
-cd hw/comp/uart_16550/data/registers/rdl/
+cd hw/comp/uart_16550/regs/
 peakrdl regblock uart_16550_main.rdl -o ../rtl/ --cpuif axi4-lite --module-name uart_16550_main_reg
 peakrdl regblock uart_16550_dl.rdl -o ../rtl/ --cpuif axi4-lite --module-name uart_16550_dl_reg
 ```

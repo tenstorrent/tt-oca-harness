@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
 
 `ifndef EFUSE_INTERFACE_CTRL_RDL_DEFINED
 `define EFUSE_INTERFACE_CTRL_RDL_DEFINED

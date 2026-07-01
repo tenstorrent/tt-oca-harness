@@ -97,7 +97,7 @@ fall back to a local, uncommitted stub force-included via `FW_EXTRA_CFLAGS`.
   rewritten directly to the native `key_manager.h` unions (`km_kpv__ctrl_reg_t`) and
   `km_addr.h` addresses (`KEY_MANAGER_KPV_CTRL_BASE_ADDR(idx)`). `libkey_manager.a` builds
   fully native with no shim or stub.
-- **SEP.** Old SEP used the flattened `och_sep_top_reg.h` (absolute `*_REG_ADDR`,
+- **SEP.** Old SEP used the flattened generated top header (absolute `*_REG_ADDR`,
   block `*_REG_MAP_BASE_ADDR`, unions like `EL2_PIC_MEIGWCTRL_reg_u`). These are
   rewritten to `sep_addr.h` (`OCH_SEP_TOP_*_BASE_ADDR`) and per-block headers
   (`el2_pic__MEIGWCTRL_t`). The SEP register port is validated; build with the

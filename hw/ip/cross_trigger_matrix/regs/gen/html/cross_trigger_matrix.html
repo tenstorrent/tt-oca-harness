@@ -1,0 +1,20 @@
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: cross_trigger_matrix</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CT_SRC_CONFIG_0">CT_SRC_CONFIG_0</a></td><td>RW</td><td>Cross Trigger source configuration for CT_Dst[31:0]</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="CT_SRC_CONFIG_0">CT_SRC_CONFIG_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>RESERVED</td><td>RW</td><td>0x0</td><td>Reserved. Must be written as zero.</td></tr>
+<tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst ports forwarded to this CT_Src output. Bits [25:0] correspond to CT_Dst[25:0].</td></tr>
+</table>
+</div>

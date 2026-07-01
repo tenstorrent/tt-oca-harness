@@ -10,7 +10,7 @@
 // Each bit in the SW_RESET register drives a prim_rst_sync synchronizer
 // whose output is able to be overridden by JTAG overrides.
 //
-// Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
+// Register map defined in hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
 //   Bit 1: otbn_sw_rst     - write 1 to release OTBN from reset (0=hold)
 //   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)

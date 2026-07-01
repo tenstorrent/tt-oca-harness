@@ -792,7 +792,7 @@ module smu #(
         // ==================================================================
 
         logic [31:0] reset_vector;
-        assign reset_vector = sep_pkg::SEP_BOOT_ROM_MEM_BASE_ADDR;
+        assign reset_vector = och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR;
 
         sep #(
             .KM_LATCHED_MEM_RDATA  (Cfg.SEP_KM_LATCHED_MEM_RDATA),

@@ -193,9 +193,9 @@ These directories include example templates and register definitions that show h
 - `rtl/examples/sram/example_sram_pkg.sv` - Shows package definitions needed for AXI, AXI4-Lite, and APB4 interfaces
 
 #### Register Definitions (Optional)
-- `data/registers/rdl/sram_example/example_sram_macro_csr.rdl` - CSR register descriptions
-- `data/registers/rdl/sram_example/example_sram_wrap.rdl` - Wrapper register descriptions
-- `data/registers/rdl/sram_example/example_sram.rdl` - SRAM register descriptions
+- `regs/sram_example/example_sram_macro_csr.rdl` - CSR register descriptions
+- `regs/sram_example/example_sram_wrap.rdl` - Wrapper register descriptions
+- `regs/sram_example/example_sram.rdl` - SRAM register descriptions
 
 #### Testbench
 - `tb_sram/templates/tb_sram.sv.tpl` - SystemVerilog testbench template
@@ -212,9 +212,9 @@ The ROM example demonstrates how to integrate read-only memory with the memory i
 - `rtl/examples/rom/generate_rom_init.py` - ROM initialization script for generating ROM content (Only works with VCS, not Verilator, this limitation is built into the python testbench)
 
 #### Register Definitions (Optional)
-- `data/registers/rdl/rom_example/example_rom_macro_csr.rdl` - CSR register descriptions
-- `data/registers/rdl/rom_example/example_rom_wrap.rdl` - Wrapper register descriptions
-- `data/registers/rdl/rom_example/example_rom.rdl` - ROM register descriptions
+- `regs/rom_example/example_rom_macro_csr.rdl` - CSR register descriptions
+- `regs/rom_example/example_rom_wrap.rdl` - Wrapper register descriptions
+- `regs/rom_example/example_rom.rdl` - ROM register descriptions
 
 #### Testbench
 - `tb_rom/templates/tb_rom.sv.tpl` - SystemVerilog testbench template

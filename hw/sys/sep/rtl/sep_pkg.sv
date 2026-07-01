@@ -4,12 +4,6 @@
 package sep_pkg;
 
     `include "axi/typedef.svh"
-    `include "och_sep_top_reg.svh"
-
-    // TODO: Consider including och_sep_top_reg.svh here once efuse register
-    //       naming collision is resolved (sep_efuse_map_reg.svh uses same
-    //       identifier names with offset-based addresses vs absolute addresses
-    //       in och_sep_top_reg.svh)
 
     parameter bit EN_EXTERNAL_MST = 1'b1;
 

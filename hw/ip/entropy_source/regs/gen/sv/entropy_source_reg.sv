@@ -5,25 +5,7 @@ module entropy_source_reg (
         input wire clk,
         input wire arst_n,
 
-        output logic s_axil_awready,
-        input wire s_axil_awvalid,
-        input wire [8:0] s_axil_awaddr,
-        input wire [2:0] s_axil_awprot,
-        output logic s_axil_wready,
-        input wire s_axil_wvalid,
-        input wire [31:0] s_axil_wdata,
-        input wire [3:0]s_axil_wstrb,
-        input wire s_axil_bready,
-        output logic s_axil_bvalid,
-        output logic [1:0] s_axil_bresp,
-        output logic s_axil_arready,
-        input wire s_axil_arvalid,
-        input wire [8:0] s_axil_araddr,
-        input wire [2:0] s_axil_arprot,
-        input wire s_axil_rready,
-        output logic s_axil_rvalid,
-        output logic [31:0] s_axil_rdata,
-        output logic [1:0] s_axil_rresp,
+        axi4lite_intf.slave s_axil,
 
         input entropy_source_reg_pkg::entropy_source__in_t hwif_in,
         output entropy_source_reg_pkg::entropy_source__out_t hwif_out
@@ -46,6 +28,15 @@ module entropy_source_reg (
 
     logic cpuif_wr_ack;
     logic cpuif_wr_err;
+
+    `ifndef SYNTHESIS
+        initial begin
+            assert_bad_addr_width: assert($bits(s_axil.ARADDR) >= entropy_source_reg_pkg::ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH)
+                else $error("Interface address width of %0d is too small. Shall be at least %0d bits", $bits(s_axil.ARADDR), entropy_source_reg_pkg::ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH);
+            assert_bad_data_width: assert($bits(s_axil.WDATA) == entropy_source_reg_pkg::ENTROPY_SOURCE_REG_DATA_WIDTH)
+                else $error("Interface data width of %0d is incorrect. Shall be %0d bits", $bits(s_axil.WDATA), entropy_source_reg_pkg::ENTROPY_SOURCE_REG_DATA_WIDTH);
+        end
+    `endif
 
     // Max Outstanding Transactions: 2
     logic [1:0] axil_n_in_flight;
@@ -79,9 +70,9 @@ module entropy_source_reg (
                 axil_prev_was_rd <= '1;
                 axil_arvalid <= '0;
             end
-            if(s_axil_arvalid && s_axil_arready) begin
+            if(s_axil.ARVALID && s_axil.ARREADY) begin
                 axil_arvalid <= '1;
-                axil_araddr <= s_axil_araddr;
+                axil_araddr <= s_axil.ARADDR;
             end
 
             // AW* & W* acceptance registers
@@ -90,14 +81,14 @@ module entropy_source_reg (
                 axil_awvalid <= '0;
                 axil_wvalid <= '0;
             end
-            if(s_axil_awvalid && s_axil_awready) begin
+            if(s_axil.AWVALID && s_axil.AWREADY) begin
                 axil_awvalid <= '1;
-                axil_awaddr <= s_axil_awaddr;
+                axil_awaddr <= s_axil.AWADDR;
             end
-            if(s_axil_wvalid && s_axil_wready) begin
+            if(s_axil.WVALID && s_axil.WREADY) begin
                 axil_wvalid <= '1;
-                axil_wdata <= s_axil_wdata;
-                axil_wstrb <= s_axil_wstrb;
+                axil_wdata <= s_axil.WDATA;
+                axil_wstrb <= s_axil.WSTRB;
             end
 
             // Keep track of in-flight transactions
@@ -110,9 +101,9 @@ module entropy_source_reg (
     end
 
     always_comb begin
-        s_axil_arready = (!axil_arvalid || axil_ar_accept);
-        s_axil_awready = (!axil_awvalid || axil_aw_accept);
-        s_axil_wready = (!axil_wvalid || axil_aw_accept);
+        s_axil.ARREADY = (!axil_arvalid || axil_ar_accept);
+        s_axil.AWREADY = (!axil_awvalid || axil_aw_accept);
+        s_axil.WREADY = (!axil_wvalid || axil_aw_accept);
     end
 
     // Request dispatch
@@ -190,25 +181,25 @@ module entropy_source_reg (
 
     always_comb begin
         axil_resp_acked = '0;
-        s_axil_bvalid = '0;
-        s_axil_rvalid = '0;
+        s_axil.BVALID = '0;
+        s_axil.RVALID = '0;
         if(axil_resp_rptr != axil_resp_wptr) begin
             if(axil_resp_buffer_is_wr[axil_resp_rptr[0:0]]) begin
-                s_axil_bvalid = '1;
-                if(s_axil_bready) axil_resp_acked = '1;
+                s_axil.BVALID = '1;
+                if(s_axil.BREADY) axil_resp_acked = '1;
             end else begin
-                s_axil_rvalid = '1;
-                if(s_axil_rready) axil_resp_acked = '1;
+                s_axil.RVALID = '1;
+                if(s_axil.RREADY) axil_resp_acked = '1;
             end
         end
 
-        s_axil_rdata = axil_resp_buffer_rdata[axil_resp_rptr[0:0]];
+        s_axil.RDATA = axil_resp_buffer_rdata[axil_resp_rptr[0:0]];
         if(axil_resp_buffer_err[axil_resp_rptr[0:0]]) begin
-            s_axil_bresp = 2'b10;
-            s_axil_rresp = 2'b10;
+            s_axil.BRESP = 2'b10;
+            s_axil.RRESP = 2'b10;
         end else begin
-            s_axil_bresp = 2'b00;
-            s_axil_rresp = 2'b00;
+            s_axil.BRESP = 2'b00;
+            s_axil.RRESP = 2'b00;
         end
     end
 

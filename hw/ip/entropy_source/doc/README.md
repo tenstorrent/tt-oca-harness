@@ -154,7 +154,7 @@ The design meets requirements for:
 
 2. **Generate Register RTL**:
    ```bash
-   cd data/registers/rdl/
+   cd regs/
    peakrdl regblock entropy_source.rdl -o ../../../rtl/ --cpuif apb3-flat
    ```
 

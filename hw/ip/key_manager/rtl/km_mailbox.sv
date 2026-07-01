@@ -5,7 +5,6 @@
 
 `default_nettype none
 
-
 /**
  * @file km_mailbox.sv
  * @brief Bidirectional mailbox for SEP-KM communication.
@@ -32,7 +31,8 @@
  * @param sep_axil_req_t    SEP-side AXI-Lite request type.
  * @param sep_axil_resp_t   SEP-side AXI-Lite response type.
  */
-module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_sep_reg_pkg::*; import km_mailbox_km_reg_pkg::*; #(
+module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_sep_reg_pkg::*; import km_mailbox_km_reg_pkg::*;
+    import km_mailbox_sep_addrmap_pkg::*; import km_mailbox_km_addrmap_pkg::*; #(
     parameter int unsigned MAILBOX_DEPTH = 16,
 
     // AXI-Lite interface types
@@ -64,8 +64,6 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
 );
 
     `include "prim_assert.sv"
-    `include "km_mailbox_km_reg.svh"
-    `include "km_mailbox_sep_reg.svh"
 
     //=========================================================================
     // Local Parameters
@@ -156,8 +154,8 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     assign sep_aw_addr = sep_axil_req_i.aw.addr[11:0];
     assign sep_ar_addr = sep_axil_req_i.ar.addr[11:0];
 
-    assign sep_aw_is_write_data = (sep_aw_addr == SEP_WRITE_DATA_REG_OFFSET);
-    assign sep_ar_is_read_data = (sep_ar_addr == SEP_READ_DATA_REG_OFFSET);
+    assign sep_aw_is_write_data = (sep_aw_addr == KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR);
+    assign sep_ar_is_read_data = (sep_ar_addr == KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
     assign sep_aw_is_reg_block = !sep_aw_is_write_data;
     assign sep_ar_is_reg_block = !sep_ar_is_read_data;
 
@@ -364,8 +362,8 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     assign km_aw_addr = km_axil_req_i.aw.addr[11:0];
     assign km_ar_addr = km_axil_req_i.ar.addr[11:0];
 
-    assign km_aw_is_write_data = (km_aw_addr == KM_WRITE_DATA_REG_OFFSET);
-    assign km_ar_is_read_data = (km_ar_addr == KM_READ_DATA_REG_OFFSET);
+    assign km_aw_is_write_data = (km_aw_addr == KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
+    assign km_ar_is_read_data = (km_ar_addr == KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
     assign km_aw_is_reg_block = !km_aw_is_write_data;
     assign km_ar_is_reg_block = !km_ar_is_read_data;
 

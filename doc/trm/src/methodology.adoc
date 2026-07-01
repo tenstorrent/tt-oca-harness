@@ -612,7 +612,7 @@ format
 memmap.adoc, index.adoc)
 * rtl : all SystemVerilog modules <component>_*.sv
 * tb : unit level Verilator tests
-* data/registers : <component>.rdl SystemRDL CSR memory map definition
+* regs/ : <component>.rdl SystemRDL CSR memory map definition and generated collateral
 * syn : logic synthesis constraints (optional)
 * lint : lint waiver files
 

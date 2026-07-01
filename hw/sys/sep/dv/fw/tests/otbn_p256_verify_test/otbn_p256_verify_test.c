@@ -16,7 +16,7 @@
  * 3. Reads back the derived x_r value and confirms that it matches the signature R component
  *
  * MIGRATED: Now uses OCH SEP register infrastructure with absolute addresses
- * from meta/registers/c/och_sep_top_reg.h instead of hardcoded base addresses.
+ * from the generated `sep.h` / `sep_addr.h` headers instead of hardcoded base addresses.
  */
 
 #include <stdio.h>
@@ -48,7 +48,7 @@
 // Register and Memory Access - Using OCH SEP Common Macros
 // ============================================================================
 // Uses WRITE_REG/READ_REG macros from och_sep_common.h (similar to tt_sep's
-// WRITE_EXT/READ_EXT), but without address offset since och_sep_top_reg.h
+// WRITE_EXT/READ_EXT), but without address offset since sep.h / sep_addr.h
 // already provides absolute addresses.
 //
 // tt_sep approach:

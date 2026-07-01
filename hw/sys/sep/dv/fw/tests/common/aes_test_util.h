@@ -8,7 +8,7 @@
  * sep_aes_basic_smoke_test, sep_aes_all_modes_test, sep_aes_back_to_back_test,
  * and sep_aes_192_256_keylen_test.
  *
- * Include after och_sep_common.h and och_sep_top_reg.h.
+ * Include after och_sep_common.h and sep.h.
  */
 
 #ifndef AES_TEST_UTIL_H

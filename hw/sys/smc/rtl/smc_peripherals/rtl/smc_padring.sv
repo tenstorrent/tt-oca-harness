@@ -469,7 +469,7 @@ module smc_padring #(
 			.INPUT_BY_DEFAULT			(INPUT_BY_DEFAULT),
 
 			.GPIO_INTF_REG_MAP_BASE_ADDR(GPIO_INTF_BASE_ADDR + (i * ADDRESS_MAP_SIZE_PER_GPIO)),
-			.GPIO_INTF_REG_MAP_SIZE     (smc_pkg::GPIO_INTF_0__REG_MAP_SIZE),
+			.GPIO_INTF_REG_MAP_SIZE     (smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE),
 			.ADDRESS_MAP_SIZE_PER_GPIO  (ADDRESS_MAP_SIZE_PER_GPIO)
 		) u_gpio_interface (
 			.clk_i					(clk_i),

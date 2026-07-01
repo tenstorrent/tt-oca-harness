@@ -189,7 +189,7 @@ C header constants (from `key_manager_regs.h`):
 Registers are defined in SystemRDL and generated using PeakRDL:
 
 ```bash
-cd hw/comp/key_manager/data/registers
+cd hw/ip/key_manager/regs
 make all        # Generate RTL, headers, and C code
 make all_rtl    # Generate RTL only
 make all_c      # Generate C headers only

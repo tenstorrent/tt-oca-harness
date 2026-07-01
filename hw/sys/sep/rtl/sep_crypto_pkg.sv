@@ -20,44 +20,44 @@ package sep_crypto_pkg;
 
     parameter axi_pkg::xbar_rule_32_t otbn_rule = '{
         idx:        0,
-        start_addr: OTBN_REG_MAP_BASE_ADDR,
-        end_addr:   OTBN_REG_MAP_BASE_ADDR + OTBN_REG_MAP_SIZE
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_OTBN_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t hmac_rule = '{
         idx:        1,
-        start_addr: HMAC_REG_MAP_BASE_ADDR,
-        end_addr:   HMAC_REG_MAP_BASE_ADDR + HMAC_REG_MAP_SIZE
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t aes_rule = '{
         idx:        2,
-        start_addr: AES_REG_MAP_BASE_ADDR,
-        end_addr:   AES_REG_MAP_BASE_ADDR + AES_REG_MAP_SIZE   // 256 bytes for AES
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_AES_SIZE   // 256 bytes for AES
     };
 
     parameter axi_pkg::xbar_rule_32_t kmac_rule = '{
         idx:        3,
-        start_addr: KMAC_REG_MAP_BASE_ADDR,
-        end_addr:   KMAC_REG_MAP_BASE_ADDR + KMAC_REG_MAP_SIZE
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t fuse_rule = '{
         idx:        4,
-        start_addr: SEP_EFUSE_MAP_REG_MAP_BASE_ADDR,
-        end_addr:   EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR + EFUSE_SHIM_CTRL_REG_MAP_SIZE  // 1 KB for Fuse +
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_SHIM_CTRL_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_SHIM_CTRL_SIZE  // 1 KB for Fuse +
     };
 
     parameter axi_pkg::xbar_rule_32_t lifecycle_rule = '{
         idx:        5,
-        start_addr: SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR,
-        end_addr:   SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR + SEP_LIFECYCLE_CTRL_REG_MAP_SIZE
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t km_rule = '{
         idx:        6,
-        start_addr: KM_MAILBOX_SEP_REG_MAP_BASE_ADDR,
-        end_addr:   KM_MAILBOX_SEP_REG_MAP_BASE_ADDR + 32'h0000_1000  // 4KB decode window
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR + 32'h0000_1000  // 4KB decode window
     };
 
     // DRBG: spec allocates 0x1091_5000-0x1091_5FFF (4KB), split into CSRNG + EDN

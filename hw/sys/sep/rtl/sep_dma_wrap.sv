@@ -310,9 +310,9 @@ module sep_dma_wrap
       .slv_resp_o         (dma_axi_resp_raw),
       .mst_req_o          (dma_req_o),
       .mst_resp_i         (dma_resp_i),
-      .local_alias_base_i (sep_local_base_addr_i + sep_pkg::SEP_SRAM_MEM_BASE_ADDR),
-      .region_size_i      (sep_region_size_i - sep_pkg::SEP_SRAM_MEM_BASE_ADDR),
-      .target_base_i      (sep_pkg::SEP_SRAM_MEM_BASE_ADDR)
+      .local_alias_base_i (sep_local_base_addr_i + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
+      .region_size_i      (sep_region_size_i - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
+      .target_base_i      (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
   );
 
   ///////////////////

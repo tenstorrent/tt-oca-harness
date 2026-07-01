@@ -1,6 +1,6 @@
 # Entropy Source Register Map
 
-**Source**: `data/registers/rdl/entropy_source.rdl`
+**Source**: `regs/entropy_source.rdl`
 **Last Updated**: 2025-12-15
 **Status**: Complete - All registers implemented and tested (addresses corrected to match RDL)
 

@@ -85,7 +85,7 @@ make build
 ```
 
 This will:
-1. Generate register files from `../data/registers/rdl/entropy_source.rdl`
+1. Generate register files from `../regs/entropy_source.rdl`
 2. Copy them to `../rtl/` directory
 
 ### Ring Oscillator Constraints
@@ -179,7 +179,7 @@ If synthesis reports timing violations or unexpected behavior:
 
 ## References
 
-- SystemRDL source: `../data/registers/rdl/entropy_source.rdl`
+- SystemRDL source: `../regs/entropy_source.rdl`
 - RTL directory: `../rtl/`
 - Documentation: `../doc/`
 - Specification: `../doc/Entropy_Noise_Source_for_TRNG.pdf`

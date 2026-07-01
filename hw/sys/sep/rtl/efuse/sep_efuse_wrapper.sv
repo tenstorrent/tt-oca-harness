@@ -18,7 +18,6 @@
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
-`include "och_sep_top_reg.svh"
 
 module sep_efuse_wrapper
     import sep_efuse_pkg::*;
@@ -220,8 +219,8 @@ module sep_efuse_wrapper
         .sigint_o(lc_sigint_err)
     );
 
-	assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[sep_pkg::EFUSE_MMR_REG_MAP_BASE_ADDR:sep_pkg::EFUSE_MMR_REG_MAP_BASE_ADDR+sep_pkg::EFUSE_MMR_REG_MAP_SIZE-1]};
-    assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[sep_pkg::EFUSE_MMR_REG_MAP_BASE_ADDR:sep_pkg::EFUSE_MMR_REG_MAP_BASE_ADDR+sep_pkg::EFUSE_MMR_REG_MAP_SIZE-1]};
+	assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
+    assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
 
 	// Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only read/write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
 	// A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP. 
@@ -330,14 +329,14 @@ module sep_efuse_wrapper
 
 		.SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
-		.EFUSE_MAP_REG_MAP_BASE_ADDR(sep_pkg::SEP_EFUSE_MAP_REG_MAP_BASE_ADDR),
-		.EFUSE_MAP_REG_MAP_SIZE     (sep_pkg::SEP_EFUSE_MAP_REG_MAP_SIZE),
+		.EFUSE_MAP_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR),
+		.EFUSE_MAP_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE),
 
-		.EFUSE_MMR_REG_MAP_BASE_ADDR(sep_pkg::EFUSE_MMR_REG_MAP_BASE_ADDR),
-		.EFUSE_MMR_REG_MAP_SIZE     (sep_pkg::EFUSE_MMR_REG_MAP_SIZE),
+		.EFUSE_MMR_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR),
+		.EFUSE_MMR_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE),
 
-		.EFUSE_CTRL_REG_MAP_BASE_ADDR(sep_pkg::EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
-		.EFUSE_CTRL_REG_MAP_SIZE     (sep_pkg::EFUSE_INTERFACE_CTRL_REG_MAP_SIZE),
+		.EFUSE_CTRL_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
+		.EFUSE_CTRL_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE),
 
 		.SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
 		.EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),

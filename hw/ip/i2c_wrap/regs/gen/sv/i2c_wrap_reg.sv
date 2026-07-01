@@ -228,7 +228,7 @@ module i2c_wrap_reg (
     //--------------------------------------------------------------------------
     typedef struct {
         logic i2c[3];
-        logic i2c_ctrl;
+        logic i2c_ctrl_regs;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -252,7 +252,7 @@ module i2c_wrap_reg (
             is_external |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
             is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
         end
-        decoded_reg_strb.i2c_ctrl = cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
+        decoded_reg_strb.i2c_ctrl_regs = cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
         is_external |= cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
         decoded_err = '0;
@@ -297,12 +297,12 @@ module i2c_wrap_reg (
         assign hwif_out.i2c[i0].wr_data = decoded_wr_data;
         assign hwif_out.i2c[i0].wr_biten = decoded_wr_biten;
     end
-    // External region: i2c_wrap.i2c_ctrl
-    assign hwif_out.i2c_ctrl.req = decoded_reg_strb.i2c_ctrl;
-    assign hwif_out.i2c_ctrl.addr = decoded_addr[3:0];
-    assign hwif_out.i2c_ctrl.req_is_wr = decoded_req_is_wr;
-    assign hwif_out.i2c_ctrl.wr_data = decoded_wr_data;
-    assign hwif_out.i2c_ctrl.wr_biten = decoded_wr_biten;
+    // External region: i2c_wrap.i2c_ctrl_regs
+    assign hwif_out.i2c_ctrl_regs.req = decoded_reg_strb.i2c_ctrl_regs;
+    assign hwif_out.i2c_ctrl_regs.addr = decoded_addr[3:0];
+    assign hwif_out.i2c_ctrl_regs.req_is_wr = decoded_req_is_wr;
+    assign hwif_out.i2c_ctrl_regs.wr_data = decoded_wr_data;
+    assign hwif_out.i2c_ctrl_regs.wr_biten = decoded_wr_biten;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -313,7 +313,7 @@ module i2c_wrap_reg (
         for(int i0=0; i0<3; i0++) begin
             wr_ack |= hwif_in.i2c[i0].wr_ack;
         end
-        wr_ack |= hwif_in.i2c_ctrl.wr_ack;
+        wr_ack |= hwif_in.i2c_ctrl_regs.wr_ack;
         external_wr_ack = wr_ack;
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
@@ -330,7 +330,7 @@ module i2c_wrap_reg (
         for(int i0=0; i0<3; i0++) begin
             rd_ack |= hwif_in.i2c[i0].rd_ack;
         end
-        rd_ack |= hwif_in.i2c_ctrl.rd_ack;
+        rd_ack |= hwif_in.i2c_ctrl_regs.rd_ack;
         readback_external_rd_ack_c = rd_ack;
     end
 
@@ -362,7 +362,7 @@ module i2c_wrap_reg (
             end
         end
         if((rd_mux_addr >= 12'he00) && (rd_mux_addr <= 12'he00 + 12'hb)) begin
-            readback_data_var = hwif_in.i2c_ctrl.rd_data;
+            readback_data_var = hwif_in.i2c_ctrl_regs.rd_data;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;

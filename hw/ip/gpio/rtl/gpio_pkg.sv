@@ -24,11 +24,4 @@ package gpio_pkg;
     `AXI_LITE_TYPEDEF_ALL(gpio_axil, addr_t, data_t, strb_t)
 
 
-    //////////////////////////////
-    // Register Map Definitions //
-    //////////////////////////////
-
-    `include "gpio_wrap_reg.svh"
-
-
 endpackage

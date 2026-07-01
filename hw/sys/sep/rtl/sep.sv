@@ -7,7 +7,6 @@
 //-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
-`include "och_sep_top_reg.svh"
 
 module sep
     import sep_pkg::*;
@@ -598,7 +597,7 @@ module sep
         .csr_axil_req_t   (sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (SEP_SRAM_MEM_BASE_ADDR),
+        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
         .NUM_BANKS        (1)
     ) u_sram_memory_interface (
         .clk_i                (clk_i),
@@ -669,7 +668,7 @@ module sep
         .csr_axil_req_t   (sep_axilite_xbar_req_t),
         .csr_axil_resp_t  (sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
-        .MEM_BASE_ADDR    (SEP_BOOT_ROM_MEM_BASE_ADDR),
+        .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR),
         .NUM_BANKS        (1)
     ) u_boot_rom_memory_interface (
         .clk_i                (clk_i),
@@ -957,7 +956,7 @@ module sep
     assign lsio_trigger[$bits(lsio_trigger)-1:1] = '0;
 
     sep_dma_wrap #(
-        .SECURE_DMA_REG_MAP_BASE_ADDR (SECURE_DMA_REG_MAP_BASE_ADDR),
+        .SECURE_DMA_REG_MAP_BASE_ADDR (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
         .AlertAsyncOn           ({NumAlerts{1'b1}}),
         .AlertSkewCycles        (1'b0),
         .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)

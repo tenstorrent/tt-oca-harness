@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
 
 `ifndef EXAMPLE_SRAM_MACRO_CSR_RDL_DEFINED
 `define EXAMPLE_SRAM_MACRO_CSR_RDL_DEFINED

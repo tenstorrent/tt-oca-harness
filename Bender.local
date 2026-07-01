@@ -17,3 +17,4 @@ overrides:
   obi: { path: "vendor/pulp-platform/obi" }
   idma: { path: "vendor/pulp-platform/idma" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
+  picorv32: { path: "vendor/tenstorrent/tt-picorv32" }

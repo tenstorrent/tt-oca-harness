@@ -115,14 +115,14 @@ module smc_cpu_wrapper
         front_port_aw_select = FrontPortCluster;
         front_port_ar_select = FrontPortCluster;
         // Check if address matches the cpu_ctrl CSR window
-        if (axi_front_port_req_i.aw.addr >= smc_pkg::SMC_CPU_CTRL_REG_MAP_BASE_ADDR &&
-            axi_front_port_req_i.aw.addr <  smc_pkg::SMC_CPU_CTRL_REG_MAP_BASE_ADDR +
-                                            smc_pkg::SMC_CPU_CTRL_REG_MAP_SIZE) begin
+        if (axi_front_port_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
+            axi_front_port_req_i.aw.addr <  smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR +
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE) begin
             front_port_aw_select = FrontPortCpuCtrl;
         end
-        if (axi_front_port_req_i.ar.addr >= smc_pkg::SMC_CPU_CTRL_REG_MAP_BASE_ADDR &&
-            axi_front_port_req_i.ar.addr <  smc_pkg::SMC_CPU_CTRL_REG_MAP_BASE_ADDR +
-                                            smc_pkg::SMC_CPU_CTRL_REG_MAP_SIZE) begin
+        if (axi_front_port_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
+            axi_front_port_req_i.ar.addr <  smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR +
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE) begin
             front_port_ar_select = FrontPortCpuCtrl;
         end
     end

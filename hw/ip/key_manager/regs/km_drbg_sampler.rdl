@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
 
 // DRBG Sampler Register Block (km_drbg_sampler)
 // SystemRDL 2.0 Register Definition (Contract)

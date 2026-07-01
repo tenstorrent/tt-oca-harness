@@ -14,8 +14,8 @@ module smc_output_fabric
     parameter int unsigned      MaxTrans = 32,
     parameter bit               FilterReqPipelineEnable = 1'b0,
     parameter bit               FilterRspPipelineEnable = 1'b0,
-    parameter int unsigned      MmodeBaseAddr = smc_pkg::MMODE_REGION_MEM_BASE_ADDR,
-    parameter int unsigned      XvisorBaseAddr = smc_pkg::XVISOR_REGION_MEM_BASE_ADDR
+    parameter int unsigned      MmodeBaseAddr = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,
+    parameter int unsigned      XvisorBaseAddr = smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR
 ) (
     input  logic                                             clk_i,
     input  logic                                             rst_ni,

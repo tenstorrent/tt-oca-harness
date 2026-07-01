@@ -4,7 +4,7 @@
 /*
  * VeeR EL2 PIC interrupt utilities
  *
- * Uses RDL-generated constants from och_sep_top_reg.h
+ * Uses RDL-generated constants from sep.h / sep_addr.h
  */
 
 #include "interrupt.h"

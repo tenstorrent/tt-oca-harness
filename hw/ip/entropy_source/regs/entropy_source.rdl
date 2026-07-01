@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
 
 `ifndef ENTROPY_SOURCE_RDL
 `define ENTROPY_SOURCE_RDL

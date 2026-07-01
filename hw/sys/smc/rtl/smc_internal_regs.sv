@@ -158,7 +158,7 @@ module smc_internal_regs
 	// SMC Mailbox //
 	/////////////////
 
-	localparam int unsigned SPACE_PER_MAILBOX = smc_pkg::SMC_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR - smc_pkg::SMC_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR;
+	localparam int unsigned SPACE_PER_MAILBOX = smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR;
 
 	logic mailbox_clk;
 
@@ -194,7 +194,7 @@ module smc_internal_regs
 		.NUM_MAILBOXES          (smc_pkg::NUM_MAILBOXES),
 		.MAILBOX_DEPTH          (smc_pkg::MAILBOX_DEPTH),
 		.MAX_TRANS              (smc_pkg::FABRIC_MAX_TRANS),
-		.MAILBOX_BASE_ADDR		(smc_pkg::SMC_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR),
+		.MAILBOX_BASE_ADDR		(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
 		.MAILBOX_SIZE           (SPACE_PER_MAILBOX),
 		.ADDR_WIDTH             (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
 		.DATA_WIDTH             (smc_pkg::AXI_LITE_64_DATA_WIDTH),
@@ -582,7 +582,7 @@ module smc_internal_regs
 		.bus_active_o	 (mmode_remap_bus_active_o)
 	);
 
-	localparam int unsigned mmode_remap_sel_start_idx = $clog2(smc_pkg::SMC_MMODE_REMAP_0__REG_MAP_SIZE);
+	localparam int unsigned mmode_remap_sel_start_idx = $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_SIZE);
 	localparam int unsigned mmode_remap_sel_end_idx = mmode_remap_sel_start_idx + smc_pkg::MMODE_REMAP_SEL_W - 1;
 
 	smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0] axil_mR_ctrl_reqs;
@@ -681,7 +681,7 @@ module smc_internal_regs
 		.bus_active_o	 (xvisor_remap_bus_active_o)
 	);
 
-	localparam int unsigned xvisor_remap_sel_start_idx = $clog2(smc_pkg::SMC_XVISOR_REMAP_0__REG_MAP_SIZE);
+	localparam int unsigned xvisor_remap_sel_start_idx = $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_SIZE);
 	localparam int unsigned xvisor_remap_sel_end_idx = mmode_remap_sel_start_idx + smc_pkg::XVISOR_REMAP_SEL_W - 1;
 
 	smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0] axil_xR_ctrl_reqs;
@@ -780,7 +780,7 @@ module smc_internal_regs
 		.bus_active_o	 (alias_remap_bus_active_o)
 	);
 
-	localparam int unsigned alias_remap_sel_start_idx = $clog2(smc_pkg::SMC_ALIAS_REMAP_0__REG_MAP_SIZE);
+	localparam int unsigned alias_remap_sel_start_idx = $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_SIZE);
 	localparam int unsigned alias_remap_sel_end_idx = alias_remap_sel_start_idx + smc_pkg::ALIAS_REMAP_SEL_W - 1;
 
 	smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0] axil_aR_ctrl_reqs;
@@ -852,7 +852,7 @@ module smc_internal_regs
 	/////////////////////
 
 	smc_dfd_wrap # (
-		.BASE_ADDR({32'd0, smc_pkg::SMC_CLA_REG_MAP_BASE_ADDR})
+		.BASE_ADDR({32'd0, smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR})
 	) u_smc_dfd_wrap(
 		.clk_smc_i									(clk_smc_i),
 		.clk_ref_i									(clk_ref_i),

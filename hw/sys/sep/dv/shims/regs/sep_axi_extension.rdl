@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// (c) 2026 Tenstorrent USA Inc
 
 `ifndef SEP_AXI_EXTENSION_RDL_DEFINED
 `define SEP_AXI_EXTENSION_RDL_DEFINED
