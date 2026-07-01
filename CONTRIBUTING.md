@@ -35,7 +35,7 @@ Pull requests are reviewed on a weekly basis.
 
 Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
 
-For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`):
+For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
 
 ```systemverilog
 // SPDX-License-Identifier: Apache-2.0
@@ -47,6 +47,20 @@ For Python, shell, Makefile, and YAML files:
 ```makefile
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
+
+```c
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+```
+
+For AsciiDoc (`.adoc`), use line comments:
+
+```asciidoc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 ```
 
 For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
