@@ -43,3 +43,9 @@ This project incorporates code from the following third-party sources:
    Licensed under the ISC License
    Vendored under vendor/tenstorrent/tt-picorv32/upstream/
 
+5. AXI-over-UCIe (AoU) Bridge RTL
+   Copyright (c) BOS Semiconductors and Tenstorrent USA, Inc.
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/tenstorrent/aou-rtl
+   Vendored under vendor/tenstorrent/aou-rtl/upstream/
+
