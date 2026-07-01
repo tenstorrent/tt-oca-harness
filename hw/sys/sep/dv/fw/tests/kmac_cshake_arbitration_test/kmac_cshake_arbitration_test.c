@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
  * TC_KMAC_016 — KMAC cSHAKE Arbitration / Back-to-Back Test (P1, GitHub #1302)

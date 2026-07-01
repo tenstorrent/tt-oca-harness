@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 #include <stdio.h>  // This should be the picolibc stdio.h in newlib/libc/tinystdio/stdio.h
 #include <stdlib.h>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Fast Find First Set - parallel logic
 // This can really help if the lsb/msb bits (depending on if you are searching L2H/H2L)

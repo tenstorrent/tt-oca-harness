@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Trace Encoder: Generates trace messages as specified by N-trace protocol
 module dfd_te_encoder import dfd_te_pkg::*; import dfd_tr_csr_pkg::*; import dfd_ntr_csr_pkg::*; #(

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Local manifest for vendored OpenTitan RTL used by OCAH. Upstream-generated
 # RTL/packages stay under upstream/ and are owned by this package manifest; TT

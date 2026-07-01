@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 module dfd_rv_ccg #(parameter WIDTH=1,
 		parameter LATE_EN=0,  // self-gate = 0, no self-gate = 1

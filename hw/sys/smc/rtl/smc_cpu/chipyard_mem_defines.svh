@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SRAM interface struct defines
 `define CHIPYARD_MEM_REQ_T(TYPE_NAME, ADDR_WIDTH, DATA_WIDTH, MASK_WIDTH) \

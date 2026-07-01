@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Trace Encoder - MSEO/MDO : Generates the MSEO logic bits and appends to the MDO bits to form the final packet
 

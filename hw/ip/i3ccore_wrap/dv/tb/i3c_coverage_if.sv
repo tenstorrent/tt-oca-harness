@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef _I3C_COVERAGE_IF_SV_
 `define _I3C_COVERAGE_IF_SV_

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 #ifndef __SMC_DMA_HEADER_DEFINED__
 #define __SMC_DMA_HEADER_DEFINED__

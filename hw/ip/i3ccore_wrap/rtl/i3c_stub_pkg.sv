@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Minimal package contracts used while i3c-core is stubbed out of the open build.
 // Keep these typedef widths aligned with the wrapper stub port comments.

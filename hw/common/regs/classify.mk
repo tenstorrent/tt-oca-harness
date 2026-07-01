@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Decides what each block gets generated: the hand-maintained policy lists (which
 # blocks skip SV RTL, omit bitfields, etc.), whether a block is a composite top,

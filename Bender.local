@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Force the opensrc packages to resolve to the locally vendored path packages
 # (vendor/pulp-platform/<pkg>) for every consumer in the graph, overriding the

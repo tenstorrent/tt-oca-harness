@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Imported from PeakRDL (https://peakrdl-regblock.readthedocs.io/en/latest/cpuif/axi4lite.html#cpuif-axi4lite)
 

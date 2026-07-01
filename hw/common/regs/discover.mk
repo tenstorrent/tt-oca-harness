@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Finds the register blocks and works out each one's input/output paths: the
 # source RDL, gen/build dirs, source HJSON, and include search dirs. classify.mk

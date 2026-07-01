@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Turns the per-block facts from discover.mk/classify.mk into output file paths
 # and the aggregate lists of files each regen target builds.
