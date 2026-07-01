@@ -1,6 +1,6 @@
-# Contributing to tt-oca
+# Contributing to tt-oca-harness
 
-Thank you for your interest in contributing to tt-oca (Open Chiplet Atlas Harness). This document describes how to get set up, the conventions we follow, and the process for submitting changes.
+Thank you for your interest in contributing to [tt-oca-harness](https://github.com/tenstorrent/tt-oca-harness) (Open Chiplet Atlas Harness, OCAH). This document describes how to get set up, the conventions we follow, and the process for submitting changes.
 
 By contributing to this project, you agree that your contributions will be licensed under the [Apache License, Version 2.0](LICENSE).
 
@@ -81,7 +81,7 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 
 ## Reporting Issues
 
-For functional bugs and feature requests, open a GitHub issue with enough detail to reproduce or understand the request.
+For functional bugs and feature requests, open a [GitHub issue](https://github.com/tenstorrent/tt-oca-harness/issues) with enough detail to reproduce or understand the request.
 
 For security vulnerabilities, do not open a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 
