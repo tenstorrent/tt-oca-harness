@@ -1,79 +1,105 @@
 # tt-oca
 
-This is a **_interim private_** TT repository while we populate it with the OCA design and refine
-it. This repository will be converted to open source in Q3 2026 when it is ready.
+Open Chiplet Atlas Harness (OCAH) — the open hardware tree for the OCA design:
+RTL, register descriptions, generated collateral, and documentation.
 
----
+> [!WARNING]
+> **Early stage.** This repository is under active development. Structure, interfaces,
+> and generated collateral may change without notice, and much of the content here is
+> provisional. As the documentation matures, most of the material collected in this
+> README will migrate into the user guide and other doc products under [`doc/`](doc/);
+> for now this file is the landing place for the essentials.
+
+## Repository layout
+
+| Path | Contents |
+|------|----------|
+| `hw/common/` | Shared RTL: primitives (`och_prim`, `och_prim_generic`), TL-UL, AXI network/monitor elements, register-flow makefiles. |
+| `hw/ip/` | Reusable IP blocks, grouped by family where applicable (e.g. `jtag/`, `uart/`, `cross_trigger/`). |
+| `hw/sys/` | Subsystems (`smc`, `sep`, `smu`, `dtp`) that integrate the IP blocks. |
+| `hw/top/` | Top-level integration. |
+| `doc/` | Documentation products (TRM, Integrator Guide, …); see [Documentation](#documentation). |
+| `vendor/` | Third-party IP vendored via Bender; see [Third-party imports](#third-party-vendor-package-imports). |
+| `tools/`, `scripts/` | Register-flow, documentation, and container helpers. |
+
+## Documentation
+
+Documentation is authored in AsciiDoc and built with Antora (HTML site) and
+asciidoctor-pdf (PDF). The toolchain ships as container images, so no local Node or
+Ruby install is required — the recommended entry point is the container wrapper:
+
+```bash
+scripts/docker-run.sh doc-html trm    # HTML site → doc/trm/_build/html_antora/
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/trm/dist/ocah-trm.pdf
+```
+
+Use `integrator` in place of `trm` to build the Integrator Guide. The images
+(`docker.io/antora/antora`, `docker.io/asciidoctor/docker-asciidoctor`) are pulled once
+and cached; override them with `OCAH_DOC_HTML_IMAGE` / `OCAH_DOC_PDF_IMAGE` to point at
+an internal registry mirror.
+
+If you already have `npx` and `asciidoctor-pdf` on your `PATH` (e.g. inside the project
+container), you can invoke the make targets directly instead:
+
+```bash
+make ocah-doc-trm-html
+make ocah-doc-trm-pdf
+```
+
+## Register generation
+
+Register collateral is generated from per-block SystemRDL under `hw/**/<block>/regs/`.
+HJSON-backed OpenTitan blocks are first exported to RDL via
+`tools/regs/reggen_wrapper.py` using the vendored OpenTitan reggen modules. Run
+`make regen-regs` to regenerate; committed generated output always corresponds to the
+RDL sources. The flow lives in [`hw/common/regs/`](hw/common/regs/) (discovery,
+classification, and rules); a dedicated user-guide page will follow.
+
+## DV firmware
+
+Per-subsystem DV firmware (runtime **drivers**, not tests) is built via
+`make dv-fw [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk`
+under `hw/{ip,sys}/<name>/dv/fw/` and builds as an independent recursive sub-make so the
+target CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state.
+The RISC-V toolchain is provided by the project container and selected via
+`RISCV_TOOLCHAIN`. The build flow lives in [`hw/common/dv/fw/`](hw/common/dv/fw/).
 
 ## Third-party (vendor) package imports
 
-External IP and third-party source files are materialized in this repository via Bender's
-`vendor_package` feature. If a vendored tree is also consumed as a Bender package, the root
-`dependencies:` entry must point at the local package root under `vendor/`; do not add direct
-third-party `git:` dependencies.
+External IP is materialized under `vendor/` via Bender's `vendor_package` feature. If a
+vendored tree is also consumed as a Bender package, the root `dependencies:` entry points
+at the local package root under `vendor/`; direct third-party `git:` dependencies are not
+used.
 
 ### Ground rules
 
-- **Import only what OCAH uses.** Every `vendor_package` entry must carry a narrowly scoped
-  `mapping:` list and should use `exclude_from_upstream:` to document intentionally omitted
-  upstream directories or files. Whole-repository imports are prohibited.
-- **Commit vendored sources.** The materialized files under `vendor/` are committed to this
-  repository so that every revision is fully self-contained and reproducible without network
-  access.
-- **Pin every upstream entry.** The `rev:` field must be a full commit hash or an immutable tag
-  (e.g. a release tag). Mutable refs such as branch names are prohibited.
-- **Resolve vendored packages locally.** Packages with hand-authored manifests under `vendor/`
-  should be pinned with `Bender.local` overrides so transitive users resolve to the committed
-  local copy.
+- **Import only what OCAH uses.** Every `vendor_package` entry carries a narrowly scoped
+  include/`mapping:` list and uses `exclude_from_upstream:` to document intentionally
+  omitted upstream paths. Whole-repository imports are prohibited.
+- **Commit vendored sources.** Materialized files under `vendor/` are committed so every
+  revision is self-contained and reproducible without network access.
+- **Pin every upstream entry.** `rev:` must be a full commit hash or an immutable tag;
+  mutable refs such as branch names are prohibited.
+- **Resolve vendored packages locally.** Packages with hand-authored manifests under
+  `vendor/` are pinned via `Bender.local` so transitive users resolve the committed copy.
 
 ### Filesystem layout
 
-Vendored packages preserve the upstream GitHub organization and repository casing under
-`vendor/<GitHubOrg>/<GitHubRepo>/`. Bender materializes the selected upstream files into
-`upstream/`, then applies local patches there. Patch files live in the sibling `patches/`
-directory so they are not removed when `bender vendor init` refreshes the target directory.
-
-Example:
+Vendored packages preserve upstream GitHub org/repo casing under
+`vendor/<GitHubOrg>/<GitHubRepo>/`. Bender materializes selected upstream files into
+`upstream/` (wiped and refreshed by `bender vendor init`), then applies local patches.
+Patch files live in the sibling `patches/` directory so they survive a refresh:
 
 ```
-vendor/
-  lowRISC/
-    opentitan/
-      patches/
-        0001-some_change.patch
-      upstream/             ← target_dir (wiped and refreshed by bender vendor init)
-        hw/ip/otbn/data/    ← selected register source files
-        hw/ip/otbn/rtl/     ← selected OTBN RTL source files
-        util/reggen/        ← selected OpenTitan reggen modules only
-        util/design/mubi/   ← selected OpenTitan mubi helper used by reggen
+vendor/lowRISC/opentitan/
+  patches/
+    0001-some_change.patch     ← NNNN-<snake_case>.patch, applied in filename order
+  upstream/                    ← target_dir (refreshed by bender vendor init)
+    hw/ip/otbn/{data,rtl}/      ← selected register + RTL sources
+    util/reggen/                ← selected reggen modules only
 ```
 
-### Patch files
-
-Local modifications to vendored sources are maintained as patch files so they survive a
-`bender vendor init` refresh.
-
-**Patch location:**
-
-```
-vendor/<GitHubOrg>/<GitHubRepo>/patches/<NUMBER>-<PATCH_NAME>.patch
-```
-
-- `<NUMBER>` is a **4-digit zero-padded** integer (`0001`, `0002`, …). Bender applies patches
-  in lexicographic filename order, so the number prefix controls application order.
-- `<PATCH_NAME>` is a short, snake_case description of the logical change set (a single patch
-  file may touch multiple source files).
-
-Example:
-
-```
-vendor/lowRISC/opentitan/patches/0001-some_change.patch
-vendor/lowRISC/opentitan/patches/0002-some_later_change.patch
-```
-
-### Bender.yml `vendor_package` conventions
-
-Each entry must follow this template:
+### Bender.yml `vendor_package` template
 
 ```yaml
 vendor_package:
@@ -84,102 +110,19 @@ vendor_package:
       - "<unused/path/relative/to/upstream/root>"
     mapping:
       - { from: "<upstream/file/or/dir>", to: "<local/file/or/dir>", patch_dir: "<local/patch/scope>" }
-      # add only files and directories actually consumed by OCAH
-    patch_dir: "vendor/<GitHubOrg>/<GitHubRepo>/patches/"
+    patch_dir: "vendor/<GitHubOrg>/<GitHubRepo>/patches"
 ```
 
-### Authoring a new patch
+### Authoring a patch
 
-1. Materialise (or refresh) the vendor tree:
-   ```
-   bender vendor init
-   ```
-2. Edit the files under `vendor/<GitHubOrg>/<GitHubRepo>/upstream/` as needed.
-3. Stage the changes:
-   ```
-   git add vendor/<GitHubOrg>/<GitHubRepo>/
-   ```
-4. Generate a patch (Bender will prompt for a commit message):
-   ```
-   bender vendor patch
-   ```
-   Bender writes the patch into `patch_dir` with an auto-generated name.
-5. Rename the patch to follow the numbering convention:
-   ```
-   mv vendor/.../patches/<auto-name>.patch vendor/.../patches/<NNNN>-<description>.patch
-   git add vendor/.../patches/
-   ```
+1. Materialize/refresh the vendor tree: `bender vendor init`
+2. Edit files under `vendor/<GitHubOrg>/<GitHubRepo>/upstream/`.
+3. Stage: `git add vendor/<GitHubOrg>/<GitHubRepo>/`
+4. Generate the patch (Bender prompts for a message): `bender vendor patch`
+5. Rename to the numbering convention:
+   `mv vendor/.../patches/<auto-name>.patch vendor/.../patches/<NNNN>-<description>.patch`
 6. Commit both the patched source and the new `.patch` file.
 
-### Refreshing / re-initialising a vendor tree
-
-```
-bender vendor init
-```
-
-This re-fetches the upstream commit, copies the files selected by `mapping:`, excludes any paths
-listed in `exclude_from_upstream:`, and re-applies all patches from `patch_dir` in lexicographic
-order.
-
----
-
-## Register Generation
-
-OCAH register collateral is generated from per-block SystemRDL files under
-`hw/ip/<block>/regs/`. HJSON-backed OpenTitan register blocks are first exported to RDL using
-`tools/regs/reggen_wrapper.py` and the directly vendored OpenTitan reggen modules under
-`vendor/lowRISC/opentitan/upstream/util/`. See [`doc/user_guide/regs.adoc`](doc/user_guide/regs.adoc)
-for the `make regen-regs` targets, generated output layout, and firmware/DV header conventions.
-
----
-
-## DV Firmware
-
-Per-subsystem DV firmware (the runtime **drivers** ported from `tt-oca-hw`, not the tests) is
-built via `make dv-fw [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk` under
-`hw/{ip,sys}/<name>/dv/fw/` and is built as an independent recursive sub-make so the three target
-CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state. The RISC-V
-toolchain (including picolibc for SEP) is provided by the project Docker image and selected via
-`RISCV_TOOLCHAIN` (empty by default; no site-local paths committed). See
-[`doc/dv-firmware.md`](doc/dv-firmware.md) for the build-flow architecture, the toolchain
-contract, the ported driver sets + provenance, and the deferred register-header reconciliation.
-
----
-
-## Example: OpenTitan Register Sources
-
-OpenTitan register descriptions are vendored as inputs for OCAH register-generation flows.
-For OTBN, the RTL source subtree, `otbn.hjson`, and the minimum OpenTitan reggen Python modules
-needed to export SystemRDL are imported. DV collateral, assembler, simulator, and unrelated
-utilities are intentionally excluded.
-
-**Bender.yml entry:**
-
-```yaml
-vendor_package:
-  - name: opentitan
-    target_dir: vendor/lowRISC/opentitan/upstream
-    upstream: { git: "git@github.com:lowRISC/opentitan.git", rev: "bbe4dbf28bbfe815dcd11d723dc3e38635b46704" }
-    exclude_from_upstream:
-      - "hw/ip/otbn/dv"
-      - "hw/ip/otbn/util"
-      - "util/regtool.py"
-    mapping:
-      - { from: "hw/ip/otbn/data/otbn.hjson", to: "hw/ip/otbn/data/otbn.hjson", patch_dir: "hw/ip/otbn/data" }
-      - { from: "hw/ip/otbn/rtl", to: "hw/ip/otbn/rtl", patch_dir: "hw/ip/otbn/rtl" }
-      - { from: "util/reggen/ip_block.py", to: "util/reggen/ip_block.py", patch_dir: "util/reggen" }
-      # Additional minimal reggen dependencies are mapped in Bender.yml.
-    patch_dir: "vendor/lowRISC/opentitan/patches"
-```
-
-**Applied patches:**
-
-| File | Description |
-|---|---|
-| `vendor/lowRISC/opentitan/patches/0001-otbn_sram_ext.patch` | Replaces `prim_ram_1p_scr` with `prim_ram_1p_scr_ext` in `otbn.sv` to expose external SRAM interfaces (`imem_sram_req_o`, `dmem_sram_req_o`, …) required by the OCAH crypto PKA integration. |
-
-**Materialise:**
-
-```
-bender vendor init
-```
+`bender vendor init` re-fetches the pinned commit, copies the selected files, excludes
+`exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
+lexicographic order.

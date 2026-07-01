@@ -6,16 +6,22 @@
 # then fills in the per-block policy (which outputs each block gets).
 
 # First-party tops: dirs holding the dir-name RDL
-# (hw/{ip,sys}/<name>/regs/<name>.rdl). System-level register sources are
-# normalized into hw/sys/<name>/regs (for example SMC and SEP); legacy per-RTL
+# (hw/{ip,sys,common/axi}/<name>/regs/<name>.rdl). System-level register sources
+# are normalized into hw/sys/<name>/regs (for example SMC and SEP); AXI network
+# and monitor elements live under hw/common/axi/<name>/regs; legacy per-RTL
 # data/registers trees are intentionally not discovered here. Role == location
-# (see doc/user_guide/regs.adoc), so discovery is a pure glob. The vendor overlay
-# glob picks up checked-in RDLs for vendored IPs (e.g. the relocated OpenTitan reg
-# blocks under vendor/<org>/<pkg>/overlay/regs/<ip>/regs/<ip>.rdl), so they behave
-# exactly like a hw/ip block.
+# (see doc/user_guide/regs.adoc), so discovery is a pure glob. IPs may also be
+# grouped one level deeper by family (hw/ip/<family>/<ip>/regs, e.g. jtag, uart,
+# cross_trigger), so both hw/ip/*/regs and hw/ip/*/*/regs are globbed. The block
+# NAME is notdir(id), so nesting changes the path only, never the block name. The
+# vendor overlay glob picks up checked-in RDLs for vendored IPs (e.g. the relocated
+# OpenTitan reg blocks under vendor/<org>/<pkg>/overlay/regs/<ip>/regs/<ip>.rdl), so
+# they behave exactly like a hw/ip block.
 ocah_reg_dirs := $(wildcard \
   $(OCAH_ROOT)/hw/ip/*/regs \
+  $(OCAH_ROOT)/hw/ip/*/*/regs \
   $(OCAH_ROOT)/hw/sys/*/regs \
+  $(OCAH_ROOT)/hw/common/axi/*/regs \
   $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs)
 ocah_reg_root_if_rdl = $(if $(wildcard $(1)/$(notdir $(patsubst %/regs,%,$(1))).rdl),$(patsubst $(OCAH_ROOT)/%,%,$(patsubst %/regs,%,$(1))))
 OCAH_RDL_REG_BLOCKS := $(sort $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_root_if_rdl,$(d))))
@@ -29,6 +35,7 @@ OCAH_REG_SIBLING_RDL_FILES := $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_sibli
 OCAH_REG_STANDALONE_RDL_FILES ?= \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/shims/regs/*.rdl) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/*.rdl) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs/*.rdl) \
   $(OCAH_REG_SIBLING_RDL_FILES)
 OCAH_EXTRA_REG_RDL_FILES ?=
 
@@ -80,13 +87,19 @@ OCAH_REG_BLOCKS ?= \
 # IP regs roots, regs/include, regs/blocks/<sub>, and the DV shim trees.
 OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/regs/include) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/regs/blocks/*) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/blocks/*) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/blocks/*) \
+  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/shims/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl) \
