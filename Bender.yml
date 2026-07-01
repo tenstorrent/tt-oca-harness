@@ -290,17 +290,17 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
-      - hw/ip/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
-      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
-      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
-      - hw/ip/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
+      - hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
       - hw/sys/sep/dv/shims/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
       # sep_addrmap_pkg.sv (och_sep_top_addrmap_pkg) is NOT listed here: the
@@ -380,8 +380,8 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/rtl/km_intf_pkg.sv
-      - hw/ip/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
-      - hw/ip/log_engine/rtl/log_engine_pkg.sv
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
+      - hw/ip/uart/log_engine/rtl/log_engine_pkg.sv
       - hw/ip/memory_interface/rtl/examples/rom/example_rom_pkg.sv
       - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
@@ -391,13 +391,13 @@ sources:
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
-      - hw/ip/uart_16550/rtl/uart_16550_pkg.sv
-      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg_pkg.sv
-      - hw/ip/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
-      - hw/ip/uart_wrap/rtl/uart_wrap_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
+      - hw/ip/uart/uart_16550/rtl/uart_16550_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg_pkg.sv
+      - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
+      - hw/ip/uart/uart_wrap/rtl/uart_wrap_pkg.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg_pkg.sv
       - hw/sys/dtp/rtl/dtp_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
@@ -735,8 +735,8 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
       - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
       - hw/common/axi/local_alias_remap/rtl/local_alias_remap.sv
-      - hw/ip/log_engine/regs/gen/sv/log_engine_reg.sv
-      - hw/ip/log_engine/rtl/log_engine.sv
+      - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
+      - hw/ip/uart/log_engine/rtl/log_engine.sv
       - hw/ip/memory_interface/rtl/memory_interface.sv
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
       - hw/common/axi/output_remap/rtl/output_remap.sv
@@ -754,16 +754,16 @@ sources:
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
-      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
-      - hw/ip/uart_16550/rtl/uart_16550.sv
-      - hw/ip/uart_16550/rtl/uart_core.sv
-      - hw/ip/uart_16550/rtl/uart_rx.sv
-      - hw/ip/uart_16550/rtl/uart_tx.sv
-      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg.sv
-      - hw/ip/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
-      - hw/ip/uart_wrap/rtl/uart_wrap.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
+      - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
+      - hw/ip/uart/uart_16550/rtl/uart_16550.sv
+      - hw/ip/uart/uart_16550/rtl/uart_core.sv
+      - hw/ip/uart/uart_16550/rtl/uart_rx.sv
+      - hw/ip/uart/uart_16550/rtl/uart_tx.sv
+      - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg.sv
+      - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
+      - hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
       - hw/ip/zeroer/rtl/zeroer.sv
       - hw/sys/dtp/rtl/dtp.sv

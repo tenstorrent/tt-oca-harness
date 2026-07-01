@@ -129,9 +129,9 @@ include::../../../ip/system_timer_octs/doc/index.adoc[]
 
 include::../../../ip/efuse/doc/index.adoc[]
 
-include::../../../ip/uart_16550/doc/index.adoc[]
+include::../../../ip/uart/uart_16550/doc/index.adoc[]
 
-include::../../../ip/log_engine/doc/index.adoc[]
+include::../../../ip/uart/log_engine/doc/index.adoc[]
 
 include::../../../ip/i2c/doc/index.adoc[]
 
