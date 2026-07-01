@@ -1077,7 +1077,7 @@ typedef struct __attribute__ ((__packed__)) {
 typedef struct __attribute__ ((__packed__)) {
     i2c__stride200_t i2c[3];
     uint8_t RESERVED_600_dff[0x800];
-    i2c_ctrl_t i2c_ctrl;
+    i2c_ctrl_t i2c_ctrl_regs;
 } i2c_wrap_t;
 
 
