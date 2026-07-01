@@ -1,4 +1,10 @@
 packages:
+  aou:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/aou-rtl
+    dependencies: []
   apb:
     revision: null
     version: null

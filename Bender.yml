@@ -24,6 +24,7 @@ package:
 # Path packages resolving against the vendored trees. Transitive pulp-platform
 # packages (common_cells/axi/...) are pinned to their vendored paths in Bender.local.
 dependencies:
+  aou: { path: "vendor/tenstorrent/aou-rtl" }
   el2: { path: "vendor/chipsalliance/Cores-VeeR-EL2" }
   idma: { path: "vendor/pulp-platform/idma" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
@@ -216,6 +217,19 @@ vendor_package:
       - "picorv32_regs.sv"
       - "picorv32_wb.sv"
     patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
+
+  # AXI-over-UCIe (AoU) bridge IP, developed by BOS Semiconductors and Tenstorrent
+  # natively in the tenstorrent org (not a fork of a third-party upstream). RTL/ is
+  # the synthesizable design (incl. its AXI4MUX_3X1/ and LIB/ subtrees); csr/ is the
+  # SystemRDL register description. DOC/, INTEG/, VERIF/, and scripts/ are excluded
+  # (docs, timing/power collateral, cocotb testbench, and lint/collateral scripts).
+  - name: aou
+    target_dir: "vendor/tenstorrent/aou-rtl/upstream"
+    upstream: { git: "https://github.com/tenstorrent/aou-rtl.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
+    include_from_upstream:
+      - "RTL"
+      - "csr"
+    patch_dir: "vendor/tenstorrent/aou-rtl/patches"
 
 # Auto-generated open-tree RTL source wiring for Plan C.
 # Keep this source list limited to open-tree roots and exclude stale 1-core, DV/FV,
