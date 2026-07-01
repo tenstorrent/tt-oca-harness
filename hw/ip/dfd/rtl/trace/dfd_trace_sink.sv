@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
  // Trace Sink: Implements the Trace SRAM for the two trace sink modes
 module dfd_trace_sink

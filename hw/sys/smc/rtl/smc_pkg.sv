@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // System Management Controller Package
@@ -9,10 +9,6 @@
 `ifndef SMC_PACKAGE_DEFINED
 `define SMC_PACKAGE_DEFINED
 package smc_pkg;
-
-	// Include register header file
-	`include "smc_top_reg.svh"
-	`include "smc_top_reg_structs.svh"
 
 	// Peripheral parameters
 	localparam int unsigned NUM_BONDED_GPIO = 64;
@@ -278,10 +274,10 @@ package smc_pkg;
 	localparam smc_axi_user_t SEP_SRC_ID = smc_axi_user_t'('hF);
 
 	// Address Remap Parameters
-    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(MMODE_REGION_MEM_BASE_ADDR - SMC_TOP_REG_MAP_BASE_ADDR);
-    localparam smc_axi_addr_t MMODE_REMAP_SIZE     = smc_axi_addr_t'(MMODE_REGION_MEM_SIZE);
-    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(XVISOR_REGION_MEM_BASE_ADDR - SMC_TOP_REG_MAP_BASE_ADDR);
-    localparam smc_axi_addr_t XVISOR_REMAP_SIZE    = smc_axi_addr_t'(XVISOR_REGION_MEM_SIZE);
+    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+    localparam smc_axi_addr_t MMODE_REMAP_SIZE     = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_SIZE);
+    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+    localparam smc_axi_addr_t XVISOR_REMAP_SIZE    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_SIZE);
 
 	// Filter Parameters
 	localparam int unsigned NumOutboundFilters = 16;

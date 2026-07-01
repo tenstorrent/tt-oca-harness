@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 module dfd_cross_connect #(
 		parameter ACCUMULATOR_DATA_WIDTH_IN_BYTES = 64,

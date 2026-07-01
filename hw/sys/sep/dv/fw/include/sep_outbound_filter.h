@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
  * SEP Outbound Filter Initialization
@@ -32,7 +32,7 @@
 // Outbound Filter Register Definitions
 //==============================================================================
 
-// Outbound filter 0 base address (from och_sep_top_reg.svh)
+// Outbound filter 0 base address from the normalized SEP register header
 #define OUTBOUND_FILTER_BASE OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
 
 // Register offsets (each filter occupies 0x100 bytes)

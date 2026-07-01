@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // SMC CPU Package
@@ -23,18 +23,19 @@ package smc_4core_cpu_pkg;
 	localparam bit [8:0] NUM_EXT_INTERRUPTS = 256;
 
 	// in the four core config, the CPU cores are out of reset by default
-	localparam smc_pkg::cpu_ctrl_reset_ctrl_reg_t DEFAULT_RESET_SETTINGS = '{
-		core0_reset_n_n0_scan: 1'b1,
-		core1_reset_n_n0_scan: 1'b1,
-		core2_reset_n_n0_scan: 1'b1,
-		core3_reset_n_n0_scan: 1'b1,
-		core0_reset_pulse_start_n0_scan: 1'b0,
-		core1_reset_pulse_start_n0_scan: 1'b0,
-		core2_reset_pulse_start_n0_scan: 1'b0,
-		core3_reset_pulse_start_n0_scan: 1'b0,
+	localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = '{
+		_reserved_63_25: 39'd0,
+		debug_reset_n_n0_scan: 1'b0,
+		_reserved_23_9: 15'd0,
 		uncore_reset_n_n0_scan: 1'b1,
-		rsvd_0: 15'd0,
-		debug_reset_n_n0_scan: 1'b0
+		core3_reset_pulse_start_n0_scan: 1'b0,
+		core2_reset_pulse_start_n0_scan: 1'b0,
+		core1_reset_pulse_start_n0_scan: 1'b0,
+		core0_reset_pulse_start_n0_scan: 1'b0,
+		core3_reset_n_n0_scan: 1'b1,
+		core2_reset_n_n0_scan: 1'b1,
+		core1_reset_n_n0_scan: 1'b1,
+		core0_reset_n_n0_scan: 1'b1
 	};
 
 endpackage

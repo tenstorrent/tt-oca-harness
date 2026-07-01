@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef OCA_I3C_WRAP_RDL_DEFINED
 `define OCA_I3C_WRAP_RDL_DEFINED

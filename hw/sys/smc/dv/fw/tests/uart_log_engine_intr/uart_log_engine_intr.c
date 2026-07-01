@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 // smc_uart_log_engine_intr_test
 //

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Copyright 2024 TT
 
@@ -114,8 +114,8 @@ module hmac_wrapper
 
     // OpenTitan HMAC has fixed BlockAw=13 (8KB internal address space)
     localparam logic [31:0] HMAC_ADDR_MASK = 32'h0000_1FFF;  // 13 bits for AW=13
-    // Extract lower 13 bits of system base address (from och_sep_top_reg.svh via sep_pkg)
-    localparam logic [31:0] HMAC_BASE_LOWER = HMAC_REG_MAP_BASE_ADDR & HMAC_ADDR_MASK;
+    // Extract lower 13 bits of the normalized SEP addrmap base address.
+    localparam logic [31:0] HMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR & HMAC_ADDR_MASK;
 
     always_comb begin
         hmac_axi32_req_masked = hmac_axi32_req;

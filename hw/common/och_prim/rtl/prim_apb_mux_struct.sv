@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //--------------------------------------------------
 // APB Multiplexer (with Structured Interfaces)
@@ -11,9 +11,9 @@ module prim_apb_mux_struct #(
     parameter type req_t  = logic,
     parameter type resp_t = logic,
 
-    localparam int unsigned ADDR_WIDTH = $bits(req_t'(0).paddr),
-    localparam int unsigned DATA_WIDTH = $bits(req_t'(0).pwdata),
-    localparam int unsigned STRB_WIDTH = $bits(req_t'(0).pstrb),
+    parameter int unsigned ADDR_WIDTH = 32,
+    parameter int unsigned DATA_WIDTH = 32,
+    parameter int unsigned STRB_WIDTH = DATA_WIDTH / 8,
     localparam type addr_t = logic [ADDR_WIDTH-1:0],
     localparam type data_t = logic [DATA_WIDTH-1:0],
     localparam type strb_t = logic [STRB_WIDTH-1:0]
@@ -66,10 +66,10 @@ module prim_apb_mux_struct #(
 
         logic             [NUM_MASTERS-1:0] arb_valids;
         logic             [NUM_MASTERS-1:0] arb_readies;
-        apb_req_payload_t [NUM_MASTERS-1:0] arb_data_in;
+        apb_req_t arb_data_in [NUM_MASTERS-1:0];
 
         logic             arb_valid;
-        apb_req_payload_t arb_data_out;
+        apb_req_t arb_data_out;
 
 
         /////////////
@@ -93,7 +93,7 @@ module prim_apb_mux_struct #(
 
         // TODO: replace with prim_arbiter_tree
         stream_arbiter #(
-            .DATA_T      (apb_req_payload_t),
+            .DATA_T      (apb_req_t),
             .N_INP       (NUM_MASTERS)
         ) stream_arbiter (
             .clk_i,

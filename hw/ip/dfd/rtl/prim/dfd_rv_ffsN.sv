@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Find's first N Set, In parallel can pulls out data, gets N one-hot vectors, and also performs encode of those N set bits.
 module dfd_rv_ffsN#(parameter DIR_L2H    = 1,              //Direction of Priority

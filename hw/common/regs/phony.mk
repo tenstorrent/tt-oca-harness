@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # The user-facing `make regen-regs*` targets. The ## help and .PHONY lines are
 # kept literal (the make help generator parses them from $(MAKEFILE_LIST));
@@ -26,7 +26,12 @@ ocah-regen-regs-sv: $(OCAH_REGEN_REG_SV)
 .PHONY: ocah-regen-regs-h
 ocah-regen-regs-h: $(OCAH_REGEN_REG_H)
 
-## Regenerate SystemVerilog address headers/packages for OCAH register blocks.
+## Regenerate SystemVerilog address packages for OCAH register blocks.
+## @param TARGET=smc Optional register block basename to regenerate
+.PHONY: ocah-regen-regs-addrpkg
+ocah-regen-regs-addrpkg: $(OCAH_REGEN_REG_ADDRPKG)
+
+## Compatibility alias for the old address-header target name.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-svh
 ocah-regen-regs-svh: $(OCAH_REGEN_REG_SVH)
@@ -70,6 +75,7 @@ OCAH_PHONY += \
   ocah-regen-regs \
   ocah-regen-regs-sv \
   ocah-regen-regs-h \
+  ocah-regen-regs-addrpkg \
   ocah-regen-regs-svh \
   ocah-regen-regs-py \
   ocah-regen-regs-adoc \

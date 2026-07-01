@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Copyright 2025 TT
 
@@ -120,8 +120,8 @@ module kmac_wrapper
 
     // OpenTitan KMAC has fixed BlockAw=12 (4KB internal address space)
     localparam logic [31:0] KMAC_ADDR_MASK = 32'h0000_0FFF;  // 12 bits for AW=12
-    // Extract lower 12 bits of system base address (from och_sep_top_reg.svh via sep_pkg)
-    localparam logic [31:0] KMAC_BASE_LOWER = KMAC_REG_MAP_BASE_ADDR & KMAC_ADDR_MASK;
+    // Extract lower 12 bits of the normalized SEP addrmap base address.
+    localparam logic [31:0] KMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR & KMAC_ADDR_MASK;
 
     always_comb begin
         kmac_axi32_req_masked = kmac_axi32_req;

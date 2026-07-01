@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // SEP System IO
@@ -106,8 +106,8 @@ module sep_io
 
     // Address decode: SPI or error slave
     always_comb begin
-        if (axil_req.aw.addr >= sep_pkg::SPI_CONTROLLER_REG_MAP_BASE_ADDR &&
-            axil_req.aw.addr < sep_pkg::SPI_CONTROLLER_REG_MAP_BASE_ADDR + sep_pkg::SPI_CONTROLLER_REG_MAP_SIZE) begin
+        if (axil_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
+            axil_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_SIZE) begin
             axil_aw_select = 1'b0;  // SPI
         end else begin
             axil_aw_select = 1'b1;  // Error slave
@@ -115,8 +115,8 @@ module sep_io
     end
 
     always_comb begin
-        if (axil_req.ar.addr >= sep_pkg::SPI_CONTROLLER_REG_MAP_BASE_ADDR &&
-            axil_req.ar.addr < sep_pkg::SPI_CONTROLLER_REG_MAP_BASE_ADDR + sep_pkg::SPI_CONTROLLER_REG_MAP_SIZE) begin
+        if (axil_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
+            axil_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_SIZE) begin
             axil_ar_select = 1'b0;  // SPI
         end else begin
             axil_ar_select = 1'b1;  // Error slave

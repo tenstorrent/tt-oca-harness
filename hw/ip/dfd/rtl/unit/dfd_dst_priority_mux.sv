@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 module dfd_dst_priority_mux #(parameter WIDTH = 8, parameter LEVELS = 4) (
   input logic [WIDTH-1:0] inputs [0:LEVELS-1], // Input signals

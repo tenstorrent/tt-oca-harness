@@ -11,14 +11,14 @@
 //
 // Prerequisites:
 //   - Register files must be generated first: cd ../rtl && make build
-//   - Register files are generated from SystemRDL in ../data/registers/rdl/
+//   - Register files are generated from SystemRDL in ../regs/
 //
 // Note: All paths are relative to the syn/ directory
 //------------------------------------------------------------------------------
 // Register package and register block (must come first)
 // These are auto-generated from SystemRDL via generate_register_files.sh
-../data/registers/rtl/entropy_source_reg_pkg.sv
-../data/registers/rtl/entropy_source_reg.sv
+../regs/gen/sv/entropy_source_reg_pkg.sv
+../regs/gen/sv/entropy_source_reg.sv
 
 // Component package
 ../rtl/entropy_source_pkg.sv

@@ -17,7 +17,7 @@
 # are not vendored. CRUCIALLY, the opentitan prim cells (prim_subreg / prim_subreg_arb /
 # prim_subreg_ext / prim_subreg_shadow / prim_subreg_pkg / prim_mubi_pkg) the TT fork bundled under
 # vendor/lowrisc_opentitan are NOT vendored or listed here: they were functionally identical
-# duplicates of OCA's own opentitan prims (vendor/opentitan/upstream/hw/ip/prim + hw/common/
+# duplicates of OCA's own opentitan prims (vendor/lowRISC/opentitan/upstream/hw/ip/prim + hw/common/
 # ot_prim_modifications), which are already compiled by the root manifest and resolved by module
 # name at elaboration. Dropping them also drops the fork's prim_assert collision-avoidance includes
 # (OPENSOURCE_REG_INTF_ASSERT) and the unused reggen/regtool/topgen util tree.
@@ -52,8 +52,8 @@ sources:
     # compiles after idma. The prim_subreg* *modules* still resolve from OCA's root at elaboration,
     # so only the packages are listed here. (The TT fork bundled verbatim copies of these prims; we
     # point at OCA's instead, per the de-fork goal of not duplicating prim cells.)
-    - ../../../vendor/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
-    - ../../../vendor/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
+    - ../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
+    - ../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
     - upstream/src/reg_intf.sv
     - upstream/src/reg_demux.sv
     - upstream/src/reg_mux.sv

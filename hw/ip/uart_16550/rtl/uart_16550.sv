@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // UART 16550
@@ -13,8 +13,12 @@
 // Description: UART top level wrapper file
 
 
+
 module uart_16550
     import uart_16550_pkg::*;
+    import uart_16550_dl_addrmap_pkg::*;
+    import uart_16550_main_addrmap_pkg::*;
+    import uart_16550_main_wo_addrmap_pkg::*;
 #(
     // TX and RX FIFO depths
     parameter int unsigned TX_FIFO_DEPTH = 16,
@@ -55,11 +59,6 @@ module uart_16550
 );
 
     `include "prim_assert.sv"
-
-    // Register addresses and bitmasks
-    `include "uart_16550_dl_reg.svh"
-    `include "uart_16550_main_reg.svh"
-    `include "uart_16550_main_wo_reg.svh"
 
 
     /////////////////////////
@@ -149,9 +148,9 @@ module uart_16550
 
     always_comb begin
         if (divisor_latch_reg_map_access &&
-            axil_mst_req.aw.addr inside {DLL_REG_OFFSET, DLM_REG_OFFSET}) begin
+            axil_mst_req.aw.addr inside {UART_16550_DL_DLL_BASE_ADDR, UART_16550_DL_DLM_BASE_ADDR}) begin
             axil_aw_select = DL_REG_MAP;
-        end else if (axil_mst_req.aw.addr inside {THR_REG_OFFSET, FCR_REG_OFFSET}) begin
+        end else if (axil_mst_req.aw.addr inside {UART_16550_MAIN_WO_THR_BASE_ADDR, UART_16550_MAIN_WO_FCR_BASE_ADDR}) begin
             axil_aw_select = MAIN_WO_REG_MAP;
         end else begin
             axil_aw_select = MAIN_REG_MAP;
@@ -160,7 +159,7 @@ module uart_16550
 
     always_comb begin
         if (divisor_latch_reg_map_access &&
-            axil_mst_req.ar.addr inside {DLL_REG_OFFSET, DLM_REG_OFFSET}) begin
+            axil_mst_req.ar.addr inside {UART_16550_DL_DLL_BASE_ADDR, UART_16550_DL_DLM_BASE_ADDR}) begin
             axil_ar_select = DL_REG_MAP;
         end else begin
             axil_ar_select = MAIN_REG_MAP;

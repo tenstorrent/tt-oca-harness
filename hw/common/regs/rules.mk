@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # The actual build rules: peakrdl command lines and the make rules that turn each
 # block's RDL into SV/C/Python/docs, instantiated per block via foreach/eval.
@@ -11,7 +11,7 @@
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
 ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
-ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(OCAH_REG_CPU_IF)" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
+ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
 # produces a compact summary table + per-register field tables (table captions,
 # no per-register headings). This replaces the old peakrdl-markdown -> pandoc
@@ -34,8 +34,8 @@ $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c --base-name "$(shell echo $(call ocah_reg_name,$(1))_addr | tr a-z A-Z)" -o "$(call ocah_reg_raw_c_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log"'
 
 $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
-	@mkdir -p "$(call ocah_reg_gen,$(1))/svh" "$(call ocah_reg_build,$(1))"
-	@echo "Regenerating SystemVerilog address package include for $(1)"
+	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating SystemVerilog address package for $(1)"
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
 
 $(call ocah_reg_py_output,$(1)): $(call ocah_reg_raw_c_output,$(1)) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py
@@ -116,7 +116,7 @@ $(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) |
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_c_output,$(1)),$(call ocah_reg_c_bitfields,$(1)),$(call ocah_reg_build,$(1))/c_header.log)'
 endef
 
-# Address exporters (raw-C, svpkg, py) and the .generated stamp for every block.
+# Address exporters (raw-C, SV package, py) and the .generated stamp for every block.
 $(foreach block,$(OCAH_REG_BLOCKS),$(eval $(call ocah_reg_block_rules,$(block))))
 # Composite tops: per-sub-block sv/c/adoc/html pattern rules.
 $(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_composite_rules,$(block))))

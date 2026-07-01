@@ -4,10 +4,6 @@
 // AXI package (must come first, before typedef macros)
 $OCH_ROOT/vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
 
-// Register package and RTL (must come first)
-$OCH_ROOT/hw/ip/cross_trigger_matrix/data/registers/rtl/cross_trigger_matrix_reg_pkg.sv
-$OCH_ROOT/hw/ip/cross_trigger_matrix/data/registers/rtl/cross_trigger_matrix_reg.sv
-
 // Package
 $OCH_ROOT/hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
 

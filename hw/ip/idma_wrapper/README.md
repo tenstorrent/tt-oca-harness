@@ -17,7 +17,7 @@ The RTL in `rtl/` adapts the vendored iDMA blocks to the SMC data accelerator:
 
 The RDL under `vendor/pulp-platform/idma/overlay/rdl/` feeds the SMC top-level
 address map, software headers, and documentation (generated outputs land under
-`data/registers/`). The RTL CSR implementation compiled by the wrapper comes
+`regs/`). The RTL CSR implementation compiled by the wrapper comes
 from the generated iDMA bundle in
 `vendor/pulp-platform/idma/overlay/target/rtl/idma_generated.sv`.
 

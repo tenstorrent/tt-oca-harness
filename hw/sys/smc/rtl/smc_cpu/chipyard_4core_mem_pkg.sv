@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef CHIPYARD_4CORE_MEMORY_INTERFACE
 `define CHIPYARD_4CORE_MEMORY_INTERFACE

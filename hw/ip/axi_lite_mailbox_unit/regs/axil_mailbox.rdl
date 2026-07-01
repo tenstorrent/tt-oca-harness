@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef AXIL_MAILBOX_RDL
 `define AXIL_MAILBOX_RDL

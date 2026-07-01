@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // SEP Cryptographic Subsystem
@@ -1067,7 +1067,7 @@ module sep_crypto #(
         .SRAM_SIZE_BYTES      (16384),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-        .OTP_EFUSE_REMAP_BASE (sep_pkg::SEP_EFUSE_MAP_REG_MAP_BASE_ADDR)
+        .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
     ) u_key_manager (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.

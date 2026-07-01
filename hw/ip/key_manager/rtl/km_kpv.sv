@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Copyright 2026 Tenstorrent Inc.
 
 `default_nettype none
-
 
 /**
  * @file km_kpv.sv
@@ -31,7 +30,8 @@
  * @param axil_resp_t         KM-side AXI-Lite response type.
  */
 module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
-    import km_kpv_reg_pkg::*; #(
+    import km_kpv_reg_pkg::*;
+    import km_kpv_addrmap_pkg::*; #(
     parameter type axil_req_t  = km_axil_req_t,
     parameter type axil_resp_t = km_axil_resp_t
 ) (
@@ -46,8 +46,6 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     // Wipe: pulse high for one cycle to zero entire KPV next cycle
     input  wire logic        wipe_pulse_i
 );
-
-    `include "km_kpv_reg.svh"
 
     /** @brief Internal register address width (12 bits = 4 KB per port). */
     localparam int unsigned ADDR_W = 12;
@@ -327,10 +325,10 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     assign km_addr_accept =
         km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
     assign km_is_key =
-        (km_addr_accept < 12'(CTRL_0__REG_OFFSET));
+        (km_addr_accept < 12'(KM_KPV_CTRL_BASE_ADDR(0)));
     assign km_is_ctrl =
-        (km_addr_accept >= 12'(CTRL_0__REG_OFFSET)) &&
-        (km_addr_accept <= 12'(CTRL_31__REG_OFFSET));
+        (km_addr_accept >= 12'(KM_KPV_CTRL_BASE_ADDR(0))) &&
+        (km_addr_accept <= 12'(KM_KPV_CTRL_BASE_ADDR(31)));
     assign km_slot =
         km_is_key ? km_addr_accept[10:6] : km_addr_accept[9:2];
 

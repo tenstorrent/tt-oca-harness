@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Decides what each block gets generated: the hand-maintained policy lists (which
 # blocks skip SV RTL, omit bitfields, etc.), whether a block is a composite top,
@@ -24,7 +24,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   csrng edn secure_dma spi_controller \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
-  el2_pic aon_timer efuse_mmr dfd smc_cla
+  el2_pic aon_timer dfd smc_cla
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)

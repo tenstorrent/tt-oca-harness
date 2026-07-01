@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef CHIP_CONFIG_REG_RDL
 `define CHIP_CONFIG_REG_RDL

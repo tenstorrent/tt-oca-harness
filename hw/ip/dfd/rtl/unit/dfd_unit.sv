@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 /*
  This block contains the encaoders for both NTrace and DST (Debug Signal Trace) alongisde a TNIF.

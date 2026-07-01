@@ -1,15 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Finds the register blocks and works out each one's input/output paths: the
 # source RDL, gen/build dirs, source HJSON, and include search dirs. classify.mk
 # then fills in the per-block policy (which outputs each block gets).
 
-# First-party tops: dirs holding the dir-name RDL (hw/{ip,sys}/<name>/regs/<name>.rdl).
-# Role == location (see doc/user_guide/regs.adoc), so discovery is a pure glob. The
-# vendor overlay glob picks up checked-in RDLs for vendored IPs (e.g. the relocated
-# OpenTitan reg blocks under vendor/<org>/<pkg>/overlay/regs/<ip>/regs/<ip>.rdl), so
-# they behave exactly like a hw/ip block.
+# First-party tops: dirs holding the dir-name RDL
+# (hw/{ip,sys}/<name>/regs/<name>.rdl). System-level register sources are
+# normalized into hw/sys/<name>/regs (for example SMC and SEP); legacy per-RTL
+# data/registers trees are intentionally not discovered here. Role == location
+# (see doc/user_guide/regs.adoc), so discovery is a pure glob. The vendor overlay
+# glob picks up checked-in RDLs for vendored IPs (e.g. the relocated OpenTitan reg
+# blocks under vendor/<org>/<pkg>/overlay/regs/<ip>/regs/<ip>.rdl), so they behave
+# exactly like a hw/ip block.
 ocah_reg_dirs := $(wildcard \
   $(OCAH_ROOT)/hw/ip/*/regs \
   $(OCAH_ROOT)/hw/sys/*/regs \

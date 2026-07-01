@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
  * TC_WDT_015 (V3, P2) - WDT Counter 32-bit Overflow Test

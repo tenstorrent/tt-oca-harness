@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 #include project_default.yaml
 
@@ -25,18 +25,18 @@ project_i3ccore: &project_i3ccore
   # Use $OCH_ROOT (reliably absolute); $TB_ROOT is forced to "." by TTEM before
   # the testlist variables load, so it is unsafe in path expressions.
   flist: >
-    cd $OCH_ROOT/hw/periph/i3ccore_wrap/tb && make filelist
+    cd $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb && make filelist
 
   variables:
     <<: *variables
     # Simulator, license, and cocotb runtime paths are supplied by the user
     # environment or CI wrapper.
-    TB_ROOT: $OCH_ROOT/hw/periph/i3ccore_wrap/tb
-    OUT: $OCH_ROOT/hw/periph/i3ccore_wrap/tb/out
+    TB_ROOT: $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb
+    OUT: $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb/out
     # PYTHONPATH so the symlinked cocotb module can import its siblings
     # (i3c_test_base / i3c_rand / i3c_api), the generated register headers
     # (I3CCSR_reg), the shared constrained-random core, and cocotbext-i3c.
-    PYTHONPATH: $OCH_ROOT/hw/periph/i3ccore_wrap/tb:$OCH_ROOT/hw/periph/i3ccore_wrap/data/registers/py_headers:$OCH_ROOT/dv/common/cocotb:$OCH_ROOT/vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src
+    PYTHONPATH: $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb:$OCH_ROOT/hw/periph/i3ccore_wrap/regs/py_headers:$OCH_ROOT/dv/common/cocotb:$OCH_ROOT/vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src
     COCOTB_REDUCED_LOG_FMT: 1
     COCOTB_HDL_TIMEUNIT: 1ns
     COCOTB_HDL_TIMEPRECISION: 1ps
@@ -57,14 +57,14 @@ project_i3ccore: &project_i3ccore
       COMMON_CELLS_ASSERTS_OFF
       I3C_USE_AXI_LITE
     include_dirs:
-      $OCH_ROOT/hw/periph/i3ccore_wrap/tb
+      $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb
     comp_flags:
       -top tb_i3ccore -full64 -sverilog -lca +rad -kdb +nospecify
       -timescale=1ns/1ps
       -debug_access+all
       +lint=PCWM +warn=noCWUC +warn=noUII-L +lint=TFIPC-L
     filelist:
-      $OCH_ROOT/hw/periph/i3ccore_wrap/tb/i3ccore_ttem.f
+      $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb/i3ccore_ttem.f
     <<: *compile
 
   # Base simulate config for cocotb block tests.

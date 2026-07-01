@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
-
 [.small,stretch]
 .OCAH GPIO Requirements
 [%autowidth,options="header",frame=all,grid=all]

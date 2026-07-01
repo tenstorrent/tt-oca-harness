@@ -5,8 +5,8 @@
 $OCH_ROOT/vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
 
 // Register package and RTL (must come first)
-$OCH_ROOT/hw/ip/cross_trigger_port/data/registers/rtl/cross_trigger_port_reg_pkg.sv
-$OCH_ROOT/hw/ip/cross_trigger_port/data/registers/rtl/cross_trigger_port_reg.sv
+$OCH_ROOT/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
+$OCH_ROOT/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
 
 // Package
 $OCH_ROOT/hw/ip/cross_trigger_port/rtl/cross_trigger_port_pkg.sv

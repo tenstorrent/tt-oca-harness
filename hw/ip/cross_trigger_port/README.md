@@ -39,12 +39,12 @@ but is ignored since CTP registers use a fixed AXI4-Lite interface.
 After running the generation script, the following files are created:
 
 **Register Files** (from SystemRDL):
-* `data/registers/rtl/cross_trigger_port_reg.sv` - Register RTL module
-* `data/registers/rtl/cross_trigger_port_reg_pkg.sv` - Register package
-* `data/registers/c/cross_trigger_port_reg.h` - C header
-* `data/registers/py_headers/cross_trigger_port_reg.py` - Python header
-* `data/registers/svh/cross_trigger_port_reg.svh` - SystemVerilog header
-* `data/registers/adoc/cross_trigger_port_reg.adoc` - AsciiDoc documentation
+* `regs/rtl/cross_trigger_port_reg.sv` - Register RTL module
+* `regs/rtl/cross_trigger_port_reg_pkg.sv` - Register package
+* `regs/c/cross_trigger_port_reg.h` - C header
+* `regs/py_headers/cross_trigger_port_reg.py` - Python header
+* `regs/svh/cross_trigger_port_reg.svh` - SystemVerilog header
+* `regs/adoc/cross_trigger_port_reg.adoc` - AsciiDoc documentation
 
 ## Integration with generate_all.py
 

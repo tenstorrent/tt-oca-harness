@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // Mailbox Testbench
@@ -52,8 +52,8 @@ module tb_axil_mailbox #(
     // Generate AXI-Lite types using standard macro
     `AXI_LITE_TYPEDEF_ALL(axil, addr_t, data_t, strb_t)
 
-    // Include register definitions for address constants
-    `include "axil_mailbox_reg.svh"
+    // Import register address constants.
+    import axil_mailbox_addrmap_pkg::*;
 
     /////////
     // DUT //

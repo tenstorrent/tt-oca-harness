@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // SEP System CSRs
@@ -203,41 +203,41 @@ module sep_system_csr
 		system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
 		system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
 
-		if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR + sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_SIZE) begin
+		if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::AP_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::AP_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::AP_OUTPUT_REMAP;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::STEE_OUTPUT_REMAP;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::OUTBOUND_FILTER_CTRL_31__REG_MAP_BASE_ADDR + sep_pkg::OUTBOUND_FILTER_CTRL_31__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(31) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::OUTBOUND_FILTER;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::INBOUND_FILTER_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::INBOUND_FILTER;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::SEP_CPU_CTRL_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::SEP_CPU_CTRL_REG_MAP_BASE_ADDR + sep_pkg::SEP_CPU_CTRL_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::SEP_CPU_CTRL;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR + sep_pkg::SEP_SCRATCH_COLD_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::SEP_SCRATCH_COLD;
-		end else if (sep_system_csr_axil_req_i.aw.addr >= sep_pkg::SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_pkg::SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR + sep_pkg::SEP_SCRATCH_WARM_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_SIZE) begin
 			system_csr_demux_select_aw = sep_pkg::SEP_SCRATCH_WARM;
 		end else begin
 			system_csr_demux_select_aw = sep_pkg::ERR_SLV;
 		end
 
-		if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR + sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_SIZE) begin
+		if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::AP_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::AP_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::AP_OUTPUT_REMAP;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::STEE_OUTPUT_REMAP;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::OUTBOUND_FILTER_CTRL_31__REG_MAP_BASE_ADDR + sep_pkg::OUTBOUND_FILTER_CTRL_31__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(31) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::OUTBOUND_FILTER;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR + sep_pkg::INBOUND_FILTER_CTRL_15__REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(15) + och_sep_top_addrmap_pkg::OCH_SEP_TOP_INBOUND_FILTER_CTRL_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::INBOUND_FILTER;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::SEP_CPU_CTRL_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::SEP_CPU_CTRL_REG_MAP_BASE_ADDR + sep_pkg::SEP_CPU_CTRL_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_CPU_CTRL_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::SEP_CPU_CTRL;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR + sep_pkg::SEP_SCRATCH_COLD_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_COLD_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::SEP_SCRATCH_COLD;
-		end else if (sep_system_csr_axil_req_i.ar.addr >= sep_pkg::SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_pkg::SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR + sep_pkg::SEP_SCRATCH_WARM_REG_MAP_SIZE) begin
+		end else if (sep_system_csr_axil_req_i.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SCRATCH_WARM_SIZE) begin
 			system_csr_demux_select_ar = sep_pkg::SEP_SCRATCH_WARM;
 		end else begin
 			system_csr_demux_select_ar = sep_pkg::ERR_SLV;
@@ -276,7 +276,7 @@ module sep_system_csr
 	// Alias Remap Register Block - Local Masters
 	////////////////////////////////////////////////////////////////////////////
 
-	localparam int unsigned alias_remap_sel_start_idx = $clog2(sep_pkg::LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_SIZE);
+	localparam int unsigned alias_remap_sel_start_idx = $clog2(och_sep_top_addrmap_pkg::OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE);
 	localparam int unsigned alias_remap_sel_end_idx = alias_remap_sel_start_idx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
 
 	sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0] local_master_aR_reqs;
@@ -343,7 +343,7 @@ module sep_system_csr
 	// Output Remap Register Block - AP
 	////////////////////////////////////////////////////////////////////////////
 
-	localparam int unsigned ap_remap_sel_start_idx = $clog2(sep_pkg::AP_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE);
+	localparam int unsigned ap_remap_sel_start_idx = $clog2(och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE);
 	localparam int unsigned ap_remap_sel_end_idx = ap_remap_sel_start_idx + sep_pkg::AP_REMAP_SEL_W - 1;
 
 	sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0] ap_output_remap_reqs;
@@ -410,7 +410,7 @@ module sep_system_csr
 	// Alias Remap Register Block - STEE
 	////////////////////////////////////////////////////////////////////////////
 
-	localparam int unsigned stee_remap_sel_start_idx = $clog2(sep_pkg::STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE);
+	localparam int unsigned stee_remap_sel_start_idx = $clog2(och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE);
 	localparam int unsigned stee_remap_sel_end_idx = stee_remap_sel_start_idx + sep_pkg::STEE_REMAP_SEL_W - 1;
 
 	sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0] stee_output_remap_reqs;

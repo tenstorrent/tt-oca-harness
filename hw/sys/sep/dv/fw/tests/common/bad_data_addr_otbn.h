@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 #ifndef BAD_DATA_ADDR_OTBN_H
 #define BAD_DATA_ADDR_OTBN_H

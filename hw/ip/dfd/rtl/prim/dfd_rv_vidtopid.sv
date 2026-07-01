@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //Description : This module recieves Virtual ID in decimal Format, Fuse Map as Multi-Hot Vector and returns Physical ID in Decimal Format
 

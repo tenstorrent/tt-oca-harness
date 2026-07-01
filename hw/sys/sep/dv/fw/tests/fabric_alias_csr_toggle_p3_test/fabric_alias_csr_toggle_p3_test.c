@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
  * TC_FABRIC_065: fabric_alias_csr_toggle_p3_test

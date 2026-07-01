@@ -49,7 +49,7 @@ The I3C testbench validates the following capabilities:
 
 ### Directory Structure
 
-The testbench is organized in a flat structure at `hw/periph/i3ccore_wrap/tb/`:
+The testbench is organized in a flat structure at `hw/ip/i3ccore_wrap/dv/tb/`:
 
 ```
 tb/
@@ -164,7 +164,7 @@ This API abstracts the complexity of register programming, command descriptor fo
 Navigate to the testbench directory:
 
 ```bash
-cd hw/periph/i3ccore_wrap/tb
+cd hw/ip/i3ccore_wrap/dv/tb
 ```
 
 Run a single test:
@@ -2185,7 +2185,7 @@ See HCI 7.5.5 and 7.5.6
 **Basic Write/Read Test**:
 
 ```bash
-cd hw/periph/i3ccore_wrap/tb
+cd hw/ip/i3ccore_wrap/dv/tb
 make MODULE=i3c_write_read_sanity
 ```
 

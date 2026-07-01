@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef I2C_WRAP_RDL
 `define I2C_WRAP_RDL
@@ -17,8 +17,8 @@ addrmap i2c_wrap #(
     // Address Map //
     /////////////////
 
-    i2c         i2c     [NUM_I2CS]        @0x0   += 0x200;
-    i2c_ctrl    i2c_ctrl                  @0xe00;
+    i2c         i2c           [NUM_I2CS]  @0x0   += 0x200;
+    i2c_ctrl    i2c_ctrl_regs             @0xe00;
 
 };
 

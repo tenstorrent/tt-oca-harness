@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // System Management Controller Base
@@ -570,10 +570,10 @@ module smc_base
 
   // Contains DMA and Zeroer
   smc_data_accelerator_wrap #(
-    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_pkg::DMA_CTRL_REG_MAP_BASE_ADDR),
-    .DMA_CTRL_REG_MAP_SIZE              (smc_pkg::DMA_CTRL_REG_MAP_SIZE),
-    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_pkg::ZEROER_CTRL_REG_MAP_BASE_ADDR),
-    .ZEROER_CTRL_REG_MAP_SIZE           (smc_pkg::ZEROER_CTRL_REG_MAP_SIZE)
+    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
+    .DMA_CTRL_REG_MAP_SIZE              (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE),
+    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
+    .ZEROER_CTRL_REG_MAP_SIZE           (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)
   ) u_smc_data_accelerator_wrap (
     .clk_i                              (clk_smc_i),
     .rst_ni                             (rst_primary_smc_clk_ni),

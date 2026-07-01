@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Copyright 2026 Tenstorrent Inc.
 
 `default_nettype none
-
 
 /**
  * @file km_drbg_sampler.sv
@@ -25,7 +24,8 @@
  * @param axil_resp_t  AXI-Lite response struct type.
  */
 module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
-    import km_drbg_sampler_reg_pkg::*; #(
+    import km_drbg_sampler_reg_pkg::*;
+    import km_drbg_sampler_addrmap_pkg::*; #(
     parameter type axil_req_t  = km_axil_req_t,
     parameter type axil_resp_t = km_axil_resp_t
 ) (
@@ -46,7 +46,6 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
 );
 
     `include "prim_assert.sv"
-    `include "km_drbg_sampler_reg.svh"
 
     /** @brief Register block address width (4 bits, word-aligned). */
     localparam int unsigned ADDR_W = 4;
@@ -84,7 +83,7 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
     // Only accept AR when no outstanding read
     logic ar_accept;
     logic is_data_read;
-    assign is_data_read = (axil_req_i.ar.addr[ADDR_W-1:0] == DATA_REG_OFFSET[ADDR_W-1:0]);
+    assign is_data_read = (axil_req_i.ar.addr[ADDR_W-1:0] == KM_DRBG_SAMPLER_DATA_BASE_ADDR[ADDR_W-1:0]);
     assign ar_accept = axil_req_i.ar_valid && !slot_valid;
 
     // Forward to reg block: writes always; reads only when not DATA (we handle DATA ourselves)
@@ -191,7 +190,7 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
         if (!cold_rst_ni) pending_status_wr <= 1'b0;
         else if (!warm_rst_ni) pending_status_wr <= 1'b0;
         else begin
-            if (reg_awvalid && reg_awready && (reg_awaddr == STATUS_REG_OFFSET[ADDR_W-1:0]))
+            if (reg_awvalid && reg_awready && (reg_awaddr == KM_DRBG_SAMPLER_STATUS_BASE_ADDR[ADDR_W-1:0]))
                 pending_status_wr <= 1'b1;
             if (reg_wvalid && reg_wready && pending_status_wr)
                 pending_status_wr <= 1'b0;

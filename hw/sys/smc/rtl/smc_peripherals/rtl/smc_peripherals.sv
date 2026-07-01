@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //----------------------------------------------------------
 // SMC Peripherals
@@ -475,9 +475,9 @@ module smc_peripherals #() (
 
 	smc_padring #(
 		.MAX_TRANS                  (2), // Allow new AXIL request to buffer while previous response still in-flight
-		.ADDRESS_MAP_SIZE_PER_GPIO  (smc_pkg::GPIO_INTF_0__REG_MAP_SIZE),
-		.GPIO_INTF_BASE_ADDR 		(smc_pkg::GPIO_INTF_0__REG_MAP_BASE_ADDR),
-		.GPIO_CTRL_BASE_ADDR 		(smc_pkg::GPIO_CTRL_0__REG_MAP_BASE_ADDR)
+		.ADDRESS_MAP_SIZE_PER_GPIO  (smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE),
+		.GPIO_INTF_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+		.GPIO_CTRL_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
 	) u_smc_padring (
 		.clk_i                      (clk_smc_i),
 		.rst_primary_ni             (rst_primary_smc_clk_no),
@@ -646,10 +646,10 @@ module smc_peripherals #() (
 		.TARGET_RX_FIFO_DEPTH     (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH),
 		.INPUT_DELAY_CYCLES       (smc_config_pkg::I2C_INPUT_DELAY_CYCLES),
 
-		.I2C_CTRL_REG_MAP_BASE_ADDR (smc_pkg::SMC_I2C_WRAP_I2C_CTRL_REG_MAP_BASE_ADDR),
-		.I2C_CTRL_REG_MAP_SIZE      (smc_pkg::SMC_I2C_WRAP_I2C_CTRL_REG_MAP_SIZE),
-		.I2C_0__REG_MAP_BASE_ADDR   (smc_pkg::SMC_I2C_WRAP_I2C_0__REG_MAP_BASE_ADDR),
-		.I2C_0__REG_MAP_SIZE        (smc_pkg::SMC_I2C_WRAP_I2C_0__REG_MAP_SIZE),
+		.I2C_CTRL_REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR),
+		.I2C_CTRL_REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE),
+		.I2C_0__REG_MAP_BASE_ADDR   (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+		.I2C_0__REG_MAP_SIZE        (smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE),
 		.I2C_INSTANCE_SPACING		(i2c_wrap_pkg::I2C_INSTANCE_SPACING)
 	) i2c_wrap (
 		.clk_i                    (gated_clk_periph_i2c),
@@ -700,16 +700,16 @@ module smc_peripherals #() (
 		.GEN_LOG_ENGINES       (smc_config_pkg::GEN_LOG_ENGINES),
 		.LOG_ENGINE_FIFO_DEPTH (smc_config_pkg::LOG_ENGINE_FIFO_DEPTH),
 
-		.UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR),
-		.UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE),
+		.UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0)),
+		.UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE),
 		.UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UART_LOG_ENGINE_WRAP_SPACING),
 
-		.UART_REG_MAP_BASE_ADDR                    (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_REG_MAP_BASE_ADDR),
-		.UART_REG_MAP_SIZE                         (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_REG_MAP_SIZE),
-		.LOG_ENGINE_REG_MAP_BASE_ADDR              (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_REG_MAP_BASE_ADDR),
-		.LOG_ENGINE_REG_MAP_SIZE                   (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_REG_MAP_SIZE),
-		.UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR),
-		.UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (smc_pkg::SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LOG_ENGINE_CTRL_REG_MAP_SIZE)
+		.UART_REG_MAP_BASE_ADDR                    (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+		.UART_REG_MAP_SIZE                         (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE),
+		.LOG_ENGINE_REG_MAP_BASE_ADDR              (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0)),
+		.LOG_ENGINE_REG_MAP_SIZE                   (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE),
+		.UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0)),
+		.UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE)
 	) u_uart_wrap (
 		.clk_i                  (gated_clk_periph_uart),
 		.rst_ni                 (rst_primary_periph_clk_n),
@@ -784,8 +784,8 @@ module smc_peripherals #() (
 		.TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TELEMETRY_RECEIVER_BUFFER_DEPTH),
 		.TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE),
 
-		.TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (smc_pkg::SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR),
-		.TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (smc_pkg::SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_0__REG_MAP_SIZE)
+		.TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0)),
+		.TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE)
 	) telemetry_receiver_wrap (
 		.clk_i                      (gated_clk_smc_tel),
 		.rst_ni                     (rst_primary_smc_clk_no),
@@ -941,7 +941,7 @@ module smc_peripherals #() (
 	i3ccore_stub #(
 		.NUM_I3C            (smc_config_pkg::NUM_I3C),
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
-		.BASE_ADDR          (smc_pkg::OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR),
+		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR),
 		.INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
 		// I3C Core parameters

@@ -1,4 +1,4 @@
-tt-oca (Open Chiplet Atlas Harness)
+tt-oca-harness (Open Chiplet Atlas Harness)
 Copyright 2026 Tenstorrent USA, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,4 +16,30 @@ limitations under the License.
 ================================================================================
 
 Third-Party Dependencies:
+
+This project incorporates code from the following third-party sources:
+
+1. OpenTitan
+   Copyright lowRISC contributors (OpenTitan project)
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/lowRISC/opentitan
+   Vendored under vendor/lowRISC/opentitan/upstream/
+
+2. PULP Platform
+   Copyright (c) ETH Zurich, University of Bologna and contributors
+   Licensed under the Apache License, Version 2.0 and/or Solderpad Hardware License v0.51
+   Packages: axi, apb, axi_stream, common_cells, common_verification, idma, obi,
+   register_interface
+   Vendored under vendor/pulp-platform/
+
+3. VeeR-EL2 (CHIPS Alliance)
+   Copyright (c) Antmicro and contributors
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/chipsalliance/Cores-VeeR-EL2
+   Vendored under vendor/chipsalliance/Cores-VeeR-EL2/upstream/
+
+4. PicoRV32
+   Copyright (C) Claire Xenia Wolf
+   Licensed under the ISC License
+   Vendored under vendor/tenstorrent/tt-picorv32/upstream/
 

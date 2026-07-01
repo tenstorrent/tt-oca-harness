@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# (c) 2026 Tenstorrent USA Inc
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 package:
   name: tt-oca
@@ -26,8 +26,8 @@ package:
 dependencies:
   el2: { path: "vendor/chipsalliance/Cores-VeeR-EL2" }
   idma: { path: "vendor/pulp-platform/idma" }
-  i3c-core: { path: "vendor/chipsalliance/i3c-core" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
+  picorv32: { path: "vendor/tenstorrent/tt-picorv32" }
 
 # Third-party IP vendored into vendor/<org>/<pkg>/upstream via `bender vendor init`.
 # Each package has a hand-authored Bender.yml at its root so it resolves as a local
@@ -191,28 +191,6 @@ vendor_package:
       - "include/register_interface/assign.svh"
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
-  # i3c-core; its three third-party submodules are materialized by the nested
-  # vendor_package entries below (bender vendor does not recurse).
-  - name: i3c-core
-    target_dir: "vendor/chipsalliance/i3c-core/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "c9c18b9de07639efa05e21794d67955ba6a56075" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches"
-
-  - name: i3c-core-caliptra-rtl
-    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
-    upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "769f7baa84685700a071dd73d0c0edec3691ade0" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
-
-  - name: i3c-core-cocotbext-i3c
-    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
-    upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
-
-  - name: i3c-core-axi-vip
-    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip"
-    upstream: { git: "https://github.com/antmicro/axi-vip.git", rev: "6aeb0a5ba7810dafd96145f0e569db6996464b0e" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches/axi-vip"
-
   # VeeR EL2 core pinned at the merge-base (zero RTL delta, so no patch). Generated
   # config snapshots live in overlay/.
   - name: veer_el2
@@ -225,60 +203,105 @@ vendor_package:
       - "testbench"
     patch_dir: "vendor/chipsalliance/Cores-VeeR-EL2/patches"
 
+  - name: picorv32
+    target_dir: "vendor/tenstorrent/tt-picorv32/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-picorv32.git", rev: "9cc836f58580d59d90e8a764382aa78acb14d399" }
+    include_from_upstream:
+      - "picorv32.sv"
+      - "picorv32_axi.sv"
+      - "picorv32_axi_adapter.sv"
+      - "picorv32_pcpi_div.sv"
+      - "picorv32_pcpi_fast_mul.sv"
+      - "picorv32_pcpi_mul.sv"
+      - "picorv32_regs.sv"
+      - "picorv32_wb.sv"
+    patch_dir: "vendor/tenstorrent/tt-picorv32/patches"
+
 # Auto-generated open-tree RTL source wiring for Plan C.
 # Keep this source list limited to open-tree roots and exclude stale 1-core, DV/FV,
 # testbench, build, and generated-documentation collateral.
 sources:
-  - target: all(not(ocah_packaged_ip), not(dv), not(fv))
+  - target: all(not(dv), not(fv))
     include_dirs:
       - hw/common/assert
-      - hw/ip/avsbus_controller/regs/gen/svh
-      - hw/ip/axi_alias_remap/regs/gen/svh
-      - hw/ip/axi_filter/regs/gen/svh
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/svh
-      - hw/ip/cross_trigger_port/regs/gen/svh
-      - hw/ip/dfd/regs/gen/svh
       - hw/ip/dfd/rtl/misc
       - hw/ip/dfd/rtl/pkg
-      - hw/ip/efuse/regs/gen/svh
       - hw/ip/efuse/rtl/svh
-      - hw/ip/entropy_source/regs/gen/svh
-      - hw/ip/gpio/regs/gen/svh
-      - hw/ip/i2c/regs/gen/svh
-      - hw/ip/i2c_wrap/regs/gen/svh
-      - hw/ip/key_manager/regs/gen/svh
-      - hw/ip/log_engine/regs/gen/svh
-      - hw/ip/output_remap/regs/gen/svh
-      - hw/ip/system_timer_octs/regs/gen/svh
-      - hw/ip/telemetry_receiver/regs/gen/svh
-      - hw/ip/uart_16550/regs/gen/svh
-      - hw/ip/uart_log_engine_wrap/regs/gen/svh
-      - hw/ip/zeroer/regs/gen/svh
-      - hw/sys/sep/regs/gen/svh
-      - hw/sys/smc/regs/gen/svh
       - hw/sys/smc/rtl/smc_cpu
       - vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
-      - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/svh
-      - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/svh
-      - vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/svh
-      - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/svh
+      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
       - vendor/pulp-platform/idma/overlay/target/rtl/include/idma
     files:
+      # Shared OpenTitan prim utility/type packages used by the och_prim wrappers
+      # below. Also compiled by the opentitan package's `any(opentitan_smu, sep,
+      # smu)` target (see vendor/lowRISC/opentitan/Bender.yml) for its own IP
+      # cores, but bender dedupes identical resolved file paths, so no duplicate
+      # results in the filelist.
+      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
+      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
       - hw/common/och_prim/rtl/prim_otp_cfg_pkg.sv
       - hw/common/och_prim/rtl/prim_otp_pkg.sv
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
       - hw/common/och_prim/rtl/prim_sparse_fsm_pkg.sv
-      - hw/common/ot_pkg/rtl/entropy_src_pkg.sv
-      - hw/common/ot_pkg/rtl/keymgr_pkg.sv
-      - hw/common/ot_pkg/rtl/keymgr_reg_pkg.sv
-      - hw/common/ot_pkg/rtl/lc_ctrl_pkg.sv
-      - hw/common/ot_pkg/rtl/lc_ctrl_reg_pkg.sv
-      - hw/common/ot_pkg/rtl/lc_ctrl_state_pkg.sv
-      - hw/common/ot_pkg/rtl/otp_ctrl_pkg.sv
-      - hw/common/tlul/rtl/tlul_pkg.sv
-      - hw/common/top_pkg.sv
-      - hw/common/top_racl_pkg.sv
+      - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
+      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
+      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
+      - hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv
+      - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
+      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
+      - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
+      - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
+      - hw/ip/i2c_wrap/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
+      - hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/key_manager_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_csr_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_drbg_sampler_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_kpv_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_km_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
+      - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
+      - hw/ip/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+      - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
+      - hw/ip/telemetry_receiver_wrap/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
+      - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
+      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
+      - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
+      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
+      - hw/ip/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
+      - hw/ip/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
+      - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
+      - hw/sys/sep/dv/shims/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
+      # sep_addrmap_pkg.sv (och_sep_top_addrmap_pkg) is NOT listed here: the
+      # opentitan package's `any(opentitan_smu, sep, smu)` target (see its
+      # Bender.yml) already compiles this exact file earlier, ahead of
+      # sep_crypto_pkg.sv which needs its address-map localparams. Adding it again
+      # here would duplicate it in the filelist.
+      - hw/sys/smc/dv/shims/regs/gen/sv/pll_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/shims/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/shims/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
+      - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
+      - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
+      - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
+      - vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_addrmap_pkg.sv
+      - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
       - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
@@ -287,13 +310,34 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
+      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
       - hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
       - hw/ip/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
       - hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
       - hw/ip/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+      - hw/ip/dfd/rtl/pkg/dfd_addr_map_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_CL_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_CL_axi_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_cla_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_cr_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_cr_4b_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_dst_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_mcr_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_ntr_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_tr_csr_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_cla_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_dst_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_packetizer_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_te_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_tn_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_trace_mem_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_tt_dbm_pkg.svh
+      - hw/ip/dfd/rtl/pkg/dfd_pkg.svh
       - hw/ip/drbg/rtl/drbg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
+      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
       - hw/ip/efuse/rtl/efuse_pkg.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
       - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
@@ -306,6 +350,7 @@ sources:
       - hw/ip/i2c/rtl/i2c_pkg.sv
       - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_reg_pkg.sv
       - hw/ip/i2c_wrap/rtl/i2c_wrap_pkg.sv
+      - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
       - hw/ip/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
       - hw/ip/jtag_ptap/rtl/jtag_tap_pkg.sv
@@ -348,9 +393,15 @@ sources:
       - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
       - hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
-      - hw/sys/sep/rtl/sep_crypto_pkg.sv
+      # el2_def.sv (el2_pkg) only for the type/parameter defs sep_pkg.sv needs to size
+      # its typedefs; the actual EL2 core RTL stays packaged under the el2 package's
+      # `sep_el2` target and is intentionally excluded here. sep_pkg.sv itself is NOT
+      # added here: the opentitan package's `any(opentitan_smu, sep, smu)` target
+      # (see below) already compiles this exact file earlier in dependency order
+      # (it needs sep_pkg.sv for its own otbn.sv/sep_crypto_pkg.sv integration);
+      # adding it again here would duplicate it in the filelist.
+      - vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/include/el2_def.sv
       - hw/sys/sep/rtl/sep_io_pkg.sv
-      - hw/sys/sep/rtl/sep_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
@@ -359,33 +410,31 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/chip_config_reg_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/cpu_ctrl_reg_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/dfx_ctrl_status_reg_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/ndm_reset_reg_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/scratch_reg_pkg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/smc_base_config_reg_pkg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
-      - hw/sys/smc/rtl/smc_pkg.sv
-      - hw/sys/smc/rtl/smc_reset_unit/data/registers/rtl/reset_unit_reg_pkg.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
       - hw/sys/smu/rtl/smu_axi_xbar_pkg.sv
       - hw/sys/smu/rtl/smu_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_reg_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_reg_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_reg_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_reg_pkg.sv
       - hw/common/axi/rtl/axi4lite_intf.sv
       - hw/common/axi/rtl/axi4lite_to_pulp_axi_lite.sv
       - hw/common/axi/rtl/axi_cg_snoop.sv
+      # top_pkg.sv/tlul_pkg.sv/prim_secded_pkg.sv (tl_h2d_t/tl_d2h_t,
+      # prim_secded_inv_64_57_enc/prim_secded_inv_39_32_enc) are NOT added here:
+      # the opentitan package's `any(opentitan_smu, sep, smu)` target (auto-active
+      # whenever `sep`/`smu` are requested, which they always are for this build)
+      # already compiles these exact files earlier in dependency order; adding them
+      # again here would duplicate them in the filelist. prim_mubi_pkg.sv (mubi4_t)
+      # is likewise NOT added here: vendor/pulp-platform/register_interface's
+      # `register_interface_l1` target (always active via COMMON_TARGETS) already
+      # compiles this exact file earlier in dependency order.
       - hw/common/axi/rtl/axi_lite_to_tlul.sv
       - hw/common/axi/rtl/tlul_to_axi_lite.sv
       - hw/common/axi/rtl/tlul_to_reg_async.sv
@@ -462,7 +511,6 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
       - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
       - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
-      - hw/common/peakrdl_adapter_sram.sv
       - hw/common/sync.sv
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
@@ -493,6 +541,7 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
+      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
       - hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
       - hw/ip/cross_trigger_matrix/rtl/ctm_src_selector.sv
       - hw/ip/cross_trigger_network/rtl/cross_trigger_network.sv
@@ -504,6 +553,7 @@ sources:
       - hw/ip/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
       - hw/ip/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
       - hw/ip/cross_trigger_port/rtl/ctp_synchronizer.sv
+      - hw/ip/dfd/rtl/misc/dfd_assertion_macros.svh
       - hw/ip/dfd/rtl/cla/dfd_cla_action_gen.sv
       - hw/ip/dfd/rtl/cla/dfd_cla_counter.sv
       - hw/ip/dfd/rtl/cla/dfd_cla_debug_signals_change.sv
@@ -559,6 +609,10 @@ sources:
       - hw/ip/dfd/rtl/unit/dfd_te_mso.sv
       - hw/ip/dfd/rtl/unit/dfd_tnif.sv
       - hw/ip/dfd/rtl/unit/dfd_unit.sv
+      # lc_ctrl_pkg.sv (lc_tx_t)/entropy_src_pkg.sv/csrng_pkg.sv/edn_pkg.sv/
+      # prim_alert_pkg.sv (alert_rx_t) are NOT added here: they're already compiled
+      # earlier via the opentitan package's `any(opentitan_smu, sep, smu)` target
+      # (see above); adding them again here would duplicate them in the filelist.
       - hw/ip/drbg/rtl/drbg.sv
       - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
       - hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
@@ -567,16 +621,24 @@ sources:
       - hw/ip/drbg/rtl/drbg_entropy_router.sv
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
+      - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
+      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_reg.sv
       - hw/ip/efuse/rtl/efuse_guard.sv
       - hw/ip/efuse/rtl/efuse_interface_controller.sv
       - hw/ip/efuse/rtl/efuse_interface_shim.sv
       - hw/ip/efuse/rtl/efuse_model/efuse_bank_model.sv
-      - hw/ip/efuse/rtl/efuse_model/efuse_interface_shim.sv
+      # efuse_model/efuse_interface_shim.sv is intentionally NOT listed: it is a
+      # byte-for-byte duplicate of efuse_interface_shim.sv above (same `module
+      # efuse_interface_shim`); listing both would compile two definitions of the
+      # same module name.
       - hw/ip/efuse/rtl/efuse_program_interface.sv
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_security_tokens.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
       - hw/ip/efuse/rtl/efuse_shadow_regs.sv
+      # prim_sha2_pkg.sv (sha_fifo32_t/sha_word64_t) is NOT added here: it's already
+      # compiled earlier via the opentitan package's `any(opentitan_smu, sep, smu)`
+      # target (see above); adding it again here would duplicate it in the filelist.
       - hw/ip/efuse/rtl/sha256_token_hash.sv
       - hw/ip/efuse/rtl/triple_redundent_comparator.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
@@ -610,10 +672,9 @@ sources:
       - hw/ip/i2c/rtl/i2c_target_fsm.sv
       - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_reg.sv
       - hw/ip/i2c_wrap/rtl/i2c_wrap.sv
-      - hw/ip/i3ccore_wrap/rtl/i3c.sv
-      - hw/ip/i3ccore_wrap/rtl/i3c_wrapper.sv
+      # I3C is temporarily stubbed out; do not compile the generated core
+      # wrappers while the external i3c-core package is not vendored.
       - hw/ip/i3ccore_wrap/rtl/i3ccore_stub.sv
-      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper_stub.sv
       - hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
@@ -696,6 +757,13 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
+      # otp_ctrl_pkg.sv/keymgr_pkg.sv/sep_crypto_pkg.sv (keymgr_pkg::hw_key_req_t,
+      # sep_crypto_pkg::*) and the full OpenTitan AES/HMAC/KMAC/secure_dma/OTBN
+      # cores these wrappers instantiate are NOT added here: they're already
+      # compiled earlier via the opentitan package's `any(opentitan_smu, sep, smu)`
+      # target (see above; it already lists this exact sep_crypto_pkg.sv for its
+      # own OTBN integration). Adding them again here would duplicate them in the
+      # filelist.
       - hw/sys/sep/rtl/aes_wrapper.sv
       - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
@@ -1026,12 +1094,6 @@ sources:
       - hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv
       - hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv
       - hw/sys/smc/rtl/smc_internal_regs.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/chip_config_reg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/cpu_ctrl_reg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/dfx_ctrl_status_reg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/ndm_reset_reg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/scratch_reg.sv
-      - hw/sys/smc/rtl/smc_misc/data/registers/rtl/smc_base_config_reg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_base_config_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
@@ -1041,7 +1103,6 @@ sources:
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv
-      - hw/sys/smc/rtl/smc_reset_unit/data/registers/rtl/reset_unit_reg.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_cool_reset_wrap.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_ctrl.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_sync.sv
@@ -1049,8 +1110,3 @@ sources:
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_subsystem_resets.sv
       - hw/sys/smu/rtl/smu.sv
       - hw/sys/smu/rtl/smu_axi_xbar.sv
-      - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_reg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_reg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_reg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_reg.sv
-      - vendor/pulp-platform/idma/overlay/target/rtl/idma_generated.sv

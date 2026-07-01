@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
  * VeeR EL2 PIC interrupt utilities
  *
- * Uses RDL-generated constants from och_sep_top_reg.h
+ * Uses RDL-generated constants from sep.h / sep_addr.h
  */
 
 #include "interrupt.h"

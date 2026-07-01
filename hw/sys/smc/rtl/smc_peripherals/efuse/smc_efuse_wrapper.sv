@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // SMC eFuse Wrapper
@@ -85,11 +85,11 @@ module smc_efuse_wrapper
     logic is_prod_or_rma_sip;
 
     assign is_rd_chiplet_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_pkg::SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR :
-          (smc_pkg::SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR + 'h1F)]});
+        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR :
+          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR + 'h1F)]});
     assign is_rd_package_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_pkg::SMC_EFUSE_MAP_PACKAGE_ID_REG_ADDR :
-          (smc_pkg::SMC_EFUSE_MAP_PACKAGE_ID_REG_ADDR + 'h1F)]});
+        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR :
+          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR + 'h1F)]});
 
     logic [smc_pkg::LC_STATE_WIDTH-1:0] lc_state_smc_raw;
     logic                               lc_sigint_err;
@@ -182,14 +182,14 @@ module smc_efuse_wrapper
 
         .SEP_SEC_DISABLE_TOKEN       ('0), // Embedded in RTL (SEP only)
 
-        .EFUSE_MAP_REG_MAP_BASE_ADDR (smc_pkg::SMC_EFUSE_MAP_REG_MAP_BASE_ADDR),
-        .EFUSE_MAP_REG_MAP_SIZE      (smc_pkg::SMC_EFUSE_MAP_REG_MAP_SIZE),
+        .EFUSE_MAP_REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
+        .EFUSE_MAP_REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
 
         .EFUSE_MMR_REG_MAP_BASE_ADDR ('0),
         .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
-        .EFUSE_CTRL_REG_MAP_BASE_ADDR(smc_pkg::EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR),
-        .EFUSE_CTRL_REG_MAP_SIZE     (smc_pkg::EFUSE_INTERFACE_CTRL_REG_MAP_SIZE),
+        .EFUSE_CTRL_REG_MAP_BASE_ADDR(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
+        .EFUSE_CTRL_REG_MAP_SIZE     (smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE),
 
         .SHADOW_REG_BITS             (smc_efuse_pkg::SHADOW_REG_BITS),
         .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),

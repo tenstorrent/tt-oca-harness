@@ -6,8 +6,8 @@
 // ============================================================================
 
 // Register package and RTL (must come first)
-//$OCH_ROOT/hw/comp/entropy_source/data/registers/rtl/entropy_source_reg_pkg.sv
-//$OCH_ROOT/hw/comp/entropy_source/data/registers/rtl/entropy_source_reg.sv
+//$OCH_ROOT/hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
+//$OCH_ROOT/hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
 $OCH_ROOT/hw/comp/entropy_source/rtl/entropy_source_reg_pkg.sv
 $OCH_ROOT/hw/comp/entropy_source/rtl/entropy_source_reg.sv
 

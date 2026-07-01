@@ -89,13 +89,13 @@ python3 generate_ip.py --clean
 After running the generation script, the following files are created:
 
 **Register Files** (from SystemRDL):
-* `data/registers/rdl/cross_trigger_matrix.rdl` - SystemRDL register definition (generated from template)
-* `data/registers/rtl/cross_trigger_matrix_reg.sv` - Register RTL module
-* `data/registers/rtl/cross_trigger_matrix_reg_pkg.sv` - Register package
-* `data/registers/c/cross_trigger_matrix_reg.h` - C header
-* `data/registers/py_headers/cross_trigger_matrix_reg.py` - Python header
-* `data/registers/svh/cross_trigger_matrix_reg.svh` - SystemVerilog header
-* `data/registers/rst/cross_trigger_matrix_reg.rst` - reStructuredText documentation (for Sphinx)
+* `regs/cross_trigger_matrix.rdl` - SystemRDL register definition (generated from template)
+* `regs/rtl/cross_trigger_matrix_reg.sv` - Register RTL module
+* `regs/rtl/cross_trigger_matrix_reg_pkg.sv` - Register package
+* `regs/c/cross_trigger_matrix_reg.h` - C header
+* `regs/py_headers/cross_trigger_matrix_reg.py` - Python header
+* `regs/svh/cross_trigger_matrix_reg.svh` - SystemVerilog header
+* `regs/rst/cross_trigger_matrix_reg.rst` - reStructuredText documentation (for Sphinx)
 
 **RTL Files** (from templates):
 * `rtl/cross_trigger_matrix.sv` - Main RTL module with generated case statements matching NUM_CT_SRC

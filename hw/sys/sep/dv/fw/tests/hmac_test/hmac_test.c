@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
  * HMAC SHA-256 Step-by-step Test (OpenTitan Programmer's Guide aligned)
@@ -20,7 +20,7 @@
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
 
-// All register addresses, bit field masks, and shifts are now provided by och_sep_top_reg.h
+// All register addresses, bit field masks, and shifts are now provided by sep.h / sep_addr.h
 // No need for hardcoded offsets or bit positions!
 
 static inline uint32_t bswap32(uint32_t x) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// (c) 2026 Tenstorrent USA Inc
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
 // GPIO Interface Shim Example
@@ -59,7 +59,7 @@ module gpio_shim
     output gpio_axil_resp_t axil_resp_o
 );
 
-    localparam int unsigned GPIO_REG_ADDR_WIDTH = $clog2(GPIO_WRAP_REG_MAP_SIZE);
+    localparam int unsigned GPIO_REG_ADDR_WIDTH = $clog2(gpio_wrap_addrmap_pkg::GPIO_WRAP_SIZE);
 
     // GPIO Control Register hardware interface
     gpio_ctrl_reg_pkg::gpio_ctrl__in_t gpio_ctrl_hwif_in;
@@ -81,16 +81,17 @@ module gpio_shim
     logic aw_select;
     logic ar_select;
 
-    // Address decode: output[0] for register block, output[1] for error slave
-    // Address is assumed to be greater than base address of GPIO_CTRL_REG_MAP after passing the demux in gpio.sv
+    // Address decode: output[0] for register block, output[1] for error slave.
     always_comb begin
-        if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <= GPIO_CTRL_REG_MAP_BASE_ADDR + GPIO_CTRL_REG_MAP_SIZE) begin
+        if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <=
+            gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
             aw_select = 1'b0;
         end else begin
             aw_select = 1'b1;
         end
 
-        if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] <= GPIO_CTRL_REG_MAP_BASE_ADDR + GPIO_CTRL_REG_MAP_SIZE) begin
+        if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] <=
+            gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
             ar_select = 1'b0;
         end else begin
             ar_select = 1'b1;

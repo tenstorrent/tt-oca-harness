@@ -22,7 +22,7 @@ package i2c_wrap_reg_pkg;
 
     typedef struct {
         i2c__external__in_t i2c[3];
-        i2c_ctrl__external__in_t i2c_ctrl;
+        i2c_ctrl__external__in_t i2c_ctrl_regs;
     } i2c_wrap__in_t;
 
     typedef struct {
@@ -43,6 +43,6 @@ package i2c_wrap_reg_pkg;
 
     typedef struct {
         i2c__external__out_t i2c[3];
-        i2c_ctrl__external__out_t i2c_ctrl;
+        i2c_ctrl__external__out_t i2c_ctrl_regs;
     } i2c_wrap__out_t;
 endpackage

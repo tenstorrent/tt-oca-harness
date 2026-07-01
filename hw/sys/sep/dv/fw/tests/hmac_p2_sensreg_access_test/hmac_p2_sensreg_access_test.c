@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* (c) 2026 Tenstorrent USA Inc */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
  * HMAC P2 Sensitive Register Access Test.
@@ -79,7 +79,7 @@ static int test_digest_write_non_echo(void)
 static int test_cfg_regwen_absent(void)
 {
     printf("\nStep 3: CFG_REGWEN lock behavior\n");
-    printf("  INFO: HMAC_CFG_REGWEN is not present in och_sep_top_reg.h; step is N/A\n");
+    printf("  INFO: HMAC_CFG_REGWEN is not present in sep.h / sep_addr.h; step is N/A\n");
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;

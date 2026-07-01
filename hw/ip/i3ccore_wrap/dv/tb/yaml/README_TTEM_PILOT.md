@@ -22,7 +22,7 @@ keeping the existing cocotb test files unchanged.
 
 ```bash
 source $OCH_ROOT/bin/setup_env.sh          # loads X-2025.06 + cocotb venv (cd's to repo root)
-cd $OCH_ROOT/hw/periph/i3ccore_wrap/tb     # MUST run from the TB dir (see gotcha #2)
+cd $OCH_ROOT/hw/ip/i3ccore_wrap/dv/tb     # MUST run from the TB dir (see gotcha #2)
 rm -f $OCH_ROOT/out/STOP_ON_FAIL           # clear any stale stop flag from a prior fail
 
 # full build + run
