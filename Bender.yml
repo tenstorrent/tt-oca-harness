@@ -276,8 +276,8 @@ sources:
       - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
-      - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
-      - hw/ip/i2c_wrap/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
       - hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
@@ -362,8 +362,8 @@ sources:
       - hw/ip/gpio/rtl/gpio_shim_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg_pkg.sv
       - hw/ip/i2c/rtl/i2c_pkg.sv
-      - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_reg_pkg.sv
-      - hw/ip/i2c_wrap/rtl/i2c_wrap_pkg.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
+      - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
       - hw/ip/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
@@ -684,8 +684,8 @@ sources:
       - hw/ip/i2c/rtl/i2c_controller_fsm.sv
       - hw/ip/i2c/rtl/i2c_core.sv
       - hw/ip/i2c/rtl/i2c_target_fsm.sv
-      - hw/ip/i2c_wrap/regs/gen/sv/i2c_ctrl_reg.sv
-      - hw/ip/i2c_wrap/rtl/i2c_wrap.sv
+      - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg.sv
+      - hw/ip/i2c/rtl/i2c_wrap.sv
       # I3C is temporarily stubbed out; do not compile the generated core
       # wrappers while the external i3c-core package is not vendored.
       - hw/ip/i3ccore_wrap/rtl/i3ccore_stub.sv
