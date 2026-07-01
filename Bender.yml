@@ -294,7 +294,7 @@ sources:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
-      - hw/ip/telemetry_receiver_wrap/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
+      - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
@@ -390,7 +390,7 @@ sources:
       - hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
-      - hw/ip/telemetry_receiver_wrap/rtl/telemetry_receiver_wrap_pkg.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
@@ -753,7 +753,7 @@ sources:
       - hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
-      - hw/ip/telemetry_receiver_wrap/rtl/telemetry_receiver_wrap.sv
+      - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
       - hw/ip/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
