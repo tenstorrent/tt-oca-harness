@@ -27,7 +27,7 @@ OCAH_DOC_REG_ADOC := $(foreach b,$(OCAH_REG_BLOCKS),$(call ocah_reg_adoc_target,
 
 # The one genuinely new bit of discovery: the doc page sources (analogous to
 # discover.mk's ocah_reg_dirs glob).
-OCAH_DOC_PAGE_DIRS := $(wildcard $(OCAH_ROOT)/hw/ip/*/doc $(OCAH_ROOT)/hw/sys/*/doc)
+OCAH_DOC_PAGE_DIRS := $(wildcard $(OCAH_ROOT)/hw/ip/*/doc $(OCAH_ROOT)/hw/ip/*/*/doc $(OCAH_ROOT)/hw/sys/*/doc)
 
 ## @section Documentation
 

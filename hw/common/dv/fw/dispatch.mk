@@ -10,7 +10,7 @@ ocah_dv_fw_dispatch_mk := 1
 # prefix label and search root are parameters, so no tree-specific literals here.
 
 # Discover subsystem dv/fw/fw.mk under a tree root. $(1) = tree root
-ocah_dv_fw_mks_in = $(wildcard $(1)/hw/ip/*/dv/fw/fw.mk $(1)/hw/sys/*/dv/fw/fw.mk)
+ocah_dv_fw_mks_in = $(wildcard $(1)/hw/ip/*/dv/fw/fw.mk $(1)/hw/ip/*/*/dv/fw/fw.mk $(1)/hw/sys/*/dv/fw/fw.mk)
 
 # Subsystem name from a fw.mk path.
 ocah_dv_fw_name = $(notdir $(patsubst %/dv/fw/fw.mk,%,$(1)))
