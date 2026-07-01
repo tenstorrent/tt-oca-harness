@@ -259,8 +259,8 @@ sources:
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
       - hw/common/och_prim/rtl/prim_sparse_fsm_pkg.sv
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
-      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
-      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
+      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
@@ -291,7 +291,7 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
       - hw/ip/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
-      - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+      - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
       - hw/ip/telemetry_receiver_wrap/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
@@ -318,9 +318,9 @@ sources:
       - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
-      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
-      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
-      - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
+      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
+      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
+      - hw/common/axi/axi_filter/rtl/axi_filter_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
@@ -384,7 +384,7 @@ sources:
       - hw/ip/log_engine/rtl/log_engine_pkg.sv
       - hw/ip/memory_interface/rtl/examples/rom/example_rom_pkg.sv
       - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
-      - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg_pkg.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
@@ -544,13 +544,13 @@ sources:
       - hw/ip/avsbus_controller/rtl/avsbus_controller.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_crc3.sv
-      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
-      - hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv
-      - hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
-      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
-      - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
-      - hw/ip/axi_filter/rtl/traffic_filter.sv
-      - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
+      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
+      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv
+      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
+      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
+      - hw/common/axi/axi_filter/rtl/axi_filter_wrap.sv
+      - hw/common/axi/axi_filter/rtl/traffic_filter.sv
+      - hw/common/axi/axi_hang_detector/rtl/axi_hang_detector.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
@@ -733,13 +733,13 @@ sources:
       - hw/ip/key_manager/rtl/km_sram_interface.sv
       - hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
-      - hw/ip/local_alias_remap/rtl/axi_local_alias_remap.sv
-      - hw/ip/local_alias_remap/rtl/local_alias_remap.sv
+      - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
+      - hw/common/axi/local_alias_remap/rtl/local_alias_remap.sv
       - hw/ip/log_engine/regs/gen/sv/log_engine_reg.sv
       - hw/ip/log_engine/rtl/log_engine.sv
       - hw/ip/memory_interface/rtl/memory_interface.sv
-      - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
-      - hw/ip/output_remap/rtl/output_remap.sv
+      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
+      - hw/common/axi/output_remap/rtl/output_remap.sv
       - hw/ip/scrambler/rtl/scrambler.sv
       - hw/ip/scrambler/rtl/scrambler_1024x32.sv
       - hw/ip/scrambler/rtl/scrambler_2048x32.sv

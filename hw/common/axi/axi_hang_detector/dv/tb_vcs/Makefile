@@ -18,7 +18,7 @@ COCOTB_HDL_TIMEPRECISION = 1ps
 # Sources, in dependency order. The IP has no CSR block of its own (config lives
 # in cpu_ctrl at the SMC level), so the dependency set is just prim_axi_snoop +
 # the IP + this tb wrapper. Listed directly rather than via the Bender filelist.
-HANG := $(OCH_ROOT)/hw/ip/axi_hang_detector
+HANG := $(OCH_ROOT)/hw/common/axi/axi_hang_detector
 VERILOG_SOURCES += $(OCH_ROOT)/hw/common/och_prim/rtl/prim_axi_snoop.sv
 VERILOG_SOURCES += $(HANG)/rtl/axi_hang_detector.sv
 VERILOG_SOURCES += $(PWD)/tb_axi_hang_detector.sv
