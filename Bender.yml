@@ -366,9 +366,9 @@ sources:
       - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_tap_pkg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_tmp_pkg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg_pkg.sv
@@ -694,22 +694,22 @@ sources:
       - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_wrapper.sv
-      - hw/ip/jtag2axi/rtl/jtag2axi.sv
-      - hw/ip/jtag_intf_unit/rtl/jtag_intf_unit.sv
-      - hw/ip/jtag_ptap/rtl/jtag_3dcr_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_byp_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_caps_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_ic_reset_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_idcode_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_inst_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_inv_byp_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
-      - hw/ip/jtag_ptap/rtl/jtag_ptap.sv
-      - hw/ip/jtag_ptap/rtl/jtag_tap_ctrlr.sv
-      - hw/ip/jtag_ptap/rtl/jtag_tmp.sv
-      - hw/ip/jtag_ptap/rtl/jtag_tmp_status_reg.sv
-      - hw/ip/jtag_stap/rtl/jtag_stap.sv
+      - hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+      - hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_byp_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_idcode_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_inv_byp_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
+      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
+      - hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg.sv
       - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg.sv
