@@ -5,11 +5,11 @@
 $OCH_ROOT/vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
 
 // Register package and RTL (must come first)
-$OCH_ROOT/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
-$OCH_ROOT/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
 
 // Package
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
 
 // Common primitives (prim_pkg must come first)
 $OCH_ROOT/vendor/opentitan/upstream/hw/ip/prim_generic/rtl/prim_pkg.sv
@@ -22,13 +22,13 @@ $OCH_ROOT/vendor/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 $OCH_ROOT/vendor/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
 
 // RTL modules (in dependency order)
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/ctp_synchronizer.sv
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/ctp_edge_detector.sv
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
 
 // Core module (without CSRs)
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/cross_trigger_port_core.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.sv
 
 // Top-level module (last)
-$OCH_ROOT/hw/ip/cross_trigger_port/rtl/cross_trigger_port.sv
+$OCH_ROOT/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv

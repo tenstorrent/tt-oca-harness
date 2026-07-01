@@ -264,8 +264,8 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
-      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
-      - hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv
       - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
       - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
@@ -324,11 +324,11 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
-      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
-      - hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
-      - hw/ip/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
-      - hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
-      - hw/ip/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
       - hw/ip/dfd/rtl/pkg/dfd_addr_map_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_axi_pkg.svh
@@ -555,18 +555,18 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
-      - hw/ip/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
-      - hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
-      - hw/ip/cross_trigger_matrix/rtl/ctm_src_selector.sv
-      - hw/ip/cross_trigger_network/rtl/cross_trigger_network.sv
-      - hw/ip/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
-      - hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
-      - hw/ip/cross_trigger_port/rtl/cross_trigger_port.sv
-      - hw/ip/cross_trigger_port/rtl/cross_trigger_port_core.sv
-      - hw/ip/cross_trigger_port/rtl/ctp_edge_detector.sv
-      - hw/ip/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
-      - hw/ip/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
-      - hw/ip/cross_trigger_port/rtl/ctp_synchronizer.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
+      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network.sv
+      - hw/ip/cross_trigger/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
+      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
+      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
       - hw/ip/dfd/rtl/misc/dfd_assertion_macros.svh
       - hw/ip/dfd/rtl/cla/dfd_cla_action_gen.sv
       - hw/ip/dfd/rtl/cla/dfd_cla_counter.sv

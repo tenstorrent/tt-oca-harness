@@ -37,22 +37,22 @@ ${OCH_ROOT}/vendor/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 ${OCH_ROOT}/vendor/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
 
 // Cross Trigger Port IP
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/ctp_synchronizer.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/ctp_edge_detector.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/cross_trigger_port_core.sv
-${OCH_ROOT}/hw/ip/cross_trigger_port/rtl/cross_trigger_port.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv
 
 // Cross Trigger Matrix IP
-${OCH_ROOT}/hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
-${OCH_ROOT}/hw/ip/cross_trigger_matrix/rtl/ctm_src_selector.sv
-${OCH_ROOT}/hw/ip/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
 
 // Cross Trigger Network
-${OCH_ROOT}/hw/ip/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
-${OCH_ROOT}/hw/ip/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
-${OCH_ROOT}/hw/ip/cross_trigger_network/rtl/cross_trigger_network.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network.sv

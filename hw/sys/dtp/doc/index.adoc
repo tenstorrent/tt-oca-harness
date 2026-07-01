@@ -18,9 +18,9 @@ include::../../../ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=0]
 include::../../../ip/jtag/jtag_stap/doc/index.adoc[leveloffset=0]
 
 // Cross Trigger Components
-include::../../../ip/cross_trigger_network/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger_port/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger_matrix/doc/index.adoc[leveloffset=0]
+include::../../../ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=0]
+include::../../../ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=0]
+include::../../../ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=0]
 
 // DTP-level integration
 include::jtag.adoc[leveloffset=0]
