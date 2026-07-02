@@ -1,4 +1,4 @@
-# tt-oca
+# tt-oca-harness
 
 Open Chiplet Atlas Harness (OCAH) — the open hardware tree for the OCA design:
 RTL, register descriptions, generated collateral, and documentation.
@@ -61,6 +61,7 @@ Per-subsystem DV firmware (runtime **drivers**, not tests) is built via
 `make dv-fw [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk`
 under `hw/{ip,sys}/<name>/dv/fw/` and builds as an independent recursive sub-make so the
 target CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state.
+
 The RISC-V toolchain is provided by the project container and selected via
 `RISCV_TOOLCHAIN`. The build flow lives in [`hw/common/dv/fw/`](hw/common/dv/fw/).
 

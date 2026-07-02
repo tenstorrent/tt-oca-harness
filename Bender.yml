@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 package:
-  name: tt-oca
+  name: tt-oca-harness
   authors:
     - "Noah Betik <nbetik@tenstorrent.com>"
     - "Nicole Boettcher <nboettcher@tenstorrent.com>"
