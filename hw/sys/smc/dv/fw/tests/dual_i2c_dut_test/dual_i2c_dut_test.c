@@ -25,12 +25,13 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-#define BFM_I2C_SLAVE_ADDR 0x10 // BFM Target address (7-bit)
-#define TEST_WRITE_DATA 0xAA    // Test data to write
-#define TEST_READ_SIZE 1        // Read 1 byte
-#define I2C_TIMEOUT_US 100000   // 100ms timeout
+#define BFM_I2C_SLAVE_ADDR  0x10   // BFM Target address (7-bit)
+#define TEST_WRITE_DATA     0xAA   // Test data to write
+#define TEST_READ_SIZE      1      // Read 1 byte
+#define I2C_TIMEOUT_US      100000 // 100ms timeout
 
-int main(void) {
+int main(void)
+{
     simputs("\n");
     simputs("=== Dual I2C FW Test - DUT Master ===\n");
 
@@ -46,10 +47,10 @@ int main(void) {
     simputs("[INIT] Initializing I2C_0 as Master (Controller)\n");
 
     // Enable I2C_0 Wrapper in Master mode
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(0);
-    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0);
+    i2c_ctrl__I2C_CTRL_t ctrl = { .w = 0 };
     ctrl.f.I2C_EN = 1;
-    ctrl.f.I2C_CONTROLLER_MODE_EN = 1; // Master mode
+    ctrl.f.I2C_CONTROLLER_MODE_EN = 1;  // Master mode
     write_reg(wrapper_addr, ctrl.w);
 
     simputs("[INIT] I2C_0 Wrapper enabled in Master mode\n");
@@ -60,7 +61,7 @@ int main(void) {
         simputs("[ERROR] I2C_0 Controller initialization failed: 0x");
         simputshex32("", ret);
         simputs("\n");
-        write_scratch(0, 0xACEFACA0); // FAIL
+        write_scratch(0, 0xACEFACA0);  // FAIL
         return -1;
     }
 
@@ -77,12 +78,12 @@ int main(void) {
     // ========================================================================
     simputs("[WAIT] Waiting for BFM initialization (~500us)...\n");
 
-    uint32_t wait_timeout = 50000; // ~500us at typical clock
+    uint32_t wait_timeout = 50000;  // ~500us at typical clock
     uint32_t wait_count = 0;
     bool bfm_ready = false;
 
     while (wait_count < wait_timeout) {
-        uint32_t scratch2 = read_scratch(2); // Read scratch[2] instead of scratch[1]
+        uint32_t scratch2 = read_scratch(2);  // Read scratch[2] instead of scratch[1]
         if (scratch2 == 0x0BFB0000) {
             simputs("[READY] BFM Ready signal detected!\n");
             bfm_ready = true;
@@ -98,7 +99,7 @@ int main(void) {
 
     if (!bfm_ready) {
         simputs("[ERROR] BFM initialization timeout\n");
-        write_scratch(0, 0xACEFACA0); // FAIL
+        write_scratch(0, 0xACEFACA0);  // FAIL
         return -1;
     }
 
@@ -121,7 +122,7 @@ int main(void) {
         simputs("[ERROR] I2C Write failed: 0x");
         simputshex32("", ret);
         simputs("\n");
-        write_scratch(0, 0xACEFACA0); // FAIL
+        write_scratch(0, 0xACEFACA0);  // FAIL
         return -1;
     }
 
@@ -153,7 +154,7 @@ int main(void) {
         simputs("[ERROR] I2C Read failed: 0x");
         simputshex32("", ret);
         simputs("\n");
-        write_scratch(0, 0xACEFACA0); // FAIL
+        write_scratch(0, 0xACEFACA0);  // FAIL
         return -1;
     }
 
@@ -170,7 +171,7 @@ int main(void) {
     simputs("[VERIFY] Verifying read data...\n");
     if (read_data[0] == TEST_WRITE_DATA) {
         simputs("[SUCCESS] Data verification passed!\n");
-        write_scratch(0, 0xACFECA01); // PASS
+        write_scratch(0, 0xACFECA01);  // PASS
         simputs("[RESULT] Setting PASS_CODE to scratch[0]\n");
         simputs("[DONE] Test completed successfully\n");
         return 0;
@@ -180,7 +181,7 @@ int main(void) {
         simputs(", Got: 0x");
         simputshex32("", read_data[0]);
         simputs("\n");
-        write_scratch(0, 0xACEFACA0); // FAIL
+        write_scratch(0, 0xACEFACA0);  // FAIL
         return -1;
     }
 }

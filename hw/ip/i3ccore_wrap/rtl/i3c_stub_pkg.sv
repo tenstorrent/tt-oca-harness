@@ -11,6 +11,9 @@ package I3CCSR_pkg;
   localparam int unsigned I3CCSR_MIN_ADDR_WIDTH = 11;
   localparam int unsigned I3CCSR_DATA_WIDTH = 32;
 
+  localparam dat_depth = 'hf;
+  localparam dct_depth = 'hf;
+
   localparam int unsigned resp_fifo_size = 8;
   localparam int unsigned cmd_fifo_size = 8;
   localparam int unsigned rx_fifo_size = 8;

@@ -60,7 +60,6 @@ addrmap smc_top #(
     gpio_ctrl                      gpio_refclk_ctrl           @BASE_ADDR + 0x000_4CC0;
     gpio_poc_pbias_ctrl            gpio_poc_pbias_ctrl        @BASE_ADDR + 0x000_4DE0;
 
-    // OCA I3C Controllers
     oca_i3c_wrap                   oca_i3c_wrap_0             @BASE_ADDR + 0x000_5000;
     oca_i3c_wrap                   oca_i3c_wrap_1             @BASE_ADDR + 0x000_5500;
     oca_i3c_wrap                   oca_i3c_wrap_2             @BASE_ADDR + 0x000_5a00;
@@ -85,7 +84,7 @@ addrmap smc_top #(
     system_timer_octs              smc_system_timer_octs          @BASE_ADDR + 0x000_e000;
 
     external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_f000;
-    dfx_ctrl_status                dfx_ctrl                       @BASE_ADDR + 0x000_f800; // These CSRs are for ROMs knowledge of dfx status
+    dfx_ctrl_status                dfx_ctrl                       @BASE_ADDR + 0x000_f800;
     smc_base_config                smc_base_config                @BASE_ADDR + 0x001_0000;
     alias_remap                    smc_alias_remap[8]             @BASE_ADDR + 0x001_2000 += 0x20;
     output_remap                   smc_mmode_remap[8]             @BASE_ADDR + 0x001_3000 += 0x8;

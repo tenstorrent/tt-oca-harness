@@ -26,28 +26,29 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-#define BFM_I2C_SLAVE_ADDR 0x10 // BFM Target address (7-bit)
-#define TEST_WRITE_DATA 0xAA    // Expected write data from Master
-#define I2C_TIMEOUT_US 100000   // 100ms timeout
+#define BFM_I2C_SLAVE_ADDR  0x10   // BFM Target address (7-bit)
+#define TEST_WRITE_DATA     0xAA   // Expected write data from Master
+#define I2C_TIMEOUT_US      100000 // 100ms timeout
 
 // Scratchpad signal codes
-#define BFM_READY_SIGNAL 0x0BFB0000
-#define BFM_TEST_PASS 0xACFECA01
-#define BFM_TEST_FAIL 0xACEFACA0
+#define BFM_READY_SIGNAL    0x0BFB0000
+#define BFM_TEST_PASS       0xACFECA01
+#define BFM_TEST_FAIL       0xACEFACA0
 
 /**
  * @brief Enable I2C Wrapper in Slave/Target mode
  * CRITICAL: Must set i2c_controller_mode_en = 0
  */
-static void i2c_wrapper_enable_slave(uint32_t idx) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
-    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
+static void i2c_wrapper_enable_slave(uint32_t idx)
+{
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
+    i2c_ctrl__I2C_CTRL_t ctrl = { .w = 0 };
 
     // Read current value
     ctrl.w = read_reg(wrapper_addr);
 
     // Configure for Slave mode
-    ctrl.f.I2C_EN = 1;                 // Enable I2C
+    ctrl.f.I2C_EN = 1;                // Enable I2C
     ctrl.f.I2C_CONTROLLER_MODE_EN = 0; // SLAVE/TARGET mode (CRITICAL!)
 
     write_reg(wrapper_addr, ctrl.w);
@@ -60,7 +61,8 @@ static void i2c_wrapper_enable_slave(uint32_t idx) {
 /**
  * @brief Initialize I2C Target with specific address
  */
-static int i2c_target_init_with_addr(uint32_t i2c_idx, uint32_t target_addr) {
+static int i2c_target_init_with_addr(uint32_t i2c_idx, uint32_t target_addr)
+{
     int ret = i2c_target_init(i2c_idx, NULL);
     if (ret != I2C_OK) {
         simputs("[ERROR] I2C Target init failed: 0x");
@@ -85,7 +87,8 @@ static int i2c_target_init_with_addr(uint32_t i2c_idx, uint32_t target_addr) {
     return I2C_OK;
 }
 
-int main(void) {
+int main(void)
+{
     simputs("\n");
     simputs("=== Dual I2C FW Test - BFM Slave ===\n");
 
@@ -93,7 +96,7 @@ int main(void) {
     // Step 1: Initialize system
     // ========================================================================
     simputs("[INIT] System initialization\n");
-    write_scratch(2, 0x0BFB0001); // BFM Ready signal on scratch[2] (not scratch[1]!)
+    write_scratch(2, 0x0BFB0001);  // BFM Ready signal on scratch[2] (not scratch[1]!)
 
     // ========================================================================
     // Step 2: Initialize I2C_0 as Target (Slave)
@@ -132,7 +135,7 @@ int main(void) {
     // Step 3: Signal BFM Ready (use scratch[2] instead of scratch[1])
     // ========================================================================
     simputs("[READY] Signaling BFM Ready\n");
-    write_scratch(2, BFM_READY_SIGNAL); // Use scratch[2] for BFM ready signal
+    write_scratch(2, BFM_READY_SIGNAL);  // Use scratch[2] for BFM ready signal
 
     // ========================================================================
     // Step 4: Wait for I2C Write Transaction from Master (DUT)

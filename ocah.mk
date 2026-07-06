@@ -53,6 +53,16 @@ include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
+## Generate the filelist for the OCAH repository.
+## Optional overrides: EXTRA_TARGETS (bender -t flags), FLIST_OUT (output path).
+.PHONY: generate_filelist
+generate_filelist:
+	@echo "Generating HW filelist for the OCAH repository"
+	bender script flist-plus $(EXTRA_TARGETS) > $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)
+	@echo "Generated $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)"
+
+OCAH_PHONY += generate_filelist
+
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"
 include $(OCAH_ROOT)/help.mk

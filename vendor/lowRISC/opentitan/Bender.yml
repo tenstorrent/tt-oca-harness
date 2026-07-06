@@ -28,6 +28,7 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 
       # CSRNG/entropy/EDN are referenced by OCAH key manager support packages.
       - ../../../hw/common/ot_pkg/rtl/entropy_src_pkg.sv
@@ -133,8 +134,17 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
+      - upstream/hw/ip/prim/rtl/prim_flop_macros.sv
+      - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+      - upstream/hw/ip/prim/rtl/prim_fifo_async_simple.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
 
       # Entropy source helpers instantiated by SEP wrappers.
       - upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv

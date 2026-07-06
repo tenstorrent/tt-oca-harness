@@ -10,9 +10,12 @@
  * search path:
  *   - smc_addr.h, the local sub-block headers: hw/sys/smc/regs/gen/c[/blocks]
  *   - hw/ip block headers: each hw/ip/<block>/regs/gen/c
- *   - common AXI fabric headers: each hw/common/axi/<block>/regs/gen/c
+ *   - hw/common/axi block headers: hw/common/axi/<block>/regs/gen/c
+ *   - vendored overlay blocks (e.g. dma_ctrl): vendor/<org>/<ip>/overlay/rdl/gen/c
  *   - DV shim headers under hw/sys/smc/dv/shims/regs/gen/c and hw/ip/.../dv/shims
- * Add a line here when a sub-block is added to smc.rdl.
+ * Header names track the generated block name (its RDL addrmap), which is not
+ * always the instance name in smc.rdl (e.g. filter_ctrl/alias_remap/zeroer_ctrl/
+ * smc_cla). Add a line here when a sub-block is added to smc.rdl.
  */
 #ifndef SMC_H
 #define SMC_H

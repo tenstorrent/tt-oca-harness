@@ -74,7 +74,8 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c))
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c))
 FW_INCLUDES += $(if $(strip $(FW_REG_SYS)),$(call ocah_fw_reg_includes,$(FW_REG_SYS)))
 
 # Derived build variables.
@@ -191,6 +192,91 @@ dv-fw-tests: $(FW_TEST_ELFS)
 .PHONY: dv-fw-test-list
 dv-fw-test-list:
 	@printf '%s\n' $(FW_TEST_NAMES)
+
+# ROM test images: crt0-based boot images linked at the ROM origin. Opt-in via
+# FW_ROM_LINKER_SCRIPT. Unlike the SRAM test images above (entry at main,
+# -nostartfiles), these keep the _enter/crt0 startup and link against the ROM
+# linker script. Sources live in tests_rom/<name>/<name>.c and each image is
+# emitted as tests_rom/<name>/test.rom.* so the layout matches what the DV
+# testbench expects under FW_ROM_BUILD_ROOT (= FW_BUILD_DIR/tests_rom).
+ifneq ($(strip $(FW_ROM_LINKER_SCRIPT)),)
+FW_ROM_TEST_BUILD_DIR   ?= $(FW_BUILD_DIR)/tests_rom
+FW_ROM_TEST_LDFLAGS     ?= $(FW_LDFLAGS)
+FW_ROM_TEST_INCLUDES    ?= $(FW_TEST_INCLUDES)
+FW_ROM_TEST_EXTRA_CFLAGS ?= $(FW_TEST_EXTRA_CFLAGS)
+FW_ROM_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
+
+ifndef FW_ROM_TEST_NAMES
+FW_ROM_TEST_SRCS := $(filter-out \
+  $(FW_DIR)/tests_rom/common/%, \
+  $(wildcard $(FW_DIR)/tests_rom/*/*.c))
+FW_ROM_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_ROM_TEST_SRCS)))))
+$(foreach t,$(FW_ROM_TEST_NAMES),$(eval FW_ROM_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_DIR)/tests_rom/$(t)/*.c))))
+$(foreach t,$(FW_ROM_TEST_NAMES),$(eval FW_ROM_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests_rom/$(t)/*.c) $(FW_ROM_TEST_EXTRA_SRCS_$(t))))
+endif
+
+FW_ROM_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_ROM_TEST_NAMES))
+FW_ROM_TEST_ELFS := $(foreach t,$(FW_ROM_TEST_SELECTED),$(FW_ROM_TEST_BUILD_DIR)/$(t)/test.rom.elf)
+
+$(FW_ROM_TEST_BUILD_DIR)/%/.dir:
+	@mkdir -p "$(@D)"
+	@touch "$@"
+
+ifndef FW_ROM_TEST_POSTPROCESS
+define FW_ROM_TEST_POSTPROCESS
+endef
+endif
+
+define ocah_fw_rom_test_obj_rule
+$(FW_ROM_TEST_BUILD_DIR)/$(1)/$(notdir $(2:.c=.o)): $(2) | $(FW_ROM_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+	$$(CC) $$(FW_CFLAGS) $$(FW_INCLUDES) $$(FW_ROM_TEST_INCLUDES) $$(FW_EXTRA_CFLAGS) $$(FW_ROM_TEST_EXTRA_CFLAGS) $$(DEPFLAGS) -c "$$<" -o "$$@"
+endef
+
+define ocah_fw_rom_test_rules
+FW_ROM_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_ROM_TEST_SRCS_$(1))),$$(FW_ROM_TEST_SRCS_$(1)),$$(FW_ROM_TEST_SRC_$(1)))
+FW_ROM_TEST_OBJS_$(1) := $$(addprefix $(FW_ROM_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_ROM_TEST_SRCS_FOR_$(1):.c=.o)))
+$$(foreach src,$$(FW_ROM_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_rom_test_obj_rule,$(1),$$(src))))
+
+$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.elf: $$(FW_ROM_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_ROM_LINKER_SCRIPT) | $(FW_ROM_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+	$$(CC) $$(FW_ROM_TEST_LDFLAGS) -Wl,-Map="$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.map" -T "$$(FW_ROM_LINKER_SCRIPT)" $$(FW_ROM_TEST_OBJS_$(1)) $$(FW_ROM_TEST_ARCHIVE_LINK) -o "$$@"
+	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.dis"
+	$$(NM) -B -n "$$@" > "$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.sym"
+	$$(SIZE) "$$@"
+	$$(call FW_ROM_TEST_POSTPROCESS,$$@,$(1))
+endef
+
+$(foreach test,$(FW_ROM_TEST_NAMES),$(eval $(call ocah_fw_rom_test_rules,$(test))))
+
+# Validate the ROM test selection at parse time, only for dv-fw-rom-tests.
+ifneq ($(filter dv-fw-rom-tests,$(MAKECMDGOALS)),)
+ifeq ($(strip $(FW_ROM_TEST_NAMES)),)
+$(error no FW ROM tests configured for $(FW_NAME))
+endif
+ifneq ($(strip $(TEST)),)
+ifeq ($(strip $(FW_ROM_TEST_SRC_$(strip $(TEST)))$(FW_ROM_TEST_SRCS_$(strip $(TEST)))),)
+$(error unknown $(FW_NAME) FW ROM test '$(strip $(TEST))'; known tests: $(FW_ROM_TEST_NAMES))
+endif
+endif
+endif
+
+.PHONY: dv-fw-rom-tests
+dv-fw-rom-tests: $(FW_ROM_TEST_ELFS)
+
+.PHONY: dv-fw-rom-test-list
+dv-fw-rom-test-list:
+	@printf '%s\n' $(FW_ROM_TEST_NAMES)
+
+FW_ROM_TEST_DEPFILES := $(foreach t,$(FW_ROM_TEST_NAMES),$(FW_ROM_TEST_OBJS_$(t):.o=.d))
+-include $(FW_ROM_TEST_DEPFILES)
+else
+# No ROM test support for this subsystem; keep the goal defined so the tree-wide
+# dispatcher fan-out (which targets every subsystem) does not error.
+.PHONY: dv-fw-rom-tests dv-fw-rom-test-list
+dv-fw-rom-tests:
+	@echo "no ROM test support for $(FW_NAME) (FW_ROM_LINKER_SCRIPT unset)"
+dv-fw-rom-test-list:
+	@:
+endif
 
 # Linked image: only when the subsystem provides a linker script + entry.
 ifneq ($(strip $(FW_LINKER_SCRIPT)),)

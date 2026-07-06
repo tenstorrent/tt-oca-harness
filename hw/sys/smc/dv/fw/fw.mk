@@ -45,10 +45,24 @@ FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
 
 define FW_TEST_POSTPROCESS
 	$(OBJCOPY) -O binary $(1) "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin"
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 8 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex"
+	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 64 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex"
 	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 1 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi"
 	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).preload.hex"
 	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi_preload"
+endef
+
+# ROM boot images (tests_rom/<name>/<name>.c). These keep the crt0/_enter startup
+# and link at the ROM origin (smc_rom.ld) instead of the SRAM scratch-pad script.
+# Each image emits test.rom.* so the DV testbench can preload
+# $FW_ROM_BUILD_ROOT/<name>/test.rom.preload.hex (FW_ROM_BUILD_ROOT = build/tests_rom).
+FW_ROM_LINKER_SCRIPT := $(FW_DIR)/link/smc_rom.ld
+
+define FW_ROM_TEST_POSTPROCESS
+	$(OBJCOPY) -O binary $(1) "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.bin"
+	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.bin" --data_width 64 --out_file "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.hex"
+	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.bin" --data_width 1 --out_file "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.spi"
+	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.hex" --out_file "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.preload.hex"
+	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.spi" --out_file "$(FW_ROM_TEST_BUILD_DIR)/$(2)/test.rom.spi_preload"
 endef
 
 include $(FW_DIR)/toolchain.mk
