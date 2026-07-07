@@ -65,6 +65,35 @@ target CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc fla
 The RISC-V toolchain is provided by the project container and selected via
 `RISCV_TOOLCHAIN`. The build flow lives in [`hw/common/dv/fw/`](hw/common/dv/fw/).
 
+### SMC DV test firmware
+
+C test images are built via the standard dispatcher:
+
+```bash
+scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc
+```
+
+### SMC boot ROM
+
+A lightweight dummy boot ROM lives in [`hw/sys/smc/bootrom/`](hw/sys/smc/bootrom/). Its
+only job is to boot from the ROM address (`0xc0040000`), write `TEST_ROM_PASS` to
+`scratch_0`, and spin in `wfi` so the testbench can load real firmware into SRAM.
+
+Build it with its standalone Makefile:
+
+```bash
+# From the repo root (OCAH_ROOT resolved automatically):
+scripts/docker-run.sh run make -C hw/sys/smc/bootrom
+
+# Or directly, if the toolchain is on PATH:
+make -C hw/sys/smc/bootrom
+
+# Override the toolchain prefix if needed:
+make -C hw/sys/smc/bootrom RISCV_TOOLCHAIN=/path/to/bin
+```
+
+Outputs land under `hw/sys/smc/bootrom/build/dv_rom/`
+
 ## Third-party (vendor) package imports
 
 External IP is materialized under `vendor/` via Bender's `vendor_package` feature. If a
