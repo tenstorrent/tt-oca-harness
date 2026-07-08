@@ -27,13 +27,8 @@ if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 
-# Run as the caller's uid:gid rather than each image's baked-in default (root,
-# or a fixed non-root uid) so files written back into the bind-mounted repo
-# are owned by the caller, not some other uid, on engines/hosts that do not
-# already remap container uids to the caller (e.g. rootful Docker). HOME is
-# pointed at a writable, always-present directory since the mapped uid has no
-# passwd entry in most of these images. Override with OCAH_DOCKER_UIDGID
-# (empty disables both, e.g. `OCAH_DOCKER_UIDGID= ./scripts/docker-run.sh ...`).
+# Run as the caller's uid:gid so bind-mounted output stays owned by the
+# caller. Override with OCAH_DOCKER_UIDGID (empty runs as the image default).
 UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"
 USER_FLAGS=(); [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
@@ -48,22 +43,17 @@ run() {
     run_image "$IMAGE" "$@"
 }
 
-# run_image_1to1 IMAGE [-it] CMD... : like run_image, but mounts the repo at its
-# own host-absolute path instead of /work. Required for the EDA flows, whose
-# `.f` filelists are generated natively (by `bender`) and therefore already
-# contain host-absolute paths - the container must see the same paths to
-# resolve them, so there is no `/work`-relative rewrite to do.
+# run_image_1to1 IMAGE [-it] CMD... : like run_image, but mounts the repo at
+# its own host-absolute path instead of /work. Used by the EDA flows, whose
+# bender-generated `.f` filelists already contain host-absolute paths.
 run_image_1to1() {
     local image="$1"; shift
     local f=(); [[ "${1:-}" == "-it" ]] && { f=(-it); shift; }
     "$ENGINE" run --rm "${f[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
-# hpretl/iic-osic-tools's own entrypoint is a UI launcher (X11/VNC) by
-# default; `--skip` tells it to skip that and exec the given command
-# directly instead (see `docker run hpretl/iic-osic-tools --help`), but it
-# must be the *first* argument the entrypoint sees after any `-it` - so it is
-# injected here rather than by callers.
+# hpretl/iic-osic-tools's entrypoint launches a UI (X11/VNC) by default;
+# `--skip` (must come first) tells it to exec the given command instead.
 eda_run() {
     local f=(); [[ "${1:-}" == "-it" ]] && { f=(-it); shift; }
     run_image_1to1 "$EDA_IMAGE" "${f[@]}" --skip "$@"

@@ -4,22 +4,15 @@
 ifndef ocah_synth_yosys_mk
 ocah_synth_yosys_mk := 1
 
-# Self-path first: must be resolved before the include below appends to
-# MAKEFILE_LIST, or $(lastword $(MAKEFILE_LIST)) would start resolving to
-# common.mk instead of this file.
+# Resolve self-path before including common.mk, which appends to MAKEFILE_LIST.
 OCAH_YOSYS_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 include $(OCAH_YOSYS_DIR)/../../common.mk
 
-# Open-source synthesis via yosys + yosys-slang, PDK-parametrized by TECH (see
-# flows/synth/yosys/README.md). Included both by ocah.mk (defines the
-# ocah-synth dispatcher) and by each hw/sys/<block>/flow.mk (defines the
-# ocah-synth-one per-block worker, once FLOW_DESIGN/FLOW_BENDER_TARGETS are
-# set).
+# Synthesis via yosys + yosys-slang, PDK-parametrized by TECH. Included by
+# ocah.mk (ocah-synth dispatcher) and each flow.mk (ocah-synth-one worker).
 
-# Default PDK, independent of BLOCK so adding one later never touches an
-# existing one (see flows/synth/yosys/tech/). Forwarded into the container as
-# PDK=$(TECH) - the same env var hpretl/iic-osic-tools itself uses to select
-# /foss/pdks/<TECH>; flows/synth/yosys/scripts/init_tech.tcl reads it back out.
+# Default PDK, forwarded into the container as PDK=$(TECH) (see
+# flows/synth/yosys/tech/ and scripts/init_tech.tcl).
 TECH ?= ihp-sg13g2
 
 OCAH_YOSYS_SYNTH_TCL := $(OCAH_YOSYS_DIR)/scripts/synth.tcl
@@ -37,8 +30,7 @@ OCAH_PHONY += ocah-synth
 
 ifdef FLOW_DESIGN
 
-# TECH-scoped so re-running with a different TECH never clobbers a previous
-# PDK's results.
+# TECH-scoped so different PDKs don't clobber each other's build output.
 OCAH_SYNTH_DIR := build/synth/$(TECH)
 OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
 

@@ -4,11 +4,8 @@
 ifndef ocah_lint_slang_mk
 ocah_lint_slang_mk := 1
 
-# Open-source semantic lint via slang (elaborating frontend, not a style
-# linter - see flows/synth/yosys/README.md for how this relates to synth).
-# Included both by ocah.mk (defines the ocah-lint dispatcher) and by each
-# hw/sys/<block>/flow.mk (defines the ocah-lint-one per-block worker, once
-# FLOW_DESIGN/FLOW_BENDER_TARGETS are set).
+# Semantic lint via slang (elaborating frontend, not a style linter). Included
+# by ocah.mk (ocah-lint dispatcher) and each flow.mk (ocah-lint-one worker).
 include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 
 ## @section Lint (slang)

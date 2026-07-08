@@ -7,17 +7,12 @@ ocah_format_verible_mk := 1
 OCAH_FORMAT_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 include $(OCAH_FORMAT_DIR)/../common.mk
 
-# Purely syntactic (no elaboration, no top module, no bender/flow.mk involved)
-# so this scopes by filesystem path rather than TARGET=<block>, deliberately
-# keeping the two verbs from colliding in meaning. Named FORMAT_PATH rather
-# than PATH=: `make ... PATH=x` is exported into every recipe subshell's
-# environment (command-line variables are auto-exported), which would replace
-# the shell's own command-search PATH and break every tool the recipe calls.
+# Path to format, scoped by filesystem rather than by block. Not named PATH=,
+# which would override the shell's own command-search PATH.
 FORMAT_PATH ?= hw
 
-# .sv/.svh/.v files under FORMAT_PATH, excluding gitignored build output and
-# third-party vendored/patched sources (reformatting those would fight
-# `bender vendor init`/patches, not just churn diffs).
+# .sv/.svh/.v files under FORMAT_PATH, excluding build output and vendored
+# third-party sources.
 ocah_format_files := $(shell find $(OCAH_ROOT)/$(FORMAT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) -not -path '*/build/*' -not -path '*/vendor/*' 2>/dev/null)
 
 ocah_format_check_files = @[ -n "$(strip $(ocah_format_files))" ] || { echo "error: no .sv/.svh/.v files under $(FORMAT_PATH)" >&2; exit 1; }

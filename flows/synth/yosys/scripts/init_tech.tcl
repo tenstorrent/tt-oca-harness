@@ -1,14 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Tech-agnostic dispatcher: resolve the PDK from the environment (the same
-# PDK= value hpretl/iic-osic-tools itself uses to pick /foss/pdks/<PDK>),
-# source the matching tech/<pdk>.tcl - the only place PDK-specific data lives
-# - then run the one step every PDK shares: load every liberty file into
-# yosys. Nothing downstream (elab.tcl, synth.tcl) is tech-aware; they only
-# ever consume the generic names this + tech/<pdk>.tcl define ($tech_cells,
-# $tech_cells_args, $tech_cell_tiehi/tielo, $dont_use_args, $abc_constr, ...).
-# Adding a PDK means adding a sibling tech/<pdk>.tcl; this file never changes.
+# Tech-agnostic dispatcher: resolve PDK from the environment, source the
+# matching tech/<pdk>.tcl, then load every liberty file into yosys. Adding a
+# PDK means adding a sibling tech/<pdk>.tcl; this file never changes.
 if {![info exists ::env(PDK)] || $::env(PDK) eq ""} {
     error "init_tech: PDK environment variable is not set (e.g. PDK=ihp-sg13g2)"
 }
