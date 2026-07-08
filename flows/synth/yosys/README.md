@@ -78,20 +78,22 @@ re-running with a different `TECH` never clobbers a previous PDK's results.
 
 ### Adding a PDK
 
-1. Add `tech/<pdk>.tcl` - the only PDK-specific data: `pdk_cells_lib`/
+1. Add `tech/<pdk>/tech.tcl` - the only PDK-specific data: `pdk_cells_lib`/
    `pdk_sram_lib`/`pdk_io_lib` paths, the liberty file(s) (`tech_cells`/
    `tech_macros`), the tie-off cell names (`tech_cell_tiehi`/`tech_cell_tielo`),
    an optional `dont_use_list`, and the ABC constraint (`abc_constr`,
-   `abc_period_ps`) - see `tech/ihp-sg13g2.tcl` for the shape.
+   `abc_period_ps`) - see `tech/ihp-sg13g2/tech.tcl` for the shape. Each PDK
+   gets its own directory so it can grow beyond these two files (e.g. extra
+   corners, vendored macro views) without colliding with another PDK's names.
 2. If the PDK is already bundled in the image, nothing else changes:
    `scripts/init_tech.tcl` is a thin, tech-agnostic dispatcher that resolves
-   `tech/$PDK.tcl` from the environment and errors with the list of known
-   `tech/*.tcl` files on an unknown value.
+   `tech/$PDK/tech.tcl` from the environment and errors with the list of
+   known `tech/*` subdirectories on an unknown value.
 3. If it is not bundled, point `OCAH_EDA_IMAGE` at an image/tag that has it.
 
 `scripts/common.tcl`, `scripts/elab.tcl`, and `scripts/synth.tcl` never change
 for a new PDK - every tech-specific value is hidden behind the generic names
-`init_tech.tcl` + `tech/<pdk>.tcl` define.
+`init_tech.tcl` + `tech/<pdk>/tech.tcl` define.
 
 ## Timing constraints (`constraints.sdc`) vs. the ABC driving-cell/load model
 
@@ -105,7 +107,7 @@ block-specific caveats).
 **None of this is read by `make synth` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at
 all - ABC's timing model is a driving-cell/load pair
-(`tech/ihp-sg13g2.constr`, i.e. `set_driving_cell`/`set_load`) plus a single
+(`tech/ihp-sg13g2/abc.constr`, i.e. `set_driving_cell`/`set_load`) plus a single
 scalar clock period (`-D <period>`) passed on the `abc` command line; there
 is no multi-clock, multi-exception constraint graph in the loop. A full SDC
 only becomes a real synthesis-flow input once a place-and-route or
@@ -132,12 +134,13 @@ flows/
 │   ├── yosys.mk              # ocah-synth / ocah-synth-one, TECH ?= ihp-sg13g2
 │   ├── scripts/
 │   │   ├── common.tcl        # env vars, out/tmp/reports dirs
-│   │   ├── init_tech.tcl     # resolves $PDK, sources tech/$PDK.tcl
+│   │   ├── init_tech.tcl     # resolves $PDK, sources tech/$PDK/tech.tcl
 │   │   ├── elab.tcl          # read_slang / hierarchy / check / proc
 │   │   └── synth.tcl         # coarse opt / techmap / ABC / write_verilog (entry point)
 │   └── tech/
-│       ├── ihp-sg13g2.tcl    # liberty paths, tie cells, dont_use
-│       └── ihp-sg13g2.constr # ABC driving-cell/load constraint
+│       └── ihp-sg13g2/
+│           ├── tech.tcl      # liberty paths, tie cells, dont_use
+│           └── abc.constr    # ABC driving-cell/load constraint
 └── format/verible.mk         # ocah-format / ocah-format-check
 ```
 

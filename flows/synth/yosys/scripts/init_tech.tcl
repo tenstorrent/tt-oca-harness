@@ -2,18 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Tech-agnostic dispatcher: resolve PDK from the environment, source the
-# matching tech/<pdk>.tcl, then load every liberty file into yosys. Adding a
-# PDK means adding a sibling tech/<pdk>.tcl; this file never changes.
+# matching tech/<pdk>/tech.tcl, then load every liberty file into yosys.
+# Adding a PDK means adding a sibling tech/<pdk>/ directory; this file never
+# changes.
 if {![info exists ::env(PDK)] || $::env(PDK) eq ""} {
     error "init_tech: PDK environment variable is not set (e.g. PDK=ihp-sg13g2)"
 }
 set tech $::env(PDK)
 
-set tech_dir  [file join [file dirname [info script]] .. tech]
-set tech_file [file join $tech_dir "$tech.tcl"]
+set tech_dir  [file join [file dirname [info script]] .. tech $tech]
+set tech_file [file join $tech_dir "tech.tcl"]
 
 if {![file exists $tech_file]} {
-    set known [glob -nocomplain -tails -directory $tech_dir "*.tcl"]
+    set known [glob -nocomplain -tails -directory [file join [file dirname [info script]] .. tech] -type d "*"]
     error "init_tech: unknown PDK '$tech' (no $tech_file); known: $known"
 }
 

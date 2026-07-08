@@ -4,7 +4,7 @@
 # IHP SG13G2 (open 130nm PDK) technology data for the yosys synth flow.
 # hpretl/iic-osic-tools bakes the liberty files in at $PDK_ROOT/$PDK/libs.ref/;
 # paths/cell names match that layout. Adding a new PDK means adding a sibling
-# tech/<pdk>.tcl - this file never changes for it (see
+# tech/<pdk>/ directory - this file never changes for it (see
 # flows/synth/yosys/scripts/init_tech.tcl and README.md).
 set pdk_root [ocah_env PDK_ROOT "/foss/pdks"]
 set pdk_dir  "$pdk_root/$tech"
@@ -25,6 +25,7 @@ set tech_cell_tielo {sg13g2_tielo L_LO}
 set dont_use_list [list]
 
 # ABC timing constraint: driving cell + external load seen by top-level ports
-# (see tech/ihp-sg13g2.constr) and target clock period for delay optimization.
-set abc_constr [file join [file dirname [info script]] "ihp-sg13g2.constr"]
+# (see tech/ihp-sg13g2/abc.constr) and target clock period for delay
+# optimization.
+set abc_constr [file join [file dirname [info script]] "abc.constr"]
 set abc_period_ps 10000
