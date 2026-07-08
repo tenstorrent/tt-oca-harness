@@ -104,10 +104,9 @@ for a new PDK - every tech-specific value is hidden behind the generic names
 Each `hw/sys/<block>/synth/constraints.sdc` (`smc`, `dtp`, `sep`, `smu`) is a
 full Synopsys Design Constraints file - `create_clock`/`create_generated_clock`
 for every clock domain, `set_clock_groups`, and `set_input_delay`/
-`set_output_delay` for every top-level port - ported and sanitized from
-`tt-oca-hw`'s block-level timing collateral and validated against this repo's
+`set_output_delay` for every top-level port - validated against this repo's
 actual RTL port lists and hierarchy (see the header comment in each file for
-block-specific caveats and any drift from the source).
+block-specific caveats).
 
 **None of this is read by `make synth` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at

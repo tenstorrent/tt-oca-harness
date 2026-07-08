@@ -4,9 +4,8 @@
 #-----------------------------------------------------------------------------
 # DTP (Debug and Test Ports) block-level timing constraints.
 #
-# Ported from tt-oca-hw's block_flow_customizations/{global.clock_periods.tcl,
-# dtp/dtp.clock_defines.tcl} and validated against the `dtp` top-level port
-# list (hw/sys/dtp/rtl/dtp.sv).
+# Clock periods, generated clocks, and I/O delays for the `dtp` top-level
+# port list (hw/sys/dtp/rtl/dtp.sv).
 #
 # This is reference/documentation-level SDC: the current Yosys-based synth
 # flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
@@ -15,16 +14,15 @@
 # (e.g. OpenROAD/OpenSTA) is added to the flow. See
 # flows/synth/yosys/README.md for the rationale.
 #
-# Known drift from the ported source, called out explicitly:
-#   - The source constrained two flat ports, `jtag_ic_reset_ovrd_o` and
-#     `jtag_ic_reset_ctrl_n_o`, that no longer exist on `dtp`. Current RTL
-#     exposes three typed per-slice ports instead (`jtag_ic_reset_smc_o`,
-#     `jtag_ic_reset_sep_o`, `jtag_ic_reset_ext_o`, each with `.ovrd`/`.val`
-#     sub-structs); the constraint below was updated to match.
+# Caveats, called out explicitly:
+#   - `dtp` exposes three typed per-slice IC-reset ports,
+#     `jtag_ic_reset_smc_o`, `jtag_ic_reset_sep_o`, and `jtag_ic_reset_ext_o`
+#     (each with `.ovrd`/`.val` sub-structs); the constraints below cover all
+#     three.
 #   - `cla_clock_stop_en_o` and the DFT ports `test_en_i`/`scan_rst_ni` are
-#     real `dtp` top-level ports with no I/O delay in the source; constraints
-#     were added below, modeled on their nearest siblings (`stop_clks_o` and
-#     the SMC block's JTAG_TCK-domain DFT ports, respectively).
+#     real `dtp` top-level ports; constraints below are modeled on their
+#     nearest siblings (`stop_clks_o` and the SMC block's JTAG_TCK-domain DFT
+#     ports, respectively).
 #-----------------------------------------------------------------------------
 
 ##################
@@ -220,8 +218,8 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # Clock control
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports stop_clks_o] -add_delay
-# Addition (not present in the ported source): `cla_clock_stop_en_o` is a real
-# `dtp` top-level output; constrained the same as its `stop_clks_o` sibling.
+# `cla_clock_stop_en_o` is a real `dtp` top-level output; constrained the
+# same as its `stop_clks_o` sibling.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports cla_clock_stop_en_o] -add_delay
 
 # JTAG boot stall control (driven from JTAG_TCK-domain scan register; use TCK output delay)
@@ -229,9 +227,7 @@ set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.25]    -clock [get_cloc
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.25]    -clock [get_clock JTAG_TCK] [get_ports jtag_boot_stall_o] -add_delay
 
 # JTAG reset control (typed struct slices; each contains `.ovrd` + `.val` halves).
-# Ported source constrained two flat ports (`jtag_ic_reset_ovrd_o`,
-# `jtag_ic_reset_ctrl_n_o`) that no longer exist; current RTL exposes one
-# typed port per IC_RESET TDR slice instead.
+# One typed port per IC_RESET TDR slice.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {jtag_ic_reset_smc_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {jtag_ic_reset_sep_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
@@ -279,8 +275,8 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_en_o*}] -add_delay
 
 # DFT
-# Addition (not present in the ported source): `test_en_i`/`scan_rst_ni` are
-# real `dtp` top-level ports; constrained on JTAG_TCK, matching the pattern
-# used for the equivalent DFT ports on the SMC block.
+# `test_en_i`/`scan_rst_ni` are real `dtp` top-level ports; constrained on
+# JTAG_TCK, matching the pattern used for the equivalent DFT ports on the
+# SMC block.
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay

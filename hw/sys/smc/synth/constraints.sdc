@@ -4,10 +4,10 @@
 #-----------------------------------------------------------------------------
 # SMC (System Management Controller) block-level timing constraints.
 #
-# Ported from tt-oca-hw's block_flow_customizations/{global.clock_periods.tcl,
-# smc/smc.clock_defines.tcl, gpio_io_constraints.tcl} and validated against the
-# `smc` top-level port list (hw/sys/smc/rtl/smc.sv) and the AVS clock-mux/
-# divider hierarchy (hw/ip/avsbus_controller/rtl/avsbus_controller.sv).
+# Clock periods, generated clocks, clock groups, and I/O delays for every
+# `smc` top-level port, validated against the `smc` top-level port list
+# (hw/sys/smc/rtl/smc.sv) and the AVS clock-mux/divider hierarchy
+# (hw/ip/avsbus_controller/rtl/avsbus_controller.sv).
 #
 # This is reference/documentation-level SDC: the current Yosys-based synth
 # flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
@@ -16,10 +16,9 @@
 # (e.g. OpenROAD/OpenSTA) is added to the flow. See
 # flows/synth/yosys/README.md for the rationale.
 #
-# Known drift from the ported source, called out explicitly:
-#   - `rst_primary_periph_clk_no` is a real `smc` top-level port that had no
-#     I/O delay in the source; one was added below, modeled on its sibling
-#     reset outputs.
+# Caveats, called out explicitly:
+#   - `rst_primary_periph_clk_no` is a real `smc` top-level port; its I/O
+#     delay below is modeled on its sibling reset outputs.
 #   - The `AVS_DIV_CLK_Q_FROM_*` generated clocks below target the `div_clk`
 #     register inside `prim_prog_clk_div_posedge` by name. In this RTL that
 #     register is a plain `always_ff`-inferred flop (no discrete primitive
@@ -285,9 +284,9 @@ set_output_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_clock REFCLK] [get_ports rst_primary_ref_clk_no] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports rst_primary_smc_clk_no] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports rst_wdt_smc_clk_no] -add_delay
-# Addition (not present in the ported source): `rst_primary_periph_clk_no` is a
-# real `smc` top-level output; constrained on PERIPHERALCLK to match its name,
-# following the same 50%-period margin pattern as its sibling reset outputs.
+# `rst_primary_periph_clk_no` is a real `smc` top-level output; constrained
+# on PERIPHERALCLK to match its name, following the same 50%-period margin
+# pattern as its sibling reset outputs.
 set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] [get_ports rst_primary_periph_clk_no] -add_delay
 
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports rst_cool_n_from_pin_i] -add_delay

@@ -8,10 +8,9 @@
 # Controller), DTP (Debug and Trace Processor), and SEP (Secure Execution
 # Processor, optional via the `SEP` parameter).
 #
-# Ported from tt-oca-hw's block_flow_customizations/{global.clock_periods.tcl,
-# smu/smu.clock_defines.tcl, gpio_io_constraints.tcl} and validated against the
-# `smu` top-level port list (hw/sys/smu/rtl/smu.sv) and its DTP/SMC/SEP
-# sub-instances.
+# Clock periods, generated clocks, clock groups, and I/O delays for every
+# `smu` top-level port, validated against the `smu` top-level port list
+# (hw/sys/smu/rtl/smu.sv) and its DTP/SMC/SEP sub-instances.
 #
 # This is reference/documentation-level SDC: the current Yosys-based synth
 # flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
@@ -20,8 +19,8 @@
 # (e.g. OpenROAD/OpenSTA) is added to the flow. See
 # flows/synth/yosys/README.md for the rationale.
 #
-# Subcomponent hierarchy mode: this file mirrors the source's `smu_sam_flow`
-# switch, shared by synth / CDC / RDC signoff.
+# Subcomponent hierarchy mode: this file supports a `smu_sam_flow` switch,
+# shared by synth / CDC / RDC signoff.
 #   smu_sam_flow == 0 (default, synth): SMC/DTP/SEP RTL is fully present, so
 #     constraints reaching INTO subcomponent hierarchy (the AVS clock-mux /
 #     divider pins inside u_smc/...) are applied. This is the mode relevant
@@ -29,24 +28,22 @@
 #   smu_sam_flow == 1 (CDC/RDC): subcomponents are blackboxed and replaced by
 #     signoff abstract models (SAM); those into-hierarchy pins do not exist,
 #     so the full-hierarchy block is skipped and a simpler feedthrough model
-#     is used instead. Not exercised by this repo today, kept for parity with
-#     the ported source and any future SAM-based signoff flow.
+#     is used instead. Not exercised by this repo today, kept for parity
+#     with any future SAM-based signoff flow.
 #
-# Known drift from the ported source, called out explicitly:
-#   - `sep_crypto_entropy_req_o*` / `sep_crypto_entropy_rsp_i*` targeted ports
-#     that do not exist at the current `smu` top level (no generic SEP
-#     crypto/entropy passthrough is exposed there in this RTL; SEP only
-#     surfaces the PKA imem/dmem SRAM and Key Manager ROM/SRAM interfaces).
-#     Commented out below.
-#   - `sep_security_disable_i` targeted a port that does not exist at the
-#     current `smu` top level; `sep_security_disable` is purely an internal
-#     net here (driven by `u_sep.security_disable_o`, consumed by
-#     `u_smc.sep_security_disable_i`). Commented out below.
-#   - Added constraints for real `smu` top-level ports that had no I/O delay
-#     in the source: `smc_global_base_o*`, `sep_global_base_o*`,
-#     `sep_region_size_o*`, `gpio_interrupt_o*`, `uart_interrupt_o*`,
-#     `i3c_dat_mem_sink_o*`, `i3c_dct_mem_sink_o*`, `jtag_ic_reset_ext_o*`,
-#     and `sep_extintsrc_req_i`.
+# Caveats, called out explicitly:
+#   - `sep_crypto_entropy_req_o*` / `sep_crypto_entropy_rsp_i*` are commented
+#     out below: no generic SEP crypto/entropy passthrough is exposed at the
+#     current `smu` top level in this RTL (SEP only surfaces the PKA
+#     imem/dmem SRAM and Key Manager ROM/SRAM interfaces).
+#   - `sep_security_disable_i` is commented out below: `sep_security_disable`
+#     is purely an internal net here (driven by `u_sep.security_disable_o`,
+#     consumed by `u_smc.sep_security_disable_i`), not a top-level port.
+#   - I/O delays are added below for real `smu` top-level ports with no
+#     matching constraint elsewhere: `smc_global_base_o*`,
+#     `sep_global_base_o*`, `sep_region_size_o*`, `gpio_interrupt_o*`,
+#     `uart_interrupt_o*`, `i3c_dat_mem_sink_o*`, `i3c_dct_mem_sink_o*`,
+#     `jtag_ic_reset_ext_o*`, and `sep_extintsrc_req_i`.
 #   - The `AVS_DIV_CLK_Q_FROM_*` generated clocks below target the `div_clk`
 #     register inside `prim_prog_clk_div_posedge` (reached via
 #     `u_smc/u_smc_peripherals/avsbus_controller/...`) by name. In this RTL
@@ -416,9 +413,9 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_efuse_shim_command_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_efuse_shim_command_resp_i*}] -add_delay
 
-# SMC / SEP apertures, surfaced symmetrically at the SMU boundary. Addition
-# (not present in the ported source): `smc_global_base_o*` had no I/O delay
-# there either; constrained the same as its sibling `smc_region_size_o*`.
+# SMC / SEP apertures, surfaced symmetrically at the SMU boundary.
+# `smc_global_base_o*` is constrained the same as its sibling
+# `smc_region_size_o*`.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_region_size_o*}] -add_delay
 # Addition: `sep_global_base_o*` / `sep_region_size_o*` mirror the SMC apertures
@@ -436,8 +433,8 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # GPIO Data Signals
 # Full hierarchy (synth): protocol-accurate I/O delays come from the GPIO
-# Interface section below (ported from gpio_io_constraints.tcl), which stamps
-# SMCCLK / SPICLK_GPIO / PERIPHERALCLK / AVS-divider clocks on each GPIO bit.
+# Interface section below, which stamps SMCCLK / SPICLK_GPIO / PERIPHERALCLK
+# / AVS-divider clocks on each GPIO bit.
 # SAM flow (CDC/RDC): those internal protocol clocks live inside the SMC SAM
 # and are not defined at the SMU boundary, so that section cannot apply there
 # (it would error on SMCCLK / SPICLK_GPIO / AVS-divider clocks). At the SMU
@@ -475,9 +472,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_interrupts_i*}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports temp_interrupt_i] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_mailbox_interrupts_o*}] -add_delay
-# Addition (not present in the ported source): `gpio_interrupt_o*` /
-# `uart_interrupt_o*` are real `smu` top-level interrupt outputs, modeled the
-# same as the other SMUCLK-domain interrupt outputs above.
+# `gpio_interrupt_o*` / `uart_interrupt_o*` are real `smu` top-level
+# interrupt outputs, modeled the same as the other SMUCLK-domain interrupt
+# outputs above.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {gpio_interrupt_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {uart_interrupt_o*}] -add_delay
 
@@ -563,11 +560,10 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 # Memory Init
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports init_mem_done_o] -add_delay
 
-# I3C DAT/DCT memory interfaces (see the same construct in the SMC block SDC).
-# Addition (not present in the ported source): the source only stamped the
-# `_src_i` inputs on PERIPHERALCLK; the `_sink_o` responses (real `smu`
-# top-level outputs) had no I/O delay either. Both directions are guarded with
-# `-quiet` since I3C is a configurable peripheral count.
+# I3C DAT/DCT memory interfaces (see the same construct in the SMC block
+# SDC). I/O delays are stamped on PERIPHERALCLK for both directions - the
+# `_src_i` inputs and the `_sink_o` responses (real `smu` top-level outputs)
+# - guarded with `-quiet` since I3C is a configurable peripheral count.
 set i3c_dmem_src_ports [get_ports -quiet "i3c_dat_mem_src_i*"]
 if {[sizeof_collection $i3c_dmem_src_ports] > 0} {
     set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dmem_src_ports -add_delay
@@ -637,9 +633,9 @@ set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_cloc
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_state_o*}] -add_delay
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_inst_decoded_o*}] -add_delay
 
-# Addition (not present in the ported source): `jtag_ic_reset_ext_o` is a real
-# `smu` top-level output (the external slice of DTP's IC_RESET TDR), modeled
-# the same as the other JTAG_TCK-domain state outputs above.
+# `jtag_ic_reset_ext_o` is a real `smu` top-level output (the external slice
+# of DTP's IC_RESET TDR), modeled the same as the other JTAG_TCK-domain state
+# outputs above.
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
 
 # DTP Clock Stop Output
@@ -722,9 +718,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_efuse_shim_command_resp_i*}] -add_delay
 
 # SEP Crypto Interfaces
-# NOTE (drift): the ported source also stamped `sep_crypto_entropy_req_o*` /
-# `sep_crypto_entropy_rsp_i*` here. Those ports do not exist at the current
-# `smu` top level -- see the file header. Left commented out for traceability.
+# `sep_crypto_entropy_req_o*` / `sep_crypto_entropy_rsp_i*` do not exist at
+# the current `smu` top level -- see the file header. Left commented out for
+# traceability.
 # set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_crypto_entropy_req_o*}] -add_delay
 # set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_crypto_entropy_rsp_i*}] -add_delay
 
@@ -742,9 +738,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # SEP CPU Trace
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_cpu_trace_o*}] -add_delay
 
-# SEP External Interrupts. Addition (not present in the ported source):
-# `sep_extintsrc_req_i` is a real `smu` top-level input feeding `u_sep`
-# directly; modeled the same as the other ck_feedthru-domain inputs above.
+# SEP External Interrupts. `sep_extintsrc_req_i` is a real `smu` top-level
+# input feeding `u_sep` directly; modeled the same as the other
+# ck_feedthru-domain inputs above.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {sep_extintsrc_req_i*}] -add_delay
 
 # LCC Demote States
@@ -758,10 +754,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {sep_straps_i*}] -add_delay
 
 # SEP Security Disable
-# NOTE (drift): the ported source also stamped `sep_security_disable_i` here.
-# That port does not exist at the current `smu` top level -- see the file
-# header (the signal is a purely internal net between u_sep and u_smc). Left
-# commented out for traceability.
+# `sep_security_disable_i` does not exist at the current `smu` top level --
+# see the file header (the signal is a purely internal net between u_sep and
+# u_smc). Left commented out for traceability.
 # set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports sep_security_disable_i] -add_delay
 
 

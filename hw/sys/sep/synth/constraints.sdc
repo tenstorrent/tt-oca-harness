@@ -4,10 +4,9 @@
 #-----------------------------------------------------------------------------
 # SEP (Secure Enclave Processor) block-level timing constraints.
 #
-# Ported from tt-oca-hw's block_flow_customizations/{global.clock_periods.tcl,
-# sep/sep.clock_defines.tcl} and validated against the `sep` top-level port
-# list (hw/sys/sep/rtl/sep.sv). All top-level port references below matched
-# the current RTL with no renames.
+# Clock periods, generated clocks, and I/O delays for the `sep` top-level
+# port list (hw/sys/sep/rtl/sep.sv). All top-level port references below
+# match the current RTL with no renames.
 #
 # This is reference/documentation-level SDC: the current Yosys-based synth
 # flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
@@ -20,13 +19,12 @@
 #   - The entropy clock-tree section below (ENTROPY_ROSC_CLK /
 #     ENTROPY_SHARED_RO / per-tap generated clocks) targets post-synthesis
 #     standard-cell instances by hierarchical path and by cell reference name
-#     (`ref_name == gdffqb`, a toggle-flop primitive from the ported source's
-#     original target cell library). That cell does not exist in the IHP
-#     SG13G2 library this repo currently targets, and none of these `get_pins`
-#     / `get_cells` lookups resolve pre-synthesis. `entropy_source` inside
-#     `sep_crypto` is currently blackboxed per the ported source's own note,
-#     so this section is kept as documentation of the intended clock topology
-#     for whichever technology/EDA flow eventually implements it, not as a
+#     (`ref_name == gdffqb`, a toggle-flop primitive). That cell does not
+#     exist in the IHP SG13G2 library this repo currently targets, and none
+#     of these `get_pins` / `get_cells` lookups resolve pre-synthesis.
+#     `entropy_source` inside `sep_crypto` is currently blackboxed, so this
+#     section is kept as documentation of the intended clock topology for
+#     whichever technology/EDA flow eventually implements it, not as a
 #     constraint that resolves against this repo's RTL or PDK today.
 #-----------------------------------------------------------------------------
 
@@ -65,8 +63,8 @@ create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 
 # Entropy clocks below are non-functional; entropy_source is currently blackboxed.
 # See the "Known limitation" note in the file header: these get_pins/get_cells
-# lookups target post-synthesis cells in the ported source's original target
-# library and will not resolve against this repo's RTL or PDK.
+# lookups target post-synthesis standard cells not present in this repo's
+# target library and will not resolve against this repo's RTL or PDK.
 
 # entropy_source sample-clock tree (egen/sclk): a length-109 shared ring oscillator
 # plus one 5-stage ripple divider per generator. Each divider is fed by a mux between
