@@ -2,15 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Entry point: `yosys -c flows/synth/yosys/scripts/synth.tcl` (see
-# flows/synth/yosys/yosys.mk). Ported from
-# assets/croc/yosys/scripts/yosys_synthesis.tcl, split by stage: common.tcl
-# (env/dirs) -> init_tech.tcl (PDK liberty) -> elab.tcl (read_slang/check/proc)
-# -> this file (coarse opt / techmap / flatten / ABC / final netlist+reports).
+# flows/synth/yosys/yosys.mk), split by stage: common.tcl (env/dirs) ->
+# init_tech.tcl (PDK liberty) -> elab.tcl (read_slang/check/proc) -> this
+# file (coarse opt / techmap / flatten / ABC / final netlist+reports).
 #
-# Unlike croc, ABC here uses a plain `-constr`/`-D <period>` pass rather than
-# croc's custom two-phase "Lazy Man's Synthesis" script (which depends on a
-# 40+ MB recorded-AIG library file not worth vendoring for this first pass);
-# see tech/<tech>.constr for the per-PDK driving-cell/load constraint.
+# ABC here uses a plain `-constr`/`-D <period>` pass against a single driving
+# cell/load constraint rather than a full timing-driven synthesis script; see
+# tech/<tech>.constr for the per-PDK driving-cell/load constraint.
 set script_dir [file dirname [info script]]
 source [file join $script_dir common.tcl]
 source [file join $script_dir init_tech.tcl]

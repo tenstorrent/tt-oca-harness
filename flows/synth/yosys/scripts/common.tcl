@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Shared synth setup: env-driven inputs + out/tmp/reports dirs. Ported from
-# assets/croc/yosys/scripts/yosys_common.tcl; env vars (set by
-# flows/synth/yosys/yosys.mk's `env ...` invocation) replace croc's fixed
-# in-repo paths/name so the same scripts serve every hw/sys/<block>.
+# Shared synth setup: env-driven inputs + out/tmp/reports dirs. Env vars (set
+# by flows/synth/yosys/yosys.mk's `env ...` invocation) replace any
+# hardcoded in-repo path/name so the same scripts serve every hw/sys/<block>.
 proc ocah_env {name default} {
     if {[info exists ::env($name)]} { return $::env($name) }
     return $default

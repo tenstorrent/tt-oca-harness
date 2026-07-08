@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Elaboration stage, ported from the "synth - check" section of
-# assets/croc/yosys/scripts/yosys_synthesis.tcl: load the yosys-slang plugin,
-# elaborate the design from the bender-generated filelist, and report the
-# as-elaborated design before any optimization runs. Assumes common.tcl and
-# init_tech.tcl have already been sourced (see synth.tcl) for
+# Elaboration stage: load the yosys-slang plugin, elaborate the design from
+# the bender-generated filelist, and report the as-elaborated design before
+# any optimization runs. Assumes common.tcl and init_tech.tcl have already
+# been sourced (see synth.tcl) for
 # $sv_flist/$top_design/$proj_name/$tmp_dir/$rep_dir.
 yosys plugin -i slang.so
 yosys read_slang --top $top_design -f $sv_flist \
@@ -21,8 +20,8 @@ yosys attrmvcp -copy -attr keep
 
 # A block wanting finer-grained `yosys flatten` granularity later (e.g. to
 # keep specific submodules unflattened for debug, or blackbox a hard macro)
-# can extend this file - see the `setattr -set keep_hierarchy` / `blackbox`
-# pattern in assets/croc/yosys/scripts/yosys_synthesis.tcl.
+# can extend this file with the usual `setattr -set keep_hierarchy` /
+# `blackbox` commands.
 
 yosys hierarchy -top $top_design
 yosys check

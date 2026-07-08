@@ -10,11 +10,10 @@
 #
 # This is reference/documentation-level SDC: the current Yosys-based synth
 # flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
-# (tech/ihp-sg13g2.constr) rather than a full SDC, matching the pattern used
-# by assets/croc and assets/cheshire-ihp130-o. A full SDC like this one only
-# becomes a real input once a place-and-route or standalone STA stage (e.g.
-# OpenROAD/OpenSTA) is added to the flow. See flows/synth/yosys/README.md for
-# the rationale.
+# (tech/ihp-sg13g2.constr) rather than a full SDC. A full SDC like this one
+# only becomes a real input once a place-and-route or standalone STA stage
+# (e.g. OpenROAD/OpenSTA) is added to the flow. See
+# flows/synth/yosys/README.md for the rationale.
 #
 # Known drift from the ported source, called out explicitly:
 #   - The source constrained two flat ports, `jtag_ic_reset_ovrd_o` and
