@@ -44,8 +44,11 @@ include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
 ## Documentation build targets (after regs.mk so the register accessors exist).
 include $(OCAH_ROOT)/doc/doc.mk
-## Yosys synthesis flow targets.
+## Open-source lint/synth/format flow targets (Docker-by-default; see
+## tools/docker/README.md and flows/synth/yosys/README.md).
+include $(OCAH_ROOT)/flows/lint/slang.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
+include $(OCAH_ROOT)/flows/format/verible.mk
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"
