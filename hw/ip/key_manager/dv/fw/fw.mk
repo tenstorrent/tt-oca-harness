@@ -21,8 +21,7 @@ FW_INCLUDES := \
 
 # Test discovery is unified in compile.mk; declare only the KM deltas.
 FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
-# Only one link mode exists today: link/modes/vrom.ld, auto-discovered by
-# compile.mk. A second mode only requires adding another link/modes/<mode>.ld.
+# Only link mode: link/modes/vrom.ld, auto-discovered by compile.mk.
 FW_DEFAULT_TEST_MODE := vrom
 FW_TEST_LDFLAGS = \
   $(FW_LDFLAGS) -Wl,--defsym=__rom_max_stack=0x600

@@ -33,14 +33,9 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-implicit-int \
   -Wno-strict-prototypes
-# Test images link against one of link/modes/{sram,rom}.ld (auto-discovered by
-# compile.mk); dv/fw/tests/ defaults to sram (bare main, no crt0). A test opts
-# into another mode with FW_TEST_MODE_<name> := rom.
+# Tests default to sram; opt into another mode with FW_TEST_MODE_<name> := rom.
 FW_DEFAULT_TEST_MODE := sram
-# Link against picolibc like the SEP/KM flows: sram-mode test images keep their
-# own entry (-Wl,-e,main) and skip crt0 (-nostartfiles), resolving libc/libm
-# from picolibc. (A future rom-mode test under dv/fw/tests/ would need crt0's
-# _enter instead -- see hw/sys/smc/bootrom/dummy/Makefile.)
+# sram: bare `main` entry via picolibc, no crt0.
 FW_TEST_LDFLAGS = \
   $(FW_OPT) -Wl,--gc-sections -Wl,--as-needed \
   -Wl,--defsym=__stack_size=4K -Wl,--defsym=__heap_size=2K \
@@ -48,8 +43,7 @@ FW_TEST_LDFLAGS = \
   -march=$(FW_ARCH) -mabi=$(FW_ABI) --specs=$(FW_PICOLIBC_SPECS) -lgcc
 FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
 
-# Shared with hw/sys/smc/bootrom/dummy/Makefile so both SMC build entry points
-# post-process a linked test image the same way.
+# Shared with hw/sys/smc/bootrom/dummy/Makefile.
 include $(FW_DIR)/postprocess.mk
 
 include $(FW_DIR)/toolchain.mk

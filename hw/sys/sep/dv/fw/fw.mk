@@ -27,8 +27,7 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-incompatible-pointer-types \
   -Wno-strict-prototypes
-# Only one link mode exists today: link/modes/tcm.ld, auto-discovered by
-# compile.mk. A second mode only requires adding another link/modes/<mode>.ld.
+# Only link mode: link/modes/tcm.ld, auto-discovered by compile.mk.
 FW_DEFAULT_TEST_MODE := tcm
 FW_TEST_LDFLAGS = $(FW_LDFLAGS)
 

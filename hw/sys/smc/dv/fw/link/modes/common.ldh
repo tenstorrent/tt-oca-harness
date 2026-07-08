@@ -1,15 +1,9 @@
 /* Copyright (c) 2020 SiFive Inc. */
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * SMC boot-image SECTIONS body, shared by every link mode (sram, rom).
- *
- * INCLUDEd from inside the SECTIONS{} block of a modes/<mode>.ld script.
- * Before the INCLUDE, the including script must define:
- *   REGION_ALIAS("BOOT_REGION", <region>) - where the boot image (init/fini/
- *     ctors/rodata/text) is linked: real rom in "rom" mode, or the same
- *     writable testram as everything else in "sram" mode.
- *   REGION_ALIAS("RAM_REGION", <region>)  - the always-writable memory
- *     backing .data/.bss/stack/heap (testram in every mode today).
+ * SMC boot-image SECTIONS body, shared by every link mode. Caller must
+ * REGION_ALIAS "BOOT_REGION" (init/rodata/text) and "RAM_REGION"
+ * (data/bss/stack/heap) before INCLUDEing this inside SECTIONS{}.
  */
 
 /* Each hart is allocated its own stack of size __stack_size. This value

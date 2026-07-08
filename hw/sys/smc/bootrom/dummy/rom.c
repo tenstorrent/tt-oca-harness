@@ -29,14 +29,8 @@ int secondary_main(void) {
 }
 
 /*
- * crt0 (_enter) links against picolibc, whose exit() pulls in _exit as the
- * platform hook. This ROM never calls exit() itself -- main() ends in a
- * noreturn wfi above -- but the symbol still needs to resolve at link time.
- * tt-oca-hw satisfied this from libgloss; here we keep the ROM
- * self-contained and free of semihosting (which would trap the RTL sim)
- * with our own definition. Kept local to this ROM rather than in a shared
- * driver: ROM code is fragile/special-cased enough that duplicating a few
- * lines per ROM image beats adding a cross-ROM dependency.
+ * _exit stub so crt0/picolibc's exit() resolves at link time; never actually
+ * reached since main() ends in a noreturn wfi.
  */
 __attribute__((noreturn)) void _exit(int code) {
   (void)code;

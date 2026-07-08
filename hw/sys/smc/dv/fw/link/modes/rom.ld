@@ -2,10 +2,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 OUTPUT_ARCH("riscv")
 
-/* ROM link mode: the boot image (init/fini/ctors/rodata/text) is placed in
- * real ROM; .data/.bss/stack/heap still live in testram, loaded from ROM at
- * startup. The shared SECTIONS body lives in modes/common.ldh.
- */
+/* ROM link mode: boot image (init/fini/ctors/rodata/text) in real ROM;
+ * data/bss/stack/heap in testram, loaded from ROM at startup. */
 
 ENTRY(_enter)
 

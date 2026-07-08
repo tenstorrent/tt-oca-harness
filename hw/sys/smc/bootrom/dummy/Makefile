@@ -3,12 +3,9 @@
 
 # Standalone build for the open-source SMC DV boot ROM (dummy stub).
 #
-# Delegates to the shared firmware build engine (compile.mk) via the same
-# link-modes machinery used by hw/sys/smc/dv/fw/fw.mk: this ROM is just a
-# regular "test" named dummy (source: rom.c, in this directory) linked in
-# "rom" mode against hw/sys/smc/dv/fw/link/modes/rom.ld. Driver sources,
-# toolchain settings, and post-process scripts are all referenced from the
-# sibling open DV FW tree (../../dv/fw). Nothing is duplicated here.
+# Built on the shared engine (compile.mk) as a "test" named dummy, linked in
+# "rom" mode. Drivers, toolchain, and post-processing come from the sibling
+# hw/sys/smc/dv/fw tree.
 #
 # Usage: make [-C hw/sys/smc/bootrom/dummy] [RISCV_TOOLCHAIN=/path/to/bin]
 
@@ -38,22 +35,16 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-incompatible-pointer-types -Wno-implicit-function-declaration \
   -Wno-implicit-int -Wno-strict-prototypes
 
-# One fixed "test" named dummy; its source (rom.c) lives alongside this
-# Makefile, not under FW_DIR/tests, so it opts out of compile.mk's
-# directory-based test discovery. FW_TEST_LDFLAGS is left at compile.mk's
-# default ($(FW_LDFLAGS)): unlike dv/fw/tests' sram-mode tests, this keeps
-# the crt0/_enter startup that ROM mode's link/modes/rom.ld expects.
+# One fixed test named dummy (source: rom.c, next to this Makefile), opting
+# out of compile.mk's directory-based test discovery.
 FW_TEST_NAMES        := dummy
 FW_TEST_SRC_dummy    := $(DUMMY_DIR)/rom.c
 FW_DEFAULT_TEST_MODE := rom
 
-# Shared with hw/sys/smc/dv/fw/fw.mk so both SMC build entry points
-# post-process a linked test image the same way (-> dummy.rom.bin/.hex/...).
+# Shared with hw/sys/smc/dv/fw/fw.mk.
 include $(SMC_FW_DIR)/postprocess.mk
 
-# dv-fw-tests builds the ROM elf + all post-processed outputs.
-# .DEFAULT_GOAL must be set explicitly; compile.mk's first rule would otherwise
-# become the default (it's a directory-creation rule, not 'all').
+# Set explicitly: compile.mk's first rule is a directory-creation rule, not 'all'.
 FW_DEFAULT_GOAL  := dv-fw-tests
 .DEFAULT_GOAL    := all
 

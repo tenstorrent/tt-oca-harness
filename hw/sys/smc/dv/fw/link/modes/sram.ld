@@ -2,10 +2,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 OUTPUT_ARCH("riscv")
 
-/* SRAM link mode ("scratchpad"): all application code and data is placed in
- * writable testram; there is no separate boot ROM backing this image. The
- * shared SECTIONS body lives in modes/common.ldh.
- */
+/* SRAM link mode ("scratchpad"): all code and data live in writable testram,
+ * with no separate boot ROM. */
 
 ENTRY(_enter)
 

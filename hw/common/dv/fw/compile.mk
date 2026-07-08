@@ -7,56 +7,38 @@ ocah_fw_common_mk := 1
 # Shared DV firmware build engine. A subsystem fw.mk sets the FW_* inputs below,
 # includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
-# Inputs a subsystem defines before including this file:
+# Required inputs:
 #   FW_NAME          - short subsystem name (e.g. key_manager, sep, smc)
 #   FW_DIR           - absolute path to the subsystem dv/fw directory
 #   FW_C_SRCS        - library C sources (no entry/main)
 #   FW_ASM_SRCS      - library .s/.S startup/helper sources
 #   FW_INCLUDES      - -I include flags
-#   FW_CFLAGS        - C compile flags (from toolchain.mk + subsystem)
-#   FW_ASFLAGS       - assembler flags (from toolchain.mk + subsystem)
-#   FW_LDFLAGS       - link flags (from toolchain.mk + subsystem)
-# Optional (enable a linked image instead of just an archive):
+#   FW_CFLAGS        - C compile flags
+#   FW_ASFLAGS       - assembler flags
+#   FW_LDFLAGS       - link flags
+# Optional, for a single linked image (FW_ELF):
 #   FW_LINKER_SCRIPT - linker script path
-#   FW_ENTRY_SRCS    - entry/main C/asm sources providing the image entry point
-# Optional (enable per-test linked images through `dv-fw-tests`):
-#   FW_LINK_MODES         - names of the memories a test can link against. Auto-
-#                           discovered from link/modes/<mode>.ld; override to add
-#                           modes that live elsewhere.
-#   FW_LINK_SCRIPT_<mode> - linker script for <mode> (default: link/modes/<mode>.ld)
-#   FW_DEFAULT_TEST_MODE  - mode a test uses when it has no per-test override
-#   FW_TEST_MODE_<name>   - optional per-test override, e.g. FW_TEST_MODE_dv_rom := rom
-#   FW_TEST_LDFLAGS       - extra/override test link flags (defaults to FW_LDFLAGS)
-#   FW_TEST_LDFLAGS_<mode> - per-mode link flags (default: FW_TEST_LDFLAGS); override
-#                           when modes need different entry conventions, e.g. SRAM's
-#                           bare `main` (-Wl,-e,main -nostartfiles) vs ROM's crt0
-#   FW_TEST_INCLUDES      - extra test-only include flags
-#   FW_TEST_EXTRA_CFLAGS  - extra test-only C flags
-#   FW_TEST_EXTRA_ARCHIVES - optional extra archives linked after lib<name>.a
-#   FW_TEST_ARCHIVE_LINK  - how lib<name>.a (+ extras) is linked in (default:
-#                           --whole-archive)
-#   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK);
-#                           a mode using lazy resolution (e.g. --start-group,
-#                           to avoid pulling in every driver a test doesn't
-#                           use) needs --whole-archive instead wherever a
-#                           later-linked lib (e.g. libc, appended by the
-#                           compiler after our archives) can introduce a
-#                           symbol need -- like ROM mode's crt0 -> exit() ->
-#                           _exit -- that lazy group resolution can no longer
-#                           satisfy once its group has already closed
-#   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name,mode)
-# Test discovery is unified below (canonical tests/<name>/<name>.c); a subsystem
-# declares only deltas:
-#   FW_TEST_EXCLUDE_NAMES   - test dir names to skip
-#   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
-# A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
+#   FW_ENTRY_SRCS    - entry/main sources
+# Optional, for per-test linked images via `dv-fw-tests`:
+#   FW_LINK_MODES               - link modes; auto-discovered from link/modes/*.ld
+#   FW_LINK_SCRIPT_<mode>       - linker script for <mode> (default: link/modes/<mode>.ld)
+#   FW_DEFAULT_TEST_MODE        - mode used when a test has no override
+#   FW_TEST_MODE_<name>         - per-test mode override
+#   FW_TEST_LDFLAGS             - test link flags (default: FW_LDFLAGS)
+#   FW_TEST_LDFLAGS_<mode>      - per-mode override (default: FW_TEST_LDFLAGS)
+#   FW_TEST_INCLUDES            - extra test-only include flags
+#   FW_TEST_EXTRA_CFLAGS        - extra test-only C flags
+#   FW_TEST_EXTRA_ARCHIVES      - extra archives linked after lib<name>.a
+#   FW_TEST_ARCHIVE_LINK        - how lib<name>.a is linked in (default: --whole-archive)
+#   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK)
+#   FW_TEST_POSTPROCESS         - macro called as $(call ...,elf_path,test_name,mode)
+# Test discovery (canonical tests/<name>/<name>.c); a subsystem declares only
+# deltas, or opts out entirely by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>):
+#   FW_TEST_EXCLUDE_NAMES  - test dir names to skip
+#   FW_TEST_EXTRA_SRCS_<t> - extra .c compiled into test <t>
 #
-# Every test links against exactly one mode (OCAH's memories use genuinely
-# different entry conventions -- e.g. SRAM's bare `main` vs ROM's crt0 --
-# unlike e.g. Cheshire, where the same startup code links at any address, so
-# there is no "build once per mode" fan-out here). Output artifacts are named
-# <test>/<test>.<mode>.{elf,map,dis,sym} so multiple modes can coexist in one
-# tests/ tree without collisions.
+# Each test links against exactly one mode. Output artifacts are named
+# <test>/<test>.<mode>.{elf,map,dis,sym}.
 
 # Parallelize object compiles / test links by default (same pattern as
 # regen-regs). Explicit -j / --jobs on the command line wins.
@@ -124,16 +106,10 @@ FW_TEST_EXTRA_ARCHIVES ?=
 FW_TEST_COMMON_SRCS ?=
 FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
 
-# Link modes: which memory a test image can be linked against. Auto-discovered
-# from link/modes/*.ld (cheshire-style), each mode's script overridable by name.
+# Link modes: auto-discovered from link/modes/*.ld, each overridable by name.
 FW_LINK_MODES ?= $(sort $(patsubst $(FW_DIR)/link/modes/%.ld,%,$(wildcard $(FW_DIR)/link/modes/*.ld)))
 $(foreach m,$(FW_LINK_MODES),$(eval FW_LINK_SCRIPT_$(m) ?= $(FW_DIR)/link/modes/$(m).ld))
-# Per-mode link flags / archive-link strategy default to the subsystem-wide
-# FW_TEST_LDFLAGS / FW_TEST_ARCHIVE_LINK, so a subsystem that only ever builds
-# one mode per invocation (the common case) needs no changes. A subsystem
-# mixing modes with genuinely different entry conventions in one build (e.g.
-# SRAM bare-main tests alongside ROM-resident tests) overrides
-# FW_TEST_LDFLAGS_<mode> / FW_TEST_ARCHIVE_LINK_<mode> per mode instead.
+# Per-mode overrides default to the subsystem-wide settings.
 $(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_LDFLAGS_$(m) ?= $(FW_TEST_LDFLAGS)))
 $(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_ARCHIVE_LINK_$(m) ?= $(FW_TEST_ARCHIVE_LINK)))
 
@@ -211,10 +187,8 @@ FW_TEST_LINK_SCRIPT_FOR_$(1) := $$(FW_LINK_SCRIPT_$$(FW_TEST_MODE_FOR_$(1)))
 FW_TEST_LDFLAGS_FOR_$(1) := $$(FW_TEST_LDFLAGS_$$(FW_TEST_MODE_FOR_$(1)))
 FW_TEST_ARCHIVE_LINK_FOR_$(1) := $$(FW_TEST_ARCHIVE_LINK_$$(FW_TEST_MODE_FOR_$(1)))
 
-# -L...link[/modes] lets a mode script's `INCLUDE shared_fragment.ld` resolve
-# a bare filename regardless of whether the fragment sits next to the mode
-# script (link/modes/) or one level up (link/), matching every subsystem's
-# layout without per-subsystem search-path bookkeeping.
+# Search both link/ and link/modes/ so an INCLUDEd fragment resolves
+# regardless of which one it lives in.
 $(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINK_SCRIPT_FOR_$(1)) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
 	$$(CC) $$(FW_TEST_LDFLAGS_FOR_$(1)) -L"$(FW_DIR)/link" -L"$(FW_DIR)/link/modes" -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).map" -T "$$(FW_TEST_LINK_SCRIPT_FOR_$(1))" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK_FOR_$(1)) -o "$$@"
 	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"

@@ -5,12 +5,8 @@
 // Keep these typedef widths aligned with the wrapper stub port comments.
 package I3CCSR_pkg;
 
-  // i3ccore_stub implements neither controller nor target mode (it terminates
-  // the AXI-Lite interface with a DECERR/SLVERR slave and ties off every other
-  // output, including the DAT/DCT memory ports) -- so both stay 0 until the
-  // real open-source controller replaces the stub. Consumers gated on these
-  // (e.g. smc_ip_integration.sv's DAT/DCT memory instantiation) correctly skip
-  // instantiating hardware the stub can't drive anyway.
+  // i3ccore_stub implements neither mode and ties off the DAT/DCT memory
+  // ports, so both stay 0 until the real controller replaces the stub.
   localparam bit CONTROLLER_SUPPORT = 1'b0;
   localparam bit TARGET_SUPPORT = 1'b0;
 
