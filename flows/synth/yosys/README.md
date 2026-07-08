@@ -37,27 +37,21 @@ For ad-hoc debugging, the container is also reachable directly:
 ./scripts/docker-run.sh eda-shell
 ```
 
-## Why lint (slang) and synth (yosys) both parse the same RTL
+## Lint (slang) vs. synth's elaboration (yosys)
 
-Both `slang --lint-only` and yosys's `read_slang` (the `yosys-slang` plugin)
-parse and elaborate the same SystemVerilog RTL for the same block, off the
-same bender-generated filelist - that is genuinely redundant work, and it is
-fine by design:
+`slang --lint-only` and yosys's `read_slang` (the `yosys-slang` plugin) both
+consume the same bender-generated filelist for a block, but at different
+depth: lint checks each module's local semantics without building the fully
+instantiated hierarchy, while synth's `read_slang` fully elaborates the
+design (required to produce RTLIL). Lint is the fast, frequent gate you run
+on every change; synth's elaboration is the authoritative one - a passing
+lint is an early signal, not a full guarantee that synth will elaborate
+cleanly.
 
-- **Lint** is fast (no PDK, no netlist, seconds) and its whole purpose is rich
-  semantic/style diagnostics (unused nets, width mismatches, latch inference,
-  ...) - the cheap, frequent gate you run on every change.
-- **Synth** only needs elaboration to succeed well enough to build RTLIL; it
-  then spends most of its time on synthesis-specific work (coarse opt,
-  techmap, ABC against the PDK's liberty files) that lint never touches.
-
-Running lint before synth is exactly like running a linter before a compiler
-even though the compiler also parses the code: not wasted effort, just staged
-so cheap failures are caught before expensive ones. The one thing worth
-avoiding is **configuration drift** between the two - if lint's bender target
-list for a block drifted from synth's, "lint passed" would stop being a
-reliable predictor of "synth will elaborate cleanly." That is why each block
-has exactly **one** descriptor, `hw/<tree>/<block>/flow.mk`
+What does matter is keeping both engines pointed at the same inputs: if
+lint's bender target list for a block drifted from synth's, the two would
+end up checking different designs entirely. That is why each block has
+exactly **one** descriptor, `hw/<tree>/<block>/flow.mk`
 (`FLOW_DESIGN`/`FLOW_BENDER_TARGETS`), consumed by both engines, instead of
 two near-duplicate per-block files.
 
