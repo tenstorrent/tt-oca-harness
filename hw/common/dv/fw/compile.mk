@@ -20,17 +20,43 @@ ocah_fw_common_mk := 1
 #   FW_LINKER_SCRIPT - linker script path
 #   FW_ENTRY_SRCS    - entry/main C/asm sources providing the image entry point
 # Optional (enable per-test linked images through `dv-fw-tests`):
-#   FW_TEST_LINKER_SCRIPT - linker script used for test images
+#   FW_LINK_MODES         - names of the memories a test can link against. Auto-
+#                           discovered from link/modes/<mode>.ld; override to add
+#                           modes that live elsewhere.
+#   FW_LINK_SCRIPT_<mode> - linker script for <mode> (default: link/modes/<mode>.ld)
+#   FW_DEFAULT_TEST_MODE  - mode a test uses when it has no per-test override
+#   FW_TEST_MODE_<name>   - optional per-test override, e.g. FW_TEST_MODE_dv_rom := rom
 #   FW_TEST_LDFLAGS       - extra/override test link flags (defaults to FW_LDFLAGS)
+#   FW_TEST_LDFLAGS_<mode> - per-mode link flags (default: FW_TEST_LDFLAGS); override
+#                           when modes need different entry conventions, e.g. SRAM's
+#                           bare `main` (-Wl,-e,main -nostartfiles) vs ROM's crt0
 #   FW_TEST_INCLUDES      - extra test-only include flags
 #   FW_TEST_EXTRA_CFLAGS  - extra test-only C flags
 #   FW_TEST_EXTRA_ARCHIVES - optional extra archives linked after lib<name>.a
-#   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name)
+#   FW_TEST_ARCHIVE_LINK  - how lib<name>.a (+ extras) is linked in (default:
+#                           --whole-archive)
+#   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK);
+#                           a mode using lazy resolution (e.g. --start-group,
+#                           to avoid pulling in every driver a test doesn't
+#                           use) needs --whole-archive instead wherever a
+#                           later-linked lib (e.g. libc, appended by the
+#                           compiler after our archives) can introduce a
+#                           symbol need -- like ROM mode's crt0 -> exit() ->
+#                           _exit -- that lazy group resolution can no longer
+#                           satisfy once its group has already closed
+#   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name,mode)
 # Test discovery is unified below (canonical tests/<name>/<name>.c); a subsystem
 # declares only deltas:
 #   FW_TEST_EXCLUDE_NAMES   - test dir names to skip
 #   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
 # A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
+#
+# Every test links against exactly one mode (OCAH's memories use genuinely
+# different entry conventions -- e.g. SRAM's bare `main` vs ROM's crt0 --
+# unlike e.g. Cheshire, where the same startup code links at any address, so
+# there is no "build once per mode" fan-out here). Output artifacts are named
+# <test>/<test>.<mode>.{elf,map,dis,sym} so multiple modes can coexist in one
+# tests/ tree without collisions.
 
 # Parallelize object compiles / test links by default (same pattern as
 # regen-regs). Explicit -j / --jobs on the command line wins.
@@ -98,6 +124,23 @@ FW_TEST_EXTRA_ARCHIVES ?=
 FW_TEST_COMMON_SRCS ?=
 FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
 
+# Link modes: which memory a test image can be linked against. Auto-discovered
+# from link/modes/*.ld (cheshire-style), each mode's script overridable by name.
+FW_LINK_MODES ?= $(sort $(patsubst $(FW_DIR)/link/modes/%.ld,%,$(wildcard $(FW_DIR)/link/modes/*.ld)))
+$(foreach m,$(FW_LINK_MODES),$(eval FW_LINK_SCRIPT_$(m) ?= $(FW_DIR)/link/modes/$(m).ld))
+# Per-mode link flags / archive-link strategy default to the subsystem-wide
+# FW_TEST_LDFLAGS / FW_TEST_ARCHIVE_LINK, so a subsystem that only ever builds
+# one mode per invocation (the common case) needs no changes. A subsystem
+# mixing modes with genuinely different entry conventions in one build (e.g.
+# SRAM bare-main tests alongside ROM-resident tests) overrides
+# FW_TEST_LDFLAGS_<mode> / FW_TEST_ARCHIVE_LINK_<mode> per mode instead.
+$(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_LDFLAGS_$(m) ?= $(FW_TEST_LDFLAGS)))
+$(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_ARCHIVE_LINK_$(m) ?= $(FW_TEST_ARCHIVE_LINK)))
+
+# Per-test mode resolution: an explicit FW_TEST_MODE_<name> override wins,
+# otherwise the subsystem's FW_DEFAULT_TEST_MODE applies.
+ocah_fw_test_mode = $(if $(strip $(FW_TEST_MODE_$(1))),$(strip $(FW_TEST_MODE_$(1))),$(FW_DEFAULT_TEST_MODE))
+
 # Unified DV test discovery: one testcase per tests/<name>/ (plus sibling .c),
 # tests/common/ reserved for shared helpers. Opt out by pre-setting FW_TEST_NAMES.
 ifndef FW_TEST_NAMES
@@ -111,7 +154,7 @@ $(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/te
 endif
 
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
-FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).elf)
+FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).$(call ocah_fw_test_mode,$(t)).elf)
 
 # Let the pattern rules below find sources regardless of subdirectory.
 vpath %.c $(sort $(dir $(FW_C_SRCS) $(FW_ENTRY_SRCS)))
@@ -163,12 +206,21 @@ FW_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_TEST_SRCS_$(1))),$$(FW_TEST_SRCS_$
 FW_TEST_OBJS_$(1) := $$(addprefix $(FW_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_TEST_SRCS_FOR_$(1):.c=.o)))
 $$(foreach src,$$(FW_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_test_obj_rule,$(1),$$(src))))
 
-$(FW_TEST_BUILD_DIR)/$(1)/$(1).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINKER_SCRIPT) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
-	$$(CC) $$(FW_TEST_LDFLAGS) -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).map" -T "$$(FW_TEST_LINKER_SCRIPT)" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK) -o "$$@"
-	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).dis"
-	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).sym"
+FW_TEST_MODE_FOR_$(1) := $$(call ocah_fw_test_mode,$(1))
+FW_TEST_LINK_SCRIPT_FOR_$(1) := $$(FW_LINK_SCRIPT_$$(FW_TEST_MODE_FOR_$(1)))
+FW_TEST_LDFLAGS_FOR_$(1) := $$(FW_TEST_LDFLAGS_$$(FW_TEST_MODE_FOR_$(1)))
+FW_TEST_ARCHIVE_LINK_FOR_$(1) := $$(FW_TEST_ARCHIVE_LINK_$$(FW_TEST_MODE_FOR_$(1)))
+
+# -L...link[/modes] lets a mode script's `INCLUDE shared_fragment.ld` resolve
+# a bare filename regardless of whether the fragment sits next to the mode
+# script (link/modes/) or one level up (link/), matching every subsystem's
+# layout without per-subsystem search-path bookkeeping.
+$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINK_SCRIPT_FOR_$(1)) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+	$$(CC) $$(FW_TEST_LDFLAGS_FOR_$(1)) -L"$(FW_DIR)/link" -L"$(FW_DIR)/link/modes" -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).map" -T "$$(FW_TEST_LINK_SCRIPT_FOR_$(1))" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK_FOR_$(1)) -o "$$@"
+	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"
+	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).sym"
 	$$(SIZE) "$$@"
-	$$(call FW_TEST_POSTPROCESS,$$@,$(1))
+	$$(call FW_TEST_POSTPROCESS,$$@,$(1),$$(FW_TEST_MODE_FOR_$(1)))
 endef
 
 $(foreach test,$(FW_TEST_NAMES),$(eval $(call ocah_fw_test_rules,$(test))))
@@ -184,6 +236,7 @@ ifeq ($(strip $(FW_TEST_SRC_$(strip $(TEST)))$(FW_TEST_SRCS_$(strip $(TEST)))),)
 $(error unknown $(FW_NAME) FW C test '$(strip $(TEST))'; known tests: $(FW_TEST_NAMES))
 endif
 endif
+$(foreach t,$(FW_TEST_SELECTED),$(if $(filter $(call ocah_fw_test_mode,$(t)),$(FW_LINK_MODES)),,$(error $(FW_NAME) test '$(t)' resolved to unknown link mode '$(call ocah_fw_test_mode,$(t))'; known modes: $(FW_LINK_MODES))))
 endif
 
 .PHONY: dv-fw-tests
@@ -192,91 +245,6 @@ dv-fw-tests: $(FW_TEST_ELFS)
 .PHONY: dv-fw-test-list
 dv-fw-test-list:
 	@printf '%s\n' $(FW_TEST_NAMES)
-
-# ROM test images: crt0-based boot images linked at the ROM origin. Opt-in via
-# FW_ROM_LINKER_SCRIPT. Unlike the SRAM test images above (entry at main,
-# -nostartfiles), these keep the _enter/crt0 startup and link against the ROM
-# linker script. Sources live in tests_rom/<name>/<name>.c and each image is
-# emitted as tests_rom/<name>/test.rom.* so the layout matches what the DV
-# testbench expects under FW_ROM_BUILD_ROOT (= FW_BUILD_DIR/tests_rom).
-ifneq ($(strip $(FW_ROM_LINKER_SCRIPT)),)
-FW_ROM_TEST_BUILD_DIR   ?= $(FW_BUILD_DIR)/tests_rom
-FW_ROM_TEST_LDFLAGS     ?= $(FW_LDFLAGS)
-FW_ROM_TEST_INCLUDES    ?= $(FW_TEST_INCLUDES)
-FW_ROM_TEST_EXTRA_CFLAGS ?= $(FW_TEST_EXTRA_CFLAGS)
-FW_ROM_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
-
-ifndef FW_ROM_TEST_NAMES
-FW_ROM_TEST_SRCS := $(filter-out \
-  $(FW_DIR)/tests_rom/common/%, \
-  $(wildcard $(FW_DIR)/tests_rom/*/*.c))
-FW_ROM_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_ROM_TEST_SRCS)))))
-$(foreach t,$(FW_ROM_TEST_NAMES),$(eval FW_ROM_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_DIR)/tests_rom/$(t)/*.c))))
-$(foreach t,$(FW_ROM_TEST_NAMES),$(eval FW_ROM_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests_rom/$(t)/*.c) $(FW_ROM_TEST_EXTRA_SRCS_$(t))))
-endif
-
-FW_ROM_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_ROM_TEST_NAMES))
-FW_ROM_TEST_ELFS := $(foreach t,$(FW_ROM_TEST_SELECTED),$(FW_ROM_TEST_BUILD_DIR)/$(t)/test.rom.elf)
-
-$(FW_ROM_TEST_BUILD_DIR)/%/.dir:
-	@mkdir -p "$(@D)"
-	@touch "$@"
-
-ifndef FW_ROM_TEST_POSTPROCESS
-define FW_ROM_TEST_POSTPROCESS
-endef
-endif
-
-define ocah_fw_rom_test_obj_rule
-$(FW_ROM_TEST_BUILD_DIR)/$(1)/$(notdir $(2:.c=.o)): $(2) | $(FW_ROM_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
-	$$(CC) $$(FW_CFLAGS) $$(FW_INCLUDES) $$(FW_ROM_TEST_INCLUDES) $$(FW_EXTRA_CFLAGS) $$(FW_ROM_TEST_EXTRA_CFLAGS) $$(DEPFLAGS) -c "$$<" -o "$$@"
-endef
-
-define ocah_fw_rom_test_rules
-FW_ROM_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_ROM_TEST_SRCS_$(1))),$$(FW_ROM_TEST_SRCS_$(1)),$$(FW_ROM_TEST_SRC_$(1)))
-FW_ROM_TEST_OBJS_$(1) := $$(addprefix $(FW_ROM_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_ROM_TEST_SRCS_FOR_$(1):.c=.o)))
-$$(foreach src,$$(FW_ROM_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_rom_test_obj_rule,$(1),$$(src))))
-
-$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.elf: $$(FW_ROM_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_ROM_LINKER_SCRIPT) | $(FW_ROM_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
-	$$(CC) $$(FW_ROM_TEST_LDFLAGS) -Wl,-Map="$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.map" -T "$$(FW_ROM_LINKER_SCRIPT)" $$(FW_ROM_TEST_OBJS_$(1)) $$(FW_ROM_TEST_ARCHIVE_LINK) -o "$$@"
-	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.dis"
-	$$(NM) -B -n "$$@" > "$(FW_ROM_TEST_BUILD_DIR)/$(1)/test.rom.sym"
-	$$(SIZE) "$$@"
-	$$(call FW_ROM_TEST_POSTPROCESS,$$@,$(1))
-endef
-
-$(foreach test,$(FW_ROM_TEST_NAMES),$(eval $(call ocah_fw_rom_test_rules,$(test))))
-
-# Validate the ROM test selection at parse time, only for dv-fw-rom-tests.
-ifneq ($(filter dv-fw-rom-tests,$(MAKECMDGOALS)),)
-ifeq ($(strip $(FW_ROM_TEST_NAMES)),)
-$(error no FW ROM tests configured for $(FW_NAME))
-endif
-ifneq ($(strip $(TEST)),)
-ifeq ($(strip $(FW_ROM_TEST_SRC_$(strip $(TEST)))$(FW_ROM_TEST_SRCS_$(strip $(TEST)))),)
-$(error unknown $(FW_NAME) FW ROM test '$(strip $(TEST))'; known tests: $(FW_ROM_TEST_NAMES))
-endif
-endif
-endif
-
-.PHONY: dv-fw-rom-tests
-dv-fw-rom-tests: $(FW_ROM_TEST_ELFS)
-
-.PHONY: dv-fw-rom-test-list
-dv-fw-rom-test-list:
-	@printf '%s\n' $(FW_ROM_TEST_NAMES)
-
-FW_ROM_TEST_DEPFILES := $(foreach t,$(FW_ROM_TEST_NAMES),$(FW_ROM_TEST_OBJS_$(t):.o=.d))
--include $(FW_ROM_TEST_DEPFILES)
-else
-# No ROM test support for this subsystem; keep the goal defined so the tree-wide
-# dispatcher fan-out (which targets every subsystem) does not error.
-.PHONY: dv-fw-rom-tests dv-fw-rom-test-list
-dv-fw-rom-tests:
-	@echo "no ROM test support for $(FW_NAME) (FW_ROM_LINKER_SCRIPT unset)"
-dv-fw-rom-test-list:
-	@:
-endif
 
 # Linked image: only when the subsystem provides a linker script + entry.
 ifneq ($(strip $(FW_LINKER_SCRIPT)),)

@@ -11,6 +11,9 @@ MEMORY {
 
 ENTRY(_start)
 
+/* The .data load image is stored in ROM for the production (no-VROM) build. */
+REGION_ALIAS("DATA_LOAD", rom)
+
 SECTIONS {
     /* Reset vector at 0x0000_0000 — must be exactly 16 bytes */
     .text.reset 0x00000000 : {
@@ -43,44 +46,12 @@ SECTIONS {
         *(.srodata.*)
     } > rom
 
-    /* Pack runtime SRAM from the top down: .bss at the top, .data below it. */
-    .bss ORIGIN(sram) + LENGTH(sram) - SIZEOF(.bss) : {
-        BSS_START = .;
-        . = ALIGN(4);
-        *(.bss)
-        *(.bss.*)
-        *(.sbss)
-        *(.sbss.*)
-        . = ALIGN(16);
-        BSS_END = .;
-    } > sram
+    /* SRAM: .rom_persist, .bss, .data, stack -- shared with the
+     * execute-from-VROM test build via km_sram_layout.ld. */
+    INCLUDE km_sram_layout.ld
 
-    .data ADDR(.bss) - SIZEOF(.data) : {
-        DATA_START = .;
-        . = ALIGN(4);
-        *(.data)
-        *(.data.*)
-        *(.sdata)
-        *(.sdata.*)
-        . = ALIGN(16);
-        DATA_END = .;
-    } > sram AT> rom
-    DATA_LOAD_START = LOADADDR(.data);
-
-    /* Anchor for gp-relative small-data accesses. */
-    PROVIDE(__global_pointer$ = DATA_START + 0x800);
-
-    /* Main stack grows downward immediately below .data. */
-    STACK = ADDR(.data);
-    stack = STACK;
-    _stack = STACK;
-
-    /* Overflow assertions */
+    /* Overflow assertion */
     ASSERT(SIZEOF(.text.reset) + SIZEOF(.text.irq_vec) + SIZEOF(.text.irq_handler)
            + SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.data) <= LENGTH(rom),
            "ROM overflow: text + rodata + data load image exceeds 8KB ROM")
-    ASSERT(ADDR(.data) >= ORIGIN(sram),
-           "SRAM overflow: data + bss exceed 16KB SRAM")
-    ASSERT(_stack >= ORIGIN(sram) + 16,
-           "SRAM overflow: data + bss leave no aligned stack space")
 }

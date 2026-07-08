@@ -73,26 +73,43 @@ C test images are built via the standard dispatcher:
 scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc
 ```
 
+Each subsystem's tests link against one of that subsystem's **link modes** —
+memory targets discovered from `link/modes/*.ld` (e.g. SMC: `sram`, `rom`; SEP:
+`tcm`; KM: `vrom`) — and output artifacts fold the mode into their name
+(`<test>.<mode>.elf`, e.g. `version_id.sram.elf`). A test uses its subsystem's
+default mode unless it overrides `FW_TEST_MODE_<test>`; see
+[`hw/common/dv/fw/compile.mk`](hw/common/dv/fw/compile.mk) for the full
+mechanism.
+
 ### SMC boot ROM
 
-A lightweight dummy boot ROM lives in [`hw/sys/smc/bootrom/`](hw/sys/smc/bootrom/). Its
-only job is to boot from the ROM address (`0xc0040000`), write `TEST_ROM_PASS` to
-`scratch_0`, and spin in `wfi` so the testbench can load real firmware into SRAM.
+`hw/sys/smc/bootrom/` holds two independent ROM firmware trees:
 
-Build it with its standalone Makefile:
+- [`dummy/`](hw/sys/smc/bootrom/dummy/) — the lightweight DV stub used today. Its
+  only job is to boot from the ROM address (`0xc0040000`), write
+  `TEST_ROM_PASS` to `scratch_0`, and spin in `wfi` so the testbench can load
+  real firmware into SRAM. It builds as one `rom`-mode "test" (`rom.c`) on top
+  of the same generalized firmware engine as the SMC DV tests above, reusing
+  `hw/sys/smc/dv/fw/`'s drivers, toolchain settings, and link scripts.
+- [`prod/`](hw/sys/smc/bootrom/prod/) — reserved placeholder for a future
+  self-contained production boot ROM (its own includes/drivers, not shared
+  with `dv/fw/`); not populated yet.
+
+Build the dummy ROM with its standalone Makefile:
 
 ```bash
 # From the repo root (OCAH_ROOT resolved automatically):
-scripts/docker-run.sh run make -C hw/sys/smc/bootrom
+scripts/docker-run.sh run make -C hw/sys/smc/bootrom/dummy
 
 # Or directly, if the toolchain is on PATH:
-make -C hw/sys/smc/bootrom
+make -C hw/sys/smc/bootrom/dummy
 
 # Override the toolchain prefix if needed:
-make -C hw/sys/smc/bootrom RISCV_TOOLCHAIN=/path/to/bin
+make -C hw/sys/smc/bootrom/dummy RISCV_TOOLCHAIN=/path/to/bin
 ```
 
-Outputs land under `hw/sys/smc/bootrom/build/dv_rom/`
+Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
+`dummy.rom.elf`, `dummy.rom.bin`, `dummy.rom.hex`).
 
 ## Third-party (vendor) package imports
 

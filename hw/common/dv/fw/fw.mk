@@ -29,13 +29,6 @@ ocah-dv-fw-libs:
 ocah-dv-fw-tests:
 	$(call ocah_dv_fw,dv-fw-tests)
 
-## Build DV firmware ROM boot images for one or all subsystems.
-## @param TARGET=smc Optional subsystem to build; omit to build all (only subsystems with a ROM linker script emit images)
-## @param TEST=<test> Optional ROM testcase name to build within the subsystem
-.PHONY: ocah-dv-fw-rom-tests
-ocah-dv-fw-rom-tests:
-	$(call ocah_dv_fw,dv-fw-rom-tests)
-
 ## Remove built DV firmware for one or all subsystems.
 ## @param TARGET=key_manager Optional subsystem to clean; omit to clean all
 .PHONY: ocah-dv-fw-clean
@@ -56,7 +49,6 @@ ocah-dv-fw-test-list:
 OCAH_PHONY += \
   ocah-dv-fw-libs \
   ocah-dv-fw-tests \
-  ocah-dv-fw-rom-tests \
   ocah-dv-fw-clean \
   ocah-dv-fw-list \
   ocah-dv-fw-test-list
