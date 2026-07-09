@@ -32,6 +32,13 @@ ocah_fw_common_mk := 1
 #   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
 # A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
 
+# Parallelize object compiles / test links by default (same pattern as
+# regen-regs). Explicit -j / --jobs on the command line wins.
+OCAH_DV_FW_JOBS ?= 8
+ifeq ($(filter -j% --jobs%,$(MAKEFLAGS)),)
+MAKEFLAGS += -j$(OCAH_DV_FW_JOBS)
+endif
+
 # Toolchain resolution. RISCV_TOOLCHAIN = dir of riscv64-unknown-elf-* tools, or
 # empty to use the toolchain on PATH (provisioned via Docker).
 RISCV_TOOLCHAIN ?=
