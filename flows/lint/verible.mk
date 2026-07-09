@@ -17,7 +17,7 @@ LINT_PATH ?= hw
 # Chipyard/CIRCT-generated CPU core internals, OpenTitan-origin package
 # stubs (hw/common/ot_pkg), and a couple of individually-generated files
 # living in otherwise hand-written directories.
-ocah_lint_sv_verible_files := $(shell find $(OCAH_ROOT)/$(LINT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
+ocah_lint_sv_verible_files = $(shell find $(OCAH_ROOT)/$(LINT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
 	-not -path '*/build/*' \
 	-not -path '*/vendor/*' \
 	-not -path '*/regs/gen/*' \
@@ -54,7 +54,7 @@ FORMAT_PATH ?= hw
 
 # .sv/.svh/.v files under FORMAT_PATH, excluding build output and vendored
 # third-party sources.
-ocah_format_sv_files := $(shell find $(OCAH_ROOT)/$(FORMAT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) -not -path '*/build/*' -not -path '*/vendor/*' 2>/dev/null)
+ocah_format_sv_files = $(shell find $(OCAH_ROOT)/$(FORMAT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) -not -path '*/build/*' -not -path '*/vendor/*' 2>/dev/null)
 
 ocah_format_sv_check_files = @[ -n "$(strip $(ocah_format_sv_files))" ] || { echo "error: no .sv/.svh/.v files under $(FORMAT_PATH)" >&2; exit 1; }
 
