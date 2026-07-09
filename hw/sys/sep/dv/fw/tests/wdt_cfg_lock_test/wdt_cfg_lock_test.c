@@ -12,7 +12,8 @@
  * 3. Lock WDT config registers
  * 4. Attempt to write to locked registers, verify failure
  * 5. Pet the watchdog (write 0 to WDOG_COUNT), verify that still works
- * 6. Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared by the interrupt handler
+ * 6. Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared by the
+ *interrupt handler
  *
  ******************************************************************************/
 
@@ -35,7 +36,8 @@ void wdt_nmi_handler(void) {
 
     /* Verify that the interrupt is expected */
     if (interrupt_expected == 0x0) {
-        printf("ERROR: Unexpected interrupt received! Expected 0x0, got 0x%08x\n", interrupt_expected);
+        printf("ERROR: Unexpected interrupt received! Expected 0x0, got 0x%08x\n",
+               interrupt_expected);
         test_fail(1);
         return;
     }
@@ -75,8 +77,7 @@ void wdt_nmi_handler(void) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     /* Initialize outbound filter to allow testpass mailbox access */
     sep_outbound_filter_init();
 
@@ -139,7 +140,8 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x1000);
     uint32_t bark_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR);
     if (bark_thold != WDOG_BARK_THOLD_DEFAULT) {
-        printf("ERROR: WDOG_BARK_THOLD register was written to! Expected 0xFFFF, got 0x%08x\n", bark_thold);
+        printf("ERROR: WDOG_BARK_THOLD register was written to! Expected 0xFFFF, got 0x%08x\n",
+               bark_thold);
         test_fail(1);
         return -1;
     }
@@ -147,7 +149,8 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x1000);
     uint32_t bite_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
     if (bite_thold != WDOG_BITE_THOLD_DEFAULT) {
-        printf("ERROR: WDOG_BITE_THOLD register was written to! Expected 0xFFFFFFFF, got 0x%08x\n", bite_thold);
+        printf("ERROR: WDOG_BITE_THOLD register was written to! Expected 0xFFFFFFFF, got 0x%08x\n",
+               bite_thold);
         test_fail(1);
         return -1;
     }
@@ -182,7 +185,8 @@ int main(void)
     uint32_t count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     uint32_t variance = 0x100; // Allow for some variance in the count
     if (count > variance) {
-        printf("ERROR: WDOG_COUNT register was written to! Expected 0 (+- %d), got 0x%08x\n", variance, count);
+        printf("ERROR: WDOG_COUNT register was written to! Expected 0 (+- %d), got 0x%08x\n",
+               variance, count);
         test_fail(1);
         return -1;
     }
@@ -191,11 +195,13 @@ int main(void)
     printf("SUCCESS: Petted the watchdog\n");
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // STEP 6: Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared by the interrupt handler //
+    // STEP 6: Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared
+    // by the interrupt handler //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     printf("\n//////////////////////////////////////////////////\n");
-    printf("// STEP 6: Wait for BARK interrupt, verify that INTR_STATE register is set, and can be cleared by the interrupt handler\n");
+    printf("// STEP 6: Wait for BARK interrupt, verify that INTR_STATE register is set, and can be "
+           "cleared by the interrupt handler\n");
     printf("//////////////////////////////////////////////////\n\n");
 
     interrupt_expected = 1;

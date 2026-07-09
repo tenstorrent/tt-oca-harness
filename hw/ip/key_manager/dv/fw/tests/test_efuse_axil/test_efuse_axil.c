@@ -35,17 +35,16 @@
 
 #include "test_common.h"
 #include "key_manager.h"
-#include "key_manager_addr.h"   /* OTP_EFUSE_*_REG_MAP_BASE_ADDR, per-register _REG_ADDR */
-#include "rom_defs.h"           /* ROM_KM_OTP_BASE */
+#include "key_manager_addr.h" /* OTP_EFUSE_*_REG_MAP_BASE_ADDR, per-register _REG_ADDR */
+#include "rom_defs.h"         /* ROM_KM_OTP_BASE */
 
 /* Test patterns */
-static const uint32_t MAP_PAT_LO  = 0xA5A50001u;
-static const uint32_t MAP_PAT_HI  = 0x5A5A0002u;
-static const uint32_t CTRL_PAT    = 0xDEADBEEFu;
-static const uint32_t MMR_PAT     = 0xCAFEBABEu;
+static const uint32_t MAP_PAT_LO = 0xA5A50001u;
+static const uint32_t MAP_PAT_HI = 0x5A5A0002u;
+static const uint32_t CTRL_PAT = 0xDEADBEEFu;
+static const uint32_t MMR_PAT = 0xCAFEBABEu;
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(50000)) {
@@ -103,8 +102,7 @@ int main(void)
     TEST_SUBTEST_START("ROM_KM_OTP_BASE matches OTP_EFUSE_MAP_REG_MAP_BASE_ADDR");
     if (ROM_KM_OTP_BASE != OTP_EFUSE_MAP_REG_MAP_BASE_ADDR) {
         TEST_FAIL("ROM_KM_OTP_BASE (0x%08X) != OTP_EFUSE_MAP_REG_MAP_BASE_ADDR (0x%08X)",
-                  (unsigned)ROM_KM_OTP_BASE,
-                  (unsigned)OTP_EFUSE_MAP_REG_MAP_BASE_ADDR);
+                  (unsigned)ROM_KM_OTP_BASE, (unsigned)OTP_EFUSE_MAP_REG_MAP_BASE_ADDR);
     }
     TEST_SUBTEST_PASS();
 
@@ -118,7 +116,7 @@ int main(void)
     {
         uint32_t rd_prog = test_read32(OTP_EFUSE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR);
         uint32_t rd_read = test_read32(OTP_EFUSE_CTRL_EFUSE_READ_CTRL_REG_ADDR);
-        TEST_ASSERT_EQ(rd_prog, CTRL_PAT,    "CTRL PROGRAM_CTRL unchanged");
+        TEST_ASSERT_EQ(rd_prog, CTRL_PAT, "CTRL PROGRAM_CTRL unchanged");
         TEST_ASSERT_EQ(rd_read, 0x12345678u, "CTRL READ_CTRL new value");
     }
     TEST_SUBTEST_PASS();

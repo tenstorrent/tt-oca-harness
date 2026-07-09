@@ -30,8 +30,8 @@
  * PRNG calls for small index ranges.
  */
 typedef struct {
-    uint32_t bits;       /**< Buffered random bits */
-    uint8_t  remaining;  /**< Number of valid bits left in @c bits */
+    uint32_t bits;     /**< Buffered random bits */
+    uint8_t remaining; /**< Number of valid bits left in @c bits */
 } rom_km_bitpool_t;
 
 /*===========================================================================
@@ -61,8 +61,7 @@ void rom_shuffle_init(rom_km_bitpool_t *pool);
  * @param bound Exclusive upper bound (must be >= 1, up to 65535).
  * @return Random value in [0, bound).
  */
-uint16_t rom_shuffle_index(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng,
-                           uint16_t bound);
+uint16_t rom_shuffle_index(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng, uint16_t bound);
 
 /**
  * @brief In-place Fisher-Yates shuffle of a uint16_t index array.
@@ -76,8 +75,8 @@ uint16_t rom_shuffle_index(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng,
  * @param arr Array of indices to shuffle.
  * @param n Number of elements in arr.
  */
-void rom_shuffle_array(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng,
-                       uint16_t *arr, uint16_t n);
+void rom_shuffle_array(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng, uint16_t *arr,
+                       uint16_t n);
 
 /**
  * @brief Initialise an index array to [0..n) and shuffle it in place.
@@ -89,7 +88,6 @@ void rom_shuffle_array(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng,
  * @param arr Array to fill with shuffled indices (must hold n elements).
  * @param n Number of elements.
  */
-void rom_shuffle_init_array(rom_km_prng_state_t *prng, uint16_t *arr,
-                            uint16_t n);
+void rom_shuffle_init_array(rom_km_prng_state_t *prng, uint16_t *arr, uint16_t n);
 
 #endif /* ROM_SHUFFLE_H */

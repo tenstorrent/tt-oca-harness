@@ -21,14 +21,14 @@
 
 /* KPV (KM port) register struct access (from key_manager_regs.h) */
 #define KPV_KEY_WORD_ADDR(slot, word) \
-    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot) * KEY_MANAGER_KPV_KEY_ENTRY_SIZE + (uint32_t)(word) * 4u)
+    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot)*KEY_MANAGER_KPV_KEY_ENTRY_SIZE + \
+     (uint32_t)(word)*4u)
 #define KPV_KEY_WORD_REG(slot, word) \
     (*(volatile km_kpv__key_word_reg_t *)KPV_KEY_WORD_ADDR(slot, word))
-#define KPV_CTRL_ADDR(slot)  (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot) * 4u)
-#define KPV_CTRL_REG(slot)   (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
+#define KPV_CTRL_ADDR(slot) (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot)*4u)
+#define KPV_CTRL_REG(slot) (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(50000)) {
@@ -51,7 +51,8 @@ int main(void)
     uint32_t r1 = KPV_KEY_WORD_REG(0, 1).w;
     uint32_t r2 = KPV_KEY_WORD_REG(0, 2).w;
     if (r0 != 0x11111111u || r1 != 0x22222222u || r2 != 0x33333333u) {
-        TEST_FAIL("Key readback in range: expected 0x11111111/0x22222222/0x33333333, got 0x%08X/0x%08X/0x%08X",
+        TEST_FAIL("Key readback in range: expected 0x11111111/0x22222222/0x33333333, got "
+                  "0x%08X/0x%08X/0x%08X",
                   r0, r1, r2);
     }
 
@@ -90,9 +91,11 @@ int main(void)
     }
     {
         uint32_t irq_status = rom_kmcsr_irq_status_read();
-        km_csr__irq_status_reg_t s = { .w = irq_status };
+        km_csr__irq_status_reg_t s = {.w = irq_status};
         if (!s.f.axi_slverr) {
-            TEST_FAIL("After lock_use key read, IRQ_STATUS.AXI_SLVERR should be set (status=0x%08X)", irq_status);
+            TEST_FAIL(
+                "After lock_use key read, IRQ_STATUS.AXI_SLVERR should be set (status=0x%08X)",
+                irq_status);
         }
     }
 
@@ -108,16 +111,19 @@ int main(void)
         clear_val.f.axi_slverr = 1;
         rom_kmcsr_irq_status_clear(clear_val.w);
     }
-    KPV_KEY_WORD_REG(0, 0).w = 0xDEADBEEFu;  /* Write blocked by lock_write */
+    KPV_KEY_WORD_REG(0, 0).w = 0xDEADBEEFu; /* Write blocked by lock_write */
     {
         uint32_t irq_status = rom_kmcsr_irq_status_read();
-        km_csr__irq_status_reg_t s = { .w = irq_status };
+        km_csr__irq_status_reg_t s = {.w = irq_status};
         if (!s.f.axi_slverr) {
-            TEST_FAIL("After lock_write, key write should set IRQ_STATUS.AXI_SLVERR (status=0x%08X)", irq_status);
+            TEST_FAIL(
+                "After lock_write, key write should set IRQ_STATUS.AXI_SLVERR (status=0x%08X)",
+                irq_status);
         }
     }
 
-    TEST_LOG("KPV KM access test done (lock_use/lock_write set; SLVERR on violation per SC-0000-011)");
+    TEST_LOG(
+        "KPV KM access test done (lock_use/lock_write set; SLVERR on violation per SC-0000-011)");
     TEST_PASS();
     return 0;
 }

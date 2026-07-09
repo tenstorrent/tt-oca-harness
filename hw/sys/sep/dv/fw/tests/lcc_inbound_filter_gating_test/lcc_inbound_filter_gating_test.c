@@ -7,25 +7,21 @@
 
 #define PROD_LC_STATE_DIFF_ENCODED 0xE1u
 
-static inline void mmio_write32(uint32_t addr, uint32_t val)
-{
+static inline void mmio_write32(uint32_t addr, uint32_t val) {
     *(volatile uint32_t *)(uintptr_t)addr = val;
 }
 
-static inline void mmio_fence(void)
-{
+static inline void mmio_fence(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-static void busy_wait(unsigned int cycles)
-{
+static void busy_wait(unsigned int cycles) {
     for (volatile unsigned int i = 0; i < cycles; i++) {
         __asm__ volatile("nop");
     }
 }
 
-int main(void)
-{
+int main(void) {
     // Move TEST_DEV -> PROD using the real CPU/MMIO path. PROD has sep_debug=0
     // with the default DIS vectors, so inbound external AXI should remain gated.
     mmio_write32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR, PROD_LC_STATE_DIFF_ENCODED);

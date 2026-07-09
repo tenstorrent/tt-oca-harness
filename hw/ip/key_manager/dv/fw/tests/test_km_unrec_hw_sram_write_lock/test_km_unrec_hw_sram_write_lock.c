@@ -15,16 +15,19 @@
 #include "key_manager.h"
 #include "key_manager_addr.h"
 
-#define SRAM_LOCK_REG     (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
-#define LOCK_REGION       4u
+#define SRAM_LOCK_REG (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
+#define LOCK_REGION 4u
 #define REGION_SIZE_BYTES 0x200u
-#define LOCKED_ADDR       (SRAM_BASE + (LOCK_REGION * REGION_SIZE_BYTES))
+#define LOCKED_ADDR (SRAM_BASE + (LOCK_REGION * REGION_SIZE_BYTES))
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {

@@ -11,8 +11,7 @@
 #include <metal/machine.h>
 #include <stddef.h>
 
-long __metal_driver_fixed_factor_clock_get_rate_hz(
-    const struct metal_clock *gclk) {
+long __metal_driver_fixed_factor_clock_get_rate_hz(const struct metal_clock *gclk) {
     struct metal_clock *parent = __metal_driver_fixed_factor_clock_parent(gclk);
     long parent_rate = 1;
     if (parent) {
@@ -23,8 +22,7 @@ long __metal_driver_fixed_factor_clock_get_rate_hz(
            __metal_driver_fixed_factor_clock_div(gclk);
 }
 
-long __metal_driver_fixed_factor_clock_set_rate_hz(struct metal_clock *gclk,
-                                                   long target_hz) {
+long __metal_driver_fixed_factor_clock_set_rate_hz(struct metal_clock *gclk, long target_hz) {
     return __metal_driver_fixed_factor_clock_get_rate_hz(gclk);
 }
 

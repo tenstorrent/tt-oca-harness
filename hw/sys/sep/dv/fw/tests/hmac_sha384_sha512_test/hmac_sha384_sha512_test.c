@@ -21,9 +21,7 @@
 #include "sep_outbound_filter.h"
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -50,7 +48,7 @@ static int wait_for_completion(void) {
     return 0;
 }
 
-static int feed_message(const char* msg, int len) {
+static int feed_message(const char *msg, int len) {
     printf("  Feeding message: \"%s\" (%d bytes)\n", msg, len);
 
     int words = (len + 3) / 4; // Round up to word boundary
@@ -74,9 +72,9 @@ static int test_sha384(void) {
 
     // Configure for SHA-384
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;        // SHA only
-    cfg.f.sha_en = 1;         // SHA enabled
-    cfg.f.digest_size = 0x2;  // SHA-384
+    cfg.f.hmac_en = 0;       // SHA only
+    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.digest_size = 0x2; // SHA-384
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-384, SHA mode)\n", cfg.w);
 
@@ -86,7 +84,7 @@ static int test_sha384(void) {
     printf("  Started new hash\n");
 
     // Test message: "abc"
-    const char* msg = "abc";
+    const char *msg = "abc";
     int len = 3;
     if (feed_message(msg, len) != 0) return -1;
 
@@ -120,9 +118,8 @@ static int test_sha384(void) {
     // SHA-384("abc") expected result (NIST)
     // cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
     uint32_t expected_sha384[12] = {
-        0x45a35e8b, 0xcb00753f, 0x9ac65007, 0xb5a03d69,
-        0xab0eded1, 0x272c32ab, 0x5a43ff5b, 0x631a8b60,
-        0x72ba1e7c, 0xed808607, 0xaeca134c, 0xc2358bae,
+        0x45a35e8b, 0xcb00753f, 0x9ac65007, 0xb5a03d69, 0xab0eded1, 0x272c32ab,
+        0x5a43ff5b, 0x631a8b60, 0x72ba1e7c, 0xed808607, 0xaeca134c, 0xc2358bae,
         // Note: Only first 12 words used for SHA-384, word order may need swapping
     };
 
@@ -148,9 +145,9 @@ static int test_sha512(void) {
 
     // Configure for SHA-512
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;        // SHA only
-    cfg.f.sha_en = 1;         // SHA enabled
-    cfg.f.digest_size = 0x4;  // SHA-512
+    cfg.f.hmac_en = 0;       // SHA only
+    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.digest_size = 0x4; // SHA-512
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-512, SHA mode)\n", cfg.w);
 
@@ -160,7 +157,7 @@ static int test_sha512(void) {
     printf("  Started new hash\n");
 
     // Test message: "abc"
-    const char* msg = "abc";
+    const char *msg = "abc";
     int len = 3;
     if (feed_message(msg, len) != 0) return -1;
 
@@ -208,8 +205,7 @@ static int test_sha512(void) {
     return pass ? 0 : -1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
@@ -244,6 +240,8 @@ int main(void)
     }
     printf("====================================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

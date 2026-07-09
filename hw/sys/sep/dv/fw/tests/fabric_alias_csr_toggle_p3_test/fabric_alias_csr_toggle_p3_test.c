@@ -18,22 +18,21 @@
 #define ALIAS_CSR_SCENARIOS 10
 
 // Register toggle測試定義
-#define MAX_ALIAS_REGISTERS      16
-#define CSR_FIELD_TOGGLE_ROUNDS  32
-#define REGISTER_STATE_PATTERNS  24
+#define MAX_ALIAS_REGISTERS 16
+#define CSR_FIELD_TOGGLE_ROUNDS 32
+#define REGISTER_STATE_PATTERNS 24
 
 // CSR欄位定義 (模擬實際register layout)
-#define ALIAS_REG_ENABLE_MASK    0x00000001
-#define ALIAS_REG_PRIORITY_MASK  0x0000000E
-#define ALIAS_REG_TYPE_MASK      0x00000030
-#define ALIAS_REG_CACHE_MASK     0x000000C0
-#define ALIAS_REG_SIZE_MASK      0x00000F00
-#define ALIAS_REG_VALID_MASK     0x00001000
-#define ALIAS_REG_LOCK_MASK      0x00002000
-#define ALIAS_REG_STATUS_MASK    0x0000C000
+#define ALIAS_REG_ENABLE_MASK 0x00000001
+#define ALIAS_REG_PRIORITY_MASK 0x0000000E
+#define ALIAS_REG_TYPE_MASK 0x00000030
+#define ALIAS_REG_CACHE_MASK 0x000000C0
+#define ALIAS_REG_SIZE_MASK 0x00000F00
+#define ALIAS_REG_VALID_MASK 0x00001000
+#define ALIAS_REG_LOCK_MASK 0x00002000
+#define ALIAS_REG_STATUS_MASK 0x0000C000
 
-static int test_csr_field_exhaustive_toggle(void)
-{
+static int test_csr_field_exhaustive_toggle(void) {
     printf("Starting CSR field exhaustive toggle test...\n");
 
     // 場景1: CSR欄位exhaustive toggle
@@ -75,14 +74,15 @@ static int test_csr_field_exhaustive_toggle(void)
 
             // 寫入register
             if (write_alias_csr_register(reg_idx, test_pattern) != 0) {
-                continue;  // Skip if write fails
+                continue; // Skip if write fails
             }
 
             // 讀回並驗證
             uint32_t readback = 0;
             if (read_alias_csr_register(reg_idx, &readback) == 0) {
                 // 驗證特定欄位的toggle
-                ASSERT((readback & ALIAS_REG_ENABLE_MASK) == (test_pattern & ALIAS_REG_ENABLE_MASK));
+                ASSERT((readback & ALIAS_REG_ENABLE_MASK) ==
+                       (test_pattern & ALIAS_REG_ENABLE_MASK));
             }
 
             // 部分欄位修改測試
@@ -96,36 +96,35 @@ static int test_csr_field_exhaustive_toggle(void)
     return 0;
 }
 
-static int test_register_state_transition_matrix(void)
-{
+static int test_register_state_transition_matrix(void) {
     printf("Starting register state transition matrix test...\n");
 
     // 場景2: Register state transition matrix
     uint32_t state_patterns[] = {
-        0x00000000,  // All zeros
-        0xFFFFFFFF,  // All ones
-        0x55555555,  // Alternating 01
-        0xAAAAAAAA,  // Alternating 10
-        0x12345678,  // Mixed pattern 1
-        0x87654321,  // Mixed pattern 2
-        0x0F0F0F0F,  // Nibble alternating
-        0xF0F0F0F0,  // Inverted nibble
-        0x00FF00FF,  // Byte alternating
-        0xFF00FF00,  // Inverted byte
-        0x0000FFFF,  // Half word
-        0xFFFF0000,  // Inverted half word
-        0x11111111,  // Sparse 1s
-        0x22222222,  // Sparse 2s
-        0x44444444,  // Sparse 4s
-        0x88888888,  // Sparse 8s
-        0x01010101,  // Single bit pattern
-        0x02040810,  // Shifting pattern
-        0x10080402,  // Reverse shifting
-        0x13579BDF,  // Odd number sequence
-        0xECA86420,  // Even number sequence
-        0x5A5A5A5A,  // Complex alternating
-        0xA5A5A5A5,  // Complex alternating inv
-        0xDEADBEEF   // Known test pattern
+        0x00000000, // All zeros
+        0xFFFFFFFF, // All ones
+        0x55555555, // Alternating 01
+        0xAAAAAAAA, // Alternating 10
+        0x12345678, // Mixed pattern 1
+        0x87654321, // Mixed pattern 2
+        0x0F0F0F0F, // Nibble alternating
+        0xF0F0F0F0, // Inverted nibble
+        0x00FF00FF, // Byte alternating
+        0xFF00FF00, // Inverted byte
+        0x0000FFFF, // Half word
+        0xFFFF0000, // Inverted half word
+        0x11111111, // Sparse 1s
+        0x22222222, // Sparse 2s
+        0x44444444, // Sparse 4s
+        0x88888888, // Sparse 8s
+        0x01010101, // Single bit pattern
+        0x02040810, // Shifting pattern
+        0x10080402, // Reverse shifting
+        0x13579BDF, // Odd number sequence
+        0xECA86420, // Even number sequence
+        0x5A5A5A5A, // Complex alternating
+        0xA5A5A5A5, // Complex alternating inv
+        0xDEADBEEF  // Known test pattern
     };
 
     for (int pattern_idx = 0; pattern_idx < 24; pattern_idx++) {
@@ -133,7 +132,7 @@ static int test_register_state_transition_matrix(void)
 
         for (int reg_idx = 0; reg_idx < 16; reg_idx++) {
             // State 0: Initial pattern
-            uint32_t state0 = base_pattern & 0x0000FFFF;  // 只使用valid bits
+            uint32_t state0 = base_pattern & 0x0000FFFF; // 只使用valid bits
             write_alias_csr_register(reg_idx, state0);
 
             // State 1: Toggle specific fields
@@ -141,18 +140,18 @@ static int test_register_state_transition_matrix(void)
             write_alias_csr_register(reg_idx, state1);
 
             // State 2: Update priority
-            uint32_t state2 = (state1 & ~ALIAS_REG_PRIORITY_MASK) |
-                             (((pattern_idx + reg_idx) & 0x7) << 1);
+            uint32_t state2 =
+                (state1 & ~ALIAS_REG_PRIORITY_MASK) | (((pattern_idx + reg_idx) & 0x7) << 1);
             write_alias_csr_register(reg_idx, state2);
 
             // State 3: Change type and cache
             uint32_t state3 = (state2 & ~(ALIAS_REG_TYPE_MASK | ALIAS_REG_CACHE_MASK)) |
-                             ((pattern_idx & 0x3) << 4) | ((reg_idx & 0x3) << 6);
+                              ((pattern_idx & 0x3) << 4) | ((reg_idx & 0x3) << 6);
             write_alias_csr_register(reg_idx, state3);
 
             // State 4: Update size field
-            uint32_t state4 = (state3 & ~ALIAS_REG_SIZE_MASK) |
-                             (((pattern_idx ^ reg_idx) & 0xF) << 8);
+            uint32_t state4 =
+                (state3 & ~ALIAS_REG_SIZE_MASK) | (((pattern_idx ^ reg_idx) & 0xF) << 8);
             write_alias_csr_register(reg_idx, state4);
 
             // State 5: Set valid and lock bits
@@ -179,8 +178,7 @@ static int test_register_state_transition_matrix(void)
     return 0;
 }
 
-static int test_concurrent_register_access_patterns(void)
-{
+static int test_concurrent_register_access_patterns(void) {
     printf("Starting concurrent register access patterns test...\n");
 
     // 場景3: Concurrent register access patterns
@@ -192,8 +190,8 @@ static int test_concurrent_register_access_patterns(void)
             // 並行寫入4個consecutive registers
             for (int offset = 0; offset < 4; offset++) {
                 uint32_t reg_idx = base_reg + offset;
-                uint32_t value = (concurrent_test << 16) | (batch << 8) | (offset << 4) |
-                               (reg_idx & 0xF);
+                uint32_t value =
+                    (concurrent_test << 16) | (batch << 8) | (offset << 4) | (reg_idx & 0xF);
 
                 write_alias_csr_register(reg_idx, value & 0x0000FFFF);
             }
@@ -205,8 +203,9 @@ static int test_concurrent_register_access_patterns(void)
 
                 if (read_alias_csr_register(reg_idx, &readback) == 0) {
                     // 驗證讀取的正確性
-                    uint32_t expected = ((concurrent_test << 16) | (batch << 8) |
-                                       (offset << 4) | (reg_idx & 0xF)) & 0x0000FFFF;
+                    uint32_t expected =
+                        ((concurrent_test << 16) | (batch << 8) | (offset << 4) | (reg_idx & 0xF)) &
+                        0x0000FFFF;
                     // Basic validation (可能有些bits readonly)
                     printf("Reg %d: wrote 0x%04X, read 0x%04X\n", reg_idx, expected, readback);
                 }
@@ -234,8 +233,7 @@ static int test_concurrent_register_access_patterns(void)
     return 0;
 }
 
-static int test_read_only_write_only_field_coverage(void)
-{
+static int test_read_only_write_only_field_coverage(void) {
     printf("Starting read-only/write-only field coverage test...\n");
 
     // 場景4: Read-only/Write-only欄位覆蓋
@@ -258,7 +256,7 @@ static int test_read_only_write_only_field_coverage(void)
                 if (bit_pos & 0x1) field_combo |= ALIAS_REG_ENABLE_MASK;
                 if (bit_pos & 0x2) field_combo |= ALIAS_REG_VALID_MASK;
                 if (bit_pos & 0x4) field_combo |= ALIAS_REG_LOCK_MASK;
-                if (bit_pos & 0x8) field_combo |= (0x3 << 1);  // Priority
+                if (bit_pos & 0x8) field_combo |= (0x3 << 1); // Priority
 
                 write_alias_csr_register(reg_idx, field_combo);
                 read_alias_csr_register(reg_idx, &immediate_read);
@@ -276,8 +274,8 @@ static int test_read_only_write_only_field_coverage(void)
             read_alias_csr_register(reg_idx, &after_ro_test);
 
             // Read-only bits應該保持不變 (或按照硬體邏輯更新)
-            printf("RO test reg %d: before=0x%04X, after=0x%04X\n",
-                   reg_idx, before_ro_test, after_ro_test);
+            printf("RO test reg %d: before=0x%04X, after=0x%04X\n", reg_idx, before_ro_test,
+                   after_ro_test);
         }
     }
 
@@ -285,8 +283,7 @@ static int test_read_only_write_only_field_coverage(void)
     return 0;
 }
 
-static int test_register_reset_and_default_values(void)
-{
+static int test_register_reset_and_default_values(void) {
     printf("Starting register reset and default values test...\n");
 
     // 場景5: Register reset和default values測試
@@ -318,18 +315,18 @@ static int test_register_reset_and_default_values(void)
             // 沒有軟體reset時，測試個別register的reset行為
             for (int reg_idx = 0; reg_idx < 16; reg_idx++) {
                 // 嘗試寫入invalid values來測試硬體protection
-                write_alias_csr_register(reg_idx, 0xFFFFFFFF);  // Invalid
+                write_alias_csr_register(reg_idx, 0xFFFFFFFF); // Invalid
 
                 uint32_t after_invalid = 0;
                 read_alias_csr_register(reg_idx, &after_invalid);
 
-                write_alias_csr_register(reg_idx, 0x0);  // Clear
+                write_alias_csr_register(reg_idx, 0x0); // Clear
 
                 uint32_t after_clear = 0;
                 read_alias_csr_register(reg_idx, &after_clear);
 
-                printf("Invalid test reg %d: invalid->0x%04X, clear->0x%04X\n",
-                       reg_idx, after_invalid, after_clear);
+                printf("Invalid test reg %d: invalid->0x%04X, clear->0x%04X\n", reg_idx,
+                       after_invalid, after_clear);
             }
         }
     }
@@ -338,8 +335,7 @@ static int test_register_reset_and_default_values(void)
     return 0;
 }
 
-static int test_register_field_interaction_matrix(void)
-{
+static int test_register_field_interaction_matrix(void) {
     printf("Starting register field interaction matrix test...\n");
 
     // 場景6: Register欄位interaction matrix
@@ -348,10 +344,10 @@ static int test_register_field_interaction_matrix(void)
             // 測試欄位間的dependency和interaction
 
             // Test 1: Enable與其他欄位的interaction
-            uint32_t base_config = (interaction_test & 0x7) << 1;  // Priority
+            uint32_t base_config = (interaction_test & 0x7) << 1; // Priority
 
             // Disable狀態下設置其他欄位
-            write_alias_csr_register(reg_idx, base_config);  // Enable = 0
+            write_alias_csr_register(reg_idx, base_config); // Enable = 0
             uint32_t disabled_read = 0;
             read_alias_csr_register(reg_idx, &disabled_read);
 
@@ -379,7 +375,7 @@ static int test_register_field_interaction_matrix(void)
             for (int size = 0; size < 16; size++) {
                 for (int type = 0; type < 4; type++) {
                     uint32_t size_type_config = ((size & 0xF) << 8) | ((type & 0x3) << 4) |
-                                               ALIAS_REG_ENABLE_MASK | ALIAS_REG_VALID_MASK;
+                                                ALIAS_REG_ENABLE_MASK | ALIAS_REG_VALID_MASK;
 
                     write_alias_csr_register(reg_idx, size_type_config);
                     uint32_t size_type_read = 0;
@@ -398,8 +394,7 @@ static int test_register_field_interaction_matrix(void)
     return 0;
 }
 
-static int test_register_address_mapping_coverage(void)
-{
+static int test_register_address_mapping_coverage(void) {
     printf("Starting register address mapping coverage test...\n");
 
     // 場景7: Register address mapping完整覆蓋
@@ -421,8 +416,8 @@ static int test_register_address_mapping_coverage(void)
             // Strided access patterns
             if ((reg_idx % 4) == 0 && reg_idx + 3 < 16) {
                 for (int stride = 0; stride < 4; stride++) {
-                    uint32_t stride_value = (addr_test << 12) | (stride << 8) |
-                                          (reg_idx << 4) | stride;
+                    uint32_t stride_value =
+                        (addr_test << 12) | (stride << 8) | (reg_idx << 4) | stride;
                     write_alias_csr_register(reg_idx + stride, stride_value & 0x0000FFFF);
                 }
 
@@ -449,8 +444,8 @@ static int test_register_address_mapping_coverage(void)
                     read_alias_csr_register(potential_alias, &alias_read);
 
                     if (alias_read == (alias_value & 0x0000FFFF)) {
-                        printf("Detected alias: reg %d aliases reg %d\n",
-                               potential_alias, primary_reg);
+                        printf("Detected alias: reg %d aliases reg %d\n", potential_alias,
+                               primary_reg);
                     }
                 }
             }
@@ -461,8 +456,7 @@ static int test_register_address_mapping_coverage(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_065: Alias CSR Toggle P3 Test\n");
     printf("Goals: alias_remap_reg 82.81%% -> 90%%+ (需要 7.19%% 改進)\n");
     printf("Strategy: Alias CSR欄位精準toggle，完整register覆蓋\n\n");

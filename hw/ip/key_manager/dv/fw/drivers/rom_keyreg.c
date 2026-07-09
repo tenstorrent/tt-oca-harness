@@ -22,8 +22,7 @@
  *
  * @param[in,out] reg Registry to initialize.
  */
-void rom_keyreg_init(rom_km_keyreg_t *reg)
-{
+void rom_keyreg_init(rom_km_keyreg_t *reg) {
     for (uint16_t i = 0; i < ROM_KM_MAX_KEY_HANDLES + 1; i++) {
         reg->handles[i].base_slot = 0;
         reg->handles[i].valid = 0;
@@ -47,10 +46,8 @@ void rom_keyreg_init(rom_km_keyreg_t *reg)
  * @param[in] slot Slot index.
  * @return Handle (1-255) or ROM_KM_KEY_HANDLE_NULL if no key in slot.
  */
-uint8_t rom_keyreg_get_handle(const rom_km_keyreg_t *reg, uint8_t slot)
-{
-    if (slot >= ROM_KM_KPV_NUM_SLOTS)
-        return ROM_KM_KEY_HANDLE_NULL;
+uint8_t rom_keyreg_get_handle(const rom_km_keyreg_t *reg, uint8_t slot) {
+    if (slot >= ROM_KM_KPV_NUM_SLOTS) return ROM_KM_KEY_HANDLE_NULL;
 
     return reg->slot_to_handle[slot];
 }
@@ -63,10 +60,8 @@ uint8_t rom_keyreg_get_handle(const rom_km_keyreg_t *reg, uint8_t slot)
  * @param[out] slot  Receives base slot index.
  * @return 0 on success, -1 if handle invalid.
  */
-int rom_keyreg_get_slot(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *slot)
-{
-    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid)
-        return -1;
+int rom_keyreg_get_slot(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *slot) {
+    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
 
     *slot = reg->handles[handle].base_slot;
     return 0;
@@ -80,10 +75,8 @@ int rom_keyreg_get_slot(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *slo
  * @param[out] crc   Receives CRC value.
  * @return 0 on success, -1 if handle invalid.
  */
-int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc)
-{
-    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid)
-        return -1;
+int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc) {
+    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
 
     *crc = reg->handles[handle].crc32;
     return 0;
@@ -102,11 +95,8 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
  * @param[in]     crc       CRC-32C of key data.
  * @return Allocated handle (1-255) on success, -1 if exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot,
-                        uint8_t num_slots, uint32_t crc)
-{
-    if (reg->next_handle == 0)
-        return -1;
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc) {
+    if (reg->next_handle == 0) return -1;
 
     uint8_t h = reg->next_handle;
 
@@ -114,8 +104,7 @@ int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot,
     reg->handles[h].valid = 1;
     reg->handles[h].crc32 = crc;
 
-    for (uint8_t s = 0; s < num_slots; s++)
-        reg->slot_to_handle[base_slot + s] = h;
+    for (uint8_t s = 0; s < num_slots; s++) reg->slot_to_handle[base_slot + s] = h;
 
     reg->next_handle++;
 
@@ -129,16 +118,13 @@ int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot,
  * @param[in]     handle Handle to destroy.
  * @return 0 on success, -1 if handle invalid.
  */
-int rom_keyreg_destroy(rom_km_keyreg_t *reg, uint8_t handle)
-{
-    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid)
-        return -1;
+int rom_keyreg_destroy(rom_km_keyreg_t *reg, uint8_t handle) {
+    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
 
     reg->handles[handle].valid = 0;
 
     for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) {
-        if (reg->slot_to_handle[s] == handle)
-            reg->slot_to_handle[s] = ROM_KM_KEY_HANDLE_NULL;
+        if (reg->slot_to_handle[s] == handle) reg->slot_to_handle[s] = ROM_KM_KEY_HANDLE_NULL;
     }
 
     return 0;

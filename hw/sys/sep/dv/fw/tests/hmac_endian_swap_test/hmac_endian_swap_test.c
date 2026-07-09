@@ -58,8 +58,7 @@ static int feed_msg_words(const uint32_t *words, uint32_t count) {
     return 0;
 }
 
-static int hash_abc_with_swap(uint32_t endian_swap, uint32_t digest_swap,
-                              uint32_t digest_out[8]) {
+static int hash_abc_with_swap(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_out[8]) {
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
@@ -115,7 +114,9 @@ int main(void) {
     if (hash_abc_with_swap(0, 0, digest_base) != 0) {
         printf("FAIL: Baseline hash failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     print_digest("Baseline", digest_base);
 
@@ -125,7 +126,9 @@ int main(void) {
     if (hash_abc_with_swap(1, 0, digest_eswap) != 0) {
         printf("FAIL: Endian-swap hash failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     print_digest("Endian-swap", digest_eswap);
 
@@ -147,7 +150,9 @@ int main(void) {
     if (hash_abc_with_swap(0, 1, digest_dswap) != 0) {
         printf("FAIL: Digest-swap hash failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     print_digest("Digest-swap", digest_dswap);
 
@@ -171,5 +176,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

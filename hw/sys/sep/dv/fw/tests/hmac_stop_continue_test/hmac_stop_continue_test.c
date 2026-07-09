@@ -20,9 +20,7 @@
 #include "sep_outbound_filter.h"
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -104,9 +102,10 @@ int main(void) {
      *   1) Packer only flushes on hash_process, not hash_stop; partial words cause idle deadlock.
      *   2) digest_on_blk requires message_length mod 512 == 0; otherwise hmac_done never fires.
      * Part2 can be any length since hash_process triggers packer flush automatically. */
-    const uint8_t full_msg[69] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" "Hello";
-    const uint8_t part1[64]    = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    const uint8_t part2[5]     = "Hello";
+    const uint8_t full_msg[69] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                                 "Hello";
+    const uint8_t part1[64] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const uint8_t part2[5] = "Hello";
     uint32_t full_len = 69;
     uint32_t p1_len = 64;
     uint32_t p2_len = 5;
@@ -128,7 +127,9 @@ int main(void) {
     if (feed_msg(full_msg, full_len) != 0) {
         printf("FAIL: Single-pass feed error\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     hmac__CMD_t cmd_proc = {.f.hash_process = 1};
@@ -137,7 +138,9 @@ int main(void) {
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Single-pass timeout\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     uint8_t digest_single[32];
@@ -165,7 +168,9 @@ int main(void) {
     if (feed_msg(part1, p1_len) != 0) {
         printf("FAIL: Multi-part feed part1 error\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* hash_stop */
@@ -177,7 +182,9 @@ int main(void) {
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Not idle/done after hash_stop\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     printf("HMAC idle/done after hash_stop: OK\n");
 
@@ -189,7 +196,9 @@ int main(void) {
     if (feed_msg(part2, p2_len) != 0) {
         printf("FAIL: Multi-part feed part2 error\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* hash_process */
@@ -198,7 +207,9 @@ int main(void) {
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Multi-part timeout\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     uint8_t digest_multi[32];
@@ -219,5 +230,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

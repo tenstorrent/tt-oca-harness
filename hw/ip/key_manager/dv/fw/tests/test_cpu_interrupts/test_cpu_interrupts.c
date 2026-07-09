@@ -29,8 +29,8 @@
  *===========================================================================*/
 
 /* Counters for each IRQ source */
-volatile uint32_t irq1_count = 0;  /* EBREAK/Illegal instruction */
-volatile uint32_t irq2_count = 0;  /* Bus error */
+volatile uint32_t irq1_count = 0; /* EBREAK/Illegal instruction */
+volatile uint32_t irq2_count = 0; /* Bus error */
 
 /* Last IRQ bitmask received */
 volatile uint32_t last_irq_mask = 0;
@@ -46,8 +46,7 @@ volatile int skip_faulting_insn = 0;
  * IRQ handler called from crt0.s (overrides weak rom_irq).
  * @param frame Pointer to saved IRQ frame.
  */
-void rom_irq(rom_irq_frame_t *frame)
-{
+void rom_irq(rom_irq_frame_t *frame) {
     uint32_t irq_mask = frame->irq_mask;
     last_irq_mask = irq_mask;
 
@@ -90,19 +89,18 @@ void rom_irq(rom_irq_frame_t *frame)
 /**
  * Test IRQ 1 by executing EBREAK instruction.
  */
-static int test_ebreak_irq(void)
-{
+static int test_ebreak_irq(void) {
     TEST_SUBTEST_START("EBREAK Interrupt (IRQ 1)");
 
     /* Reset counters */
     irq1_count = 0;
     last_irq_mask = 0;
-    skip_faulting_insn = 1;  /* Skip EBREAK so we can continue */
+    skip_faulting_insn = 1; /* Skip EBREAK so we can continue */
 
     printf("  Executing EBREAK instruction...\n");
 
     /* Execute EBREAK - this should trigger IRQ 1 */
-    __asm__ volatile ("ebreak");
+    __asm__ volatile("ebreak");
 
     /* Check that IRQ 1 was triggered */
     if (irq1_count == 0) {
@@ -121,14 +119,13 @@ static int test_ebreak_irq(void)
 /**
  * Test IRQ 2 by performing misaligned memory access.
  */
-static int test_misaligned_irq(void)
-{
+static int test_misaligned_irq(void) {
     TEST_SUBTEST_START("Misaligned Access Interrupt (IRQ 2)");
 
     /* Reset counters */
     irq2_count = 0;
     last_irq_mask = 0;
-    skip_faulting_insn = 1;  /* Skip faulting instruction */
+    skip_faulting_insn = 1; /* Skip faulting instruction */
 
     printf("  Performing misaligned word load...\n");
 
@@ -140,13 +137,11 @@ static int test_misaligned_irq(void)
      * We use inline assembly to ensure the compiler doesn't optimize this out.
      */
     volatile uint32_t result = 0;
-    __asm__ volatile (
-        "li t0, 0x2001\n"        /* Load misaligned address */
-        "lw %0, 0(t0)\n"         /* Attempt misaligned load */
-        : "=r"(result)
-        :
-        : "t0"
-    );
+    __asm__ volatile("li t0, 0x2001\n" /* Load misaligned address */
+                     "lw %0, 0(t0)\n"  /* Attempt misaligned load */
+                     : "=r"(result)
+                     :
+                     : "t0");
 
     /* The load might not complete due to trap, result may be garbage */
     (void)result;
@@ -168,8 +163,7 @@ static int test_misaligned_irq(void)
 /**
  * Test that interrupts can be masked.
  */
-static int test_irq_masking(void)
-{
+static int test_irq_masking(void) {
     TEST_SUBTEST_START("IRQ Masking");
 
     uint32_t old_mask;
@@ -193,7 +187,8 @@ static int test_irq_masking(void)
     old_mask = rom_picorv32_maskirq(0x00000000);
 
     if (old_mask != 0xFFFFFFFF) {
-        TEST_FAIL("maskirq did not return expected mask (got 0x%08X, expected 0xFFFFFFFF)", old_mask);
+        TEST_FAIL("maskirq did not return expected mask (got 0x%08X, expected 0xFFFFFFFF)",
+                  old_mask);
     }
 
     printf("  IRQ masking works correctly\n");
@@ -204,8 +199,7 @@ static int test_irq_masking(void)
 /**
  * Test multiple sequential interrupts.
  */
-static int test_multiple_interrupts(void)
-{
+static int test_multiple_interrupts(void) {
     TEST_SUBTEST_START("Multiple Sequential Interrupts");
 
     /* Reset counters */
@@ -214,21 +208,19 @@ static int test_multiple_interrupts(void)
     skip_faulting_insn = 1;
 
     printf("  Triggering EBREAK...\n");
-    __asm__ volatile ("ebreak");
+    __asm__ volatile("ebreak");
 
     printf("  Triggering misaligned access...\n");
     volatile uint32_t result = 0;
-    __asm__ volatile (
-        "li t0, 0x2003\n"
-        "lw %0, 0(t0)\n"
-        : "=r"(result)
-        :
-        : "t0"
-    );
+    __asm__ volatile("li t0, 0x2003\n"
+                     "lw %0, 0(t0)\n"
+                     : "=r"(result)
+                     :
+                     : "t0");
     (void)result;
 
     printf("  Triggering another EBREAK...\n");
-    __asm__ volatile ("ebreak");
+    __asm__ volatile("ebreak");
 
     /* Verify counts */
     if (irq1_count != 2) {
@@ -248,8 +240,7 @@ static int test_multiple_interrupts(void)
  * Main Test Entry Point
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     printf("CPU Interrupt Test\n");

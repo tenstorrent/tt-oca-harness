@@ -40,9 +40,9 @@
  *
  * @return 32-bit data word from the inbound FIFO.
  */
-static uint32_t fifo_read_word_blocking(void)
-{
-    while (rom_mailbox_inbound_empty()) {}
+static uint32_t fifo_read_word_blocking(void) {
+    while (rom_mailbox_inbound_empty()) {
+    }
     return rom_mailbox_read_data();
 }
 
@@ -61,11 +61,11 @@ static uint32_t fifo_read_word_blocking(void)
  * @param cmd_seq  Command sequence number to echo in the response.
  * @param cmd_id   Command ID to echo in the response.
  */
-static void send_direct_success(uint8_t cmd_seq, uint8_t cmd_id)
-{
+static void send_direct_success(uint8_t cmd_seq, uint8_t cmd_id) {
     /* Wait for any pending TX frames to be drained by the ISR. */
     rom_mailbox_enable_outbound_drain_irq();
-    while (rom_msgbuf_frame_available(&rom_tx_msgbuf)) {}
+    while (rom_msgbuf_frame_available(&rom_tx_msgbuf)) {
+    }
 
     /* Disable inbound IRQ to prevent the ISR from consuming image words. */
     rom_mailbox_disable_inbound_irq();
@@ -109,11 +109,9 @@ static void send_direct_success(uint8_t cmd_seq, uint8_t cmd_id)
  *     read-locked) the HW rejects the shred, so fall back to a read-lock to
  *     keep its contents unreadable.
  */
-void rom_handover_lock_kpv_root_keys(void)
-{
+void rom_handover_lock_kpv_root_keys(void) {
     for (uint8_t slot = 0u; slot < ROM_KM_KPV_NUM_SLOTS; slot++) {
-        if (rom_keyreg_get_handle(&rom_keyreg_state, slot)
-                != ROM_KM_KEY_HANDLE_NULL) {
+        if (rom_keyreg_get_handle(&rom_keyreg_state, slot) != ROM_KM_KEY_HANDLE_NULL) {
             rom_kpv_read_lock(slot);
         } else if (rom_kpv_shred_slot(slot, &rom_prng_state) < 0) {
             rom_kpv_read_lock(slot);
@@ -124,8 +122,7 @@ void rom_handover_lock_kpv_root_keys(void)
 /**
  * @brief Lock sensitive data: OTP secrets, rom_persist region, KPV root keys.
  */
-void rom_handover_lock_sensitive(void)
-{
+void rom_handover_lock_sensitive(void) {
     rom_otp_set_read_lock(ROM_KM_OTP_LOCK_SECRET_MASK);
     rom_persist_lock();
     rom_handover_lock_kpv_root_keys();
@@ -141,8 +138,7 @@ void rom_handover_lock_sensitive(void)
  * mutable firmware cannot read any key material the ROM previously sideloaded
  * or any shared key delivered but not yet consumed.
  */
-void rom_handover_shred_sideload_keys(void)
-{
+void rom_handover_shred_sideload_keys(void) {
     rom_hmac_shred_key(&rom_prng_state, 1);
     rom_kmac_shred_key(&rom_prng_state, 1);
     rom_aes_shred_key(&rom_prng_state, 1);
@@ -160,9 +156,7 @@ void rom_handover_shred_sideload_keys(void)
  *        drain and flush the mailbox, disable IRQs, get PRNG seed, tail-call
  *        assembly handoff.
  */
-__attribute__((noreturn))
-void rom_handover_finish(uint32_t fw_size_bytes)
-{
+__attribute__((noreturn)) void rom_handover_finish(uint32_t fw_size_bytes) {
     /* --- Step 1: shred crypto-engine sideload keys ---
      * The HMAC/KMAC/AES/OTBN and ABR seed key-share banks (and the ML-KEM
      * shared key) are outside SRAM, so the whole-SRAM scramble in
@@ -181,11 +175,8 @@ void rom_handover_finish(uint32_t fw_size_bytes)
      * disjoint from the ROM stack/data, so write-locking them cannot prevent
      * the scramble from erasing ROM private data.
      */
-    uint32_t num_regions =
-        (fw_size_bytes + SRAM_LOCK_REGION_BYTES - 1u) / SRAM_LOCK_REGION_BYTES;
-    uint32_t fw_lock_mask = (num_regions < 32u)
-                            ? ((1u << num_regions) - 1u)
-                            : 0xFFFFFFFFu;
+    uint32_t num_regions = (fw_size_bytes + SRAM_LOCK_REGION_BYTES - 1u) / SRAM_LOCK_REGION_BYTES;
+    uint32_t fw_lock_mask = (num_regions < 32u) ? ((1u << num_regions) - 1u) : 0xFFFFFFFFu;
     rom_kmcsr_sram_lock_set(fw_lock_mask);
 
     /* --- Step 4: reseed the PRNG from the DRBG ---
@@ -209,7 +200,8 @@ void rom_handover_finish(uint32_t fw_size_bytes)
      * empty so the flush below cannot discard a confirmation the SEP has not
      * yet read.  Then flush both directions to erase any residual inbound
      * payload. */
-    while (rom_mailbox_outbound_depth_read() != 0u) {}
+    while (rom_mailbox_outbound_depth_read() != 0u) {
+    }
     rom_mailbox_flush();
 
     /* --- Step 7: disable all mailbox IRQ enables --- */
@@ -234,10 +226,8 @@ void rom_handover_finish(uint32_t fw_size_bytes)
 /**
  * @brief Stream firmware image from mailbox FIFO, verify CRC-32C, then execute.
  */
-__attribute__((noreturn))
-void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
-                                uint32_t load_limit)
-{
+__attribute__((noreturn)) void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
+                                                          uint32_t load_limit) {
     /* --- Step 1: invalidate any previous load --- */
     rom_persist_set_sram_fw_size(0u);
 
@@ -257,8 +247,7 @@ void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
 
     for (uint32_t i = 0u; i < fw_words; i++) {
         uint32_t dest_addr = (uint32_t)(uintptr_t)dest;
-        if (dest_addr >= load_limit)
-            rom_trigger_unrecoverable(ROM_KM_UFAULT_FW_STACK_OVF);
+        if (dest_addr >= load_limit) rom_trigger_unrecoverable(ROM_KM_UFAULT_FW_STACK_OVF);
 
         uint32_t word = fifo_read_word_blocking();
         crc_state = rom_picorv32_crc32c_word_update(crc_state, word);
@@ -273,8 +262,7 @@ void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
     /* Consume separator status (read to clear; not used further). */
     (void)rom_mailbox_inbound_separator();
 
-    if (rx_crc != computed_crc)
-        rom_trigger_unrecoverable(ROM_KM_UFAULT_FW_CRC);
+    if (rx_crc != computed_crc) rom_trigger_unrecoverable(ROM_KM_UFAULT_FW_CRC);
 
     /* --- Step 6: commit firmware size and execute handover --- */
     rom_persist_set_sram_fw_size(fw_words * 4u);
@@ -284,9 +272,7 @@ void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
 /**
  * @brief Send direct RESP_CMD success and execute handover for pre-loaded firmware.
  */
-__attribute__((noreturn))
-void rom_handover_exec_existing(uint8_t cmd_seq, uint32_t fw_size_bytes)
-{
+__attribute__((noreturn)) void rom_handover_exec_existing(uint8_t cmd_seq, uint32_t fw_size_bytes) {
     /* Send direct RESP_CMD success; inbound IRQ disabled after this. */
     send_direct_success(cmd_seq, ROM_KM_CMD_SRAM_EXEC);
 

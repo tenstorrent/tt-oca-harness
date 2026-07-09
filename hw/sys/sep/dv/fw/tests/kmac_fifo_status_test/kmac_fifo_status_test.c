@@ -41,15 +41,13 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static void print_status(const char *tag) {
     kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-    printf("  %s: idle=%u absorb=%u squeeze=%u depth=%u empty=%u full=%u\n",
-           tag, s.f.sha3_idle, s.f.sha3_absorb, s.f.sha3_squeeze,
-           s.f.fifo_depth, s.f.fifo_empty, s.f.fifo_full);
+    printf("  %s: idle=%u absorb=%u squeeze=%u depth=%u empty=%u full=%u\n", tag, s.f.sha3_idle,
+           s.f.sha3_absorb, s.f.sha3_squeeze, s.f.fifo_depth, s.f.fifo_empty, s.f.fifo_full);
 }
 
 static int test_fifo_status(void) {
@@ -71,7 +69,7 @@ static int test_fifo_status(void) {
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;
     cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
@@ -97,8 +95,8 @@ static int test_fifo_status(void) {
     for (int i = 0; i < 8; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0xA5A5A500 + i);
         s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
-        printf("    Word %d: depth=%u empty=%u full=%u\n",
-               i, s.f.fifo_depth, s.f.fifo_empty, s.f.fifo_full);
+        printf("    Word %d: depth=%u empty=%u full=%u\n", i, s.f.fifo_depth, s.f.fifo_empty,
+               s.f.fifo_full);
         if (s.f.fifo_depth != prev_depth || i == 0) {
             depth_changed = 1;
         }

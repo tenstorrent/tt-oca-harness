@@ -38,8 +38,7 @@
 /* KMAC helpers                                                        */
 /* ------------------------------------------------------------------ */
 
-static int wait_idle(void)
-{
+static int wait_idle(void) {
     int t = 2000000;
     while (t-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -49,13 +48,12 @@ static int wait_idle(void)
     return -1;
 }
 
-static int wait_done(void)
-{
+static int wait_done(void) {
     int t = 2000000;
     while (t-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);  /* W1C */
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1); /* W1C */
             return 0;
         }
     }
@@ -68,14 +66,13 @@ static int wait_done(void)
  *   kmac_en=0, mode=0x2 (SHAKE/cSHAKE), kstrength=0 (L128), sideload=0.
  * entropy_mode=1 (EDN) — avoid SW entropy deadlock.
  */
-static void configure_cshake(void)
-{
+static void configure_cshake(void) {
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en      = 0;
-    cfg.f.mode         = 0x2;   /* SHAKE/cSHAKE mode */
-    cfg.f.kstrength    = 0x0;   /* L128 */
-    cfg.f.entropy_mode = 0x1;   /* EDN */
-    cfg.f.sideload     = 0;
+    cfg.f.kmac_en = 0;
+    cfg.f.mode = 0x2;         /* SHAKE/cSHAKE mode */
+    cfg.f.kstrength = 0x0;    /* L128 */
+    cfg.f.entropy_mode = 0x1; /* EDN */
+    cfg.f.sideload = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -85,18 +82,16 @@ static void configure_cshake(void)
 }
 
 /* Set customization string prefix = encode_string("csh") for cSHAKE */
-static void write_cshake_prefix(void)
-{
+static void write_cshake_prefix(void) {
     /* encode_string("csh"): left_encode(3*8) || "csh"
      * left_encode(24) = 0x01 0x18
      * + 'c'=0x63, 's'=0x73, 'h'=0x68
      * as LE bytes: 0x63 0x73 0x68 (0x18 padded)
      * packed 32-bit LE word0: 0x63181801 (bytestream), word1: 0x00007368
      * Using a simple fixed prefix for determinism */
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0),     0x63181801U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x63181801U);
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + 4, 0x00007368U);
-    for (int i = 2; i < 11; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
+    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
 }
 
 /*
@@ -105,33 +100,31 @@ static void write_cshake_prefix(void)
  * msg_count: number of words to write
  * Reads 8-word (256-bit) output from STATE.
  */
-static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[8])
-{
+static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[8]) {
     kmac__CMD_t cmd = {.w = 0};
 
-    cmd.f.cmd = 29;  /* CmdStart */
+    cmd.f.cmd = 29; /* CmdStart */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     for (int i = 0; i < msg_count; i++)
         WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
 
-    cmd.f.cmd = 46;  /* CmdProcess */
+    cmd.f.cmd = 46; /* CmdProcess */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++)
-        out[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))
-                ^ READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
+        out[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)) ^
+                 READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
 
-    cmd.f.cmd = 22;  /* CmdDone */
+    cmd.f.cmd = 22; /* CmdDone */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }
 
-static void print_digest(const char *label, const uint32_t d[8])
-{
+static void print_digest(const char *label, const uint32_t d[8]) {
     printf("  %s: ", label);
     for (int i = 0; i < 8; i++) printf("%08x ", d[i]);
     printf("\n");
@@ -141,8 +134,7 @@ static void print_digest(const char *label, const uint32_t d[8])
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -168,7 +160,10 @@ int main(void)
 
     /* --- Op A: message msg_a --- */
     printf("=== Op A: cSHAKE-128(msg_a=[0xAAAAAAAA, 0x55555555]) ===\n");
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
     configure_cshake();
     write_cshake_prefix();
     if (run_cshake_op(msg_a, 2, digest_a) != 0) {
@@ -181,7 +176,10 @@ int main(void)
 
     /* --- Op B: message msg_b --- */
     printf("\n=== Op B: cSHAKE-128(msg_b=[0xBBBBBBBB, 0x44444444]) ===\n");
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
     configure_cshake();
     write_cshake_prefix();
     if (run_cshake_op(msg_b, 2, digest_b) != 0) {
@@ -194,7 +192,10 @@ int main(void)
 
     /* --- Op C: message msg_a (should match Op A) --- */
     printf("\n=== Op C: cSHAKE-128(msg_a) [must match Op A] ===\n");
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
     configure_cshake();
     write_cshake_prefix();
     if (run_cshake_op(msg_a, 2, digest_c) != 0) {
@@ -207,7 +208,10 @@ int main(void)
 
     /* --- Op D: message msg_a again (must also match Op A) --- */
     printf("\n=== Op D: cSHAKE-128(msg_a) [must match Op A] ===\n");
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
     configure_cshake();
     write_cshake_prefix();
     if (run_cshake_op(msg_a, 2, digest_d) != 0) {
@@ -222,7 +226,10 @@ int main(void)
     printf("\n=== CHK[5]: digest_B differs from digest_A ===\n");
     int a_ne_b = 0;
     for (int i = 0; i < 8; i++)
-        if (digest_a[i] != digest_b[i]) { a_ne_b = 1; break; }
+        if (digest_a[i] != digest_b[i]) {
+            a_ne_b = 1;
+            break;
+        }
     if (a_ne_b) {
         printf("  CHK[5] PASS: distinct inputs → distinct digests\n");
     } else {
@@ -234,7 +241,10 @@ int main(void)
     printf("=== CHK[6]: digest_C matches digest_A (determinism) ===\n");
     int c_eq_a = 1;
     for (int i = 0; i < 8; i++)
-        if (digest_c[i] != digest_a[i]) { c_eq_a = 0; break; }
+        if (digest_c[i] != digest_a[i]) {
+            c_eq_a = 0;
+            break;
+        }
     if (c_eq_a) {
         printf("  CHK[6] PASS: same input → same output (deterministic)\n");
     } else {
@@ -247,7 +257,10 @@ int main(void)
     /* Also verify D == A (same check, different run) */
     int d_eq_a = 1;
     for (int i = 0; i < 8; i++)
-        if (digest_d[i] != digest_a[i]) { d_eq_a = 0; break; }
+        if (digest_d[i] != digest_a[i]) {
+            d_eq_a = 0;
+            break;
+        }
     printf("  INFO: digest_D %s digest_A\n", d_eq_a ? "==" : "!= (unexpected)");
 
 done:
@@ -261,5 +274,7 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

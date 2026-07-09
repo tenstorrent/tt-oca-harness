@@ -20,16 +20,14 @@
 /**
  * @brief Read register helper
  */
-static inline uint32_t i2c_read_reg(uint32_t addr)
-{
+static inline uint32_t i2c_read_reg(uint32_t addr) {
     return read_reg(addr);
 }
 
 /**
  * @brief Write register helper
  */
-static inline void i2c_write_reg(uint32_t addr, uint32_t value)
-{
+static inline void i2c_write_reg(uint32_t addr, uint32_t value) {
     write_reg(addr, value);
 }
 
@@ -39,9 +37,8 @@ static inline void i2c_write_reg(uint32_t addr, uint32_t value)
  * Performs ceiling division: ceil(a/b).
  * Returns bottom 16 bits of result.
  */
-static inline uint16_t round_up_divide(uint32_t a, uint32_t b)
-{
-    if (b == 0) return 0;  // Avoid division by zero
+static inline uint16_t round_up_divide(uint32_t a, uint32_t b) {
+    if (b == 0) return 0; // Avoid division by zero
     return (uint16_t)(((a - 1) / b) + 1);
 }
 
@@ -49,44 +46,41 @@ static inline uint16_t round_up_divide(uint32_t a, uint32_t b)
 // Basic Functions Implementation
 // ============================================================================
 
-uint32_t i2c_get_base(uint32_t idx)
-{
+uint32_t i2c_get_base(uint32_t idx) {
     return SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0) + (0x200u * idx);
 }
 
-void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz,
-                           i2c_timing_config_t *config)
-{
+void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz, i2c_timing_config_t *config) {
     if (!config) return;
 
     // Default values based on i2c_sanity test and specification
     // These values work for most cases
-    config->thigh = 0x1A;    // SCL high period
-    config->tlow = 0x32;     // SCL low period
-    config->t_r = 2;         // Rise time
-    config->t_f = 2;         // Fall time
-    config->tsu_sta = 5;     // START setup time
-    config->thd_sta = 4;     // START hold time
-    config->tsu_dat = 2;     // Data setup time
-    config->thd_dat = 5;     // Data hold time
-    config->tsu_sto = 4;     // STOP setup time
-    config->t_buf = 5;       // Bus free time
+    config->thigh = 0x1A; // SCL high period
+    config->tlow = 0x32;  // SCL low period
+    config->t_r = 2;      // Rise time
+    config->t_f = 2;      // Fall time
+    config->tsu_sta = 5;  // START setup time
+    config->thd_sta = 4;  // START hold time
+    config->tsu_dat = 2;  // Data setup time
+    config->thd_dat = 5;  // Data hold time
+    config->tsu_sto = 4;  // STOP setup time
+    config->t_buf = 5;    // Bus free time
 
     // Adjust for different speeds if needed
     switch (speed) {
-        case I2C_SPEED_STANDARD:  // 100 kHz
-            // Use defaults
-            break;
+    case I2C_SPEED_STANDARD: // 100 kHz
+        // Use defaults
+        break;
 
-        case I2C_SPEED_FAST:  // 400 kHz
-            config->thigh = 0x10;
-            config->tlow = 0x20;
-            break;
+    case I2C_SPEED_FAST: // 400 kHz
+        config->thigh = 0x10;
+        config->tlow = 0x20;
+        break;
 
-        case I2C_SPEED_FAST_PLUS:  // 1 MHz
-            config->thigh = 0x08;
-            config->tlow = 0x10;
-            break;
+    case I2C_SPEED_FAST_PLUS: // 1 MHz
+        config->thigh = 0x08;
+        config->tlow = 0x10;
+        break;
     }
 }
 
@@ -97,69 +91,67 @@ void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz,
  * All timing values are in nanoseconds.
  */
 static void get_spec_timing_nanos(uint8_t speed, uint32_t clock_period_nanos,
-                                  i2c_timing_config_t *config)
-{
+                                  i2c_timing_config_t *config) {
     // All constants from I2C Specification Table 10
     switch (speed) {
-        case I2C_SPEED_STANDARD:  // 100 kHz (Standard-mode)
-            config->thigh = round_up_divide(4000, clock_period_nanos);      // SCL high: 4.0us
-            config->tlow = round_up_divide(4700, clock_period_nanos);       // SCL low: 4.7us
-            config->tsu_sta = round_up_divide(4700, clock_period_nanos);    // START setup: 4.7us
-            config->thd_sta = round_up_divide(4000, clock_period_nanos);    // START hold: 4.0us
-            config->tsu_dat = round_up_divide(250, clock_period_nanos);     // Data setup: 250ns
-            config->thd_dat = 1;                                             // Data hold: 0ns (min 1 cycle)
-            config->tsu_sto = round_up_divide(4000, clock_period_nanos);    // STOP setup: 4.0us
-            config->t_buf = round_up_divide(4700, clock_period_nanos);      // Bus free: 4.7us
-            break;
+    case I2C_SPEED_STANDARD:                                         // 100 kHz (Standard-mode)
+        config->thigh = round_up_divide(4000, clock_period_nanos);   // SCL high: 4.0us
+        config->tlow = round_up_divide(4700, clock_period_nanos);    // SCL low: 4.7us
+        config->tsu_sta = round_up_divide(4700, clock_period_nanos); // START setup: 4.7us
+        config->thd_sta = round_up_divide(4000, clock_period_nanos); // START hold: 4.0us
+        config->tsu_dat = round_up_divide(250, clock_period_nanos);  // Data setup: 250ns
+        config->thd_dat = 1;                                         // Data hold: 0ns (min 1 cycle)
+        config->tsu_sto = round_up_divide(4000, clock_period_nanos); // STOP setup: 4.0us
+        config->t_buf = round_up_divide(4700, clock_period_nanos);   // Bus free: 4.7us
+        break;
 
-        case I2C_SPEED_FAST:  // 400 kHz (Fast-mode)
-            config->thigh = round_up_divide(600, clock_period_nanos);       // SCL high: 0.6us
-            config->tlow = round_up_divide(1300, clock_period_nanos);       // SCL low: 1.3us
-            config->tsu_sta = round_up_divide(600, clock_period_nanos);     // START setup: 0.6us
-            config->thd_sta = round_up_divide(600, clock_period_nanos);     // START hold: 0.6us
-            config->tsu_dat = round_up_divide(100, clock_period_nanos);     // Data setup: 100ns
-            config->thd_dat = 1;                                             // Data hold: 0ns (min 1 cycle)
-            config->tsu_sto = round_up_divide(600, clock_period_nanos);     // STOP setup: 0.6us
-            config->t_buf = round_up_divide(1300, clock_period_nanos);      // Bus free: 1.3us
-            break;
+    case I2C_SPEED_FAST:                                            // 400 kHz (Fast-mode)
+        config->thigh = round_up_divide(600, clock_period_nanos);   // SCL high: 0.6us
+        config->tlow = round_up_divide(1300, clock_period_nanos);   // SCL low: 1.3us
+        config->tsu_sta = round_up_divide(600, clock_period_nanos); // START setup: 0.6us
+        config->thd_sta = round_up_divide(600, clock_period_nanos); // START hold: 0.6us
+        config->tsu_dat = round_up_divide(100, clock_period_nanos); // Data setup: 100ns
+        config->thd_dat = 1;                                        // Data hold: 0ns (min 1 cycle)
+        config->tsu_sto = round_up_divide(600, clock_period_nanos); // STOP setup: 0.6us
+        config->t_buf = round_up_divide(1300, clock_period_nanos);  // Bus free: 1.3us
+        break;
 
-        case I2C_SPEED_FAST_PLUS:  // 1 MHz (Fast-mode Plus)
-            config->thigh = round_up_divide(260, clock_period_nanos);       // SCL high: 0.26us
-            config->tlow = round_up_divide(500, clock_period_nanos);        // SCL low: 0.5us
-            config->tsu_sta = round_up_divide(260, clock_period_nanos);     // START setup: 0.26us
-            config->thd_sta = round_up_divide(260, clock_period_nanos);     // START hold: 0.26us
-            config->tsu_dat = round_up_divide(50, clock_period_nanos);      // Data setup: 50ns
-            config->thd_dat = 1;                                             // Data hold: 0ns (min 1 cycle)
-            config->tsu_sto = round_up_divide(260, clock_period_nanos);     // STOP setup: 0.26us
-            config->t_buf = round_up_divide(500, clock_period_nanos);       // Bus free: 0.5us
-            break;
+    case I2C_SPEED_FAST_PLUS:                                       // 1 MHz (Fast-mode Plus)
+        config->thigh = round_up_divide(260, clock_period_nanos);   // SCL high: 0.26us
+        config->tlow = round_up_divide(500, clock_period_nanos);    // SCL low: 0.5us
+        config->tsu_sta = round_up_divide(260, clock_period_nanos); // START setup: 0.26us
+        config->thd_sta = round_up_divide(260, clock_period_nanos); // START hold: 0.26us
+        config->tsu_dat = round_up_divide(50, clock_period_nanos);  // Data setup: 50ns
+        config->thd_dat = 1;                                        // Data hold: 0ns (min 1 cycle)
+        config->tsu_sto = round_up_divide(260, clock_period_nanos); // STOP setup: 0.26us
+        config->t_buf = round_up_divide(500, clock_period_nanos);   // Bus free: 0.5us
+        break;
 
-        default:
-            // Use conservative defaults for unknown speed
-            config->thigh = 0x1A;
-            config->tlow = 0x32;
-            config->t_r = 2;
-            config->t_f = 2;
-            config->tsu_sta = 5;
-            config->thd_sta = 4;
-            config->tsu_dat = 2;
-            config->thd_dat = 5;
-            config->tsu_sto = 4;
-            config->t_buf = 5;
-            break;
+    default:
+        // Use conservative defaults for unknown speed
+        config->thigh = 0x1A;
+        config->tlow = 0x32;
+        config->t_r = 2;
+        config->t_f = 2;
+        config->tsu_sta = 5;
+        config->thd_sta = 4;
+        config->tsu_dat = 2;
+        config->thd_dat = 5;
+        config->tsu_sto = 4;
+        config->t_buf = 5;
+        break;
     }
 }
 
 int i2c_compute_timing_from_physical(const i2c_timing_physical_t *physical,
-                                     i2c_timing_config_t *config)
-{
+                                     i2c_timing_config_t *config) {
     // Parameter validation
     if (!physical || !config) {
         return I2C_ERROR_INVALID;
     }
 
     if (physical->clock_period_nanos == 0) {
-        return I2C_ERROR_INVALID;  // Would cause division by zero
+        return I2C_ERROR_INVALID; // Would cause division by zero
     }
 
     if (physical->speed > I2C_SPEED_FAST_PLUS) {
@@ -170,27 +162,25 @@ int i2c_compute_timing_from_physical(const i2c_timing_physical_t *physical,
     get_spec_timing_nanos(physical->speed, physical->clock_period_nanos, config);
 
     // Compute rise and fall time from physical parameters
-    config->t_r = round_up_divide(physical->sda_rise_nanos,
-                                  physical->clock_period_nanos);
-    config->t_f = round_up_divide(physical->sda_fall_nanos,
-                                  physical->clock_period_nanos);
+    config->t_r = round_up_divide(physical->sda_rise_nanos, physical->clock_period_nanos);
+    config->t_f = round_up_divide(physical->sda_fall_nanos, physical->clock_period_nanos);
 
     // Get minimum SCL period for requested speed
-    const uint32_t kNanosPerKBaud = 1000000;  // One million
+    const uint32_t kNanosPerKBaud = 1000000; // One million
     uint32_t min_scl_period_nanos;
     switch (physical->speed) {
-        case I2C_SPEED_STANDARD:
-            min_scl_period_nanos = kNanosPerKBaud / 100;   // 10us for 100kHz
-            break;
-        case I2C_SPEED_FAST:
-            min_scl_period_nanos = kNanosPerKBaud / 400;   // 2.5us for 400kHz
-            break;
-        case I2C_SPEED_FAST_PLUS:
-            min_scl_period_nanos = kNanosPerKBaud / 1000;  // 1us for 1MHz
-            break;
-        default:
-            min_scl_period_nanos = kNanosPerKBaud / 100;   // Default to standard
-            break;
+    case I2C_SPEED_STANDARD:
+        min_scl_period_nanos = kNanosPerKBaud / 100; // 10us for 100kHz
+        break;
+    case I2C_SPEED_FAST:
+        min_scl_period_nanos = kNanosPerKBaud / 400; // 2.5us for 400kHz
+        break;
+    case I2C_SPEED_FAST_PLUS:
+        min_scl_period_nanos = kNanosPerKBaud / 1000; // 1us for 1MHz
+        break;
+    default:
+        min_scl_period_nanos = kNanosPerKBaud / 100; // Default to standard
+        break;
     }
 
     // Use user-specified SCL period, or minimum if not specified
@@ -200,19 +190,16 @@ int i2c_compute_timing_from_physical(const i2c_timing_physical_t *physical,
     }
 
     // Convert SCL period to cycles
-    uint16_t scl_period_cycles = round_up_divide(scl_period_nanos,
-                                                 physical->clock_period_nanos);
+    uint16_t scl_period_cycles = round_up_divide(scl_period_nanos, physical->clock_period_nanos);
 
     // Adjust thigh to accommodate the desired SCL period
     // SCL period = thigh + tlow + t_r + t_f
-    int32_t lengthened_high_cycles = (int32_t)scl_period_cycles -
-                                     (int32_t)config->tlow -
-                                     (int32_t)config->t_r -
-                                     (int32_t)config->t_f;
+    int32_t lengthened_high_cycles = (int32_t)scl_period_cycles - (int32_t)config->tlow -
+                                     (int32_t)config->t_r - (int32_t)config->t_f;
 
     if (lengthened_high_cycles > (int32_t)config->thigh) {
         if (lengthened_high_cycles < 0 || lengthened_high_cycles > 0xFFFF) {
-            return I2C_ERROR_INVALID;  // Out of range
+            return I2C_ERROR_INVALID; // Out of range
         }
         config->thigh = (uint16_t)lengthened_high_cycles;
     }
@@ -229,57 +216,66 @@ int i2c_compute_timing_from_physical(const i2c_timing_physical_t *physical,
     return I2C_OK;
 }
 
-void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config)
-{
+void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config) {
     if (!config) return;
 
     uint32_t base = i2c_get_base(idx);
 
     // TIMING0: SCL periods
-    i2c__TIMING0_t timing0 = { .w = 0 };
+    i2c__TIMING0_t timing0 = {.w = 0};
     timing0.f.THIGH = (config->thigh & 0x1FFFu);
     timing0.f.TLOW = (config->tlow & 0x1FFFu);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timing0.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timing0.w);
 
     // TIMING1: Rise and fall times
-    i2c__TIMING1_t timing1 = { .w = 0 };
+    i2c__TIMING1_t timing1 = {.w = 0};
     timing1.f.T_R = (config->t_r & 0x3FFu);
     timing1.f.T_F = (config->t_f & 0x1FFu);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timing1.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timing1.w);
 
     // TIMING2: START condition timing
-    i2c__TIMING2_t timing2 = { .w = 0 };
+    i2c__TIMING2_t timing2 = {.w = 0};
     timing2.f.TSU_STA = (config->tsu_sta & 0x1FFFu);
     timing2.f.THD_STA = (config->thd_sta & 0x1FFFu);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timing2.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timing2.w);
 
     // TIMING3: Data timing
-    i2c__TIMING3_t timing3 = { .w = 0 };
+    i2c__TIMING3_t timing3 = {.w = 0};
     timing3.f.TSU_DAT = (config->tsu_dat & 0x1FFu);
     timing3.f.THD_DAT = (config->thd_dat & 0x1FFFu);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timing3.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timing3.w);
 
     // TIMING4: STOP and bus free timing
-    i2c__TIMING4_t timing4 = { .w = 0 };
+    i2c__TIMING4_t timing4 = {.w = 0};
     timing4.f.TSU_STO = (config->tsu_sto & 0x1FFFu);
     timing4.f.T_BUF = (config->t_buf & 0x1FFFu);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timing4.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timing4.w);
 }
 
-void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
-                     bool reset_tx, bool reset_acq)
-{
+void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx, bool reset_acq) {
     uint32_t base = i2c_get_base(idx);
 
     // Step 1: Write FIFO reset bits
     // Reference: OpenTitan FIFO Guide Section 2.1 - FIFO Reset & Preparation
-    i2c__FIFO_CTRL_t fifo_ctrl = { .w = 0 };
+    i2c__FIFO_CTRL_t fifo_ctrl = {.w = 0};
     fifo_ctrl.f.RXRST = reset_rx ? 1 : 0;
     fifo_ctrl.f.FMTRST = reset_fmt ? 1 : 0;
     fifo_ctrl.f.TXRST = reset_tx ? 1 : 0;
     fifo_ctrl.f.ACQRST = reset_acq ? 1 : 0;
 
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fifo_ctrl.w);
 
     // Step 2: Verify FIFO levels are 0 (Crucial Step per OpenTitan FIFO guide)
     // Reference: OpenTitan I2C FIFO documentation, Section 2.1
@@ -287,20 +283,24 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
     //  確認 RX/ACQ FIFO Level 為 0。確認 FMT/TX FIFO Level 為 0 (且 TX 應標示為 Empty)。"
 
     // Small delay to allow FIFO reset to propagate through hardware
-    for (volatile int i = 0; i < 100; i++);
+    for (volatile int i = 0; i < 100; i++)
+        ;
 
     if (reset_rx || reset_fmt) {
         // Verify Controller (Host) FIFOs
         i2c__HOST_FIFO_STATUS_t host_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         // Verify RX FIFO Level = 0
         if (reset_rx && host_status.f.RXLVL != 0) {
             // RX FIFO reset failed - drain manually
             while (host_status.f.RXLVL > 0) {
-                (void)i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                host_status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                (void)i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) -
+                                           SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                host_status.w =
+                    i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
             }
         }
 
@@ -309,32 +309,41 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
             // FMT FIFO reset failed - re-apply reset
             fifo_ctrl.w = 0;
             fifo_ctrl.f.FMTRST = 1;
-            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_ctrl.w);
-            for (volatile int i = 0; i < 100; i++);
+            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                          fifo_ctrl.w);
+            for (volatile int i = 0; i < 100; i++)
+                ;
         }
     }
 
     if (reset_tx || reset_acq) {
         // Verify Target FIFOs
         i2c__TARGET_FIFO_STATUS_t target_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         // Verify TX FIFO Level = 0 (and should be marked as Empty)
         if (reset_tx && target_status.f.TXLVL != 0) {
             // TX FIFO reset failed - re-apply reset
             fifo_ctrl.w = 0;
             fifo_ctrl.f.TXRST = 1;
-            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_ctrl.w);
-            for (volatile int i = 0; i < 100; i++);
+            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                          fifo_ctrl.w);
+            for (volatile int i = 0; i < 100; i++)
+                ;
         }
 
         // Verify ACQ FIFO Level = 0
         if (reset_acq && target_status.f.ACQLVL != 0) {
             // ACQ FIFO reset failed - drain manually
             while (target_status.f.ACQLVL > 0) {
-                (void)i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                target_status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                (void)i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                           SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                target_status.w =
+                    i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
             }
         }
     }
@@ -344,15 +353,16 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
 // Controller Mode Functions Implementation
 // ============================================================================
 
-int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config)
-{
+int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config) {
     uint32_t base = i2c_get_base(idx);
 
     // Disable controller first
-    i2c__CTRL_t ctrl = { .w = 0 };
+    i2c__CTRL_t ctrl = {.w = 0};
     ctrl.f.ENABLEHOST = 0;
     ctrl.f.ENABLETARGET = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     // Reset FIFOs
     i2c_reset_fifos(idx, true, true, false, false);
@@ -367,7 +377,7 @@ int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config)
     }
 
     // Configure FIFO thresholds
-    i2c__HOST_FIFO_CONFIG_t fifo_cfg = { .w = 0 };
+    i2c__HOST_FIFO_CONFIG_t fifo_cfg = {.w = 0};
     if (config) {
         fifo_cfg.f.RX_THRESH = config->fifo.rx_thresh;
         fifo_cfg.f.FMT_THRESH = config->fifo.fmt_thresh;
@@ -375,80 +385,99 @@ int i2c_controller_init(uint32_t idx, const i2c_controller_config_t *config)
         fifo_cfg.f.RX_THRESH = I2C_DEFAULT_RX_THRESH;
         fifo_cfg.f.FMT_THRESH = I2C_DEFAULT_FMT_THRESH;
     }
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_cfg.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fifo_cfg.w);
 
     // Clear all interrupts
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), 0xFFFFFFFF);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  0xFFFFFFFF);
 
     // Configure controller timeout (per i2c_controller_driver.c)
-    uint32_t timeout_val = (config && config->timeout_cycles > 0) ?
-                           config->timeout_cycles : 0xFFFFFF;  // Default large timeout
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timeout_val);
+    uint32_t timeout_val = (config && config->timeout_cycles > 0)
+                               ? config->timeout_cycles
+                               : 0xFFFFFF; // Default large timeout
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timeout_val);
 
-    i2c__TIMEOUT_CTRL_t timeout_ctrl = { .w = 0 };
+    i2c__TIMEOUT_CTRL_t timeout_ctrl = {.w = 0};
     timeout_ctrl.f.VAL = timeout_val;
-    timeout_ctrl.f.MODE = 1;  // Enable timeout in controller mode
-    timeout_ctrl.f.EN = 1;    // Enable timeout
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timeout_ctrl.w);
+    timeout_ctrl.f.MODE = 1; // Enable timeout in controller mode
+    timeout_ctrl.f.EN = 1;   // Enable timeout
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timeout_ctrl.w);
 
     // Enable interrupts if requested
     if (config && config->enable_interrupts) {
-        i2c__INTR_ENABLE_t intr_en = { .w = 0 };
+        i2c__INTR_ENABLE_t intr_en = {.w = 0};
         intr_en.f.FMT_THRESHOLD = 1;
         intr_en.f.RX_THRESHOLD = 1;
         intr_en.f.CONTROLLER_HALT = 1;
         intr_en.f.CMD_COMPLETE = 1;
         intr_en.f.RX_OVERFLOW = 1;
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), intr_en.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      intr_en.w);
     }
 
     // Enable Controller mode
-    ctrl.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    ctrl.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
     ctrl.f.ENABLEHOST = 1;
     ctrl.f.ENABLETARGET = 0;
-    ctrl.f.TX_STRETCH_CTRL_EN = 1;  // CRITICAL: Enable TX clock stretching for VIP/slow slaves
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    ctrl.f.TX_STRETCH_CTRL_EN = 1; // CRITICAL: Enable TX clock stretching for VIP/slow slaves
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
 
-void i2c_controller_disable(uint32_t idx)
-{
+void i2c_controller_disable(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ctrl.f.ENABLEHOST = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 }
 
-void i2c_controller_enable(uint32_t idx)
-{
+void i2c_controller_enable(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ctrl.f.ENABLEHOST = 1;
     ctrl.f.ENABLETARGET = 0;
-    ctrl.f.TX_STRETCH_CTRL_EN = 1;  // Enable TX clock stretching (important for VIP/slow slaves)
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    ctrl.f.TX_STRETCH_CTRL_EN = 1; // Enable TX clock stretching (important for VIP/slow slaves)
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 }
 
-bool i2c_controller_is_idle(uint32_t idx)
-{
+bool i2c_controller_is_idle(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     return (status.f.HOSTIDLE != 0);
 }
 
-int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles)
-{
+int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles) {
     uint32_t base = i2c_get_base(idx);
     uint32_t count = 0;
     // Use the passed timeout_cycles parameter, with a minimum of 10 to prevent infinite loops
     uint32_t effective_timeout = (timeout_cycles > 0) ? timeout_cycles : 10;
 
     while (1) {
-        i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+        i2c__STATUS_t status = {
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (status.f.HOSTIDLE) {
             return I2C_OK;
         }
@@ -460,9 +489,8 @@ int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles)
     }
 }
 
-int i2c_controller_write(uint32_t idx, uint8_t target_addr,
-                         const uint8_t *data, uint32_t len, bool send_stop)
-{
+int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data, uint32_t len,
+                         bool send_stop) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
@@ -471,7 +499,8 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr,
     // In Repeated START scenarios, controller stays busy between transactions.
     // Only wait for idle if controller was previously stopped (hostidle=1).
     // If controller is already busy (hostidle=0), assume Repeated START sequence.
-    i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     // Check if we need to wait for idle
     // If hostidle=1, wait normally (previous transaction sent STOP)
@@ -485,11 +514,13 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr,
 
     // Send START + address (write bit = 0)
     // If controller was busy, this becomes a Repeated START automatically
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
     fdata.f.FBYTE = (target_addr << 1) | 0x0;
     fdata.f.START = 1;
     fdata.f.READB = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Send data bytes
     for (uint32_t i = 0; i < len; i++) {
@@ -497,23 +528,28 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr,
         fdata.f.FBYTE = data[i];
         fdata.f.STOP = (send_stop && (i == len - 1)) ? 1 : 0;
         fdata.f.READB = 0;
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
     }
 
     // CRITICAL: Wait for FMT FIFO to be completely processed (OPTIMIZED: Reduce polling by 1000x)
     // In repeated START scenario, we need to ensure the entire transaction (all data bytes)
     // has been sent before returning, otherwise the next transaction may be sent too early.
-    // We wait for FMT FIFO to become empty (fmtempty=1), indicating all entries have been processed.
+    // We wait for FMT FIFO to become empty (fmtempty=1), indicating all entries have been
+    // processed.
     if (!send_stop) {
         // For repeated START: Wait for FMT FIFO to become empty (OPTIMIZED)
         // This ensures the entire transaction (START + address + all data bytes) has been sent
         // before we return, allowing the next transaction to be sent correctly.
         uint32_t wait_count = 0;
-        const uint32_t MAX_WAIT = 10000;  // Optimized: Increased from 100 to 10000 (100x) to allow I2C completion
+        const uint32_t MAX_WAIT =
+            10000; // Optimized: Increased from 100 to 10000 (100x) to allow I2C completion
         i2c__STATUS_t status;
 
         while (wait_count < MAX_WAIT) {
-            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
             if (status.f.FMTEMPTY) {
                 // FMT FIFO is empty, all entries have been processed
                 break;
@@ -537,33 +573,33 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr,
     return I2C_OK;
 }
 
-int i2c_controller_read(uint32_t idx, uint8_t target_addr,
-                        uint8_t *data, uint32_t len, bool send_stop)
-{
+int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32_t len,
+                        bool send_stop) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
     // Note: TARGET_IDX is not available here, will use idx-1 for I2C_0 when idx=1 (I2C_1)
-    uint32_t target_idx_for_debug = (idx == 1) ? 0 : 0;  // Default to 0 for I2C_0
+    uint32_t target_idx_for_debug = (idx == 1) ? 0 : 0; // Default to 0 for I2C_0
 
     // Debug marker: Enter function
-    write_scratch(1, 0x00000090);  // Enter i2c_controller_read
+    write_scratch(1, 0x00000090); // Enter i2c_controller_read
 
     // CRITICAL FIX: Support Repeated START
     // In Repeated START scenarios, controller stays busy between transactions.
     // Only wait for idle if controller was previously stopped (hostidle=1).
     // If controller is already busy (hostidle=0), assume Repeated START sequence.
-    write_scratch(1, 0x00000091);  // Before idle check
-    i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    write_scratch(1, 0x00000091); // Before idle check
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     // Check if we need to wait for idle
     if (status.f.HOSTIDLE) {
         // Controller was idle, wait for it to be ready
-        write_scratch(1, 0x00000092);  // hostidle=1, waiting
+        write_scratch(1, 0x00000092); // hostidle=1, waiting
         int ret = i2c_controller_wait_idle(idx, I2C_TIMEOUT_DEFAULT);
-        write_scratch(1, 0x00000093);  // After wait_idle
+        write_scratch(1, 0x00000093); // After wait_idle
         if (ret != I2C_OK) {
-            write_scratch(1, 0x00000094);  // Error: wait_idle failed
+            write_scratch(1, 0x00000094); // Error: wait_idle failed
             // Check for controller events on timeout
             uint32_t events = i2c_get_controller_events(idx);
             if (events != 0) {
@@ -574,7 +610,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
         }
     } else {
         // Controller is busy - this is a Repeated START, continue directly
-        write_scratch(1, 0x00000095);  // hostidle=0, Repeated START
+        write_scratch(1, 0x00000095); // hostidle=0, Repeated START
     }
 
     // =========================================================================
@@ -603,60 +639,67 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
     // =========================================================================
 
     const uint32_t FMT_FIFO_DEPTH = 64;
-    const uint32_t MIN_REQUIRED_SLOTS = 2;  // Need 2 slots for address + read command
+    const uint32_t MIN_REQUIRED_SLOTS = 2; // Need 2 slots for address + read command
 
     // Wait for FMT FIFO to have at least 2 free slots
-    write_scratch(1, 0x00000096);  // Before waiting for FMT FIFO space
+    write_scratch(1, 0x00000096); // Before waiting for FMT FIFO space
     uint32_t fifo_wait_count = 0;
     const uint32_t FIFO_WAIT_TIMEOUT = I2C_TIMEOUT_DEFAULT;
 
     while (fifo_wait_count < FIFO_WAIT_TIMEOUT) {
         i2c__HOST_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         uint32_t available_slots = FMT_FIFO_DEPTH - fifo_status.f.FMTLVL;
 
         if (available_slots >= MIN_REQUIRED_SLOTS) {
-            break;  // FMT FIFO has enough space for both entries
+            break; // FMT FIFO has enough space for both entries
         }
 
         fifo_wait_count++;
         if (fifo_wait_count % 1000 == 0) {
             // Periodic delay to avoid tight polling
-            for (volatile int i = 0; i < 10; i++);
+            for (volatile int i = 0; i < 10; i++)
+                ;
         }
     }
 
     if (fifo_wait_count >= FIFO_WAIT_TIMEOUT) {
-        write_scratch(1, 0x00000097);  // Error: FMT FIFO timeout
+        write_scratch(1, 0x00000097); // Error: FMT FIFO timeout
         return I2C_ERROR_TIMEOUT;
     }
-    write_scratch(1, 0x00000098);  // FMT FIFO ready (at least 2 slots available)
+    write_scratch(1, 0x00000098); // FMT FIFO ready (at least 2 slots available)
 
     // CRITICAL: Write both FMT entries consecutively with minimal delay
     // This ensures depth >= 2 when FSM starts processing
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
 
     // Entry 1: Send START + address (read bit = 1)
     // If controller was busy, this becomes a Repeated START automatically
-    write_scratch(1, 0x00000099);  // Before sending START+address
+    write_scratch(1, 0x00000099); // Before sending START+address
     fdata.f.FBYTE = (target_addr << 1) | 0x1;
     fdata.f.START = 1;
     fdata.f.READB = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Entry 2: Send read command (write immediately after Entry 1)
-    write_scratch(1, 0x0000009A);  // Before sending read command
+    write_scratch(1, 0x0000009A); // Before sending read command
     fdata.w = 0;
-    fdata.f.FBYTE = (len & 0xFF);  // Number of bytes to read (0 = 256)
+    fdata.f.FBYTE = (len & 0xFF); // Number of bytes to read (0 = 256)
     fdata.f.READB = 1;
     // RCONT bit: 0 = NACK last byte (Read Stop), 1 = ACK last byte (Read Continue)
     // For repeated START transactions (send_stop=false), rcont must be 1 to ACK the last byte
-    // and allow the transaction to continue. For normal transactions (send_stop=true), rcont=0 to NACK.
-    fdata.f.RCONT = send_stop ? 0 : 1;  // ACK last byte if continuing (repeated START), NACK if stopping
+    // and allow the transaction to continue. For normal transactions (send_stop=true), rcont=0 to
+    // NACK.
+    fdata.f.RCONT =
+        send_stop ? 0 : 1; // ACK last byte if continuing (repeated START), NACK if stopping
     fdata.f.STOP = send_stop ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
-    write_scratch(1, 0x0000009B);  // After sending both FMT entries
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
+    write_scratch(1, 0x0000009B); // After sending both FMT entries
 
     // At this point, FMT FIFO contains 2 entries:
     //   - Entry 1: START + ADDR + R (depth changes 0->1 or N->N+1)
@@ -665,59 +708,71 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
     // This avoids the fmt_fifo_depth_i == 1 condition triggering prematurely
 
     // Read data from RX FIFO
-    write_scratch(1, 0x0000009C);  // Before reading RX FIFO loop
+    write_scratch(1, 0x0000009C); // Before reading RX FIFO loop
     uint32_t timeout = I2C_TIMEOUT_DEFAULT;
     for (uint32_t i = 0; i < len; i++) {
         // Wait for data in RX FIFO
-        write_scratch(1, 0x0000009D);  // Before waiting for RX data (iteration i)
+        write_scratch(1, 0x0000009D); // Before waiting for RX data (iteration i)
         uint32_t count = 0;
         uint32_t last_events_check = 0;
         while (1) {
-            i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+            i2c__STATUS_t status = {
+                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             if (!status.f.RXEMPTY) break;
 
-            // Check for controller errors while waiting (every 1000 cycles to avoid too many scratch writes)
+            // Check for controller errors while waiting (every 1000 cycles to avoid too many
+            // scratch writes)
             if ((count % 1000) == 0) {
                 uint32_t events = i2c_get_controller_events(idx);
                 if (events != last_events_check) {
                     // Events changed - record to scratchpad
                     if (events & 0x1) {
-                        write_scratch(1, 0x0000009E);  // Error: NACK detected
-                        // Debug: Log Target status when NACK occurs (only if idx=1, meaning I2C_1 Controller)
+                        write_scratch(1, 0x0000009E); // Error: NACK detected
+                        // Debug: Log Target status when NACK occurs (only if idx=1, meaning I2C_1
+                        // Controller)
                         if (idx == 1) {
                             uint32_t tgt_tx_level, tgt_acq_level;
-                            i2c_target_get_fifo_status(target_idx_for_debug, &tgt_tx_level, &tgt_acq_level);
-                            // Encode debug info: 0x9A000000 | (tgt_tx_level & 0xFF) << 8 | (tgt_acq_level & 0xFF)
-                            uint32_t debug_info = 0x9A000000 | ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
+                            i2c_target_get_fifo_status(target_idx_for_debug, &tgt_tx_level,
+                                                       &tgt_acq_level);
+                            // Encode debug info: 0x9A000000 | (tgt_tx_level & 0xFF) << 8 |
+                            // (tgt_acq_level & 0xFF)
+                            uint32_t debug_info =
+                                0x9A000000 | ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
                             write_scratch(0, debug_info);
                         }
                         return I2C_ERROR_NACK;
                     }
                     if (events & 0x8) {
-                        write_scratch(1, 0x0000009F);  // Error: Arbitration lost
+                        write_scratch(1, 0x0000009F); // Error: Arbitration lost
                         return I2C_ERROR;
                     }
                     if (events & 0x4) {
-                        write_scratch(1, 0x000000A0);  // Error: Bus timeout
+                        write_scratch(1, 0x000000A0); // Error: Bus timeout
                         return I2C_ERROR_TIMEOUT;
                     }
                     last_events_check = events;
                 }
 
-                // Periodic debug: Check Target status every 10000 cycles (only if idx=1, meaning I2C_1 Controller)
+                // Periodic debug: Check Target status every 10000 cycles (only if idx=1, meaning
+                // I2C_1 Controller)
                 if ((count % 10000) == 0 && count > 0 && idx == 1) {
                     uint32_t tgt_tx_level, tgt_acq_level;
                     i2c_target_get_fifo_status(target_idx_for_debug, &tgt_tx_level, &tgt_acq_level);
-                    // Encode debug info: 0xA5000000 | (events & 0xFF) << 16 | (tgt_tx_level & 0xFF) << 8 | (tgt_acq_level & 0xFF)
-                    uint32_t debug_info = 0xA5000000 | ((events & 0xFF) << 16) | ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
+                    // Encode debug info: 0xA5000000 | (events & 0xFF) << 16 | (tgt_tx_level & 0xFF)
+                    // << 8 | (tgt_acq_level & 0xFF)
+                    uint32_t debug_info = 0xA5000000 | ((events & 0xFF) << 16) |
+                                          ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
                     write_scratch(0, debug_info);
-                    write_scratch(1, 0x000000A1);  // Debug: Periodic status check
+                    write_scratch(1, 0x000000A1); // Debug: Periodic status check
 
                     // CRITICAL FIX: Clear Target TARGET_EVENTS periodically during read wait
-                    // Problem: When Controller sends read command, Target FSM sets TX_PENDING immediately
-                    //   This causes unhandled_tx_stretch_event_i = 1, preventing clock stretch release
-                    //   Target cannot send data, Controller waits forever for RX data
-                    // Solution: Periodically clear TARGET_EVENTS during wait to release clock stretch
+                    // Problem: When Controller sends read command, Target FSM sets TX_PENDING
+                    // immediately
+                    //   This causes unhandled_tx_stretch_event_i = 1, preventing clock stretch
+                    //   release Target cannot send data, Controller waits forever for RX data
+                    // Solution: Periodically clear TARGET_EVENTS during wait to release clock
+                    // stretch
                     //   This allows Target to send data and Controller to receive it
                     uint32_t target_events = i2c_get_target_events(target_idx_for_debug);
                     if (target_events != 0) {
@@ -733,15 +788,18 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
 
             count++;
             if (count >= timeout) {
-                write_scratch(1, 0x000000A2);  // Error: Timeout waiting for RX data
+                write_scratch(1, 0x000000A2); // Error: Timeout waiting for RX data
                 // Check events one more time before returning timeout
                 uint32_t events = i2c_get_controller_events(idx);
-                // Debug: Log final status when timeout occurs (only if idx=1, meaning I2C_1 Controller)
+                // Debug: Log final status when timeout occurs (only if idx=1, meaning I2C_1
+                // Controller)
                 if (idx == 1) {
                     uint32_t tgt_tx_level, tgt_acq_level;
                     i2c_target_get_fifo_status(target_idx_for_debug, &tgt_tx_level, &tgt_acq_level);
-                    // Encode debug info: 0x9F000000 | (events & 0xFF) << 16 | (tgt_tx_level & 0xFF) << 8 | (tgt_acq_level & 0xFF)
-                    uint32_t debug_info = 0x9F000000 | ((events & 0xFF) << 16) | ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
+                    // Encode debug info: 0x9F000000 | (events & 0xFF) << 16 | (tgt_tx_level & 0xFF)
+                    // << 8 | (tgt_acq_level & 0xFF)
+                    uint32_t debug_info = 0x9F000000 | ((events & 0xFF) << 16) |
+                                          ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
                     write_scratch(0, debug_info);
                 }
                 if (events != 0) {
@@ -755,10 +813,12 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
         }
 
         // Read data byte
-        write_scratch(1, 0x000000A3);  // Before reading data byte
-        i2c__RDATA_t rdata = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+        write_scratch(1, 0x000000A3); // Before reading data byte
+        i2c__RDATA_t rdata = {.w =
+                                  i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) -
+                                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         data[i] = (uint8_t)rdata.f.DATA;
-        write_scratch(1, 0x000000A4);  // After reading data byte
+        write_scratch(1, 0x000000A4); // After reading data byte
     }
 
     // =========================================================================
@@ -772,7 +832,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
     // Reference: i2c_p0_rdwr/src/main.c:460-504 (successful pattern)
     // Bug fixed: i2c_read_sanity test hanging after first transaction
     // =========================================================================
-    write_scratch(1, 0x000000A5);  // Debug: Before draining ACQ FIFO
+    write_scratch(1, 0x000000A5); // Debug: Before draining ACQ FIFO
 
     // Only drain if this is I2C_1 Controller reading from I2C_0 Target
     if (idx == 1) {
@@ -783,8 +843,8 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
         // Drain all entries from Target ACQ FIFO
         while (drain_timeout > 0) {
             i2c__STATUS_t tgt_status = {
-                .w = i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-            };
+                .w = i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
             if (tgt_status.f.ACQEMPTY) {
                 // ACQ FIFO is empty, done
@@ -792,20 +852,21 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
             }
 
             // Read and discard ACQ FIFO entry
-            (void)i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+            (void)i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
             drained_count++;
             drain_timeout--;
 
             // Avoid infinite loop
             if (drained_count > 64) {
                 // ACQ FIFO depth is 64, should never drain more
-                write_scratch(1, 0x000000A6);  // Warning: Drained too many entries
+                write_scratch(1, 0x000000A6); // Warning: Drained too many entries
                 break;
             }
         }
 
         if (drained_count > 0) {
-            write_scratch(1, 0x000000A4);  // Debug: ACQ FIFO drained successfully
+            write_scratch(1, 0x000000A4); // Debug: ACQ FIFO drained successfully
             // Optionally log drained count to scratch[0] for debugging
             // write_scratch(0, 0xACF00000 | (drained_count & 0xFF));
         }
@@ -814,7 +875,8 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
         // Problem: During read operation, Target FSM sets TX_PENDING when read command is received
         //   This causes unhandled_tx_stretch_event_i = 1, preventing clock stretch release
         // Solution: Continuously clear TARGET_EVENTS until TX_PENDING is confirmed cleared
-        //   TX_PENDING is a sticky bit that can be set again if event_read_cmd_received is still high
+        //   TX_PENDING is a sticky bit that can be set again if event_read_cmd_received is still
+        //   high
         uint32_t clear_attempts = 0;
         const uint32_t MAX_CLEAR_ATTEMPTS = 10;
 
@@ -836,14 +898,12 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
         }
     }
 
-    write_scratch(1, 0x000000A2);  // Before return (success)
+    write_scratch(1, 0x000000A2); // Before return (success)
     return I2C_OK;
 }
 
-int i2c_controller_write_read(uint32_t idx, uint8_t target_addr,
-                              const uint8_t *write_data, uint32_t write_len,
-                              uint8_t *read_data, uint32_t read_len)
-{
+int i2c_controller_write_read(uint32_t idx, uint8_t target_addr, const uint8_t *write_data,
+                              uint32_t write_len, uint8_t *read_data, uint32_t read_len) {
     int ret;
 
     // Write phase (no STOP)
@@ -863,8 +923,7 @@ int i2c_controller_write_read(uint32_t idx, uint8_t target_addr,
  *
  * @param target_idx Target I2C instance index
  */
-static void i2c_target_clear_acq_fifo(uint32_t target_idx)
-{
+static void i2c_target_clear_acq_fifo(uint32_t target_idx) {
     // CRITICAL: Reset ACQ FIFO before each transaction to prevent stretch_tx
     // Reference: i2c_read_sanity/src/main.c:439
     // Hardware reset (ACQRST) is more reliable than software drain
@@ -874,7 +933,7 @@ static void i2c_target_clear_acq_fifo(uint32_t target_idx)
     // Reference: i2c_read_sanity/src/main.c:443-449
     uint32_t target_events = i2c_get_target_events(target_idx);
     if (target_events != 0) {
-        i2c_clear_target_events(target_idx, 0xFFFFFFFF);  // Clear all events
+        i2c_clear_target_events(target_idx, 0xFFFFFFFF); // Clear all events
     }
 
     // Verify ACQ FIFO is empty after reset
@@ -882,15 +941,14 @@ static void i2c_target_clear_acq_fifo(uint32_t target_idx)
     if (!i2c_target_acq_fifo_empty(target_idx)) {
         uint32_t drain_base = i2c_get_base(target_idx);
         while (!i2c_target_acq_fifo_empty(target_idx)) {
-            (void)i2c_read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+            (void)i2c_read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
         }
     }
 }
 
-int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx,
-                         uint8_t target_addr, const uint8_t *data, uint32_t len,
-                         bool send_stop)
-{
+int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t target_addr,
+                         const uint8_t *data, uint32_t len, bool send_stop) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     // Perform controller write operation
@@ -906,10 +964,8 @@ int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx,
     return I2C_OK;
 }
 
-int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx,
-                        uint8_t target_addr, uint8_t *data, uint32_t len,
-                        bool send_stop)
-{
+int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t target_addr,
+                        uint8_t *data, uint32_t len, bool send_stop) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     // Perform controller read operation
@@ -926,7 +982,8 @@ int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx,
 
     while (drain_timeout > 0 && !i2c_target_acq_fifo_empty(target_idx)) {
         // Read and discard ACQ FIFO entry
-        (void)i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+        (void)i2c_read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 
         drain_count++;
         drain_timeout--;
@@ -940,9 +997,8 @@ int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx,
     return I2C_OK;
 }
 
-int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr,
-                                     const uint8_t *data, uint32_t len)
-{
+int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr, const uint8_t *data,
+                                     uint32_t len) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
@@ -951,136 +1007,147 @@ int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr,
     int ret = i2c_controller_wait_idle(idx, I2C_TIMEOUT_DEFAULT);
     if (ret != I2C_OK) return ret;
 
-    // =========================================================================
-    // RTL Assertion Compliant Implementation (FINAL VERSION)
-    // =========================================================================
-    // RTL has a critical timing assumption (i2c_fifos.sv:329):
-    //
-    // `ASSUME(FmtWriteStableBeforeHandshake_A,
-    //         fmt_fifo_wvalid_i && !fmt_fifo_wready_o
-    //         |=> $stable(fmt_fifo_wvalid_i) && $stable(fmt_fifo_wdata_i))
-    //
-    // Translation: If FIFO write request (wvalid=1) is not immediately accepted
-    // (wready=0), then wvalid and wdata MUST remain stable in the next cycle.
-    //
-    // Critical Understanding:
-    // - "FIFO has space" (fmtlvl check) ≠ "FIFO ready for next write" (wready)
-    // - Each write needs individual handshake completion
-    // - STATUS.FMTFULL directly reflects wready state
-    //
-    // Solution: Check STATUS.FMTFULL before EACH FDATA write
-    // - FMTFULL=0 means wready=1, safe to write
-    // - This ensures proper handshake timing for every transaction
-    // =========================================================================
+// =========================================================================
+// RTL Assertion Compliant Implementation (FINAL VERSION)
+// =========================================================================
+// RTL has a critical timing assumption (i2c_fifos.sv:329):
+//
+// `ASSUME(FmtWriteStableBeforeHandshake_A,
+//         fmt_fifo_wvalid_i && !fmt_fifo_wready_o
+//         |=> $stable(fmt_fifo_wvalid_i) && $stable(fmt_fifo_wdata_i))
+//
+// Translation: If FIFO write request (wvalid=1) is not immediately accepted
+// (wready=0), then wvalid and wdata MUST remain stable in the next cycle.
+//
+// Critical Understanding:
+// - "FIFO has space" (fmtlvl check) ≠ "FIFO ready for next write" (wready)
+// - Each write needs individual handshake completion
+// - STATUS.FMTFULL directly reflects wready state
+//
+// Solution: Check STATUS.FMTFULL before EACH FDATA write
+// - FMTFULL=0 means wready=1, safe to write
+// - This ensures proper handshake timing for every transaction
+// =========================================================================
 
-    // Helper macro: Wait for FIFO to be NOT FULL before writing
-    // FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
-    #define WAIT_FIFO_NOT_FULL() \
-        do { \
-            uint32_t timeout = 5000; \
-            i2c__STATUS_t status; \
-            while (timeout > 0) { \
-                status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))); \
-                if (status.f.FMTFULL == 0) break; \
-                timeout--; \
-            } \
-            if (timeout == 0) return I2C_ERROR_TIMEOUT; \
-        } while(0)
+// Helper macro: Wait for FIFO to be NOT FULL before writing
+// FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
+#define WAIT_FIFO_NOT_FULL() \
+    do { \
+        uint32_t timeout = 5000; \
+        i2c__STATUS_t status; \
+        while (timeout > 0) { \
+            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - \
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))); \
+            if (status.f.FMTFULL == 0) break; \
+            timeout--; \
+        } \
+        if (timeout == 0) return I2C_ERROR_TIMEOUT; \
+    } while (0)
 
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
 
     // Send START + address (write)
-    WAIT_FIFO_NOT_FULL();  // Ensure FIFO ready before write
+    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
     fdata.f.FBYTE = (target_addr << 1) | 0x0;
     fdata.f.START = 1;
     fdata.f.READB = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Send length header
-    WAIT_FIFO_NOT_FULL();  // Ensure FIFO ready before write
+    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
     fdata.w = 0;
     fdata.f.FBYTE = (len & 0xFF);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Send data bytes with STOP on last
     for (uint32_t i = 0; i < len; i++) {
-        WAIT_FIFO_NOT_FULL();  // CRITICAL: Check before EACH write!
+        WAIT_FIFO_NOT_FULL(); // CRITICAL: Check before EACH write!
         fdata.w = 0;
         fdata.f.FBYTE = data[i];
         if (i == len - 1) {
             fdata.f.STOP = 1;
         }
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
     }
 
-    #undef WAIT_FIFO_NOT_FULL
+#undef WAIT_FIFO_NOT_FULL
     return I2C_OK;
 }
 
 int i2c_controller_write_with_header_nonblock(uint32_t idx, uint8_t target_addr,
-                                              const uint8_t *data, uint32_t len)
-{
+                                              const uint8_t *data, uint32_t len) {
     if (!data || len == 0) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
 
-    //msho fix: Do NOT wait for controller idle - allow background execution
-    //          This is the key difference from i2c_controller_write_with_header()
-    //          This prevents deadlock when Controller FSM is busy and Target ACQ FIFO is full
+// msho fix: Do NOT wait for controller idle - allow background execution
+//           This is the key difference from i2c_controller_write_with_header()
+//           This prevents deadlock when Controller FSM is busy and Target ACQ FIFO is full
 
-    // Helper macro: Wait for FIFO to be NOT FULL before writing (assertion compliant)
-    // FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
-    #define WAIT_FIFO_NOT_FULL() \
-        do { \
-            uint32_t timeout = 5000; \
-            i2c__STATUS_t status; \
-            while (timeout > 0) { \
-                status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))); \
-                if (status.f.FMTFULL == 0) break; \
-                timeout--; \
-            } \
-            if (timeout == 0) return I2C_ERROR_TIMEOUT; \
-        } while(0)
+// Helper macro: Wait for FIFO to be NOT FULL before writing (assertion compliant)
+// FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
+#define WAIT_FIFO_NOT_FULL() \
+    do { \
+        uint32_t timeout = 5000; \
+        i2c__STATUS_t status; \
+        while (timeout > 0) { \
+            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - \
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))); \
+            if (status.f.FMTFULL == 0) break; \
+            timeout--; \
+        } \
+        if (timeout == 0) return I2C_ERROR_TIMEOUT; \
+    } while (0)
 
     // Send START + address (write)
-    WAIT_FIFO_NOT_FULL();  // Ensure FIFO ready before write
-    i2c__FDATA_t fdata = { .w = 0 };
+    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
+    i2c__FDATA_t fdata = {.w = 0};
     fdata.f.FBYTE = (target_addr << 1) | 0x0;
     fdata.f.START = 1;
     fdata.f.READB = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Send length header
-    WAIT_FIFO_NOT_FULL();  // Ensure FIFO ready before write
+    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
     fdata.w = 0;
     fdata.f.FBYTE = (len & 0xFF);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     // Send data bytes with STOP on last
     for (uint32_t i = 0; i < len; i++) {
-        WAIT_FIFO_NOT_FULL();  // CRITICAL: Check before EACH write!
+        WAIT_FIFO_NOT_FULL(); // CRITICAL: Check before EACH write!
         fdata.w = 0;
         fdata.f.FBYTE = data[i];
         if (i == len - 1) {
             fdata.f.STOP = 1;
         }
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
     }
 
-    #undef WAIT_FIFO_NOT_FULL
+#undef WAIT_FIFO_NOT_FULL
     // Return immediately without waiting for transaction to complete
     // Hardware FSM will execute the I2C transaction in the background
     return I2C_OK;
 }
 
-void i2c_controller_get_fifo_status(uint32_t idx, uint32_t *fmt_level,
-                                    uint32_t *rx_level)
-{
+void i2c_controller_get_fifo_status(uint32_t idx, uint32_t *fmt_level, uint32_t *rx_level) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__HOST_FIFO_STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (fmt_level) *fmt_level = status.f.FMTLVL;
     if (rx_level) *rx_level = status.f.RXLVL;
@@ -1098,8 +1165,7 @@ void i2c_controller_get_fifo_status(uint32_t idx, uint32_t *fmt_level,
  * @return I2C_OK if space available, I2C_ERROR_TIMEOUT if timeout
  */
 int i2c_controller_wait_fmt_fifo_space(uint32_t idx, uint32_t required_space,
-                                       uint32_t timeout_cycles)
-{
+                                       uint32_t timeout_cycles) {
     uint32_t base = i2c_get_base(idx);
     uint32_t count = 0;
 
@@ -1108,8 +1174,8 @@ int i2c_controller_wait_fmt_fifo_space(uint32_t idx, uint32_t required_space,
 
     while (1) {
         i2c__HOST_FIFO_STATUS_t status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         uint32_t available_space = FMT_FIFO_DEPTH - status.f.FMTLVL;
         if (available_space >= required_space) {
@@ -1134,15 +1200,14 @@ int i2c_controller_wait_fmt_fifo_space(uint32_t idx, uint32_t required_space,
  * @return I2C_OK if data available, I2C_ERROR_TIMEOUT if timeout
  */
 int i2c_controller_wait_rx_fifo_data(uint32_t idx, uint32_t required_entries,
-                                     uint32_t timeout_cycles)
-{
+                                     uint32_t timeout_cycles) {
     uint32_t base = i2c_get_base(idx);
     uint32_t count = 0;
 
     while (1) {
         i2c__HOST_FIFO_STATUS_t status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (status.f.RXLVL >= required_entries) {
             return I2C_OK;
@@ -1166,15 +1231,14 @@ int i2c_controller_wait_rx_fifo_data(uint32_t idx, uint32_t required_entries,
  * @return I2C_OK if data available, I2C_ERROR_TIMEOUT if timeout
  */
 int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries,
-                                  uint32_t timeout_cycles)
-{
+                                  uint32_t timeout_cycles) {
     uint32_t base = i2c_get_base(idx);
     uint32_t count = 0;
 
     while (1) {
         i2c__TARGET_FIFO_STATUS_t status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (status.f.ACQLVL >= required_entries) {
             return I2C_OK;
@@ -1193,15 +1257,16 @@ int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries,
 // Target Mode Functions Implementation
 // ============================================================================
 
-int i2c_target_init(uint32_t idx, const i2c_target_config_t *config)
-{
+int i2c_target_init(uint32_t idx, const i2c_target_config_t *config) {
     uint32_t base = i2c_get_base(idx);
 
     // Disable target first
-    i2c__CTRL_t ctrl = { .w = 0 };
+    i2c__CTRL_t ctrl = {.w = 0};
     ctrl.f.ENABLEHOST = 0;
     ctrl.f.ENABLETARGET = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     // Reset FIFOs
     i2c_reset_fifos(idx, false, false, true, true);
@@ -1216,20 +1281,22 @@ int i2c_target_init(uint32_t idx, const i2c_target_config_t *config)
     }
 
     // Set target address
-    i2c__TARGET_ID_t target_id = { .w = 0 };
+    i2c__TARGET_ID_t target_id = {.w = 0};
     if (config) {
         target_id.f.ADDRESS0 = config->address0 & 0x7F;
         target_id.f.MASK0 = config->mask0 & 0x7F;
         target_id.f.ADDRESS1 = config->address1 & 0x7F;
         target_id.f.MASK1 = config->mask1 & 0x7F;
     } else {
-        target_id.f.ADDRESS0 = 0x10;  // Default address
-        target_id.f.MASK0 = 0x7F;     // Exact match
+        target_id.f.ADDRESS0 = 0x10; // Default address
+        target_id.f.MASK0 = 0x7F;    // Exact match
     }
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), target_id.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  target_id.w);
 
     // Configure FIFO thresholds
-    i2c__TARGET_FIFO_CONFIG_t fifo_cfg = { .w = 0 };
+    i2c__TARGET_FIFO_CONFIG_t fifo_cfg = {.w = 0};
     if (config) {
         fifo_cfg.f.TX_THRESH = config->fifo.tx_thresh;
         fifo_cfg.f.ACQ_THRESH = config->fifo.acq_thresh;
@@ -1237,13 +1304,18 @@ int i2c_target_init(uint32_t idx, const i2c_target_config_t *config)
         fifo_cfg.f.TX_THRESH = I2C_DEFAULT_TX_THRESH;
         fifo_cfg.f.ACQ_THRESH = I2C_DEFAULT_ACQ_THRESH;
     }
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_cfg.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fifo_cfg.w);
 
     // Clear all interrupts
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), 0xFFFFFFFF);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  0xFFFFFFFF);
 
     // Configure control options
-    ctrl.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    ctrl.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
     if (config) {
         ctrl.f.ACK_CTRL_EN = config->ack_ctrl_mode ? 1 : 0;
         ctrl.f.TX_STRETCH_CTRL_EN = config->tx_stretch_ctrl ? 1 : 0;
@@ -1251,67 +1323,74 @@ int i2c_target_init(uint32_t idx, const i2c_target_config_t *config)
 
     // Enable interrupts if requested
     if (config && config->enable_interrupts) {
-        i2c__INTR_ENABLE_t intr_en = { .w = 0 };
+        i2c__INTR_ENABLE_t intr_en = {.w = 0};
         intr_en.f.ACQ_THRESHOLD = 1;
         intr_en.f.TX_THRESHOLD = 1;
         intr_en.f.TX_STRETCH = 1;
         intr_en.f.ACQ_STRETCH = 1;
         intr_en.f.UNEXP_STOP = 1;
         intr_en.f.CMD_COMPLETE = 1;
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), intr_en.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      intr_en.w);
     }
 
     // Enable Target mode
     ctrl.f.ENABLEHOST = 0;
     ctrl.f.ENABLETARGET = 1;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
 
-void i2c_target_disable(uint32_t idx)
-{
+void i2c_target_disable(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ctrl.f.ENABLETARGET = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 }
 
-bool i2c_target_is_idle(uint32_t idx)
-{
+bool i2c_target_is_idle(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__STATUS_t status = { .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))) };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     return (status.f.TARGETIDLE != 0);
 }
 
-void i2c_target_set_address(uint32_t idx, uint8_t address0, uint8_t mask0)
-{
+void i2c_target_set_address(uint32_t idx, uint8_t address0, uint8_t mask0) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ID_t target_id = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     target_id.f.ADDRESS0 = address0 & 0x7F;
     target_id.f.MASK0 = mask0 & 0x7F;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), target_id.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  target_id.w);
 }
 
-void i2c_target_set_address_secondary(uint32_t idx, uint8_t address1, uint8_t mask1)
-{
+void i2c_target_set_address_secondary(uint32_t idx, uint8_t address1, uint8_t mask1) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ID_t target_id = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     target_id.f.ADDRESS1 = address1 & 0x7F;
     target_id.f.MASK1 = mask1 & 0x7F;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), target_id.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  target_id.w);
 }
 
-uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len)
-{
+uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
     if (!data || len == 0) return 0;
 
     uint32_t base = i2c_get_base(idx);
@@ -1320,45 +1399,47 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len)
     // Debug marker: Enter function (only for i2c_internal_smbus test context)
     // Use scratch[1] = 0x00000080 to indicate function entry
     // Note: This is a common function, so we use a high marker value to avoid conflicts
-    write_scratch(1, 0x00000080);  // Enter i2c_target_transmit
+    write_scratch(1, 0x00000080); // Enter i2c_target_transmit
 
     for (uint32_t i = 0; i < len; i++) {
         // Debug marker: Before checking TX FIFO status
         // Use scratch[1] = 0x00000081 + i to track loop iterations
         if (i == 0) {
-            write_scratch(1, 0x00000081);  // Before first iteration
+            write_scratch(1, 0x00000081); // Before first iteration
         }
 
         // Check TX FIFO space using precise level check (per OpenTitan FIFO flow guide)
         // Correct: Check precise level TXLVL < 256 (per fifo_flow.md best practices)
         // Wrong: Only check txfull flag (may miss FIFO space)
         i2c__TARGET_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         // Debug marker: After reading FIFO STATUS register
         if (i == 0) {
-            write_scratch(1, 0x00000082);  // After reading FIFO STATUS
+            write_scratch(1, 0x00000082); // After reading FIFO STATUS
         }
 
         // Precise level check: TXLVL[6:0] should be < 256 (FIFO depth)
         // According to fifo_flow.md: "Check TXLVL field, ensure TXLVL < 256"
         uint32_t tx_level = fifo_status.f.TXLVL;
-        if (tx_level >= 256) break;  // FIFO full (precise level check)
+        if (tx_level >= 256) break; // FIFO full (precise level check)
 
         // Debug marker: Before writing TXDATA
         if (i == 0) {
-            write_scratch(1, 0x00000083);  // Before writing TXDATA
+            write_scratch(1, 0x00000083); // Before writing TXDATA
         }
 
         // Write data byte
-        i2c__TXDATA_t txdata = { .w = 0 };
+        i2c__TXDATA_t txdata = {.w = 0};
         txdata.f.DATA = data[i];
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), txdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      txdata.w);
 
         // Debug marker: After writing TXDATA
         if (i == 0) {
-            write_scratch(1, 0x00000084);  // After writing TXDATA
+            write_scratch(1, 0x00000084); // After writing TXDATA
         }
 
         written++;
@@ -1366,64 +1447,60 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len)
 
     // Debug marker: Before return
     if (written > 0) {
-        write_scratch(1, 0x00000085);  // Before return (success)
+        write_scratch(1, 0x00000085); // Before return (success)
     }
 
     return written;
 }
 
-int i2c_target_receive_entry(uint32_t idx, i2c_acq_entry_t *entry)
-{
+int i2c_target_receive_entry(uint32_t idx, i2c_acq_entry_t *entry) {
     if (!entry) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
 
     // Check if ACQ FIFO has data
-    i2c__STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     if (status.f.ACQEMPTY) {
         return I2C_ERROR;
     }
 
     // Read ACQ data
     i2c__ACQDATA_t acqdata = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     entry->signal = (uint8_t)acqdata.f.SIGNAL;
     entry->data = (uint8_t)acqdata.f.ABYTE;
 
     // Decode signal type
     switch (entry->signal) {
-        case I2C_ACQ_SIGNAL_START:
-        case I2C_ACQ_SIGNAL_RESTART:
-            entry->is_start = true;
-            entry->is_stop = false;
-            entry->is_write = (entry->data & 0x01) == 0;
-            break;
+    case I2C_ACQ_SIGNAL_START:
+    case I2C_ACQ_SIGNAL_RESTART:
+        entry->is_start = true;
+        entry->is_stop = false;
+        entry->is_write = (entry->data & 0x01) == 0;
+        break;
 
-        case I2C_ACQ_SIGNAL_STOP:
-        case I2C_ACQ_SIGNAL_NACK_STOP:
-            entry->is_start = false;
-            entry->is_stop = true;
-            entry->is_write = false;
-            break;
+    case I2C_ACQ_SIGNAL_STOP:
+    case I2C_ACQ_SIGNAL_NACK_STOP:
+        entry->is_start = false;
+        entry->is_stop = true;
+        entry->is_write = false;
+        break;
 
-        default:
-            entry->is_start = false;
-            entry->is_stop = false;
-            entry->is_write = true;  // Assume write for data bytes
-            break;
+    default:
+        entry->is_start = false;
+        entry->is_stop = false;
+        entry->is_write = true; // Assume write for data bytes
+        break;
     }
 
     return I2C_OK;
 }
 
-int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
-                                   uint32_t buffer_size, uint32_t *received_len,
-                                   uint32_t timeout_cycles)
-{
+int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
+                                   uint32_t *received_len, uint32_t timeout_cycles) {
     if (!buffer || !received_len || buffer_size == 0) return I2C_ERROR_INVALID;
 
     uint32_t base = i2c_get_base(idx);
@@ -1432,29 +1509,30 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
     uint32_t length_header = 0xFFFFFFFF;
     int in_txn = 0;
 
-    //msho fix: Hybrid strategy - Optimize for actual scenario while maintaining OpenTitan standard
-    //          Step 1: Quick check if FIFO already has data (non-blocking)
-    //                  If FIFO has data, start reading immediately to prevent overflow
-    //          Step 2: If FIFO is empty, use standard OpenTitan wait (blocking)
-    //          This combines the benefits of both approaches:
-    //          - Prevents ACQ FIFO overflow when Controller has already sent data
-    //          - Maintains OpenTitan standard compliance for normal cases
+    // msho fix: Hybrid strategy - Optimize for actual scenario while maintaining OpenTitan standard
+    //           Step 1: Quick check if FIFO already has data (non-blocking)
+    //                   If FIFO has data, start reading immediately to prevent overflow
+    //           Step 2: If FIFO is empty, use standard OpenTitan wait (blocking)
+    //           This combines the benefits of both approaches:
+    //           - Prevents ACQ FIFO overflow when Controller has already sent data
+    //           - Maintains OpenTitan standard compliance for normal cases
 
     // Step 1: Quick check if FIFO already has data (non-blocking, short wait)
-    i2c__STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (status.f.ACQEMPTY) {
         // FIFO is empty, do a short non-blocking wait first
         // This handles the case where Controller just finished sending
         // and data is still being written to ACQ FIFO
         uint32_t short_wait_count = 0;
-        const uint32_t SHORT_WAIT_CYCLES = 1000;  // OPTIMIZED: Reduced from 1000 to 10 (100x reduction)
+        const uint32_t SHORT_WAIT_CYCLES =
+            1000; // OPTIMIZED: Reduced from 1000 to 10 (100x reduction)
 
         while (short_wait_count < SHORT_WAIT_CYCLES) {
-            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-            if (!status.f.ACQEMPTY) break;  // Data arrived, proceed to read
+            status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+            if (!status.f.ACQEMPTY) break; // Data arrived, proceed to read
             short_wait_count++;
         }
 
@@ -1463,7 +1541,7 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
         if (status.f.ACQEMPTY) {
             int ret = i2c_target_wait_acq_fifo_data(idx, 1, timeout_cycles);
             if (ret != I2C_OK) {
-                return ret;  // Timeout or error
+                return ret; // Timeout or error
             }
         }
     }
@@ -1474,7 +1552,8 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
     uint32_t loop_count = 0;
 
     while (1) {
-        status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+        status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                        SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 
         // Timeout protection: prevent infinite loop
         if (timeout_cycles > 0) {
@@ -1487,16 +1566,18 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
 
         // If FIFO is empty and not in transaction, we're done
         if (status.f.ACQEMPTY && in_txn == 0) {
-            break;  // Transaction complete
+            break; // Transaction complete
         }
 
         // If FIFO is empty but in transaction, wait for more data
         if (status.f.ACQEMPTY && in_txn != 0) {
             // Brief wait for next FIFO entry
             count = 0;
-            uint32_t inter_byte_timeout = 10000;  // OPTIMIZED: Reduced from 10000 to 100 (100x reduction)
+            uint32_t inter_byte_timeout =
+                10000; // OPTIMIZED: Reduced from 10000 to 100 (100x reduction)
             while (count < inter_byte_timeout) {
-                status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
                 if (!status.f.ACQEMPTY) break;
                 count++;
             }
@@ -1509,8 +1590,8 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
 
         if (!status.f.ACQEMPTY) {
             i2c__ACQDATA_t acq = {
-                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-            };
+                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             uint32_t signal = acq.f.SIGNAL;
             uint8_t abyte = (uint8_t)acq.f.ABYTE;
 
@@ -1562,36 +1643,30 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
     return I2C_OK;
 }
 
-void i2c_target_get_fifo_status(uint32_t idx, uint32_t *tx_level,
-                                uint32_t *acq_level)
-{
+void i2c_target_get_fifo_status(uint32_t idx, uint32_t *tx_level, uint32_t *acq_level) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_FIFO_STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (tx_level) *tx_level = status.f.TXLVL;
     if (acq_level) *acq_level = status.f.ACQLVL;
 }
 
-bool i2c_target_acq_fifo_empty(uint32_t idx)
-{
+bool i2c_target_acq_fifo_empty(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     return (status.f.ACQEMPTY != 0);
 }
 
-bool i2c_target_tx_fifo_full(uint32_t idx)
-{
+bool i2c_target_tx_fifo_full(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__STATUS_t status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     return (status.f.TXFULL != 0);
 }
 
@@ -1599,165 +1674,177 @@ bool i2c_target_tx_fifo_full(uint32_t idx)
 // Status and Interrupt Functions Implementation
 // ============================================================================
 
-uint32_t i2c_get_status(uint32_t idx)
-{
+uint32_t i2c_get_status(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 }
 
-uint32_t i2c_get_interrupt_state(uint32_t idx)
-{
+uint32_t i2c_get_interrupt_state(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 }
 
-void i2c_clear_interrupts(uint32_t idx, uint32_t intr_mask)
-{
+void i2c_clear_interrupts(uint32_t idx, uint32_t intr_mask) {
     uint32_t base = i2c_get_base(idx);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), intr_mask);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  intr_mask);
 }
 
-void i2c_enable_interrupts(uint32_t idx, uint32_t intr_mask)
-{
+void i2c_enable_interrupts(uint32_t idx, uint32_t intr_mask) {
     uint32_t base = i2c_get_base(idx);
 
-    uint32_t current = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), current | intr_mask);
+    uint32_t current = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  current | intr_mask);
 }
 
-void i2c_disable_interrupts(uint32_t idx, uint32_t intr_mask)
-{
+void i2c_disable_interrupts(uint32_t idx, uint32_t intr_mask) {
     uint32_t base = i2c_get_base(idx);
 
-    uint32_t current = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), current & ~intr_mask);
+    uint32_t current = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                                            SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  current & ~intr_mask);
 }
 
-uint32_t i2c_get_controller_events(uint32_t idx)
-{
+uint32_t i2c_get_controller_events(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0) -
+                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 }
 
-void i2c_clear_controller_events(uint32_t idx, uint32_t event_mask)
-{
+void i2c_clear_controller_events(uint32_t idx, uint32_t event_mask) {
     uint32_t base = i2c_get_base(idx);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), event_mask);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  event_mask);
 }
 
-uint32_t i2c_get_target_events(uint32_t idx)
-{
+uint32_t i2c_get_target_events(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR(0) -
+                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 }
 
-void i2c_clear_target_events(uint32_t idx, uint32_t event_mask)
-{
+void i2c_clear_target_events(uint32_t idx, uint32_t event_mask) {
     uint32_t base = i2c_get_base(idx);
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), event_mask);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  event_mask);
 }
 
 // ============================================================================
 // Advanced Configuration Functions Implementation
 // ============================================================================
 
-void i2c_config_timeout(uint32_t idx, uint32_t timeout_val,
-                       bool stretch_mode, bool enable)
-{
+void i2c_config_timeout(uint32_t idx, uint32_t timeout_val, bool stretch_mode, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__TIMEOUT_CTRL_t timeout_ctrl = { .w = 0 };
+    i2c__TIMEOUT_CTRL_t timeout_ctrl = {.w = 0};
     timeout_ctrl.f.VAL = timeout_val & 0x3FFFFFFF;
     timeout_ctrl.f.MODE = stretch_mode ? 0 : 1;
     timeout_ctrl.f.EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timeout_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timeout_ctrl.w);
 }
 
-void i2c_config_nack_timeout(uint32_t idx, uint32_t timeout_val, bool enable)
-{
+void i2c_config_nack_timeout(uint32_t idx, uint32_t timeout_val, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__HOST_NACK_HANDLER_TIMEOUT_t nack_timeout = { .w = 0 };
+    i2c__HOST_NACK_HANDLER_TIMEOUT_t nack_timeout = {.w = 0};
     nack_timeout.f.VAL = timeout_val & 0x7FFFFFFF;
     nack_timeout.f.EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_NACK_HANDLER_TIMEOUT_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), nack_timeout.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_NACK_HANDLER_TIMEOUT_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  nack_timeout.w);
 }
 
-void i2c_set_loopback(uint32_t idx, bool enable)
-{
+void i2c_set_loopback(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ctrl.f.LLPBK = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 }
 
-void i2c_target_config_ack_ctrl(uint32_t idx, bool enable, uint16_t nbytes)
-{
+void i2c_target_config_ack_ctrl(uint32_t idx, bool enable, uint16_t nbytes) {
     uint32_t base = i2c_get_base(idx);
 
     // Configure ACK control mode in CTRL register
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ctrl.f.ACK_CTRL_EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     // Set number of bytes to ACK
     if (enable) {
-        i2c__TARGET_ACK_CTRL_t ack_ctrl = { .w = 0 };
+        i2c__TARGET_ACK_CTRL_t ack_ctrl = {.w = 0};
         ack_ctrl.f.NBYTES = nbytes & 0x1FF;
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ack_ctrl.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      ack_ctrl.w);
     }
 }
 
-void i2c_target_send_nack(uint32_t idx)
-{
+void i2c_target_send_nack(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ACK_CTRL_t ack_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     ack_ctrl.f.NACK = 1;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ack_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  ack_ctrl.w);
 }
 
 // ============================================================================
 // SMBus Functions Implementation
 // ============================================================================
 
-void i2c_smbus_suspend(uint32_t idx, bool assert)
-{
+void i2c_smbus_suspend(uint32_t idx, bool assert) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__SMBUS_CTRL_t smbus_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     smbus_ctrl.f.SMBSUS = assert ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), smbus_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  smbus_ctrl.w);
 }
 
-void i2c_smbus_alert(uint32_t idx, bool assert)
-{
+void i2c_smbus_alert(uint32_t idx, bool assert) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__SMBUS_CTRL_t smbus_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     smbus_ctrl.f.SMBALERT = assert ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), smbus_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  smbus_ctrl.w);
 }
 
-uint32_t i2c_get_smbus_status(uint32_t idx)
-{
+uint32_t i2c_get_smbus_status(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+    return i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
+                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
 }
 
-uint8_t smbus_calculate_pec(const uint8_t *data, uint16_t len, uint8_t init_crc)
-{
+uint8_t smbus_calculate_pec(const uint8_t *data, uint16_t len, uint8_t init_crc) {
     uint8_t crc = init_crc;
 
     for (uint16_t i = 0; i < len; i++) {
@@ -1775,8 +1862,7 @@ uint8_t smbus_calculate_pec(const uint8_t *data, uint16_t len, uint8_t init_crc)
     return crc;
 }
 
-int smbus_quick_command(uint32_t idx, uint8_t device_addr, bool write_bit)
-{
+int smbus_quick_command(uint32_t idx, uint8_t device_addr, bool write_bit) {
     uint32_t base = i2c_get_base(idx);
 
     // Wait for controller idle
@@ -1784,23 +1870,24 @@ int smbus_quick_command(uint32_t idx, uint8_t device_addr, bool write_bit)
     if (ret != I2C_OK) return ret;
 
     // Send START + address with R/W bit + STOP
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
     fdata.f.FBYTE = (device_addr << 1) | (write_bit ? 0 : 1);
     fdata.f.START = 1;
-    fdata.f.STOP = 1;  // Quick command has no data, just address
+    fdata.f.STOP = 1; // Quick command has no data, just address
     fdata.f.READB = 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
 
     return I2C_OK;
 }
 
-int smbus_send_byte(uint32_t idx, uint8_t device_addr, uint8_t data, bool use_pec)
-{
+int smbus_send_byte(uint32_t idx, uint8_t device_addr, uint8_t data, bool use_pec) {
     uint8_t pec = 0;
 
     if (use_pec) {
         uint8_t pec_data[2];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         pec_data[1] = data;
         pec = smbus_calculate_pec(pec_data, 2, 0);
     }
@@ -1817,8 +1904,7 @@ int smbus_send_byte(uint32_t idx, uint8_t device_addr, uint8_t data, bool use_pe
     return i2c_controller_write(idx, device_addr, tx_data, len, true);
 }
 
-int smbus_receive_byte(uint32_t idx, uint8_t device_addr, uint8_t *data, bool use_pec)
-{
+int smbus_receive_byte(uint32_t idx, uint8_t device_addr, uint8_t *data, bool use_pec) {
     if (!data) return I2C_ERROR_INVALID;
 
     uint8_t len = use_pec ? 2 : 1;
@@ -1830,12 +1916,12 @@ int smbus_receive_byte(uint32_t idx, uint8_t device_addr, uint8_t *data, bool us
     if (use_pec) {
         // Verify PEC
         uint8_t pec_data[2];
-        pec_data[0] = (device_addr << 1) | 0x1;  // Address + read
+        pec_data[0] = (device_addr << 1) | 0x1; // Address + read
         pec_data[1] = buffer[0];
         uint8_t calc_pec = smbus_calculate_pec(pec_data, 2, 0);
 
         if (calc_pec != buffer[1]) {
-            return I2C_ERROR;  // PEC mismatch
+            return I2C_ERROR; // PEC mismatch
         }
     }
 
@@ -1843,14 +1929,13 @@ int smbus_receive_byte(uint32_t idx, uint8_t device_addr, uint8_t *data, bool us
     return I2C_OK;
 }
 
-int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t data, bool use_pec)
-{
+int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t data,
+                     bool use_pec) {
     uint8_t pec = 0;
 
     if (use_pec) {
         uint8_t pec_data[3];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         pec_data[1] = command;
         pec_data[2] = data;
         pec = smbus_calculate_pec(pec_data, 3, 0);
@@ -1869,9 +1954,8 @@ int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
     return i2c_controller_write(idx, device_addr, tx_data, len, true);
 }
 
-int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
-                    uint8_t *data, bool use_pec)
-{
+int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                    bool use_pec) {
     if (!data) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -1888,14 +1972,14 @@ int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
     if (use_pec) {
         // Verify PEC
         uint8_t pec_data[4];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         pec_data[1] = command;
-        pec_data[2] = (device_addr << 1) | 0x1;  // Address + read
+        pec_data[2] = (device_addr << 1) | 0x1; // Address + read
         pec_data[3] = buffer[0];
         uint8_t calc_pec = smbus_calculate_pec(pec_data, 4, 0);
 
         if (calc_pec != buffer[1]) {
-            return I2C_ERROR;  // PEC mismatch
+            return I2C_ERROR; // PEC mismatch
         }
     }
 
@@ -1903,14 +1987,13 @@ int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
     return I2C_OK;
 }
 
-int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint16_t data, bool use_pec)
-{
+int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t data,
+                     bool use_pec) {
     uint8_t pec = 0;
 
     if (use_pec) {
         uint8_t pec_data[4];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         pec_data[1] = command;
         pec_data[2] = (uint8_t)(data & 0xFF);        // LSB
         pec_data[3] = (uint8_t)((data >> 8) & 0xFF); // MSB
@@ -1931,9 +2014,8 @@ int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command,
     return i2c_controller_write(idx, device_addr, tx_data, len, true);
 }
 
-int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command,
-                    uint16_t *data, bool use_pec)
-{
+int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t *data,
+                    bool use_pec) {
     if (!data) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -1950,39 +2032,38 @@ int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command,
     if (use_pec) {
         // Verify PEC
         uint8_t pec_data[5];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         pec_data[1] = command;
-        pec_data[2] = (device_addr << 1) | 0x1;  // Address + read
-        pec_data[3] = buffer[0];  // LSB
-        pec_data[4] = buffer[1];  // MSB
+        pec_data[2] = (device_addr << 1) | 0x1; // Address + read
+        pec_data[3] = buffer[0];                // LSB
+        pec_data[4] = buffer[1];                // MSB
         uint8_t calc_pec = smbus_calculate_pec(pec_data, 5, 0);
 
         if (calc_pec != buffer[2]) {
-            return I2C_ERROR;  // PEC mismatch
+            return I2C_ERROR; // PEC mismatch
         }
     }
 
-    *data = ((uint16_t)buffer[1] << 8) | buffer[0];  // MSB, LSB
+    *data = ((uint16_t)buffer[1] << 8) | buffer[0]; // MSB, LSB
     return I2C_OK;
 }
 
-int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
-                      const uint8_t *data, uint8_t len, bool use_pec)
-{
+int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command, const uint8_t *data,
+                      uint8_t len, bool use_pec) {
     if (!data || len == 0 || len > 255) return I2C_ERROR_INVALID;
 
-    uint8_t tx_buffer[258];  // command + count + data + PEC
+    uint8_t tx_buffer[258]; // command + count + data + PEC
     uint8_t tx_len = 0;
 
     tx_buffer[tx_len++] = command;
-    tx_buffer[tx_len++] = len;  // Byte count
+    tx_buffer[tx_len++] = len; // Byte count
     memcpy(&tx_buffer[tx_len], data, len);
     tx_len += len;
 
     if (use_pec) {
         // Calculate PEC over address + command + count + data
         uint8_t pec_data[259];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         memcpy(&pec_data[1], tx_buffer, tx_len);
         uint8_t pec = smbus_calculate_pec(pec_data, tx_len + 1, 0);
         tx_buffer[tx_len++] = pec;
@@ -1991,9 +2072,8 @@ int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
     return i2c_controller_write(idx, device_addr, tx_buffer, tx_len, true);
 }
 
-int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t *data, uint8_t *len, uint8_t max_len, bool use_pec)
-{
+int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                     uint8_t *len, uint8_t max_len, bool use_pec) {
     if (!data || !len || max_len == 0) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -2018,16 +2098,16 @@ int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
         // Verify PEC
         uint8_t pec_data[259];
         uint16_t pec_len = 0;
-        pec_data[pec_len++] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[pec_len++] = (device_addr << 1) | 0x0; // Address + write
         pec_data[pec_len++] = command;
-        pec_data[pec_len++] = (device_addr << 1) | 0x1;  // Address + read
+        pec_data[pec_len++] = (device_addr << 1) | 0x1; // Address + read
         pec_data[pec_len++] = count;
         memcpy(&pec_data[pec_len], buffer, count);
         pec_len += count;
 
         uint8_t calc_pec = smbus_calculate_pec(pec_data, pec_len, 0);
         if (calc_pec != buffer[count]) {
-            return I2C_ERROR;  // PEC mismatch
+            return I2C_ERROR; // PEC mismatch
         }
     }
 
@@ -2036,12 +2116,11 @@ int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
     return I2C_OK;
 }
 
-int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
-                       uint16_t write_data, uint16_t *read_data, bool use_pec)
-{
+int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t write_data,
+                       uint16_t *read_data, bool use_pec) {
     if (!read_data) return I2C_ERROR_INVALID;
 
-    uint8_t write_buffer[4];  // command + 2 bytes write data + PEC
+    uint8_t write_buffer[4]; // command + 2 bytes write data + PEC
     uint8_t write_len = 0;
 
     write_buffer[write_len++] = command;
@@ -2050,7 +2129,7 @@ int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
 
     if (use_pec) {
         uint8_t pec_data[4];
-        pec_data[0] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[0] = (device_addr << 1) | 0x0; // Address + write
         memcpy(&pec_data[1], write_buffer, 3);
         uint8_t pec = smbus_calculate_pec(pec_data, 4, 0);
         write_buffer[write_len++] = pec;
@@ -2071,16 +2150,16 @@ int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
         // Verify PEC
         uint8_t pec_data[8];
         uint8_t pec_len = 0;
-        pec_data[pec_len++] = (device_addr << 1) | 0x0;  // Address + write
+        pec_data[pec_len++] = (device_addr << 1) | 0x0; // Address + write
         memcpy(&pec_data[pec_len], write_buffer, write_len - (use_pec ? 1 : 0));
         pec_len += write_len - (use_pec ? 1 : 0);
-        pec_data[pec_len++] = (device_addr << 1) | 0x1;  // Address + read
+        pec_data[pec_len++] = (device_addr << 1) | 0x1; // Address + read
         pec_data[pec_len++] = read_buffer[0];
         pec_data[pec_len++] = read_buffer[1];
 
         uint8_t calc_pec = smbus_calculate_pec(pec_data, pec_len, 0);
         if (calc_pec != read_buffer[2]) {
-            return I2C_ERROR;  // PEC mismatch
+            return I2C_ERROR; // PEC mismatch
         }
     }
 
@@ -2089,13 +2168,11 @@ int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
 }
 
 int smbus_block_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
-                             const uint8_t *write_data, uint8_t write_len,
-                             uint8_t *read_data, uint8_t *read_len,
-                             uint8_t max_read_len, bool use_pec)
-{
+                             const uint8_t *write_data, uint8_t write_len, uint8_t *read_data,
+                             uint8_t *read_len, uint8_t max_read_len, bool use_pec) {
     if (!write_data || !read_data || !read_len || write_len == 0) return I2C_ERROR_INVALID;
 
-    uint8_t write_buffer[258];  // command + count + data + PEC
+    uint8_t write_buffer[258]; // command + count + data + PEC
     uint8_t total_write_len = 0;
 
     write_buffer[total_write_len++] = command;
@@ -2131,7 +2208,7 @@ int smbus_block_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
 
     if (use_pec) {
         // Verify PEC (complex calculation)
-        return I2C_ERROR;  // Simplified - full implementation would verify
+        return I2C_ERROR; // Simplified - full implementation would verify
     }
 
     memcpy(read_data, read_buffer, count);
@@ -2139,30 +2216,29 @@ int smbus_block_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
     return I2C_OK;
 }
 
-int smbus_alert_response(uint32_t idx, uint8_t *alert_addr)
-{
+int smbus_alert_response(uint32_t idx, uint8_t *alert_addr) {
     if (!alert_addr) return I2C_ERROR_INVALID;
 
     // Debug marker: Enter function
-    write_scratch(1, 0x00000086);  // Enter smbus_alert_response
+    write_scratch(1, 0x00000086); // Enter smbus_alert_response
 
     // Read from Alert Response Address (0x0C)
-    write_scratch(1, 0x00000087);  // Before calling i2c_controller_read
+    write_scratch(1, 0x00000087); // Before calling i2c_controller_read
     uint8_t addr_byte = 0;
     int ret = i2c_controller_read(idx, SMBUS_ADDR_ARA, &addr_byte, 1, true);
-    write_scratch(1, 0x00000088);  // After i2c_controller_read returned
+    write_scratch(1, 0x00000088); // After i2c_controller_read returned
 
     if (ret == I2C_OK) {
-        write_scratch(1, 0x00000089);  // Before extracting address
-        *alert_addr = (addr_byte >> 1);  // Extract 7-bit address
-        write_scratch(1, 0x0000008A);  // After extracting address
+        write_scratch(1, 0x00000089);   // Before extracting address
+        *alert_addr = (addr_byte >> 1); // Extract 7-bit address
+        write_scratch(1, 0x0000008A);   // After extracting address
     } else {
-        write_scratch(1, 0x0000008B);  // Error path
+        write_scratch(1, 0x0000008B); // Error path
         // On error, set alert_addr to 0xFF to indicate failure
         *alert_addr = 0xFF;
     }
 
-    write_scratch(1, 0x0000008C);  // Before return
+    write_scratch(1, 0x0000008C); // Before return
     return ret;
 }
 
@@ -2170,13 +2246,11 @@ int smbus_alert_response(uint32_t idx, uint8_t *alert_addr)
 // PMBus Functions Implementation
 // ============================================================================
 
-int pmbus_send_byte(uint32_t idx, uint8_t device_addr, uint8_t command)
-{
+int pmbus_send_byte(uint32_t idx, uint8_t device_addr, uint8_t command) {
     return i2c_controller_write(idx, device_addr, &command, 1, true);
 }
 
-int pmbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t data)
-{
+int pmbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t data) {
     uint8_t tx_data[2];
     tx_data[0] = command;
     tx_data[1] = data;
@@ -2184,8 +2258,7 @@ int pmbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t
     return i2c_controller_write(idx, device_addr, tx_data, 2, true);
 }
 
-int pmbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t data)
-{
+int pmbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t data) {
     uint8_t tx_data[3];
     tx_data[0] = command;
     tx_data[1] = (uint8_t)(data & 0xFF);        // LSB first
@@ -2194,8 +2267,7 @@ int pmbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_
     return i2c_controller_write(idx, device_addr, tx_data, 3, true);
 }
 
-int pmbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data)
-{
+int pmbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data) {
     if (!data) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -2206,8 +2278,7 @@ int pmbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t 
     return i2c_controller_read(idx, device_addr, data, 1, true);
 }
 
-int pmbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t *data)
-{
+int pmbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t *data) {
     if (!data) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -2223,22 +2294,20 @@ int pmbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t
     return I2C_OK;
 }
 
-int pmbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
-                      const uint8_t *data, uint8_t len)
-{
+int pmbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command, const uint8_t *data,
+                      uint8_t len) {
     if (!data || len == 0 || len > 255) return I2C_ERROR_INVALID;
 
-    uint8_t tx_buffer[257];  // command + count + data
+    uint8_t tx_buffer[257]; // command + count + data
     tx_buffer[0] = command;
-    tx_buffer[1] = len;  // Byte count
+    tx_buffer[1] = len; // Byte count
     memcpy(&tx_buffer[2], data, len);
 
     return i2c_controller_write(idx, device_addr, tx_buffer, len + 2, true);
 }
 
-int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t *data, uint8_t *len, uint8_t max_len)
-{
+int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                     uint8_t *len, uint8_t max_len) {
     if (!data || !len || max_len == 0) return I2C_ERROR_INVALID;
 
     // Write command code
@@ -2261,12 +2330,11 @@ int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
 }
 
 int pmbus_block_write_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                           const uint8_t *write_data, uint8_t write_len,
-                           uint8_t *read_data, uint8_t *read_len, uint8_t max_read_len)
-{
+                           const uint8_t *write_data, uint8_t write_len, uint8_t *read_data,
+                           uint8_t *read_len, uint8_t max_read_len) {
     if (!write_data || !read_data || !read_len || write_len == 0) return I2C_ERROR_INVALID;
 
-    uint8_t write_buffer[257];  // command + count + data
+    uint8_t write_buffer[257]; // command + count + data
     write_buffer[0] = command;
     write_buffer[1] = write_len;
     memcpy(&write_buffer[2], write_data, write_len);
@@ -2290,10 +2358,9 @@ int pmbus_block_write_read(uint32_t idx, uint8_t device_addr, uint8_t command,
     return I2C_OK;
 }
 
-int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs,
-                       const uint8_t *commands, const uint8_t **data_arrays,
-                       const uint8_t *data_lens, uint8_t num_devices)
-{
+int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs, const uint8_t *commands,
+                        const uint8_t **data_arrays, const uint8_t *data_lens,
+                        uint8_t num_devices) {
     if (!device_addrs || !commands || !data_arrays || !data_lens || num_devices == 0) {
         return I2C_ERROR_INVALID;
     }
@@ -2307,16 +2374,20 @@ int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs,
     // Group command uses repeated STARTs for each device
     for (uint8_t i = 0; i < num_devices; i++) {
         // Send START + address + write
-        i2c__FDATA_t fdata = { .w = 0 };
+        i2c__FDATA_t fdata = {.w = 0};
         fdata.f.FBYTE = (device_addrs[i] << 1) | 0x0;
         fdata.f.START = 1;
         fdata.f.READB = 0;
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
 
         // Send command code
         fdata.w = 0;
         fdata.f.FBYTE = commands[i];
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
 
         // Send data bytes
         for (uint8_t j = 0; j < data_lens[i]; j++) {
@@ -2328,7 +2399,9 @@ int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs,
                 fdata.f.STOP = 1;
             }
 
-            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+            i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                          fdata.w);
         }
     }
 
@@ -2341,8 +2414,7 @@ int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs,
 
 #include <math.h>
 
-pmbus_linear11_t pmbus_float_to_linear11(float value)
-{
+pmbus_linear11_t pmbus_float_to_linear11(float value) {
     pmbus_linear11_t result;
 
     // Handle special cases
@@ -2384,13 +2456,11 @@ pmbus_linear11_t pmbus_float_to_linear11(float value)
     return result;
 }
 
-float pmbus_linear11_to_float(pmbus_linear11_t linear11)
-{
+float pmbus_linear11_to_float(pmbus_linear11_t linear11) {
     return (float)linear11.mantissa * powf(2.0f, (float)linear11.exponent);
 }
 
-pmbus_linear16_t pmbus_float_to_linear16(float value, int8_t exponent)
-{
+pmbus_linear16_t pmbus_float_to_linear16(float value, int8_t exponent) {
     pmbus_linear16_t result;
 
     result.exponent = exponent;
@@ -2407,13 +2477,11 @@ pmbus_linear16_t pmbus_float_to_linear16(float value, int8_t exponent)
     return result;
 }
 
-float pmbus_linear16_to_float(pmbus_linear16_t linear16)
-{
+float pmbus_linear16_to_float(pmbus_linear16_t linear16) {
     return (float)linear16.mantissa * powf(2.0f, (float)linear16.exponent);
 }
 
-uint16_t pmbus_pack_linear11(pmbus_linear11_t linear11)
-{
+uint16_t pmbus_pack_linear11(pmbus_linear11_t linear11) {
     // Pack: [15:11] = exponent (5-bit signed), [10:0] = mantissa (11-bit signed)
     uint16_t packed = 0;
 
@@ -2428,8 +2496,7 @@ uint16_t pmbus_pack_linear11(pmbus_linear11_t linear11)
     return packed;
 }
 
-pmbus_linear11_t pmbus_unpack_linear11(uint16_t packed)
-{
+pmbus_linear11_t pmbus_unpack_linear11(uint16_t packed) {
     pmbus_linear11_t result;
 
     // Extract exponent (5-bit signed)
@@ -2437,7 +2504,7 @@ pmbus_linear11_t pmbus_unpack_linear11(uint16_t packed)
 
     // Sign-extend exponent from 5-bit to 8-bit
     if (exp & 0x10) {
-        exp |= 0xE0;  // Sign extend
+        exp |= 0xE0; // Sign extend
     }
 
     // Extract mantissa (11-bit signed)
@@ -2445,7 +2512,7 @@ pmbus_linear11_t pmbus_unpack_linear11(uint16_t packed)
 
     // Sign-extend mantissa from 11-bit to 16-bit
     if (man & 0x400) {
-        man |= 0xF800;  // Sign extend
+        man |= 0xF800; // Sign extend
     }
 
     result.exponent = exp;
@@ -2458,32 +2525,29 @@ pmbus_linear11_t pmbus_unpack_linear11(uint16_t packed)
 // Debug and Test Functions Implementation
 // ============================================================================
 
-void i2c_override_signals(uint32_t idx, bool enable, bool scl_val, bool sda_val)
-{
+void i2c_override_signals(uint32_t idx, bool enable, bool scl_val, bool sda_val) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__OVRD_t ovrd = { .w = 0 };
+    i2c__OVRD_t ovrd = {.w = 0};
     ovrd.f.TXOVRDEN = enable ? 1 : 0;
     ovrd.f.SCLVAL = scl_val ? 1 : 0;
     ovrd.f.SDAVAL = sda_val ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ovrd.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ovrd.w);
 }
 
-void i2c_get_signal_samples(uint32_t idx, uint16_t *scl_samples,
-                           uint16_t *sda_samples)
-{
+void i2c_get_signal_samples(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_samples) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__VAL_t val = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_VAL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__VAL_t val = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_VAL_BASE_ADDR(0) -
+                                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (scl_samples) *scl_samples = (uint16_t)val.f.SCL_RX;
     if (sda_samples) *sda_samples = (uint16_t)val.f.SDA_RX;
 }
 
-int i2c_reg_verify_write(uint32_t base, uint32_t offset, uint32_t value)
-{
+int i2c_reg_verify_write(uint32_t base, uint32_t offset, uint32_t value) {
     i2c_write_reg(base + offset, value);
 
     uint32_t read_value = i2c_read_reg(base + offset);
@@ -2499,28 +2563,34 @@ int i2c_reg_verify_write(uint32_t base, uint32_t offset, uint32_t value)
 // Utility Functions Implementation
 // ============================================================================
 
-const char* i2c_error_to_string(int error)
-{
+const char *i2c_error_to_string(int error) {
     switch (error) {
-        case I2C_OK:             return "Success";
-        case I2C_ERROR:          return "General error";
-        case I2C_ERROR_TIMEOUT:  return "Timeout";
-        case I2C_ERROR_NACK:     return "NACK received";
-        case I2C_ERROR_OVERFLOW: return "FIFO overflow";
-        case I2C_ERROR_BUSY:     return "Device busy";
-        case I2C_ERROR_INVALID:  return "Invalid parameter";
-        default:                 return "Unknown error";
+    case I2C_OK:
+        return "Success";
+    case I2C_ERROR:
+        return "General error";
+    case I2C_ERROR_TIMEOUT:
+        return "Timeout";
+    case I2C_ERROR_NACK:
+        return "NACK received";
+    case I2C_ERROR_OVERFLOW:
+        return "FIFO overflow";
+    case I2C_ERROR_BUSY:
+        return "Device busy";
+    case I2C_ERROR_INVALID:
+        return "Invalid parameter";
+    default:
+        return "Unknown error";
     }
 }
 
-void i2c_dump_registers(uint32_t idx)
-{
+void i2c_dump_registers(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
     // Note: Implementation depends on available debug output functions
     // This is a placeholder that could be enhanced with actual debug prints
 
-    (void)base;  // Suppress unused warning for now
+    (void)base; // Suppress unused warning for now
 }
 
 // ============================================================================
@@ -2540,15 +2610,16 @@ void i2c_dump_registers(uint32_t idx)
  *
  * @param idx I2C instance index
  */
-void i2c_reset_fifos_easy(uint32_t idx)
-{
+void i2c_reset_fifos_easy(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__FIFO_CTRL_t fifo_ctrl = {.w = 0};
     fifo_ctrl.f.RXRST = 1;
     fifo_ctrl.f.FMTRST = 1;
     fifo_ctrl.f.TXRST = 1;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fifo_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fifo_ctrl.w);
 }
 
 /**
@@ -2561,14 +2632,15 @@ void i2c_reset_fifos_easy(uint32_t idx)
  * @param fmt_thresh FMT FIFO threshold
  * @param rx_thresh RX FIFO threshold
  */
-void i2c_configure_threshold_easy(uint32_t idx, uint16_t fmt_thresh, uint16_t rx_thresh)
-{
+void i2c_configure_threshold_easy(uint32_t idx, uint16_t fmt_thresh, uint16_t rx_thresh) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__HOST_FIFO_CONFIG_t host_cfg = {.w = 0};
     host_cfg.f.FMT_THRESH = fmt_thresh;
     host_cfg.f.RX_THRESH = rx_thresh;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), host_cfg.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  host_cfg.w);
 }
 
 /**
@@ -2581,13 +2653,14 @@ void i2c_configure_threshold_easy(uint32_t idx, uint16_t fmt_thresh, uint16_t rx
  * @param timeout Timeout value (0 = use default)
  * @return I2C_OK on success, I2C_ERROR_TIMEOUT on timeout
  */
-int i2c_controller_wait_idle_easy(uint32_t idx, uint32_t timeout)
-{
+int i2c_controller_wait_idle_easy(uint32_t idx, uint32_t timeout) {
     uint32_t base = i2c_get_base(idx);
     uint32_t remaining = timeout ? timeout : I2C_DEFAULT_TIMEOUT_EASY;
 
     while (remaining--) {
-        i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        i2c__STATUS_t status = {
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (status.f.HOSTIDLE) {
             return I2C_OK;
         }
@@ -2611,22 +2684,21 @@ int i2c_controller_wait_idle_easy(uint32_t idx, uint32_t timeout)
  * @param timeout Timeout value (0 = use default)
  * @return I2C_OK on success, I2C_ERROR_TIMEOUT on timeout
  */
-int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout)
-{
+int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout) {
     uint32_t base = i2c_get_base(idx);
     uint32_t remaining = timeout ? timeout : I2C_DEFAULT_TIMEOUT_EASY;
     uint32_t initial = remaining;
 
     while (remaining--) {
         i2c__STATUS_t status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         // Dual check: STATUS.fmtfull + FIFO level
         if (!status.f.FMTFULL) {
             i2c__HOST_FIFO_STATUS_t fifo = {
-                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-            };
+                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             if (fifo.f.FMTLVL < I2C_PARAM_FIFO_DEPTH) {
                 return I2C_OK;
             }
@@ -2639,8 +2711,8 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout)
             simputs("  STATUS.fmtfull=");
             simputshex32("", status.f.FMTFULL);
             i2c__HOST_FIFO_STATUS_t fifo_dbg = {
-                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-            };
+                .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             simputs("  HOST_FIFO.fmtlvl=");
             simputshex32("", fifo_dbg.f.FMTLVL);
             simputs("  HOST_FIFO.rxlvl=");
@@ -2664,16 +2736,15 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout)
  * @param timeout Timeout value (0 = use default)
  * @return I2C_OK on success, I2C_ERROR_TIMEOUT on timeout
  */
-int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t timeout)
-{
+int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t timeout) {
     uint32_t base = i2c_get_base(idx);
     uint32_t remaining = timeout ? timeout : I2C_DEFAULT_TIMEOUT_EASY;
     uint32_t initial = remaining;
 
     while (remaining--) {
         i2c__HOST_FIFO_STATUS_t fifo = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (fifo.f.RXLVL >= level) {
             return I2C_OK;
@@ -2712,8 +2783,7 @@ int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t
  * @param cycles Timeout duration in clock cycles
  * @return I2C_OK on success, I2C_ERROR_INVALID on invalid parameters
  */
-int i2c_enable_clock_timeout(uint32_t idx, uint8_t timeout_type, uint32_t cycles)
-{
+int i2c_enable_clock_timeout(uint32_t idx, uint8_t timeout_type, uint32_t cycles) {
     if (timeout_type > 2) {
         return I2C_ERROR_INVALID;
     }
@@ -2722,28 +2792,30 @@ int i2c_enable_clock_timeout(uint32_t idx, uint8_t timeout_type, uint32_t cycles
 
     // Read TIMEOUT_CTRL register
     i2c__TIMEOUT_CTRL_t timeout_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     switch (timeout_type) {
-        case 0:  // Disabled
-            timeout_ctrl.f.EN = 0;
-            break;
+    case 0: // Disabled
+        timeout_ctrl.f.EN = 0;
+        break;
 
-        case 1:  // Stretch timeout
-            timeout_ctrl.f.EN = 1;
-            timeout_ctrl.f.MODE = 0;  // Stretch timeout mode
-            timeout_ctrl.f.VAL = cycles & 0xFFFFFF;  // 24-bit timeout value
-            break;
+    case 1: // Stretch timeout
+        timeout_ctrl.f.EN = 1;
+        timeout_ctrl.f.MODE = 0;                // Stretch timeout mode
+        timeout_ctrl.f.VAL = cycles & 0xFFFFFF; // 24-bit timeout value
+        break;
 
-        case 2:  // Bus timeout (SMBus compatible)
-            timeout_ctrl.f.EN = 1;
-            timeout_ctrl.f.MODE = 1;  // Bus timeout mode
-            timeout_ctrl.f.VAL = cycles & 0xFFFFFF;  // 24-bit timeout value
-            break;
+    case 2: // Bus timeout (SMBus compatible)
+        timeout_ctrl.f.EN = 1;
+        timeout_ctrl.f.MODE = 1;                // Bus timeout mode
+        timeout_ctrl.f.VAL = cycles & 0xFFFFFF; // 24-bit timeout value
+        break;
     }
 
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), timeout_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  timeout_ctrl.w);
     return I2C_OK;
 }
 
@@ -2757,13 +2829,14 @@ int i2c_enable_clock_timeout(uint32_t idx, uint8_t timeout_type, uint32_t cycles
  * @param duration Timeout duration in clock cycles
  * @return I2C_OK on success
  */
-int i2c_set_host_timeout(uint32_t idx, uint32_t duration)
-{
+int i2c_set_host_timeout(uint32_t idx, uint32_t duration) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__HOST_TIMEOUT_CTRL_t host_timeout = { .w = 0 };
-    host_timeout.f.VAL = duration & 0xFFFFFF;  // 24-bit timeout value
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), host_timeout.w);
+    i2c__HOST_TIMEOUT_CTRL_t host_timeout = {.w = 0};
+    host_timeout.f.VAL = duration & 0xFFFFFF; // 24-bit timeout value
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  host_timeout.w);
 
     return I2C_OK;
 }
@@ -2778,16 +2851,16 @@ int i2c_set_host_timeout(uint32_t idx, uint32_t duration)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_ack_ctrl_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_ack_ctrl_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ctrl.f.ACK_CTRL_EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
@@ -2802,16 +2875,16 @@ int i2c_ack_ctrl_set_enabled(uint32_t idx, bool enable)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_target_tx_stretch_ctrl_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_target_tx_stretch_ctrl_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ctrl.f.TX_STRETCH_CTRL_EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
@@ -2825,16 +2898,16 @@ int i2c_target_tx_stretch_ctrl_set_enabled(uint32_t idx, bool enable)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_line_loopback_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_line_loopback_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ctrl.f.LLPBK = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
@@ -2849,16 +2922,16 @@ int i2c_line_loopback_set_enabled(uint32_t idx, bool enable)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_multi_controller_monitor_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_multi_controller_monitor_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ctrl.f.MULTI_CONTROLLER_MONITOR_EN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
@@ -2872,16 +2945,16 @@ int i2c_multi_controller_monitor_set_enabled(uint32_t idx, bool enable)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_addr_nack_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_addr_nack_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__CTRL_t ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__CTRL_t ctrl = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ctrl.f.NACK_ADDR_AFTER_TIMEOUT = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ctrl.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ctrl.w);
 
     return I2C_OK;
 }
@@ -2896,8 +2969,7 @@ int i2c_addr_nack_set_enabled(uint32_t idx, bool enable)
  * @param count Pointer to store counter value
  * @return I2C_OK on success, I2C_ERROR_INVALID if count is NULL
  */
-int i2c_get_auto_ack_count(uint32_t idx, uint16_t *count)
-{
+int i2c_get_auto_ack_count(uint32_t idx, uint16_t *count) {
     if (!count) {
         return I2C_ERROR_INVALID;
     }
@@ -2905,8 +2977,8 @@ int i2c_get_auto_ack_count(uint32_t idx, uint16_t *count)
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ACK_CTRL_t ack_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     *count = ack_ctrl.f.NBYTES;
     return I2C_OK;
@@ -2923,16 +2995,17 @@ int i2c_get_auto_ack_count(uint32_t idx, uint16_t *count)
  * @param count Number of bytes to automatically ACK (0-255)
  * @return I2C_OK on success
  */
-int i2c_set_auto_ack_count(uint32_t idx, uint16_t count)
-{
+int i2c_set_auto_ack_count(uint32_t idx, uint16_t count) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ACK_CTRL_t ack_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ack_ctrl.f.NBYTES = count & 0x1FF;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ack_ctrl.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  ack_ctrl.w);
 
     return I2C_OK;
 }
@@ -2946,16 +3019,17 @@ int i2c_set_auto_ack_count(uint32_t idx, uint16_t count)
  * @param idx I2C instance index
  * @return I2C_OK on success
  */
-int i2c_nack_transaction(uint32_t idx)
-{
+int i2c_nack_transaction(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
 
     i2c__TARGET_ACK_CTRL_t ack_ctrl = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
-    ack_ctrl.f.NACK = 1;  // Set NACK bit
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ack_ctrl.w);
+    ack_ctrl.f.NACK = 1; // Set NACK bit
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  ack_ctrl.w);
 
     return I2C_OK;
 }
@@ -2970,8 +3044,7 @@ int i2c_nack_transaction(uint32_t idx)
  * @param data Pointer to store pending data byte
  * @return I2C_OK on success, I2C_ERROR_INVALID if data is NULL
  */
-int i2c_get_pending_acq_byte(uint32_t idx, uint8_t *data)
-{
+int i2c_get_pending_acq_byte(uint32_t idx, uint8_t *data) {
     if (!data) {
         return I2C_ERROR_INVALID;
     }
@@ -2979,8 +3052,8 @@ int i2c_get_pending_acq_byte(uint32_t idx, uint8_t *data)
     uint32_t base = i2c_get_base(idx);
 
     i2c__ACQ_FIFO_NEXT_DATA_t next_data = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQ_FIFO_NEXT_DATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQ_FIFO_NEXT_DATA_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     *data = next_data.f.DATA & 0xFF;
     return I2C_OK;
@@ -2996,16 +3069,16 @@ int i2c_get_pending_acq_byte(uint32_t idx, uint8_t *data)
  * @param enable true to enable, false to disable
  * @return I2C_OK on success
  */
-int i2c_override_set_enabled(uint32_t idx, bool enable)
-{
+int i2c_override_set_enabled(uint32_t idx, bool enable) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__OVRD_t ovrd = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__OVRD_t ovrd = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ovrd.f.TXOVRDEN = enable ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ovrd.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ovrd.w);
 
     return I2C_OK;
 }
@@ -3020,17 +3093,17 @@ int i2c_override_set_enabled(uint32_t idx, bool enable)
  * @param sda SDA pin value (true = high, false = low)
  * @return I2C_OK on success
  */
-int i2c_override_drive_pins(uint32_t idx, bool scl, bool sda)
-{
+int i2c_override_drive_pins(uint32_t idx, bool scl, bool sda) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__OVRD_t ovrd = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__OVRD_t ovrd = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     ovrd.f.SCLVAL = scl ? 1 : 0;
     ovrd.f.SDAVAL = sda ? 1 : 0;
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), ovrd.w);
+    i2c_write_reg(
+        base + (SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+        ovrd.w);
 
     return I2C_OK;
 }
@@ -3046,13 +3119,11 @@ int i2c_override_drive_pins(uint32_t idx, bool scl, bool sda)
  * @param sda_samples Pointer to store SDA samples (may be NULL)
  * @return I2C_OK on success
  */
-int i2c_override_sample_pins(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_samples)
-{
+int i2c_override_sample_pins(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_samples) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__VAL_t val = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_VAL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__VAL_t val = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_VAL_BASE_ADDR(0) -
+                                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (scl_samples) {
         *scl_samples = val.f.SCL_RX;
@@ -3076,11 +3147,10 @@ int i2c_override_sample_pins(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_
  * @param id1 Second address/mask pair (may be NULL to disable)
  * @return I2C_OK on success
  */
-int i2c_set_device_id(uint32_t idx, const i2c_target_id_t *id0, const i2c_target_id_t *id1)
-{
+int i2c_set_device_id(uint32_t idx, const i2c_target_id_t *id0, const i2c_target_id_t *id1) {
     uint32_t base = i2c_get_base(idx);
 
-    i2c__TARGET_ID_t target_id = { .w = 0 };
+    i2c__TARGET_ID_t target_id = {.w = 0};
 
     if (id0) {
         target_id.f.ADDRESS0 = id0->address & 0x7F;
@@ -3092,7 +3162,9 @@ int i2c_set_device_id(uint32_t idx, const i2c_target_id_t *id0, const i2c_target
         target_id.f.MASK1 = id1->mask & 0x7F;
     }
 
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), target_id.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  target_id.w);
     return I2C_OK;
 }
 
@@ -3107,8 +3179,7 @@ int i2c_set_device_id(uint32_t idx, const i2c_target_id_t *id0, const i2c_target
  * @param size Number of bytes to read
  * @return Number of bytes actually read, or negative error code
  */
-int i2c_read_bytes(uint32_t idx, uint8_t *buffer, size_t size)
-{
+int i2c_read_bytes(uint32_t idx, uint8_t *buffer, size_t size) {
     if (!buffer || size == 0) {
         return I2C_ERROR_INVALID;
     }
@@ -3119,8 +3190,8 @@ int i2c_read_bytes(uint32_t idx, uint8_t *buffer, size_t size)
     for (size_t i = 0; i < size; i++) {
         // Check if RX FIFO has data
         i2c__HOST_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (fifo_status.f.RXLVL == 0) {
             // No more data available
@@ -3128,9 +3199,9 @@ int i2c_read_bytes(uint32_t idx, uint8_t *buffer, size_t size)
         }
 
         // Read byte from RX FIFO
-        i2c__RDATA_t rdata = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+        i2c__RDATA_t rdata = {.w =
+                                  i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) -
+                                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         buffer[i] = rdata.f.DATA & 0xFF;
         bytes_read++;
@@ -3151,8 +3222,7 @@ int i2c_read_bytes(uint32_t idx, uint8_t *buffer, size_t size)
  * @param flags Format flags to apply to all bytes
  * @return Number of bytes actually written, or negative error code
  */
-int i2c_write_bytes_raw(uint32_t idx, const uint8_t *bytes, size_t size, uint32_t flags)
-{
+int i2c_write_bytes_raw(uint32_t idx, const uint8_t *bytes, size_t size, uint32_t flags) {
     if (!bytes || size == 0) {
         return I2C_ERROR_INVALID;
     }
@@ -3163,8 +3233,8 @@ int i2c_write_bytes_raw(uint32_t idx, const uint8_t *bytes, size_t size, uint32_
     for (size_t i = 0; i < size; i++) {
         // Check if FMT FIFO has space
         i2c__HOST_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (fifo_status.f.FMTLVL >= I2C_PARAM_FIFO_DEPTH) {
             // FIFO full, stop writing
@@ -3172,14 +3242,16 @@ int i2c_write_bytes_raw(uint32_t idx, const uint8_t *bytes, size_t size, uint32_
         }
 
         // Prepare FDATA with byte and flags
-        i2c__FDATA_t fdata = { .w = 0 };
+        i2c__FDATA_t fdata = {.w = 0};
         fdata.f.FBYTE = bytes[i];
 
         // Apply flags (START, STOP, READ, etc.)
-        fdata.w |= (flags & 0xFFFFFF00);  // Keep upper bits as flags
+        fdata.w |= (flags & 0xFFFFFF00); // Keep upper bits as flags
 
         // Write to FMT FIFO
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      fdata.w);
         bytes_written++;
     }
 
@@ -3197,8 +3269,7 @@ int i2c_write_bytes_raw(uint32_t idx, const uint8_t *bytes, size_t size, uint32_
  * @param size Number of bytes to transmit
  * @return Number of bytes actually written, or negative error code
  */
-int i2c_transmit_bytes(uint32_t idx, const uint8_t *bytes, size_t size)
-{
+int i2c_transmit_bytes(uint32_t idx, const uint8_t *bytes, size_t size) {
     if (!bytes || size == 0) {
         return I2C_ERROR_INVALID;
     }
@@ -3209,8 +3280,8 @@ int i2c_transmit_bytes(uint32_t idx, const uint8_t *bytes, size_t size)
     for (size_t i = 0; i < size; i++) {
         // Check if TX FIFO has space
         i2c__TARGET_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (fifo_status.f.TXLVL >= I2C_PARAM_FIFO_DEPTH) {
             // FIFO full, stop writing
@@ -3218,9 +3289,11 @@ int i2c_transmit_bytes(uint32_t idx, const uint8_t *bytes, size_t size)
         }
 
         // Write byte to TX FIFO
-        i2c__TXDATA_t txdata = { .w = 0 };
+        i2c__TXDATA_t txdata = {.w = 0};
         txdata.f.DATA = bytes[i];
-        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), txdata.w);
+        i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                      txdata.w);
         bytes_written++;
     }
 
@@ -3238,8 +3311,7 @@ int i2c_transmit_bytes(uint32_t idx, const uint8_t *bytes, size_t size)
  * @param size Maximum number of entries to read
  * @return Number of entries actually read, or negative error code
  */
-int i2c_acquire_bytes(uint32_t idx, i2c_acq_data_t *buffer, size_t size)
-{
+int i2c_acquire_bytes(uint32_t idx, i2c_acq_data_t *buffer, size_t size) {
     if (!buffer || size == 0) {
         return I2C_ERROR_INVALID;
     }
@@ -3250,8 +3322,8 @@ int i2c_acquire_bytes(uint32_t idx, i2c_acq_data_t *buffer, size_t size)
     for (size_t i = 0; i < size; i++) {
         // Check if ACQ FIFO has data
         i2c__TARGET_FIFO_STATUS_t fifo_status = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if (fifo_status.f.ACQLVL == 0) {
             // No more data available
@@ -3260,12 +3332,12 @@ int i2c_acquire_bytes(uint32_t idx, i2c_acq_data_t *buffer, size_t size)
 
         // Read ACQ data
         i2c__ACQDATA_t acqdata = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         // Parse ACQ data entry
         buffer[i].data = acqdata.f.ABYTE & 0xFF;
-        buffer[i].signal = acqdata.f.SIGNAL & 0x7;  // 3-bit signal field
+        buffer[i].signal = acqdata.f.SIGNAL & 0x7; // 3-bit signal field
         entries_read++;
     }
 
@@ -3286,22 +3358,21 @@ int i2c_acquire_bytes(uint32_t idx, i2c_acq_data_t *buffer, size_t size)
  * @return I2C_OK on success
  */
 int i2c_get_all_fifo_levels(uint32_t idx, uint32_t *fmt_level, uint32_t *rx_level,
-                            uint32_t *tx_level, uint32_t *acq_level)
-{
+                            uint32_t *tx_level, uint32_t *acq_level) {
     uint32_t base = i2c_get_base(idx);
 
     // Read host FIFO status
     i2c__HOST_FIFO_STATUS_t host_status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (fmt_level) *fmt_level = host_status.f.FMTLVL;
     if (rx_level) *rx_level = host_status.f.RXLVL;
 
     // Read target FIFO status
     i2c__TARGET_FIFO_STATUS_t target_status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (tx_level) *tx_level = target_status.f.TXLVL;
     if (acq_level) *acq_level = target_status.f.ACQLVL;
@@ -3324,22 +3395,21 @@ int i2c_get_all_fifo_levels(uint32_t idx, uint32_t *fmt_level, uint32_t *rx_leve
  * @param suppress_nak_irq Suppress NAK interrupt for this byte
  * @return I2C_OK on success, error code on failure
  */
-int i2c_write_byte_formatted(uint32_t idx, uint8_t byte, bool start, bool stop,
-                             bool read, bool read_cont, bool suppress_nak_irq)
-{
+int i2c_write_byte_formatted(uint32_t idx, uint8_t byte, bool start, bool stop, bool read,
+                             bool read_cont, bool suppress_nak_irq) {
     uint32_t base = i2c_get_base(idx);
 
     // Check FIFO space
     i2c__HOST_FIFO_STATUS_t fifo_status = {
-        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     if (fifo_status.f.FMTLVL >= I2C_PARAM_FIFO_DEPTH) {
         return I2C_ERROR_FIFO_FULL;
     }
 
     // Build FDATA with flags
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
     fdata.f.FBYTE = byte;
     fdata.f.START = start ? 1 : 0;
     fdata.f.STOP = stop ? 1 : 0;
@@ -3347,6 +3417,8 @@ int i2c_write_byte_formatted(uint32_t idx, uint8_t byte, bool start, bool stop,
     fdata.f.RCONT = read_cont ? 1 : 0;
     fdata.f.NAKOK = suppress_nak_irq ? 1 : 0;
 
-    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+                  fdata.w);
     return I2C_OK;
 }

@@ -18,8 +18,7 @@
 
 static rom_km_keyreg_t reg;
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(200000)) {

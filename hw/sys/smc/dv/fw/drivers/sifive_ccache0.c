@@ -31,7 +31,9 @@
 static int sifive_ccache0_interrupts[] = METAL_SIFIVE_CCACHE0_INTERRUPTS;
 
 /* Initialize cache at start-up via metal constructors */
-METAL_CONSTRUCTOR(_sifive_ccache0_init) { sifive_ccache0_init(); }
+METAL_CONSTRUCTOR(_sifive_ccache0_init) {
+    sifive_ccache0_init();
+}
 
 /* Linker symbols to calculate LIM allocated size */
 extern char metal_segment_lim_target_start, metal_segment_lim_target_end;
@@ -46,8 +48,7 @@ int sifive_ccache0_init(void) {
     /* Get cache configuration data */
     sifive_ccache0_get_config(&config);
 
-    int lim_size =
-        &metal_segment_lim_target_end - &metal_segment_lim_target_start;
+    int lim_size = &metal_segment_lim_target_end - &metal_segment_lim_target_start;
 
     if (lim_size) { /* Do not enable cache ways, corresponding to LIM area in
                        use. */
@@ -58,8 +59,7 @@ int sifive_ccache0_init(void) {
     }
 
     /* Sanity check */
-    int ccache_size =
-        config.block_size * config.num_sets * config.num_bank * config.num_ways;
+    int ccache_size = config.block_size * config.num_sets * config.num_bank * config.num_ways;
     char *tmp;
 
     tmp = &metal_segment_bss_target_start;
@@ -103,10 +103,8 @@ void sifive_ccache0_get_config(sifive_ccache0_config *config) {
         config->num_ways = ((val >> REG_SHIFT_8) & SIFIVE_CCACHE0_BYTE_MASK);
         /* no. of sets, block size is 2's power of register value
         (2 << (value-1)) */
-        config->num_sets =
-            2 << (((val >> REG_SHIFT_16) & SIFIVE_CCACHE0_BYTE_MASK) - 1);
-        config->block_size =
-            2 << (((val >> REG_SHIFT_24) & SIFIVE_CCACHE0_BYTE_MASK) - 1);
+        config->num_sets = 2 << (((val >> REG_SHIFT_16) & SIFIVE_CCACHE0_BYTE_MASK) - 1);
+        config->block_size = 2 << (((val >> REG_SHIFT_24) & SIFIVE_CCACHE0_BYTE_MASK) - 1);
     }
 }
 
@@ -145,8 +143,7 @@ int sifive_ccache0_set_enabled_ways(uint32_t ways) {
     return ret;
 }
 
-void sifive_ccache0_inject_ecc_error(uint32_t bitindex,
-                                     sifive_ccache0_ecc_errtype_t type) {
+void sifive_ccache0_inject_ecc_error(uint32_t bitindex, sifive_ccache0_ecc_errtype_t type) {
     /* Induce ECC error at given bit index and location */
     REGW(METAL_SIFIVE_CCACHE0_ECCINJECTERROR) =
         (uint32_t)(((type & 0x01) << REG_SHIFT_16) | (bitindex & 0xFF));

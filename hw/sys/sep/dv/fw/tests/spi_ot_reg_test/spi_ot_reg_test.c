@@ -30,21 +30,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -59,7 +55,8 @@ int main(void)
     spi_controller__INTR_ENABLE_t intr_enable;
     spi_controller__INTR_TEST_t intr_test;
     spi_controller__EVENT_ENABLE_t event_enable;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
     configure_spi_mux_ot();
@@ -89,8 +86,7 @@ int main(void)
     if (!check_reg("CSID default", csid_val, 0)) pass = 0;
 
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE default", err_enable.w,
-                   0x11111u)) pass = 0;
+    if (!check_reg("ERROR_ENABLE default", err_enable.w, 0x11111u)) pass = 0;
 
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     if (!check_reg("EVENT_ENABLE default", event_enable.w, 0)) pass = 0;
@@ -106,10 +102,10 @@ int main(void)
     printf("  STATUS=0x%08x\n", status.w);
     if (!check_reg("TXEMPTY=1", status.f.TXEMPTY, 1)) pass = 0;
     if (!check_reg("RXEMPTY=1", status.f.RXEMPTY, 1)) pass = 0;
-    if (!check_reg("READY=1",   status.f.READY,   1)) pass = 0;
-    if (!check_reg("ACTIVE=0",  status.f.ACTIVE,  0)) pass = 0;
-    if (!check_reg("TXFULL=0",  status.f.TXFULL,  0)) pass = 0;
-    if (!check_reg("RXFULL=0",  status.f.RXFULL,  0)) pass = 0;
+    if (!check_reg("READY=1", status.f.READY, 1)) pass = 0;
+    if (!check_reg("ACTIVE=0", status.f.ACTIVE, 0)) pass = 0;
+    if (!check_reg("TXFULL=0", status.f.TXFULL, 0)) pass = 0;
+    if (!check_reg("RXFULL=0", status.f.RXFULL, 0)) pass = 0;
 
     /* Step 2.5: STATUS.BYTEORDER = 1 (LITTLE_ENDIAN parameter) */
     printf("\nStep 2.5: STATUS.BYTEORDER check\n");
@@ -122,22 +118,22 @@ int main(void)
 
     /* INTR_ENABLE */
     intr_enable.w = 0;
-    intr_enable.f.ERROR     = 1;
+    intr_enable.f.ERROR = 1;
     intr_enable.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR, intr_enable.w);
     intr_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
-    if (!check_reg("INTR_ENABLE.error=1",     intr_enable.f.ERROR,     1)) pass = 0;
+    if (!check_reg("INTR_ENABLE.error=1", intr_enable.f.ERROR, 1)) pass = 0;
     if (!check_reg("INTR_ENABLE.spi_event=1", intr_enable.f.SPI_EVENT, 1)) pass = 0;
     /* Restore */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR, 0);
 
     /* INTR_TEST write and readback */
     intr_test.w = 0;
-    intr_test.f.ERROR     = 1;
+    intr_test.f.ERROR = 1;
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_test.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR);
-    if (!check_reg("INTR_TEST.error=1",     intr_test.f.ERROR,     1)) pass = 0;
+    if (!check_reg("INTR_TEST.error=1", intr_test.f.ERROR, 1)) pass = 0;
     if (!check_reg("INTR_TEST.spi_event=1", intr_test.f.SPI_EVENT, 1)) pass = 0;
     /* Clear INTR_TEST */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, 0);
@@ -146,26 +142,26 @@ int main(void)
 
     /* CTRL write-readback (enable controller) */
     ctrl.w = 0u;
-    ctrl.f.SPIEN     = 1;
+    ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    if (!check_reg("CTRL.spien=1",     ctrl.f.SPIEN,     1)) pass = 0;
+    if (!check_reg("CTRL.spien=1", ctrl.f.SPIEN, 1)) pass = 0;
     if (!check_reg("CTRL.output_en=1", ctrl.f.OUTPUT_EN, 1)) pass = 0;
 
     /* CFG write-readback */
     cfg.w = 0;
-    cfg.f.CLKDIV  = 9;
-    cfg.f.CPOL    = 1;
-    cfg.f.CPHA    = 1;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CPOL = 1;
+    cfg.f.CPHA = 1;
     cfg.f.CSNIDLE = 3;
     cfg.f.CSNLEAD = 3;
     cfg.f.CSNTRAIL = 3;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_reg("CFG.clkdiv=9",  cfg.f.CLKDIV,   9)) pass = 0;
-    if (!check_reg("CFG.cpol=1",    cfg.f.CPOL,     1)) pass = 0;
-    if (!check_reg("CFG.cpha=1",    cfg.f.CPHA,     1)) pass = 0;
+    if (!check_reg("CFG.clkdiv=9", cfg.f.CLKDIV, 9)) pass = 0;
+    if (!check_reg("CFG.cpol=1", cfg.f.CPOL, 1)) pass = 0;
+    if (!check_reg("CFG.cpha=1", cfg.f.CPHA, 1)) pass = 0;
     /* Restore CFG to standard mode */
     cfg.w = 0;
     cfg.f.CLKDIV = 9;
@@ -181,25 +177,24 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, 0);
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
     if (!check_reg("ERROR_ENABLE all disabled", err_enable.w, 0)) pass = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
-              0x11111u);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, 0x11111u);
 
     /* EVENT_ENABLE write-readback */
     event_enable.w = 0;
-    event_enable.f.RXFULL  = 1;
+    event_enable.f.RXFULL = 1;
     event_enable.f.TXEMPTY = 1;
-    event_enable.f.RXWM    = 1;
-    event_enable.f.TXWM    = 1;
-    event_enable.f.READY   = 1;
-    event_enable.f.IDLE    = 1;
+    event_enable.f.RXWM = 1;
+    event_enable.f.TXWM = 1;
+    event_enable.f.READY = 1;
+    event_enable.f.IDLE = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
-    if (!check_reg("EVENT_ENABLE.rxfull",  event_enable.f.RXFULL,  1)) pass = 0;
+    if (!check_reg("EVENT_ENABLE.rxfull", event_enable.f.RXFULL, 1)) pass = 0;
     if (!check_reg("EVENT_ENABLE.txempty", event_enable.f.TXEMPTY, 1)) pass = 0;
-    if (!check_reg("EVENT_ENABLE.rxwm",    event_enable.f.RXWM,    1)) pass = 0;
-    if (!check_reg("EVENT_ENABLE.txwm",    event_enable.f.TXWM,    1)) pass = 0;
-    if (!check_reg("EVENT_ENABLE.ready",   event_enable.f.READY,   1)) pass = 0;
-    if (!check_reg("EVENT_ENABLE.idle",    event_enable.f.IDLE,    1)) pass = 0;
+    if (!check_reg("EVENT_ENABLE.rxwm", event_enable.f.RXWM, 1)) pass = 0;
+    if (!check_reg("EVENT_ENABLE.txwm", event_enable.f.TXWM, 1)) pass = 0;
+    if (!check_reg("EVENT_ENABLE.ready", event_enable.f.READY, 1)) pass = 0;
+    if (!check_reg("EVENT_ENABLE.idle", event_enable.f.IDLE, 1)) pass = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
 
     /* -------------------------------------------------------------------
@@ -233,6 +228,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

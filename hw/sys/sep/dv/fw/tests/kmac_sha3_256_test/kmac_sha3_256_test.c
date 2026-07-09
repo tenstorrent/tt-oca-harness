@@ -15,7 +15,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
-#include "kmac_test_vectors.h"  // Auto-generated from Python hashlib
+#include "kmac_test_vectors.h" // Auto-generated from Python hashlib
 
 static int wait_for_idle(void) {
     int timeout = 1000000;
@@ -41,14 +41,11 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static uint32_t byte_swap(uint32_t x) {
-    return ((x >> 24) & 0xFFu) |
-           ((x >> 8) & 0xFF00u) |
-           ((x << 8) & 0xFF0000u) |
+    return ((x >> 24) & 0xFFu) | ((x >> 8) & 0xFF00u) | ((x << 8) & 0xFF0000u) |
            ((x << 24) & 0xFF000000u);
 }
 
@@ -61,7 +58,7 @@ static int sha3_256_abc_test(void) {
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;
     cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x2;  /* SW mode = 0x2 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x2; /* SW mode = 0x2 (0=None, 1=EDN, 2=SW per hjson) */
     cfg.f.msg_endianness = 0;
     cfg.f.state_endianness = 0;
     cfg.f.entropy_ready = 0;
@@ -101,9 +98,9 @@ static int sha3_256_abc_test(void) {
     {
         volatile uint8_t *fifo8 =
             (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
-        fifo8[0] = 'a';  /* sb[0] → wmask=4'b0001, absorbed at pos_q=0  → pos_q=8  */
-        fifo8[0] = 'b';  /* sb[0] → wmask=4'b0001, absorbed at pos_q=8  → pos_q=16 */
-        fifo8[0] = 'c';  /* sb[0] → wmask=4'b0001, absorbed at pos_q=16 → pos_q=24 */
+        fifo8[0] = 'a'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=0  → pos_q=8  */
+        fifo8[0] = 'b'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=8  → pos_q=16 */
+        fifo8[0] = 'c'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=16 → pos_q=24 */
     }
     printf("  Message abc written (3 bytes via sb[0] x3 to word-aligned base)\n");
 
@@ -116,12 +113,10 @@ static int sha3_256_abc_test(void) {
 
     /* Read words 0-11 (SHA-3-256 output + A[3][0] + A[4][0]) */
     uint32_t share0[12], share1[12], digest[8];
-    for (int i = 0; i < 12; i++)
-        share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
+    for (int i = 0; i < 12; i++) share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
     for (int i = 0; i < 12; i++)
         share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
-    for (int i = 0; i < 8; i++)
-        digest[i] = share0[i] ^ share1[i];
+    for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 
     printf("  Share0[0:11]:");
     for (int i = 0; i < 12; i++) printf(" %08x", share0[i]);
@@ -130,8 +125,8 @@ static int sha3_256_abc_test(void) {
     printf("\n  Digest[0:7]:");
     for (int i = 0; i < 8; i++) printf(" %08x", digest[i]);
     /* Also show A[4][0] (words 8-9) XOR */
-    printf("\n  A[4][0]:     %08x %08x  (w8^w8_s1, w9^w9_s1)",
-           share0[8]^share1[8], share0[9]^share1[9]);
+    printf("\n  A[4][0]:     %08x %08x  (w8^w8_s1, w9^w9_s1)", share0[8] ^ share1[8],
+           share0[9] ^ share1[9]);
     printf("\n  Expected:");
     for (int i = 0; i < 8; i++) printf(" %08x", sha3_256_abc_ref[i]);
     printf("\n");
@@ -144,10 +139,10 @@ static int sha3_256_abc_test(void) {
      * If state_endianness=1 was used, no byte-swap would be needed. */
     int pass = 1;
     for (int i = 0; i < 8; i++) {
-        uint32_t digest_be = byte_swap(digest[i]);  // Convert LE → BE
+        uint32_t digest_be = byte_swap(digest[i]); // Convert LE → BE
         if (digest_be != sha3_256_abc_ref[i]) {
-            printf("  FAIL: word %d mismatch: got 0x%08x, expected 0x%08x\n",
-                   i, digest_be, sha3_256_abc_ref[i]);
+            printf("  FAIL: word %d mismatch: got 0x%08x, expected 0x%08x\n", i, digest_be,
+                   sha3_256_abc_ref[i]);
             pass = 0;
         }
     }

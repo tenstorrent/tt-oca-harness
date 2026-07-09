@@ -109,8 +109,7 @@ __inline__ int metal_uart_get_baud_rate(struct metal_uart *uart) {
  * @param baud_rate The baud rate to configure
  * @return the new baud rate of the UART
  */
-__inline__ int metal_uart_set_baud_rate(struct metal_uart *uart,
-                                        int baud_rate) {
+__inline__ int metal_uart_set_baud_rate(struct metal_uart *uart, int baud_rate) {
     return uart->vtable->set_baud_rate(uart, baud_rate);
 }
 
@@ -124,8 +123,7 @@ __inline__ int metal_uart_set_baud_rate(struct metal_uart *uart,
  * @param uart The UART device handle
  * @return The handle for the UART interrupt controller
  */
-__inline__ struct metal_interrupt *
-metal_uart_interrupt_controller(struct metal_uart *uart) {
+__inline__ struct metal_interrupt *metal_uart_interrupt_controller(struct metal_uart *uart) {
     return uart->vtable->controller_interrupt(uart);
 }
 
@@ -180,8 +178,7 @@ __inline__ int metal_uart_receive_interrupt_disable(struct metal_uart *uart) {
  * @param level The UART transmit watermark level
  * @return 0 upon success
  */
-__inline__ int metal_uart_set_transmit_watermark(struct metal_uart *uart,
-                                                 size_t level) {
+__inline__ int metal_uart_set_transmit_watermark(struct metal_uart *uart, size_t level) {
     return uart->vtable->set_tx_watermark(uart, level);
 }
 
@@ -200,8 +197,7 @@ __inline__ size_t metal_uart_get_transmit_watermark(struct metal_uart *uart) {
  * @param level The UART transmit watermark level
  * @return 0 upon success
  */
-__inline__ int metal_uart_set_receive_watermark(struct metal_uart *uart,
-                                                size_t level) {
+__inline__ int metal_uart_set_receive_watermark(struct metal_uart *uart, size_t level) {
     return uart->vtable->set_rx_watermark(uart, level);
 }
 

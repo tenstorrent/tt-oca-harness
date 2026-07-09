@@ -19,11 +19,10 @@
 #include "key_manager_addr.h"
 
 /* Register access macros using struct types */
-#define KMCSR_VERSION_REG   (*(volatile km_csr__version_reg_t *)KEY_MANAGER_KMCSR_VERSION_BASE_ADDR)
-#define KMCSR_DEBUG_REG     (*(volatile km_csr__debug_reg_t *)KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR)
+#define KMCSR_VERSION_REG (*(volatile km_csr__version_reg_t *)KEY_MANAGER_KMCSR_VERSION_BASE_ADDR)
+#define KMCSR_DEBUG_REG (*(volatile km_csr__debug_reg_t *)KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR)
 
-int main(void)
-{
+int main(void) {
     uint32_t version_val;
     uint32_t debug_val;
 

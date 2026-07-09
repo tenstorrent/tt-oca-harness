@@ -19,12 +19,14 @@
 #include "key_manager_addr.h"
 
 /* DRBG Sampler registers (generated struct types from key_manager_regs.h) */
-#define DRBG_DATA_REG   (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
-#define DRBG_CFG_REG    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
-#define DRBG_STATUS_REG (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+#define DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 
-int main(void)
-{
+int main(void) {
     uint32_t expected;
     uint32_t read_val;
 
@@ -37,7 +39,7 @@ int main(void)
 
     /* Ensure prefetch is disabled (default); CFG.PREFETCH = 0 */
     TEST_SUBTEST_START("DRBG CFG prefetch disabled");
-    DRBG_CFG_REG.w = 0;  /* PREFETCH=0, TIMEOUT default or 0 */
+    DRBG_CFG_REG.w = 0; /* PREFETCH=0, TIMEOUT default or 0 */
     test_delay(10);
     TEST_ASSERT_EQ(DRBG_CFG_REG.f.prefetch, 0u, "CFG.PREFETCH");
     TEST_SUBTEST_PASS();
@@ -58,7 +60,7 @@ int main(void)
         if (i >= max_poll) {
             TEST_FAIL("STATUS.DRBG_READY not set after %u polls", (unsigned)max_poll);
         }
-        (void)DRBG_DATA_REG.f.data;  /* consume prefetched word */
+        (void)DRBG_DATA_REG.f.data; /* consume prefetched word */
     }
     DRBG_CFG_REG.f.prefetch = 0;
     TEST_SUBTEST_PASS();

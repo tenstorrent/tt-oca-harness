@@ -21,30 +21,32 @@
 #include "key_manager_addr.h"
 
 /* DRBG Sampler registers (struct-based access from key_manager_regs.h) */
-#define DRBG_DATA_REG   (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
-#define DRBG_CFG_REG    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
-#define DRBG_STATUS_REG (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+#define DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 /* KMCSR IRQ regs: use KMCSR_IRQ_STATUS_REG / KMCSR_IRQ_ENABLE_REG from irq_common.h */
 
-#define DRBG_TIMEOUT_CYCLES      256u  /* CFG.TIMEOUT value for test (RTL waits this long then sets TIMEOUT_ERR) */
-#define DATA_READ_UNTIL_TIMEOUT_MAX 20u /* Loop: read DATA, check STATUS.timeout_err; repeat until set or limit */
+#define DRBG_TIMEOUT_CYCLES \
+    256u /* CFG.TIMEOUT value for test (RTL waits this long then sets TIMEOUT_ERR) */
+#define DATA_READ_UNTIL_TIMEOUT_MAX \
+    20u /* Loop: read DATA, check STATUS.timeout_err; repeat until set or limit */
 
-static void clear_drbg_timeout_status(void)
-{
+static void clear_drbg_timeout_status(void) {
     km_drbg_sampler__status_reg_t w1c = {0};
     w1c.f.timeout_err = 1;
     DRBG_STATUS_REG.w = w1c.w;
 }
 
-static void clear_kmcsr_drbg_err(void)
-{
+static void clear_kmcsr_drbg_err(void) {
     km_csr__irq_status_reg_t w1c = {0};
     w1c.f.drbg_err = 1;
     rom_kmcsr_irq_status_clear(w1c.w);
 }
 
-static void enable_drbg_irq(void)
-{
+static void enable_drbg_irq(void) {
     km_csr__irq_enable_reg_t en = {.w = rom_kmcsr_irq_enable_read()};
     en.f.drbg_err_en = 1;
     rom_kmcsr_irq_enable_write(en.w);
@@ -55,8 +57,7 @@ static void enable_drbg_irq(void)
  * may complete one beat so the first read can succeed; a later read will time out.
  * Returns 1 if timeout_err was set, 0 if loop limit reached without timeout.
  */
-static int data_read_until_timeout_err(void)
-{
+static int data_read_until_timeout_err(void) {
     for (uint32_t i = 0; i < DATA_READ_UNTIL_TIMEOUT_MAX; i++) {
         (void)DRBG_DATA_REG.f.data;
         if (DRBG_STATUS_REG.f.timeout_err != 0) {
@@ -66,11 +67,11 @@ static int data_read_until_timeout_err(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    /* Test timeout: two subtests; each can do up to 20 DATA reads × 256-cycle RTL timeout + TB cmd ack */
+    /* Test timeout: two subtests; each can do up to 20 DATA reads × 256-cycle RTL timeout + TB cmd
+     * ack */
     if (!tb_set_timeout(30000)) {
         TEST_FAIL("tb_set_timeout failed");
     }
@@ -98,8 +99,8 @@ int main(void)
         TEST_FAIL("IRQ_STATUS.DRBG_ERR not clear at start");
     }
 
-    (void)DRBG_DATA_REG.f.data;  /* beat 1 */
-    (void)DRBG_DATA_REG.f.data;  /* beat 2 */
+    (void)DRBG_DATA_REG.f.data; /* beat 1 */
+    (void)DRBG_DATA_REG.f.data; /* beat 2 */
 
     if (!tb_drbg_stop(1000)) {
         TEST_FAIL("tb_drbg_stop failed");
@@ -119,7 +120,8 @@ int main(void)
     if (DRBG_STATUS_REG.f.count_bad == 0) {
         TEST_FAIL("STATUS.COUNT_BAD not incremented after timeout");
     }
-    TEST_LOG("  TIMEOUT_ERR and DRBG_ERR set, DRBG_READY clear, COUNT_BAD incremented (prefetch off)");
+    TEST_LOG(
+        "  TIMEOUT_ERR and DRBG_ERR set, DRBG_READY clear, COUNT_BAD incremented (prefetch off)");
     TEST_SUBTEST_PASS();
 
     clear_drbg_timeout_status();
@@ -142,8 +144,8 @@ int main(void)
         TEST_FAIL("IRQ_STATUS.DRBG_ERR not clear at start");
     }
 
-    (void)DRBG_DATA_REG.f.data;  /* beat 1 */
-    (void)DRBG_DATA_REG.f.data;  /* beat 2 */
+    (void)DRBG_DATA_REG.f.data; /* beat 1 */
+    (void)DRBG_DATA_REG.f.data; /* beat 2 */
 
     if (!tb_drbg_stop(1000)) {
         TEST_FAIL("tb_drbg_stop failed");
@@ -163,7 +165,8 @@ int main(void)
     if (DRBG_STATUS_REG.f.count_bad == 0) {
         TEST_FAIL("STATUS.COUNT_BAD not incremented after timeout");
     }
-    TEST_LOG("  TIMEOUT_ERR and DRBG_ERR set, DRBG_READY clear, COUNT_BAD incremented (prefetch on)");
+    TEST_LOG(
+        "  TIMEOUT_ERR and DRBG_ERR set, DRBG_READY clear, COUNT_BAD incremented (prefetch on)");
     TEST_SUBTEST_PASS();
 
     TEST_PASS();

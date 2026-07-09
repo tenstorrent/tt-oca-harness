@@ -38,13 +38,11 @@
 
 #define TIMEOUT_LIMIT 100000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -71,8 +69,7 @@ int main(void)
     /* ------------------------------------------------------------------ */
     printf("Step 1: Default watermark values\n");
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    printf("  CTRL=0x%08x: TX_WM=%u, RX_WM=%u\n",
-           ctrl.w, ctrl.f.TX_WATERMARK, ctrl.f.RX_WATERMARK);
+    printf("  CTRL=0x%08x: TX_WM=%u, RX_WM=%u\n", ctrl.w, ctrl.f.TX_WATERMARK, ctrl.f.RX_WATERMARK);
     if (ctrl.f.TX_WATERMARK != 0) {
         printf("  FAIL: Default TX_WM expected 0, got %u\n", ctrl.f.TX_WATERMARK);
         pass = 0;
@@ -88,8 +85,9 @@ int main(void)
 
     /* Verify STATUS bits with default watermarks (TX FIFO empty) */
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS: TXWM=%u (expected 0: TXQD=0 not < 0), RXWM=%u (expected 0: RXQD=0 not > 127)\n",
-           status.f.TXWM, status.f.RXWM);
+    printf(
+        "  STATUS: TXWM=%u (expected 0: TXQD=0 not < 0), RXWM=%u (expected 0: RXQD=0 not > 127)\n",
+        status.f.TXWM, status.f.RXWM);
     if (status.f.TXWM != 0) {
         printf("  FAIL: TXWM should be 0 with TX_WM=0\n");
         pass = 0;
@@ -106,8 +104,7 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TX_WM=1, TXQD=%u → TXWM=%u (expected 1)\n",
-           status.f.TXQD, status.f.TXWM);
+    printf("  TX_WM=1, TXQD=%u → TXWM=%u (expected 1)\n", status.f.TXQD, status.f.TXWM);
     if (status.f.TXWM != 1) {
         printf("  FAIL: TXWM should be 1 (TXQD=%u < TX_WM=1)\n", status.f.TXQD);
         pass = 0;
@@ -123,8 +120,7 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x11223344);
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TX_WM=1, TXQD=%u → TXWM=%u (expected 0)\n",
-           status.f.TXQD, status.f.TXWM);
+    printf("  TX_WM=1, TXQD=%u → TXWM=%u (expected 0)\n", status.f.TXQD, status.f.TXWM);
     if (status.f.TXWM != 0) {
         printf("  FAIL: TXWM should be 0 (TXQD=%u >= TX_WM=1)\n", status.f.TXQD);
         pass = 0;
@@ -141,8 +137,7 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TX_WM=4, TXQD=%u → TXWM=%u (expected 1)\n",
-           status.f.TXQD, status.f.TXWM);
+    printf("  TX_WM=4, TXQD=%u → TXWM=%u (expected 1)\n", status.f.TXQD, status.f.TXWM);
     if (status.f.TXWM != 1) {
         printf("  FAIL: TXWM should be 1 (TXQD=%u < TX_WM=4)\n", status.f.TXQD);
         pass = 0;
@@ -158,8 +153,7 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x99AABBCC);
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TX_WM=4, TXQD=%u → TXWM=%u (expected 0)\n",
-           status.f.TXQD, status.f.TXWM);
+    printf("  TX_WM=4, TXQD=%u → TXWM=%u (expected 0)\n", status.f.TXQD, status.f.TXWM);
     if (status.f.TXWM != 0) {
         printf("  FAIL: TXWM should be 0 (TXQD=%u >= TX_WM=4)\n", status.f.TXQD);
         pass = 0;
@@ -176,8 +170,7 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TX_WM=0, TXQD=%u → TXWM=%u (expected 0)\n",
-           status.f.TXQD, status.f.TXWM);
+    printf("  TX_WM=0, TXQD=%u → TXWM=%u (expected 0)\n", status.f.TXQD, status.f.TXWM);
     if (status.f.TXWM != 0) {
         printf("  FAIL: TXWM should be 0 with TX_WM=0 (no threshold)\n");
         pass = 0;
@@ -227,11 +220,11 @@ int main(void)
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 1000; delay++) {}
+    for (delay = 0; delay < 1000; delay++) {
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n",
-           status.f.TXEMPTY, status.f.TXQD);
+    printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXQD);
     if (!status.f.TXEMPTY) {
         printf("  FAIL: TXEMPTY should be 1 after SW_RST\n");
         pass = 0;
@@ -249,6 +242,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

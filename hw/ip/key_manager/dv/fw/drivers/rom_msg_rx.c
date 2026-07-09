@@ -31,8 +31,7 @@
  *
  * @param word Output word.
  */
-static void rx_pop_word(uint32_t *word)
-{
+static void rx_pop_word(uint32_t *word) {
     uint32_t saved = rom_picorv32_maskirq(0xFFFFFFFF);
     rom_picorv32_maskirq(saved | ROM_KM_IRQ_MBOX_BIT);
     rom_msgbuf_pop_word(&rom_rx_msgbuf, word);
@@ -44,8 +43,7 @@ static void rx_pop_word(uint32_t *word)
  *
  * Re-enables inbound mailbox IRQ after the frame is dropped.
  */
-static void rx_consume_frame(void)
-{
+static void rx_consume_frame(void) {
     uint32_t saved = rom_picorv32_maskirq(0xFFFFFFFF);
     rom_picorv32_maskirq(saved | ROM_KM_IRQ_MBOX_BIT);
     rom_msgbuf_consume_frame(&rom_rx_msgbuf);
@@ -66,9 +64,8 @@ static void rx_consume_frame(void)
  * @param has_arg Non-zero when `arg` is valid.
  * @param arg Optional return argument.
  */
-static void send_resp_cmd(uint8_t cmd_seq, uint8_t cmd_id,
-                           int8_t rc, uint8_t has_arg, uint32_t arg)
-{
+static void send_resp_cmd(uint8_t cmd_seq, uint8_t cmd_id, int8_t rc, uint8_t has_arg,
+                          uint32_t arg) {
     uint32_t payload[4];
     uint8_t len;
 
@@ -95,8 +92,7 @@ static void send_resp_cmd(uint8_t cmd_seq, uint8_t cmd_id,
  *
  * No-ops when no complete frame is available.
  */
-void rom_msg_rx_process(void)
-{
+void rom_msg_rx_process(void) {
     /*
      * Step 1: Check degenerate overflow — buffer full with only a partial
      * frame means one unterminated message consumed all space.
@@ -105,7 +101,7 @@ void rom_msg_rx_process(void)
         rom_mailbox_flush();
         rom_msgbuf_flush(&rom_rx_msgbuf);
         rom_msgbuf_flush(&rom_tx_msgbuf);
-        rom_cmd_seq_num  = 0;
+        rom_cmd_seq_num = 0;
         rom_resp_seq_num = 0;
         rom_trigger_recoverable(ROM_KM_RFAULT_RX_BUFF_OFLOW);
         rom_mailbox_enable_inbound_irq();
@@ -122,8 +118,7 @@ void rom_msg_rx_process(void)
      * accept more words.
      */
     if (rom_msgbuf_frame_available(&rom_rx_msgbuf) == 0) {
-        if (!rom_mailbox_inbound_empty() &&
-            rom_msgbuf_space_available(&rom_rx_msgbuf) > 0u)
+        if (!rom_mailbox_inbound_empty() && rom_msgbuf_space_available(&rom_rx_msgbuf) > 0u)
             rom_mailbox_enable_inbound_irq();
         return;
     }
@@ -143,16 +138,15 @@ void rom_msg_rx_process(void)
     uint8_t computed_hdr_crc = rom_crc8_rohc((const uint8_t *)&hdr_word, 3);
     if (computed_hdr_crc != header.header_crc8) {
         rx_consume_frame();
-        send_resp_cmd(header.seq_num, header.id,
-                      ROM_KM_RC_HEADER_CRC, 1, (uint32_t)computed_hdr_crc);
+        send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_HEADER_CRC, 1,
+                      (uint32_t)computed_hdr_crc);
         return;
     }
 
     /* Step 6: Validate sequence number. */
     if (header.seq_num != rom_cmd_seq_num) {
         rx_consume_frame();
-        send_resp_cmd(header.seq_num, header.id,
-                      ROM_KM_RC_CMD_NOSEQ, 1, (uint32_t)rom_cmd_seq_num);
+        send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_CMD_NOSEQ, 1, (uint32_t)rom_cmd_seq_num);
         return;
     }
     rom_cmd_seq_num++;
@@ -160,8 +154,7 @@ void rom_msg_rx_process(void)
     /* Step 7: Validate command ID. */
     if (!ROM_KM_CMD_IS_VALID(header.id)) {
         rx_consume_frame();
-        send_resp_cmd(header.seq_num, header.id,
-                      ROM_KM_RC_INVALID_CMD, 0, 0);
+        send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_INVALID_CMD, 0, 0);
         return;
     }
 
@@ -169,34 +162,30 @@ void rom_msg_rx_process(void)
      * Step 8: Validate payload length.
      * Expected frame length = 1 (header) + payload_len + (payload_len > 0 ? 1 : 0) (CRC).
      */
-    uint16_t expected_frame_len = (uint16_t)(1u + (unsigned)header.payload_len
-                                  + (header.payload_len > 0 ? 1u : 0u));
+    uint16_t expected_frame_len =
+        (uint16_t)(1u + (unsigned)header.payload_len + (header.payload_len > 0 ? 1u : 0u));
     if (frame_len != expected_frame_len) {
-        uint32_t actual_payload = (frame_len > 1)
-            ? (uint32_t)(frame_len - 1 - (frame_len > 2 ? 1 : 0))
-            : 0u;
+        uint32_t actual_payload =
+            (frame_len > 1) ? (uint32_t)(frame_len - 1 - (frame_len > 2 ? 1 : 0)) : 0u;
         rx_consume_frame();
-        send_resp_cmd(header.seq_num, header.id,
-                      ROM_KM_RC_INVALID_LEN, 1, actual_payload);
+        send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_INVALID_LEN, 1, actual_payload);
         return;
     }
 
     /* Step 9: Read payload words (if any). */
     uint32_t payload[header.payload_len ? header.payload_len : 1];
-    for (uint8_t i = 0; i < header.payload_len; i++)
-        rx_pop_word(&payload[i]);
+    for (uint8_t i = 0; i < header.payload_len; i++) rx_pop_word(&payload[i]);
 
     /* Step 10: Validate payload CRC-32C (if payload present). */
     if (header.payload_len > 0) {
         uint32_t rx_crc;
         rx_pop_word(&rx_crc);
 
-        uint32_t computed_crc = rom_crc32c((const uint8_t *)payload,
-                                           (uint32_t)header.payload_len * 4);
+        uint32_t computed_crc =
+            rom_crc32c((const uint8_t *)payload, (uint32_t)header.payload_len * 4);
         if (rx_crc != computed_crc) {
             rx_consume_frame();
-            send_resp_cmd(header.seq_num, header.id,
-                          ROM_KM_RC_PAYLOAD_CRC, 1, computed_crc);
+            send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_PAYLOAD_CRC, 1, computed_crc);
             return;
         }
     }
@@ -206,24 +195,19 @@ void rom_msg_rx_process(void)
      * commands are permitted while the error flag is asserted.
      */
     if (rom_kmcsr_recoverable_err_bit_read()) {
-        if (header.id != ROM_KM_CMD_HW_VER   &&
-            header.id != ROM_KM_CMD_ROM_VER   &&
-            header.id != ROM_KM_CMD_SRAM_VER  &&
-            header.id != ROM_KM_CMD_STAT      &&
+        if (header.id != ROM_KM_CMD_HW_VER && header.id != ROM_KM_CMD_ROM_VER &&
+            header.id != ROM_KM_CMD_SRAM_VER && header.id != ROM_KM_CMD_STAT &&
             header.id != ROM_KM_CMD_RECOV_ACK) {
             rx_consume_frame();
-            send_resp_cmd(header.seq_num, header.id,
-                          ROM_KM_RC_FAILURE, 0, 0);
+            send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_FAILURE, 0, 0);
             return;
         }
     }
 
     /* Step 12: Dispatch to command handler. */
-    rom_km_cmd_result_t result = rom_cmd_dispatch(header.id, header.payload_len,
-                                              payload);
+    rom_km_cmd_result_t result = rom_cmd_dispatch(header.id, header.payload_len, payload);
 
     /* Step 13: Drop the fully processed frame, then send RESP_CMD. */
     rx_consume_frame();
-    send_resp_cmd(header.seq_num, header.id,
-                  result.return_code, result.has_arg, result.return_arg);
+    send_resp_cmd(header.seq_num, header.id, result.return_code, result.has_arg, result.return_arg);
 }

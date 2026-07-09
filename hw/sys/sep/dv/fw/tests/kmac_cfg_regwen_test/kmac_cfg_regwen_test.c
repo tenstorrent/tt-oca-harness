@@ -37,8 +37,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static int test_cfg_regwen(void) {
@@ -59,7 +58,7 @@ static int test_cfg_regwen(void) {
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;
     cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -95,14 +94,14 @@ static int test_cfg_regwen(void) {
     alt_cfg.f.kmac_en = 0;
     alt_cfg.f.mode = 0x1;
     alt_cfg.f.kstrength = 0x2;
-    alt_cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    alt_cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     alt_cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
 
     uint32_t after_write = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
-    printf("CFG_SHADOWED before=0x%08x attempted=0x%08x after=0x%08x\n",
-           saved_cfg, alt_cfg.w, after_write);
+    printf("CFG_SHADOWED before=0x%08x attempted=0x%08x after=0x%08x\n", saved_cfg, alt_cfg.w,
+           after_write);
     if (after_write != saved_cfg) {
         printf("FAIL: CFG_SHADOWED changed while REGWEN=0\n");
         errors++;
@@ -152,5 +151,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

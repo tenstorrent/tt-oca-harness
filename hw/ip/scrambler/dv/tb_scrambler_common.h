@@ -24,7 +24,9 @@
 // 32-bit LCG for reproducible pseudo-random data
 static uint32_t lcg_state = 0;
 
-static inline void lcg_seed(uint32_t seed) { lcg_state = seed; }
+static inline void lcg_seed(uint32_t seed) {
+    lcg_state = seed;
+}
 static inline uint32_t lcg_rand() {
     lcg_state = lcg_state * 1664525u + 1013904223u;
     return lcg_state;
@@ -35,8 +37,7 @@ static inline uint32_t lcg_rand() {
 //   Phase 1: write all addresses ascending (random data), read back ascending
 //   Phase 2: write all addresses descending (sequential), read back descending
 //-----------------------------------------------------------------------------
-template<class DUT>
-int run_word_tests(DUT& dut, int mem_depth, const char* name) {
+template <class DUT> int run_word_tests(DUT &dut, int mem_depth, const char *name) {
     static const uint32_t KEY = 0xDEADBEEFu;
     std::vector<uint32_t> memory(mem_depth, 0);
     std::vector<uint32_t> expected(mem_depth, 0);
@@ -44,7 +45,7 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
     int errors;
 
     dut.scrambler_key_i = KEY;
-    dut.byte_mask_i     = 0xF;
+    dut.byte_mask_i = 0xF;
 
     printf("========================================\n");
     printf("Scrambler %s  BYTE_WISE=0 Tests\n", name);
@@ -55,17 +56,15 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
     printf("\n--- Phase 1: Ascending ---\n");
     lcg_seed(42);
     for (int i = 0; i < mem_depth; i++) {
-        dut.addr_i       = static_cast<uint16_t>(i);
+        dut.addr_i = static_cast<uint16_t>(i);
         dut.write_data_i = lcg_rand();
         dut.eval();
         expected[i] = dut.write_data_i;
         memory[dut.scrambled_addr_o] = dut.scrambled_write_data_o;
         if (i < 10)
-            printf("Write[%3d]: addr=0x%03X->0x%03X  data=0x%08X->0x%08X\n",
-                   i, static_cast<unsigned>(dut.addr_i),
-                   static_cast<unsigned>(dut.scrambled_addr_o),
-                   expected[i],
-                   static_cast<unsigned>(dut.scrambled_write_data_o));
+            printf("Write[%3d]: addr=0x%03X->0x%03X  data=0x%08X->0x%08X\n", i,
+                   static_cast<unsigned>(dut.addr_i), static_cast<unsigned>(dut.scrambled_addr_o),
+                   expected[i], static_cast<unsigned>(dut.scrambled_write_data_o));
     }
     errors = 0;
     for (int i = 0; i < mem_depth; i++) {
@@ -77,13 +76,11 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
         if (got != expected[i]) {
             errors++;
             if (errors <= 10)
-                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n",
-                       i, expected[i], got);
+                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n", i, expected[i], got);
         }
         if (i < 10)
-            printf("Read[%3d]:  addr=0x%03X  out=0x%08X  exp=0x%08X  %s\n",
-                   i, static_cast<unsigned>(dut.addr_i),
-                   got, expected[i],
+            printf("Read[%3d]:  addr=0x%03X  out=0x%08X  exp=0x%08X  %s\n", i,
+                   static_cast<unsigned>(dut.addr_i), got, expected[i],
                    (got == expected[i]) ? "PASS" : "FAIL");
     }
     total_errors += errors;
@@ -93,7 +90,7 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
     // --- Phase 2: descending write, descending read ---
     printf("\n--- Phase 2: Descending ---\n");
     for (int i = mem_depth - 1; i >= 0; i--) {
-        dut.addr_i       = static_cast<uint16_t>(i);
+        dut.addr_i = static_cast<uint16_t>(i);
         dut.write_data_i = static_cast<uint32_t>(mem_depth - 1 - i);
         dut.eval();
         expected[i] = dut.write_data_i;
@@ -109,8 +106,7 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
         if (got != expected[i]) {
             errors++;
             if (errors <= 10)
-                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n",
-                       i, expected[i], got);
+                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n", i, expected[i], got);
         }
     }
     total_errors += errors;
@@ -120,8 +116,7 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
     printf("\n========================================\n");
     printf("All Tests Complete - %s  BYTE_WISE=0\n", name);
     printf("Total Errors: %d/%d\n", total_errors, mem_depth * 2);
-    printf(total_errors == 0 ? "*** ALL TESTS PASSED ***\n"
-                             : "*** TESTS FAILED ***\n");
+    printf(total_errors == 0 ? "*** ALL TESTS PASSED ***\n" : "*** TESTS FAILED ***\n");
     printf("========================================\n");
     return total_errors;
 }
@@ -131,8 +126,7 @@ int run_word_tests(DUT& dut, int mem_depth, const char* name) {
 //   Phase 1: write ascending (random data, full mask), read back ascending
 //   Phase 2: write descending (sequential, full mask), read back descending
 //-----------------------------------------------------------------------------
-template<class DUT>
-int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
+template <class DUT> int run_bytewise_tests(DUT &dut, int mem_depth, const char *name) {
     static const uint32_t KEY = 0xDEADBEEFu;
     std::vector<uint32_t> memory(mem_depth, 0);
     std::vector<uint32_t> expected(mem_depth, 0);
@@ -140,7 +134,7 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
     int errors;
 
     dut.scrambler_key_i = KEY;
-    dut.byte_mask_i     = 0xF;
+    dut.byte_mask_i = 0xF;
 
     printf("========================================\n");
     printf("Scrambler %s  BYTE_WISE=1 Tests\n", name);
@@ -151,17 +145,15 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
     printf("\n--- Phase 1: Full mask (0xF), ascending ---\n");
     lcg_seed(42);
     for (int i = 0; i < mem_depth; i++) {
-        dut.addr_i       = static_cast<uint16_t>(i);
+        dut.addr_i = static_cast<uint16_t>(i);
         dut.write_data_i = lcg_rand();
         dut.eval();
         expected[i] = dut.write_data_i;
         memory[dut.scrambled_addr_o] = dut.scrambled_write_data_o;
         if (i < 10)
-            printf("Write[%3d]: addr=0x%03X->0x%03X  data=0x%08X->0x%08X\n",
-                   i, static_cast<unsigned>(dut.addr_i),
-                   static_cast<unsigned>(dut.scrambled_addr_o),
-                   expected[i],
-                   static_cast<unsigned>(dut.scrambled_write_data_o));
+            printf("Write[%3d]: addr=0x%03X->0x%03X  data=0x%08X->0x%08X\n", i,
+                   static_cast<unsigned>(dut.addr_i), static_cast<unsigned>(dut.scrambled_addr_o),
+                   expected[i], static_cast<unsigned>(dut.scrambled_write_data_o));
     }
     errors = 0;
     for (int i = 0; i < mem_depth; i++) {
@@ -173,13 +165,11 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
         if (got != expected[i]) {
             errors++;
             if (errors <= 10)
-                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n",
-                       i, expected[i], got);
+                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n", i, expected[i], got);
         }
         if (i < 10)
-            printf("Read[%3d]:  addr=0x%03X  out=0x%08X  exp=0x%08X  %s\n",
-                   i, static_cast<unsigned>(dut.addr_i),
-                   got, expected[i],
+            printf("Read[%3d]:  addr=0x%03X  out=0x%08X  exp=0x%08X  %s\n", i,
+                   static_cast<unsigned>(dut.addr_i), got, expected[i],
                    (got == expected[i]) ? "PASS" : "FAIL");
     }
     total_errors += errors;
@@ -189,7 +179,7 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
     // --- Phase 2: descending write (sequential), descending read ---
     printf("\n--- Phase 2: Full mask (0xF), descending ---\n");
     for (int i = mem_depth - 1; i >= 0; i--) {
-        dut.addr_i       = static_cast<uint16_t>(i);
+        dut.addr_i = static_cast<uint16_t>(i);
         dut.write_data_i = static_cast<uint32_t>(i);
         dut.eval();
         expected[i] = dut.write_data_i;
@@ -205,8 +195,7 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
         if (got != expected[i]) {
             errors++;
             if (errors <= 10)
-                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n",
-                       i, expected[i], got);
+                printf("ERROR addr %d: expected 0x%08X  got 0x%08X\n", i, expected[i], got);
         }
     }
     total_errors += errors;
@@ -216,8 +205,7 @@ int run_bytewise_tests(DUT& dut, int mem_depth, const char* name) {
     printf("\n========================================\n");
     printf("All Tests Complete - %s  BYTE_WISE=1\n", name);
     printf("Total Errors: %d/%d\n", total_errors, mem_depth * 2);
-    printf(total_errors == 0 ? "*** ALL TESTS PASSED ***\n"
-                             : "*** TESTS FAILED ***\n");
+    printf(total_errors == 0 ? "*** ALL TESTS PASSED ***\n" : "*** TESTS FAILED ***\n");
     printf("========================================\n");
     return total_errors;
 }

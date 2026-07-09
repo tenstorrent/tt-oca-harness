@@ -31,9 +31,10 @@
 #include "key_manager_addr.h"
 
 /* Register access macros using struct types */
-#define VUART_TX_REG       (*(volatile km_csr__vuart_tx_reg_t *)KEY_MANAGER_KMCSR_VUART_TX_BASE_ADDR)
-#define VUART_RX_REG       (*(volatile km_csr__vuart_rx_reg_t *)KEY_MANAGER_KMCSR_VUART_RX_BASE_ADDR)
-#define VUART_STATUS_REG   (*(volatile km_csr__vuart_status_reg_t *)KEY_MANAGER_KMCSR_VUART_STATUS_BASE_ADDR)
+#define VUART_TX_REG (*(volatile km_csr__vuart_tx_reg_t *)KEY_MANAGER_KMCSR_VUART_TX_BASE_ADDR)
+#define VUART_RX_REG (*(volatile km_csr__vuart_rx_reg_t *)KEY_MANAGER_KMCSR_VUART_RX_BASE_ADDR)
+#define VUART_STATUS_REG \
+    (*(volatile km_csr__vuart_status_reg_t *)KEY_MANAGER_KMCSR_VUART_STATUS_BASE_ADDR)
 
 /*---------------------------------------------------------------------------
  * Basic VUART Functions
@@ -42,8 +43,7 @@
 /**
  * Initialize the virtual UART (optional, VUART is always ready)
  */
-static inline void vuart_init(void)
-{
+static inline void vuart_init(void) {
     /* No initialization needed - VUART is always ready */
 }
 
@@ -51,8 +51,7 @@ static inline void vuart_init(void)
  * Check if TX is ready to accept data
  * @return 1 if ready, 0 otherwise
  */
-static inline int vuart_tx_ready(void)
-{
+static inline int vuart_tx_ready(void) {
     return VUART_STATUS_REG.f.tx_ready != 0;
 }
 
@@ -60,8 +59,7 @@ static inline int vuart_tx_ready(void)
  * Check if RX has data available
  * @return 1 if data available, 0 otherwise
  */
-static inline int vuart_rx_valid(void)
-{
+static inline int vuart_rx_valid(void) {
     return VUART_STATUS_REG.f.rx_valid != 0;
 }
 
@@ -69,8 +67,7 @@ static inline int vuart_rx_valid(void)
  * Check if VUART printing is enabled
  * @return 1 if printing enabled, 0 otherwise
  */
-static inline int vuart_print_enabled(void)
-{
+static inline int vuart_print_enabled(void) {
     return VUART_STATUS_REG.f.print_enable != 0;
 }
 
@@ -78,8 +75,7 @@ static inline int vuart_print_enabled(void)
  * Transmit a single character (blocking)
  * @param c Character to transmit
  */
-static inline void vuart_putc(char c)
-{
+static inline void vuart_putc(char c) {
     /* In simulation, TX is always ready (instant capture by testbench).
      * Skip the wait loop to avoid hangs if hardware isn't perfectly set up.
      * For real UART, you would wait for TX ready here.
@@ -93,10 +89,10 @@ static inline void vuart_putc(char c)
  * Receive a single character (blocking)
  * @return Received character
  */
-static inline char vuart_getc(void)
-{
+static inline char vuart_getc(void) {
     /* Wait for RX data valid */
-    while (!vuart_rx_valid()) { }
+    while (!vuart_rx_valid()) {
+    }
 
     /* Read and return character */
     return (char)VUART_RX_REG.f.rx_byte;
@@ -106,8 +102,7 @@ static inline char vuart_getc(void)
  * Transmit a string (blocking)
  * @param s Null-terminated string to transmit
  */
-static inline void vuart_puts(const char *s)
-{
+static inline void vuart_puts(const char *s) {
     while (*s) {
         vuart_putc(*s++);
     }
@@ -124,9 +119,8 @@ static inline void vuart_puts(const char *s)
 /**
  * Print unsigned integer in decimal
  */
-static inline void vuart_print_uint(uint32_t val)
-{
-    char buf[12];  /* Max 10 digits + sign + null */
+static inline void vuart_print_uint(uint32_t val) {
+    char buf[12]; /* Max 10 digits + sign + null */
     int i = 0;
 
     if (val == 0) {
@@ -148,8 +142,7 @@ static inline void vuart_print_uint(uint32_t val)
 /**
  * Print signed integer in decimal
  */
-static inline void vuart_print_int(int32_t val)
-{
+static inline void vuart_print_int(int32_t val) {
     if (val < 0) {
         vuart_putc('-');
         val = -val;
@@ -160,8 +153,7 @@ static inline void vuart_print_int(int32_t val)
 /**
  * Print unsigned integer in hexadecimal
  */
-static inline void vuart_print_hex(uint32_t val, int width)
-{
+static inline void vuart_print_hex(uint32_t val, int width) {
     static const char hex_digits[] = "0123456789ABCDEF";
     int started = 0;
 
@@ -186,8 +178,7 @@ static inline void vuart_print_hex(uint32_t val, int width)
  * @param ... Variable arguments
  * @return Number of characters printed
  */
-static inline int vuart_printf(const char *fmt, ...)
-{
+static inline int vuart_printf(const char *fmt, ...) {
     /* Check if printing is enabled - if not, skip all formatting work to save simulation time */
     if (!vuart_print_enabled()) {
         return 0;
@@ -210,48 +201,48 @@ static inline int vuart_printf(const char *fmt, ...)
             }
 
             switch (*fmt) {
-                case 'd':
-                case 'i':
-                    vuart_print_int(va_arg(args, int32_t));
-                    break;
+            case 'd':
+            case 'i':
+                vuart_print_int(va_arg(args, int32_t));
+                break;
 
-                case 'u':
-                    vuart_print_uint(va_arg(args, uint32_t));
-                    break;
+            case 'u':
+                vuart_print_uint(va_arg(args, uint32_t));
+                break;
 
-                case 'x':
-                case 'X':
-                    if (width == 0) width = 1;
-                    vuart_print_hex(va_arg(args, uint32_t), width);
-                    break;
+            case 'x':
+            case 'X':
+                if (width == 0) width = 1;
+                vuart_print_hex(va_arg(args, uint32_t), width);
+                break;
 
-                case 's': {
-                    const char *s = va_arg(args, const char *);
-                    if (s == 0) s = "(null)";
-                    vuart_puts(s);
-                    break;
-                }
+            case 's': {
+                const char *s = va_arg(args, const char *);
+                if (s == 0) s = "(null)";
+                vuart_puts(s);
+                break;
+            }
 
-                case 'c':
-                    vuart_putc((char)va_arg(args, int));
-                    count++;
-                    break;
+            case 'c':
+                vuart_putc((char)va_arg(args, int));
+                count++;
+                break;
 
-                case '%':
-                    vuart_putc('%');
-                    count++;
-                    break;
+            case '%':
+                vuart_putc('%');
+                count++;
+                break;
 
-                case '\0':
-                    /* End of string after % */
-                    goto done;
+            case '\0':
+                /* End of string after % */
+                goto done;
 
-                default:
-                    /* Unknown format, print as-is */
-                    vuart_putc('%');
-                    vuart_putc(*fmt);
-                    count += 2;
-                    break;
+            default:
+                /* Unknown format, print as-is */
+                vuart_putc('%');
+                vuart_putc(*fmt);
+                count += 2;
+                break;
             }
             fmt++;
         } else {
@@ -273,15 +264,19 @@ done:
  */
 
 /* Redirect putchar to VUART */
-#define putchar(c)  vuart_putc(c)
+#define putchar(c) vuart_putc(c)
 
 /* Redirect puts to VUART (note: standard puts adds newline) */
-#define puts(s)     do { vuart_puts(s); vuart_putc('\n'); } while(0)
+#define puts(s) \
+    do { \
+        vuart_puts(s); \
+        vuart_putc('\n'); \
+    } while (0)
 
 /* Redirect printf to VUART (simple, works for basic cases) */
-#define printf      vuart_printf
+#define printf vuart_printf
 
 /* Redirect getchar to VUART */
-#define getchar()   vuart_getc()
+#define getchar() vuart_getc()
 
 #endif /* VUART_H */

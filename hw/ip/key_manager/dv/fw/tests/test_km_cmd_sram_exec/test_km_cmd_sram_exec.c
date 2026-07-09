@@ -53,11 +53,14 @@
 #include "rom_persist.h"
 #include "test_mutable_fw_blob.h"
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     rom_boot_init();
@@ -73,25 +76,22 @@ int main(void)
         /*=================================================================
          * Phase 0: cold boot — set up SRAM and warm reset.
          *=================================================================*/
-        if (!tb_set_timeout(2000000))
-            TEST_FAIL("timeout set failed");
+        if (!tb_set_timeout(2000000)) TEST_FAIL("timeout set failed");
 
-        if (!tb_drbg_set_seed(0xE030u, 5000))
-            TEST_FAIL("drbg set seed failed");
+        if (!tb_drbg_set_seed(0xE030u, 5000)) TEST_FAIL("drbg set seed failed");
 
         TEST_SUBTEST_START("Phase 0: copy blob to SRAM 0x4000");
         {
             void *sram_base = (void *)SRAM_BASE; /* 0x4000 */
             memcpy(sram_base, mutable_fw_blob_small, MUTABLE_FW_BLOB_SMALL_WORDS * 4u);
-            __asm__ volatile ("fence" ::: "memory");
+            __asm__ volatile("fence" ::: "memory");
 
             /* Quick readback sanity check (first word only). */
             volatile uint32_t *sram_ptr = (volatile uint32_t *)SRAM_BASE;
             if (*sram_ptr != mutable_fw_blob_small[0]) {
                 TEST_FAIL("Phase 0: blob readback mismatch at 0x4000 "
                           "(got 0x%08X, expected 0x%08X)",
-                          (unsigned)*sram_ptr,
-                          (unsigned)mutable_fw_blob_small[0]);
+                          (unsigned)*sram_ptr, (unsigned)mutable_fw_blob_small[0]);
             }
         }
         TEST_SUBTEST_PASS();
@@ -100,7 +100,7 @@ int main(void)
         {
             uint32_t size_bytes = MUTABLE_FW_BLOB_SMALL_WORDS * 4u; /* 56 */
             rom_persist_set_sram_fw_size(size_bytes);
-            __asm__ volatile ("fence" ::: "memory");
+            __asm__ volatile("fence" ::: "memory");
 
             uint32_t readback = rom_persist_get_sram_fw_size();
             if (readback != size_bytes) {
@@ -113,8 +113,7 @@ int main(void)
 
         TEST_SUBTEST_START("Phase 0: trigger warm reset");
         {
-            if (!tb_km_warm_reset(5000u))
-                TEST_FAIL("TB_CMD_KM_WARM_RESET not acknowledged");
+            if (!tb_km_warm_reset(5000u)) TEST_FAIL("TB_CMD_KM_WARM_RESET not acknowledged");
             /* Should not reach here. */
             TEST_FAIL("execution continued after warm reset");
         }
@@ -123,11 +122,9 @@ int main(void)
         /*=================================================================
          * Phase 1: warm reset — send CMD_SRAM_EXEC and jump to mutable fw.
          *=================================================================*/
-        if (!tb_set_timeout(2000000))
-            TEST_FAIL("Phase 1: timeout set failed");
+        if (!tb_set_timeout(2000000)) TEST_FAIL("Phase 1: timeout set failed");
 
-        if (!tb_drbg_set_seed(0xE031u, 5000))
-            TEST_FAIL("Phase 1: drbg set seed failed");
+        if (!tb_drbg_set_seed(0xE031u, 5000)) TEST_FAIL("Phase 1: drbg set seed failed");
 
         TEST_SUBTEST_START("Phase 1: sram_fw_size survived warm reset");
         {
@@ -167,16 +164,15 @@ int main(void)
         {
             uint8_t seq = 0;
             rom_km_msg_header_t hdr;
-            hdr.seq_num     = seq;
-            hdr.id          = ROM_KM_CMD_SRAM_EXEC;
+            hdr.seq_num = seq;
+            hdr.id = ROM_KM_CMD_SRAM_EXEC;
             hdr.payload_len = 0;
             hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
             /* Write the single-word (with sep) frame to the inbound FIFO. */
             if (!tb_sep_mbox_write_separator_write(1, 5000))
                 TEST_FAIL("Phase 1: separator write failed");
-            if (!tb_sep_mbox_write(hdr.raw, 5000))
-                TEST_FAIL("Phase 1: header write failed");
+            if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("Phase 1: header write failed");
 
             /* Let the ISR drain the 1-word frame into rom_rx_msgbuf. */
             test_delay(1000);

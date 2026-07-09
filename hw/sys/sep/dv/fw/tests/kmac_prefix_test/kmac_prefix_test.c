@@ -38,22 +38,20 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
-static const uint32_t test_key[4] = {
-    0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC
-};
+static const uint32_t test_key[4] = {0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC};
 
 static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
     if (wait_for_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
-    cfg.f.mode = 0x3;   // cSHAKE = value 3 per hjson (sha3_mode_e::CShake = 2'b11); KMAC requires cSHAKE for PREFIX
+    cfg.f.mode = 0x3; // cSHAKE = value 3 per hjson (sha3_mode_e::CShake = 2'b11); KMAC requires
+                      // cSHAKE for PREFIX
     cfg.f.kstrength = 0x0;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -105,11 +103,9 @@ static int test_prefix(void) {
     uint32_t val;
 
     printf("=== Step 1: PREFIX write/readback test ===\n");
-    static const uint32_t test_vals[11] = {
-        0x12345678, 0x9ABCDEF0, 0xA5A5A5A5, 0x5A5A5A5A,
-        0xDEADBEEF, 0xCAFEBABE, 0x01020304, 0x05060708,
-        0x090A0B0C, 0x0D0E0F10, 0x11121314
-    };
+    static const uint32_t test_vals[11] = {0x12345678, 0x9ABCDEF0, 0xA5A5A5A5, 0x5A5A5A5A,
+                                           0xDEADBEEF, 0xCAFEBABE, 0x01020304, 0x05060708,
+                                           0x090A0B0C, 0x0D0E0F10, 0x11121314};
 
     for (int i = 0; i < 11; i++)
         WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), test_vals[i]);
@@ -117,28 +113,27 @@ static int test_prefix(void) {
     for (int i = 0; i < 11; i++) {
         val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4));
         if (val != test_vals[i]) {
-            printf("FAIL: PREFIX_%d readback 0x%08x, expected 0x%08x\n",
-                   i, val, test_vals[i]);
+            printf("FAIL: PREFIX_%d readback 0x%08x, expected 0x%08x\n", i, val, test_vals[i]);
             errors++;
         }
     }
     printf("PREFIX write/readback: %s\n", errors == 0 ? "PASS" : "FAIL");
 
     printf("=== Step 2: Clear PREFIX to zeros ===\n");
-    for (int i = 0; i < 11; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
+    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
 
     int clear_ok = 1;
     for (int i = 0; i < 11; i++) {
         val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4));
-        if (val != 0) { clear_ok = 0; errors++; }
+        if (val != 0) {
+            clear_ok = 0;
+            errors++;
+        }
     }
     printf("PREFIX clear: %s\n", clear_ok ? "PASS" : "FAIL");
 
     printf("=== Step 3: KMAC with standard prefix ===\n");
-    static const uint32_t std_prefix[11] = {
-        0x4D4B2001, 0x00004341, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    };
+    static const uint32_t std_prefix[11] = {0x4D4B2001, 0x00004341, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint32_t digest_std[8];
     if (run_kmac_with_prefix(std_prefix, digest_std) != 0) {
         printf("FAIL: standard prefix KMAC failed\n");
@@ -149,9 +144,7 @@ static int test_prefix(void) {
     printf("\n");
 
     printf("=== Step 4: KMAC with custom prefix ===\n");
-    static const uint32_t cust_prefix[11] = {
-        0x54534554, 0x00000001, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    };
+    static const uint32_t cust_prefix[11] = {0x54534554, 0x00000001, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint32_t digest_cust[8];
     if (run_kmac_with_prefix(cust_prefix, digest_cust) != 0) {
         printf("FAIL: custom prefix KMAC failed\n");
@@ -164,7 +157,10 @@ static int test_prefix(void) {
     printf("=== Step 5: Compare digests ===\n");
     int same = 1;
     for (int i = 0; i < 8; i++) {
-        if (digest_std[i] != digest_cust[i]) { same = 0; break; }
+        if (digest_std[i] != digest_cust[i]) {
+            same = 0;
+            break;
+        }
     }
     if (same) {
         printf("FAIL: digests identical with different prefixes\n");
@@ -194,5 +190,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

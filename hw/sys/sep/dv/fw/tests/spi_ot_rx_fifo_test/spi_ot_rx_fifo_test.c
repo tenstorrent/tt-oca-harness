@@ -31,17 +31,15 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-#define SPI_CLKDIV    9
+#define SPI_CLKDIV 9
 #define TIMEOUT_LIMIT 200000
-#define RX_LEN_BYTES  16    /* 4 words */
+#define RX_LEN_BYTES 16 /* 4 words */
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int wait_for_ready(int timeout)
-{
+static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -51,8 +49,7 @@ static int wait_for_ready(int timeout)
     return -1;
 }
 
-static int wait_for_idle(int timeout)
-{
+static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -63,19 +60,17 @@ static int wait_for_idle(int timeout)
 }
 
 /* Issue an RX-only command of rx_bytes bytes (max 256) */
-static void issue_rx_cmd(uint32_t rx_bytes)
-{
+static void issue_rx_cmd(uint32_t rx_bytes) {
     spi_controller__CMD_t cmd;
     cmd.w = 0;
-    cmd.f.LEN       = rx_bytes - 1;
-    cmd.f.CSAAT     = 0;
-    cmd.f.SPEED     = 0;
-    cmd.f.DIRECTION = 1;    /* RX only */
+    cmd.f.LEN = rx_bytes - 1;
+    cmd.f.CSAAT = 0;
+    cmd.f.SPEED = 0;
+    cmd.f.DIRECTION = 1; /* RX only */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -85,7 +80,8 @@ int main(void)
     int pass = 1;
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     uint32_t i;
 
     configure_spi_mux_ot();
@@ -93,19 +89,19 @@ int main(void)
 
     /* Enable controller */
     ctrl.w = 0u;
-    ctrl.f.SPIEN     = 1;
+    ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Configure SPI clock */
     spi_controller__CFG_t cfg;
     cfg.w = 0;
-    cfg.f.CLKDIV    = SPI_CLKDIV;
-    cfg.f.CPOL      = 0;
-    cfg.f.CPHA      = 0;
-    cfg.f.CSNIDLE   = 2;
-    cfg.f.CSNLEAD   = 2;
-    cfg.f.CSNTRAIL  = 2;
+    cfg.f.CLKDIV = SPI_CLKDIV;
+    cfg.f.CPOL = 0;
+    cfg.f.CPHA = 0;
+    cfg.f.CSNIDLE = 2;
+    cfg.f.CSNLEAD = 2;
+    cfg.f.CSNTRAIL = 2;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
@@ -117,8 +113,7 @@ int main(void)
      * ------------------------------------------------------------------- */
     printf("\nStep 1: RX FIFO initial state\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  RXEMPTY=%u, RXFULL=%u, RXQD=%u\n",
-           status.f.RXEMPTY, status.f.RXFULL, status.f.RXQD);
+    printf("  RXEMPTY=%u, RXFULL=%u, RXQD=%u\n", status.f.RXEMPTY, status.f.RXFULL, status.f.RXQD);
     if (status.f.RXEMPTY != 1) {
         printf("  FAIL: RXEMPTY should be 1\n");
         pass = 0;
@@ -137,7 +132,10 @@ int main(void)
      * Without a flash model MISO=0xFF → 0xFFFFFFFF per word
      * ------------------------------------------------------------------- */
     printf("\nStep 2: Issue RX %u bytes, wait for idle\n", RX_LEN_BYTES);
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
     issue_rx_cmd(RX_LEN_BYTES);
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         printf("  WARN: transaction did not complete (no SPI device?)\n");
@@ -148,8 +146,8 @@ int main(void)
      * ------------------------------------------------------------------- */
     printf("\nStep 3: RX FIFO state after transaction\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  RXEMPTY=%u, RXQD=%u (expected RXQD=%u)\n",
-           status.f.RXEMPTY, status.f.RXQD, RX_LEN_BYTES / 4);
+    printf("  RXEMPTY=%u, RXQD=%u (expected RXQD=%u)\n", status.f.RXEMPTY, status.f.RXQD,
+           RX_LEN_BYTES / 4);
     if (status.f.RXEMPTY != 0) {
         printf("  FAIL: RXEMPTY should be 0 after RX transaction\n");
         pass = 0;
@@ -235,7 +233,10 @@ int main(void)
     ctrl.f.RX_WATERMARK = 2;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
     issue_rx_cmd(RX_LEN_BYTES);
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         printf("  WARN: transaction did not complete\n");
@@ -286,6 +287,8 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

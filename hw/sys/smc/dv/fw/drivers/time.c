@@ -28,8 +28,7 @@ int metal_gettimeofday(struct timeval *tp, void *tzp) {
 time_t metal_time(void) {
     struct timeval now;
 
-    if (metal_gettimeofday(&now, NULL) < 0)
-        now.tv_sec = (time_t)-1;
+    if (metal_gettimeofday(&now, NULL) < 0) now.tv_sec = (time_t)-1;
 
     return now.tv_sec;
 }

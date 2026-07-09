@@ -17,8 +17,7 @@
  * @param[in] len  Number of bytes.
  * @return CRC-8 value (init 0xFF, poly reflected 0xE0, XorOut 0x00).
  */
-uint8_t rom_crc8_rohc(const uint8_t *data, uint32_t len)
-{
+uint8_t rom_crc8_rohc(const uint8_t *data, uint32_t len) {
     uint32_t crc = 0xFFu;
 
     for (uint32_t i = 0; i < len; i++) {
@@ -35,8 +34,7 @@ uint8_t rom_crc8_rohc(const uint8_t *data, uint32_t len)
  * @param[in] len  Number of bytes.
  * @return CRC-32C value (init 0xFFFFFFFF, XorOut 0xFFFFFFFF).
  */
-uint32_t rom_crc32c(const uint8_t *data, uint32_t len)
-{
+uint32_t rom_crc32c(const uint8_t *data, uint32_t len) {
     uint32_t crc = 0xFFFFFFFFu;
 
     while (len != 0u && (((uintptr_t)data) & 0x3u) != 0u) {
@@ -46,8 +44,7 @@ uint32_t rom_crc32c(const uint8_t *data, uint32_t len)
     }
 
     while (len >= 4u) {
-        const uint32_t *aligned_word =
-            (const uint32_t *)__builtin_assume_aligned(data, 4);
+        const uint32_t *aligned_word = (const uint32_t *)__builtin_assume_aligned(data, 4);
         uint32_t word = *aligned_word;
         crc = rom_picorv32_crc32c_word_update(crc, word);
         data += 4;

@@ -58,75 +58,75 @@
 #include "irq_common.h"
 
 /* Test-only external windows not represented by the native KM register block. */
-#define OTP_EFUSE_MAP_REG_MAP_BASE_ADDR              0x00011000u
-#define OTP_EFUSE_MAP_LOCKS_REG_ADDR                 0x00011000u
-#define OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR             0x00011400u
-#define OTP_EFUSE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR   0x00011400u
-#define OTP_EFUSE_CTRL_EFUSE_READ_CTRL_REG_ADDR      0x00011404u
-#define OTP_EFUSE_MMR_REG_MAP_BASE_ADDR              0x00011500u
-#define OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR    0x00011500u
-#define ROM_KM_OTP_BASE                              OTP_EFUSE_MAP_REG_MAP_BASE_ADDR
+#define OTP_EFUSE_MAP_REG_MAP_BASE_ADDR 0x00011000u
+#define OTP_EFUSE_MAP_LOCKS_REG_ADDR 0x00011000u
+#define OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR 0x00011400u
+#define OTP_EFUSE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR 0x00011400u
+#define OTP_EFUSE_CTRL_EFUSE_READ_CTRL_REG_ADDR 0x00011404u
+#define OTP_EFUSE_MMR_REG_MAP_BASE_ADDR 0x00011500u
+#define OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR 0x00011500u
+#define ROM_KM_OTP_BASE OTP_EFUSE_MAP_REG_MAP_BASE_ADDR
 
 typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t flush :1;
-        uint32_t inbound_underflow_resp :1;
-        uint32_t inbound_overflow_resp :1;
-        uint32_t outbound_underflow_resp :1;
-        uint32_t rsvd :28;
+    struct __attribute__((__packed__)) {
+        uint32_t flush : 1;
+        uint32_t inbound_underflow_resp : 1;
+        uint32_t inbound_overflow_resp : 1;
+        uint32_t outbound_underflow_resp : 1;
+        uint32_t rsvd : 28;
     } f;
     uint32_t w;
 } KM_MAILBOX_SEP_CTRL_REG_reg_u;
 
 typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t inbound_empty :1;
-        uint32_t outbound_empty :1;
-        uint32_t inbound_underflow :1;
-        uint32_t outbound_overflow :1;
-        uint32_t inbound_overflow :1;
-        uint32_t outbound_underflow :1;
-        uint32_t inbound_separator :1;
-        uint32_t outbound_separator :1;
-        uint32_t rsvd :24;
+    struct __attribute__((__packed__)) {
+        uint32_t inbound_empty : 1;
+        uint32_t outbound_empty : 1;
+        uint32_t inbound_underflow : 1;
+        uint32_t outbound_overflow : 1;
+        uint32_t inbound_overflow : 1;
+        uint32_t outbound_underflow : 1;
+        uint32_t inbound_separator : 1;
+        uint32_t outbound_separator : 1;
+        uint32_t rsvd : 24;
     } f;
     uint32_t w;
 } KM_MAILBOX_SEP_STATUS_REG_reg_u;
 
 typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t inbound_underflow :1;
-        uint32_t outbound_overflow :1;
-        uint32_t flushed_by_km :1;
-        uint32_t flushed_by_sep :1;
-        uint32_t inbound_overflow :1;
-        uint32_t outbound_underflow :1;
-        uint32_t outbound_read_data_avail :1;
-        uint32_t inbound_write_space_avail :1;
-        uint32_t rsvd :24;
+    struct __attribute__((__packed__)) {
+        uint32_t inbound_underflow : 1;
+        uint32_t outbound_overflow : 1;
+        uint32_t flushed_by_km : 1;
+        uint32_t flushed_by_sep : 1;
+        uint32_t inbound_overflow : 1;
+        uint32_t outbound_underflow : 1;
+        uint32_t outbound_read_data_avail : 1;
+        uint32_t inbound_write_space_avail : 1;
+        uint32_t rsvd : 24;
     } f;
     uint32_t w;
 } KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u;
 
 typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t inbound_underflow_en :1;
-        uint32_t outbound_overflow_en :1;
-        uint32_t flushed_by_km_en :1;
-        uint32_t flushed_by_sep_en :1;
-        uint32_t inbound_overflow_en :1;
-        uint32_t outbound_underflow_en :1;
-        uint32_t outbound_read_data_avail_en :1;
-        uint32_t inbound_write_space_avail_en :1;
-        uint32_t rsvd :24;
+    struct __attribute__((__packed__)) {
+        uint32_t inbound_underflow_en : 1;
+        uint32_t outbound_overflow_en : 1;
+        uint32_t flushed_by_km_en : 1;
+        uint32_t flushed_by_sep_en : 1;
+        uint32_t inbound_overflow_en : 1;
+        uint32_t outbound_underflow_en : 1;
+        uint32_t outbound_read_data_avail_en : 1;
+        uint32_t inbound_write_space_avail_en : 1;
+        uint32_t rsvd : 24;
     } f;
     uint32_t w;
 } KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
 
 typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t lock :1;
-        uint32_t rsvd :31;
+    struct __attribute__((__packed__)) {
+        uint32_t lock : 1;
+        uint32_t rsvd : 31;
     } f;
     uint32_t w;
 } km_csr__otp_read_lock_reg_t;
@@ -136,89 +136,129 @@ typedef union {
  *===========================================================================*/
 
 /* Register access macros using struct types */
-#define TEST_RESULT_REG     (*(volatile km_csr__tb_result_reg_t *)KEY_MANAGER_KMCSR_TB_RESULT_BASE_ADDR)
-#define TEST_SIGNATURE_REG  (*(volatile km_csr__tb_signature_reg_t *)KEY_MANAGER_KMCSR_TB_SIGNATURE_BASE_ADDR)
-#define TEST_ERRCODE_REG    (*(volatile km_csr__tb_errcode_reg_t *)KEY_MANAGER_KMCSR_TB_ERRCODE_BASE_ADDR)
-#define TEST_SUBTEST_REG    (*(volatile km_csr__tb_subtest_reg_t *)KEY_MANAGER_KMCSR_TB_SUBTEST_BASE_ADDR)
-#define TB_CMD_REG          (*(volatile km_csr__tb_cmd_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_BASE_ADDR)
-#define TB_CMD_ARG_REG      (*(volatile km_csr__tb_cmd_arg_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_ARG_BASE_ADDR)
-#define TB_CMD_STATUS_REG   (*(volatile km_csr__tb_cmd_status_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_STATUS_BASE_ADDR)
-#define TB_CMD_RESULT_REG   (*(volatile km_csr__tb_cmd_result_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_RESULT_BASE_ADDR)
+#define TEST_RESULT_REG (*(volatile km_csr__tb_result_reg_t *)KEY_MANAGER_KMCSR_TB_RESULT_BASE_ADDR)
+#define TEST_SIGNATURE_REG \
+    (*(volatile km_csr__tb_signature_reg_t *)KEY_MANAGER_KMCSR_TB_SIGNATURE_BASE_ADDR)
+#define TEST_ERRCODE_REG \
+    (*(volatile km_csr__tb_errcode_reg_t *)KEY_MANAGER_KMCSR_TB_ERRCODE_BASE_ADDR)
+#define TEST_SUBTEST_REG \
+    (*(volatile km_csr__tb_subtest_reg_t *)KEY_MANAGER_KMCSR_TB_SUBTEST_BASE_ADDR)
+#define TB_CMD_REG (*(volatile km_csr__tb_cmd_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_BASE_ADDR)
+#define TB_CMD_ARG_REG \
+    (*(volatile km_csr__tb_cmd_arg_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_ARG_BASE_ADDR)
+#define TB_CMD_STATUS_REG \
+    (*(volatile km_csr__tb_cmd_status_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_STATUS_BASE_ADDR)
+#define TB_CMD_RESULT_REG \
+    (*(volatile km_csr__tb_cmd_result_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_RESULT_BASE_ADDR)
 
 /* SRAM base */
-#define SRAM_BASE           0x00004000
+#define SRAM_BASE 0x00004000
 
 /* ROM region */
-#define ROM_BASE            0x00000000
-#define ROM_TEST_OFFSET     0x00000100  /* Offset used for ROM read/write tests */
+#define ROM_BASE 0x00000000
+#define ROM_TEST_OFFSET 0x00000100 /* Offset used for ROM read/write tests */
 
 /* Signatures */
-#define TEST_PASS_SIGNATURE 0x600D600D  /* "GOOD GOOD" */
-#define TEST_FAIL_SIGNATURE 0xBADBADBA  /* "BAD BAD" */
-#define TEST_RUNNING_SIG    0x52554E4E  /* "RUNN" */
+#define TEST_PASS_SIGNATURE 0x600D600D /* "GOOD GOOD" */
+#define TEST_FAIL_SIGNATURE 0xBADBADBA /* "BAD BAD" */
+#define TEST_RUNNING_SIG 0x52554E4E    /* "RUNN" */
 
 /* Testbench commands */
-#define TB_CMD_NOP                         0x00000000  /* No operation */
-#define TB_CMD_ROM_PARITY_EN               0x00000001  /* Enable ROM parity error injection */
-#define TB_CMD_ROM_PARITY_DIS              0x00000002  /* Disable ROM parity error injection */
-#define TB_CMD_SRAM_PARITY_EN              0x00000003  /* Enable SRAM parity error injection */
-#define TB_CMD_SRAM_PARITY_DIS             0x00000004  /* Disable SRAM parity error injection */
-#define TB_CMD_SRAM_READ_RAW               0x00000005  /* Read raw SRAM data (before descrambling) */
-#define TB_CMD_SEP_MBOX_WRITE              0x00000006  /* Write data to SEP mailbox inbound FIFO */
-#define TB_CMD_MONITOR_EN                  0x00000007  /* Enable CPU/memory monitoring */
-#define TB_CMD_MONITOR_DIS                 0x00000008  /* Disable CPU/memory monitoring */
-#define TB_CMD_SEP_MBOX_IRQ_ENABLE         0x00000009  /* Enable/disable SEP mailbox IRQ */
-#define TB_CMD_SEP_MBOX_READ               0x0000000A  /* Read data from SEP mailbox outbound FIFO */
-#define TB_CMD_SEP_MBOX_IRQ_CHECK          0x0000000B  /* Check SEP mailbox IRQ status */
-#define TB_CMD_SEP_MBOX_WRITE_WITH_RESP    0x0000000C  /* Write to SEP mailbox and return AXI response */
-#define TB_CMD_KM_MBOX_READ_WITH_RESP      0x0000000D  /* Read from KM mailbox and return AXI response */
-#define TB_CMD_TIMEOUT_SET                 0x0000000E  /* Set testbench timeout value (cycles) */
-#define TB_CMD_SEP_MBOX_READ_WITH_RESP     0x0000000F  /* Read from SEP mailbox and return AXI response */
-#define TB_CMD_SEP_MBOX_STATUS_READ        0x00000010  /* Read SEP mailbox STATUS register */
-#define TB_CMD_SEP_MBOX_STATUS_WRITE       0x00000011  /* Write SEP mailbox STATUS register */
-#define TB_CMD_SEP_MBOX_CTRL_WRITE         0x00000012  /* Write SEP mailbox CTRL register */
-#define TB_CMD_VUART_VERIFY                0x00000013  /* Verify VUART received expected string (arg = SRAM byte address of null-terminated string) */
-#define TB_CMD_SEP_MBOX_IRQ_STATUS_READ    0x00000014  /* Read SEP mailbox IRQ_STATUS register */
-#define TB_CMD_SEP_MBOX_IRQ_STATUS_WRITE   0x00000015  /* Write SEP mailbox IRQ_STATUS register (W1C) */
-#define TB_CMD_DRBG_SET_NEXT_VALUE         0x0000001A  /* Override next value from DRBG (arg = value); TB normally returns random; result = 1 */
-#define TB_CMD_DRBG_GET_NEXT_VALUE         0x0000001B  /* Get value scheduled next from DRBG (random or overridden by SET); result = 32-bit value */
-#define TB_CMD_DRBG_SET_SEED               0x0000001C  /* Set seed for deterministic DRBG (arg = 32-bit seed); result = 1 */
-#define TB_CMD_DRBG_STOP                   0x0000001D  /* Stop sending DRBG data after current beat (TVALID held until TREADY); result = 1 */
-#define TB_CMD_DRBG_START                  0x0000001E  /* Resume sending DRBG data; result = 1 */
-#define TB_CMD_CHECK_RECOVERABLE_ERR       0x0000001F  /* Testbench samples recoverable_err; result = 1 if set, 0 if clear */
-#define TB_CMD_CHECK_UNRECOVERABLE_RESTART 0x00000020  /* Ask TB: was CPU restarted due to unrecoverable fault? result = 1 if yes, 0 if no */
-#define TB_CMD_OTP_WRITE                   0x00000021  /* TB drives otp_data_i port with known pattern (read-through); result = 1 */
-#define TB_CMD_WIPE_TRIGGER                0x00000022  /* TB asserts wipe_state_i for one cycle; result = 1 */
-#define TB_CMD_SEP_MBOX_WRITE_SEPARATOR_WRITE 0x00000023  /* Write SEP mailbox WRITE_SEPARATOR register */
-#define TB_CMD_KEY_SHARE_READ              0x00000024  /* Read key share word via hwif_out; arg=[11:8]=engine,[4]=share,[3:0]=word */
-#define TB_CMD_GET_UNRECOVERABLE_FAULT_CODE 0x00000025 /* Get fault code captured from SEP mailbox before unrecoverable reset */
-#define TB_CMD_INJECT_SPURIOUS_IRQ         0x00000026 /* Force a spurious IRQ bit into PicoRV32 (arg = bitmask); result = 1 */
-#define TB_CMD_UNRECOVERABLE_WATCH_CTRL    0x00000027 /* Arm/disarm unrecoverable watch (arg=1 arm, 0 disarm); result = 1 */
-#define TB_CMD_GET_CYCLE_COUNT             0x00000028 /* Snapshot current testbench cycle counter; result = cycles */
-#define TB_CMD_KM_ASYNC_RESET              0x00000029 /* Assert top-level cold_rst_n pulse (external cold/async reset); result = 1 */
-#define TB_CMD_DRBG_TVALID_GLITCH          0x0000002A /* One-shot: assert TVALID for 1 cycle then drop without TREADY (AXI-Stream protocol violation for STREAM_ERR testing); result = 1 */
-#define TB_CMD_DRBG_QUEUE_BEAT             0x0000002B /* Queue one DRBG beat: arg[3:0]=TSTRB; tdata taken from last TB_CMD_DRBG_SET_NEXT_VALUE; beat is sent before next default-random beat; result = 1 */
-#define TB_CMD_KM_WARM_RESET               0x0000002C /* Pulse warm_rst_n input for 22+ cycles; result = 1 */
-#define TB_CMD_OTP_WRITE_CHANGED           0x0000002D /* Drive changed OTP pattern (different 256-bit values); result = 1 */
-#define TB_CMD_OTP_WRITE_SIGINT            0x0000002E /* Drive a corrupted dual-rail on chiplet_uid (value != ~cpl); result = 1 */
-#define TB_CMD_SEP_MBOX_DRAIN_CTRL         0x0000002F /* Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1 */
+#define TB_CMD_NOP 0x00000000                 /* No operation */
+#define TB_CMD_ROM_PARITY_EN 0x00000001       /* Enable ROM parity error injection */
+#define TB_CMD_ROM_PARITY_DIS 0x00000002      /* Disable ROM parity error injection */
+#define TB_CMD_SRAM_PARITY_EN 0x00000003      /* Enable SRAM parity error injection */
+#define TB_CMD_SRAM_PARITY_DIS 0x00000004     /* Disable SRAM parity error injection */
+#define TB_CMD_SRAM_READ_RAW 0x00000005       /* Read raw SRAM data (before descrambling) */
+#define TB_CMD_SEP_MBOX_WRITE 0x00000006      /* Write data to SEP mailbox inbound FIFO */
+#define TB_CMD_MONITOR_EN 0x00000007          /* Enable CPU/memory monitoring */
+#define TB_CMD_MONITOR_DIS 0x00000008         /* Disable CPU/memory monitoring */
+#define TB_CMD_SEP_MBOX_IRQ_ENABLE 0x00000009 /* Enable/disable SEP mailbox IRQ */
+#define TB_CMD_SEP_MBOX_READ 0x0000000A       /* Read data from SEP mailbox outbound FIFO */
+#define TB_CMD_SEP_MBOX_IRQ_CHECK 0x0000000B  /* Check SEP mailbox IRQ status */
+#define TB_CMD_SEP_MBOX_WRITE_WITH_RESP \
+    0x0000000C /* Write to SEP mailbox and return AXI response */
+#define TB_CMD_KM_MBOX_READ_WITH_RESP \
+    0x0000000D                        /* Read from KM mailbox and return AXI response \
+                                       */
+#define TB_CMD_TIMEOUT_SET 0x0000000E /* Set testbench timeout value (cycles) */
+#define TB_CMD_SEP_MBOX_READ_WITH_RESP \
+    0x0000000F                                  /* Read from SEP mailbox and return AXI response */
+#define TB_CMD_SEP_MBOX_STATUS_READ 0x00000010  /* Read SEP mailbox STATUS register */
+#define TB_CMD_SEP_MBOX_STATUS_WRITE 0x00000011 /* Write SEP mailbox STATUS register */
+#define TB_CMD_SEP_MBOX_CTRL_WRITE 0x00000012   /* Write SEP mailbox CTRL register */
+#define TB_CMD_VUART_VERIFY \
+    0x00000013 /* Verify VUART received expected string (arg = SRAM byte address of \
+                  null-terminated string) */
+#define TB_CMD_SEP_MBOX_IRQ_STATUS_READ 0x00000014 /* Read SEP mailbox IRQ_STATUS register */
+#define TB_CMD_SEP_MBOX_IRQ_STATUS_WRITE \
+    0x00000015 /* Write SEP mailbox IRQ_STATUS register (W1C) */
+#define TB_CMD_DRBG_SET_NEXT_VALUE \
+    0x0000001A /* Override next value from DRBG (arg = value); TB normally returns random; result \
+                  = 1 */
+#define TB_CMD_DRBG_GET_NEXT_VALUE \
+    0x0000001B /* Get value scheduled next from DRBG (random or overridden by SET); result = \
+                  32-bit value */
+#define TB_CMD_DRBG_SET_SEED \
+    0x0000001C /* Set seed for deterministic DRBG (arg = 32-bit seed); result = 1 */
+#define TB_CMD_DRBG_STOP \
+    0x0000001D /* Stop sending DRBG data after current beat (TVALID held until TREADY); result = 1 \
+                */
+#define TB_CMD_DRBG_START 0x0000001E /* Resume sending DRBG data; result = 1 */
+#define TB_CMD_CHECK_RECOVERABLE_ERR \
+    0x0000001F /* Testbench samples recoverable_err; result = 1 if set, 0 if clear */
+#define TB_CMD_CHECK_UNRECOVERABLE_RESTART \
+    0x00000020 /* Ask TB: was CPU restarted due to unrecoverable fault? result = 1 if yes, 0 if no \
+                */
+#define TB_CMD_OTP_WRITE \
+    0x00000021 /* TB drives otp_data_i port with known pattern (read-through); result = 1 */
+#define TB_CMD_WIPE_TRIGGER 0x00000022 /* TB asserts wipe_state_i for one cycle; result = 1 */
+#define TB_CMD_SEP_MBOX_WRITE_SEPARATOR_WRITE \
+    0x00000023 /* Write SEP mailbox WRITE_SEPARATOR register */
+#define TB_CMD_KEY_SHARE_READ \
+    0x00000024 /* Read key share word via hwif_out; arg=[11:8]=engine,[4]=share,[3:0]=word */
+#define TB_CMD_GET_UNRECOVERABLE_FAULT_CODE \
+    0x00000025 /* Get fault code captured from SEP mailbox before unrecoverable reset */
+#define TB_CMD_INJECT_SPURIOUS_IRQ \
+    0x00000026 /* Force a spurious IRQ bit into PicoRV32 (arg = bitmask); result = 1 */
+#define TB_CMD_UNRECOVERABLE_WATCH_CTRL \
+    0x00000027 /* Arm/disarm unrecoverable watch (arg=1 arm, 0 disarm); result = 1 */
+#define TB_CMD_GET_CYCLE_COUNT \
+    0x00000028 /* Snapshot current testbench cycle counter; result = cycles */
+#define TB_CMD_KM_ASYNC_RESET \
+    0x00000029 /* Assert top-level cold_rst_n pulse (external cold/async reset); result = 1 */
+#define TB_CMD_DRBG_TVALID_GLITCH \
+    0x0000002A /* One-shot: assert TVALID for 1 cycle then drop without TREADY (AXI-Stream \
+                  protocol violation for STREAM_ERR testing); result = 1 */
+#define TB_CMD_DRBG_QUEUE_BEAT \
+    0x0000002B /* Queue one DRBG beat: arg[3:0]=TSTRB; tdata taken from last \
+                  TB_CMD_DRBG_SET_NEXT_VALUE; beat is sent before next default-random beat; result \
+                  = 1 */
+#define TB_CMD_KM_WARM_RESET 0x0000002C /* Pulse warm_rst_n input for 22+ cycles; result = 1 */
+#define TB_CMD_OTP_WRITE_CHANGED \
+    0x0000002D /* Drive changed OTP pattern (different 256-bit values); result = 1 */
+#define TB_CMD_OTP_WRITE_SIGINT \
+    0x0000002E /* Drive a corrupted dual-rail on chiplet_uid (value != ~cpl); result = 1 */
+#define TB_CMD_SEP_MBOX_DRAIN_CTRL \
+    0x0000002F /* Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); \
+                  arg=1 arm, 0 disarm; result = 1 */
 
 /* Testbench command status */
-#define TB_STATUS_IDLE          0x00000000  /* Ready for command */
-#define TB_STATUS_ACK           0x00000001  /* Command acknowledged */
-#define TB_STATUS_ERR           0xFFFFFFFF  /* Command error */
+#define TB_STATUS_IDLE 0x00000000 /* Ready for command */
+#define TB_STATUS_ACK 0x00000001  /* Command acknowledged */
+#define TB_STATUS_ERR 0xFFFFFFFF  /* Command error */
 
 /* Convenience macros for test results */
-#define TEST_RESULT     TEST_RESULT_REG.w
-#define TEST_SIGNATURE  TEST_SIGNATURE_REG.w
-#define TEST_ERRCODE    TEST_ERRCODE_REG.w
-#define TEST_SUBTEST    TEST_SUBTEST_REG.w
+#define TEST_RESULT TEST_RESULT_REG.w
+#define TEST_SIGNATURE TEST_SIGNATURE_REG.w
+#define TEST_ERRCODE TEST_ERRCODE_REG.w
+#define TEST_SUBTEST TEST_SUBTEST_REG.w
 
 /* Convenience macros for testbench commands */
-#define TB_CMD          TB_CMD_REG.w
-#define TB_CMD_ARG      TB_CMD_ARG_REG.w
-#define TB_CMD_STATUS   TB_CMD_STATUS_REG.w
-#define TB_CMD_RESULT   TB_CMD_RESULT_REG.w
+#define TB_CMD TB_CMD_REG.w
+#define TB_CMD_ARG TB_CMD_ARG_REG.w
+#define TB_CMD_STATUS TB_CMD_STATUS_REG.w
+#define TB_CMD_RESULT TB_CMD_RESULT_REG.w
 
 /*===========================================================================
  * Programmable IRQ entry (KMCSR IRQ_ENTRY_ADDR / IRQ_ENTRY_LOCK)
@@ -235,8 +275,7 @@ typedef union {
  *
  * @return Word suitable for `rom_kmcsr_irq_status_clear()`.
  */
-static inline uint32_t irq_entry_test_all_status_mask(void)
-{
+static inline uint32_t irq_entry_test_all_status_mask(void) {
     km_csr__irq_status_reg_t mask = {0};
     mask.f.rom_parity_err = 1;
     mask.f.sram_parity_err = 1;
@@ -254,8 +293,7 @@ static inline uint32_t irq_entry_test_all_status_mask(void)
  *
  * @return Word suitable for `rom_kmcsr_irq_set()`.
  */
-static inline uint32_t irq_entry_irq_set_rom_parity(void)
-{
+static inline uint32_t irq_entry_irq_set_rom_parity(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.rom_parity_err_set = 1;
     return set_val.w;
@@ -266,8 +304,7 @@ static inline uint32_t irq_entry_irq_set_rom_parity(void)
  *
  * @return Current programmed IRQ entry address (`addr` field).
  */
-static inline uint32_t irq_entry_addr_read(void)
-{
+static inline uint32_t irq_entry_addr_read(void) {
     volatile km_csr__irq_entry_addr_reg_t *reg =
         (volatile km_csr__irq_entry_addr_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_ADDR_BASE_ADDR;
     return reg->f.addr;
@@ -278,8 +315,7 @@ static inline uint32_t irq_entry_addr_read(void)
  *
  * @param v Entry address to program.
  */
-static inline void irq_entry_addr_write(uint32_t v)
-{
+static inline void irq_entry_addr_write(uint32_t v) {
     volatile km_csr__irq_entry_addr_reg_t *reg =
         (volatile km_csr__irq_entry_addr_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_ADDR_BASE_ADDR;
     km_csr__irq_entry_addr_reg_t w = {0};
@@ -292,16 +328,14 @@ static inline void irq_entry_addr_write(uint32_t v)
  *
  * @return Non-zero if the lock bit is set.
  */
-static inline uint32_t irq_entry_lock_read(void)
-{
+static inline uint32_t irq_entry_lock_read(void) {
     volatile km_csr__irq_entry_lock_reg_t *reg =
         (volatile km_csr__irq_entry_lock_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_LOCK_BASE_ADDR;
     return reg->f.lock;
 }
 
 /** @brief Write 1 to `IRQ_ENTRY_LOCK` (sticky until reset). */
-static inline void irq_entry_lock_write1(void)
-{
+static inline void irq_entry_lock_write1(void) {
     volatile km_csr__irq_entry_lock_reg_t *reg =
         (volatile km_csr__irq_entry_lock_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENTRY_LOCK_BASE_ADDR;
     km_csr__irq_entry_lock_reg_t w = {0};
@@ -316,8 +350,7 @@ static inline void irq_entry_lock_write1(void)
  * sets the sticky ROM parity bit. The caller must implement `rom_irq()` to
  * W1C-clear IRQ_STATUS as needed.
  */
-static inline void irq_entry_fire_kmcsr_rom_parity(void)
-{
+static inline void irq_entry_fire_kmcsr_rom_parity(void) {
     rom_kmcsr_irq_status_clear(irq_entry_test_all_status_mask());
     {
         km_csr__irq_enable_reg_t en = {0};
@@ -326,9 +359,9 @@ static inline void irq_entry_fire_kmcsr_rom_parity(void)
     }
     (void)rom_picorv32_maskirq(0u);
     rom_kmcsr_irq_set(irq_entry_irq_set_rom_parity());
-    __asm__ volatile ("fence" ::: "memory");
+    __asm__ volatile("fence" ::: "memory");
     for (volatile uint32_t i = 0; i < IRQ_ENTRY_SETTLE_LOOPS; i++) {
-        __asm__ volatile ("nop");
+        __asm__ volatile("nop");
     }
 }
 
@@ -340,42 +373,45 @@ static inline void irq_entry_fire_kmcsr_rom_parity(void)
  * Initialize test infrastructure.
  * Call this at the start of main().
  */
-#define TEST_INIT() do { \
-    TEST_RESULT = 0; \
-    TEST_SIGNATURE = TEST_RUNNING_SIG; \
-    TEST_ERRCODE = 0; \
-    TEST_SUBTEST = 0; \
-    TB_CMD = TB_CMD_NOP; \
-    TB_CMD_ARG = 0; \
-    TB_CMD_STATUS = TB_STATUS_IDLE; \
-    /* TB_CMD_RESULT is read-only (testbench writes, firmware reads); do not write */ \
-    printf("=== Test Started ===\n"); \
-} while(0)
+#define TEST_INIT() \
+    do { \
+        TEST_RESULT = 0; \
+        TEST_SIGNATURE = TEST_RUNNING_SIG; \
+        TEST_ERRCODE = 0; \
+        TEST_SUBTEST = 0; \
+        TB_CMD = TB_CMD_NOP; \
+        TB_CMD_ARG = 0; \
+        TB_CMD_STATUS = TB_STATUS_IDLE; \
+        /* TB_CMD_RESULT is read-only (testbench writes, firmware reads); do not write */ \
+        printf("=== Test Started ===\n"); \
+    } while (0)
 
 /**
  * Mark test as passed and halt.
  */
-#define TEST_PASS() do { \
-    printf("=== Test PASSED ===\n"); \
-    TEST_RESULT = 1; \
-    TEST_SIGNATURE = TEST_PASS_SIGNATURE; \
-    test_halt(); \
-} while(0)
+#define TEST_PASS() \
+    do { \
+        printf("=== Test PASSED ===\n"); \
+        TEST_RESULT = 1; \
+        TEST_SIGNATURE = TEST_PASS_SIGNATURE; \
+        test_halt(); \
+    } while (0)
 
 /**
  * Mark test as failed with a message and halt.
  * @param fmt Printf-style format string
  * @param ... Format arguments
  */
-#define TEST_FAIL(...) do { \
-    printf("FAIL: "); \
-    printf(__VA_ARGS__); \
-    printf("\n"); \
-    printf("=== Test FAILED ===\n"); \
-    TEST_RESULT = 0; \
-    TEST_SIGNATURE = TEST_FAIL_SIGNATURE; \
-    test_halt(); \
-} while(0)
+#define TEST_FAIL(...) \
+    do { \
+        printf("FAIL: "); \
+        printf(__VA_ARGS__); \
+        printf("\n"); \
+        printf("=== Test FAILED ===\n"); \
+        TEST_RESULT = 0; \
+        TEST_SIGNATURE = TEST_FAIL_SIGNATURE; \
+        test_halt(); \
+    } while (0)
 
 /**
  * Assert a condition, fail if false.
@@ -383,55 +419,60 @@ static inline void irq_entry_fire_kmcsr_rom_parity(void)
  * @param fmt Error message format if condition fails
  * @param ... Format arguments
  */
-#define TEST_ASSERT(cond, ...) do { \
-    if (!(cond)) { \
-        printf("FAIL: Assertion failed: "); \
-        printf(__VA_ARGS__); \
-        printf("\n"); \
-        printf("=== Test FAILED ===\n"); \
-        TEST_RESULT = 0; \
-        TEST_SIGNATURE = TEST_FAIL_SIGNATURE; \
-        test_halt(); \
-    } \
-} while(0)
+#define TEST_ASSERT(cond, ...) \
+    do { \
+        if (!(cond)) { \
+            printf("FAIL: Assertion failed: "); \
+            printf(__VA_ARGS__); \
+            printf("\n"); \
+            printf("=== Test FAILED ===\n"); \
+            TEST_RESULT = 0; \
+            TEST_SIGNATURE = TEST_FAIL_SIGNATURE; \
+            test_halt(); \
+        } \
+    } while (0)
 
 /**
  * Assert two values are equal.
  */
-#define TEST_ASSERT_EQ(actual, expected, name) do { \
-    uint32_t _a = (uint32_t)(actual); \
-    uint32_t _e = (uint32_t)(expected); \
-    if (_a != _e) { \
-        TEST_FAIL("%s: expected 0x%08X, got 0x%08X", name, _e, _a); \
-    } \
-} while(0)
+#define TEST_ASSERT_EQ(actual, expected, name) \
+    do { \
+        uint32_t _a = (uint32_t)(actual); \
+        uint32_t _e = (uint32_t)(expected); \
+        if (_a != _e) { \
+            TEST_FAIL("%s: expected 0x%08X, got 0x%08X", name, _e, _a); \
+        } \
+    } while (0)
 
 /**
  * Assert two values are not equal.
  */
-#define TEST_ASSERT_NE(actual, not_expected, name) do { \
-    uint32_t _a = (uint32_t)(actual); \
-    uint32_t _ne = (uint32_t)(not_expected); \
-    if (_a == _ne) { \
-        TEST_FAIL("%s: should not be 0x%08X", name, _ne); \
-    } \
-} while(0)
+#define TEST_ASSERT_NE(actual, not_expected, name) \
+    do { \
+        uint32_t _a = (uint32_t)(actual); \
+        uint32_t _ne = (uint32_t)(not_expected); \
+        if (_a == _ne) { \
+            TEST_FAIL("%s: should not be 0x%08X", name, _ne); \
+        } \
+    } while (0)
 
 /**
  * Log a message (appears in VUART output).
  */
-#define TEST_LOG(...) do { \
-    printf(__VA_ARGS__); \
-    printf("\n"); \
-} while(0)
+#define TEST_LOG(...) \
+    do { \
+        printf(__VA_ARGS__); \
+        printf("\n"); \
+    } while (0)
 
 /**
  * Start a named subtest.
  */
-#define TEST_SUBTEST_START(name) do { \
-    TEST_SUBTEST++; \
-    printf("[%d] %s...\n", TEST_SUBTEST, name); \
-} while(0)
+#define TEST_SUBTEST_START(name) \
+    do { \
+        TEST_SUBTEST++; \
+        printf("[%d] %s...\n", TEST_SUBTEST, name); \
+    } while (0)
 
 /**
  * Mark current subtest as passed.
@@ -451,8 +492,7 @@ static inline void irq_entry_fire_kmcsr_rom_parity(void)
  * Halt the CPU in a low-power wait loop.
  * Called automatically by TEST_PASS() and TEST_FAIL().
  */
-static inline void test_halt(void)
-{
+static inline void test_halt(void) {
     while (1) {
         rom_picorv32_waitirq();
     }
@@ -462,26 +502,23 @@ static inline void test_halt(void)
  * Simple delay loop.
  * @param cycles Approximate number of loop iterations
  */
-static inline void test_delay(uint32_t cycles)
-{
+static inline void test_delay(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
-        __asm__ volatile ("nop");
+        __asm__ volatile("nop");
     }
 }
 
 /**
  * Read a 32-bit value from an address.
  */
-static inline uint32_t test_read32(uint32_t addr)
-{
+static inline uint32_t test_read32(uint32_t addr) {
     return *(volatile uint32_t *)addr;
 }
 
 /**
  * Write a 32-bit value to an address.
  */
-static inline void test_write32(uint32_t addr, uint32_t value)
-{
+static inline void test_write32(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
 }
 
@@ -506,8 +543,7 @@ static inline void test_write32(uint32_t addr, uint32_t value)
  * @param timeout_cycles Maximum cycles to wait for ack
  * @return 1 if acknowledged, 0 if timeout/error
  */
-static inline int tb_send_cmd(uint32_t cmd, uint32_t arg, uint32_t timeout_cycles)
-{
+static inline int tb_send_cmd(uint32_t cmd, uint32_t arg, uint32_t timeout_cycles) {
     /* Clear any previous status */
     TB_CMD_STATUS = TB_STATUS_IDLE;
 
@@ -525,26 +561,24 @@ static inline int tb_send_cmd(uint32_t cmd, uint32_t arg, uint32_t timeout_cycle
         if (TB_CMD_STATUS == TB_STATUS_ERR) {
             return 0;
         }
-        __asm__ volatile ("nop");
+        __asm__ volatile("nop");
     }
 
-    return 0;  /* Timeout */
+    return 0; /* Timeout */
 }
 
 /**
  * Enable ROM parity error injection.
  * After this, ROM reads will have corrupted parity.
  */
-static inline int tb_rom_parity_inject_enable(void)
-{
+static inline int tb_rom_parity_inject_enable(void) {
     return tb_send_cmd(TB_CMD_ROM_PARITY_EN, 0, 1000);
 }
 
 /**
  * Disable ROM parity error injection.
  */
-static inline int tb_rom_parity_inject_disable(void)
-{
+static inline int tb_rom_parity_inject_disable(void) {
     return tb_send_cmd(TB_CMD_ROM_PARITY_DIS, 0, 1000);
 }
 
@@ -552,16 +586,14 @@ static inline int tb_rom_parity_inject_disable(void)
  * Enable SRAM parity error injection.
  * After this, SRAM reads will have corrupted parity.
  */
-static inline int tb_sram_parity_inject_enable(void)
-{
+static inline int tb_sram_parity_inject_enable(void) {
     return tb_send_cmd(TB_CMD_SRAM_PARITY_EN, 0, 1000);
 }
 
 /**
  * Disable SRAM parity error injection.
  */
-static inline int tb_sram_parity_inject_disable(void)
-{
+static inline int tb_sram_parity_inject_disable(void) {
     return tb_send_cmd(TB_CMD_SRAM_PARITY_DIS, 0, 1000);
 }
 
@@ -570,8 +602,7 @@ static inline int tb_sram_parity_inject_disable(void)
  * OTP registers reflect port values immediately after return.
  * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
  */
-static inline int tb_otp_write(void)
-{
+static inline int tb_otp_write(void) {
     if (!tb_send_cmd(TB_CMD_OTP_WRITE, 0, 5000u)) {
         TEST_FAIL("TB_CMD_OTP_WRITE failed (timeout or TB_STATUS_ERR)");
     }
@@ -584,8 +615,7 @@ static inline int tb_otp_write(void)
  * Life_cycle and demotion state are also changed.
  * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
  */
-static inline int tb_otp_write_changed(void)
-{
+static inline int tb_otp_write_changed(void) {
     if (!tb_send_cmd(TB_CMD_OTP_WRITE_CHANGED, 0, 5000u)) {
         TEST_FAIL("TB_CMD_OTP_WRITE_CHANGED failed (timeout or TB_STATUS_ERR)");
     }
@@ -598,8 +628,7 @@ static inline int tb_otp_write_changed(void)
  * All other fields remain validly dual-rail encoded.
  * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
  */
-static inline int tb_otp_write_sigint(void)
-{
+static inline int tb_otp_write_sigint(void) {
     if (!tb_send_cmd(TB_CMD_OTP_WRITE_SIGINT, 0, 5000u)) {
         TEST_FAIL("TB_CMD_OTP_WRITE_SIGINT failed (timeout or TB_STATUS_ERR)");
     }
@@ -610,8 +639,7 @@ static inline int tb_otp_write_sigint(void)
  * Trigger wipe: ask testbench to assert wipe_state_i for one cycle.
  * Result = 1 on success. Use for test_wipe_state (SC-0000-019).
  */
-static inline int tb_wipe_trigger(uint32_t timeout_cycles)
-{
+static inline int tb_wipe_trigger(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_WIPE_TRIGGER, 0, timeout_cycles)) {
         return 0;
     }
@@ -623,10 +651,8 @@ static inline int tb_wipe_trigger(uint32_t timeout_cycles)
  * Matches PRESENT standard (ISO/IEC 29192-2:2019) and spec FR-0000-024.
  * This is the only function that MUST match the PRESENT standard.
  */
-static const uint8_t sbox4_table[16] = {
-    0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD,
-    0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2
-};
+static const uint8_t sbox4_table[16] = {0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD,
+                                        0x3, 0xE, 0xF, 0x8, 0x4, 0x7, 0x1, 0x2};
 
 /**
  * Apply perm12 permutation (for address scrambling).
@@ -638,11 +664,11 @@ static const uint8_t sbox4_table[16] = {
  * @param d 12-bit input value
  * @return Permuted 12-bit value
  */
-static inline uint32_t perm12(uint32_t d)
-{
+static inline uint32_t perm12(uint32_t d) {
     /* Permutation mapping: output[i] = input[perm12_map[i]] */
     /* This matches the scrambler IP's permutation pattern (scrambler_pkg.sv perm12 function) */
-    /* Hardware: return {d[1], d[4], d[7], d[10], d[2], d[5], d[8], d[11], d[0], d[6], d[9], d[3]} */
+    /* Hardware: return {d[1], d[4], d[7], d[10], d[2], d[5], d[8], d[11], d[0], d[6], d[9], d[3]}
+     */
     /* In Verilog concatenation, leftmost is MSB (bit 11), rightmost is LSB (bit 0) */
     /* So: output[11]=d[1], output[10]=d[4], ..., output[1]=d[9], output[0]=d[3] */
     static const uint8_t perm12_map[12] = {3, 9, 6, 0, 11, 8, 5, 2, 10, 7, 4, 1};
@@ -664,8 +690,7 @@ static inline uint32_t perm12(uint32_t d)
  * @param key 32-bit scrambler key (uses bits [11:0])
  * @return Scrambled 12-bit address
  */
-static inline uint32_t addr_scramble12(uint32_t addr, uint32_t key)
-{
+static inline uint32_t addr_scramble12(uint32_t addr, uint32_t key) {
     /* Step 1: XOR address with key[11:0] */
     uint32_t key12 = key & 0xFFF;
     uint32_t ark = (addr ^ key12) & 0xFFF;
@@ -688,8 +713,7 @@ static inline uint32_t addr_scramble12(uint32_t addr, uint32_t key)
  * @param key 32-bit scrambler key
  * @return 32-bit round key
  */
-static inline uint32_t addr_tweak12(uint32_t addr, uint32_t key)
-{
+static inline uint32_t addr_tweak12(uint32_t addr, uint32_t key) {
     /* Expand 12-bit address to 32 bits: {addr, addr, addr[11:4]} */
     uint32_t expanded_addr = (addr << 20) | (addr << 8) | ((addr >> 4) & 0xFF);
     return expanded_addr ^ key;
@@ -703,8 +727,7 @@ static inline uint32_t addr_tweak12(uint32_t addr, uint32_t key)
  * @param d 32-bit input value
  * @return Permuted 32-bit value
  */
-static inline uint32_t player(uint32_t d)
-{
+static inline uint32_t player(uint32_t d) {
     /* Player permutation: {d[0], d[8], d[16], d[24], d[1], d[9], d[17], d[25], ...} */
     uint32_t result = 0;
     result |= ((d >> 0) & 1) << 31;  /* d[0] -> output[31] */
@@ -751,8 +774,7 @@ static inline uint32_t player(uint32_t d)
  * @param key 32-bit scrambler key
  * @return Scrambled 32-bit data
  */
-static inline uint32_t data_scramble(uint32_t data, uint32_t addr, uint32_t key)
-{
+static inline uint32_t data_scramble(uint32_t data, uint32_t addr, uint32_t key) {
     /* Step 1: Compute round key from address and key */
     uint32_t round_key = addr_tweak12(addr, key);
 
@@ -784,11 +806,10 @@ static inline uint32_t data_scramble(uint32_t data, uint32_t addr, uint32_t key)
  * @param physical_word_addr Physical SRAM word address (scrambled if scrambler enabled)
  * @return Raw data value from SRAM, or 0 on error
  */
-static inline uint32_t tb_sram_read_raw(uint32_t physical_word_addr)
-{
+static inline uint32_t tb_sram_read_raw(uint32_t physical_word_addr) {
     /* Send command with physical word address as argument */
     if (!tb_send_cmd(TB_CMD_SRAM_READ_RAW, physical_word_addr, 1000)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Read result from TB_CMD_RESULT */
     return TB_CMD_RESULT;
@@ -803,11 +824,10 @@ static inline uint32_t tb_sram_read_raw(uint32_t physical_word_addr)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_write(uint32_t data, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_write(uint32_t data, uint32_t timeout_cycles) {
     /* Send command with data as argument */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_WRITE, data, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Command successful if acknowledged */
     return 1;
@@ -821,11 +841,10 @@ static inline int tb_sep_mbox_write(uint32_t data, uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_irq_enable(uint32_t enable_value, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_irq_enable(uint32_t enable_value, uint32_t timeout_cycles) {
     /* Send command with enable value as argument */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_IRQ_ENABLE, enable_value, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Command successful if acknowledged */
     return 1;
@@ -840,11 +859,10 @@ static inline int tb_sep_mbox_irq_enable(uint32_t enable_value, uint32_t timeout
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_read(uint32_t *data_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_read(uint32_t *data_out, uint32_t timeout_cycles) {
     /* Send command */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_READ, 0, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Read result from TB_CMD_RESULT */
     *data_out = TB_CMD_RESULT;
@@ -865,8 +883,7 @@ static inline int tb_sep_mbox_read(uint32_t *data_out, uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_drain_enable(uint32_t enable, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_drain_enable(uint32_t enable, uint32_t timeout_cycles) {
     return tb_send_cmd(TB_CMD_SEP_MBOX_DRAIN_CTRL, enable, timeout_cycles) ? 1 : 0;
 }
 
@@ -878,11 +895,10 @@ static inline int tb_sep_mbox_drain_enable(uint32_t enable, uint32_t timeout_cyc
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_irq_check(uint32_t *irq_status_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_irq_check(uint32_t *irq_status_out, uint32_t timeout_cycles) {
     /* Send command */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_IRQ_CHECK, 0, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Read result from TB_CMD_RESULT */
     *irq_status_out = TB_CMD_RESULT;
@@ -898,17 +914,17 @@ static inline int tb_sep_mbox_irq_check(uint32_t *irq_status_out, uint32_t timeo
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_out,
+                                             uint32_t timeout_cycles) {
     /* Send command */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_READ_WITH_RESP, 0, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Response code is in lower 8 bits, data in upper 24 bits of TB_CMD_RESULT */
     /* Format: [31:8] = data, [7:0] = response code */
     uint32_t result = TB_CMD_RESULT;
-    *resp_out = result & 0xFF;  /* Response in lower 8 bits */
-    *data_out = (result >> 8) & 0xFFFFFF;  /* Data in upper 24 bits */
+    *resp_out = result & 0xFF;            /* Response in lower 8 bits */
+    *data_out = (result >> 8) & 0xFFFFFF; /* Data in upper 24 bits */
     return 1;
 }
 
@@ -921,11 +937,11 @@ static inline int tb_sep_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_write_with_resp(uint32_t data, uint32_t *resp_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_write_with_resp(uint32_t data, uint32_t *resp_out,
+                                              uint32_t timeout_cycles) {
     /* Send command with data as argument */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_WRITE_WITH_RESP, data, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Read response code from TB_CMD_RESULT */
     *resp_out = TB_CMD_RESULT;
@@ -940,11 +956,10 @@ static inline int tb_sep_mbox_write_with_resp(uint32_t data, uint32_t *resp_out,
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_status_read(uint32_t *status_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_status_read(uint32_t *status_out, uint32_t timeout_cycles) {
     /* Send command */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_STATUS_READ, 0, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Read result from TB_CMD_RESULT */
     *status_out = TB_CMD_RESULT;
@@ -960,11 +975,10 @@ static inline int tb_sep_mbox_status_read(uint32_t *status_out, uint32_t timeout
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_status_write(uint32_t status_value, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_status_write(uint32_t status_value, uint32_t timeout_cycles) {
     /* Send command with status value as argument */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_STATUS_WRITE, status_value, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Command successful if acknowledged */
     return 1;
@@ -979,11 +993,10 @@ static inline int tb_sep_mbox_status_write(uint32_t status_value, uint32_t timeo
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_ctrl_write(uint32_t ctrl_value, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_ctrl_write(uint32_t ctrl_value, uint32_t timeout_cycles) {
     /* Send command with CTRL value as argument */
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_CTRL_WRITE, ctrl_value, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Command successful if acknowledged */
     return 1;
@@ -997,8 +1010,7 @@ static inline int tb_sep_mbox_ctrl_write(uint32_t ctrl_value, uint32_t timeout_c
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_write_separator_write(uint32_t value, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_write_separator_write(uint32_t value, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_WRITE_SEPARATOR_WRITE, value, timeout_cycles)) {
         return 0;
     }
@@ -1013,8 +1025,7 @@ static inline int tb_sep_mbox_write_separator_write(uint32_t value, uint32_t tim
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_irq_status_read(uint32_t *irq_status_out, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_irq_status_read(uint32_t *irq_status_out, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_IRQ_STATUS_READ, 0, timeout_cycles)) {
         return 0;
     }
@@ -1030,8 +1041,7 @@ static inline int tb_sep_mbox_irq_status_read(uint32_t *irq_status_out, uint32_t
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_sep_mbox_irq_status_write(uint32_t irq_status_value, uint32_t timeout_cycles)
-{
+static inline int tb_sep_mbox_irq_status_write(uint32_t irq_status_value, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_SEP_MBOX_IRQ_STATUS_WRITE, irq_status_value, timeout_cycles)) {
         return 0;
     }
@@ -1047,16 +1057,16 @@ static inline int tb_sep_mbox_irq_status_write(uint32_t irq_status_value, uint32
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_km_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_out, uint32_t timeout_cycles)
-{
+static inline int tb_km_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_out,
+                                            uint32_t timeout_cycles) {
     /* Send command */
     if (!tb_send_cmd(TB_CMD_KM_MBOX_READ_WITH_RESP, 0, timeout_cycles)) {
-        return 0;  /* Error */
+        return 0; /* Error */
     }
     /* Response code is in lower 8 bits of TB_CMD_RESULT */
     /* For underflow testing, we only need the response code, not the data */
-    *resp_out = TB_CMD_RESULT & 0xFF;  /* Response in lower 8 bits */
-    *data_out = 0;  /* Data not meaningful for underflow (SLVERR case) */
+    *resp_out = TB_CMD_RESULT & 0xFF; /* Response in lower 8 bits */
+    *data_out = 0;                    /* Data not meaningful for underflow (SLVERR case) */
     return 1;
 }
 
@@ -1067,10 +1077,9 @@ static inline int tb_km_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_o
  * @param timeout_cycles New timeout value in cycles (must be > 0)
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_set_timeout(uint32_t timeout_cycles)
-{
+static inline int tb_set_timeout(uint32_t timeout_cycles) {
     if (timeout_cycles == 0) {
-        return 0;  /* Invalid timeout value */
+        return 0; /* Invalid timeout value */
     }
     /* Send command with timeout value as argument */
     return tb_send_cmd(TB_CMD_TIMEOUT_SET, timeout_cycles, 1000);
@@ -1086,8 +1095,7 @@ static inline int tb_set_timeout(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_get_cycle_count(uint32_t *cycle_count_out, uint32_t timeout_cycles)
-{
+static inline int tb_get_cycle_count(uint32_t *cycle_count_out, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_GET_CYCLE_COUNT, 0, timeout_cycles)) {
         return 0;
     }
@@ -1103,11 +1111,10 @@ static inline int tb_get_cycle_count(uint32_t *cycle_count_out, uint32_t timeout
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if verification passed (string found in VUART output), 0 on failure/timeout
  */
-static inline int tb_vuart_verify(uint32_t sram_byte_addr, uint32_t timeout_cycles)
-{
+static inline int tb_vuart_verify(uint32_t sram_byte_addr, uint32_t timeout_cycles) {
     /* Send command with SRAM byte address as argument */
     if (!tb_send_cmd(TB_CMD_VUART_VERIFY, sram_byte_addr, timeout_cycles)) {
-        return 0;  /* Error or timeout */
+        return 0; /* Error or timeout */
     }
     /* Result is in TB_CMD_RESULT: 1 = verification passed, 0 = failed */
     return TB_CMD_RESULT != 0;
@@ -1122,8 +1129,7 @@ static inline int tb_vuart_verify(uint32_t sram_byte_addr, uint32_t timeout_cycl
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_set_next_value(uint32_t value, uint32_t timeout_cycles)
-{
+static inline int tb_drbg_set_next_value(uint32_t value, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_SET_NEXT_VALUE, value, timeout_cycles)) {
         return 0;
     }
@@ -1138,8 +1144,7 @@ static inline int tb_drbg_set_next_value(uint32_t value, uint32_t timeout_cycles
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_get_next_value(uint32_t *value_out, uint32_t timeout_cycles)
-{
+static inline int tb_drbg_get_next_value(uint32_t *value_out, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_GET_NEXT_VALUE, 0, timeout_cycles)) {
         return 0;
     }
@@ -1155,8 +1160,7 @@ static inline int tb_drbg_get_next_value(uint32_t *value_out, uint32_t timeout_c
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_set_seed(uint32_t seed, uint32_t timeout_cycles)
-{
+static inline int tb_drbg_set_seed(uint32_t seed, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_SET_SEED, seed, timeout_cycles)) {
         return 0;
     }
@@ -1170,8 +1174,7 @@ static inline int tb_drbg_set_seed(uint32_t seed, uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_stop(uint32_t timeout_cycles)
-{
+static inline int tb_drbg_stop(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_STOP, 0, timeout_cycles)) {
         return 0;
     }
@@ -1184,8 +1187,7 @@ static inline int tb_drbg_stop(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_start(uint32_t timeout_cycles)
-{
+static inline int tb_drbg_start(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_START, 0, timeout_cycles)) {
         return 0;
     }
@@ -1203,8 +1205,7 @@ static inline int tb_drbg_start(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_tvalid_glitch(uint32_t timeout_cycles)
-{
+static inline int tb_drbg_tvalid_glitch(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_TVALID_GLITCH, 0, timeout_cycles)) {
         return 0;
     }
@@ -1230,8 +1231,7 @@ static inline int tb_drbg_tvalid_glitch(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_drbg_queue_beat(uint32_t tstrb_4b, uint32_t timeout_cycles)
-{
+static inline int tb_drbg_queue_beat(uint32_t tstrb_4b, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_DRBG_QUEUE_BEAT, tstrb_4b & 0xFu, timeout_cycles)) {
         return 0;
     }
@@ -1245,8 +1245,7 @@ static inline int tb_drbg_queue_beat(uint32_t tstrb_4b, uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if recoverable_err was high, 0 if low or on error/timeout
  */
-static inline int tb_check_recoverable_err(uint32_t timeout_cycles)
-{
+static inline int tb_check_recoverable_err(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_CHECK_RECOVERABLE_ERR, 0, timeout_cycles)) {
         return 0;
     }
@@ -1261,8 +1260,7 @@ static inline int tb_check_recoverable_err(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if restarted due to unrecoverable fault, 0 otherwise or on error/timeout
  */
-static inline int tb_check_unrecoverable_restart(uint32_t timeout_cycles)
-{
+static inline int tb_check_unrecoverable_restart(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_CHECK_UNRECOVERABLE_RESTART, 0, timeout_cycles)) {
         return 0;
     }
@@ -1278,8 +1276,7 @@ static inline int tb_check_unrecoverable_restart(uint32_t timeout_cycles)
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_set_unrecoverable_watch(int enable, uint32_t timeout_cycles)
-{
+static inline int tb_set_unrecoverable_watch(int enable, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_UNRECOVERABLE_WATCH_CTRL, enable ? 1u : 0u, timeout_cycles)) {
         return 0;
     }
@@ -1296,8 +1293,7 @@ static inline int tb_set_unrecoverable_watch(int enable, uint32_t timeout_cycles
  * @return 1 if successful, 0 on error/timeout
  */
 static inline int tb_get_unrecoverable_fault_code(uint32_t timeout_cycles,
-                                                  uint32_t *fault_code_out)
-{
+                                                  uint32_t *fault_code_out) {
     if (!tb_send_cmd(TB_CMD_GET_UNRECOVERABLE_FAULT_CODE, 0, timeout_cycles)) {
         return 0;
     }
@@ -1315,11 +1311,10 @@ static inline int tb_get_unrecoverable_fault_code(uint32_t timeout_cycles,
  * @param value_out Pointer to store the 32-bit value
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_key_share_read(uint8_t engine, uint8_t share, uint8_t word, uint32_t *value_out)
-{
-    uint32_t arg = ((uint32_t)(engine & 0xF) << 8)
-                 | ((uint32_t)(share & 0x1) << 4)
-                 | ((uint32_t)(word & 0xF));
+static inline int tb_key_share_read(uint8_t engine, uint8_t share, uint8_t word,
+                                    uint32_t *value_out) {
+    uint32_t arg =
+        ((uint32_t)(engine & 0xF) << 8) | ((uint32_t)(share & 0x1) << 4) | ((uint32_t)(word & 0xF));
     if (!tb_send_cmd(TB_CMD_KEY_SHARE_READ, arg, 1000)) {
         return 0;
     }
@@ -1336,8 +1331,7 @@ static inline int tb_key_share_read(uint8_t engine, uint8_t share, uint8_t word,
  * @param timeout_cycles Maximum cycles to wait for acknowledgment
  * @return 1 if successful, 0 on error/timeout
  */
-static inline int tb_inject_spurious_irq(uint32_t irq_bits, uint32_t timeout_cycles)
-{
+static inline int tb_inject_spurious_irq(uint32_t irq_bits, uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_INJECT_SPURIOUS_IRQ, irq_bits, timeout_cycles)) {
         return 0;
     }
@@ -1361,8 +1355,7 @@ static inline int tb_inject_spurious_irq(uint32_t irq_bits, uint32_t timeout_cyc
  * @param timeout_cycles Maximum cycles to wait for TB acknowledgment.
  * @return 1 if acknowledged, 0 on timeout/error.
  */
-static inline int tb_km_warm_reset(uint32_t timeout_cycles)
-{
+static inline int tb_km_warm_reset(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_KM_WARM_RESET, 0, timeout_cycles)) {
         return 0;
     }
@@ -1377,8 +1370,7 @@ static inline int tb_km_warm_reset(uint32_t timeout_cycles)
  *
  * @return 1 if COLD_BOOT_DONE is set (ROM has completed cold boot), 0 otherwise.
  */
-static inline uint8_t tb_cold_boot_done_read(void)
-{
+static inline uint8_t tb_cold_boot_done_read(void) {
     return rom_kmcsr_cold_boot_done_read();
 }
 

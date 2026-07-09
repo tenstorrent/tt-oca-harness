@@ -18,16 +18,13 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-static int wait_hmac_done(void)
-{
+static int wait_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -45,8 +42,7 @@ static int wait_hmac_done(void)
     return 0;
 }
 
-static void hmac_cleanup(void)
-{
+static void hmac_cleanup(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -54,8 +50,7 @@ static void hmac_cleanup(void)
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -89,8 +84,8 @@ int main(void)
     *fifo32 = 0xDEADBEEFu;
 
     sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-    printf("  After 1 word: fifo_empty=%u fifo_depth=%u fifo_full=%u\n",
-           sts.f.fifo_empty, sts.f.fifo_depth, sts.f.fifo_full);
+    printf("  After 1 word: fifo_empty=%u fifo_depth=%u fifo_full=%u\n", sts.f.fifo_empty,
+           sts.f.fifo_depth, sts.f.fifo_full);
     if (sts.f.fifo_empty == 1) {
         printf("  WARNING: fifo_empty still 1 after write (HW may have consumed it)\n");
     }
@@ -103,8 +98,7 @@ int main(void)
 
     for (uint32_t i = 0; i < 64; i++) {
         sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-        if (sts.f.fifo_depth > max_depth_seen)
-            max_depth_seen = sts.f.fifo_depth;
+        if (sts.f.fifo_depth > max_depth_seen) max_depth_seen = sts.f.fifo_depth;
 
         if (sts.f.fifo_full) {
             fifo_full_seen = 1;
@@ -118,17 +112,16 @@ int main(void)
 
     if (!fifo_full_seen) {
         sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-        if (sts.f.fifo_depth > max_depth_seen)
-            max_depth_seen = sts.f.fifo_depth;
-        printf("  Wrote %u words total, max_depth=%u, fifo_full=%u\n",
-               words_written, max_depth_seen, sts.f.fifo_full);
+        if (sts.f.fifo_depth > max_depth_seen) max_depth_seen = sts.f.fifo_depth;
+        printf("  Wrote %u words total, max_depth=%u, fifo_full=%u\n", words_written,
+               max_depth_seen, sts.f.fifo_full);
     }
 
     /* Step 5: Verify fifo_full if reached capacity */
     printf("\nStep 5: Verify fifo_full status\n");
     sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-    printf("  STATUS: fifo_empty=%u fifo_full=%u fifo_depth=%u\n",
-           sts.f.fifo_empty, sts.f.fifo_full, sts.f.fifo_depth);
+    printf("  STATUS: fifo_empty=%u fifo_full=%u fifo_depth=%u\n", sts.f.fifo_empty,
+           sts.f.fifo_full, sts.f.fifo_depth);
     if (fifo_full_seen) {
         if (!check_reg("fifo_full at capacity", sts.f.fifo_full, 1)) {
             printf("  NOTE: FIFO may have drained during read; continuing\n");
@@ -166,6 +159,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

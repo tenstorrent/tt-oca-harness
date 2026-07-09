@@ -30,8 +30,7 @@
  * @param payload Pointer to payload words, or `NULL` if `payload_len == 0`.
  * @return Command result (return code + optional argument).
  */
-rom_km_cmd_result_t rom_cmd_dispatch(uint8_t cmd_id, uint8_t cmd_seq,
-                                     uint8_t payload_len,
+rom_km_cmd_result_t rom_cmd_dispatch(uint8_t cmd_id, uint8_t cmd_seq, uint8_t payload_len,
                                      const uint32_t *payload);
 
 /*===========================================================================
@@ -112,7 +111,7 @@ rom_km_cmd_result_t rom_cmd_exec_rom(void);
  * @return Error result if validation fails; never returns on success.
  */
 rom_km_cmd_result_t rom_cmd_sram_load_exec(uint8_t cmd_seq,
-                                            const rom_km_cmd_sram_load_exec_args_t *args);
+                                           const rom_km_cmd_sram_load_exec_args_t *args);
 
 /**
  * @brief Jump to pre-loaded mutable firmware in SRAM (CMD_SRAM_EXEC).

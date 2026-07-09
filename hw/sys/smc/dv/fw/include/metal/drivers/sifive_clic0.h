@@ -38,13 +38,12 @@ struct __metal_driver_sifive_clic0 {
     int init_done;
     struct {
     } __attribute__((aligned(64)));
-    metal_interrupt_vector_handler_t
-        metal_mtvt_table[__METAL_CLIC_SUBINTERRUPTS];
+    metal_interrupt_vector_handler_t metal_mtvt_table[__METAL_CLIC_SUBINTERRUPTS];
     __metal_interrupt_data metal_exint_table[__METAL_CLIC_SUBINTERRUPTS];
 };
 #undef __METAL_MACHINE_MACROS
 
-int __metal_driver_sifive_clic0_command_request(
-    struct metal_interrupt *controller, int command, void *data);
+int __metal_driver_sifive_clic0_command_request(struct metal_interrupt *controller, int command,
+                                                void *data);
 
 #endif

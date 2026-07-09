@@ -10,34 +10,34 @@
 typedef enum { SMC_DMA_OK = 0x0, SMC_DMA_ERR = 0x1 } dma_err_e;
 
 typedef struct {
-  uint64_t decouple_aw : 1;
-  uint64_t decouple_rw : 1;
-  uint64_t src_reduce_len : 1;
-  uint64_t dst_reduce_len : 1;
-  uint64_t src_max_llen : 3;
-  uint64_t dst_max_llen : 3;
-  uint64_t enabled_nd : 1;
-  uint64_t reserved : 53;
+    uint64_t decouple_aw : 1;
+    uint64_t decouple_rw : 1;
+    uint64_t src_reduce_len : 1;
+    uint64_t dst_reduce_len : 1;
+    uint64_t src_max_llen : 3;
+    uint64_t dst_max_llen : 3;
+    uint64_t enabled_nd : 1;
+    uint64_t reserved : 53;
 } dma_config_t;
 
 typedef union {
-  uint64_t val;
-  dma_config_t config;
+    uint64_t val;
+    dma_config_t config;
 } dma_config_u;
 
 typedef struct {
-  uint64_t busy : 10;
-  uint64_t reserved : 54;
+    uint64_t busy : 10;
+    uint64_t reserved : 54;
 } dma_status_t;
 
 typedef struct {
-  uint64_t src_addr;
-  uint64_t src_stride;
-  uint64_t dst_addr;
-  uint64_t dst_stride;
-  uint64_t length;
-  uint64_t num_blocks;
-  uint32_t id;
+    uint64_t src_addr;
+    uint64_t src_stride;
+    uint64_t dst_addr;
+    uint64_t dst_stride;
+    uint64_t length;
+    uint64_t num_blocks;
+    uint32_t id;
 } dma_cmd_t;
 
 void smc_dma_init();

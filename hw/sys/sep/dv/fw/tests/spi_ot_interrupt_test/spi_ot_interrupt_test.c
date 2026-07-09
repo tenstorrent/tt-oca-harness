@@ -29,21 +29,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -55,7 +51,8 @@ int main(void)
     spi_controller__INTR_ENABLE_t intr_enable;
     spi_controller__INTR_TEST_t intr_test;
     spi_controller__EVENT_ENABLE_t event_enable;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
 
@@ -64,15 +61,15 @@ int main(void)
 
     /* Enable controller (required for event signals to be valid) */
     ctrl.w = 0u;
-    ctrl.f.SPIEN     = 1;
+    ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Step 1: INTR_STATUS default */
     printf("\nStep 1: INTR_STATUS default\n");
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    printf("  INTR_STATUS=0x%08x (ERROR=%u, SPI_EVENT=%u)\n",
-           intr_status.w, intr_status.f.ERROR, intr_status.f.SPI_EVENT);
+    printf("  INTR_STATUS=0x%08x (ERROR=%u, SPI_EVENT=%u)\n", intr_status.w, intr_status.f.ERROR,
+           intr_status.f.SPI_EVENT);
 
     /* Step 2: INTR_ENABLE write-readback */
     printf("\nStep 2: INTR_ENABLE write-readback\n");
@@ -109,18 +106,20 @@ int main(void)
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.spi_event=1 via INTR_TEST injection", intr_status.f.SPI_EVENT, 1)) pass = 0;
+    if (!check_reg("INTR_STATUS.spi_event=1 via INTR_TEST injection", intr_status.f.SPI_EVENT, 1))
+        pass = 0;
 
     /* Release INTR_TEST — INTR_STATUS should deassert */
     intr_test.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.spi_event=0 after INTR_TEST release", intr_status.f.SPI_EVENT, 0)) pass = 0;
+    if (!check_reg("INTR_STATUS.spi_event=0 after INTR_TEST release", intr_status.f.SPI_EVENT, 0))
+        pass = 0;
 
     /* Step 3.5: INTR_STATUS.error functional verification via UNDERFLOW */
     printf("\nStep 3.5: INTR_STATUS.error via UNDERFLOW\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);  /* clear */
-    dummy_rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);          /* trigger UNDERFLOW */
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF); /* clear */
+    dummy_rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); /* trigger UNDERFLOW */
     (void)dummy_rx;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("UNDERFLOW triggered", err_status.f.UNDERFLOW, 1)) pass = 0;
@@ -162,7 +161,8 @@ int main(void)
     event_enable.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.spi_event=0 after ready disable", intr_status.f.SPI_EVENT, 0)) pass = 0;
+    if (!check_reg("INTR_STATUS.spi_event=0 after ready disable", intr_status.f.SPI_EVENT, 0))
+        pass = 0;
 
     event_enable.w = 0;
     event_enable.f.IDLE = 1;
@@ -172,7 +172,8 @@ int main(void)
     event_enable.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.spi_event=0 after idle disable", intr_status.f.SPI_EVENT, 0)) pass = 0;
+    if (!check_reg("INTR_STATUS.spi_event=0 after idle disable", intr_status.f.SPI_EVENT, 0))
+        pass = 0;
 
     /* Enable all events for write-readback verification */
     event_enable.w = 0;
@@ -206,7 +207,8 @@ int main(void)
     intr_test.f.ERROR = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.error=0 when INTR_ENABLE.error=0 (masked)", intr_status.f.ERROR, 0)) pass = 0;
+    if (!check_reg("INTR_STATUS.error=0 when INTR_ENABLE.error=0 (masked)", intr_status.f.ERROR, 0))
+        pass = 0;
 
     /* Release INTR_TEST */
     intr_test.w = 0;
@@ -220,7 +222,9 @@ int main(void)
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    if (!check_reg("INTR_STATUS.spi_event=0 when INTR_ENABLE.spi_event=0 (masked)", intr_status.f.SPI_EVENT, 0)) pass = 0;
+    if (!check_reg("INTR_STATUS.spi_event=0 when INTR_ENABLE.spi_event=0 (masked)",
+                   intr_status.f.SPI_EVENT, 0))
+        pass = 0;
     intr_test.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
 
@@ -240,6 +244,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

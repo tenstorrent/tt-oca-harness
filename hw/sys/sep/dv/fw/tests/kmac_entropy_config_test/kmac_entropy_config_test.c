@@ -61,8 +61,7 @@ static int test_entropy_config(void) {
     }
 
     printf("=== Step 3: Seed entropy ===\n");
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 
     printf("=== Step 4: Configure SHA3-256 with entropy ===\n");
     if (wait_for_idle() != 0) return -1;
@@ -71,7 +70,7 @@ static int test_entropy_config(void) {
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;
     cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -117,13 +116,13 @@ static int test_entropy_config(void) {
 
     printf("=== Step 7: Read ENTROPY_REFRESH_HASH_CNT (expect > 0 after hash) ===\n");
     kmac__ENTROPY_REFRESH_HASH_CNT_t hc = {
-        .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)
-    };
+        .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)};
     printf("ENTROPY_REFRESH_HASH_CNT = %u\n", hc.f.hash_cnt);
     if (hc.f.hash_cnt > 0) {
         printf("PASS: ENTROPY_REFRESH_HASH_CNT incremented after hash\n");
     } else {
-        printf("INFO: ENTROPY_REFRESH_HASH_CNT=0 (may reset with entropy_ready; not a hard fail)\n");
+        printf(
+            "INFO: ENTROPY_REFRESH_HASH_CNT=0 (may reset with entropy_ready; not a hard fail)\n");
     }
 
     return errors;
@@ -147,5 +146,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

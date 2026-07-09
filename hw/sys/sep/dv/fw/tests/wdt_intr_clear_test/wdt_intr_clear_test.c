@@ -31,9 +31,9 @@
 #include "nmi.h"
 #include "test_completion.h"
 
-static volatile int nmi_count     = 0;
-static volatile int nmi_errors    = 0;
-static volatile int phase         = 0;  /* 0=wait first bark, 1=wait re-trigger, 2=done */
+static volatile int nmi_count = 0;
+static volatile int nmi_errors = 0;
+static volatile int phase = 0; /* 0=wait first bark, 1=wait re-trigger, 2=done */
 
 void wdt_nmi_handler(void) {
     nmi_count++;
@@ -74,8 +74,7 @@ void wdt_nmi_handler(void) {
     /* phase == 2: W1C already done above, no further action needed */
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_011: WDT Interrupt Clear Test\n");
@@ -95,25 +94,34 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Wait for first bark */
-    while (phase == 0) { __asm__ volatile("wfi"); }
+    while (phase == 0) {
+        __asm__ volatile("wfi");
+    }
 
     printf("  PASS: First BARK fired (NMI #1)\n");
 
     /* STEP 2: Pet to bring count below threshold, then wait for re-trigger */
-    printf("\n// STEP 2: Pet (count=0) → wait for re-trigger (count grows back above BARK_THOLD)\n");
+    printf(
+        "\n// STEP 2: Pet (count=0) → wait for re-trigger (count grows back above BARK_THOLD)\n");
     /* Pet: reset count to 0 so wdog_intr_o goes LOW → enables posedge re-trigger */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* Wait for count to grow back above bark_thold (2000) and fire second NMI */
-    while (phase == 1) { __asm__ volatile("wfi"); }
+    while (phase == 1) {
+        __asm__ volatile("wfi");
+    }
 
     printf("  PASS: Re-trigger fired (NMI #2)\n");
 
     /* STEP 3: Verify no further triggers after disable+pet */
     printf("\n// STEP 3: Verify no further triggers after disable+pet\n");
     /* WDT already disabled in phase=1 handler - drain any in-flight CDC pulses */
-    for (volatile int i = 0; i < 5000; i++) { __asm__ volatile("nop"); }  /* drain */
+    for (volatile int i = 0; i < 5000; i++) {
+        __asm__ volatile("nop");
+    } /* drain */
     int prev_count = nmi_count;
-    for (volatile int i = 0; i < 100000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 100000; i++) {
+        __asm__ volatile("nop");
+    }
     if (nmi_count != prev_count) {
         printf("  FAIL: Spurious NMI after disable+pet (got %d extra)\n", nmi_count - prev_count);
         errors++;
@@ -123,10 +131,12 @@ int main(void)
 
     /* STEP 4: Manual INTR_STATE W1C with WDT disabled */
     printf("\n// STEP 4: Manual INTR_STATE W1C (via INTR_TEST)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);  /* clear any residual */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);   /* inject */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear any residual */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);  /* inject */
     int prev = nmi_count;
-    for (volatile int i = 0; i < 1000000 && nmi_count == prev; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 1000000 && nmi_count == prev; i++) {
+        __asm__ volatile("nop");
+    }
 
     /* Phase is 2 now, NMI won't be in our phase handler, but will at least read INTR_STATE */
     uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
@@ -152,5 +162,7 @@ int main(void)
     }
     printf("======================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

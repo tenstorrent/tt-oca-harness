@@ -40,32 +40,24 @@
 // Block 2 Plaintext:  30c81c46a35ce411e5fbc1191a0a52ef
 // Block 2 Ciphertext: 73bed6b8e3c1743b7116e69e22229516
 
-static const uint32_t test_key[4] = {
-    0x16157e2b,  // Key bytes 0-3 (little-endian)
-    0xa6d2ae28,
-    0x8815f7ab,
-    0x3c4fcf09
-};
+static const uint32_t test_key[4] = {0x16157e2b, // Key bytes 0-3 (little-endian)
+                                     0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
-static const uint32_t test_iv[4] = {
-    0x03020100,  // IV bytes 0-3 (little-endian)
-    0x07060504,
-    0x0b0a0908,
-    0x0f0e0d0c
-};
+static const uint32_t test_iv[4] = {0x03020100, // IV bytes 0-3 (little-endian)
+                                    0x07060504, 0x0b0a0908, 0x0f0e0d0c};
 
 // 3 blocks of plaintext
 static const uint32_t test_plaintext[3][4] = {
-    { 0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373 },  // Block 0
-    { 0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45 },  // Block 1
-    { 0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a }   // Block 2 - fixed typo: 0x11e45ca3 not 0x41
+    {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373}, // Block 0
+    {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45}, // Block 1
+    {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}  // Block 2 - fixed typo: 0x11e45ca3 not 0x41
 };
 
 // 3 blocks of expected ciphertext
 static const uint32_t expected_ciphertext[3][4] = {
-    { 0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912 },  // Block 0
-    { 0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691 },  // Block 1
-    { 0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222 }   // Block 2
+    {0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912}, // Block 0
+    {0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691}, // Block 1
+    {0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222}  // Block 2
 };
 
 static int wait_for_idle(void) {
@@ -94,8 +86,8 @@ static int wait_for_output_valid(void) {
 
 static void print_status(const char *tag) {
     aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
-    printf("%s STATUS=0x%08x idle=%u stall=%u input_ready=%u output_valid=%u\n",
-           tag, s.w, s.f.IDLE, s.f.STALL, s.f.INPUT_READY, s.f.OUTPUT_VALID);
+    printf("%s STATUS=0x%08x idle=%u stall=%u input_ready=%u output_valid=%u\n", tag, s.w, s.f.IDLE,
+           s.f.STALL, s.f.INPUT_READY, s.f.OUTPUT_VALID);
 }
 
 static int wait_for_input_ready(void) {
@@ -125,11 +117,11 @@ static int aes_cbc_multi_block_test(void) {
     printf("  AUTOMATIC MODE: AES will start automatically when DATA_IN is fully written\n");
     printf("  AUTOMATIC MODE: AES tracks DATA_OUT reads and stalls if output not read\n");
     aes__CTRL_SHADOWED_t ctrl = {.w = 0};
-    ctrl.f.OPERATION = 0x1;           // AES_ENC (encryption)
-    ctrl.f.MODE = 0x2;                 // AES_CBC mode (not ECB!)
-    ctrl.f.KEY_LEN = 0x1;              // AES_128
-    ctrl.f.MANUAL_OPERATION = 0x0;     // Automatic mode - KEY FEATURE!
-    ctrl.f.SIDELOAD = 0;               // Use SW key (KEY_SHARE0/1); deprecated, DV only
+    ctrl.f.OPERATION = 0x1;        // AES_ENC (encryption)
+    ctrl.f.MODE = 0x2;             // AES_CBC mode (not ECB!)
+    ctrl.f.KEY_LEN = 0x1;          // AES_128
+    ctrl.f.MANUAL_OPERATION = 0x0; // Automatic mode - KEY FEATURE!
+    ctrl.f.SIDELOAD = 0;           // Use SW key (KEY_SHARE0/1); deprecated, DV only
     // Write twice since it's shadowed
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
@@ -210,8 +202,8 @@ static int aes_cbc_multi_block_test(void) {
 
         for (int i = 0; i < 4; i++) {
             if (ciphertext[i] != expected_ciphertext[block][i]) {
-                printf("  ERROR: Block %d word %d mismatch: expected 0x%08x, got 0x%08x\n",
-                       block, i, expected_ciphertext[block][i], ciphertext[i]);
+                printf("  ERROR: Block %d word %d mismatch: expected 0x%08x, got 0x%08x\n", block,
+                       i, expected_ciphertext[block][i], ciphertext[i]);
                 pass = 0;
             }
         }

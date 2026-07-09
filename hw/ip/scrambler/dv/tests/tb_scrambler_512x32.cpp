@@ -6,7 +6,7 @@
 #include "Vscrambler_512x32.h"
 #include "tb_scrambler_common.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
     Vscrambler_512x32 dut;
     int rc = run_word_tests(dut, 512, "512x32");

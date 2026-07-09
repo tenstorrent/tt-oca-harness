@@ -26,16 +26,16 @@
 
 /** @brief Metadata for a single key handle. */
 typedef struct {
-    uint8_t  base_slot;     /**< KPV base slot for this key */
-    uint8_t  valid;         /**< 1 if the handle is live, 0 if destroyed */
-    uint32_t crc32;         /**< CRC-32 recorded at generation time */
+    uint8_t base_slot; /**< KPV base slot for this key */
+    uint8_t valid;     /**< 1 if the handle is live, 0 if destroyed */
+    uint32_t crc32;    /**< CRC-32 recorded at generation time */
 } rom_km_keyreg_entry_t;
 
 /** @brief Key handle registry (index 0 is unused / null handle). */
 typedef struct {
     rom_km_keyreg_entry_t handles[ROM_KM_MAX_KEY_HANDLES + 1]; /**< Per-handle metadata */
-    uint8_t slot_to_handle[ROM_KM_KPV_NUM_SLOTS];  /**< Reverse map: slot -> handle */
-    uint8_t next_handle;                            /**< Next handle to allocate (starts at 1) */
+    uint8_t slot_to_handle[ROM_KM_KPV_NUM_SLOTS];              /**< Reverse map: slot -> handle */
+    uint8_t next_handle; /**< Next handle to allocate (starts at 1) */
 } rom_km_keyreg_t;
 
 /*===========================================================================
@@ -102,8 +102,7 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
  * @param crc CRC-32 computed over the key material.
  * @return Positive handle value (1-255) on success, -1 if handles exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot,
-                        uint8_t num_slots, uint32_t crc);
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc);
 
 /**
  * @brief Destroy (invalidate) an existing handle.

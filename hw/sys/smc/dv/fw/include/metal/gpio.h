@@ -209,8 +209,7 @@ __inline__ int metal_gpio_toggle_pin(struct metal_gpio *gpio, int pin) {
  * @param io_function The IO function to set
  * @return 0 if the pinmux is successfully set
  */
-__inline__ int metal_gpio_enable_pinmux(struct metal_gpio *gpio, int pin,
-                                        int io_function) {
+__inline__ int metal_gpio_enable_pinmux(struct metal_gpio *gpio, int pin, int io_function) {
     if (!gpio) {
         return 1;
     }
@@ -239,8 +238,7 @@ __inline__ int metal_gpio_disable_pinmux(struct metal_gpio *gpio, int pin) {
  * @param intr_type The interrupt type
  * @return 0 if the interrupt mode is setup properly
  */
-__inline__ int metal_gpio_config_interrupt(struct metal_gpio *gpio, int pin,
-                                           int intr_type) {
+__inline__ int metal_gpio_config_interrupt(struct metal_gpio *gpio, int pin, int intr_type) {
     if (!gpio) {
         return 1;
     }
@@ -255,8 +253,7 @@ __inline__ int metal_gpio_config_interrupt(struct metal_gpio *gpio, int pin,
  * @param intr_type The interrupt type to be clear
  * @return 0 if the interrupt is cleared
  */
-__inline__ int metal_gpio_clear_interrupt(struct metal_gpio *gpio, int pin,
-                                          int intr_type) {
+__inline__ int metal_gpio_clear_interrupt(struct metal_gpio *gpio, int pin, int intr_type) {
     if (!gpio) {
         return 1;
     }
@@ -271,8 +268,7 @@ __inline__ int metal_gpio_clear_interrupt(struct metal_gpio *gpio, int pin,
  * @return A pointer to the interrupt controller responsible for handling
  * gpio interrupts.
  */
-__inline__ struct metal_interrupt *
-metal_gpio_interrupt_controller(struct metal_gpio *gpio) {
+__inline__ struct metal_interrupt *metal_gpio_interrupt_controller(struct metal_gpio *gpio) {
     return gpio->vtable->interrupt_controller(gpio);
 }
 

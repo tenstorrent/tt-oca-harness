@@ -18,17 +18,16 @@
 #define LOCAL_ALIAS_SCENARIOS 8
 
 // Local alias 測試基礎定義
-#define LOCAL_ALIAS_SRC_BASE     0x30000000
-#define LOCAL_ALIAS_DEST_BASE    0x70000000
-#define LOCAL_MASTER_RANGE       0x08000000
-#define GLOBAL_MASTER_RANGE      0x10000000
+#define LOCAL_ALIAS_SRC_BASE 0x30000000
+#define LOCAL_ALIAS_DEST_BASE 0x70000000
+#define LOCAL_MASTER_RANGE 0x08000000
+#define GLOBAL_MASTER_RANGE 0x10000000
 
 // CSR欄位toggle模式
-#define CSR_TOGGLE_PATTERNS      16
-#define MAX_LOCAL_REGIONS        8
+#define CSR_TOGGLE_PATTERNS 16
+#define MAX_LOCAL_REGIONS 8
 
-static int test_local_alias_csr_intensive_toggle(void)
-{
+static int test_local_alias_csr_intensive_toggle(void) {
     printf("Starting local alias CSR intensive toggle...\n");
 
     // 場景1: CSR欄位intensive toggle
@@ -42,18 +41,14 @@ static int test_local_alias_csr_intensive_toggle(void)
             int enable_state = (csr_round + region) & 1;
 
             // Toggle各種CSR欄位組合
-            int priority = (csr_round >> 1) & 0x7;  // 3-bit priority
-            int access_type = (csr_round >> 4) & 0x3;  // 2-bit access type
-            int cache_policy = (region ^ csr_round) & 0xF;  // 4-bit cache policy
+            int priority = (csr_round >> 1) & 0x7;         // 3-bit priority
+            int access_type = (csr_round >> 4) & 0x3;      // 2-bit access type
+            int cache_policy = (region ^ csr_round) & 0xF; // 4-bit cache policy
 
-            if (setup_local_alias_remap_extended(region,
-                                               src_base, dest_base,
-                                               enable_state,
-                                               priority,
-                                               access_type,
-                                               cache_policy,
-                                               0xFFF80000) != 0) {  // 512KB granularity
-                continue;  // Skip invalid combinations
+            if (setup_local_alias_remap_extended(region, src_base, dest_base, enable_state,
+                                                 priority, access_type, cache_policy,
+                                                 0xFFF80000) != 0) { // 512KB granularity
+                continue;                                            // Skip invalid combinations
             }
 
             // 測試CSR欄位toggle的影響
@@ -74,8 +69,7 @@ static int test_local_alias_csr_intensive_toggle(void)
     return 0;
 }
 
-static int test_priority_resolution_comprehensive(void)
-{
+static int test_priority_resolution_comprehensive(void) {
     printf("Starting priority resolution comprehensive test...\n");
 
     // 場景2: Priority resolution完整測試
@@ -83,24 +77,24 @@ static int test_priority_resolution_comprehensive(void)
         // 設置多個重疊的local alias區域，測試優先級解析
         for (int region = 0; region < 8; region++) {
             uint32_t base_addr = LOCAL_ALIAS_SRC_BASE + priority_test * 0x800000;
-            uint32_t overlap_start = base_addr + region * 0x60000;  // 創建重疊
-            uint32_t dest_addr = LOCAL_ALIAS_DEST_BASE + priority_test * 0x800000 + region * 0x100000;
+            uint32_t overlap_start = base_addr + region * 0x60000; // 創建重疊
+            uint32_t dest_addr =
+                LOCAL_ALIAS_DEST_BASE + priority_test * 0x800000 + region * 0x100000;
 
             // 每個region不同優先級
             int priority_val = (region + priority_test) % 8;
 
-            if (setup_local_alias_remap_extended(region,
-                                               overlap_start, dest_addr,
-                                               1,  // enable
-                                               priority_val,
-                                               region % 4,  // access type
-                                               CACHE_ATTR_WRITEBACK,
-                                               0xFFF00000) != 0) {  // 1MB mask
+            if (setup_local_alias_remap_extended(region, overlap_start, dest_addr,
+                                                 1, // enable
+                                                 priority_val,
+                                                 region % 4, // access type
+                                                 CACHE_ATTR_WRITEBACK,
+                                                 0xFFF00000) != 0) { // 1MB mask
                 continue;
             }
 
             // 測試重疊區域的存取，驗證優先級解析
-            uint32_t overlap_addr = overlap_start + 0x40000;  // 在重疊區域內
+            uint32_t overlap_addr = overlap_start + 0x40000; // 在重疊區域內
 
             test_axi_transaction(overlap_addr, 1 << (region % 3), AXI_READ);
             test_axi_transaction(overlap_addr + 0x100, 1 << ((region + 1) % 3), AXI_WRITE);
@@ -111,8 +105,7 @@ static int test_priority_resolution_comprehensive(void)
     return 0;
 }
 
-static int test_local_master_access_patterns(void)
-{
+static int test_local_master_access_patterns(void) {
     printf("Starting local master access patterns test...\n");
 
     // 場景3: Local master存取模式測試
@@ -123,15 +116,13 @@ static int test_local_master_access_patterns(void)
             uint32_t local_dest = LOCAL_ALIAS_DEST_BASE + master_test * 0x200000 + region * 0x40000;
 
             // Local master specific configurations
-            int master_id = (master_test + region) % 4;  // 4個不同master
-            int access_mode = master_test % 3;  // R, W, RW modes
+            int master_id = (master_test + region) % 4; // 4個不同master
+            int access_mode = master_test % 3;          // R, W, RW modes
 
-            if (setup_local_alias_remap_master_specific(region,
-                                                      local_src, local_dest,
-                                                      1,  // enable
-                                                      master_id,
-                                                      access_mode,
-                                                      0xFFFC0000) != 0) {  // 256KB granularity
+            if (setup_local_alias_remap_master_specific(region, local_src, local_dest,
+                                                        1, // enable
+                                                        master_id, access_mode,
+                                                        0xFFFC0000) != 0) { // 256KB granularity
                 continue;
             }
 
@@ -149,7 +140,7 @@ static int test_local_master_access_patterns(void)
             }
 
             // Burst存取測試
-            if (access_mode == 2) {  // RW mode
+            if (access_mode == 2) { // RW mode
                 test_axi_transaction(test_addr + 0x1000, 32, AXI_READ);
                 test_axi_transaction(test_addr + 0x1020, 32, AXI_WRITE);
             }
@@ -160,34 +151,34 @@ static int test_local_master_access_patterns(void)
     return 0;
 }
 
-static int test_address_range_boundary_toggle(void)
-{
+static int test_address_range_boundary_toggle(void) {
     printf("Starting address range boundary toggle test...\n");
 
     // 場景4: Address range boundary toggle測試
     uint32_t boundary_patterns[] = {
-        0x00000FFF, 0x00001000,  // 4KB boundary
-        0x00003FFF, 0x00004000,  // 16KB boundary
-        0x0000FFFF, 0x00010000,  // 64KB boundary
-        0x0003FFFF, 0x00040000,  // 256KB boundary
-        0x000FFFFF, 0x00100000,  // 1MB boundary
-        0x003FFFFF, 0x00400000,  // 4MB boundary
-        0x00FFFFFF, 0x01000000,  // 16MB boundary
-        0x03FFFFFF, 0x04000000   // 64MB boundary
+        0x00000FFF, 0x00001000, // 4KB boundary
+        0x00003FFF, 0x00004000, // 16KB boundary
+        0x0000FFFF, 0x00010000, // 64KB boundary
+        0x0003FFFF, 0x00040000, // 256KB boundary
+        0x000FFFFF, 0x00100000, // 1MB boundary
+        0x003FFFFF, 0x00400000, // 4MB boundary
+        0x00FFFFFF, 0x01000000, // 16MB boundary
+        0x03FFFFFF, 0x04000000  // 64MB boundary
     };
 
     for (int boundary_idx = 0; boundary_idx < 16; boundary_idx++) {
         uint32_t boundary_addr = boundary_patterns[boundary_idx];
 
         for (int region = 0; region < 8; region++) {
-            uint32_t aligned_src = (LOCAL_ALIAS_SRC_BASE & 0xFC000000) | (boundary_addr & 0x03FFFFFF);
-            uint32_t aligned_dest = LOCAL_ALIAS_DEST_BASE + boundary_idx * 0x1000000 + region * 0x200000;
+            uint32_t aligned_src =
+                (LOCAL_ALIAS_SRC_BASE & 0xFC000000) | (boundary_addr & 0x03FFFFFF);
+            uint32_t aligned_dest =
+                LOCAL_ALIAS_DEST_BASE + boundary_idx * 0x1000000 + region * 0x200000;
 
-            if (setup_local_alias_remap_boundary(region,
-                                                aligned_src, aligned_dest,
-                                                1,  // enable
-                                                boundary_idx % 8,  // priority
-                                                0xFF000000 | (boundary_addr & 0x00FFFFFF)) != 0) {
+            if (setup_local_alias_remap_boundary(region, aligned_src, aligned_dest,
+                                                 1,                // enable
+                                                 boundary_idx % 8, // priority
+                                                 0xFF000000 | (boundary_addr & 0x00FFFFFF)) != 0) {
                 continue;
             }
 
@@ -199,7 +190,7 @@ static int test_address_range_boundary_toggle(void)
 
             // 跨邊界存取
             if (boundary_idx % 2) {
-                test_axi_transaction(aligned_src + 0xFFC, 8, AXI_READ);  // 跨邊界
+                test_axi_transaction(aligned_src + 0xFFC, 8, AXI_READ); // 跨邊界
             }
         }
     }
@@ -208,21 +199,14 @@ static int test_address_range_boundary_toggle(void)
     return 0;
 }
 
-static int test_cache_coherency_scenarios(void)
-{
+static int test_cache_coherency_scenarios(void) {
     printf("Starting cache coherency scenarios test...\n");
 
     // 場景5: Cache coherency場景測試
-    uint32_t cache_scenarios[] = {
-        CACHE_ATTR_DEVICE,
-        CACHE_ATTR_NORMAL_NC,
-        CACHE_ATTR_NORMAL_WT,
-        CACHE_ATTR_NORMAL_WB,
-        CACHE_ATTR_STRONGLY_ORDERED,
-        CACHE_ATTR_WRITE_COMBINING,
-        CACHE_ATTR_WRITE_ALLOCATE,
-        CACHE_ATTR_READ_ALLOCATE
-    };
+    uint32_t cache_scenarios[] = {CACHE_ATTR_DEVICE,           CACHE_ATTR_NORMAL_NC,
+                                  CACHE_ATTR_NORMAL_WT,        CACHE_ATTR_NORMAL_WB,
+                                  CACHE_ATTR_STRONGLY_ORDERED, CACHE_ATTR_WRITE_COMBINING,
+                                  CACHE_ATTR_WRITE_ALLOCATE,   CACHE_ATTR_READ_ALLOCATE};
 
     for (int cache_idx = 0; cache_idx < 8; cache_idx++) {
         uint32_t cache_attr = cache_scenarios[cache_idx];
@@ -231,13 +215,11 @@ static int test_cache_coherency_scenarios(void)
             uint32_t cache_src = LOCAL_ALIAS_SRC_BASE + cache_idx * 0x800000 + region * 0x100000;
             uint32_t cache_dest = LOCAL_ALIAS_DEST_BASE + cache_idx * 0x800000 + region * 0x100000;
 
-            if (setup_local_alias_remap_extended(region,
-                                               cache_src, cache_dest,
-                                               1,  // enable
-                                               cache_idx,  // priority
-                                               region % 4,  // access type
-                                               cache_attr,
-                                               0xFFF00000) != 0) {
+            if (setup_local_alias_remap_extended(region, cache_src, cache_dest,
+                                                 1,          // enable
+                                                 cache_idx,  // priority
+                                                 region % 4, // access type
+                                                 cache_attr, 0xFFF00000) != 0) {
                 continue;
             }
 
@@ -264,8 +246,7 @@ static int test_cache_coherency_scenarios(void)
     return 0;
 }
 
-static int test_disable_enable_sequence_comprehensive(void)
-{
+static int test_disable_enable_sequence_comprehensive(void) {
     printf("Starting disable/enable sequence comprehensive test...\n");
 
     // 場景6: Disable/Enable sequence綜合測試
@@ -275,13 +256,10 @@ static int test_disable_enable_sequence_comprehensive(void)
             uint32_t seq_dest = LOCAL_ALIAS_DEST_BASE + sequence_test * 0x400000 + region * 0x80000;
 
             // Phase 1: Enable所有區域
-            if (setup_local_alias_remap_extended(region,
-                                               seq_src, seq_dest,
-                                               1,  // enable
-                                               sequence_test % 8,
-                                               region % 4,
-                                               CACHE_ATTR_WRITEBACK,
-                                               0xFFF80000) != 0) {
+            if (setup_local_alias_remap_extended(region, seq_src, seq_dest,
+                                                 1, // enable
+                                                 sequence_test % 8, region % 4,
+                                                 CACHE_ATTR_WRITEBACK, 0xFFF80000) != 0) {
                 continue;
             }
 
@@ -291,28 +269,24 @@ static int test_disable_enable_sequence_comprehensive(void)
             test_axi_transaction(test_addr + 0x100, 4, AXI_WRITE);
 
             // Phase 2: Disable區域
-            if (setup_local_alias_remap_extended(region,
-                                               seq_src, seq_dest,
-                                               0,  // disable
-                                               sequence_test % 8,
-                                               region % 4,
-                                               CACHE_ATTR_WRITEBACK,
-                                               0xFFF80000) != 0) {
+            if (setup_local_alias_remap_extended(region, seq_src, seq_dest,
+                                                 0, // disable
+                                                 sequence_test % 8, region % 4,
+                                                 CACHE_ATTR_WRITEBACK, 0xFFF80000) != 0) {
                 continue;
             }
 
             // 測試disable狀態下的存取
-            test_axi_transaction(test_addr, 4, AXI_READ);   // Should fail or pass through
+            test_axi_transaction(test_addr, 4, AXI_READ); // Should fail or pass through
             test_axi_transaction(test_addr + 0x100, 4, AXI_WRITE);
 
             // Phase 3: Re-enable with different config
-            if (setup_local_alias_remap_extended(region,
-                                               seq_src, seq_dest + 0x1000000,  // 不同dest
-                                               1,  // re-enable
-                                               (sequence_test + 4) % 8,  // 不同priority
-                                               (region + 2) % 4,  // 不同access type
-                                               CACHE_ATTR_NORMAL_NC,  // 不同cache
-                                               0xFFF80000) != 0) {
+            if (setup_local_alias_remap_extended(region, seq_src, seq_dest + 0x1000000, // 不同dest
+                                                 1,                                     // re-enable
+                                                 (sequence_test + 4) % 8, // 不同priority
+                                                 (region + 2) % 4,        // 不同access type
+                                                 CACHE_ATTR_NORMAL_NC,    // 不同cache
+                                                 0xFFF80000) != 0) {
                 continue;
             }
 
@@ -326,8 +300,7 @@ static int test_disable_enable_sequence_comprehensive(void)
     return 0;
 }
 
-static int test_error_injection_and_recovery(void)
-{
+static int test_error_injection_and_recovery(void) {
     printf("Starting error injection and recovery test...\n");
 
     // 場景7: Error injection和recovery測試
@@ -337,13 +310,11 @@ static int test_error_injection_and_recovery(void)
             uint32_t err_dest = LOCAL_ALIAS_DEST_BASE + error_test * 0x200000 + region * 0x40000;
 
             // 設置正常configuration
-            if (setup_local_alias_remap_extended(region,
-                                               err_src, err_dest,
-                                               1,  // enable
-                                               region,
-                                               0,  // read access
-                                               CACHE_ATTR_WRITEBACK,
-                                               0xFFFC0000) != 0) {
+            if (setup_local_alias_remap_extended(region, err_src, err_dest,
+                                                 1, // enable
+                                                 region,
+                                                 0, // read access
+                                                 CACHE_ATTR_WRITEBACK, 0xFFFC0000) != 0) {
                 continue;
             }
 
@@ -351,23 +322,21 @@ static int test_error_injection_and_recovery(void)
             uint32_t test_addr = err_src + 0x8000;
 
             // Test 1: 嘗試無效的地址對齊
-            test_axi_transaction(test_addr + 1, 4, AXI_READ);  // Misaligned
+            test_axi_transaction(test_addr + 1, 4, AXI_READ); // Misaligned
             test_axi_transaction(test_addr + 2, 4, AXI_WRITE);
 
             // Test 2: 超出區域範圍的存取
-            test_axi_transaction(err_src + 0x50000, 4, AXI_READ);  // Out of range
+            test_axi_transaction(err_src + 0x50000, 4, AXI_READ); // Out of range
 
             // Test 3: 錯誤的burst size
-            test_axi_transaction(test_addr, 127, AXI_READ);  // Odd burst size
+            test_axi_transaction(test_addr, 127, AXI_READ); // Odd burst size
 
             // Recovery: 重新配置為valid setting
-            if (setup_local_alias_remap_extended(region,
-                                               err_src, err_dest,
-                                               1,  // enable
-                                               region,
-                                               2,  // read-write access
-                                               CACHE_ATTR_WRITEBACK,
-                                               0xFFFC0000) != 0) {
+            if (setup_local_alias_remap_extended(region, err_src, err_dest,
+                                                 1, // enable
+                                                 region,
+                                                 2, // read-write access
+                                                 CACHE_ATTR_WRITEBACK, 0xFFFC0000) != 0) {
                 continue;
             }
 
@@ -381,24 +350,24 @@ static int test_error_injection_and_recovery(void)
     return 0;
 }
 
-static int test_concurrent_multi_region_stress(void)
-{
+static int test_concurrent_multi_region_stress(void) {
     printf("Starting concurrent multi-region stress test...\n");
 
     // 場景8: Concurrent multi-region stress測試
     for (int stress_test = 0; stress_test < 8; stress_test++) {
         // 同時設置所有8個region
         for (int region = 0; region < 8; region++) {
-            uint32_t stress_src = LOCAL_ALIAS_SRC_BASE + stress_test * 0x2000000 + region * 0x400000;
-            uint32_t stress_dest = LOCAL_ALIAS_DEST_BASE + stress_test * 0x2000000 + region * 0x400000;
+            uint32_t stress_src =
+                LOCAL_ALIAS_SRC_BASE + stress_test * 0x2000000 + region * 0x400000;
+            uint32_t stress_dest =
+                LOCAL_ALIAS_DEST_BASE + stress_test * 0x2000000 + region * 0x400000;
 
-            if (setup_local_alias_remap_extended(region,
-                                               stress_src, stress_dest,
-                                               1,  // enable
-                                               region,  // 每個region不同priority
-                                               stress_test % 4,  // 循環access type
-                                               (stress_test * region) % 8,  // 變化cache attr
-                                               0xFFE00000) != 0) {  // 2MB granularity
+            if (setup_local_alias_remap_extended(region, stress_src, stress_dest,
+                                                 1,               // enable
+                                                 region,          // 每個region不同priority
+                                                 stress_test % 4, // 循環access type
+                                                 (stress_test * region) % 8, // 變化cache attr
+                                                 0xFFE00000) != 0) {         // 2MB granularity
                 continue;
             }
         }
@@ -407,7 +376,7 @@ static int test_concurrent_multi_region_stress(void)
         for (int parallel_round = 0; parallel_round < 16; parallel_round++) {
             for (int region = 0; region < 8; region++) {
                 uint32_t parallel_addr = LOCAL_ALIAS_SRC_BASE + stress_test * 0x2000000 +
-                                       region * 0x400000 + parallel_round * 0x10000;
+                                         region * 0x400000 + parallel_round * 0x10000;
 
                 // 快速連續存取
                 test_axi_transaction(parallel_addr, 4, AXI_READ);
@@ -426,8 +395,7 @@ static int test_concurrent_multi_region_stress(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_064: Local Alias Remap Toggle P3 Test\n");
     printf("Goals: axi_local_alias_remap 64.33%% -> 90%%+ (需要 25.67%% 改進)\n");
     printf("Strategy: Local別名重映射toggle強化，完整CSR欄位覆蓋\n\n");

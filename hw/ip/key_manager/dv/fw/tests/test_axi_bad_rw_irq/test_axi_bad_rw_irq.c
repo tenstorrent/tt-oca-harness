@@ -24,12 +24,12 @@
 #include "key_manager_addr.h"
 
 /* DEBUG is read-only (all fields sw=r). Writing triggers SLVERR when err_if_bad_rw enabled. */
-#define KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR_PTR  ((volatile uint32_t *)KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR)
+#define KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR_PTR \
+    ((volatile uint32_t *)KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR)
 /* IRQ_SET is write-only (all fields sw=w). Reading triggers SLVERR when err_if_bad_rw enabled. */
-#define KMCSR_IRQ_SET_REG_ADDR_PTR  ((volatile uint32_t *)KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR)
+#define KMCSR_IRQ_SET_REG_ADDR_PTR ((volatile uint32_t *)KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR)
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
 
     TEST_INIT();
@@ -50,7 +50,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(!status_reg.f.axi_slverr,
-                    "IRQ_STATUS.AXI_SLVERR must be clear at test start (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_SLVERR must be clear at test start (status=0x%08X)",
+                    irq_status);
     }
     TEST_LOG("  Verified IRQ_STATUS.AXI_SLVERR is clear at start");
 
@@ -58,7 +59,8 @@ int main(void)
      * Subtest 1: Write to read-only DEBUG register → SLVERR
      *=========================================================================*/
     TEST_SUBTEST_START("Write to read-only DEBUG → SLVERR");
-    TEST_LOG("  Writing 0xDEADBEEF to read-only DEBUG register at 0x%08X...", KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR);
+    TEST_LOG("  Writing 0xDEADBEEF to read-only DEBUG register at 0x%08X...",
+             KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR);
     *KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR_PTR = 0xDEADBEEFu;
 
     /* Verify IRQ_STATUS.AXI_SLVERR is set */
@@ -68,7 +70,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(status_reg.f.axi_slverr,
-                    "IRQ_STATUS.AXI_SLVERR must be set after write to RO DEBUG (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_SLVERR must be set after write to RO DEBUG (status=0x%08X)",
+                    irq_status);
     }
 
     /* Clear the sticky bit (W1C) */
@@ -91,7 +94,8 @@ int main(void)
      * Subtest 2: Read from write-only IRQ_SET register → SLVERR
      *=========================================================================*/
     TEST_SUBTEST_START("Read from write-only IRQ_SET → SLVERR");
-    TEST_LOG("  Reading from write-only IRQ_SET register at 0x%08X...", KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR);
+    TEST_LOG("  Reading from write-only IRQ_SET register at 0x%08X...",
+             KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR);
     (void)*KMCSR_IRQ_SET_REG_ADDR_PTR;
 
     /* Verify IRQ_STATUS.AXI_SLVERR is set */
@@ -101,7 +105,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(status_reg.f.axi_slverr,
-                    "IRQ_STATUS.AXI_SLVERR must be set after read from WO IRQ_SET (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_SLVERR must be set after read from WO IRQ_SET (status=0x%08X)",
+                    irq_status);
     }
 
     /* Clear the sticky bit (W1C) */

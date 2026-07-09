@@ -35,8 +35,12 @@
 #include "key_manager.h"
 #include "key_manager_addr.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Helpers
@@ -44,81 +48,64 @@ int rom_unrec_wipe_enabled(void) { return 0; }
 
 static uint8_t cmd_seq;
 
-static void send_cmd_with_payload(uint8_t cmd_id,
-                                   const uint32_t *payload,
-                                   uint8_t payload_len)
-{
+static void send_cmd_with_payload(uint8_t cmd_id, const uint32_t *payload, uint8_t payload_len) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq;
-    hdr.id          = cmd_id;
+    hdr.seq_num = cmd_seq;
+    hdr.id = cmd_id;
     hdr.payload_len = payload_len;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed");
 
     for (uint8_t i = 0; i < payload_len; i++) {
-        if (!tb_sep_mbox_write(payload[i], 5000))
-            TEST_FAIL("payload write %u failed", (unsigned)i);
+        if (!tb_sep_mbox_write(payload[i], 5000)) TEST_FAIL("payload write %u failed", (unsigned)i);
     }
 
     uint32_t crc = rom_crc32c((const uint8_t *)payload, (uint32_t)payload_len * 4u);
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(crc, 5000))
-        TEST_FAIL("CRC write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(crc, 5000)) TEST_FAIL("CRC write failed");
 }
 
-static void process_and_drain(void)
-{
+static void process_and_drain(void) {
     test_delay(1000);
     rom_msg_rx_process();
     rom_isr_mailbox();
 }
 
-static void read_resp_cmd(rom_km_msg_header_t *rhdr,
-                           uint32_t *seq_echo, uint32_t *cmd_echo,
-                           int8_t *rc, uint32_t *arg)
-{
+static void read_resp_cmd(rom_km_msg_header_t *rhdr, uint32_t *seq_echo, uint32_t *cmd_echo,
+                          int8_t *rc, uint32_t *arg) {
     uint32_t payload_words[4] = {0};
     uint32_t word;
-    if (!tb_sep_mbox_read(&word, 5000))
-        TEST_FAIL("Failed to read response header");
+    if (!tb_sep_mbox_read(&word, 5000)) TEST_FAIL("Failed to read response header");
     rhdr->raw = word;
 
     uint8_t exp_crc = rom_crc8_rohc((const uint8_t *)&word, 3);
     TEST_ASSERT_EQ(rhdr->header_crc8, exp_crc, "resp header CRC");
     TEST_ASSERT_EQ(rhdr->id, (uint32_t)ROM_KM_RESP_CMD, "resp ID");
 
-    if (!tb_sep_mbox_read(seq_echo, 5000))
-        TEST_FAIL("Failed to read seq echo");
+    if (!tb_sep_mbox_read(seq_echo, 5000)) TEST_FAIL("Failed to read seq echo");
     payload_words[0] = *seq_echo;
-    if (!tb_sep_mbox_read(cmd_echo, 5000))
-        TEST_FAIL("Failed to read cmd echo");
+    if (!tb_sep_mbox_read(cmd_echo, 5000)) TEST_FAIL("Failed to read cmd echo");
     payload_words[1] = *cmd_echo;
 
     uint32_t rc_word;
-    if (!tb_sep_mbox_read(&rc_word, 5000))
-        TEST_FAIL("Failed to read return code");
+    if (!tb_sep_mbox_read(&rc_word, 5000)) TEST_FAIL("Failed to read return code");
     *rc = (int8_t)(rc_word & 0xFFu);
     payload_words[2] = rc_word;
 
     if (rhdr->payload_len >= 4u) {
-        if (!tb_sep_mbox_read(arg, 5000))
-            TEST_FAIL("Failed to read return arg");
+        if (!tb_sep_mbox_read(arg, 5000)) TEST_FAIL("Failed to read return arg");
         payload_words[3] = *arg;
     } else {
         *arg = 0;
     }
 
     uint32_t crc_word;
-    if (!tb_sep_mbox_read(&crc_word, 5000))
-        TEST_FAIL("Failed to read payload CRC");
-    TEST_ASSERT(rhdr->payload_len == 3u || rhdr->payload_len == 4u,
-                "resp payload_len=%u", (unsigned)rhdr->payload_len);
+    if (!tb_sep_mbox_read(&crc_word, 5000)) TEST_FAIL("Failed to read payload CRC");
+    TEST_ASSERT(rhdr->payload_len == 3u || rhdr->payload_len == 4u, "resp payload_len=%u",
+                (unsigned)rhdr->payload_len);
     TEST_ASSERT_EQ(crc_word,
-                   rom_crc32c((const uint8_t *)payload_words,
-                              (uint32_t)rhdr->payload_len * 4u),
+                   rom_crc32c((const uint8_t *)payload_words, (uint32_t)rhdr->payload_len * 4u),
                    "resp payload CRC");
 }
 
@@ -126,17 +113,15 @@ static void read_resp_cmd(rom_km_msg_header_t *rhdr,
  * Send CMD_KEY_LOAD and return the allocated handle on success.
  * Asserts RC_SUCCESS and echoed fields.
  */
-static uint8_t do_key_load(uint8_t key_size_field, uint8_t dest_valid)
-{
+static uint8_t do_key_load(uint8_t key_size_field, uint8_t dest_valid) {
     /* key_size_field = KEY_SIZE payload word (= number of key words - 1) */
     uint8_t num_key_words = (uint8_t)(key_size_field + 1u);
-    uint8_t payload_len   = (uint8_t)(num_key_words + 2u); /* +2 for KEY_SIZE+DEST_VALID */
+    uint8_t payload_len = (uint8_t)(num_key_words + 2u); /* +2 for KEY_SIZE+DEST_VALID */
 
     uint32_t payload[130]; /* max possible: 128 key words + 2 */
     payload[0] = (uint32_t)key_size_field;
     payload[1] = (uint32_t)dest_valid;
-    for (uint8_t i = 0; i < num_key_words; i++)
-        payload[2u + i] = 0xA5000000u | (uint32_t)i;
+    for (uint8_t i = 0; i < num_key_words; i++) payload[2u + i] = 0xA5000000u | (uint32_t)i;
 
     send_cmd_with_payload(ROM_KM_CMD_KEY_LOAD, payload, payload_len);
     process_and_drain();
@@ -151,7 +136,7 @@ static uint8_t do_key_load(uint8_t key_size_field, uint8_t dest_valid)
     TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_SUCCESS, "key_load success");
     TEST_ASSERT_EQ(rhdr.payload_len, 4u, "key_load has return_arg");
 
-    rom_km_key_generate_ret_t ret = { .raw = arg };
+    rom_km_key_generate_ret_t ret = {.raw = arg};
     TEST_ASSERT_NE(ret.key_handle, 0u, "key_load handle non-zero");
     TEST_ASSERT_EQ(ret.req_size, (uint32_t)key_size_field, "key_load REQ_SIZE echo");
     TEST_ASSERT_EQ(ret.dest_valid, (uint32_t)dest_valid, "key_load DEST_VALID echo");
@@ -164,23 +149,19 @@ static uint8_t do_key_load(uint8_t key_size_field, uint8_t dest_valid)
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(4000000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(4000000)) TEST_FAIL("Failed to set testbench timeout");
 
-    if (!tb_drbg_set_seed(0xC826u, 5000))
-        TEST_FAIL("tb_drbg_set_seed failed");
+    if (!tb_drbg_set_seed(0xC826u, 5000)) TEST_FAIL("tb_drbg_set_seed failed");
 
     rom_boot_init();
 
     /* Discard RESP_KM_READY */
     {
         uint32_t ready;
-        if (!tb_sep_mbox_read(&ready, 5000))
-            TEST_FAIL("No RESP_KM_READY");
+        if (!tb_sep_mbox_read(&ready, 5000)) TEST_FAIL("No RESP_KM_READY");
         rom_km_msg_header_t rdy;
         rdy.raw = ready;
         TEST_ASSERT_EQ(rdy.id, (uint32_t)ROM_KM_RESP_KM_READY, "boot response id");
@@ -195,7 +176,7 @@ int main(void)
 
     TEST_SUBTEST_START("AS1.1/SC-2739-001: CMD_KEY_LOAD 4-word key AES");
     {
-        handle_a = do_key_load(3u, (rom_km_dest_bits_t){ .aes = 1 }.raw);
+        handle_a = do_key_load(3u, (rom_km_dest_bits_t){.aes = 1}.raw);
         TEST_LOG("  loaded handle=%u", handle_a);
     }
     TEST_SUBTEST_PASS();
@@ -219,12 +200,10 @@ int main(void)
         ctrl.w = KPV_CTRL(base_slot).w;
 
         TEST_ASSERT_EQ((uint32_t)ctrl.f.lock_write, 1u, "slot lock_write=1");
-        TEST_ASSERT_EQ((uint32_t)ctrl.f.dest_valid,
-                       (uint32_t)(rom_km_dest_bits_t){ .aes = 1 }.raw,
+        TEST_ASSERT_EQ((uint32_t)ctrl.f.dest_valid, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
                        "slot dest_valid=AES");
         TEST_ASSERT_EQ((uint32_t)ctrl.f.extend, 0u, "extend=0 (1 slot)");
-        TEST_ASSERT_EQ((uint32_t)ctrl.f.last_dword, 3u,
-                       "last_dword=(4-1)%%16=3");
+        TEST_ASSERT_EQ((uint32_t)ctrl.f.last_dword, 3u, "last_dword=(4-1)%%16=3");
 
         TEST_LOG("  base_slot=%u ctrl.w=0x%08X", base_slot, ctrl.w);
     }
@@ -235,10 +214,7 @@ int main(void)
      *=================================================================*/
     TEST_SUBTEST_START("AS1.2/SC-2739-002: CMD_KEY_TRANSFER of loaded key");
     {
-        uint32_t payload[2] = {
-            (uint32_t)handle_a,
-            (rom_km_dest_bits_t){ .aes = 1 }.raw
-        };
+        uint32_t payload[2] = {(uint32_t)handle_a, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, payload, 2);
         process_and_drain();
 
@@ -260,7 +236,7 @@ int main(void)
      *=================================================================*/
     TEST_SUBTEST_START("AS1.3/SC-2739-003: CMD_KEY_REVOKE of loaded key");
     {
-        uint32_t payload[1] = { (uint32_t)handle_a };
+        uint32_t payload[1] = {(uint32_t)handle_a};
         send_cmd_with_payload(ROM_KM_CMD_KEY_REVOKE, payload, 1);
         process_and_drain();
 
@@ -276,10 +252,7 @@ int main(void)
 
     TEST_SUBTEST_START("AS1.3/SC-2739-003: CMD_KEY_TRANSFER after revoke → FAILURE");
     {
-        uint32_t payload[2] = {
-            (uint32_t)handle_a,
-            (rom_km_dest_bits_t){ .aes = 1 }.raw
-        };
+        uint32_t payload[2] = {(uint32_t)handle_a, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, payload, 2);
         process_and_drain();
 
@@ -288,8 +261,7 @@ int main(void)
         int8_t rc;
         read_resp_cmd(&rhdr, &seq_e, &cmd_e, &rc, &arg);
 
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_FAILURE,
-                       "xfer after revoke → FAILURE");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_FAILURE, "xfer after revoke → FAILURE");
         TEST_LOG("  transfer of revoked handle correctly rejected");
         cmd_seq++;
     }
@@ -302,14 +274,14 @@ int main(void)
     TEST_SUBTEST_START("SC-2739-009: KEY_SIZE sweep (0,1,3,15)");
     {
         static const uint8_t key_sizes[] = {0u, 1u, 3u, 15u};
-        uint8_t dest = (rom_km_dest_bits_t){ .hmac_sha2 = 1 }.raw;
+        uint8_t dest = (rom_km_dest_bits_t){.hmac_sha2 = 1}.raw;
 
         for (uint8_t i = 0u; i < 4u; i++) {
-            uint8_t ks  = key_sizes[i];
+            uint8_t ks = key_sizes[i];
             uint8_t hdl = do_key_load(ks, dest);
 
             /* Verify handle is usable via CMD_KEY_TRANSFER (integrity check). */
-            uint32_t xfer_payload[2] = { (uint32_t)hdl, (uint32_t)dest };
+            uint32_t xfer_payload[2] = {(uint32_t)hdl, (uint32_t)dest};
             send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, xfer_payload, 2);
             process_and_drain();
 
@@ -334,13 +306,13 @@ int main(void)
         static const uint8_t dest_masks[] = {0x01u, 0x02u, 0x04u, 0x08u, 0x0Fu};
 
         for (uint8_t m = 0u; m < 5u; m++) {
-            uint8_t dv  = dest_masks[m];
+            uint8_t dv = dest_masks[m];
             uint8_t hdl = do_key_load(3u, dv); /* 4-word key */
 
             /* Transfer to each bit individually */
             for (uint8_t bit = 0u; bit < 4u; bit++) {
                 uint8_t engine = (uint8_t)(1u << bit);
-                uint32_t xfer_payload[2] = { (uint32_t)hdl, (uint32_t)engine };
+                uint32_t xfer_payload[2] = {(uint32_t)hdl, (uint32_t)engine};
                 send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, xfer_payload, 2);
                 process_and_drain();
 
@@ -350,14 +322,11 @@ int main(void)
                 read_resp_cmd(&rhdr, &seq_e, &cmd_e, &xrc, &arg);
 
                 if (dv & engine) {
-                    TEST_ASSERT_EQ(xrc, (int8_t)ROM_KM_RC_SUCCESS,
-                                   "permitted engine → SUCCESS");
+                    TEST_ASSERT_EQ(xrc, (int8_t)ROM_KM_RC_SUCCESS, "permitted engine → SUCCESS");
                 } else {
-                    TEST_ASSERT_EQ(xrc, (int8_t)ROM_KM_RC_FAILURE,
-                                   "forbidden engine → FAILURE");
+                    TEST_ASSERT_EQ(xrc, (int8_t)ROM_KM_RC_FAILURE, "forbidden engine → FAILURE");
                 }
-                TEST_LOG("  DEST=0x%02X engine bit%u: %s",
-                         (unsigned)dv, (unsigned)bit,
+                TEST_LOG("  DEST=0x%02X engine bit%u: %s", (unsigned)dv, (unsigned)bit,
                          (dv & engine) ? "SUCCESS" : "FAILURE");
                 cmd_seq++;
             }

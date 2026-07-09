@@ -43,8 +43,7 @@
  * rom_msg_tx_send() is called outside the masked region because it manages
  * its own mailbox-IRQ guard and may spin on FIFO drain.
  */
-void rom_main_step(void)
-{
+void rom_main_step(void) {
     rom_msg_rx_process();
 
     uint32_t saved_mask = rom_picorv32_maskirq(0xFFFFFFFFu);
@@ -53,12 +52,10 @@ void rom_main_step(void)
     uint8_t notify = g_abr_sk_notify_pending; /* atomic sample under mask */
     g_abr_sk_notify_pending = 0u;             /* atomic clear  under mask */
 
-    if (notify == 0u && rom_msgbuf_frame_available(&rom_rx_msgbuf) == 0u)
-        rom_picorv32_waitirq();
+    if (notify == 0u && rom_msgbuf_frame_available(&rom_rx_msgbuf) == 0u) rom_picorv32_waitirq();
 
     rom_picorv32_maskirq(saved_mask);
 
     /* Send unsolicited notification outside the masked region. */
-    if (notify)
-        rom_msg_tx_send(ROM_KM_RESP_ABR_SHARED_KEY_READY, NULL, 0);
+    if (notify) rom_msg_tx_send(ROM_KM_RESP_ABR_SHARED_KEY_READY, NULL, 0);
 }

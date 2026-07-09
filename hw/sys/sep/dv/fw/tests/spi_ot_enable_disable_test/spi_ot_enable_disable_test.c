@@ -26,21 +26,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -64,8 +60,8 @@ int main(void)
     /* Step 2: Read STATUS when disabled */
     printf("\nStep 2: STATUS when SPIEN=0\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS=0x%08x (READY=%u, ACTIVE=%u, TXEMPTY=%u)\n",
-           status.w, status.f.READY, status.f.ACTIVE, status.f.TXEMPTY);
+    printf("  STATUS=0x%08x (READY=%u, ACTIVE=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
+           status.f.ACTIVE, status.f.TXEMPTY);
 
     /* Step 3: Enable controller */
     printf("\nStep 3: Enable SPI controller (SPIEN=1)\n");
@@ -79,8 +75,8 @@ int main(void)
     if (!check_reg("OUTPUT_EN after set", ctrl.f.OUTPUT_EN, 1)) pass = 0;
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS after enable: 0x%08x (READY=%u, TXEMPTY=%u)\n",
-           status.w, status.f.READY, status.f.TXEMPTY);
+    printf("  STATUS after enable: 0x%08x (READY=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
+           status.f.TXEMPTY);
 
     /* Step 4: Software reset */
     printf("\nStep 4: Software reset (SW_RST)\n");
@@ -89,11 +85,12 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     volatile int delay;
-    for (delay = 0; delay < 1000; delay++) {}
+    for (delay = 0; delay < 1000; delay++) {
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS after SW_RST: TXEMPTY=%u, RXEMPTY=%u, ACTIVE=%u\n",
-           status.f.TXEMPTY, status.f.RXEMPTY, status.f.ACTIVE);
+    printf("  STATUS after SW_RST: TXEMPTY=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.TXEMPTY,
+           status.f.RXEMPTY, status.f.ACTIVE);
 
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     if (!check_reg("SW_RST reads 0 (singlepulse)", ctrl.f.SW_RST, 0)) pass = 0;
@@ -119,6 +116,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

@@ -18,8 +18,7 @@
 #include "rom_prng.h"
 #include "rom_drbg.h"
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_drbg_set_seed(42, 1000)) {
@@ -29,7 +28,10 @@ int main(void)
     TEST_SUBTEST_START("PRNG known-state outputs non-zero and unique");
     {
         rom_km_prng_state_t st;
-        st.s[0] = 1; st.s[1] = 2; st.s[2] = 3; st.s[3] = 4;
+        st.s[0] = 1;
+        st.s[1] = 2;
+        st.s[2] = 3;
+        st.s[3] = 4;
 
         uint32_t vals[8];
         uint32_t i, j;
@@ -40,8 +42,8 @@ int main(void)
         for (i = 0; i < 8; i++) {
             for (j = i + 1; j < 8; j++) {
                 if (vals[i] == vals[j]) {
-                    TEST_FAIL("PRNG outputs[%u]==outputs[%u]==0x%08X",
-                              (unsigned)i, (unsigned)j, vals[i]);
+                    TEST_FAIL("PRNG outputs[%u]==outputs[%u]==0x%08X", (unsigned)i, (unsigned)j,
+                              vals[i]);
                 }
             }
         }
@@ -51,14 +53,16 @@ int main(void)
     TEST_SUBTEST_START("PRNG seed escapes all-zero state");
     {
         rom_km_prng_state_t st;
-        st.s[0] = 0; st.s[1] = 0; st.s[2] = 0; st.s[3] = 0;
+        st.s[0] = 0;
+        st.s[1] = 0;
+        st.s[2] = 0;
+        st.s[3] = 0;
 
         rom_prng_seed(&st);
 
         uint32_t any = st.s[0] | st.s[1] | st.s[2] | st.s[3];
         TEST_ASSERT_NE(any, 0u, "state non-zero after seed");
-        TEST_LOG("  state: 0x%08X 0x%08X 0x%08X 0x%08X",
-                 st.s[0], st.s[1], st.s[2], st.s[3]);
+        TEST_LOG("  state: 0x%08X 0x%08X 0x%08X 0x%08X", st.s[0], st.s[1], st.s[2], st.s[3]);
     }
     TEST_SUBTEST_PASS();
 
@@ -71,8 +75,7 @@ int main(void)
         for (uint32_t i = 1; i < 16; i++) {
             uint32_t cur = rom_prng_next(&st);
             if (cur == prev) {
-                TEST_FAIL("consecutive repeat at i=%u val=0x%08X",
-                          (unsigned)i, cur);
+                TEST_FAIL("consecutive repeat at i=%u val=0x%08X", (unsigned)i, cur);
             }
             prev = cur;
         }

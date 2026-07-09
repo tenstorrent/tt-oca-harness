@@ -26,98 +26,82 @@
  *===========================================================================*/
 
 /** @brief Clear the HMAC key valid bit. */
-void rom_hmac_key_valid_clear(void)
-{
+void rom_hmac_key_valid_clear(void) {
     ROM_HMAC_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the HMAC key valid bit. */
-void rom_hmac_key_valid_set(void)
-{
+void rom_hmac_key_valid_set(void) {
     ROM_HMAC_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the KMAC key valid bit. */
-void rom_kmac_key_valid_clear(void)
-{
+void rom_kmac_key_valid_clear(void) {
     ROM_KMAC_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the KMAC key valid bit. */
-void rom_kmac_key_valid_set(void)
-{
+void rom_kmac_key_valid_set(void) {
     ROM_KMAC_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the AES key valid bit. */
-void rom_aes_key_valid_clear(void)
-{
+void rom_aes_key_valid_clear(void) {
     ROM_AES_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the AES key valid bit. */
-void rom_aes_key_valid_set(void)
-{
+void rom_aes_key_valid_set(void) {
     ROM_AES_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the OTBN key valid bit. */
-void rom_otbn_key_valid_clear(void)
-{
+void rom_otbn_key_valid_clear(void) {
     ROM_OTBN_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the OTBN key valid bit. */
-void rom_otbn_key_valid_set(void)
-{
+void rom_otbn_key_valid_set(void) {
     ROM_OTBN_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the ABR ML-DSA seed key valid bit. */
-void rom_abr_mldsa_seed_key_valid_clear(void)
-{
+void rom_abr_mldsa_seed_key_valid_clear(void) {
     ROM_ABR_MLDSA_SEED_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the ABR ML-DSA seed key valid bit. */
-void rom_abr_mldsa_seed_key_valid_set(void)
-{
+void rom_abr_mldsa_seed_key_valid_set(void) {
     ROM_ABR_MLDSA_SEED_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the ABR ML-KEM seed-D key valid bit. */
-void rom_abr_mlkem_seed_d_key_valid_clear(void)
-{
+void rom_abr_mlkem_seed_d_key_valid_clear(void) {
     ROM_ABR_MLKEM_SEED_D_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the ABR ML-KEM seed-D key valid bit. */
-void rom_abr_mlkem_seed_d_key_valid_set(void)
-{
+void rom_abr_mlkem_seed_d_key_valid_set(void) {
     ROM_ABR_MLKEM_SEED_D_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the ABR ML-KEM seed-Z key valid bit. */
-void rom_abr_mlkem_seed_z_key_valid_clear(void)
-{
+void rom_abr_mlkem_seed_z_key_valid_clear(void) {
     ROM_ABR_MLKEM_SEED_Z_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the ABR ML-KEM seed-Z key valid bit. */
-void rom_abr_mlkem_seed_z_key_valid_set(void)
-{
+void rom_abr_mlkem_seed_z_key_valid_set(void) {
     ROM_ABR_MLKEM_SEED_Z_KEY_CTRL_REG.f.key_valid = 1;
 }
 
 /** @brief Clear the ABR ML-KEM message key valid bit. */
-void rom_abr_mlkem_msg_key_valid_clear(void)
-{
+void rom_abr_mlkem_msg_key_valid_clear(void) {
     ROM_ABR_MLKEM_MSG_KEY_CTRL_REG.f.key_valid = 0;
 }
 
 /** @brief Set the ABR ML-KEM message key valid bit. */
-void rom_abr_mlkem_msg_key_valid_set(void)
-{
+void rom_abr_mlkem_msg_key_valid_set(void) {
     ROM_ABR_MLKEM_MSG_KEY_CTRL_REG.f.key_valid = 1;
 }
 
@@ -141,22 +125,16 @@ void rom_abr_mlkem_msg_key_valid_set(void)
  * @return 0 on success; -1 if @p n exceeds ROM_KM_MAX_WORDS_PER_SHARE (the
  *         fixed share-buffer size).
  */
-static int sideload_write_dual_share(volatile uint32_t *share0,
-                                     volatile uint32_t *share1,
-                                     uint8_t n,
-                                     const uint32_t *key,
-                                     uint8_t key_len,
-                                     rom_km_prng_state_t *prng)
-{
-    if (n > ROM_KM_MAX_WORDS_PER_SHARE)
-        return -1;
+static int sideload_write_dual_share(volatile uint32_t *share0, volatile uint32_t *share1,
+                                     uint8_t n, const uint32_t *key, uint8_t key_len,
+                                     rom_km_prng_state_t *prng) {
+    if (n > ROM_KM_MAX_WORDS_PER_SHARE) return -1;
 
     uint32_t padded[ROM_KM_MAX_WORDS_PER_SHARE];
     uint32_t rand_mask[ROM_KM_MAX_WORDS_PER_SHARE];
     uint16_t order[2 * ROM_KM_MAX_WORDS_PER_SHARE];
 
-    for (uint8_t i = 0; i < n; i++)
-        padded[i] = (i < key_len) ? key[i] : rom_drbg_get_word();
+    for (uint8_t i = 0; i < n; i++) padded[i] = (i < key_len) ? key[i] : rom_drbg_get_word();
 
     rom_drbg_get_block(rand_mask, n);
 
@@ -184,7 +162,7 @@ static int sideload_write_dual_share(volatile uint32_t *share0,
  * ============================================================================ */
 
 /** @brief Total words to shred in HMAC engine (both shares). */
-#define ROM_HMAC_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_HMAC_WORDS_PER_SHARE * 2))
+#define ROM_HMAC_SHRED_WORD_LEN ((uint8_t)(ROM_KM_HMAC_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred HMAC sideload key with pseudorandom data and clear key_valid.
@@ -192,14 +170,11 @@ static int sideload_write_dual_share(volatile uint32_t *share0,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_hmac_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_HMAC_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+        ROM_HMAC_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -210,13 +185,12 @@ void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_hmac_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_HMAC_WORDS_PER_SHARE));
+int rom_hmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+                              ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_HMAC_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_HMAC_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_hmac_key_valid_set();
@@ -228,7 +202,7 @@ int rom_hmac_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in KMAC engine (both shares). */
-#define ROM_KMAC_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_KMAC_WORDS_PER_SHARE * 2))
+#define ROM_KMAC_SHRED_WORD_LEN ((uint8_t)(ROM_KM_KMAC_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred KMAC sideload key with pseudorandom data and clear key_valid.
@@ -236,14 +210,11 @@ int rom_hmac_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_kmac_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_KMAC_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+        ROM_KMAC_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -254,13 +225,12 @@ void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_kmac_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_KMAC_WORDS_PER_SHARE));
+int rom_kmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+                              ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_KMAC_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_KMAC_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_kmac_key_valid_set();
@@ -272,7 +242,7 @@ int rom_kmac_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in AES engine (both shares). */
-#define ROM_AES_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_AES_WORDS_PER_SHARE * 2))
+#define ROM_AES_SHRED_WORD_LEN ((uint8_t)(ROM_KM_AES_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred AES sideload key with pseudorandom data and clear key_valid.
@@ -280,14 +250,11 @@ int rom_kmac_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_aes_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_AES_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+        ROM_AES_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -298,13 +265,12 @@ void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_aes_write_key(const uint32_t *key, uint8_t key_len,
-                      rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_AES_WORDS_PER_SHARE));
+int rom_aes_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+                              ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_AES_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_AES_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_aes_key_valid_set();
@@ -316,7 +282,7 @@ int rom_aes_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in OTBN engine (both shares). */
-#define ROM_OTBN_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_OTBN_WORDS_PER_SHARE * 2))
+#define ROM_OTBN_SHRED_WORD_LEN ((uint8_t)(ROM_KM_OTBN_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred OTBN sideload key with pseudorandom data and clear key_valid.
@@ -324,14 +290,11 @@ int rom_aes_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_otbn_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_OTBN_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+        ROM_OTBN_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -342,13 +305,12 @@ void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_otbn_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR +
-        ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_OTBN_WORDS_PER_SHARE));
+int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+                              ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_OTBN_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_OTBN_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_otbn_key_valid_set();
@@ -360,7 +322,7 @@ int rom_otbn_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in ABR MLDSA_SEED (both shares). */
-#define ROM_ABR_MLDSA_SEED_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
+#define ROM_ABR_MLDSA_SEED_SHRED_WORD_LEN ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred Adams Bridge ML-DSA seed with pseudorandom data and clear key_valid.
@@ -368,15 +330,12 @@ int rom_otbn_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mldsa_seed_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
-            ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_ABR_MLDSA_SEED_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+        ROM_ABR_MLDSA_SEED_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -387,13 +346,14 @@ void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_resee
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len,
-                                  rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_ABR_WORDS_PER_SHARE));
+int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
+                                             ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_abr_mldsa_seed_key_valid_set();
@@ -405,7 +365,7 @@ int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in ABR MLKEM_SEED_D (both shares). */
-#define ROM_ABR_MLKEM_SEED_D_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
+#define ROM_ABR_MLKEM_SEED_D_SHRED_WORD_LEN ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred Adams Bridge ML-KEM seed-D with pseudorandom data and clear key_valid.
@@ -413,15 +373,12 @@ int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_seed_d_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
-            ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_ABR_MLKEM_SEED_D_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+        ROM_ABR_MLKEM_SEED_D_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -433,12 +390,14 @@ void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
-                                    rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_ABR_WORDS_PER_SHARE));
+                                   rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
+                                             ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_abr_mlkem_seed_d_key_valid_set();
@@ -450,7 +409,7 @@ int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in ABR MLKEM_SEED_Z (both shares). */
-#define ROM_ABR_MLKEM_SEED_Z_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
+#define ROM_ABR_MLKEM_SEED_Z_SHRED_WORD_LEN ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred Adams Bridge ML-KEM seed-Z with pseudorandom data and clear key_valid.
@@ -458,15 +417,12 @@ int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_seed_z_key_valid_clear();
     rom_shred_region(
         (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
-            ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_ABR_MLKEM_SEED_Z_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+        ROM_ABR_MLKEM_SEED_Z_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -478,12 +434,14 @@ void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
-                                    rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_ABR_WORDS_PER_SHARE));
+                                   rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
+                                             ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_abr_mlkem_seed_z_key_valid_set();
@@ -495,7 +453,7 @@ int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Total words to shred in ABR MLKEM_MSG (both shares). */
-#define ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN  ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
+#define ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN ((uint8_t)(ROM_KM_ABR_WORDS_PER_SHARE * 2))
 
 /**
  * @brief Shred Adams Bridge ML-KEM message with pseudorandom data and clear key_valid.
@@ -503,15 +461,11 @@ int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
  * @param[in,out] prng        PRNG state; reseeded from DRBG if allow_reseed.
  * @param[in]     allow_reseed Non-zero to reseed PRNG each shred pass; 0 for wipe path.
  */
-void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_msg_key_valid_clear();
-    rom_shred_region(
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
-            ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN,
-        prng,
-        allow_reseed);
+    rom_shred_region((volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
+                                                      ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+                     ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -522,13 +476,14 @@ void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed
  * @param[in,out] prng    PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len,
-                                 rom_km_prng_state_t *prng)
-{
-    volatile uint32_t *s0 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
-    volatile uint32_t *s1 = (volatile uint32_t *)(uintptr_t)
-        (ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_ABR_WORDS_PER_SHARE));
+int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
+    volatile uint32_t *s0 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s1 =
+        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
+                                             ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
     rom_abr_mlkem_msg_key_valid_set();
@@ -540,22 +495,19 @@ int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len,
  * ============================================================================ */
 
 /** @brief Enable the ML-KEM shared-key interrupt. */
-void rom_abr_mlkem_sharedkey_irq_enable(void)
-{
+void rom_abr_mlkem_sharedkey_irq_enable(void) {
     ROM_ABR_MLKEM_SK_IRQ_ENABLE_REG.f.key_valid_en = 1;
 }
 
 /** @brief Disable the ML-KEM shared-key interrupt. */
-void rom_abr_mlkem_sharedkey_irq_disable(void)
-{
+void rom_abr_mlkem_sharedkey_irq_disable(void) {
     ROM_ABR_MLKEM_SK_IRQ_ENABLE_REG.f.key_valid_en = 0;
 }
 
 /** @brief Acknowledge the ML-KEM shared-key interrupt (clear sticky status, W1C). */
-void rom_abr_mlkem_sharedkey_irq_status_clear(void)
-{
-    ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u w = { .val = 0 };
-    w.f.key_valid = 1;  /* write 1 to clear the sticky status bit */
+void rom_abr_mlkem_sharedkey_irq_status_clear(void) {
+    ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u w = {.val = 0};
+    w.f.key_valid = 1; /* write 1 to clear the sticky status bit */
     ROM_ABR_MLKEM_SK_IRQ_STATUS_REG.val = w.val;
 }
 
@@ -567,13 +519,11 @@ void rom_abr_mlkem_sharedkey_irq_status_clear(void)
  *
  * @param[out] out_key Output buffer for the 8-word (256-bit) shared key.
  */
-void rom_abr_mlkem_sharedkey_read(uint32_t out_key[ROM_KM_ABR_WORDS_PER_SHARE])
-{
+void rom_abr_mlkem_sharedkey_read(uint32_t out_key[ROM_KM_ABR_WORDS_PER_SHARE]) {
     volatile uint32_t *key_regs =
         (volatile uint32_t *)(uintptr_t)ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_REG_FILE_BASE_ADDR;
 
-    for (uint8_t i = 0; i < ROM_KM_ABR_WORDS_PER_SHARE; i++)
-        out_key[i] = key_regs[i];
+    for (uint8_t i = 0; i < ROM_KM_ABR_WORDS_PER_SHARE; i++) out_key[i] = key_regs[i];
 
     ROM_ABR_MLKEM_SK_CTRL_REG.val = 0;
 }
@@ -584,7 +534,6 @@ void rom_abr_mlkem_sharedkey_read(uint32_t out_key[ROM_KM_ABR_WORDS_PER_SHARE])
  * Writes KEY_CTRL = 0 to clear KEY_VALID (wzc) and trigger hardware zeroize of
  * KEY[*] (hwclr), discarding any key delivered but not yet consumed.
  */
-void rom_abr_mlkem_sharedkey_zeroize(void)
-{
+void rom_abr_mlkem_sharedkey_zeroize(void) {
     ROM_ABR_MLKEM_SK_CTRL_REG.val = 0;
 }

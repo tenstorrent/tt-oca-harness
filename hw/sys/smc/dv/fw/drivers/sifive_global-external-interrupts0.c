@@ -12,30 +12,24 @@
 #include <metal/machine.h>
 #include <metal/shutdown.h>
 
-void __metal_driver_sifive_global_external_interrupt_init(
-    struct metal_interrupt *controller) {
+void __metal_driver_sifive_global_external_interrupt_init(struct metal_interrupt *controller) {
     struct __metal_driver_sifive_global_external_interrupts0 *global0;
 
-    global0 = (struct __metal_driver_sifive_global_external_interrupts0
-                   *)(controller);
+    global0 = (struct __metal_driver_sifive_global_external_interrupts0 *)(controller);
     if (!global0->init_done) {
         struct metal_interrupt *intc =
-            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-                controller);
+            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
         if (intc) {
             intc->vtable->interrupt_init(intc);
             /* Register its interrupts with with parent controller */
-            for (
-                int i = 0;
-                i <
-                __metal_driver_sifive_global_external_interrupts0_num_interrupts(
-                    controller);
-                i++) {
+            for (int i = 0;
+                 i < __metal_driver_sifive_global_external_interrupts0_num_interrupts(controller);
+                 i++) {
                 intc->vtable->interrupt_register(
                     intc,
-                    __metal_driver_sifive_global_external_interrupts0_interrupt_lines(
-                        controller, i),
+                    __metal_driver_sifive_global_external_interrupts0_interrupt_lines(controller,
+                                                                                      i),
                     NULL, controller);
             }
             global0->init_done = 1;
@@ -43,15 +37,14 @@ void __metal_driver_sifive_global_external_interrupt_init(
     }
 }
 
-int __metal_driver_sifive_global_external_interrupt_register(
-    struct metal_interrupt *controller, int id, metal_interrupt_handler_t isr,
-    void *priv) {
+int __metal_driver_sifive_global_external_interrupt_register(struct metal_interrupt *controller,
+                                                             int id, metal_interrupt_handler_t isr,
+                                                             void *priv) {
     int rc = -1;
 
     if (id != 0) {
         struct metal_interrupt *intc =
-            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-                controller);
+            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
         /* Enable its interrupts with parent controller */
         if (intc) {
@@ -61,14 +54,13 @@ int __metal_driver_sifive_global_external_interrupt_register(
     return rc;
 }
 
-int __metal_driver_sifive_global_external_interrupt_enable(
-    struct metal_interrupt *controller, int id) {
+int __metal_driver_sifive_global_external_interrupt_enable(struct metal_interrupt *controller,
+                                                           int id) {
     int rc = -1;
 
     if (id != 0) {
         struct metal_interrupt *intc =
-            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-                controller);
+            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
         /* Enable its interrupts with parent controller */
         if (intc) {
@@ -78,14 +70,13 @@ int __metal_driver_sifive_global_external_interrupt_enable(
     return rc;
 }
 
-int __metal_driver_sifive_global_external_interrupt_disable(
-    struct metal_interrupt *controller, int id) {
+int __metal_driver_sifive_global_external_interrupt_disable(struct metal_interrupt *controller,
+                                                            int id) {
     int rc = -1;
 
     if (id != 0) {
         struct metal_interrupt *intc =
-            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-                controller);
+            __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
         /* Enable its interrupts with parent controller */
         if (intc) {
@@ -98,19 +89,17 @@ int __metal_driver_sifive_global_external_interrupt_disable(
 int __metal_driver_sifive_global_external_interrupt_set_threshold(
     struct metal_interrupt *controller, unsigned int threshold) {
     struct metal_interrupt *intc =
-        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-            controller);
+        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
     if (intc) {
         return intc->vtable->interrupt_set_threshold(intc, threshold);
     }
     return -1;
 }
 
-unsigned int __metal_driver_sifive_global_external_interrupt_get_threshold(
-    struct metal_interrupt *controller) {
+unsigned int
+__metal_driver_sifive_global_external_interrupt_get_threshold(struct metal_interrupt *controller) {
     struct metal_interrupt *intc =
-        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-            controller);
+        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
     if (intc) {
         return intc->vtable->interrupt_get_threshold(intc);
@@ -118,22 +107,21 @@ unsigned int __metal_driver_sifive_global_external_interrupt_get_threshold(
     return 0;
 }
 
-int __metal_driver_sifive_global_external_interrupt_set_priority(
-    struct metal_interrupt *controller, int id, unsigned int priority) {
+int __metal_driver_sifive_global_external_interrupt_set_priority(struct metal_interrupt *controller,
+                                                                 int id, unsigned int priority) {
     struct metal_interrupt *intc =
-        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-            controller);
+        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
     if (intc) {
         return intc->vtable->interrupt_set_priority(intc, id, priority);
     }
     return -1;
 }
 
-unsigned int __metal_driver_sifive_global_external_interrupt_get_priority(
-    struct metal_interrupt *controller, int id) {
+unsigned int
+__metal_driver_sifive_global_external_interrupt_get_priority(struct metal_interrupt *controller,
+                                                             int id) {
     struct metal_interrupt *intc =
-        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(
-            controller);
+        __metal_driver_sifive_global_external_interrupts0_interrupt_parent(controller);
 
     if (intc) {
         return intc->vtable->interrupt_get_priority(intc, id);
@@ -141,23 +129,20 @@ unsigned int __metal_driver_sifive_global_external_interrupt_get_priority(
     return 0;
 }
 
-int __metal_driver_sifive_global_external_command_request(
-    struct metal_interrupt *controller, int command, void *data) {
+int __metal_driver_sifive_global_external_command_request(struct metal_interrupt *controller,
+                                                          int command, void *data) {
     int idx;
     int rc = -1;
 
     switch (command) {
     case METAL_MAX_INTERRUPT_GET:
-        rc = __metal_driver_sifive_global_external_interrupts0_num_interrupts(
-            controller);
+        rc = __metal_driver_sifive_global_external_interrupts0_num_interrupts(controller);
         break;
     case METAL_INDEX_INTERRUPT_GET:
         rc = 0;
         if (data) {
             idx = *(int *)data;
-            rc =
-                __metal_driver_sifive_global_external_interrupts0_interrupt_lines(
-                    controller, idx);
+            rc = __metal_driver_sifive_global_external_interrupts0_interrupt_lines(controller, idx);
         }
         break;
     default:
@@ -167,16 +152,11 @@ int __metal_driver_sifive_global_external_command_request(
     return rc;
 }
 
-__METAL_DEFINE_VTABLE(
-    __metal_driver_vtable_sifive_global_external_interrupts0) = {
-    .global0_vtable.interrupt_init =
-        __metal_driver_sifive_global_external_interrupt_init,
-    .global0_vtable.interrupt_register =
-        __metal_driver_sifive_global_external_interrupt_register,
-    .global0_vtable.interrupt_enable =
-        __metal_driver_sifive_global_external_interrupt_enable,
-    .global0_vtable.interrupt_disable =
-        __metal_driver_sifive_global_external_interrupt_disable,
+__METAL_DEFINE_VTABLE(__metal_driver_vtable_sifive_global_external_interrupts0) = {
+    .global0_vtable.interrupt_init = __metal_driver_sifive_global_external_interrupt_init,
+    .global0_vtable.interrupt_register = __metal_driver_sifive_global_external_interrupt_register,
+    .global0_vtable.interrupt_enable = __metal_driver_sifive_global_external_interrupt_enable,
+    .global0_vtable.interrupt_disable = __metal_driver_sifive_global_external_interrupt_disable,
     .global0_vtable.interrupt_get_threshold =
         __metal_driver_sifive_global_external_interrupt_get_threshold,
     .global0_vtable.interrupt_set_threshold =
@@ -185,8 +165,7 @@ __METAL_DEFINE_VTABLE(
         __metal_driver_sifive_global_external_interrupt_get_priority,
     .global0_vtable.interrupt_set_priority =
         __metal_driver_sifive_global_external_interrupt_set_priority,
-    .global0_vtable.command_request =
-        __metal_driver_sifive_global_external_command_request,
+    .global0_vtable.command_request = __metal_driver_sifive_global_external_command_request,
 };
 
 #endif

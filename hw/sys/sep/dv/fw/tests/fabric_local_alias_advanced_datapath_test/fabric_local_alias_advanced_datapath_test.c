@@ -18,24 +18,23 @@
 #define LOCAL_ALIAS_ADVANCED_SCENARIOS 12
 
 // Advanced datapath測試定義
-#define ADVANCED_LOCAL_REGIONS    8
-#define DEEP_SIGNAL_PATTERNS     64
-#define COMPLEX_ROUTING_TESTS    32
+#define ADVANCED_LOCAL_REGIONS 8
+#define DEEP_SIGNAL_PATTERNS 64
+#define COMPLEX_ROUTING_TESTS 32
 
 // Local alias進階地址空間
-#define LOCAL_ADVANCED_BASE      0x30000000
-#define LOCAL_VIRTUAL_SPACE      0x38000000
-#define LOCAL_PHYSICAL_SPACE     0x40000000
-#define LOCAL_CACHED_SPACE       0x48000000
+#define LOCAL_ADVANCED_BASE 0x30000000
+#define LOCAL_VIRTUAL_SPACE 0x38000000
+#define LOCAL_PHYSICAL_SPACE 0x40000000
+#define LOCAL_CACHED_SPACE 0x48000000
 
 // Advanced signal combinations
 #define SIGNAL_TOGGLE_EXHAUSTIVE 0x1
-#define SIGNAL_ROUTING_COMPLEX   0x2
-#define SIGNAL_TIMING_CRITICAL   0x4
-#define SIGNAL_ERROR_INJECTION   0x8
+#define SIGNAL_ROUTING_COMPLEX 0x2
+#define SIGNAL_TIMING_CRITICAL 0x4
+#define SIGNAL_ERROR_INJECTION 0x8
 
-static int test_advanced_local_alias_datapath_matrix(void)
-{
+static int test_advanced_local_alias_datapath_matrix(void) {
     printf("Starting advanced local alias datapath matrix test...\n");
 
     // 場景1: Advanced datapath matrix
@@ -43,18 +42,20 @@ static int test_advanced_local_alias_datapath_matrix(void)
         for (int region = 0; region < 8; region++) {
             // Complex local alias mapping configurations
             uint32_t local_src = LOCAL_ADVANCED_BASE + matrix_test * 0x2000000 + region * 0x400000;
-            uint32_t virtual_intermediate = LOCAL_VIRTUAL_SPACE + matrix_test * 0x2000000 + region * 0x400000;
-            uint32_t physical_dest = LOCAL_PHYSICAL_SPACE + matrix_test * 0x2000000 + region * 0x400000;
+            uint32_t virtual_intermediate =
+                LOCAL_VIRTUAL_SPACE + matrix_test * 0x2000000 + region * 0x400000;
+            uint32_t physical_dest =
+                LOCAL_PHYSICAL_SPACE + matrix_test * 0x2000000 + region * 0x400000;
 
             // Advanced configuration with multiple translation levels
-            if (setup_local_alias_advanced_mapping(region,
-                                                  local_src, virtual_intermediate, physical_dest,
-                                                  1,  // enable
-                                                  matrix_test % 8,  // priority
-                                                  region % 4,  // master id
-                                                  (matrix_test >> 2) % 4,  // access type
-                                                  0xFFE00000,  // 2MB granularity
-                                                  CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_local_alias_advanced_mapping(region, local_src, virtual_intermediate,
+                                                   physical_dest,
+                                                   1,                      // enable
+                                                   matrix_test % 8,        // priority
+                                                   region % 4,             // master id
+                                                   (matrix_test >> 2) % 4, // access type
+                                                   0xFFE00000,             // 2MB granularity
+                                                   CACHE_ATTR_WRITEBACK) != 0) {
                 continue;
             }
 
@@ -70,25 +71,24 @@ static int test_advanced_local_alias_datapath_matrix(void)
                 uint32_t access_size = axi_size_patterns[axi_combo % 8];
 
                 // AXI Burst type variations
-                int burst_type = axi_combo % 3;  // FIXED, INCR, WRAP
+                int burst_type = axi_combo % 3; // FIXED, INCR, WRAP
 
                 // Execute with specific AXI attributes
-                test_axi_transaction_with_attributes(test_addr, access_size, AXI_READ,
-                                                   axi_id, burst_type);
+                test_axi_transaction_with_attributes(test_addr, access_size, AXI_READ, axi_id,
+                                                     burst_type);
                 test_axi_transaction_with_attributes(test_addr + 0x1000, access_size, AXI_WRITE,
-                                                   axi_id, burst_type);
+                                                     axi_id, burst_type);
 
                 // Address offset patterns within region
-                uint32_t offset_patterns[] = {
-                    0x0000, 0x0040, 0x0100, 0x0400,
-                    0x1000, 0x4000, 0x10000, 0x40000,
-                    0x100000, 0x200000, 0x300000, 0x3F0000
-                };
+                uint32_t offset_patterns[] = {0x0000,   0x0040,   0x0100,   0x0400,
+                                              0x1000,   0x4000,   0x10000,  0x40000,
+                                              0x100000, 0x200000, 0x300000, 0x3F0000};
 
                 for (int offset_idx = 0; offset_idx < 12; offset_idx++) {
                     uint32_t offset_addr = local_src + offset_patterns[offset_idx];
-                    if (offset_addr < local_src + 0x400000) {  // Within region
-                        test_axi_transaction(offset_addr, 4, (offset_idx % 2) ? AXI_WRITE : AXI_READ);
+                    if (offset_addr < local_src + 0x400000) { // Within region
+                        test_axi_transaction(offset_addr, 4,
+                                             (offset_idx % 2) ? AXI_WRITE : AXI_READ);
                     }
                 }
             }
@@ -99,15 +99,16 @@ static int test_advanced_local_alias_datapath_matrix(void)
     return 0;
 }
 
-static int test_deep_signal_toggle_coverage(void)
-{
+static int test_deep_signal_toggle_coverage(void) {
     printf("Starting deep signal toggle coverage test...\n");
 
     // 場景2: Deep signal toggle coverage
     for (int signal_test = 0; signal_test < 64; signal_test++) {
         for (int region = 0; region < 8; region++) {
-            uint32_t signal_base = LOCAL_ADVANCED_BASE + signal_test * 0x1000000 + region * 0x200000;
-            uint32_t signal_dest = LOCAL_PHYSICAL_SPACE + signal_test * 0x1000000 + region * 0x200000;
+            uint32_t signal_base =
+                LOCAL_ADVANCED_BASE + signal_test * 0x1000000 + region * 0x200000;
+            uint32_t signal_dest =
+                LOCAL_PHYSICAL_SPACE + signal_test * 0x1000000 + region * 0x200000;
 
             // Deep signal configuration patterns
             uint32_t signal_patterns = signal_test;
@@ -119,14 +120,9 @@ static int test_deep_signal_toggle_coverage(void)
             int access_pattern = (signal_patterns >> 8) & 0x3;
             int cache_pattern = (signal_patterns >> 10) & 0xF;
 
-            if (setup_local_alias_deep_config(region,
-                                             signal_base, signal_dest,
-                                             enable_pattern,
-                                             priority_pattern,
-                                             master_pattern,
-                                             access_pattern,
-                                             cache_pattern,
-                                             0xFFE00000) != 0) {
+            if (setup_local_alias_deep_config(region, signal_base, signal_dest, enable_pattern,
+                                              priority_pattern, master_pattern, access_pattern,
+                                              cache_pattern, 0xFFE00000) != 0) {
                 continue;
             }
 
@@ -140,14 +136,9 @@ static int test_deep_signal_toggle_coverage(void)
                 int new_priority = (priority_pattern + toggle_round) % 8;
                 int new_access = (access_pattern + (toggle_round >> 1)) % 4;
 
-                if (setup_local_alias_deep_config(region,
-                                                 signal_base, signal_dest,
-                                                 new_enable,
-                                                 new_priority,
-                                                 master_pattern,
-                                                 new_access,
-                                                 cache_pattern,
-                                                 0xFFE00000) == 0) {
+                if (setup_local_alias_deep_config(region, signal_base, signal_dest, new_enable,
+                                                  new_priority, master_pattern, new_access,
+                                                  cache_pattern, 0xFFE00000) == 0) {
 
                     // Test with new configuration
                     test_axi_transaction(test_addr + toggle_round * 0x1000, 4, AXI_READ);
@@ -160,7 +151,8 @@ static int test_deep_signal_toggle_coverage(void)
                         test_axi_transaction(test_addr + 0x8008, 8, AXI_WRITE);
                     } else {
                         // Test disabled scenarios
-                        test_axi_transaction(test_addr + 0x8000, 4, AXI_READ);  // Should fail or passthrough
+                        test_axi_transaction(test_addr + 0x8000, 4,
+                                             AXI_READ); // Should fail or passthrough
                     }
                 }
             }
@@ -172,14 +164,11 @@ static int test_deep_signal_toggle_coverage(void)
                 uint32_t translation_dest = signal_dest + translation_offset;
 
                 // Update destination to test translation signals
-                if (setup_local_alias_deep_config(region,
-                                                 translation_src, translation_dest,
-                                                 1,  // enable
-                                                 priority_pattern,
-                                                 master_pattern,
-                                                 access_pattern,
-                                                 cache_pattern,
-                                                 0xFFFF8000) == 0) {  // 32KB granularity
+                if (setup_local_alias_deep_config(region, translation_src, translation_dest,
+                                                  1, // enable
+                                                  priority_pattern, master_pattern, access_pattern,
+                                                  cache_pattern,
+                                                  0xFFFF8000) == 0) { // 32KB granularity
 
                     // Test translation signal toggle
                     test_axi_transaction(translation_src, 16, AXI_READ);
@@ -194,8 +183,7 @@ static int test_deep_signal_toggle_coverage(void)
     return 0;
 }
 
-static int test_complex_routing_scenarios(void)
-{
+static int test_complex_routing_scenarios(void) {
     printf("Starting complex routing scenarios test...\n");
 
     // 場景3: Complex routing scenarios
@@ -204,28 +192,27 @@ static int test_complex_routing_scenarios(void)
         for (int level = 0; level < 4; level++) {
             for (int region = level * 2; region < (level + 1) * 2; region++) {
                 uint32_t routing_src = LOCAL_ADVANCED_BASE + routing_test * 0x4000000 +
-                                     level * 0x1000000 + region * 0x800000;
+                                       level * 0x1000000 + region * 0x800000;
 
                 // Different destination spaces based on routing level
                 uint32_t routing_dest_bases[] = {
-                    LOCAL_PHYSICAL_SPACE,   // Level 0: Direct physical
-                    LOCAL_VIRTUAL_SPACE,    // Level 1: Virtual intermediate
-                    LOCAL_CACHED_SPACE,     // Level 2: Cached space
-                    LOCAL_ADVANCED_BASE     // Level 3: Loop-back for testing
+                    LOCAL_PHYSICAL_SPACE, // Level 0: Direct physical
+                    LOCAL_VIRTUAL_SPACE,  // Level 1: Virtual intermediate
+                    LOCAL_CACHED_SPACE,   // Level 2: Cached space
+                    LOCAL_ADVANCED_BASE   // Level 3: Loop-back for testing
                 };
 
-                uint32_t routing_dest = routing_dest_bases[level] + routing_test * 0x4000000 +
-                                      region * 0x800000;
+                uint32_t routing_dest =
+                    routing_dest_bases[level] + routing_test * 0x4000000 + region * 0x800000;
 
                 // Complex routing configuration
-                if (setup_local_alias_complex_routing(region,
-                                                     routing_src, routing_dest,
-                                                     1,  // enable
-                                                     level,  // priority based on level
-                                                     routing_test % 8,  // master_id
-                                                     level % 4,  // access_type
-                                                     level + 1,  // routing_level
-                                                     0xFF800000) != 0) {  // 8MB granularity
+                if (setup_local_alias_complex_routing(region, routing_src, routing_dest,
+                                                      1,                  // enable
+                                                      level,              // priority based on level
+                                                      routing_test % 8,   // master_id
+                                                      level % 4,          // access_type
+                                                      level + 1,          // routing_level
+                                                      0xFF800000) != 0) { // 8MB granularity
                     continue;
                 }
 
@@ -245,7 +232,7 @@ static int test_complex_routing_scenarios(void)
                 }
                 // Level 2: Cached routing
                 else if (level == 2) {
-                    test_axi_transaction(test_addr, 64, AXI_READ);   // Large cached read
+                    test_axi_transaction(test_addr, 64, AXI_READ); // Large cached read
                     test_axi_transaction(test_addr + 0x8000, 64, AXI_WRITE);
                     test_axi_transaction(test_addr + 0x10000, 128, AXI_READ);
                 }
@@ -263,13 +250,11 @@ static int test_complex_routing_scenarios(void)
                     // Access with different master IDs to test routing
                     int test_master_id = (routing_test + cross_test) % 8;
 
-                    if (setup_local_alias_master_routing(region,
-                                                        cross_addr, routing_dest + 0x200000,
-                                                        1,  // enable
-                                                        level,
-                                                        test_master_id,
-                                                        cross_test % 4,
-                                                        0xFFFC0000) == 0) {  // 256KB granularity
+                    if (setup_local_alias_master_routing(region, cross_addr,
+                                                         routing_dest + 0x200000,
+                                                         1, // enable
+                                                         level, test_master_id, cross_test % 4,
+                                                         0xFFFC0000) == 0) { // 256KB granularity
 
                         test_axi_transaction(cross_addr, 8, AXI_READ);
                         test_axi_transaction(cross_addr + 0x1000, 8, AXI_WRITE);
@@ -290,17 +275,16 @@ static int test_complex_routing_scenarios(void)
                 if (conflict_region_id >= 8) continue;
 
                 uint32_t conflict_dest = LOCAL_PHYSICAL_SPACE + routing_test * 0x4000000 +
-                                       conflict_level * 0x1000000 + conflict_region * 0x200000;
+                                         conflict_level * 0x1000000 + conflict_region * 0x200000;
 
                 if (setup_local_alias_complex_routing(conflict_region_id,
-                                                     conflict_src,  // Same source
-                                                     conflict_dest,  // Different dest
-                                                     1,  // enable
-                                                     conflict_level + 4,  // Higher priority
-                                                     routing_test % 4,
-                                                     conflict_level % 4,
-                                                     2 + conflict_level,  // Different routing level
-                                                     0xFFE00000) == 0) {
+                                                      conflict_src,       // Same source
+                                                      conflict_dest,      // Different dest
+                                                      1,                  // enable
+                                                      conflict_level + 4, // Higher priority
+                                                      routing_test % 4, conflict_level % 4,
+                                                      2 + conflict_level, // Different routing level
+                                                      0xFFE00000) == 0) {
 
                     // Test conflict resolution
                     test_axi_transaction(conflict_src + 0x40000, 4, AXI_READ);
@@ -314,24 +298,23 @@ static int test_complex_routing_scenarios(void)
     return 0;
 }
 
-static int test_timing_critical_datapath_sequences(void)
-{
+static int test_timing_critical_datapath_sequences(void) {
     printf("Starting timing critical datapath sequences test...\n");
 
     // 場景4: Timing critical datapath sequences
     for (int timing_test = 0; timing_test < 16; timing_test++) {
         for (int region = 0; region < 8; region++) {
-            uint32_t timing_base = LOCAL_ADVANCED_BASE + timing_test * 0x2000000 + region * 0x400000;
-            uint32_t timing_dest = LOCAL_PHYSICAL_SPACE + timing_test * 0x2000000 + region * 0x400000;
+            uint32_t timing_base =
+                LOCAL_ADVANCED_BASE + timing_test * 0x2000000 + region * 0x400000;
+            uint32_t timing_dest =
+                LOCAL_PHYSICAL_SPACE + timing_test * 0x2000000 + region * 0x400000;
 
-            if (setup_local_alias_timing_critical(region,
-                                                 timing_base, timing_dest,
-                                                 1,  // enable
-                                                 timing_test % 8,  // priority
-                                                 region % 4,  // master_id
-                                                 2,  // read-write access
-                                                 CACHE_ATTR_WRITEBACK,
-                                                 0xFFE00000) != 0) {
+            if (setup_local_alias_timing_critical(region, timing_base, timing_dest,
+                                                  1,               // enable
+                                                  timing_test % 8, // priority
+                                                  region % 4,      // master_id
+                                                  2,               // read-write access
+                                                  CACHE_ATTR_WRITEBACK, 0xFFE00000) != 0) {
                 continue;
             }
 
@@ -339,26 +322,23 @@ static int test_timing_critical_datapath_sequences(void)
 
             // Timing Critical Sequence 1: Back-to-back accesses
             test_axi_transaction(test_addr, 4, AXI_READ);
-            test_axi_transaction(test_addr + 4, 4, AXI_READ);    // Immediately following
-            test_axi_transaction(test_addr + 8, 4, AXI_WRITE);  // Read-to-write transition
+            test_axi_transaction(test_addr + 4, 4, AXI_READ);  // Immediately following
+            test_axi_transaction(test_addr + 8, 4, AXI_WRITE); // Read-to-write transition
 
             // Timing Critical Sequence 2: Overlapping bursts (if supported)
             test_axi_transaction(test_addr + 0x1000, 32, AXI_READ);
-            test_axi_transaction(test_addr + 0x1020, 32, AXI_READ);  // Overlapping start
+            test_axi_transaction(test_addr + 0x1020, 32, AXI_READ); // Overlapping start
 
             // Timing Critical Sequence 3: Priority inversion scenarios
             for (int priority_test = 0; priority_test < 4; priority_test++) {
                 // Temporarily change priority
                 int temp_priority = (timing_test + priority_test + 4) % 8;
 
-                if (setup_local_alias_timing_critical(region,
-                                                     timing_base, timing_dest,
-                                                     1,  // enable
-                                                     temp_priority,
-                                                     region % 4,
-                                                     2,  // access type
-                                                     CACHE_ATTR_WRITEBACK,
-                                                     0xFFE00000) == 0) {
+                if (setup_local_alias_timing_critical(region, timing_base, timing_dest,
+                                                      1, // enable
+                                                      temp_priority, region % 4,
+                                                      2, // access type
+                                                      CACHE_ATTR_WRITEBACK, 0xFFE00000) == 0) {
 
                     // Test with new priority
                     test_axi_transaction(test_addr + 0x2000 + priority_test * 0x100, 8, AXI_READ);
@@ -367,22 +347,19 @@ static int test_timing_critical_datapath_sequences(void)
             }
 
             // Timing Critical Sequence 4: Cache coherency sequences
-            test_axi_transaction(test_addr + 0x4000, 64, AXI_WRITE);  // Fill cache line
-            test_axi_transaction(test_addr + 0x4000, 64, AXI_READ);   // Read same cache line
-            test_axi_transaction(test_addr + 0x4040, 64, AXI_WRITE);  // Next cache line
+            test_axi_transaction(test_addr + 0x4000, 64, AXI_WRITE); // Fill cache line
+            test_axi_transaction(test_addr + 0x4000, 64, AXI_READ);  // Read same cache line
+            test_axi_transaction(test_addr + 0x4040, 64, AXI_WRITE); // Next cache line
 
             // Timing Critical Sequence 5: Master ID switching
             for (int master_switch = 0; master_switch < 4; master_switch++) {
                 int new_master = (region + master_switch) % 4;
 
-                if (setup_local_alias_timing_critical(region,
-                                                     timing_base, timing_dest,
-                                                     1,  // enable
-                                                     timing_test % 8,
-                                                     new_master,
-                                                     2,  // access type
-                                                     CACHE_ATTR_WRITEBACK,
-                                                     0xFFE00000) == 0) {
+                if (setup_local_alias_timing_critical(region, timing_base, timing_dest,
+                                                      1, // enable
+                                                      timing_test % 8, new_master,
+                                                      2, // access type
+                                                      CACHE_ATTR_WRITEBACK, 0xFFE00000) == 0) {
 
                     // Rapid master switching
                     uint32_t switch_addr = test_addr + 0x8000 + master_switch * 0x200;
@@ -408,8 +385,7 @@ static int test_timing_critical_datapath_sequences(void)
     return 0;
 }
 
-static int test_error_injection_advanced_recovery(void)
-{
+static int test_error_injection_advanced_recovery(void) {
     printf("Starting error injection advanced recovery test...\n");
 
     // 場景5: Error injection advanced recovery
@@ -419,29 +395,23 @@ static int test_error_injection_advanced_recovery(void)
             uint32_t error_dest = LOCAL_PHYSICAL_SPACE + error_test * 0x1000000 + region * 0x200000;
 
             // Normal configuration first
-            if (setup_local_alias_deep_config(region,
-                                             error_base, error_dest,
-                                             1,  // enable
-                                             region % 8,
-                                             0,  // master_id
-                                             2,  // read-write access
-                                             CACHE_ATTR_WRITEBACK,
-                                             0xFFE00000) != 0) {
+            if (setup_local_alias_deep_config(region, error_base, error_dest,
+                                              1, // enable
+                                              region % 8,
+                                              0, // master_id
+                                              2, // read-write access
+                                              CACHE_ATTR_WRITEBACK, 0xFFE00000) != 0) {
                 continue;
             }
 
             uint32_t test_addr = error_base + 0x40000;
 
             // Error Injection 1: Invalid address translation
-            uint32_t invalid_dest = 0xFFFFFFFF;  // Invalid destination
-            if (setup_local_alias_deep_config(region,
-                                             error_base, invalid_dest,
-                                             1,  // enable
-                                             region % 8,
-                                             0,
-                                             2,
-                                             CACHE_ATTR_WRITEBACK,
-                                             0xFFE00000) != 0) {
+            uint32_t invalid_dest = 0xFFFFFFFF; // Invalid destination
+            if (setup_local_alias_deep_config(region, error_base, invalid_dest,
+                                              1, // enable
+                                              region % 8, 0, 2, CACHE_ATTR_WRITEBACK,
+                                              0xFFE00000) != 0) {
                 // Expected to fail
             }
 
@@ -451,21 +421,19 @@ static int test_error_injection_advanced_recovery(void)
 
             // Advanced Recovery 1: Gradual reconfiguration
             uint32_t recovery_destinations[] = {
-                error_dest,                    // Original destination
-                error_dest + 0x100000,        // Offset destination
-                error_dest + 0x200000,        // Further offset
-                LOCAL_CACHED_SPACE + error_test * 0x1000000 + region * 0x200000  // Different space
+                error_dest,            // Original destination
+                error_dest + 0x100000, // Offset destination
+                error_dest + 0x200000, // Further offset
+                LOCAL_CACHED_SPACE + error_test * 0x1000000 + region * 0x200000 // Different space
             };
 
             for (int recovery_step = 0; recovery_step < 4; recovery_step++) {
-                if (setup_local_alias_deep_config(region,
-                                                 error_base, recovery_destinations[recovery_step],
-                                                 1,  // enable
-                                                 region % 8,
-                                                 recovery_step % 4,  // changing master
-                                                 2,
-                                                 CACHE_ATTR_WRITEBACK,
-                                                 0xFFE00000) == 0) {
+                if (setup_local_alias_deep_config(region, error_base,
+                                                  recovery_destinations[recovery_step],
+                                                  1, // enable
+                                                  region % 8,
+                                                  recovery_step % 4, // changing master
+                                                  2, CACHE_ATTR_WRITEBACK, 0xFFE00000) == 0) {
 
                     // Test recovery step
                     test_axi_transaction(test_addr + recovery_step * 0x800, 8, AXI_READ);
@@ -476,14 +444,13 @@ static int test_error_injection_advanced_recovery(void)
             // Error Injection 2: Master ID conflicts
             for (int conflict_master = 0; conflict_master < 4; conflict_master++) {
                 // Configure with potentially conflicting master IDs
-                if (setup_local_alias_deep_config(region,
-                                                 error_base, error_dest,
-                                                 1,  // enable
-                                                 7,  // highest priority
-                                                 conflict_master,
-                                                 3,  // different access type
-                                                 CACHE_ATTR_DEVICE,  // different cache
-                                                 0xFFE00000) == 0) {
+                if (setup_local_alias_deep_config(region, error_base, error_dest,
+                                                  1, // enable
+                                                  7, // highest priority
+                                                  conflict_master,
+                                                  3,                 // different access type
+                                                  CACHE_ATTR_DEVICE, // different cache
+                                                  0xFFE00000) == 0) {
 
                     // Test with conflicting configuration
                     test_axi_transaction(test_addr + 0x2000 + conflict_master * 0x400, 4, AXI_READ);
@@ -496,14 +463,9 @@ static int test_error_injection_advanced_recovery(void)
                 int changing_priority = rapid_reconfig % 8;
                 int changing_access = rapid_reconfig % 4;
 
-                setup_local_alias_deep_config(region,
-                                             error_base, error_dest,
-                                             flip_enable,
-                                             changing_priority,
-                                             0,
-                                             changing_access,
-                                             CACHE_ATTR_WRITEBACK,
-                                             0xFFE00000);
+                setup_local_alias_deep_config(region, error_base, error_dest, flip_enable,
+                                              changing_priority, 0, changing_access,
+                                              CACHE_ATTR_WRITEBACK, 0xFFE00000);
 
                 // Quick access during rapid reconfiguration
                 if (flip_enable) {
@@ -512,20 +474,15 @@ static int test_error_injection_advanced_recovery(void)
             }
 
             // Advanced Recovery 2: Complete reset and restoration
-            if (setup_local_alias_deep_config(region,
-                                             0, 0,  // Clear configuration
-                                             0,     // disable
-                                             0, 0, 0, 0, 0) == 0) {
+            if (setup_local_alias_deep_config(region, 0, 0, // Clear configuration
+                                              0,            // disable
+                                              0, 0, 0, 0, 0) == 0) {
 
                 // Restore with original configuration
-                if (setup_local_alias_deep_config(region,
-                                                 error_base, error_dest,
-                                                 1,  // enable
-                                                 region % 8,
-                                                 0,
-                                                 2,
-                                                 CACHE_ATTR_WRITEBACK,
-                                                 0xFFE00000) == 0) {
+                if (setup_local_alias_deep_config(region, error_base, error_dest,
+                                                  1, // enable
+                                                  region % 8, 0, 2, CACHE_ATTR_WRITEBACK,
+                                                  0xFFE00000) == 0) {
 
                     // Final verification
                     test_axi_transaction(test_addr + 0x8000, 32, AXI_READ);
@@ -539,8 +496,7 @@ static int test_error_injection_advanced_recovery(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_071: Local Alias Advanced Datapath Test\n");
     printf("Goals: axi_local_alias_remap 72.95%% -> 90%%+ (需要 17.05%% 改進)\n");
     printf("Strategy: Local別名進階datapath，深度信號覆蓋\n\n");

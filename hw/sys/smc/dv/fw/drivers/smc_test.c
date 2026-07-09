@@ -3,7 +3,7 @@
 
 /*
  * SMC Test Common Implementation
- * 
+ *
  * Global state definitions for test utilities
  */
 

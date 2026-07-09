@@ -26,11 +26,12 @@
 
 /** @brief Access KPV key data word [word] in slot [slot]. */
 #define KPV_KEY_WORD(slot, word) \
-    (*(volatile uint32_t *)(KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 0) + (slot) * 0x40 + (word) * 4))
+    (*(volatile uint32_t *)(KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 0) + (slot)*0x40 + \
+                            (word)*4))
 
 /** @brief Access KPV control register for slot [slot]. */
 #define KPV_CTRL(slot) \
-    (*(volatile km_kpv__ctrl_reg_t *)(KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (slot) * 4))
+    (*(volatile km_kpv__ctrl_reg_t *)(KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (slot)*4))
 
 /*===========================================================================
  * Scrambler Functions
@@ -108,8 +109,8 @@ int rom_kpv_shred_slot(uint8_t slot, rom_km_prng_state_t *prng);
  * @param dest_valid Permitted crypto-engine destination bitmask.
  * @return 0 on success, -1 on error.
  */
-int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key,
-                      uint8_t key_len, rom_km_dest_bits_t dest_valid);
+int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len,
+                      rom_km_dest_bits_t dest_valid);
 
 /**
  * @brief Get key length and dest_valid from KPV control registers (no key data read).
@@ -136,8 +137,8 @@ int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t
  * @param dest_valid Receives permitted destination bitmask.
  * @return 0 on success, -1 on error.
  */
-int rom_kpv_read_key(uint8_t base_slot, uint32_t *key,
-                     uint8_t *key_len, rom_km_dest_bits_t *dest_valid);
+int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len,
+                     rom_km_dest_bits_t *dest_valid);
 
 /*===========================================================================
  * Lock Functions

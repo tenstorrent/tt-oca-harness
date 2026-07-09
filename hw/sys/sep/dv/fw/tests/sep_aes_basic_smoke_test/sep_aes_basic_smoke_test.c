@@ -28,38 +28,24 @@
 /* Test Vectors (NIST SP 800-38A, AES-128)                            */
 /* ------------------------------------------------------------------ */
 
-static const uint32_t test_key[4] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09
-};
+static const uint32_t test_key[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
 /* ECB uses zero IV (not used by hardware, written for completeness). */
-static const uint32_t zero_iv[4] = {
-    0x00000000, 0x00000000, 0x00000000, 0x00000000
-};
+static const uint32_t zero_iv[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
-static const uint32_t cbc_iv[4] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c
-};
+static const uint32_t cbc_iv[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
 
 /* NIST F.1 ECB block #1 */
-static const uint32_t ecb_pt[4] = {
-    0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373
-};
-static const uint32_t ecb_ct_exp[4] = {
-    0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624
-};
+static const uint32_t ecb_pt[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
+static const uint32_t ecb_ct_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 /* NIST F.2 CBC 3-block */
-static const uint32_t cbc_pt[3][4] = {
-    {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373},
-    {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45},
-    {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}
-};
-static const uint32_t cbc_ct_exp[3][4] = {
-    {0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912},
-    {0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691},
-    {0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222}
-};
+static const uint32_t cbc_pt[3][4] = {{0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373},
+                                      {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45},
+                                      {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}};
+static const uint32_t cbc_ct_exp[3][4] = {{0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912},
+                                          {0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691},
+                                          {0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222}};
 
 /* ------------------------------------------------------------------ */
 /* ECB Encrypt + Decrypt Roundtrip                                    */
@@ -71,8 +57,7 @@ static int run_ecb_roundtrip(void) {
     printf("\n--- ECB encrypt single block ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key, zero_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key, zero_iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
     print_status("  ECB enc ready");
@@ -90,8 +75,7 @@ static int run_ecb_roundtrip(void) {
     printf("\n--- ECB decrypt roundtrip ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x2 /* DEC */, 0x1 /* ECB */, test_key, zero_iv) != 0)
-        return -1;
+    if (configure_aes(0x2 /* DEC */, 0x1 /* ECB */, test_key, zero_iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
     print_status("  ECB dec ready");
@@ -118,8 +102,7 @@ static int run_cbc_3block(void) {
     printf("\n--- CBC 3-block encrypt ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x2 /* CBC */, test_key, cbc_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x2 /* CBC */, test_key, cbc_iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
     print_status("  CBC ready");

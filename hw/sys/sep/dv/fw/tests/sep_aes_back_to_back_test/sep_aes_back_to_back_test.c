@@ -44,12 +44,10 @@ static void raw_puts(const char *s) {
 static void raw_hex32(uint32_t v) {
     const char hex[] = "0123456789abcdef";
     raw_puts("0x");
-    for (int i = 28; i >= 0; i -= 4)
-        raw_putc(hex[(v >> i) & 0xf]);
+    for (int i = 28; i >= 0; i -= 4) raw_putc(hex[(v >> i) & 0xf]);
 }
 
-void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval)
-    __attribute__((noreturn));
+void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) __attribute__((noreturn));
 
 void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) {
     raw_puts("\n*** TRAP ***\nmcause=");
@@ -65,19 +63,17 @@ void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) {
 
 static void trap_handler_c(void) __attribute__((naked));
 static void trap_handler_c(void) {
-    __asm__ volatile (
-        "addi  sp, sp, -16   \n"
-        "sw    ra, 12(sp)    \n"
-        "csrr  a0, mcause    \n"
-        "csrr  a1, mepc      \n"
-        "csrr  a2, mtval     \n"
-        "call  trap_dump     \n"
-    );
+    __asm__ volatile("addi  sp, sp, -16   \n"
+                     "sw    ra, 12(sp)    \n"
+                     "csrr  a0, mcause    \n"
+                     "csrr  a1, mepc      \n"
+                     "csrr  a2, mtval     \n"
+                     "call  trap_dump     \n");
 }
 
 static void install_trap_handler(void) {
     uintptr_t addr = (uintptr_t)&trap_handler_c;
-    __asm__ volatile("csrw mtvec, %0" :: "r"(addr));
+    __asm__ volatile("csrw mtvec, %0" ::"r"(addr));
 }
 
 /* ------------------------------------------------------------------ */
@@ -85,41 +81,25 @@ static void install_trap_handler(void) {
 /* ------------------------------------------------------------------ */
 
 /* AES-128 key (NIST SP 800-38A) */
-static const uint32_t test_key_128[4] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09
-};
+static const uint32_t test_key_128[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
 /* AES-256 key (NIST FIPS-197 Appendix C.3) */
-static const uint32_t test_key_256[8] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
-    0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c
-};
+static const uint32_t test_key_256[8] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
+                                         0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c};
 
 static const uint32_t zero_iv[4] = {0, 0, 0, 0};
 
-static const uint32_t cbc_iv[4] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c
-};
+static const uint32_t cbc_iv[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
 
-static const uint32_t ctr_iv[4] = {
-    0xf3f2f1f0, 0xf7f6f5f4, 0xfbfaf9f8, 0xfffefdfc
-};
+static const uint32_t ctr_iv[4] = {0xf3f2f1f0, 0xf7f6f5f4, 0xfbfaf9f8, 0xfffefdfc};
 
 /* NIST F.1 ECB block #1 - for golden comparison on block 0 */
-static const uint32_t ecb_pt_base[4] = {
-    0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373
-};
-static const uint32_t ecb_ct_exp[4] = {
-    0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624
-};
+static const uint32_t ecb_pt_base[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
+static const uint32_t ecb_ct_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 /* AES-256 ECB: NIST FIPS-197 Appendix C.3 */
-static const uint32_t pt_256[4] = {
-    0x33221100, 0x77665544, 0xbbaa9988, 0xffeeddcc
-};
-static const uint32_t ct_256_exp[4] = {
-    0xcab7a28e, 0xbf456751, 0x9049fcea, 0x8960494b
-};
+static const uint32_t pt_256[4] = {0x33221100, 0x77665544, 0xbbaa9988, 0xffeeddcc};
+static const uint32_t ct_256_exp[4] = {0xcab7a28e, 0xbf456751, 0x9049fcea, 0x8960494b};
 
 /* ------------------------------------------------------------------ */
 /* LFSR for variable delays                                           */
@@ -128,14 +108,14 @@ static const uint32_t ct_256_exp[4] = {
 static uint32_t lfsr_state = 0xACE1u;
 
 static uint32_t lfsr_next(void) {
-    uint32_t bit = ((lfsr_state >> 0) ^ (lfsr_state >> 2) ^
-                    (lfsr_state >> 3) ^ (lfsr_state >> 5)) & 1u;
+    uint32_t bit =
+        ((lfsr_state >> 0) ^ (lfsr_state >> 2) ^ (lfsr_state >> 3) ^ (lfsr_state >> 5)) & 1u;
     lfsr_state = (lfsr_state >> 1) | (bit << 15);
     return lfsr_state;
 }
 
 static void variable_delay(void) {
-    uint32_t delay = lfsr_next() & 0xFF;  /* 0-255 NOP iterations */
+    uint32_t delay = lfsr_next() & 0xFF; /* 0-255 NOP iterations */
     for (volatile uint32_t i = 0; i < delay; i++) {
         __asm__("nop");
     }
@@ -159,13 +139,11 @@ static void gen_plaintext(uint32_t pt[4], int block_idx) {
 static int check_block_status(int block, const char *phase) {
     aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
-        printf("  ERROR: OUTPUT_LOST at %s block %d (STATUS=0x%08x)\n",
-               phase, block, st.w);
+        printf("  ERROR: OUTPUT_LOST at %s block %d (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;
     }
     if (st.f.STALL) {
-        printf("  WARNING: STALL at %s block %d (STATUS=0x%08x)\n",
-               phase, block, st.w);
+        printf("  WARNING: STALL at %s block %d (STATUS=0x%08x)\n", phase, block, st.w);
     }
     return check_no_alert(phase);
 }
@@ -179,12 +157,10 @@ static int check_block_status(int block, const char *phase) {
 static int run_phase_a(void) {
     uint32_t pt[4], out[4];
 
-    printf("\n--- Phase A: ECB-128, %d blocks, incrementing data + delays ---\n",
-           PHASE_A_BLOCKS);
+    printf("\n--- Phase A: ECB-128, %d blocks, incrementing data + delays ---\n", PHASE_A_BLOCKS);
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key_128, zero_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key_128, zero_iv) != 0) return -1;
     if (wait_for_input_ready() != 0) return -1;
 
     for (int block = 0; block < PHASE_A_BLOCKS; block++) {
@@ -202,8 +178,7 @@ static int run_phase_a(void) {
 
         /* Block 0 uses unmodified NIST vector - golden compare */
         if (block == 0) {
-            if (compare_block(out, ecb_ct_exp, "PhaseA block 0 golden") != 0)
-                return -1;
+            if (compare_block(out, ecb_ct_exp, "PhaseA block 0 golden") != 0) return -1;
         }
 
         if ((block % 10) == 9) {
@@ -228,12 +203,10 @@ static int run_phase_a(void) {
 static int run_phase_b(void) {
     uint32_t pt[4], out[4];
 
-    printf("\n--- Phase B: CBC-128, %d blocks, incrementing data ---\n",
-           PHASE_B_BLOCKS);
+    printf("\n--- Phase B: CBC-128, %d blocks, incrementing data ---\n", PHASE_B_BLOCKS);
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x2 /* CBC */, test_key_128, cbc_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x2 /* CBC */, test_key_128, cbc_iv) != 0) return -1;
     if (wait_for_input_ready() != 0) return -1;
 
     for (int block = 0; block < PHASE_B_BLOCKS; block++) {
@@ -266,12 +239,10 @@ static int run_phase_b(void) {
 static int run_phase_c(void) {
     uint32_t pt[4], out[4];
 
-    printf("\n--- Phase C: CTR-128, %d blocks, incrementing data ---\n",
-           PHASE_C_BLOCKS);
+    printf("\n--- Phase C: CTR-128, %d blocks, incrementing data ---\n", PHASE_C_BLOCKS);
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x10 /* CTR */, test_key_128, ctr_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x10 /* CTR */, test_key_128, ctr_iv) != 0) return -1;
     if (wait_for_input_ready() != 0) return -1;
 
     for (int block = 0; block < PHASE_C_BLOCKS; block++) {
@@ -309,12 +280,11 @@ static int run_phase_c(void) {
 static int run_phase_d(void) {
     uint32_t pt[4], out[4];
 
-    printf("\n--- Phase D: ECB-256, %d blocks, incrementing data ---\n",
-           PHASE_D_BLOCKS);
+    printf("\n--- Phase D: ECB-256, %d blocks, incrementing data ---\n", PHASE_D_BLOCKS);
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(0x1 /* ENC */, 0x1 /* ECB */, 0x4 /* AES-256 */,
-                           test_key_256, 8, NULL, zero_iv, 0x0) != 0)
+    if (configure_aes_full(0x1 /* ENC */, 0x1 /* ECB */, 0x4 /* AES-256 */, test_key_256, 8, NULL,
+                           zero_iv, 0x0) != 0)
         return -1;
     if (wait_for_input_ready() != 0) return -1;
 
@@ -323,8 +293,7 @@ static int run_phase_d(void) {
             /* Block 0: use NIST vector for golden compare */
             write_data_in(pt_256);
         } else {
-            gen_plaintext(pt, PHASE_A_BLOCKS + PHASE_B_BLOCKS +
-                              PHASE_C_BLOCKS + block);
+            gen_plaintext(pt, PHASE_A_BLOCKS + PHASE_B_BLOCKS + PHASE_C_BLOCKS + block);
             write_data_in(pt);
         }
 
@@ -334,8 +303,7 @@ static int run_phase_d(void) {
 
         /* Block 0 uses NIST AES-256 vector */
         if (block == 0) {
-            if (compare_block(out, ct_256_exp, "PhaseD block 0 AES-256 golden") != 0)
-                return -1;
+            if (compare_block(out, ct_256_exp, "PhaseD block 0 AES-256 golden") != 0) return -1;
         }
 
         if ((block % 8) == 7) {
@@ -347,8 +315,7 @@ static int run_phase_d(void) {
         }
     }
 
-    printf("  Phase D complete: %d blocks AES-256, no OUTPUT_LOST\n",
-           PHASE_D_BLOCKS);
+    printf("  Phase D complete: %d blocks AES-256, no OUTPUT_LOST\n", PHASE_D_BLOCKS);
     return 0;
 }
 
@@ -372,13 +339,13 @@ int main(void) {
     printf("========================================\n");
     printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
     printf("Total blocks: %d (A=%d + B=%d + C=%d + D=%d)\n",
-           PHASE_A_BLOCKS + PHASE_B_BLOCKS + PHASE_C_BLOCKS + PHASE_D_BLOCKS,
-           PHASE_A_BLOCKS, PHASE_B_BLOCKS, PHASE_C_BLOCKS, PHASE_D_BLOCKS);
+           PHASE_A_BLOCKS + PHASE_B_BLOCKS + PHASE_C_BLOCKS + PHASE_D_BLOCKS, PHASE_A_BLOCKS,
+           PHASE_B_BLOCKS, PHASE_C_BLOCKS, PHASE_D_BLOCKS);
 
-    if (rc == 0) rc = run_phase_a();  /* ECB-128 + delays */
-    if (rc == 0) rc = run_phase_b();  /* CBC-128 (mode switch) */
-    if (rc == 0) rc = run_phase_c();  /* CTR-128 (mode switch) + delays */
-    if (rc == 0) rc = run_phase_d();  /* ECB-256 (key rotation) */
+    if (rc == 0) rc = run_phase_a(); /* ECB-128 + delays */
+    if (rc == 0) rc = run_phase_b(); /* CBC-128 (mode switch) */
+    if (rc == 0) rc = run_phase_c(); /* CTR-128 (mode switch) + delays */
+    if (rc == 0) rc = run_phase_d(); /* ECB-256 (key rotation) */
 
     cleanup_aes();
 

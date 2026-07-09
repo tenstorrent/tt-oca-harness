@@ -26,21 +26,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -90,8 +86,7 @@ int main(void)
             WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
             cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
             printf("  Mode %u (CPOL=%u, CPHA=%u): readback CPOL=%u, CPHA=%u - %s\n",
-                   (cpol << 1) | cpha, cpol, cpha,
-                   cfg.f.CPOL, cfg.f.CPHA,
+                   (cpol << 1) | cpha, cpol, cpha, cfg.f.CPOL, cfg.f.CPHA,
                    (cfg.f.CPOL == cpol && cfg.f.CPHA == cpha) ? "PASS" : "FAIL");
             if (cfg.f.CPOL != cpol || cfg.f.CPHA != cpha) pass = 0;
         }
@@ -160,6 +155,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

@@ -24,7 +24,7 @@
 #include "nmi.h"
 #include "test_completion.h"
 
-static volatile int nmi_count  = 0;
+static volatile int nmi_count = 0;
 static volatile int nmi_errors = 0;
 
 void wdt_nmi_handler(void) {
@@ -37,8 +37,7 @@ void wdt_nmi_handler(void) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_010: WDT Stress All Test\n");
@@ -58,13 +57,15 @@ int main(void)
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
-        for (volatile int j = 0; j < 10000; j++) { __asm__ volatile("nop"); }
+        for (volatile int j = 0; j < 10000; j++) {
+            __asm__ volatile("nop");
+        }
 
         uint32_t cnt = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);  /* pet */
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0); /* pet */
         uint32_t after = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
 
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);   /* disable */
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0); /* disable */
 
         printf("  Cycle %d: count=%u, after_pet=%u\n", i + 1, cnt, after);
         if (after > 0x200) {
@@ -94,7 +95,9 @@ int main(void)
     for (int i = 0; i < 3; i++) {
         int prev = nmi_count;
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);
-        while (nmi_count == prev) { __asm__ volatile("wfi"); }
+        while (nmi_count == prev) {
+            __asm__ volatile("wfi");
+        }
         if (nmi_count <= prev) {
             printf("  FAIL: INTR_TEST injection %d NMI not received\n", i + 1);
             errors++;
@@ -111,8 +114,10 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
     /* Let count reach ~200 then change bark to trigger */
-    while (READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR) < 200) { __asm__ volatile("nop"); }
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 50);  /* below current count */
+    while (READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR) < 200) {
+        __asm__ volatile("nop");
+    }
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 50); /* below current count */
 
     /* Wait for NMI */
     for (volatile int i = 0; i < 2000000 && nmi_count == bark_pre; i++) {
@@ -129,7 +134,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     int after_pet_nmi = nmi_count;
-    for (volatile int i = 0; i < 100000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 100000; i++) {
+        __asm__ volatile("nop");
+    }
     if (nmi_count != after_pet_nmi) {
         printf("  FAIL: NMI fired after pet + high threshold\n");
         errors++;
@@ -163,5 +170,7 @@ int main(void)
     }
     printf("================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

@@ -25,14 +25,12 @@
  * @param[in]     allow_reseed Non-zero to reseed from DRBG each pass; 0 for
  *                             wipe path (no DRBG access).
  */
-void rom_shred_region(volatile uint32_t *base, uint16_t word_count,
-                      rom_km_prng_state_t *prng, uint8_t allow_reseed)
-{
+void rom_shred_region(volatile uint32_t *base, uint16_t word_count, rom_km_prng_state_t *prng,
+                      uint8_t allow_reseed) {
     uint16_t order[word_count];
 
     for (uint8_t pass = 0; pass < ROM_KM_SHRED_ITER + 1; pass++) {
-        if (allow_reseed)
-            rom_prng_seed(prng);
+        if (allow_reseed) rom_prng_seed(prng);
 
         rom_shuffle_init_array(prng, order, word_count);
 

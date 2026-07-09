@@ -21,10 +21,9 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define RST_KMAC  (1u << 4)
+#define RST_KMAC (1u << 4)
 
-static int wait_for_idle(void)
-{
+static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -37,8 +36,7 @@ static int wait_for_idle(void)
     return -1;
 }
 
-static int wait_for_done(void)
-{
+static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
@@ -52,21 +50,18 @@ static int wait_for_done(void)
     return -1;
 }
 
-static void seed_entropy(void)
-{
+static void seed_entropy(void) {
     for (int i = 0; i < 6; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xdeadbeefu + (uint32_t)i);
     }
 }
 
-static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg)
-{
+static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 }
 
-static int run_sha3(uint32_t *digest0_out)
-{
+static int run_sha3(uint32_t *digest0_out) {
     if (wait_for_idle() != 0) {
         return -1;
     }
@@ -93,8 +88,8 @@ static int run_sha3(uint32_t *digest0_out)
         return -1;
     }
 
-    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR)
-                     ^ READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
+    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
     printf("  digest0=0x%08x\n", digest0);
     *digest0_out = digest0;
 
@@ -104,8 +99,7 @@ static int run_sha3(uint32_t *digest0_out)
     return (digest0 != 0) ? 0 : -1;
 }
 
-static void pulse_kmac_reset(void)
-{
+static void pulse_kmac_reset(void) {
     uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
     WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n & ~RST_KMAC);
@@ -115,8 +109,7 @@ static void pulse_kmac_reset(void)
     WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n | RST_KMAC);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -141,8 +134,8 @@ int main(void)
 
     kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
     kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
-    printf("  STATUS=0x%08x idle=%u empty=%u CFG_REGWEN=%u\n",
-           status.w, status.f.sha3_idle, status.f.fifo_empty, regwen.f.en);
+    printf("  STATUS=0x%08x idle=%u empty=%u CFG_REGWEN=%u\n", status.w, status.f.sha3_idle,
+           status.f.fifo_empty, regwen.f.en);
     if (!status.f.sha3_idle || !status.f.fifo_empty || !regwen.f.en) {
         printf("  FAIL: KMAC did not return to reset defaults after emergency wipe\n");
         pass = 0;

@@ -31,12 +31,12 @@
 
 /** @brief Linear message buffer with single-frame bookkeeping. */
 typedef struct {
-    uint32_t data[ROM_KM_MSGBUF_SIZE];  /**< Word storage (each frame starts at 0) */
-    uint16_t count;                      /**< Words in buffer (write index when building) */
-    uint8_t  has_frame;                  /**< 1 if one complete frame is present */
-    uint16_t frame_len;                  /**< Length in words of the frame */
-    uint16_t tail;                       /**< Next read index (0 .. frame_len) */
-    uint8_t  partial_active;             /**< 1 if a frame write is in progress */
+    uint32_t data[ROM_KM_MSGBUF_SIZE]; /**< Word storage (each frame starts at 0) */
+    uint16_t count;                    /**< Words in buffer (write index when building) */
+    uint8_t has_frame;                 /**< 1 if one complete frame is present */
+    uint16_t frame_len;                /**< Length in words of the frame */
+    uint16_t tail;                     /**< Next read index (0 .. frame_len) */
+    uint8_t partial_active;            /**< 1 if a frame write is in progress */
 } rom_km_msgbuf_t;
 
 /*===========================================================================
@@ -116,8 +116,7 @@ uint8_t rom_msgbuf_frame_available(const rom_km_msgbuf_t *buf);
  * @param length Receives the remaining word count (frame_len - tail).
  * @return 0 if a frame is available, -1 if no frame.
  */
-int rom_msgbuf_peek_frame(const rom_km_msgbuf_t *buf,
-                          uint16_t *start, uint16_t *length);
+int rom_msgbuf_peek_frame(const rom_km_msgbuf_t *buf, uint16_t *start, uint16_t *length);
 
 /**
  * @brief Discard the current frame.

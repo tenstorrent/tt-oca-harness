@@ -36,8 +36,7 @@ void wdt_nmi_handler(void) {
     intr_count++;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_006: WDT Interrupt Test\n");
@@ -59,7 +58,7 @@ int main(void)
 
     /* Ensure WDT is disabled and INTR_STATE is clear */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);  /* clear all */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear all */
 
     /* STEP 2: First INTR_TEST injection */
     printf("\n// STEP 2: First INTR_TEST[1] injection (WDT disabled)\n");
@@ -69,7 +68,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);
 
     /* Wait for NMI - use wfi (CPU halts until interrupt) */
-    while (intr_count == pre_count) { __asm__ volatile("wfi"); }
+    while (intr_count == pre_count) {
+        __asm__ volatile("wfi");
+    }
 
     if (intr_count <= pre_count) {
         printf("  FAIL: No NMI from injection 1 (count=%d)\n", intr_count - pre_count);
@@ -92,7 +93,9 @@ int main(void)
     pre_count = intr_count;
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);
 
-    while (intr_count == pre_count) { __asm__ volatile("wfi"); }
+    while (intr_count == pre_count) {
+        __asm__ volatile("wfi");
+    }
 
     if (intr_count <= pre_count) {
         printf("  FAIL: No NMI from injection 2 (count=%d)\n", intr_count - pre_count);
@@ -115,13 +118,15 @@ int main(void)
     printf("\n// STEP 4b: Manual INTR_STATE W1C verification\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);
     /* Brief delay to let INTR_STATE set */
-    for (volatile int i = 0; i < 100; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 100; i++) {
+        __asm__ volatile("nop");
+    }
     uint32_t st_set = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);  /* W1C */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2); /* W1C */
     uint32_t st_clr = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
     if (st_clr & 0x2) {
-        printf("  FAIL: W1C did not clear INTR_STATE[1] (set=0x%08x, clr=0x%08x)\n",
-               st_set, st_clr);
+        printf("  FAIL: W1C did not clear INTR_STATE[1] (set=0x%08x, clr=0x%08x)\n", st_set,
+               st_clr);
         errors++;
     } else {
         printf("  PASS: W1C cleared INTR_STATE[1] (was 0x%08x)\n", st_set);
@@ -129,11 +134,13 @@ int main(void)
 
     /* STEP 5: Verify WDT counting not affected by INTR_TEST */
     printf("\n// STEP 5: WDT counting unaffected by INTR_TEST\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);  /* clear any residual */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear any residual */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
-    for (volatile int i = 0; i < 30000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 30000; i++) {
+        __asm__ volatile("nop");
+    }
     uint32_t cnt = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDT count after spin = 0x%08x\n", cnt);
     if (cnt == 0) {
@@ -157,5 +164,7 @@ int main(void)
     }
     printf("================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

@@ -27,10 +27,9 @@ static int wait_for_idle(void) {
     return -1;
 }
 
-static void write_cfg_and_verify(const char *label,
-                                 uint32_t kmac_en, uint32_t mode,
-                                 uint32_t kstrength, uint32_t entropy_mode,
-                                 uint32_t msg_endian, uint32_t state_endian) {
+static void write_cfg_and_verify(const char *label, uint32_t kmac_en, uint32_t mode,
+                                 uint32_t kstrength, uint32_t entropy_mode, uint32_t msg_endian,
+                                 uint32_t state_endian) {
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = kmac_en;
     cfg.f.mode = mode;
@@ -71,50 +70,41 @@ int main(void) {
     if (wait_for_idle() != 0) {
         printf("FAIL: KMAC not idle at start\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* SHA3 mode, L128 strength */
-    write_cfg_and_verify("SHA3/L128",
-        0, 0x0, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("SHA3/L128", 0, 0x0, 0x0, 0x1, 0, 0);
 
     /* SHA3 mode, L256 strength */
-    write_cfg_and_verify("SHA3/L256",
-        0, 0x0, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("SHA3/L256", 0, 0x0, 0x2, 0x1, 0, 0);
 
     /* SHAKE mode, L128 */
-    write_cfg_and_verify("SHAKE/L128",
-        0, 0x2, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("SHAKE/L128", 0, 0x2, 0x0, 0x1, 0, 0);
 
     /* SHAKE mode, L256 */
-    write_cfg_and_verify("SHAKE/L256",
-        0, 0x2, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("SHAKE/L256", 0, 0x2, 0x2, 0x1, 0, 0);
 
     /* cSHAKE mode, L128 (mode=3 per hjson sha3_mode_e::CShake=2'b11) */
-    write_cfg_and_verify("cSHAKE/L128",
-        0, 0x3, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("cSHAKE/L128", 0, 0x3, 0x0, 0x1, 0, 0);
 
     /* KMAC enabled, cSHAKE mode, L128 (mode=3 per hjson) */
-    write_cfg_and_verify("KMAC_EN/cSHAKE/L128",
-        1, 0x3, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("KMAC_EN/cSHAKE/L128", 1, 0x3, 0x0, 0x1, 0, 0);
 
     /* KMAC enabled, cSHAKE mode, L256 (mode=3 per hjson) */
-    write_cfg_and_verify("KMAC_EN/cSHAKE/L256",
-        1, 0x3, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("KMAC_EN/cSHAKE/L256", 1, 0x3, 0x2, 0x1, 0, 0);
 
     /* Test endianness flags */
-    write_cfg_and_verify("msg_endian=1",
-        0, 0x0, 0x2, 0x1, 1, 0);
+    write_cfg_and_verify("msg_endian=1", 0, 0x0, 0x2, 0x1, 1, 0);
 
-    write_cfg_and_verify("state_endian=1",
-        0, 0x0, 0x2, 0x1, 0, 1);
+    write_cfg_and_verify("state_endian=1", 0, 0x0, 0x2, 0x1, 0, 1);
 
-    write_cfg_and_verify("both_endian=1",
-        0, 0x0, 0x2, 0x1, 1, 1);
+    write_cfg_and_verify("both_endian=1", 0, 0x0, 0x2, 0x1, 1, 1);
 
     /* Entropy mode: EDN (0x1 per hjson: 0=None, 1=EDN, 2=SW) */
-    write_cfg_and_verify("entropy_mode=EDN",
-        0, 0x0, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("entropy_mode=EDN", 0, 0x0, 0x2, 0x1, 0, 0);
 
     /* Restore default */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);

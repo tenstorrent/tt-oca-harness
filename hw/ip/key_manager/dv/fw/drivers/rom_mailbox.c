@@ -16,12 +16,12 @@
  * ensuring subsequent WRITE_DATA words are not discarded by a
  * still-active flush.
  */
-void rom_mailbox_flush(void)
-{
+void rom_mailbox_flush(void) {
     km_mailbox_km__ctrl_reg_t ctrl = {0};
     ctrl.f.flush = 1;
     ROM_MBOX_CTRL_REG.w = ctrl.w;
-    while (ROM_MBOX_CTRL_REG.f.flush) {}
+    while (ROM_MBOX_CTRL_REG.f.flush) {
+    }
 }
 
 /**
@@ -29,8 +29,7 @@ void rom_mailbox_flush(void)
  *
  * @return 1 if empty, 0 otherwise.
  */
-uint8_t rom_mailbox_inbound_empty(void)
-{
+uint8_t rom_mailbox_inbound_empty(void) {
     return ROM_MBOX_STATUS_REG.f.inbound_empty ? 1u : 0u;
 }
 
@@ -39,8 +38,7 @@ uint8_t rom_mailbox_inbound_empty(void)
  *
  * @return Inbound FIFO fill level (0 when empty).
  */
-uint32_t rom_mailbox_inbound_depth_read(void)
-{
+uint32_t rom_mailbox_inbound_depth_read(void) {
     return (uint32_t)ROM_MBOX_STATUS_REG.f.inbound_depth;
 }
 
@@ -49,8 +47,7 @@ uint32_t rom_mailbox_inbound_depth_read(void)
  *
  * @return Outbound FIFO fill level (0 when empty).
  */
-uint32_t rom_mailbox_outbound_depth_read(void)
-{
+uint32_t rom_mailbox_outbound_depth_read(void) {
     return (uint32_t)ROM_MBOX_STATUS_REG.f.outbound_depth;
 }
 
@@ -62,10 +59,8 @@ uint32_t rom_mailbox_outbound_depth_read(void)
  *
  * @return Outbound FIFO free space (0 when full).
  */
-uint32_t rom_mailbox_outbound_space_available_read(void)
-{
-    return (uint32_t)ROM_KM_MAILBOX_FIFO_DEPTH -
-           rom_mailbox_outbound_depth_read();
+uint32_t rom_mailbox_outbound_space_available_read(void) {
+    return (uint32_t)ROM_KM_MAILBOX_FIFO_DEPTH - rom_mailbox_outbound_depth_read();
 }
 
 /**
@@ -73,8 +68,7 @@ uint32_t rom_mailbox_outbound_space_available_read(void)
  *
  * @return 1 if separator is asserted, 0 otherwise.
  */
-uint8_t rom_mailbox_inbound_separator(void)
-{
+uint8_t rom_mailbox_inbound_separator(void) {
     return ROM_MBOX_STATUS_REG.f.inbound_separator ? 1u : 0u;
 }
 
@@ -83,16 +77,14 @@ uint8_t rom_mailbox_inbound_separator(void)
  *
  * @return 32-bit data word.
  */
-uint32_t rom_mailbox_read_data(void)
-{
+uint32_t rom_mailbox_read_data(void) {
     return ROM_MBOX_READ_DATA_REG.w;
 }
 
 /**
  * @brief Assert outbound separator flag for the next write.
  */
-void rom_mailbox_set_write_separator(void)
-{
+void rom_mailbox_set_write_separator(void) {
     ROM_MBOX_WRITE_SEP_REG.w = 1u;
 }
 
@@ -101,7 +93,6 @@ void rom_mailbox_set_write_separator(void)
  *
  * @param[in] word Data word to write.
  */
-void rom_mailbox_write_data(uint32_t word)
-{
+void rom_mailbox_write_data(uint32_t word) {
     ROM_MBOX_WRITE_DATA_REG.w = word;
 }

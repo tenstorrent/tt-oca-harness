@@ -27,120 +27,113 @@
 #include "key_manager_addr.h"
 
 /* Register access macros using struct types */
-#define MBOX_WRITE_DATA_REG      (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
-#define MBOX_READ_DATA_REG       (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG          (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG      (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG      (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
-#define MBOX_CTRL_REG            (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
+#define MBOX_WRITE_DATA_REG \
+    (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_CTRL_REG \
+    (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 /* Mailbox FIFO depth - must match RTL parameter in km_mailbox.sv */
-#define MAILBOX_DEPTH            16
+#define MAILBOX_DEPTH 16
 
 /* AXI response codes */
-#define AXI_OKAY                 0x00
-#define AXI_SLVERR               0x02
+#define AXI_OKAY 0x00
+#define AXI_SLVERR 0x02
 
 /**
  * Read mailbox STATUS register.
  */
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
 /**
  * Check if outbound FIFO is full.
  */
-static inline int mbox_outbound_full(void)
-{
+static inline int mbox_outbound_full(void) {
     return MBOX_STATUS_REG.f.outbound_full != 0;
 }
 
 /**
  * Check if outbound FIFO is empty.
  */
-static inline int mbox_outbound_empty(void)
-{
+static inline int mbox_outbound_empty(void) {
     return MBOX_STATUS_REG.f.outbound_empty != 0;
 }
 
 /**
  * Write data to mailbox WRITE_DATA register (writes to outbound FIFO).
  */
-static inline void mbox_write_data(uint32_t data)
-{
+static inline void mbox_write_data(uint32_t data) {
     MBOX_WRITE_DATA_REG.w = data;
 }
 
 /**
  * Read data from mailbox READ_DATA register (reads from inbound FIFO).
  */
-static inline uint32_t mbox_read_data(void)
-{
+static inline uint32_t mbox_read_data(void) {
     return MBOX_READ_DATA_REG.w;
 }
 
 /**
  * Read mailbox IRQ_STATUS register.
  */
-static inline uint32_t mbox_read_irq_status(void)
-{
+static inline uint32_t mbox_read_irq_status(void) {
     return MBOX_IRQ_STATUS_REG.w;
 }
 
 /**
  * Write mailbox IRQ_STATUS register (for clearing sticky bits).
  */
-static inline void mbox_write_irq_status(uint32_t value)
-{
+static inline void mbox_write_irq_status(uint32_t value) {
     MBOX_IRQ_STATUS_REG.w = value;
 }
 
 /**
  * Read mailbox IRQ_ENABLE register.
  */
-static inline uint32_t mbox_read_irq_enable(void)
-{
+static inline uint32_t mbox_read_irq_enable(void) {
     return MBOX_IRQ_ENABLE_REG.w;
 }
 
 /**
  * Write mailbox IRQ_ENABLE register.
  */
-static inline void mbox_write_irq_enable(uint32_t value)
-{
+static inline void mbox_write_irq_enable(uint32_t value) {
     MBOX_IRQ_ENABLE_REG.w = value;
 }
 
 /**
  * Read mailbox CTRL register.
  */
-static inline uint32_t mbox_read_ctrl(void)
-{
+static inline uint32_t mbox_read_ctrl(void) {
     return MBOX_CTRL_REG.w;
 }
 
 /**
  * Write mailbox CTRL register.
  */
-static inline void mbox_write_ctrl(uint32_t value)
-{
+static inline void mbox_write_ctrl(uint32_t value) {
     MBOX_CTRL_REG.w = value;
 }
 
 /**
  * Clear overflow status bits (write-1-to-clear).
  */
-static inline void mbox_clear_overflow_status(void)
-{
+static inline void mbox_clear_overflow_status(void) {
     km_mailbox_km__status_reg_t clear_val = {0};
     clear_val.f.outbound_overflow = 1;
     MBOX_STATUS_REG.w = clear_val.w;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* Set timeout to accommodate data verification reads (16 entries * ~40k cycles each) */
@@ -179,12 +172,12 @@ int main(void)
         for (unsigned i = 0; i < MAILBOX_DEPTH; i++) {
             expected_data[i] = 0x2000 + i;
             mbox_write_data(expected_data[i]);
-            test_delay(5);  /* Small delay between writes */
+            test_delay(5); /* Small delay between writes */
         }
         TEST_LOG("  Outbound FIFO filled with %d entries", MAILBOX_DEPTH);
 
         /* Verify FIFO is full */
-        test_delay(10);  /* Wait for status to update */
+        test_delay(10); /* Wait for status to update */
         TEST_ASSERT(mbox_outbound_full(), "Outbound FIFO should be full");
 
         /* Attempt write to full outbound FIFO - this should trigger overflow and return SLVERR */
@@ -201,21 +194,22 @@ int main(void)
         TEST_LOG("  KMCSR IRQ_STATUS register: 0x%08X", kmcsr_irq_status_val);
         {
             km_csr__irq_status_reg_t status_reg = {.w = kmcsr_irq_status_val};
-            TEST_ASSERT(status_reg.f.axi_slverr,
-                       "KMCSR IRQ_STATUS.AXI_SLVERR should be set (KM-side overflow returns SLVERR)");
+            TEST_ASSERT(
+                status_reg.f.axi_slverr,
+                "KMCSR IRQ_STATUS.AXI_SLVERR should be set (KM-side overflow returns SLVERR)");
         }
 
         /* Check overflow status bit is set */
         status_val = mbox_read_status();
         TEST_LOG("  STATUS register: 0x%08X", status_val);
         TEST_ASSERT(MBOX_STATUS_REG.f.outbound_overflow,
-                   "STATUS.OUTBOUND_OVERFLOW should be set after overflow");
+                    "STATUS.OUTBOUND_OVERFLOW should be set after overflow");
 
         /* Check mailbox IRQ_STATUS bit is set */
         mbox_irq_status_val = mbox_read_irq_status();
         TEST_LOG("  MBOX IRQ_STATUS register: 0x%08X", mbox_irq_status_val);
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_overflow,
-                   "IRQ_STATUS.OUTBOUND_OVERFLOW should be set after overflow");
+                    "IRQ_STATUS.OUTBOUND_OVERFLOW should be set after overflow");
 
         /* Verify FIFO is still full */
         TEST_ASSERT(mbox_outbound_full(), "Outbound FIFO should still be full");
@@ -229,10 +223,11 @@ int main(void)
             TEST_ASSERT_EQ(read_resp, AXI_OKAY, "Read should succeed");
             TEST_LOG("    Entry %u: read=0x%08X, expected=0x%08X", i, read_data, expected_data[i]);
             if (read_data != expected_data[i]) {
-                TEST_FAIL("FIFO entry %u mismatch: read=0x%08X, expected=0x%08X (overflow write should be dropped)",
-                         i, read_data, expected_data[i]);
+                TEST_FAIL("FIFO entry %u mismatch: read=0x%08X, expected=0x%08X (overflow write "
+                          "should be dropped)",
+                          i, read_data, expected_data[i]);
             }
-            test_delay(5);  /* Small delay between reads */
+            test_delay(5); /* Small delay between reads */
         }
 
         /* Verify FIFO is now empty */
@@ -244,7 +239,7 @@ int main(void)
         test_delay(5);
         status_val = mbox_read_status();
         TEST_ASSERT_EQ(MBOX_STATUS_REG.f.outbound_overflow, 0,
-                      "STATUS.OUTBOUND_OVERFLOW should be clear after W1C");
+                       "STATUS.OUTBOUND_OVERFLOW should be clear after W1C");
 
         /* Clear mailbox IRQ_STATUS overflow bit (write-1-to-clear) */
         {
@@ -255,7 +250,7 @@ int main(void)
         test_delay(5);
         mbox_irq_status_val = mbox_read_irq_status();
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.outbound_overflow, 0,
-                      "IRQ_STATUS.OUTBOUND_OVERFLOW should be clear after W1C");
+                       "IRQ_STATUS.OUTBOUND_OVERFLOW should be clear after W1C");
 
         /* Clear KMCSR IRQs */
         {
@@ -264,7 +259,8 @@ int main(void)
             rom_kmcsr_irq_status_clear(clear_val.w);
         }
 
-        TEST_LOG("  Overflow data was dropped, original data preserved, status/IRQ bits verified, SLVERR detected in KMCSR");
+        TEST_LOG("  Overflow data was dropped, original data preserved, status/IRQ bits verified, "
+                 "SLVERR detected in KMCSR");
     }
     TEST_SUBTEST_PASS();
 
@@ -294,7 +290,7 @@ int main(void)
         ctrl_val = mbox_read_ctrl();
         TEST_LOG("  KM-side CTRL register (default): 0x%08X", ctrl_val);
         TEST_ASSERT_EQ(MBOX_CTRL_REG.f.outbound_overflow_resp, 0,
-                      "CTRL.OUTBOUND_OVERFLOW_RESP should default to 0 (SLVERR)");
+                       "CTRL.OUTBOUND_OVERFLOW_RESP should default to 0 (SLVERR)");
 
         /* Attempt overflow write - KM-side writes don't return AXI response,
          * but overflow status bit should still be set */
@@ -303,14 +299,14 @@ int main(void)
 
         /* Verify overflow status bit is set */
         TEST_ASSERT(MBOX_STATUS_REG.f.outbound_overflow,
-                   "STATUS.OUTBOUND_OVERFLOW should be set after overflow");
+                    "STATUS.OUTBOUND_OVERFLOW should be set after overflow");
 
         /* Configure to return OKAY (for SEP-side reads) */
         MBOX_CTRL_REG.f.outbound_overflow_resp = 1;
         ctrl_val = mbox_read_ctrl();
         TEST_LOG("  KM-side CTRL register (OKAY configured): 0x%08X", ctrl_val);
         TEST_ASSERT(MBOX_CTRL_REG.f.outbound_overflow_resp,
-                   "CTRL.OUTBOUND_OVERFLOW_RESP should be set");
+                    "CTRL.OUTBOUND_OVERFLOW_RESP should be set");
 
         /* Clear overflow status and refill FIFO */
         mbox_clear_overflow_status();
@@ -337,7 +333,7 @@ int main(void)
 
         /* Verify overflow status bit is still set even with OKAY response configured */
         TEST_ASSERT(MBOX_STATUS_REG.f.outbound_overflow,
-                   "STATUS.OUTBOUND_OVERFLOW should be set even with OKAY response configured");
+                    "STATUS.OUTBOUND_OVERFLOW should be set even with OKAY response configured");
 
         /* Restore default (SLVERR) */
         MBOX_CTRL_REG.w = 0;

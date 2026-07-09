@@ -21,8 +21,7 @@
 static rom_km_prng_state_t g_prng;
 static rom_km_bitpool_t g_pool;
 
-static void simple_sort(uint16_t *arr, uint16_t n)
-{
+static void simple_sort(uint16_t *arr, uint16_t n) {
     for (uint16_t i = 0; i < n; i++) {
         for (uint16_t j = (uint16_t)(i + 1u); j < n; j++) {
             if (arr[j] < arr[i]) {
@@ -34,8 +33,7 @@ static void simple_sort(uint16_t *arr, uint16_t n)
     }
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(300000)) {
@@ -67,8 +65,7 @@ int main(void)
             for (uint32_t t = 0; t < 10; t++) {
                 uint16_t idx = rom_shuffle_index(&g_pool, &g_prng, bound);
                 if (idx >= bound) {
-                    TEST_FAIL("index %u >= bound %u", (unsigned)idx,
-                              (unsigned)bound);
+                    TEST_FAIL("index %u >= bound %u", (unsigned)idx, (unsigned)bound);
                 }
             }
         }
@@ -122,8 +119,7 @@ int main(void)
         for (uint32_t i = 0; i < 200; i++) {
             uint16_t idx = rom_shuffle_index(&g_pool, &g_prng, 17);
             if (idx >= 17) {
-                TEST_FAIL("refill: index %u >= 17 at iter %u",
-                          (unsigned)idx, (unsigned)i);
+                TEST_FAIL("refill: index %u >= 17 at iter %u", (unsigned)idx, (unsigned)i);
             }
         }
     }

@@ -23,14 +23,14 @@
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
 
-#define RST_CTRL_ADDR  OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
+#define RST_CTRL_ADDR OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
 
 /* Bits in SW_RESET_N */
-#define RST_KM    (1u << 0)
-#define RST_OTBN  (1u << 1)
-#define RST_AES   (1u << 2)
-#define RST_HMAC  (1u << 3)
-#define RST_KMAC  (1u << 4)
+#define RST_KM (1u << 0)
+#define RST_OTBN (1u << 1)
+#define RST_AES (1u << 2)
+#define RST_HMAC (1u << 3)
+#define RST_KMAC (1u << 4)
 
 /* Release all crypto IPs from reset (baseline state) */
 #define RST_ALL_RELEASE (RST_KM | RST_OTBN | RST_AES | RST_HMAC | RST_KMAC)
@@ -60,8 +60,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static int run_sha3_hash(void) {
@@ -69,8 +68,8 @@ static int run_sha3_hash(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;       /* SHA3 */
-    cfg.f.kstrength = 0x2;  /* L256 */
+    cfg.f.mode = 0x0;      /* SHA3 */
+    cfg.f.kstrength = 0x2; /* L256 */
     cfg.f.entropy_mode = 0x1;
     cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
@@ -83,20 +82,20 @@ static int run_sha3_hash(void) {
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;  /* START */
+    cmd.f.cmd = 29; /* START */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574); /* "test" */
 
-    cmd.f.cmd = 46;  /* PROCESS */
+    cmd.f.cmd = 46; /* PROCESS */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR)
-                     ^ READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
+    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
 
-    cmd.f.cmd = 22;  /* DONE */
+    cmd.f.cmd = 22; /* DONE */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return (digest0 != 0) ? 0 : -1;
@@ -163,7 +162,7 @@ static int test_sw_reset(void) {
 
     printf("=== Step 7: Re-assert and re-release reset (second cycle) ===\n");
     WRITE_REG(RST_CTRL_ADDR, RST_ALL_RELEASE & ~RST_KMAC); /* assert */
-    WRITE_REG(RST_CTRL_ADDR, RST_ALL_RELEASE);               /* release */
+    WRITE_REG(RST_CTRL_ADDR, RST_ALL_RELEASE);             /* release */
 
     if (wait_for_idle() != 0) {
         printf("FAIL: KMAC not idle after second reset cycle\n");
@@ -200,5 +199,7 @@ int main(void) {
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

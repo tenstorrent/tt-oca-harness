@@ -61,7 +61,7 @@ static int wait_for_fifo_space(void) {
     return -1;
 }
 
-static int feed_long_message(const char* pattern, int total_bytes) {
+static int feed_long_message(const char *pattern, int total_bytes) {
     printf("  Feeding long message: pattern='%s' repeated for %d bytes\n", pattern, total_bytes);
 
     int pattern_len = strlen(pattern);
@@ -89,8 +89,8 @@ static int feed_long_message(const char* pattern, int total_bytes) {
             if ((bytes_sent % 64) == 0 || bytes_sent == total_bytes) {
                 // Monitor FIFO depth periodically
                 hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-                printf("    Sent %d bytes, FIFO depth=%u, full=%u\n",
-                       bytes_sent, sts.f.fifo_depth, sts.f.fifo_full);
+                printf("    Sent %d bytes, FIFO depth=%u, full=%u\n", bytes_sent, sts.f.fifo_depth,
+                       sts.f.fifo_full);
             }
 
             word_buffer = 0;
@@ -107,9 +107,9 @@ static int test_long_message_sha256(void) {
 
     // Configure for SHA-256
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;        // SHA only
-    cfg.f.sha_en = 1;         // SHA enabled
-    cfg.f.digest_size = 0x1;  // SHA-256
+    cfg.f.hmac_en = 0;       // SHA only
+    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.digest_size = 0x1; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-256, SHA mode)\n", cfg.w);
 
@@ -119,7 +119,7 @@ static int test_long_message_sha256(void) {
     printf("  Started new hash\n");
 
     // Send long message (200 bytes, pattern "ABCDEFGH")
-    const char* pattern = "ABCDEFGH";
+    const char *pattern = "ABCDEFGH";
     int total_bytes = 200;
     if (feed_long_message(pattern, total_bytes) != 0) return -1;
 
@@ -170,9 +170,9 @@ static int test_very_long_message(void) {
 
     // Configure for SHA-256
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;        // SHA only
-    cfg.f.sha_en = 1;         // SHA enabled
-    cfg.f.digest_size = 0x1;  // SHA-256
+    cfg.f.hmac_en = 0;       // SHA only
+    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.digest_size = 0x1; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start new hash
@@ -181,7 +181,7 @@ static int test_very_long_message(void) {
     printf("  Started new hash\n");
 
     // Send very long message (1000 bytes, pattern "0123456789")
-    const char* pattern = "0123456789";
+    const char *pattern = "0123456789";
     int total_bytes = 1000;
     if (feed_long_message(pattern, total_bytes) != 0) return -1;
 
@@ -227,8 +227,7 @@ static int test_very_long_message(void) {
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
@@ -263,6 +262,8 @@ int main(void)
     }
     printf("====================================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

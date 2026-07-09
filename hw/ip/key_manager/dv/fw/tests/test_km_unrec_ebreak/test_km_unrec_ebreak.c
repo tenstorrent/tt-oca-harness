@@ -21,11 +21,14 @@
 #include "test_common.h"
 #include "rom_defs.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {
@@ -55,7 +58,7 @@ int main(void)
 
     rom_boot_init();
 
-    __asm__ volatile ("ebreak");
+    __asm__ volatile("ebreak");
 
     TEST_FAIL("CPU did not halt after ebreak");
     return 0;

@@ -23,28 +23,22 @@
 
 #define MSG_LEN_BYTES 2048u
 
-static inline uint32_t bswap32(uint32_t x)
-{
-    return ((x & 0x000000ffu) << 24) |
-           ((x & 0x0000ff00u) << 8)  |
-           ((x & 0x00ff0000u) >> 8)  |
+static inline uint32_t bswap32(uint32_t x) {
+    return ((x & 0x000000ffu) << 24) | ((x & 0x0000ff00u) << 8) | ((x & 0x00ff0000u) >> 8) |
            ((x & 0xff000000u) >> 24);
 }
 
-static uint8_t msg_byte(uint32_t idx)
-{
+static uint8_t msg_byte(uint32_t idx) {
     return (uint8_t)((idx * 13u + 7u) & 0xffu);
 }
 
-static void spin_delay(uint32_t cycles)
-{
+static void spin_delay(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
         __asm__ volatile("nop");
     }
 }
 
-static int wait_for_done_or_idle(void)
-{
+static int wait_for_done_or_idle(void) {
     int timeout = 2000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -58,8 +52,7 @@ static int wait_for_done_or_idle(void)
     return -1;
 }
 
-static void read_digest_hex(char *hex_out)
-{
+static void read_digest_hex(char *hex_out) {
     static const char hex_chars[] = "0123456789abcdef";
 
     for (int word = 0; word < 8; word++) {
@@ -75,8 +68,7 @@ static void read_digest_hex(char *hex_out)
     hex_out[64] = '\0';
 }
 
-static int stream_message(void)
-{
+static int stream_message(void) {
     volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     uint32_t pos = 0;
     uint32_t chunks = 0;
@@ -125,8 +117,9 @@ static int stream_message(void)
     }
 
     printf("  Streamed %u bytes in %u chunks\n", pos, chunks);
-    printf("  FIFO stats: full_seen=%u full_waits=%u empty_samples=%u max_depth=%u final_depth=%u\n",
-           full_seen, full_waits, empty_seen, max_depth, final_status.f.fifo_depth);
+    printf(
+        "  FIFO stats: full_seen=%u full_waits=%u empty_samples=%u max_depth=%u final_depth=%u\n",
+        full_seen, full_waits, empty_seen, max_depth, final_status.f.fifo_depth);
     if (!full_seen) {
         printf("  INFO: fifo_full was not observed; engine drained while FW streamed data\n");
     }
@@ -134,8 +127,7 @@ static int stream_message(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -165,8 +157,8 @@ int main(void)
 
     uint32_t msg_len_lower = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     uint32_t msg_len_upper = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
-    printf("  MSG_LENGTH lower=%u upper=%u expected=%u\n",
-           msg_len_lower, msg_len_upper, MSG_LEN_BYTES * 8u);
+    printf("  MSG_LENGTH lower=%u upper=%u expected=%u\n", msg_len_lower, msg_len_upper,
+           MSG_LEN_BYTES * 8u);
     if (msg_len_lower != MSG_LEN_BYTES * 8u || msg_len_upper != 0) {
         printf("  FAIL: message length mismatch\n");
         pass = 0;
@@ -181,11 +173,10 @@ int main(void)
 
     hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n",
-           status.w, status.f.hmac_idle, status.f.fifo_empty,
-           status.f.fifo_full, status.f.fifo_depth);
-    printf("  INTR_STATE=0x%08x hmac_done=%u fifo_empty=%u hmac_err=%u\n",
-           intr.w, intr.f.hmac_done, intr.f.fifo_empty, intr.f.hmac_err);
+    printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.hmac_idle,
+           status.f.fifo_empty, status.f.fifo_full, status.f.fifo_depth);
+    printf("  INTR_STATE=0x%08x hmac_done=%u fifo_empty=%u hmac_err=%u\n", intr.w, intr.f.hmac_done,
+           intr.f.fifo_empty, intr.f.hmac_err);
 
     if (!status.f.hmac_idle || !status.f.fifo_empty) {
         printf("  FAIL: HMAC did not return idle/empty after stress\n");

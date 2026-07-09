@@ -89,15 +89,15 @@ Original Author: Shay Gal-on
         ee_ptr_int needs to be the data type used to hold pointers, otherwise
    coremark may fail!!!
 */
-typedef signed short            ee_s16;
-typedef unsigned short          ee_u16;
-typedef signed int              ee_s32;
-typedef double                  ee_f32;
-typedef unsigned char           ee_u8;
-typedef unsigned int            ee_u32;
-typedef unsigned long long      ee_u64;
-typedef ee_u64                  ee_ptr_int;
-typedef size_t                  ee_size_t;
+typedef signed short ee_s16;
+typedef unsigned short ee_u16;
+typedef signed int ee_s32;
+typedef double ee_f32;
+typedef unsigned char ee_u8;
+typedef unsigned int ee_u32;
+typedef unsigned long long ee_u64;
+typedef ee_u64 ee_ptr_int;
+typedef size_t ee_size_t;
 #define NULL ((void *)0)
 /* align_mem :
         This macro is used to align an offset to point to a 32b value. It is
@@ -156,8 +156,8 @@ typedef ee_u32 CORE_TICKS;
 #ifndef MULTITHREAD
 #define MULTITHREAD 1
 #define USE_PTHREAD 0
-#define USE_FORK    0
-#define USE_SOCKET  0
+#define USE_FORK 0
+#define USE_SOCKET 0
 #endif
 
 /* Configuration : MAIN_HAS_NOARGC
@@ -191,8 +191,7 @@ typedef ee_u32 CORE_TICKS;
 */
 extern ee_u32 default_num_contexts;
 
-typedef struct CORE_PORTABLE_S
-{
+typedef struct CORE_PORTABLE_S {
     ee_u8 portable_id;
 } core_portable;
 
@@ -200,8 +199,7 @@ typedef struct CORE_PORTABLE_S
 void portable_init(core_portable *p, int *argc, char *argv[]);
 void portable_fini(core_portable *p);
 
-#if !defined(PROFILE_RUN) && !defined(PERFORMANCE_RUN) \
-    && !defined(VALIDATION_RUN)
+#if !defined(PROFILE_RUN) && !defined(PERFORMANCE_RUN) && !defined(VALIDATION_RUN)
 #if (TOTAL_DATA_SIZE == 1200)
 #define PROFILE_RUN 1
 #elif (TOTAL_DATA_SIZE == 2000)

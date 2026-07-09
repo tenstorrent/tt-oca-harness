@@ -19,8 +19,7 @@
 
 static rom_km_msgbuf_t buf;
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(300000)) {

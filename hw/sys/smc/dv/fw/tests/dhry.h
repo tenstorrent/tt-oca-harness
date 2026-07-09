@@ -6,9 +6,9 @@
  *
  *                   "DHRYSTONE" Benchmark Program
  *                   -----------------------------
- *                                                                            
+ *
  *  Version:    C, Version 2.1
- *                                                                            
+ *
  *  File:       dhry.h (part 1 of 3)
  *
  *  Date:       May 25, 1988
@@ -36,12 +36,12 @@
  *
  *  Collection of Results:
  *              Reinhold Weicker (address see above) and
- *              
+ *
  *              Rick Richardson
  *              PC Research. Inc.
  *              94 Apple Orchard Drive
  *              Tinton Falls, NJ 07724
- *                      Phone:  (201) 389-8963 (9-17 EST)               
+ *                      Phone:  (201) 389-8963 (9-17 EST)
  *                      Usenet: ...!uunet!pcrat!rick
  *
  *      Please send results to Rick Richardson and/or Reinhold Weicker.
@@ -94,7 +94,7 @@
  *              version previously distributed by Reinhold Weicker.
  *
  *              At several places in the benchmark, code has been added,
- *              but within the measurement loop only in branches that 
+ *              but within the measurement loop only in branches that
  *              are not executed. The intention is that optimizing compilers
  *              should be prevented from moving code out of the measurement
  *              loop, or from removing code altogether. Since the statements
@@ -104,7 +104,7 @@
  *              still hold. Except for sophisticated optimizing compilers,
  *              execution times for this version should be the same as
  *              for previous versions.
- *              
+ *
  *              Since it has proven difficult to subtract the time for the
  *              measurement loop overhead in a correct way, the loop check
  *              has been made a part of the benchmark. This does have
@@ -154,7 +154,7 @@
  *              -DTIME
  *                      The "times" function of UNIX (returning process times)
  *                      or the "time" function (returning wallclock time)
- *                      is used for measurement. 
+ *                      is used for measurement.
  *                      For single user machines, "time ()" is adequate. For
  *                      multi-user machines where you cannot get single-user
  *                      access, use the "times ()" function. If you have
@@ -201,23 +201,23 @@
  *   different from the Ada version.]
  *
  *  The following program contains statements of a high level programming
- *  language (here: C) in a distribution considered representative:           
+ *  language (here: C) in a distribution considered representative:
  *
  *    assignments                  52 (51.0 %)
  *    control statements           33 (32.4 %)
  *    procedure, function calls    17 (16.7 %)
  *
  *  103 statements are dynamically executed. The program is balanced with
- *  respect to the three aspects:                                             
+ *  respect to the three aspects:
  *
  *    - statement type
  *    - operand type
  *    - operand locality
- *         operand global, local, parameter, or constant.                     
+ *         operand global, local, parameter, or constant.
  *
- *  The combination of these three aspects is balanced only approximately.    
+ *  The combination of these three aspects is balanced only approximately.
  *
- *  1. Statement Type:                                                        
+ *  1. Statement Type:
  *  -----------------             number
  *
  *     V1 = V2                     9
@@ -261,9 +261,9 @@
  *       library procedure    1
  *     X = F (...)
  *             function  call      6
- *       user function        5                                         
- *       library function     1                                               
- *                                --                                          
+ *       user function        5
+ *       library function     1
+ *                                --
  *                                17       17
  *                                        ---
  *                                        103
@@ -276,10 +276,10 @@
  *                          number    approximate
  *                                    percentage
  *
- *    Arithmetic             32          50.8                                 
+ *    Arithmetic             32          50.8
  *
- *       +                     21          33.3                              
- *       -                      7          11.1                              
+ *       +                     21          33.3
+ *       -                      7          11.1
  *       *                      3           4.8
  *       / (int div)            1           1.6
  *
@@ -297,7 +297,7 @@
  *       && (AND-THEN)          1            1.6
  *       |  (OR)                1            1.6
  *       !  (NOT)               2            3.2
- * 
+ *
  *                           --          -----
  *                           63          100.1
  *
@@ -317,10 +317,10 @@
  *                           242       100.0 %
  *
  *  When there is an access path leading to the final operand (e.g. a record
- *  component), only the final data type on the access path is counted.       
+ *  component), only the final data type on the access path is counted.
  *
  *
- *  4. Operand Locality:                                                      
+ *  4. Operand Locality:
  *  -------------------
  *                                number    approximate
  *                                          percentage
@@ -351,50 +351,46 @@
 
 #include <stddef.h>
 
+#define Mic_secs_Per_Second 1000000
 
-#define Mic_secs_Per_Second     1000000
+#define structassign(d, s) d = s
 
-#define structassign(d, s)      d = s
-
-typedef enum {
-        Ident_1, Ident_2, Ident_3, Ident_4, Ident_5
-} Enumeration;
+typedef enum { Ident_1, Ident_2, Ident_3, Ident_4, Ident_5 } Enumeration;
 
 /* General definitions: */
 
-#define Null 0 
-                /* Value of a Null pointer */
-#define true  1
+#define Null 0
+/* Value of a Null pointer */
+#define true 1
 #define false 0
 
-typedef int     One_Thirty;
-typedef int     One_Fifty;
-typedef char    Capital_Letter;
-typedef int     Boolean;
-typedef char    Str_30 [31];
-typedef int     Arr_1_Dim [50];
-typedef int     Arr_2_Dim [50] [50];
+typedef int One_Thirty;
+typedef int One_Fifty;
+typedef char Capital_Letter;
+typedef int Boolean;
+typedef char Str_30[31];
+typedef int Arr_1_Dim[50];
+typedef int Arr_2_Dim[50][50];
 
-typedef struct record 
-    {
+typedef struct record {
     struct record *Ptr_Comp;
-    Enumeration    Discr;
+    Enumeration Discr;
     union {
-          struct {
-                  Enumeration Enum_Comp;
-                  int         Int_Comp;
-                  char        Str_Comp [31];
-                  } var_1;
-          struct {
-                  Enumeration E_Comp_2;
-                  char        Str_2_Comp [31];
-                  } var_2;
-          struct {
-                  char        Ch_1_Comp;
-                  char        Ch_2_Comp;
-                  } var_3;
-          } variant;
-      } Rec_Type, *Rec_Pointer;
+        struct {
+            Enumeration Enum_Comp;
+            int Int_Comp;
+            char Str_Comp[31];
+        } var_1;
+        struct {
+            Enumeration E_Comp_2;
+            char Str_2_Comp[31];
+        } var_2;
+        struct {
+            char Ch_1_Comp;
+            char Ch_2_Comp;
+        } var_3;
+    } variant;
+} Rec_Type, *Rec_Pointer;
 
 char *strcpy(char *dest, const char *src) {
     char *original_dest = dest; // Store the original destination pointer to return it
@@ -410,4 +406,3 @@ char *strcpy(char *dest, const char *src) {
 
     return original_dest; // Return the original destination pointer
 }
-

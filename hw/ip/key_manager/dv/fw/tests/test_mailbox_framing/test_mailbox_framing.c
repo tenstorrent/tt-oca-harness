@@ -30,38 +30,38 @@
 #include "km_mailbox_sep_regs.h"
 
 /* KM-side mailbox register access (addresses and types from key_manager_regs.h) */
-#define MBOX_WRITE_DATA_REG       (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
-#define MBOX_WRITE_SEPARATOR_REG  (*(volatile km_mailbox_km__write_separator_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR)
-#define MBOX_READ_DATA_REG        (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG           (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_WRITE_DATA_REG \
+    (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
+#define MBOX_WRITE_SEPARATOR_REG \
+    (*(volatile km_mailbox_km__write_separator_reg_t *) \
+         KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
 
 #define TB_TIMEOUT_CYCLES 5000
 
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
-static inline uint32_t mbox_read_data(void)
-{
+static inline uint32_t mbox_read_data(void) {
     return MBOX_READ_DATA_REG.w;
 }
 
-static inline void mbox_write_data(uint32_t data)
-{
+static inline void mbox_write_data(uint32_t data) {
     MBOX_WRITE_DATA_REG.w = data;
 }
 
-static inline int mbox_inbound_empty(void)
-{
+static inline int mbox_inbound_empty(void) {
     return MBOX_STATUS_REG.f.inbound_empty != 0;
 }
 
 /**
  * Wait for inbound FIFO to become non-empty (with timeout).
  */
-static int mbox_wait_for_inbound_data(uint32_t timeout_cycles)
-{
+static int mbox_wait_for_inbound_data(uint32_t timeout_cycles) {
     for (uint32_t i = 0; i < timeout_cycles; i++) {
         if (!mbox_inbound_empty()) {
             return 1;
@@ -71,15 +71,14 @@ static int mbox_wait_for_inbound_data(uint32_t timeout_cycles)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t st;
     uint32_t d;
     uint32_t sep_status;
     /* Expected INBOUND_SEPARATOR after each of 5 KM reads: 0,0,1, 0,1 */
-    static const int expected_inbound_sep[] = { 0, 0, 1, 0, 1 };
+    static const int expected_inbound_sep[] = {0, 0, 1, 0, 1};
     /* Expected OUTBOUND_SEPARATOR after each of 4 SEP reads: 0,1, 0,1 */
-    static const int expected_outbound_sep[] = { 0, 1, 0, 1 };
+    static const int expected_outbound_sep[] = {0, 1, 0, 1};
 
     TEST_INIT();
 
@@ -121,19 +120,17 @@ int main(void)
         }
 
         {
-            static const uint32_t expected[] = {
-                0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u, 0x55555555u
-            };
+            static const uint32_t expected[] = {0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u,
+                                                0x55555555u};
             for (int i = 0; i < 5; i++) {
                 d = mbox_read_data();
                 st = mbox_read_status();
                 {
-                    km_mailbox_km__status_reg_t st_u = { .w = st };
+                    km_mailbox_km__status_reg_t st_u = {.w = st};
                     TEST_ASSERT(d == expected[i], "KM read word %d value", i + 1);
-                    TEST_ASSERT(
-                        (st_u.f.inbound_separator != 0) == (expected_inbound_sep[i] != 0),
-                        "INBOUND_SEPARATOR after KM read %d (expect %d)", i + 1,
-                        expected_inbound_sep[i]);
+                    TEST_ASSERT((st_u.f.inbound_separator != 0) == (expected_inbound_sep[i] != 0),
+                                "INBOUND_SEPARATOR after KM read %d (expect %d)", i + 1,
+                                expected_inbound_sep[i]);
                 }
             }
         }
@@ -163,9 +160,7 @@ int main(void)
         test_delay(2);
 
         {
-            static const uint32_t expected[] = {
-                0xAAAA5555u, 0x5555AAAAu, 0xDEADBEEFu, 0xBEEFDEADu
-            };
+            static const uint32_t expected[] = {0xAAAA5555u, 0x5555AAAAu, 0xDEADBEEFu, 0xBEEFDEADu};
             for (int i = 0; i < 4; i++) {
                 if (!tb_sep_mbox_read(&d, TB_TIMEOUT_CYCLES)) {
                     TEST_FAIL("tb_sep_mbox_read word %d failed", i + 1);
@@ -174,13 +169,12 @@ int main(void)
                     TEST_FAIL("tb_sep_mbox_status_read after word %d failed", i + 1);
                 }
                 {
-                    KM_MAILBOX_SEP_STATUS_REG_reg_u sep_status_u = { .w = sep_status };
+                    KM_MAILBOX_SEP_STATUS_REG_reg_u sep_status_u = {.w = sep_status};
                     TEST_ASSERT(d == expected[i], "SEP read word %d value", i + 1);
-                    TEST_ASSERT(
-                        (sep_status_u.f.outbound_separator != 0) ==
-                        (expected_outbound_sep[i] != 0),
-                        "OUTBOUND_SEPARATOR after SEP read %d (expect %d)", i + 1,
-                        expected_outbound_sep[i]);
+                    TEST_ASSERT((sep_status_u.f.outbound_separator != 0) ==
+                                    (expected_outbound_sep[i] != 0),
+                                "OUTBOUND_SEPARATOR after SEP read %d (expect %d)", i + 1,
+                                expected_outbound_sep[i]);
                 }
             }
         }

@@ -17,10 +17,10 @@
 #include "test_common.h"
 
 /* Test patterns */
-#define TEST_INPUT      0xDEADBEEF
-#define XOR_PATTERN     0x11111111
-#define ADD_PATTERN     0x22222222
-#define ROT_PATTERN     0x33333333
+#define TEST_INPUT 0xDEADBEEF
+#define XOR_PATTERN 0x11111111
+#define ADD_PATTERN 0x22222222
+#define ROT_PATTERN 0x33333333
 
 /* Forward declarations */
 static uint32_t func_xor(uint32_t input);
@@ -32,21 +32,15 @@ static uint32_t func_rotate(uint32_t input);
  * call/return sequences that exercise ROM fetches.
  */
 
-__attribute__((noinline))
-static uint32_t func_xor(uint32_t input)
-{
+__attribute__((noinline)) static uint32_t func_xor(uint32_t input) {
     return input ^ XOR_PATTERN;
 }
 
-__attribute__((noinline))
-static uint32_t func_add(uint32_t input)
-{
+__attribute__((noinline)) static uint32_t func_add(uint32_t input) {
     return input + ADD_PATTERN;
 }
 
-__attribute__((noinline))
-static uint32_t func_rotate(uint32_t input)
-{
+__attribute__((noinline)) static uint32_t func_rotate(uint32_t input) {
     /* Rotate and XOR to exercise more ROM fetches */
     uint32_t result = input;
     for (int i = 0; i < 4; i++) {
@@ -55,8 +49,7 @@ static uint32_t func_rotate(uint32_t input)
     return result ^ ROT_PATTERN;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t result;
     uint32_t expected;
 

@@ -32,21 +32,17 @@
 
 #define TIMEOUT_LIMIT 100000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-static int wait_for_ready(int timeout)
-{
+static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -57,8 +53,7 @@ static int wait_for_ready(int timeout)
     return 1;
 }
 
-static int wait_for_idle(int timeout)
-{
+static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -69,8 +64,7 @@ static int wait_for_idle(int timeout)
     return 1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -82,7 +76,8 @@ int main(void)
     spi_controller__CFG_t cfg;
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     volatile int delay;
 
     configure_spi_mux_ot();
@@ -96,11 +91,11 @@ int main(void)
 
     /* Configure: CLKDIV=9 (~5MHz from 100MHz), SPI Mode 0, standard CS timing */
     cfg.w = 0;
-    cfg.f.CLKDIV   = 9;
-    cfg.f.CPOL     = 0;
-    cfg.f.CPHA     = 0;
-    cfg.f.CSNIDLE  = 2;
-    cfg.f.CSNLEAD  = 2;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CPOL = 0;
+    cfg.f.CPHA = 0;
+    cfg.f.CSNIDLE = 2;
+    cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
@@ -110,23 +105,29 @@ int main(void)
     /* Step 1: Quad TX (SPEED=2, DIRECTION=2)                              */
     /* ------------------------------------------------------------------ */
     printf("Step 1: Quad SPI TX (SPEED=Quad, DIR=TX, LEN=3=4bytes, CSAAT=1)\n");
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     /* Load TX FIFO: 4 bytes = 1 word (Quad fast-read command pattern) */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xEB000000);
 
-    cmd.w         = 0;
-    cmd.f.LEN       = 3;    /* 4 bytes (LEN+1 bytes total) */
-    cmd.f.CSAAT     = 1;    /* keep CS# low for next segment */
-    cmd.f.SPEED     = 2;    /* Quad */
-    cmd.f.DIRECTION = 2;    /* TX */
+    cmd.w = 0;
+    cmd.f.LEN = 3;       /* 4 bytes (LEN+1 bytes total) */
+    cmd.f.CSAAT = 1;     /* keep CS# low for next segment */
+    cmd.f.SPEED = 2;     /* Quad */
+    cmd.f.DIRECTION = 2; /* TX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n",
-           err_status.w, err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
+    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
+           err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
         printf("  FAIL: CMD error for valid Quad TX command\n");
         pass = 0;
@@ -139,20 +140,25 @@ int main(void)
     /* Step 2: Quad Dummy cycles (SPEED=2, DIRECTION=0)                    */
     /* ------------------------------------------------------------------ */
     printf("\nStep 2: Quad Dummy cycles (SPEED=Quad, DIR=Dummy, LEN=7=8cycles, CSAAT=1)\n");
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
-    cmd.w         = 0;
-    cmd.f.LEN       = 7;    /* 8 dummy cycles */
-    cmd.f.CSAAT     = 1;    /* keep CS# low */
-    cmd.f.SPEED     = 2;    /* Quad */
-    cmd.f.DIRECTION = 0;    /* Dummy */
+    cmd.w = 0;
+    cmd.f.LEN = 7;       /* 8 dummy cycles */
+    cmd.f.CSAAT = 1;     /* keep CS# low */
+    cmd.f.SPEED = 2;     /* Quad */
+    cmd.f.DIRECTION = 0; /* Dummy */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u)\n",
-           err_status.w, err_status.f.CMDINVAL);
+    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u)\n", err_status.w, err_status.f.CMDINVAL);
     if (err_status.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL for valid Quad Dummy command\n");
         pass = 0;
@@ -165,23 +171,26 @@ int main(void)
     /* Step 3: Quad RX (SPEED=2, DIRECTION=1)                              */
     /* ------------------------------------------------------------------ */
     printf("\nStep 3: Quad SPI RX (SPEED=Quad, DIR=RX, LEN=3=4bytes, CSAAT=0)\n");
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
-    cmd.w         = 0;
-    cmd.f.LEN       = 3;    /* 4 bytes */
-    cmd.f.CSAAT     = 0;    /* release CS# after */
-    cmd.f.SPEED     = 2;    /* Quad */
-    cmd.f.DIRECTION = 1;    /* RX */
+    cmd.w = 0;
+    cmd.f.LEN = 3;       /* 4 bytes */
+    cmd.f.CSAAT = 0;     /* release CS# after */
+    cmd.f.SPEED = 2;     /* Quad */
+    cmd.f.DIRECTION = 1; /* RX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     wait_for_idle(TIMEOUT_LIMIT);
 
-    status.w     = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  STATUS: RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n",
-           status.f.RXQD, status.f.RXEMPTY, status.f.ACTIVE);
-    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n",
-           err_status.w, err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
+    printf("  STATUS: RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.RXQD, status.f.RXEMPTY,
+           status.f.ACTIVE);
+    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
+           err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
         printf("  FAIL: CMD error for valid Quad RX command\n");
         pass = 0;
@@ -194,7 +203,8 @@ int main(void)
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 200; delay++) {}
+    for (delay = 0; delay < 200; delay++) {
+    }
 
     /* ------------------------------------------------------------------ */
     /* Step 4: CMDINVAL — DIRECTION=3 (bidirectional) at Quad speed        */
@@ -203,17 +213,21 @@ int main(void)
     printf("\nStep 4: CMDINVAL test (SPEED=Quad + DIRECTION=Bidirectional)\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
-    cmd.w         = 0;
-    cmd.f.LEN       = 0;
-    cmd.f.CSAAT     = 0;
-    cmd.f.SPEED     = 2;    /* Quad */
-    cmd.f.DIRECTION = 3;    /* Bidirectional — invalid at Quad speed */
+    cmd.w = 0;
+    cmd.f.LEN = 0;
+    cmd.f.CSAAT = 0;
+    cmd.f.SPEED = 2;     /* Quad */
+    cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Quad speed */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    for (delay = 0; delay < 200; delay++) {}
+    for (delay = 0; delay < 200; delay++) {
+    }
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("CMDINVAL for Bidirectional+Quad", err_status.f.CMDINVAL, 1))
@@ -232,6 +246,8 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

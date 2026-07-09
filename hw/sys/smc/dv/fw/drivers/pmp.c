@@ -108,8 +108,8 @@ void metal_pmp_init(struct metal_pmp *pmp) {
     metal_pmp_set_address(pmp, 0, 0);
 }
 
-int metal_pmp_set_region(struct metal_pmp *pmp, unsigned int region,
-                         struct metal_pmp_config config, size_t address) {
+int metal_pmp_set_region(struct metal_pmp *pmp, unsigned int region, struct metal_pmp_config config,
+                         size_t address) {
     struct metal_pmp_config old_config;
     size_t old_address;
     size_t cfgmask;
@@ -126,15 +126,13 @@ int metal_pmp_set_region(struct metal_pmp *pmp, unsigned int region,
         return 2;
     }
 
-    if (config.A == METAL_PMP_NA4 &&
-        pmp->_granularity[metal_cpu_get_current_hartid()] > 4) {
+    if (config.A == METAL_PMP_NA4 && pmp->_granularity[metal_cpu_get_current_hartid()] > 4) {
         /* The requested granularity is too small */
         return 3;
     }
 
     if (config.A == METAL_PMP_NAPOT &&
-        pmp->_granularity[metal_cpu_get_current_hartid()] >
-            _get_pmpaddr_granularity(address)) {
+        pmp->_granularity[metal_cpu_get_current_hartid()] > _get_pmpaddr_granularity(address)) {
         /* The requested granularity is too small */
         return 3;
     }
@@ -386,8 +384,7 @@ int metal_pmp_lock(struct metal_pmp *pmp, unsigned int region) {
     return rc;
 }
 
-int metal_pmp_set_address(struct metal_pmp *pmp, unsigned int region,
-                          size_t address) {
+int metal_pmp_set_address(struct metal_pmp *pmp, unsigned int region, size_t address) {
     struct metal_pmp_config config;
     size_t old_address;
     int rc = 0;
@@ -429,8 +426,7 @@ int metal_pmp_set_address_mode(struct metal_pmp *pmp, unsigned int region,
     return rc;
 }
 
-enum metal_pmp_address_mode metal_pmp_get_address_mode(struct metal_pmp *pmp,
-                                                       unsigned int region) {
+enum metal_pmp_address_mode metal_pmp_get_address_mode(struct metal_pmp *pmp, unsigned int region) {
     struct metal_pmp_config config;
     size_t address = 0;
 
@@ -439,8 +435,7 @@ enum metal_pmp_address_mode metal_pmp_get_address_mode(struct metal_pmp *pmp,
     return config.A;
 }
 
-int metal_pmp_set_executable(struct metal_pmp *pmp, unsigned int region,
-                             int X) {
+int metal_pmp_set_executable(struct metal_pmp *pmp, unsigned int region, int X) {
     struct metal_pmp_config config;
     size_t address;
     int rc = 0;

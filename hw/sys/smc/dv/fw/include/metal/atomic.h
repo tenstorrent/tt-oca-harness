@@ -13,17 +13,16 @@
 
 typedef volatile int32_t metal_atomic_t;
 
-#define METAL_ATOMIC_DECLARE(name)                                             \
-    __attribute((section(".data.atomics"))) metal_atomic_t name
+#define METAL_ATOMIC_DECLARE(name) __attribute((section(".data.atomics"))) metal_atomic_t name
 
 #define _METAL_STORE_AMO_ACCESS_FAULT 7
 
 /* This macro stores the memory address in mtval like a normal store/amo access
  * fault, triggers a trap, and then if execution returns, returns 0 as an
  * arbitrary choice */
-#define _METAL_TRAP_AMO_ACCESS(addr)                                           \
-    __asm__("csrw mtval, %[atomic]" ::[atomic] "r"(a));                        \
-    _metal_trap(_METAL_STORE_AMO_ACCESS_FAULT);                                \
+#define _METAL_TRAP_AMO_ACCESS(addr) \
+    __asm__("csrw mtval, %[atomic]" ::[atomic] "r"(a)); \
+    _metal_trap(_METAL_STORE_AMO_ACCESS_FAULT); \
     return 0;
 
 /*!

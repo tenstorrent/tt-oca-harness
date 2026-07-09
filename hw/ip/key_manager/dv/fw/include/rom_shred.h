@@ -33,7 +33,7 @@
  * @param allow_reseed Non-zero to reseed from DRBG each pass; 0 for
  *     wipe path (no DRBG access).
  */
-void rom_shred_region(volatile uint32_t *base, uint16_t word_count,
-                      rom_km_prng_state_t *prng, uint8_t allow_reseed);
+void rom_shred_region(volatile uint32_t *base, uint16_t word_count, rom_km_prng_state_t *prng,
+                      uint8_t allow_reseed);
 
 #endif /* ROM_SHRED_H */

@@ -29,8 +29,7 @@ static rom_km_prng_state_t prng;
  * Assert that not all words in the shredded region are the same constant.
  * Call after shred; reads KPV key words for slot range [slot_lo, slot_hi] (inclusive).
  */
-static void verify_shred_result_varies(uint8_t slot_lo, uint8_t slot_hi)
-{
+static void verify_shred_result_varies(uint8_t slot_lo, uint8_t slot_hi) {
     uint32_t first = KPV_KEY_WORD(slot_lo, 0);
     uint8_t s, w;
     for (s = slot_lo; s <= slot_hi; s++) {
@@ -40,13 +39,12 @@ static void verify_shred_result_varies(uint8_t slot_lo, uint8_t slot_hi)
             }
         }
     }
-    TEST_FAIL("shred result is constant (0x%08X) across slots %u..%u",
-              (unsigned)first, (unsigned)slot_lo, (unsigned)slot_hi);
+    TEST_FAIL("shred result is constant (0x%08X) across slots %u..%u", (unsigned)first,
+              (unsigned)slot_lo, (unsigned)slot_hi);
 }
 
 /** Write a known pattern to all KPV key words (scrambler must be off). */
-static void write_known_pattern_all(void)
-{
+static void write_known_pattern_all(void) {
     for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) {
         for (uint8_t w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++) {
             KPV_KEY_WORD(s, w) = 0xDEAD0000u | (uint32_t)s << 8 | (uint32_t)w;
@@ -55,8 +53,7 @@ static void write_known_pattern_all(void)
 }
 
 /** Capture all KPV key words; compare after shred and assert all changed. */
-static void verify_shred_all_changed(void)
-{
+static void verify_shred_all_changed(void) {
     uint8_t s, w;
 
     write_known_pattern_all();
@@ -67,8 +64,8 @@ static void verify_shred_all_changed(void)
             uint32_t expected = 0xDEAD0000u | (uint32_t)s << 8 | (uint32_t)w;
             uint32_t after = KPV_KEY_WORD(s, w);
             if (after == expected) {
-                TEST_FAIL("shred_all: slot %u word %u unchanged (0x%08X)",
-                          (unsigned)s, (unsigned)w, (unsigned)expected);
+                TEST_FAIL("shred_all: slot %u word %u unchanged (0x%08X)", (unsigned)s, (unsigned)w,
+                          (unsigned)expected);
             }
         }
     }
@@ -76,8 +73,7 @@ static void verify_shred_all_changed(void)
 }
 
 /** Capture one slot's key words; compare after shred_slot and assert all changed. */
-static void verify_shred_slot_changed(uint8_t slot)
-{
+static void verify_shred_slot_changed(uint8_t slot) {
     uint8_t w;
     const uint32_t pattern_base = 0xBEEF0000u | (uint32_t)slot << 8;
 
@@ -92,8 +88,8 @@ static void verify_shred_slot_changed(uint8_t slot)
         uint32_t expected = pattern_base | (uint32_t)w;
         uint32_t after = KPV_KEY_WORD(slot, w);
         if (after == expected) {
-            TEST_FAIL("shred_slot(%u): word %u unchanged (0x%08X)",
-                      (unsigned)slot, (unsigned)w, (unsigned)expected);
+            TEST_FAIL("shred_slot(%u): word %u unchanged (0x%08X)", (unsigned)slot, (unsigned)w,
+                      (unsigned)expected);
         }
     }
     verify_shred_result_varies(slot, slot);
@@ -104,8 +100,7 @@ static void verify_shred_slot_changed(uint8_t slot)
  * Call with scrambler enabled. Writes distinct plaintext to each word, then
  * reads raw (scrambler off) and asserts every word differs from plaintext.
  */
-static void verify_scrambler_slot(uint8_t slot)
-{
+static void verify_scrambler_slot(uint8_t slot) {
     uint8_t w;
 
     rom_kpv_scrambler_enable();
@@ -118,15 +113,14 @@ static void verify_scrambler_slot(uint8_t slot)
         uint32_t plain = 0xAAAAAAAAu + (uint32_t)w;
         uint32_t stored = KPV_KEY_WORD(slot, w);
         if (stored == plain) {
-            TEST_FAIL("scrambler: slot %u word %u stored as plaintext (0x%08X)",
-                      (unsigned)slot, (unsigned)w, (unsigned)plain);
+            TEST_FAIL("scrambler: slot %u word %u stored as plaintext (0x%08X)", (unsigned)slot,
+                      (unsigned)w, (unsigned)plain);
         }
     }
     rom_kpv_scrambler_enable();
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(1500000)) {
@@ -157,7 +151,8 @@ int main(void)
     }
     TEST_SUBTEST_PASS();
 
-    /* 3. Shred_slot with scrambler off, verify all words in slot changed, then verify scrambler works */
+    /* 3. Shred_slot with scrambler off, verify all words in slot changed, then verify scrambler
+     * works */
     TEST_SUBTEST_START("Shred_slot and scrambler verify");
     {
         const uint8_t slot = 2;
@@ -184,8 +179,7 @@ int main(void)
         for (i = 0; i < 16; i++) {
             key_in[i] = 0x01020304u + i;
         }
-        int rc = rom_kpv_write_key(0, key_in, 16,
-                                   (rom_km_dest_bits_t){ .aes = 1 });
+        int rc = rom_kpv_write_key(0, key_in, 16, (rom_km_dest_bits_t){.aes = 1});
         if (rc != 0) {
             TEST_FAIL("write_key slot 0 returned %d", rc);
         }
@@ -198,7 +192,7 @@ int main(void)
     {
         uint32_t key_out[16];
         uint8_t key_len = 0;
-        rom_km_dest_bits_t dest = { .raw = 0 };
+        rom_km_dest_bits_t dest = {.raw = 0};
         uint32_t i;
 
         int rc = rom_kpv_read_key(0, key_out, &key_len, &dest);
@@ -206,9 +200,7 @@ int main(void)
             TEST_FAIL("read_key slot 0 returned %d", rc);
         }
         TEST_ASSERT_EQ(key_len, 16u, "key_len");
-        TEST_ASSERT_EQ(dest.raw,
-                       (uint32_t)(rom_km_dest_bits_t){ .aes = 1 }.raw,
-                       "dest_valid");
+        TEST_ASSERT_EQ(dest.raw, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw, "dest_valid");
         for (i = 0; i < 16; i++) {
             uint32_t expected = 0x01020304u + i;
             TEST_ASSERT_EQ(key_out[i], expected, "key word");
@@ -226,8 +218,7 @@ int main(void)
             new_key[i] = 0xFFu;
         }
         rom_kpv_write_lock(0);
-        int rc = rom_kpv_write_key(0, new_key, 16,
-                                   (rom_km_dest_bits_t){ .aes = 1 });
+        int rc = rom_kpv_write_key(0, new_key, 16, (rom_km_dest_bits_t){.aes = 1});
         if (rc != -1) {
             TEST_FAIL("write_key to write-locked slot should return -1, got %d", rc);
         }
@@ -240,7 +231,7 @@ int main(void)
     {
         uint32_t key_out[16];
         uint8_t key_len = 0;
-        rom_km_dest_bits_t dest = { .raw = 0 };
+        rom_km_dest_bits_t dest = {.raw = 0};
 
         rom_kpv_read_lock(0);
         int rc = rom_kpv_read_key(0, key_out, &key_len, &dest);

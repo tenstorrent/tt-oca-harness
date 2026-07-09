@@ -25,9 +25,8 @@
 #include "rom_isr.h"
 #include "rom_picorv32.h"
 
-
 /* ROM address for test writes (ROM_BASE + ROM_TEST_OFFSET from test_common.h) */
-#define ROM_TEST_ADDR       (ROM_BASE + ROM_TEST_OFFSET)
+#define ROM_TEST_ADDR (ROM_BASE + ROM_TEST_OFFSET)
 
 /* ISR state */
 static volatile uint32_t external_irq_count = 0;
@@ -37,8 +36,7 @@ static volatile uint32_t last_kmcsr_irq_status = 0;
  * Custom ISR -- overrides weak rom_irq in crt0.s.
  * Captures KMCSR IRQ_STATUS for test verification and clears via W1C.
  */
-void rom_irq(rom_irq_frame_t *frame)
-{
+void rom_irq(rom_irq_frame_t *frame) {
     uint32_t irq_mask = frame->irq_mask;
 
     /* Check if this is an external IRQ (KMCSR aggregated) */
@@ -64,8 +62,7 @@ void rom_irq(rom_irq_frame_t *frame)
  * Uses volatile to ensure the write isn't optimized away.
  * -Warray-bounds is suppressed: addr is a hardware address, not an array index.
  */
-static inline void write_rom(uint32_t addr, uint32_t data)
-{
+static inline void write_rom(uint32_t addr, uint32_t data) {
     volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)addr;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
@@ -76,16 +73,14 @@ static inline void write_rom(uint32_t addr, uint32_t data)
 /**
  * Read IRQ_STATUS register.
  */
-static inline uint32_t read_irq_status(void)
-{
+static inline uint32_t read_irq_status(void) {
     return KMCSR_IRQ_STATUS_REG.w;
 }
 
 /**
  * Clear ROM write error IRQ_STATUS by writing 1 to sticky bit.
  */
-static inline void clear_rom_write_irq_status(void)
-{
+static inline void clear_rom_write_irq_status(void) {
     km_csr__irq_status_reg_t clear_val = {0};
     clear_val.f.rom_write_err = 1;
     KMCSR_IRQ_STATUS_REG.w = clear_val.w;
@@ -94,15 +89,13 @@ static inline void clear_rom_write_irq_status(void)
 /**
  * Enable ROM write interrupt.
  */
-static inline void enable_rom_write_irq(void)
-{
+static inline void enable_rom_write_irq(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.rom_write_en = 1;
     KMCSR_IRQ_ENABLE_REG.w = enable.w;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
 
     TEST_INIT();
@@ -136,15 +129,15 @@ int main(void)
         TEST_LOG("  Enabled ROM write interrupt");
 
         /* Memory barrier to ensure enable is visible */
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* Attempt to write to ROM - this should trigger the interrupt */
         TEST_LOG("  Attempting write to ROM address 0x%08X...", ROM_TEST_ADDR);
         write_rom(ROM_TEST_ADDR, 0xDEADBEEF);
 
         /* Memory barrier and delay to ensure IRQ is processed */
-        __asm__ volatile ("fence" ::: "memory");
-        test_delay(100);  /* Give ISR time to execute */
+        __asm__ volatile("fence" ::: "memory");
+        test_delay(100); /* Give ISR time to execute */
 
         /* Verify ISR was called */
         if (external_irq_count == 0) {
@@ -156,10 +149,12 @@ int main(void)
         {
             km_csr__irq_status_reg_t isr_status = {.w = last_kmcsr_irq_status};
             if (!isr_status.f.rom_write_err) {
-                TEST_FAIL("IRQ_STATUS did not show ROM write bit (status=0x%08X)", last_kmcsr_irq_status);
+                TEST_FAIL("IRQ_STATUS did not show ROM write bit (status=0x%08X)",
+                          last_kmcsr_irq_status);
             }
         }
-        TEST_LOG("  ROM write error bit correctly set in ISR (status=0x%08X)", last_kmcsr_irq_status);
+        TEST_LOG("  ROM write error bit correctly set in ISR (status=0x%08X)",
+                 last_kmcsr_irq_status);
 
         /* Verify interrupt was cleared by ISR */
         irq_status = read_irq_status();
@@ -187,14 +182,14 @@ int main(void)
         test_delay(10);
 
         /* Memory barrier to ensure disable is visible */
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* Attempt to write to ROM again */
         TEST_LOG("  Attempting write to ROM with interrupt disabled...");
         write_rom(ROM_TEST_ADDR, 0xCAFEBABE);
 
         /* Memory barrier and delay */
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
         test_delay(100);
 
         /* Verify ISR was NOT called (interrupt is masked) */
@@ -208,7 +203,8 @@ int main(void)
         TEST_LOG("  IRQ_STATUS: 0x%08X", irq_status);
 
         if (!KMCSR_IRQ_STATUS_REG.f.rom_write_err) {
-            TEST_FAIL("IRQ_STATUS should show ROM write bit even when masked (status=0x%08X)", irq_status);
+            TEST_FAIL("IRQ_STATUS should show ROM write bit even when masked (status=0x%08X)",
+                      irq_status);
         }
         TEST_LOG("  ROM write error bit still set (correct - error detected, interrupt masked)");
     }
@@ -223,7 +219,7 @@ int main(void)
         /* Disable interrupt so ISR doesn't run - we'll test manual W1C clearing */
         KMCSR_IRQ_ENABLE_REG.w = 0;
         TEST_LOG("  Disabled ROM write interrupt for manual W1C test");
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
         test_delay(10);
 
         /* Clear any previous status */
@@ -233,7 +229,7 @@ int main(void)
         /* Trigger write error - status will be set, but ISR won't run */
         TEST_LOG("  Triggering ROM write error with interrupt disabled...");
         write_rom(ROM_TEST_ADDR, 0x87654321);
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
         test_delay(10);
 
         /* Verify status bit is set */
@@ -245,14 +241,15 @@ int main(void)
 
         /* Verify ISR was NOT called (interrupt disabled) - count should not increase */
         if (external_irq_count != irq_count_before) {
-            TEST_FAIL("ISR should not be called when interrupt is disabled (count before=%d, after=%d)",
-                      irq_count_before, external_irq_count);
+            TEST_FAIL(
+                "ISR should not be called when interrupt is disabled (count before=%d, after=%d)",
+                irq_count_before, external_irq_count);
         }
 
         /* Clear the interrupt by writing 1 to the sticky bit (W1C) */
         TEST_LOG("  Clearing ROM write error interrupt via W1C...");
         clear_rom_write_irq_status();
-        test_delay(10);  /* Wait for clear to propagate */
+        test_delay(10); /* Wait for clear to propagate */
 
         /* Verify clear took effect */
         irq_status = read_irq_status();

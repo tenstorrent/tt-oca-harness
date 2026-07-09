@@ -21,14 +21,12 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static int check_true(const char *name, int condition)
-{
+static int check_true(const char *name, int condition) {
     printf("  %s - %s\n", name, condition ? "PASS" : "FAIL");
     return condition;
 }
 
-static int test_key_read_protection(void)
-{
+static int test_key_read_protection(void) {
     printf("\nStep 1: KEY register read protection\n");
 
     int pass = 1;
@@ -52,8 +50,7 @@ static int test_key_read_protection(void)
     return pass ? 0 : -1;
 }
 
-static int test_digest_write_non_echo(void)
-{
+static int test_digest_write_non_echo(void) {
     printf("\nStep 2: DIGEST write outside context restore must not echo\n");
 
     int pass = 1;
@@ -64,8 +61,7 @@ static int test_digest_write_non_echo(void)
 
         WRITE_REG(addr, pattern);
         uint32_t after = READ_REG(addr);
-        printf("  DIGEST_%u before=0x%08x wrote=0x%08x after=0x%08x\n",
-               i, before, pattern, after);
+        printf("  DIGEST_%u before=0x%08x wrote=0x%08x after=0x%08x\n", i, before, pattern, after);
 
         if (after == pattern) {
             printf("  FAIL: DIGEST_%u echoed SW write outside context restore\n", i);
@@ -76,8 +72,7 @@ static int test_digest_write_non_echo(void)
     return pass ? 0 : -1;
 }
 
-static int test_cfg_regwen_absent(void)
-{
+static int test_cfg_regwen_absent(void) {
     printf("\nStep 3: CFG_REGWEN lock behavior\n");
     printf("  INFO: HMAC_CFG_REGWEN is not present in sep.h / sep_addr.h; step is N/A\n");
 
@@ -96,8 +91,7 @@ static int test_cfg_regwen_absent(void)
     return check_true("CFG remains writable because no regwen register exists", rb.w == cfg.w);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");

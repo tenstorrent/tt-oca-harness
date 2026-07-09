@@ -48,8 +48,7 @@ void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed);
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_hmac_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng);
+int rom_hmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * KMAC (PeakRDL KEY_CTRL)
@@ -81,8 +80,7 @@ void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed);
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_kmac_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng);
+int rom_kmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * AES (PeakRDL KEY_CTRL)
@@ -114,8 +112,7 @@ void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed);
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_aes_write_key(const uint32_t *key, uint8_t key_len,
-                      rom_km_prng_state_t *prng);
+int rom_aes_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * OTBN (PeakRDL KEY_CTRL; 12 words per share)
@@ -147,8 +144,7 @@ void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed);
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_otbn_write_key(const uint32_t *key, uint8_t key_len,
-                       rom_km_prng_state_t *prng);
+int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * Adams Bridge MLDSA_SEED (ML-DSA-87 seed input, 8 words per share)
@@ -180,8 +176,7 @@ void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_resee
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len,
-                                  rom_km_prng_state_t *prng);
+int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * Adams Bridge MLKEM_SEED_D (ML-KEM-1024 seed d input, 8 words per share)
@@ -213,8 +208,7 @@ void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
-                                    rom_km_prng_state_t *prng);
+int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * Adams Bridge MLKEM_SEED_Z (ML-KEM-1024 seed z input, 8 words per share)
@@ -246,8 +240,7 @@ void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
-                                    rom_km_prng_state_t *prng);
+int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * Adams Bridge MLKEM_MSG (ML-KEM-1024 message input, 8 words per share)
@@ -279,8 +272,7 @@ void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed
  * @param prng PRNG state for shuffle.
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
-int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len,
-                                 rom_km_prng_state_t *prng);
+int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng);
 
 /* ============================================================================
  * Adams Bridge MLKEM_SHARED_KEY (ML-KEM shared key output, HW→SW)
@@ -292,15 +284,18 @@ int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len,
 
 /** @brief ABR MLKEM_SHARED_KEY control register (volatile). */
 #define ROM_ABR_MLKEM_SK_CTRL_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_CTRL_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile ABR_SHAREDKEY_RF_SK_CTRL_REG_reg_u *) \
+         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_KEY_CTRL_REG_ADDR)
 
 /** @brief ABR MLKEM_SHARED_KEY IRQ enable register (volatile). */
 #define ROM_ABR_MLKEM_SK_IRQ_ENABLE_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_ENABLE_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_REG_ADDR)
+    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_ENABLE_REG_reg_u *) \
+         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_REG_ADDR)
 
 /** @brief ABR MLKEM_SHARED_KEY IRQ status register (volatile). */
 #define ROM_ABR_MLKEM_SK_IRQ_STATUS_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_REG_ADDR)
+    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u *) \
+         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_REG_ADDR)
 
 /**
  * @brief Read the ML-KEM shared key and consume it (clear valid + zeroize).

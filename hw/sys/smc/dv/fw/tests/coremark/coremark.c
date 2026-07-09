@@ -40,42 +40,29 @@ Original Author: Shay Gal-on
         Returns:
         NULL.
 */
-static ee_u16 list_known_crc[]   = { (ee_u16)0xd4b0,
-                                   (ee_u16)0x3340,
-                                   (ee_u16)0x6a79,
-                                   (ee_u16)0xe714,
-                                   (ee_u16)0xe3c1 };
-static ee_u16 matrix_known_crc[] = { (ee_u16)0xbe52,
-                                     (ee_u16)0x1199,
-                                     (ee_u16)0x5608,
-                                     (ee_u16)0x1fd7,
-                                     (ee_u16)0x0747 };
-static ee_u16 state_known_crc[]  = { (ee_u16)0x5e47,
-                                    (ee_u16)0x39bf,
-                                    (ee_u16)0xe5a4,
-                                    (ee_u16)0x8e3a,
-                                    (ee_u16)0x8d84 };
-void *
-iterate(void *pres)
-{
-    ee_u32        i;
-    ee_u16        crc;
-    core_results *res        = (core_results *)pres;
-    ee_u32        iterations = res->iterations;
-    res->crc                 = 0;
-    res->crclist             = 0;
-    res->crcmatrix           = 0;
-    res->crcstate            = 0;
+static ee_u16 list_known_crc[] = {(ee_u16)0xd4b0, (ee_u16)0x3340, (ee_u16)0x6a79, (ee_u16)0xe714,
+                                  (ee_u16)0xe3c1};
+static ee_u16 matrix_known_crc[] = {(ee_u16)0xbe52, (ee_u16)0x1199, (ee_u16)0x5608, (ee_u16)0x1fd7,
+                                    (ee_u16)0x0747};
+static ee_u16 state_known_crc[] = {(ee_u16)0x5e47, (ee_u16)0x39bf, (ee_u16)0xe5a4, (ee_u16)0x8e3a,
+                                   (ee_u16)0x8d84};
+void *iterate(void *pres) {
+    ee_u32 i;
+    ee_u16 crc;
+    core_results *res = (core_results *)pres;
+    ee_u32 iterations = res->iterations;
+    res->crc = 0;
+    res->crclist = 0;
+    res->crcmatrix = 0;
+    res->crcstate = 0;
 
-    for (i = 0; i < iterations; i++)
-    {
+    for (i = 0; i < iterations; i++) {
         start_subsequence();
-        crc      = core_bench_list(res, 1);
+        crc = core_bench_list(res, 1);
         res->crc = crcu16(crc, res->crc);
-        crc      = core_bench_list(res, -1);
+        crc = core_bench_list(res, -1);
         res->crc = crcu16(crc, res->crc);
-        if (i == 0)
-            res->crclist = res->crc;
+        if (i == 0) res->crclist = res->crc;
         end_subsequence();
     }
     return NULL;
@@ -83,7 +70,7 @@ iterate(void *pres)
 
 #if (SEED_METHOD == SEED_ARG)
 ee_s32 get_seed_args(int i, int argc, char *argv[]);
-#define get_seed(x)    (ee_s16) get_seed_args(x, argc, argv)
+#define get_seed(x) (ee_s16) get_seed_args(x, argc, argv)
 #define get_seed_32(x) get_seed_args(x, argc, argv)
 #else /* via function or volatile */
 ee_s32 get_seed_32(int i);
@@ -93,7 +80,7 @@ ee_s32 get_seed_32(int i);
 #if (MEM_METHOD == MEM_STATIC)
 ee_u8 static_memblk[TOTAL_DATA_SIZE];
 #endif
-char *mem_name[3] = { "Static", "Heap", "Stack" };
+char *mem_name[3] = {"Static", "Heap", "Stack"};
 /* Function: main
         Main entry routine for the benchmark.
         This function is responsible for the following steps:
@@ -129,19 +116,17 @@ int secondary_main(void) {
 
 #if MAIN_HAS_NOARGC
 MAIN_RETURN_TYPE
-main(void)
-{
-    int   argc = 0;
+main(void) {
+    int argc = 0;
     char *argv[1];
 #else
 MAIN_RETURN_TYPE
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
 #endif
-    ee_u16       i, j = 0, num_algorithms = 0;
-    ee_s16       known_id = -1, total_errors = 0;
-    ee_u16       seedcrc = 0;
-    CORE_TICKS   total_time;
+    ee_u16 i, j = 0, num_algorithms = 0;
+    ee_s16 known_id = -1, total_errors = 0;
+    ee_u16 seedcrc = 0;
+    CORE_TICKS total_time;
     core_results results[MULTITHREAD];
 #if (MEM_METHOD == MEM_STACK)
     ee_u8 stack_memblock[TOTAL_DATA_SIZE * MULTITHREAD];
@@ -149,126 +134,106 @@ main(int argc, char *argv[])
     /* first call any initializations needed */
     portable_init(&(results[0].port), &argc, argv);
     /* First some checks to make sure benchmark will run ok */
-    if (sizeof(struct list_head_s) > 128)
-    {
+    if (sizeof(struct list_head_s) > 128) {
         ee_printf("list_head structure too big for comparable data!\n");
         return MAIN_RETURN_VAL;
     }
-    results[0].seed1      = get_seed(1);
-    results[0].seed2      = get_seed(2);
-    results[0].seed3      = get_seed(3);
+    results[0].seed1 = get_seed(1);
+    results[0].seed2 = get_seed(2);
+    results[0].seed3 = get_seed(3);
     results[0].iterations = get_seed_32(4);
 #if CORE_DEBUG
     results[0].iterations = 1;
 #endif
     results[0].execs = get_seed_32(5);
-    if (results[0].execs == 0)
-    { /* if not supplied, execute all algorithms */
+    if (results[0].execs == 0) { /* if not supplied, execute all algorithms */
         results[0].execs = ALL_ALGORITHMS_MASK;
     }
     /* put in some default values based on one seed only for easy testing */
-    if ((results[0].seed1 == 0) && (results[0].seed2 == 0)
-        && (results[0].seed3 == 0))
-    { /* performance run */
+    if ((results[0].seed1 == 0) && (results[0].seed2 == 0) &&
+        (results[0].seed3 == 0)) { /* performance run */
         results[0].seed1 = 0;
         results[0].seed2 = 0;
         results[0].seed3 = 0x66;
     }
-    if ((results[0].seed1 == 1) && (results[0].seed2 == 0)
-        && (results[0].seed3 == 0))
-    { /* validation run */
+    if ((results[0].seed1 == 1) && (results[0].seed2 == 0) &&
+        (results[0].seed3 == 0)) { /* validation run */
         results[0].seed1 = 0x3415;
         results[0].seed2 = 0x3415;
         results[0].seed3 = 0x66;
     }
 #if (MEM_METHOD == MEM_STATIC)
     results[0].memblock[0] = (void *)static_memblk;
-    results[0].size        = TOTAL_DATA_SIZE;
-    results[0].err         = 0;
+    results[0].size = TOTAL_DATA_SIZE;
+    results[0].err = 0;
 #if (MULTITHREAD > 1)
 #error "Cannot use a static data area with multiple contexts!"
 #endif
 #elif (MEM_METHOD == MEM_MALLOC)
-    for (i = 0; i < MULTITHREAD; i++)
-    {
+    for (i = 0; i < MULTITHREAD; i++) {
         ee_s32 malloc_override = get_seed(7);
         if (malloc_override != 0)
             results[i].size = malloc_override;
         else
             results[i].size = TOTAL_DATA_SIZE;
         results[i].memblock[0] = portable_malloc(results[i].size);
-        results[i].seed1       = results[0].seed1;
-        results[i].seed2       = results[0].seed2;
-        results[i].seed3       = results[0].seed3;
-        results[i].err         = 0;
-        results[i].execs       = results[0].execs;
+        results[i].seed1 = results[0].seed1;
+        results[i].seed2 = results[0].seed2;
+        results[i].seed3 = results[0].seed3;
+        results[i].err = 0;
+        results[i].execs = results[0].execs;
     }
 #elif (MEM_METHOD == MEM_STACK)
-for (i = 0; i < MULTITHREAD; i++)
-{
+for (i = 0; i < MULTITHREAD; i++) {
     results[i].memblock[0] = stack_memblock + i * TOTAL_DATA_SIZE;
-    results[i].size        = TOTAL_DATA_SIZE;
-    results[i].seed1       = results[0].seed1;
-    results[i].seed2       = results[0].seed2;
-    results[i].seed3       = results[0].seed3;
-    results[i].err         = 0;
-    results[i].execs       = results[0].execs;
+    results[i].size = TOTAL_DATA_SIZE;
+    results[i].seed1 = results[0].seed1;
+    results[i].seed2 = results[0].seed2;
+    results[i].seed3 = results[0].seed3;
+    results[i].err = 0;
+    results[i].execs = results[0].execs;
 }
 #else
 #error "Please define a way to initialize a memory block."
 #endif
     /* Data init */
     /* Find out how space much we have based on number of algorithms */
-    for (i = 0; i < NUM_ALGORITHMS; i++)
-    {
-        if ((1 << (ee_u32)i) & results[0].execs)
-            num_algorithms++;
+    for (i = 0; i < NUM_ALGORITHMS; i++) {
+        if ((1 << (ee_u32)i) & results[0].execs) num_algorithms++;
     }
-    for (i = 0; i < MULTITHREAD; i++)
-        results[i].size = results[i].size / num_algorithms;
+    for (i = 0; i < MULTITHREAD; i++) results[i].size = results[i].size / num_algorithms;
     /* Assign pointers */
-    for (i = 0; i < NUM_ALGORITHMS; i++)
-    {
+    for (i = 0; i < NUM_ALGORITHMS; i++) {
         ee_u32 ctx;
-        if ((1 << (ee_u32)i) & results[0].execs)
-        {
+        if ((1 << (ee_u32)i) & results[0].execs) {
             for (ctx = 0; ctx < MULTITHREAD; ctx++)
-                results[ctx].memblock[i + 1]
-                    = (char *)(results[ctx].memblock[0]) + results[0].size * j;
+                results[ctx].memblock[i + 1] =
+                    (char *)(results[ctx].memblock[0]) + results[0].size * j;
             j++;
         }
     }
     /* call inits */
-    for (i = 0; i < MULTITHREAD; i++)
-    {
-        if (results[i].execs & ID_LIST)
-        {
-            results[i].list = core_list_init(
-                results[0].size, results[i].memblock[1], results[i].seed1);
+    for (i = 0; i < MULTITHREAD; i++) {
+        if (results[i].execs & ID_LIST) {
+            results[i].list =
+                core_list_init(results[0].size, results[i].memblock[1], results[i].seed1);
         }
-        if (results[i].execs & ID_MATRIX)
-        {
-            core_init_matrix(results[0].size,
-                             results[i].memblock[2],
-                             (ee_s32)results[i].seed1
-                                 | (((ee_s32)results[i].seed2) << 16),
+        if (results[i].execs & ID_MATRIX) {
+            core_init_matrix(results[0].size, results[i].memblock[2],
+                             (ee_s32)results[i].seed1 | (((ee_s32)results[i].seed2) << 16),
                              &(results[i].mat));
         }
-        if (results[i].execs & ID_STATE)
-        {
-            core_init_state(
-                results[0].size, results[i].seed1, results[i].memblock[3]);
+        if (results[i].execs & ID_STATE) {
+            core_init_state(results[0].size, results[i].seed1, results[i].memblock[3]);
         }
     }
 
     /* automatically determine number of iterations if not set */
-    if (results[0].iterations == 0)
-    {
+    if (results[0].iterations == 0) {
         secs_ret secs_passed = 0;
-        ee_u32   divisor;
+        ee_u32 divisor;
         results[0].iterations = 1;
-        while (secs_passed < (secs_ret)1)
-        {
+        while (secs_passed < (secs_ret)1) {
             results[0].iterations *= 10;
             start_time();
             iterate(&results[0]);
@@ -288,18 +253,15 @@ for (i = 0; i < MULTITHREAD; i++)
     start_counter();
     start_time();
 #if (MULTITHREAD > 1)
-    if (default_num_contexts > MULTITHREAD)
-    {
+    if (default_num_contexts > MULTITHREAD) {
         default_num_contexts = MULTITHREAD;
     }
-    for (i = 0; i < default_num_contexts; i++)
-    {
+    for (i = 0; i < default_num_contexts; i++) {
         results[i].iterations = results[0].iterations;
-        results[i].execs      = results[0].execs;
+        results[i].execs = results[0].execs;
         core_start_parallel(&results[i]);
     }
-    for (i = 0; i < default_num_contexts; i++)
-    {
+    for (i = 0; i < default_num_contexts; i++) {
         core_stop_parallel(&results[i]);
     }
 #else
@@ -313,165 +275,165 @@ for (i = 0; i < MULTITHREAD; i++)
     while (1) {
         __asm__ __volatile__("wfi");
     }
-//     total_time = get_time();
-//     /* get a function of the input to report */
-//     seedcrc = crc16(results[0].seed1, seedcrc);
-//     seedcrc = crc16(results[0].seed2, seedcrc);
-//     seedcrc = crc16(results[0].seed3, seedcrc);
-//     seedcrc = crc16(results[0].size, seedcrc);
+    //     total_time = get_time();
+    //     /* get a function of the input to report */
+    //     seedcrc = crc16(results[0].seed1, seedcrc);
+    //     seedcrc = crc16(results[0].seed2, seedcrc);
+    //     seedcrc = crc16(results[0].seed3, seedcrc);
+    //     seedcrc = crc16(results[0].size, seedcrc);
 
-//     switch (seedcrc)
-//     {                /* test known output for common seeds */
-//         case 0x8a02: /* seed1=0, seed2=0, seed3=0x66, size 2000 per algorithm */
-//             known_id = 0;
-//             ee_printf("6k performance run parameters for coremark.\n");
-//             break;
-//         case 0x7b05: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 2000 per
-//                         algorithm */
-//             known_id = 1;
-//             ee_printf("6k validation run parameters for coremark.\n");
-//             break;
-//         case 0x4eaf: /* seed1=0x8, seed2=0x8, seed3=0x8, size 400 per algorithm
-//                       */
-//             known_id = 2;
-//             ee_printf("Profile generation run parameters for coremark.\n");
-//             break;
-//         case 0xe9f5: /* seed1=0, seed2=0, seed3=0x66, size 666 per algorithm */
-//             known_id = 3;
-//             ee_printf("2K performance run parameters for coremark.\n");
-//             break;
-//         case 0x18f2: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 666 per
-//                         algorithm */
-//             known_id = 4;
-//             ee_printf("2K validation run parameters for coremark.\n");
-//             break;
-//         default:
-//             total_errors = -1;
-//             break;
-//     }
-//     if (known_id >= 0)
-//     {
-//         for (i = 0; i < default_num_contexts; i++)
-//         {
-//             results[i].err = 0;
-//             if ((results[i].execs & ID_LIST)
-//                 && (results[i].crclist != list_known_crc[known_id]))
-//             {
-//                 ee_printf("[%u]ERROR! list crc 0x%04x - should be 0x%04x\n",
-//                           i,
-//                           results[i].crclist,
-//                           list_known_crc[known_id]);
-//                 results[i].err++;
-//             }
-//             if ((results[i].execs & ID_MATRIX)
-//                 && (results[i].crcmatrix != matrix_known_crc[known_id]))
-//             {
-//                 ee_printf("[%u]ERROR! matrix crc 0x%04x - should be 0x%04x\n",
-//                           i,
-//                           results[i].crcmatrix,
-//                           matrix_known_crc[known_id]);
-//                 results[i].err++;
-//             }
-//             if ((results[i].execs & ID_STATE)
-//                 && (results[i].crcstate != state_known_crc[known_id]))
-//             {
-//                 ee_printf("[%u]ERROR! state crc 0x%04x - should be 0x%04x\n",
-//                           i,
-//                           results[i].crcstate,
-//                           state_known_crc[known_id]);
-//                 results[i].err++;
-//             }
-//             total_errors += results[i].err;
-//         }
-//     }
-//     total_errors += check_data_types();
-//     /* and report results */
-//     ee_printf("CoreMark Size    : %lu\n", (long unsigned)results[0].size);
-//     ee_printf("Total ticks      : %lu\n", (long unsigned)total_time);
-// #if HAS_FLOAT
-//     ee_printf("Total time (secs): %f\n", time_in_secs(total_time));
-//     if (time_in_secs(total_time) > 0)
-//         ee_printf("Iterations/Sec   : %f\n",
-//                   default_num_contexts * results[0].iterations
-//                       / time_in_secs(total_time));
-// #else
-//     ee_printf("Total time (secs): %d\n", time_in_secs(total_time));
-//     if (time_in_secs(total_time) > 0)
-//         ee_printf("Iterations/Sec   : %d\n",
-//                   default_num_contexts * results[0].iterations
-//                       / time_in_secs(total_time));
-// #endif
-//     if (time_in_secs(total_time) < 10)
-//     {
-//         ee_printf(
-//             "ERROR! Must execute for at least 10 secs for a valid result!\n");
-//         total_errors++;
-//     }
+    //     switch (seedcrc)
+    //     {                /* test known output for common seeds */
+    //         case 0x8a02: /* seed1=0, seed2=0, seed3=0x66, size 2000 per algorithm */
+    //             known_id = 0;
+    //             ee_printf("6k performance run parameters for coremark.\n");
+    //             break;
+    //         case 0x7b05: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 2000 per
+    //                         algorithm */
+    //             known_id = 1;
+    //             ee_printf("6k validation run parameters for coremark.\n");
+    //             break;
+    //         case 0x4eaf: /* seed1=0x8, seed2=0x8, seed3=0x8, size 400 per algorithm
+    //                       */
+    //             known_id = 2;
+    //             ee_printf("Profile generation run parameters for coremark.\n");
+    //             break;
+    //         case 0xe9f5: /* seed1=0, seed2=0, seed3=0x66, size 666 per algorithm */
+    //             known_id = 3;
+    //             ee_printf("2K performance run parameters for coremark.\n");
+    //             break;
+    //         case 0x18f2: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 666 per
+    //                         algorithm */
+    //             known_id = 4;
+    //             ee_printf("2K validation run parameters for coremark.\n");
+    //             break;
+    //         default:
+    //             total_errors = -1;
+    //             break;
+    //     }
+    //     if (known_id >= 0)
+    //     {
+    //         for (i = 0; i < default_num_contexts; i++)
+    //         {
+    //             results[i].err = 0;
+    //             if ((results[i].execs & ID_LIST)
+    //                 && (results[i].crclist != list_known_crc[known_id]))
+    //             {
+    //                 ee_printf("[%u]ERROR! list crc 0x%04x - should be 0x%04x\n",
+    //                           i,
+    //                           results[i].crclist,
+    //                           list_known_crc[known_id]);
+    //                 results[i].err++;
+    //             }
+    //             if ((results[i].execs & ID_MATRIX)
+    //                 && (results[i].crcmatrix != matrix_known_crc[known_id]))
+    //             {
+    //                 ee_printf("[%u]ERROR! matrix crc 0x%04x - should be 0x%04x\n",
+    //                           i,
+    //                           results[i].crcmatrix,
+    //                           matrix_known_crc[known_id]);
+    //                 results[i].err++;
+    //             }
+    //             if ((results[i].execs & ID_STATE)
+    //                 && (results[i].crcstate != state_known_crc[known_id]))
+    //             {
+    //                 ee_printf("[%u]ERROR! state crc 0x%04x - should be 0x%04x\n",
+    //                           i,
+    //                           results[i].crcstate,
+    //                           state_known_crc[known_id]);
+    //                 results[i].err++;
+    //             }
+    //             total_errors += results[i].err;
+    //         }
+    //     }
+    //     total_errors += check_data_types();
+    //     /* and report results */
+    //     ee_printf("CoreMark Size    : %lu\n", (long unsigned)results[0].size);
+    //     ee_printf("Total ticks      : %lu\n", (long unsigned)total_time);
+    // #if HAS_FLOAT
+    //     ee_printf("Total time (secs): %f\n", time_in_secs(total_time));
+    //     if (time_in_secs(total_time) > 0)
+    //         ee_printf("Iterations/Sec   : %f\n",
+    //                   default_num_contexts * results[0].iterations
+    //                       / time_in_secs(total_time));
+    // #else
+    //     ee_printf("Total time (secs): %d\n", time_in_secs(total_time));
+    //     if (time_in_secs(total_time) > 0)
+    //         ee_printf("Iterations/Sec   : %d\n",
+    //                   default_num_contexts * results[0].iterations
+    //                       / time_in_secs(total_time));
+    // #endif
+    //     if (time_in_secs(total_time) < 10)
+    //     {
+    //         ee_printf(
+    //             "ERROR! Must execute for at least 10 secs for a valid result!\n");
+    //         total_errors++;
+    //     }
 
-//     ee_printf("Iterations       : %lu\n",
-//               (long unsigned)default_num_contexts * results[0].iterations);
-//     ee_printf("Compiler version : %s\n", COMPILER_VERSION);
-//     ee_printf("Compiler flags   : %s\n", COMPILER_FLAGS);
-// #if (MULTITHREAD > 1)
-//     ee_printf("Parallel %s : %d\n", PARALLEL_METHOD, default_num_contexts);
-// #endif
-//     ee_printf("Memory location  : %s\n", MEM_LOCATION);
-//     /* output for verification */
-//     ee_printf("seedcrc          : 0x%04x\n", seedcrc);
-//     if (results[0].execs & ID_LIST)
-//         for (i = 0; i < default_num_contexts; i++)
-//             ee_printf("[%d]crclist       : 0x%04x\n", i, results[i].crclist);
-//     if (results[0].execs & ID_MATRIX)
-//         for (i = 0; i < default_num_contexts; i++)
-//             ee_printf("[%d]crcmatrix     : 0x%04x\n", i, results[i].crcmatrix);
-//     if (results[0].execs & ID_STATE)
-//         for (i = 0; i < default_num_contexts; i++)
-//             ee_printf("[%d]crcstate      : 0x%04x\n", i, results[i].crcstate);
-//     for (i = 0; i < default_num_contexts; i++)
-//         ee_printf("[%d]crcfinal      : 0x%04x\n", i, results[i].crc);
-//     if (total_errors == 0)
-//     {
-//         ee_printf(
-//             "Correct operation validated. See README.md for run and reporting "
-//             "rules.\n");
-// #if HAS_FLOAT
-//         if (known_id == 3)
-//         {
-//             ee_printf("CoreMark 1.0 : %f / %s %s",
-//                       default_num_contexts * results[0].iterations
-//                           / time_in_secs(total_time),
-//                       COMPILER_VERSION,
-//                       COMPILER_FLAGS);
-// #if defined(MEM_LOCATION) && !defined(MEM_LOCATION_UNSPEC)
-//             ee_printf(" / %s", MEM_LOCATION);
-// #else
-//             ee_printf(" / %s", mem_name[MEM_METHOD]);
-// #endif
+    //     ee_printf("Iterations       : %lu\n",
+    //               (long unsigned)default_num_contexts * results[0].iterations);
+    //     ee_printf("Compiler version : %s\n", COMPILER_VERSION);
+    //     ee_printf("Compiler flags   : %s\n", COMPILER_FLAGS);
+    // #if (MULTITHREAD > 1)
+    //     ee_printf("Parallel %s : %d\n", PARALLEL_METHOD, default_num_contexts);
+    // #endif
+    //     ee_printf("Memory location  : %s\n", MEM_LOCATION);
+    //     /* output for verification */
+    //     ee_printf("seedcrc          : 0x%04x\n", seedcrc);
+    //     if (results[0].execs & ID_LIST)
+    //         for (i = 0; i < default_num_contexts; i++)
+    //             ee_printf("[%d]crclist       : 0x%04x\n", i, results[i].crclist);
+    //     if (results[0].execs & ID_MATRIX)
+    //         for (i = 0; i < default_num_contexts; i++)
+    //             ee_printf("[%d]crcmatrix     : 0x%04x\n", i, results[i].crcmatrix);
+    //     if (results[0].execs & ID_STATE)
+    //         for (i = 0; i < default_num_contexts; i++)
+    //             ee_printf("[%d]crcstate      : 0x%04x\n", i, results[i].crcstate);
+    //     for (i = 0; i < default_num_contexts; i++)
+    //         ee_printf("[%d]crcfinal      : 0x%04x\n", i, results[i].crc);
+    //     if (total_errors == 0)
+    //     {
+    //         ee_printf(
+    //             "Correct operation validated. See README.md for run and reporting "
+    //             "rules.\n");
+    // #if HAS_FLOAT
+    //         if (known_id == 3)
+    //         {
+    //             ee_printf("CoreMark 1.0 : %f / %s %s",
+    //                       default_num_contexts * results[0].iterations
+    //                           / time_in_secs(total_time),
+    //                       COMPILER_VERSION,
+    //                       COMPILER_FLAGS);
+    // #if defined(MEM_LOCATION) && !defined(MEM_LOCATION_UNSPEC)
+    //             ee_printf(" / %s", MEM_LOCATION);
+    // #else
+    //             ee_printf(" / %s", mem_name[MEM_METHOD]);
+    // #endif
 
-// #if (MULTITHREAD > 1)
-//             ee_printf(" / %d:%s", default_num_contexts, PARALLEL_METHOD);
-// #endif
-//             ee_printf("\n");
-//         }
-// #endif
-//     }
-//     if (total_errors > 0)
-//         ee_printf("Errors detected\n");
-//     if (total_errors < 0)
-//         ee_printf(
-//             "Cannot validate operation for these seed values, please compare "
-//             "with results on a known platform.\n");
+    // #if (MULTITHREAD > 1)
+    //             ee_printf(" / %d:%s", default_num_contexts, PARALLEL_METHOD);
+    // #endif
+    //             ee_printf("\n");
+    //         }
+    // #endif
+    //     }
+    //     if (total_errors > 0)
+    //         ee_printf("Errors detected\n");
+    //     if (total_errors < 0)
+    //         ee_printf(
+    //             "Cannot validate operation for these seed values, please compare "
+    //             "with results on a known platform.\n");
 
-// #if (MEM_METHOD == MEM_MALLOC)
-//     for (i = 0; i < MULTITHREAD; i++)
-//         portable_free(results[i].memblock[0]);
-// #endif
-//     /* And last call any target specific code for finalizing */
-//     portable_fini(&(results[0].port));
+    // #if (MEM_METHOD == MEM_MALLOC)
+    //     for (i = 0; i < MULTITHREAD; i++)
+    //         portable_free(results[i].memblock[0]);
+    // #endif
+    //     /* And last call any target specific code for finalizing */
+    //     portable_fini(&(results[0].port));
 
-//     test_pass(0);
+    //     test_pass(0);
 
-//     return MAIN_RETURN_VAL;
+    //     return MAIN_RETURN_VAL;
 }
 
 /*
@@ -528,58 +490,38 @@ input for the operation.
 list_head *core_list_find(list_head *list, list_data *info);
 list_head *core_list_reverse(list_head *list);
 list_head *core_list_remove(list_head *item);
-list_head *core_list_undo_remove(list_head *item_removed,
-                                 list_head *item_modified);
-list_head *core_list_insert_new(list_head * insert_point,
-                                list_data * info,
-                                list_head **memblock,
-                                list_data **datablock,
-                                list_head * memblock_end,
-                                list_data * datablock_end);
+list_head *core_list_undo_remove(list_head *item_removed, list_head *item_modified);
+list_head *core_list_insert_new(list_head *insert_point, list_data *info, list_head **memblock,
+                                list_data **datablock, list_head *memblock_end,
+                                list_data *datablock_end);
 typedef ee_s32 (*list_cmp)(list_data *a, list_data *b, core_results *res);
-list_head *core_list_mergesort(list_head *   list,
-                               list_cmp      cmp,
-                               core_results *res);
+list_head *core_list_mergesort(list_head *list, list_cmp cmp, core_results *res);
 
-ee_s16
-calc_func(ee_s16 *pdata, core_results *res)
-{
+ee_s16 calc_func(ee_s16 *pdata, core_results *res) {
     ee_s16 data = *pdata;
     ee_s16 retval;
-    ee_u8  optype
-        = (data >> 7)
-          & 1;  /* bit 7 indicates if the function result has been cached */
-    if (optype) /* if cached, use cache */
+    ee_u8 optype = (data >> 7) & 1; /* bit 7 indicates if the function result has been cached */
+    if (optype)                     /* if cached, use cache */
         return (data & 0x007f);
-    else
-    {                             /* otherwise calculate and cache the result */
-        ee_s16 flag = data & 0x7; /* bits 0-2 is type of function to perform */
-        ee_s16 dtype
-            = ((data >> 3)
-               & 0xf);       /* bits 3-6 is specific data for the operation */
-        dtype |= dtype << 4; /* replicate the lower 4 bits to get an 8b value */
-        switch (flag)
-        {
-            case 0:
-                if (dtype < 0x22) /* set min period for bit corruption */
-                    dtype = 0x22;
-                retval = core_bench_state(res->size,
-                                          res->memblock[3],
-                                          res->seed1,
-                                          res->seed2,
-                                          dtype,
-                                          res->crc);
-                if (res->crcstate == 0)
-                    res->crcstate = retval;
-                break;
-            case 1:
-                retval = core_bench_matrix(&(res->mat), dtype, res->crc);
-                if (res->crcmatrix == 0)
-                    res->crcmatrix = retval;
-                break;
-            default:
-                retval = data;
-                break;
+    else {                                  /* otherwise calculate and cache the result */
+        ee_s16 flag = data & 0x7;           /* bits 0-2 is type of function to perform */
+        ee_s16 dtype = ((data >> 3) & 0xf); /* bits 3-6 is specific data for the operation */
+        dtype |= dtype << 4;                /* replicate the lower 4 bits to get an 8b value */
+        switch (flag) {
+        case 0:
+            if (dtype < 0x22) /* set min period for bit corruption */
+                dtype = 0x22;
+            retval = core_bench_state(res->size, res->memblock[3], res->seed1, res->seed2, dtype,
+                                      res->crc);
+            if (res->crcstate == 0) res->crcstate = retval;
+            break;
+        case 1:
+            retval = core_bench_matrix(&(res->mat), dtype, res->crc);
+            if (res->crcmatrix == 0) res->crcmatrix = retval;
+            break;
+        default:
+            retval = data;
+            break;
         }
         res->crc = crcu16(retval, res->crc);
         retval &= 0x007f;
@@ -592,9 +534,7 @@ calc_func(ee_s16 *pdata, core_results *res)
 
         Can be used by mergesort.
 */
-ee_s32
-cmp_complex(list_data *a, list_data *b, core_results *res)
-{
+ee_s32 cmp_complex(list_data *a, list_data *b, core_results *res) {
     ee_s16 val1 = calc_func(&(a->data16), res);
     ee_s16 val2 = calc_func(&(b->data16), res);
     return val1 - val2;
@@ -605,22 +545,17 @@ cmp_complex(list_data *a, list_data *b, core_results *res)
 
         Can be used by mergesort.
 */
-ee_s32
-cmp_idx(list_data *a, list_data *b, core_results *res)
-{
-    if (res == NULL)
-    {
+ee_s32 cmp_idx(list_data *a, list_data *b, core_results *res) {
+    if (res == NULL) {
         a->data16 = (a->data16 & 0xff00) | (0x00ff & (a->data16 >> 8));
         b->data16 = (b->data16 & 0xff00) | (0x00ff & (b->data16 >> 8));
     }
     return a->idx - b->idx;
 }
 
-void
-copy_info(list_data *to, list_data *from)
-{
+void copy_info(list_data *to, list_data *from) {
     to->data16 = from->data16;
-    to->idx    = from->idx;
+    to->idx = from->idx;
 }
 
 /* Benchmark for linked list:
@@ -630,63 +565,52 @@ copy_info(list_data *to, list_data *from)
         - Single remove/reinsert
         * At the end of this function, the list is back to original state
 */
-ee_u16
-core_bench_list(core_results *res, ee_s16 finder_idx)
-{
-    ee_u16     retval = 0;
-    ee_u16     found = 0, missed = 0;
-    list_head *list     = res->list;
-    ee_s16     find_num = res->seed3;
+ee_u16 core_bench_list(core_results *res, ee_s16 finder_idx) {
+    ee_u16 retval = 0;
+    ee_u16 found = 0, missed = 0;
+    list_head *list = res->list;
+    ee_s16 find_num = res->seed3;
     list_head *this_find;
     list_head *finder, *remover;
-    list_data  info = {0};
-    ee_s16     i;
+    list_data info = {0};
+    ee_s16 i;
 
     info.idx = finder_idx;
     /* find <find_num> values in the list, and change the list each time
      * (reverse and cache if value found) */
-    for (i = 0; i < find_num; i++)
-    {
+    for (i = 0; i < find_num; i++) {
         info.data16 = (i & 0xff);
-        this_find   = core_list_find(list, &info);
-        list        = core_list_reverse(list);
-        if (this_find == NULL)
-        {
+        this_find = core_list_find(list, &info);
+        list = core_list_reverse(list);
+        if (this_find == NULL) {
             missed++;
             retval += (list->next->info->data16 >> 8) & 1;
-        }
-        else
-        {
+        } else {
             found++;
             if (this_find->info->data16 & 0x1) /* use found value */
                 retval += (this_find->info->data16 >> 9) & 1;
             /* and cache next item at the head of the list (if any) */
-            if (this_find->next != NULL)
-            {
-                finder          = this_find->next;
+            if (this_find->next != NULL) {
+                finder = this_find->next;
                 this_find->next = finder->next;
-                finder->next    = list->next;
-                list->next      = finder;
+                finder->next = list->next;
+                list->next = finder;
             }
         }
-        if (info.idx >= 0)
-            info.idx++;
+        if (info.idx >= 0) info.idx++;
 #if CORE_DEBUG
         ee_printf("List find %d: [%d,%d,%d]\n", i, retval, missed, found);
 #endif
     }
     retval += found * 4 - missed;
     /* sort the list by data content and remove one item*/
-    if (finder_idx > 0)
-        list = core_list_mergesort(list, cmp_complex, res);
+    if (finder_idx > 0) list = core_list_mergesort(list, cmp_complex, res);
     remover = core_list_remove(list->next);
     /* CRC data content of list from location of index N forward, and then undo
      * remove */
     finder = core_list_find(list, &info);
-    if (!finder)
-        finder = list->next;
-    while (finder)
-    {
+    if (!finder) finder = list->next;
+    while (finder) {
         retval = crc16(list->info->data16, retval);
         finder = finder->next;
     }
@@ -698,8 +622,7 @@ core_bench_list(core_results *res, ee_s16 finder_idx)
     list = core_list_mergesort(list, cmp_idx, NULL);
     /* CRC data content of list */
     finder = list->next;
-    while (finder)
-    {
+    while (finder) {
         retval = crc16(list->info->data16, retval);
         finder = finder->next;
     }
@@ -722,59 +645,49 @@ core_bench_list(core_results *res, ee_s16 finder_idx)
         Pointer to the head of the list.
 
 */
-list_head *
-core_list_init(ee_u32 blksize, list_head *memblock, ee_s16 seed)
-{
+list_head *core_list_init(ee_u32 blksize, list_head *memblock, ee_s16 seed) {
     /* calculated pointers for the list */
     ee_u32 per_item = 16 + sizeof(struct list_data_s);
-    ee_u32 size     = (blksize / per_item)
-                  - 2; /* to accommodate systems with 64b pointers, and make sure
-                          same code is executed, set max list elements */
-    list_head *memblock_end  = memblock + size;
-    list_data *datablock     = (list_data *)(memblock_end);
+    ee_u32 size = (blksize / per_item) - 2; /* to accommodate systems with 64b pointers, and make
+                                               sure same code is executed, set max list elements */
+    list_head *memblock_end = memblock + size;
+    list_data *datablock = (list_data *)(memblock_end);
     list_data *datablock_end = datablock + size;
     /* some useful variables */
-    ee_u32     i;
+    ee_u32 i;
     list_head *finder, *list = memblock;
-    list_data  info;
+    list_data info;
 
     /* create a fake items for the list head and tail */
-    list->next         = NULL;
-    list->info         = datablock;
-    list->info->idx    = 0x0000;
+    list->next = NULL;
+    list->info = datablock;
+    list->info->idx = 0x0000;
     list->info->data16 = (ee_s16)0x8080;
     memblock++;
     datablock++;
-    info.idx    = 0x7fff;
+    info.idx = 0x7fff;
     info.data16 = (ee_s16)0xffff;
-    core_list_insert_new(
-        list, &info, &memblock, &datablock, memblock_end, datablock_end);
+    core_list_insert_new(list, &info, &memblock, &datablock, memblock_end, datablock_end);
 
     /* then insert size items */
-    for (i = 0; i < size; i++)
-    {
+    for (i = 0; i < size; i++) {
         ee_u16 datpat = ((ee_u16)(seed ^ i) & 0xf);
-        ee_u16 dat
-            = (datpat << 3) | (i & 0x7); /* alternate between algorithms */
-        info.data16 = (dat << 8) | dat;  /* fill the data with actual data and
-                                            upper bits with rebuild value */
-        core_list_insert_new(
-            list, &info, &memblock, &datablock, memblock_end, datablock_end);
+        ee_u16 dat = (datpat << 3) | (i & 0x7); /* alternate between algorithms */
+        info.data16 = (dat << 8) | dat;         /* fill the data with actual data and
+                                                   upper bits with rebuild value */
+        core_list_insert_new(list, &info, &memblock, &datablock, memblock_end, datablock_end);
     }
     /* and now index the list so we know initial seed order of the list */
     finder = list->next;
-    i      = 1;
-    while (finder->next != NULL)
-    {
+    i = 1;
+    while (finder->next != NULL) {
         if (i < size / 5) /* first 20% of the list in order */
             finder->info->idx = i++;
-        else
-        {
+        else {
             ee_u16 pat = (ee_u16)(i++ ^ seed); /* get a pseudo random number */
-            finder->info->idx = 0x3fff
-                                & (((i & 0x07) << 8)
-                                   | pat); /* make sure the mixed items end up
-                                              after the ones in sequence */
+            finder->info->idx =
+                0x3fff & (((i & 0x07) << 8) | pat); /* make sure the mixed items end up
+                                                       after the ones in sequence */
         }
         finder = finder->next;
     }
@@ -782,10 +695,8 @@ core_list_init(ee_u32 blksize, list_head *memblock, ee_s16 seed)
 #if CORE_DEBUG
     ee_printf("Initialized list:\n");
     finder = list;
-    while (finder)
-    {
-        ee_printf(
-            "[%04x,%04x]", finder->info->idx, (ee_u16)finder->info->data16);
+    while (finder) {
+        ee_printf("[%04x,%04x]", finder->info->idx, (ee_u16)finder->info->data16);
         finder = finder->next;
     }
     ee_printf("\n");
@@ -807,24 +718,17 @@ core_list_init(ee_u32 blksize, list_head *memblock, ee_s16 seed)
         Returns:
         Pointer to new item.
 */
-list_head *
-core_list_insert_new(list_head * insert_point,
-                     list_data * info,
-                     list_head **memblock,
-                     list_data **datablock,
-                     list_head * memblock_end,
-                     list_data * datablock_end)
-{
+list_head *core_list_insert_new(list_head *insert_point, list_data *info, list_head **memblock,
+                                list_data **datablock, list_head *memblock_end,
+                                list_data *datablock_end) {
     list_head *newitem;
 
-    if ((*memblock + 1) >= memblock_end)
-        return NULL;
-    if ((*datablock + 1) >= datablock_end)
-        return NULL;
+    if ((*memblock + 1) >= memblock_end) return NULL;
+    if ((*datablock + 1) >= datablock_end) return NULL;
 
     newitem = *memblock;
     (*memblock)++;
-    newitem->next      = insert_point->next;
+    newitem->next = insert_point->next;
     insert_point->next = newitem;
 
     newitem->info = *datablock;
@@ -848,18 +752,16 @@ core_list_insert_new(list_head * insert_point,
         Returns:
         Removed item.
 */
-list_head *
-core_list_remove(list_head *item)
-{
+list_head *core_list_remove(list_head *item) {
     list_data *tmp;
     list_head *ret = item->next;
     /* swap data pointers */
-    tmp        = item->info;
+    tmp = item->info;
     item->info = ret->info;
-    ret->info  = tmp;
+    ret->info = tmp;
     /* and eliminate item */
     item->next = item->next->next;
-    ret->next  = NULL;
+    ret->next = NULL;
     return ret;
 }
 
@@ -879,16 +781,14 @@ core_list_remove(list_head *item)
         The item that was linked back to the list.
 
 */
-list_head *
-core_list_undo_remove(list_head *item_removed, list_head *item_modified)
-{
+list_head *core_list_undo_remove(list_head *item_removed, list_head *item_modified) {
     list_data *tmp;
     /* swap data pointers */
-    tmp                 = item_removed->info;
-    item_removed->info  = item_modified->info;
+    tmp = item_removed->info;
+    item_removed->info = item_modified->info;
     item_modified->info = tmp;
     /* and insert item */
-    item_removed->next  = item_modified->next;
+    item_removed->next = item_modified->next;
     item_modified->next = item_removed;
     return item_removed;
 }
@@ -906,19 +806,12 @@ core_list_undo_remove(list_head *item_removed, list_head *item_modified)
         Returns:
         Found item, or NULL if not found.
 */
-list_head *
-core_list_find(list_head *list, list_data *info)
-{
-    if (info->idx >= 0)
-    {
-        while (list && (list->info->idx != info->idx))
-            list = list->next;
+list_head *core_list_find(list_head *list, list_data *info) {
+    if (info->idx >= 0) {
+        while (list && (list->info->idx != info->idx)) list = list->next;
         return list;
-    }
-    else
-    {
-        while (list && ((list->info->data16 & 0xff) != info->data16))
-            list = list->next;
+    } else {
+        while (list && ((list->info->data16 & 0xff) != info->data16)) list = list->next;
         return list;
     }
 }
@@ -936,16 +829,13 @@ core_list_find(list_head *list, list_data *info)
         Found item, or NULL if not found.
 */
 
-list_head *
-core_list_reverse(list_head *list)
-{
+list_head *core_list_reverse(list_head *list) {
     list_head *next = NULL, *tmp;
-    while (list)
-    {
-        tmp        = list->next;
+    while (list) {
+        tmp = list->next;
         list->next = next;
-        next       = list;
-        list       = tmp;
+        next = list;
+        list = tmp;
     }
     return next;
 }
@@ -971,68 +861,54 @@ core_list_reverse(list_head *list)
         but the algorithm could theoretically modify where the list starts.
 
  */
-list_head *
-core_list_mergesort(list_head *list, list_cmp cmp, core_results *res)
-{
+list_head *core_list_mergesort(list_head *list, list_cmp cmp, core_results *res) {
     list_head *p, *q, *e, *tail;
-    ee_s32     insize, nmerges, psize, qsize, i;
+    ee_s32 insize, nmerges, psize, qsize, i;
 
     insize = 1;
 
-    while (1)
-    {
-        p    = list;
+    while (1) {
+        p = list;
         list = NULL;
         tail = NULL;
 
         nmerges = 0; /* count number of merges we do in this pass */
 
-        while (p)
-        {
+        while (p) {
             nmerges++; /* there exists a merge to be done */
             /* step `insize' places along from p */
-            q     = p;
+            q = p;
             psize = 0;
-            for (i = 0; i < insize; i++)
-            {
+            for (i = 0; i < insize; i++) {
                 psize++;
                 q = q->next;
-                if (!q)
-                    break;
+                if (!q) break;
             }
 
             /* if q hasn't fallen off end, we have two lists to merge */
             qsize = insize;
 
             /* now we have two lists; merge them */
-            while (psize > 0 || (qsize > 0 && q))
-            {
+            while (psize > 0 || (qsize > 0 && q)) {
 
                 /* decide whether next element of merge comes from p or q */
-                if (psize == 0)
-                {
+                if (psize == 0) {
                     /* p is empty; e must come from q. */
                     e = q;
                     q = q->next;
                     qsize--;
-                }
-                else if (qsize == 0 || !q)
-                {
+                } else if (qsize == 0 || !q) {
                     /* q is empty; e must come from p. */
                     e = p;
                     p = p->next;
                     psize--;
-                }
-                else if (cmp(p->info, q->info, res) <= 0)
-                {
+                } else if (cmp(p->info, q->info, res) <= 0) {
                     /* First element of p is lower (or same); e must come from
                      * p. */
                     e = p;
                     p = p->next;
                     psize--;
-                }
-                else
-                {
+                } else {
                     /* First element of q is lower; e must come from q. */
                     e = q;
                     q = q->next;
@@ -1040,12 +916,9 @@ core_list_mergesort(list_head *list, list_cmp cmp, core_results *res)
                 }
 
                 /* add the next element to the merged list */
-                if (tail)
-                {
+                if (tail) {
                     tail->next = e;
-                }
-                else
-                {
+                } else {
                     list = e;
                 }
                 tail = e;
@@ -1107,45 +980,35 @@ available at compile time.
 */
 ee_s16 matrix_test(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B, MATDAT val);
 ee_s16 matrix_sum(ee_u32 N, MATRES *C, MATDAT clipval);
-void   matrix_mul_const(ee_u32 N, MATRES *C, MATDAT *A, MATDAT val);
-void   matrix_mul_vect(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
-void   matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
-void   matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
-void   matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val);
+void matrix_mul_const(ee_u32 N, MATRES *C, MATDAT *A, MATDAT val);
+void matrix_mul_vect(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
+void matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
+void matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
+void matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val);
 
-#define matrix_test_next(x)      (x + 1)
-#define matrix_clip(x, y)        ((y) ? (x)&0x0ff : (x)&0x0ffff)
-#define matrix_big(x)            (0xf000 | (x))
+#define matrix_test_next(x) (x + 1)
+#define matrix_clip(x, y) ((y) ? (x)&0x0ff : (x)&0x0ffff)
+#define matrix_big(x) (0xf000 | (x))
 #define bit_extract(x, from, to) (((x) >> (from)) & (~(0xffffffff << (to))))
 
 #if CORE_DEBUG
-void
-printmat(MATDAT *A, ee_u32 N, char *name)
-{
+void printmat(MATDAT *A, ee_u32 N, char *name) {
     ee_u32 i, j;
     ee_printf("Matrix %s [%dx%d]:\n", name, N, N);
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            if (j != 0)
-                ee_printf(",");
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            if (j != 0) ee_printf(",");
             ee_printf("%d", A[i * N + j]);
         }
         ee_printf("\n");
     }
 }
-void
-printmatC(MATRES *C, ee_u32 N, char *name)
-{
+void printmatC(MATRES *C, ee_u32 N, char *name) {
     ee_u32 i, j;
     ee_printf("Matrix %s [%dx%d]:\n", name, N, N);
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            if (j != 0)
-                ee_printf(",");
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            if (j != 0) ee_printf(",");
             ee_printf("%d", C[i * N + j]);
         }
         ee_printf("\n");
@@ -1158,14 +1021,12 @@ printmatC(MATRES *C, ee_u32 N, char *name)
         Iterate <matrix_test> N times,
         changing the matrix values slightly by a constant amount each time.
 */
-ee_u16
-core_bench_matrix(mat_params *p, ee_s16 seed, ee_u16 crc)
-{
-    ee_u32  N   = p->N;
-    MATRES *C   = p->C;
-    MATDAT *A   = p->A;
-    MATDAT *B   = p->B;
-    MATDAT  val = (MATDAT)seed;
+ee_u16 core_bench_matrix(mat_params *p, ee_s16 seed, ee_u16 crc) {
+    ee_u32 N = p->N;
+    MATRES *C = p->C;
+    MATDAT *A = p->A;
+    MATDAT *B = p->B;
+    MATDAT val = (MATDAT)seed;
 
     crc = crc16(matrix_test(N, C, A, B, val), crc);
 
@@ -1196,10 +1057,8 @@ core_bench_matrix(mat_params *p, ee_s16 seed, ee_u16 crc)
 
         After the last step, matrix A is back to original contents.
 */
-ee_s16
-matrix_test(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B, MATDAT val)
-{
-    ee_u16 crc     = 0;
+ee_s16 matrix_test(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B, MATDAT val) {
+    ee_u16 crc = 0;
     MATDAT clipval = matrix_big(val);
 
     matrix_add_const(N, A, val); /* make sure data changes  */
@@ -1247,19 +1106,15 @@ matrix_test(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B, MATDAT val)
         The seed parameter MUST be supplied from a source that cannot be
    determined at compile time
 */
-ee_u32
-core_init_matrix(ee_u32 blksize, void *memblk, ee_s32 seed, mat_params *p)
-{
-    ee_u32  N = 0;
+ee_u32 core_init_matrix(ee_u32 blksize, void *memblk, ee_s32 seed, mat_params *p) {
+    ee_u32 N = 0;
     MATDAT *A;
     MATDAT *B;
-    ee_s32  order = 1;
-    MATDAT  val;
-    ee_u32  i = 0, j = 0;
-    if (seed == 0)
-        seed = 1;
-    while (j < blksize)
-    {
+    ee_s32 order = 1;
+    MATDAT val;
+    ee_u32 i = 0, j = 0;
+    if (seed == 0) seed = 1;
+    while (j < blksize) {
         i++;
         j = i * i * 2 * 4;
     }
@@ -1267,16 +1122,14 @@ core_init_matrix(ee_u32 blksize, void *memblk, ee_s32 seed, mat_params *p)
     A = (MATDAT *)align_mem(memblk);
     B = A + N * N;
 
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            seed         = ((order * seed) % 65536);
-            val          = (seed + order);
-            val          = matrix_clip(val, 0);
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            seed = ((order * seed) % 65536);
+            val = (seed + order);
+            val = matrix_clip(val, 0);
             B[i * N + j] = val;
-            val          = (val + order);
-            val          = matrix_clip(val, 1);
+            val = (val + order);
+            val = matrix_clip(val, 1);
             A[i * N + j] = val;
             order++;
         }
@@ -1304,25 +1157,18 @@ core_init_matrix(ee_u32 blksize, void *memblk, ee_s32 seed, mat_params *p)
 
         Otherwise, reset the accumulator and add 10 to the result.
 */
-ee_s16
-matrix_sum(ee_u32 N, MATRES *C, MATDAT clipval)
-{
+ee_s16 matrix_sum(ee_u32 N, MATRES *C, MATDAT clipval) {
     MATRES tmp = 0, prev = 0, cur = 0;
     ee_s16 ret = 0;
     ee_u32 i, j;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             cur = C[i * N + j];
             tmp += cur;
-            if (tmp > clipval)
-            {
+            if (tmp > clipval) {
                 ret += 10;
                 tmp = 0;
-            }
-            else
-            {
+            } else {
                 ret += (cur > prev) ? 1 : 0;
             }
             prev = cur;
@@ -1335,14 +1181,10 @@ matrix_sum(ee_u32 N, MATRES *C, MATDAT clipval)
         Multiply a matrix by a constant.
         This could be used as a scaler for instance.
 */
-void
-matrix_mul_const(ee_u32 N, MATRES *C, MATDAT *A, MATDAT val)
-{
+void matrix_mul_const(ee_u32 N, MATRES *C, MATDAT *A, MATDAT val) {
     ee_u32 i, j;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             C[i * N + j] = (MATRES)A[i * N + j] * (MATRES)val;
         }
     }
@@ -1351,14 +1193,10 @@ matrix_mul_const(ee_u32 N, MATRES *C, MATDAT *A, MATDAT val)
 /* Function: matrix_add_const
         Add a constant value to all elements of a matrix.
 */
-void
-matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val)
-{
+void matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val) {
     ee_u32 i, j;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             A[i * N + j] += val;
         }
     }
@@ -1369,15 +1207,11 @@ matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val)
         This is common in many simple filters (e.g. fir where a vector of
    coefficients is applied to the matrix.)
 */
-void
-matrix_mul_vect(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B)
-{
+void matrix_mul_vect(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B) {
     ee_u32 i, j;
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         C[i] = 0;
-        for (j = 0; j < N; j++)
-        {
+        for (j = 0; j < N; j++) {
             C[i] += (MATRES)A[i * N + j] * (MATRES)B[j];
         }
     }
@@ -1388,17 +1222,12 @@ matrix_mul_vect(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B)
         Basic code is used in many algorithms, mostly with minor changes such as
    scaling.
 */
-void
-matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B)
-{
+void matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B) {
     ee_u32 i, j, k;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             C[i * N + j] = 0;
-            for (k = 0; k < N; k++)
-            {
+            for (k = 0; k < N; k++) {
                 C[i * N + j] += (MATRES)A[i * N + k] * (MATRES)B[k * N + j];
             }
         }
@@ -1410,17 +1239,12 @@ matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B)
         Basic code is used in many algorithms, mostly with minor changes such as
    scaling.
 */
-void
-matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B)
-{
+void matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B) {
     ee_u32 i, j, k;
-    for (i = 0; i < N; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             C[i * N + j] = 0;
-            for (k = 0; k < N; k++)
-            {
+            for (k = 0; k < N; k++) {
                 MATRES tmp = (MATRES)A[i * N + k] * (MATRES)B[k * N + j];
                 C[i * N + j] += bit_extract(tmp, 2, 4) * bit_extract(tmp, 5, 7);
             }
@@ -1471,14 +1295,8 @@ the switch/if behaviour, we are using a small moore machine.
         Go over the input twice, once direct, and once after introducing some
    corruption.
 */
-ee_u16
-core_bench_state(ee_u32 blksize,
-                 ee_u8 *memblock,
-                 ee_s16 seed1,
-                 ee_s16 seed2,
-                 ee_s16 step,
-                 ee_u16 crc)
-{
+ee_u16 core_bench_state(ee_u32 blksize, ee_u8 *memblock, ee_s16 seed1, ee_s16 seed2, ee_s16 step,
+                        ee_u16 crc) {
     ee_u32 final_counts[NUM_CORE_STATES];
     ee_u32 track_counts[NUM_CORE_STATES];
     ee_u8 *p = memblock;
@@ -1487,13 +1305,11 @@ core_bench_state(ee_u32 blksize,
 #if CORE_DEBUG
     ee_printf("State Bench: %d,%d,%d,%04x\n", seed1, seed2, step, crc);
 #endif
-    for (i = 0; i < NUM_CORE_STATES; i++)
-    {
+    for (i = 0; i < NUM_CORE_STATES; i++) {
         final_counts[i] = track_counts[i] = 0;
     }
     /* run the state machine over the input */
-    while (*p != 0)
-    {
+    while (*p != 0) {
         enum CORE_STATE fstate = core_state_transition(&p, track_counts);
         final_counts[fstate]++;
 #if CORE_DEBUG
@@ -1504,16 +1320,13 @@ core_bench_state(ee_u32 blksize,
     }
 #endif
     p = memblock;
-    while (p < (memblock + blksize))
-    { /* insert some corruption */
-        if (*p != ',')
-            *p ^= (ee_u8)seed1;
+    while (p < (memblock + blksize)) { /* insert some corruption */
+        if (*p != ',') *p ^= (ee_u8)seed1;
         p += step;
     }
     p = memblock;
     /* run the state machine over the input again */
-    while (*p != 0)
-    {
+    while (*p != 0) {
         enum CORE_STATE fstate = core_state_transition(&p, track_counts);
         final_counts[fstate]++;
 #if CORE_DEBUG
@@ -1524,15 +1337,12 @@ core_bench_state(ee_u32 blksize,
     }
 #endif
     p = memblock;
-    while (p < (memblock + blksize))
-    { /* undo corruption is seed1 and seed2 are equal */
-        if (*p != ',')
-            *p ^= (ee_u8)seed2;
+    while (p < (memblock + blksize)) { /* undo corruption is seed1 and seed2 are equal */
+        if (*p != ',') *p ^= (ee_u8)seed2;
         p += step;
     }
     /* end timing */
-    for (i = 0; i < NUM_CORE_STATES; i++)
-    {
+    for (i = 0; i < NUM_CORE_STATES; i++) {
         crc = crcu32(final_counts[i], crc);
         crc = crcu32(track_counts[i], crc);
     }
@@ -1540,20 +1350,13 @@ core_bench_state(ee_u32 blksize,
 }
 
 /* Default initialization patterns */
-static ee_u8 *intpat[4]
-    = { (ee_u8 *)"5012", (ee_u8 *)"1234", (ee_u8 *)"-874", (ee_u8 *)"+122" };
-static ee_u8 *floatpat[4] = { (ee_u8 *)"35.54400",
-                              (ee_u8 *)".1234500",
-                              (ee_u8 *)"-110.700",
-                              (ee_u8 *)"+0.64400" };
-static ee_u8 *scipat[4]   = { (ee_u8 *)"5.500e+3",
-                            (ee_u8 *)"-.123e-2",
-                            (ee_u8 *)"-87e+832",
-                            (ee_u8 *)"+0.6e-12" };
-static ee_u8 *errpat[4]   = { (ee_u8 *)"T0.3e-1F",
-                            (ee_u8 *)"-T.T++Tq",
-                            (ee_u8 *)"1T3.4e4z",
-                            (ee_u8 *)"34.0e-T^" };
+static ee_u8 *intpat[4] = {(ee_u8 *)"5012", (ee_u8 *)"1234", (ee_u8 *)"-874", (ee_u8 *)"+122"};
+static ee_u8 *floatpat[4] = {(ee_u8 *)"35.54400", (ee_u8 *)".1234500", (ee_u8 *)"-110.700",
+                             (ee_u8 *)"+0.64400"};
+static ee_u8 *scipat[4] = {(ee_u8 *)"5.500e+3", (ee_u8 *)"-.123e-2", (ee_u8 *)"-87e+832",
+                           (ee_u8 *)"+0.6e-12"};
+static ee_u8 *errpat[4] = {(ee_u8 *)"T0.3e-1F", (ee_u8 *)"-T.T++Tq", (ee_u8 *)"1T3.4e4z",
+                           (ee_u8 *)"34.0e-T^"};
 
 /* Function: core_init_state
         Initialize the input data for the state machine.
@@ -1565,9 +1368,7 @@ static ee_u8 *errpat[4]   = { (ee_u8 *)"T0.3e-1F",
         The seed parameter MUST be supplied from a source that cannot be
    determined at compile time
 */
-void
-core_init_state(ee_u32 size, ee_s16 seed, ee_u8 *p)
-{
+void core_init_state(ee_u32 size, ee_s16 seed, ee_u8 *p) {
     ee_u32 total = 0, next = 0, i;
     ee_u8 *buf = 0;
 #if CORE_DEBUG
@@ -1576,45 +1377,40 @@ core_init_state(ee_u32 size, ee_s16 seed, ee_u8 *p)
 #endif
     size--;
     next = 0;
-    while ((total + next + 1) < size)
-    {
-        if (next > 0)
-        {
-            for (i = 0; i < next; i++)
-                *(p + total + i) = buf[i];
+    while ((total + next + 1) < size) {
+        if (next > 0) {
+            for (i = 0; i < next; i++) *(p + total + i) = buf[i];
             *(p + total + i) = ',';
             total += next + 1;
         }
         seed++;
-        switch (seed & 0x7)
-        {
-            case 0: /* int */
-            case 1: /* int */
-            case 2: /* int */
-                buf  = intpat[(seed >> 3) & 0x3];
-                next = 4;
-                break;
-            case 3: /* float */
-            case 4: /* float */
-                buf  = floatpat[(seed >> 3) & 0x3];
-                next = 8;
-                break;
-            case 5: /* scientific */
-            case 6: /* scientific */
-                buf  = scipat[(seed >> 3) & 0x3];
-                next = 8;
-                break;
-            case 7: /* invalid */
-                buf  = errpat[(seed >> 3) & 0x3];
-                next = 8;
-                break;
-            default: /* Never happen, just to make some compilers happy */
-                break;
+        switch (seed & 0x7) {
+        case 0: /* int */
+        case 1: /* int */
+        case 2: /* int */
+            buf = intpat[(seed >> 3) & 0x3];
+            next = 4;
+            break;
+        case 3: /* float */
+        case 4: /* float */
+            buf = floatpat[(seed >> 3) & 0x3];
+            next = 8;
+            break;
+        case 5: /* scientific */
+        case 6: /* scientific */
+            buf = scipat[(seed >> 3) & 0x3];
+            next = 8;
+            break;
+        case 7: /* invalid */
+            buf = errpat[(seed >> 3) & 0x3];
+            next = 8;
+            break;
+        default: /* Never happen, just to make some compilers happy */
+            break;
         }
     }
     size++;
-    while (total < size)
-    { /* fill the rest with 0 */
+    while (total < size) { /* fill the rest with 0 */
         *(p + total) = 0;
         total++;
     }
@@ -1623,9 +1419,7 @@ core_init_state(ee_u32 size, ee_s16 seed, ee_u8 *p)
 #endif
 }
 
-static ee_u8
-ee_isdigit(ee_u8 c)
-{
+static ee_u8 ee_isdigit(ee_u8 c) {
     ee_u8 retval;
     retval = ((c >= '0') & (c <= '9')) ? 1 : 0;
     return retval;
@@ -1642,116 +1436,87 @@ ee_isdigit(ee_u8 c)
    end state is returned (either specific format determined or invalid).
 */
 
-enum CORE_STATE
-core_state_transition(ee_u8 **instr, ee_u32 *transition_count)
-{
-    ee_u8 *         str = *instr;
-    ee_u8           NEXT_SYMBOL;
+enum CORE_STATE core_state_transition(ee_u8 **instr, ee_u32 *transition_count) {
+    ee_u8 *str = *instr;
+    ee_u8 NEXT_SYMBOL;
     enum CORE_STATE state = CORE_START;
-    for (; *str && state != CORE_INVALID; str++)
-    {
+    for (; *str && state != CORE_INVALID; str++) {
         NEXT_SYMBOL = *str;
         if (NEXT_SYMBOL == ',') /* end of this input */
         {
             str++;
             break;
         }
-        switch (state)
-        {
-            case CORE_START:
-                if (ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_INT;
-                }
-                else if (NEXT_SYMBOL == '+' || NEXT_SYMBOL == '-')
-                {
-                    state = CORE_S1;
-                }
-                else if (NEXT_SYMBOL == '.')
-                {
-                    state = CORE_FLOAT;
-                }
-                else
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_INVALID]++;
-                }
-                transition_count[CORE_START]++;
-                break;
-            case CORE_S1:
-                if (ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_INT;
-                    transition_count[CORE_S1]++;
-                }
-                else if (NEXT_SYMBOL == '.')
-                {
-                    state = CORE_FLOAT;
-                    transition_count[CORE_S1]++;
-                }
-                else
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_S1]++;
-                }
-                break;
-            case CORE_INT:
-                if (NEXT_SYMBOL == '.')
-                {
-                    state = CORE_FLOAT;
-                    transition_count[CORE_INT]++;
-                }
-                else if (!ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_INT]++;
-                }
-                break;
-            case CORE_FLOAT:
-                if (NEXT_SYMBOL == 'E' || NEXT_SYMBOL == 'e')
-                {
-                    state = CORE_S2;
-                    transition_count[CORE_FLOAT]++;
-                }
-                else if (!ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_FLOAT]++;
-                }
-                break;
-            case CORE_S2:
-                if (NEXT_SYMBOL == '+' || NEXT_SYMBOL == '-')
-                {
-                    state = CORE_EXPONENT;
-                    transition_count[CORE_S2]++;
-                }
-                else
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_S2]++;
-                }
-                break;
-            case CORE_EXPONENT:
-                if (ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_SCIENTIFIC;
-                    transition_count[CORE_EXPONENT]++;
-                }
-                else
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_EXPONENT]++;
-                }
-                break;
-            case CORE_SCIENTIFIC:
-                if (!ee_isdigit(NEXT_SYMBOL))
-                {
-                    state = CORE_INVALID;
-                    transition_count[CORE_INVALID]++;
-                }
-                break;
-            default:
-                break;
+        switch (state) {
+        case CORE_START:
+            if (ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_INT;
+            } else if (NEXT_SYMBOL == '+' || NEXT_SYMBOL == '-') {
+                state = CORE_S1;
+            } else if (NEXT_SYMBOL == '.') {
+                state = CORE_FLOAT;
+            } else {
+                state = CORE_INVALID;
+                transition_count[CORE_INVALID]++;
+            }
+            transition_count[CORE_START]++;
+            break;
+        case CORE_S1:
+            if (ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_INT;
+                transition_count[CORE_S1]++;
+            } else if (NEXT_SYMBOL == '.') {
+                state = CORE_FLOAT;
+                transition_count[CORE_S1]++;
+            } else {
+                state = CORE_INVALID;
+                transition_count[CORE_S1]++;
+            }
+            break;
+        case CORE_INT:
+            if (NEXT_SYMBOL == '.') {
+                state = CORE_FLOAT;
+                transition_count[CORE_INT]++;
+            } else if (!ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_INVALID;
+                transition_count[CORE_INT]++;
+            }
+            break;
+        case CORE_FLOAT:
+            if (NEXT_SYMBOL == 'E' || NEXT_SYMBOL == 'e') {
+                state = CORE_S2;
+                transition_count[CORE_FLOAT]++;
+            } else if (!ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_INVALID;
+                transition_count[CORE_FLOAT]++;
+            }
+            break;
+        case CORE_S2:
+            if (NEXT_SYMBOL == '+' || NEXT_SYMBOL == '-') {
+                state = CORE_EXPONENT;
+                transition_count[CORE_S2]++;
+            } else {
+                state = CORE_INVALID;
+                transition_count[CORE_S2]++;
+            }
+            break;
+        case CORE_EXPONENT:
+            if (ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_SCIENTIFIC;
+                transition_count[CORE_EXPONENT]++;
+            } else {
+                state = CORE_INVALID;
+                transition_count[CORE_EXPONENT]++;
+            }
+            break;
+        case CORE_SCIENTIFIC:
+            if (!ee_isdigit(NEXT_SYMBOL)) {
+                state = CORE_INVALID;
+                transition_count[CORE_INVALID]++;
+            }
+            break;
+        default:
+            break;
         }
     }
     *instr = str;
@@ -1798,68 +1563,55 @@ extern volatile ee_s32 seed2_volatile;
 extern volatile ee_s32 seed3_volatile;
 extern volatile ee_s32 seed4_volatile;
 extern volatile ee_s32 seed5_volatile;
-ee_s32
-get_seed_32(int i)
-{
+ee_s32 get_seed_32(int i) {
     ee_s32 retval;
-    switch (i)
-    {
-        case 1:
-            retval = seed1_volatile;
-            break;
-        case 2:
-            retval = seed2_volatile;
-            break;
-        case 3:
-            retval = seed3_volatile;
-            break;
-        case 4:
-            retval = seed4_volatile;
-            break;
-        case 5:
-            retval = seed5_volatile;
-            break;
-        default:
-            retval = 0;
-            break;
+    switch (i) {
+    case 1:
+        retval = seed1_volatile;
+        break;
+    case 2:
+        retval = seed2_volatile;
+        break;
+    case 3:
+        retval = seed3_volatile;
+        break;
+    case 4:
+        retval = seed4_volatile;
+        break;
+    case 5:
+        retval = seed5_volatile;
+        break;
+    default:
+        retval = 0;
+        break;
     }
     return retval;
 }
 #elif (SEED_METHOD == SEED_ARG)
-ee_s32
-parseval(char *valstring)
-{
-    ee_s32 retval  = 0;
-    ee_s32 neg     = 1;
-    int    hexmode = 0;
-    if (*valstring == '-')
-    {
+ee_s32 parseval(char *valstring) {
+    ee_s32 retval = 0;
+    ee_s32 neg = 1;
+    int hexmode = 0;
+    if (*valstring == '-') {
         neg = -1;
         valstring++;
     }
-    if ((valstring[0] == '0') && (valstring[1] == 'x'))
-    {
+    if ((valstring[0] == '0') && (valstring[1] == 'x')) {
         hexmode = 1;
         valstring += 2;
     }
     /* first look for digits */
-    if (hexmode)
-    {
-        while (((*valstring >= '0') && (*valstring <= '9'))
-               || ((*valstring >= 'a') && (*valstring <= 'f')))
-        {
+    if (hexmode) {
+        while (((*valstring >= '0') && (*valstring <= '9')) ||
+               ((*valstring >= 'a') && (*valstring <= 'f'))) {
             ee_s32 digit = *valstring - '0';
-            if (digit > 9)
-                digit = 10 + *valstring - 'a';
+            if (digit > 9) digit = 10 + *valstring - 'a';
             retval *= 16;
             retval += digit;
             valstring++;
         }
-    }
-    else
-    {
-        while ((*valstring >= '0') && (*valstring <= '9'))
-        {
+    } else {
+        while ((*valstring >= '0') && (*valstring <= '9')) {
             ee_s32 digit = *valstring - '0';
             retval *= 10;
             retval += digit;
@@ -1867,75 +1619,62 @@ parseval(char *valstring)
         }
     }
     /* now add qualifiers */
-    if (*valstring == 'K')
-        retval *= 1024;
-    if (*valstring == 'M')
-        retval *= 1024 * 1024;
+    if (*valstring == 'K') retval *= 1024;
+    if (*valstring == 'M') retval *= 1024 * 1024;
 
     retval *= neg;
     return retval;
 }
 
-ee_s32
-get_seed_args(int i, int argc, char *argv[])
-{
-    if (argc > i)
-        return parseval(argv[i]);
+ee_s32 get_seed_args(int i, int argc, char *argv[]) {
+    if (argc > i) return parseval(argv[i]);
     return 0;
 }
 
 #elif (SEED_METHOD == SEED_FUNC)
-/* If using OS based function, you must define and implement the functions below
- * in core_portme.h and core_portme.c ! */
-ee_s32
-get_seed_32(int i)
-{
-    ee_s32 retval;
-    switch (i)
-    {
-        case 1:
-            retval = portme_sys1();
-            break;
-        case 2:
-            retval = portme_sys2();
-            break;
-        case 3:
-            retval = portme_sys3();
-            break;
-        case 4:
-            retval = portme_sys4();
-            break;
-        case 5:
-            retval = portme_sys5();
-            break;
-        default:
-            retval = 0;
-            break;
-    }
-    return retval;
-}
+        /* If using OS based function, you must define and implement the functions below
+         * in core_portme.h and core_portme.c ! */
+        ee_s32 get_seed_32(int i) {
+            ee_s32 retval;
+            switch (i) {
+            case 1:
+                retval = portme_sys1();
+                break;
+            case 2:
+                retval = portme_sys2();
+                break;
+            case 3:
+                retval = portme_sys3();
+                break;
+            case 4:
+                retval = portme_sys4();
+                break;
+            case 5:
+                retval = portme_sys5();
+                break;
+            default:
+                retval = 0;
+                break;
+            }
+            return retval;
+        }
 #endif
 
 /* Function: crc*
         Service functions to calculate 16b CRC code.
 
 */
-ee_u16
-crcu8(ee_u8 data, ee_u16 crc)
-{
+ee_u16 crcu8(ee_u8 data, ee_u16 crc) {
     ee_u8 i = 0, x16 = 0, carry = 0;
 
-    for (i = 0; i < 8; i++)
-    {
+    for (i = 0; i < 8; i++) {
         x16 = (ee_u8)((data & 1) ^ ((ee_u8)crc & 1));
         data >>= 1;
 
-        if (x16 == 1)
-        {
+        if (x16 == 1) {
             crc ^= 0x4002;
             carry = 1;
-        }
-        else
+        } else
             carry = 0;
         crc >>= 1;
         if (carry)
@@ -1945,63 +1684,47 @@ crcu8(ee_u8 data, ee_u16 crc)
     }
     return crc;
 }
-ee_u16
-crcu16(ee_u16 newval, ee_u16 crc)
-{
+ee_u16 crcu16(ee_u16 newval, ee_u16 crc) {
     crc = crcu8((ee_u8)(newval), crc);
     crc = crcu8((ee_u8)((newval) >> 8), crc);
     return crc;
 }
-ee_u16
-crcu32(ee_u32 newval, ee_u16 crc)
-{
+ee_u16 crcu32(ee_u32 newval, ee_u16 crc) {
     crc = crc16((ee_s16)newval, crc);
     crc = crc16((ee_s16)(newval >> 16), crc);
     return crc;
 }
-ee_u16
-crc16(ee_s16 newval, ee_u16 crc)
-{
+ee_u16 crc16(ee_s16 newval, ee_u16 crc) {
     return crcu16((ee_u16)newval, crc);
 }
 
-ee_u8
-check_data_types()
-{
+ee_u8 check_data_types() {
     ee_u8 retval = 0;
-    if (sizeof(ee_u8) != 1)
-    {
+    if (sizeof(ee_u8) != 1) {
         ee_printf("ERROR: ee_u8 is not an 8b datatype!\n");
         retval++;
     }
-    if (sizeof(ee_u16) != 2)
-    {
+    if (sizeof(ee_u16) != 2) {
         ee_printf("ERROR: ee_u16 is not a 16b datatype!\n");
         retval++;
     }
-    if (sizeof(ee_s16) != 2)
-    {
+    if (sizeof(ee_s16) != 2) {
         ee_printf("ERROR: ee_s16 is not a 16b datatype!\n");
         retval++;
     }
-    if (sizeof(ee_s32) != 4)
-    {
+    if (sizeof(ee_s32) != 4) {
         ee_printf("ERROR: ee_s32 is not a 32b datatype!\n");
         retval++;
     }
-    if (sizeof(ee_u32) != 4)
-    {
+    if (sizeof(ee_u32) != 4) {
         ee_printf("ERROR: ee_u32 is not a 32b datatype!\n");
         retval++;
     }
-    if (sizeof(ee_ptr_int) != sizeof(int *))
-    {
-        ee_printf(
-            "ERROR: ee_ptr_int is not a datatype that holds an int pointer!\n");
+    if (sizeof(ee_ptr_int) != sizeof(int *)) {
+        ee_printf("ERROR: ee_ptr_int is not a datatype that holds an int pointer!\n");
         retval++;
     }
-    if (retval > 0)
-    {
+    if (retval > 0) {
         ee_printf("ERROR: Please modify the datatypes in core_portme.h!\n");
     }
     return retval;

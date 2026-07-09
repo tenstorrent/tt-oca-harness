@@ -41,27 +41,24 @@
 #include "rom_state.h"
 #include "km_mailbox_sep_regs.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-static uint32_t inbound_irq_enabled(void)
-{
-    km_mailbox_km__irq_enable_reg_t irq_en = {
-        .w = rom_mailbox_irq_enable_read()
-    };
+static uint32_t inbound_irq_enabled(void) {
+    km_mailbox_km__irq_enable_reg_t irq_en = {.w = rom_mailbox_irq_enable_read()};
     return (uint32_t)irq_en.f.inbound_read_data_avail_en;
 }
 
-static uint32_t outbound_drain_irq_enabled(void)
-{
-    km_mailbox_km__irq_enable_reg_t irq_en = {
-        .w = rom_mailbox_irq_enable_read()
-    };
+static uint32_t outbound_drain_irq_enabled(void) {
+    km_mailbox_km__irq_enable_reg_t irq_en = {.w = rom_mailbox_irq_enable_read()};
     return (uint32_t)irq_en.f.outbound_write_space_avail_en;
 }
 
-static void reset_mailbox_state(void)
-{
+static void reset_mailbox_state(void) {
     rom_mailbox_flush();
     rom_msgbuf_flush(&rom_rx_msgbuf);
     rom_msgbuf_flush(&rom_tx_msgbuf);
@@ -71,8 +68,7 @@ static void reset_mailbox_state(void)
     test_delay(50);
 }
 
-static void send_sep_frame(const uint32_t *words, uint32_t len)
-{
+static void send_sep_frame(const uint32_t *words, uint32_t len) {
     TEST_ASSERT(len > 0u, "frame length must be non-zero");
 
     for (uint32_t i = 0; i + 1u < len; i++) {
@@ -90,8 +86,7 @@ static void send_sep_frame(const uint32_t *words, uint32_t len)
     }
 }
 
-static void queue_tx_frame(const uint32_t *words, uint16_t len)
-{
+static void queue_tx_frame(const uint32_t *words, uint16_t len) {
     TEST_ASSERT(len > 0u, "tx frame length must be non-zero");
 
     for (uint16_t i = 0; i < len; i++) {
@@ -103,16 +98,13 @@ static void queue_tx_frame(const uint32_t *words, uint16_t len)
     }
 }
 
-static void fill_outbound_fifo(const uint32_t *words, uint16_t len)
-{
+static void fill_outbound_fifo(const uint32_t *words, uint16_t len) {
     TEST_ASSERT(len > 0u, "outbound fill length must be non-zero");
 
-    for (uint16_t i = 0; i < len; i++)
-        rom_mailbox_write_data(words[i]);
+    for (uint16_t i = 0; i < len; i++) rom_mailbox_write_data(words[i]);
 }
 
-static void seed_rx_partial(uint32_t first_word, uint16_t len)
-{
+static void seed_rx_partial(uint32_t first_word, uint16_t len) {
     TEST_ASSERT(len > 0u, "partial seed length must be non-zero");
 
     for (uint16_t i = 0; i < len; i++) {
@@ -123,13 +115,11 @@ static void seed_rx_partial(uint32_t first_word, uint16_t len)
     }
 }
 
-static void expect_rx_frame(const uint32_t *expected_words, uint16_t expected_len)
-{
+static void expect_rx_frame(const uint32_t *expected_words, uint16_t expected_len) {
     uint16_t start = 0;
     uint16_t length = 0;
 
-    TEST_ASSERT_EQ(rom_msgbuf_frame_available(&rom_rx_msgbuf), 1u,
-                   "rx frame available");
+    TEST_ASSERT_EQ(rom_msgbuf_frame_available(&rom_rx_msgbuf), 1u, "rx frame available");
     TEST_ASSERT_EQ(rom_msgbuf_peek_frame(&rom_rx_msgbuf, &start, &length), 0u,
                    "peek frame succeeds");
     TEST_ASSERT_EQ(start, 0u, "frame starts at index zero");
@@ -147,13 +137,11 @@ static void expect_rx_frame(const uint32_t *expected_words, uint16_t expected_le
 
     TEST_ASSERT_EQ(rom_rx_msgbuf.tail, expected_len, "tail after pop");
     rom_msgbuf_consume_frame(&rom_rx_msgbuf);
-    TEST_ASSERT_EQ(rom_msgbuf_frame_available(&rom_rx_msgbuf), 0u,
-                   "frame consumed");
+    TEST_ASSERT_EQ(rom_msgbuf_frame_available(&rom_rx_msgbuf), 0u, "frame consumed");
     TEST_ASSERT_EQ(rom_rx_msgbuf.count, 0u, "buffer count reset");
 }
 
-static void expect_sep_frame(const uint32_t *expected_words, uint16_t expected_len)
-{
+static void expect_sep_frame(const uint32_t *expected_words, uint16_t expected_len) {
     for (uint16_t i = 0; i < expected_len; i++) {
         uint32_t word = 0;
         uint32_t status = 0;
@@ -174,9 +162,7 @@ static void expect_sep_frame(const uint32_t *expected_words, uint16_t expected_l
     }
 }
 
-static uint32_t make_response_header(uint8_t resp_id, uint8_t payload_len,
-                                     uint8_t seq_num)
-{
+static uint32_t make_response_header(uint8_t resp_id, uint8_t payload_len, uint8_t seq_num) {
     rom_km_msg_header_t hdr;
     hdr.seq_num = seq_num;
     hdr.id = resp_id;
@@ -185,8 +171,7 @@ static uint32_t make_response_header(uint8_t resp_id, uint8_t payload_len,
     return hdr.raw;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(500000u)) {
@@ -195,7 +180,7 @@ int main(void)
 
     TEST_SUBTEST_START("Single-word TX msgbuf drains to outbound mailbox");
     {
-        static const uint32_t tx_frame[] = { 0x1A2B3C4Du };
+        static const uint32_t tx_frame[] = {0x1A2B3C4Du};
 
         reset_mailbox_state();
         queue_tx_frame(tx_frame, 1u);
@@ -213,11 +198,7 @@ int main(void)
 
     TEST_SUBTEST_START("Multi-word TX msgbuf drains to outbound mailbox");
     {
-        static const uint32_t tx_frame[] = {
-            0xA1A2A3A4u,
-            0xB1B2B3B4u,
-            0xC1C2C3C4u
-        };
+        static const uint32_t tx_frame[] = {0xA1A2A3A4u, 0xB1B2B3B4u, 0xC1C2C3C4u};
 
         reset_mailbox_state();
         queue_tx_frame(tx_frame, 3u);
@@ -235,13 +216,10 @@ int main(void)
 
     TEST_SUBTEST_START("Disabled outbound drain IRQ is restored when TX data is queued");
     {
-        const uint32_t expected_frame[] = {
-            make_response_header(ROM_KM_RESP_KM_READY, 0u, 0u)
-        };
+        const uint32_t expected_frame[] = {make_response_header(ROM_KM_RESP_KM_READY, 0u, 0u)};
 
         reset_mailbox_state();
-        TEST_ASSERT_EQ(outbound_drain_irq_enabled(), 0u,
-                       "outbound drain IRQ starts disabled");
+        TEST_ASSERT_EQ(outbound_drain_irq_enabled(), 0u, "outbound drain IRQ starts disabled");
 
         rom_msg_tx_send(ROM_KM_RESP_KM_READY, NULL, 0u);
 
@@ -262,23 +240,15 @@ int main(void)
 
     TEST_SUBTEST_START("Partial TX ISR drain keeps remaining frame queued");
     {
-        static const uint32_t prefill_words[] = {
-            0x90000000u, 0x90000001u, 0x90000002u, 0x90000003u,
-            0x90000004u, 0x90000005u, 0x90000006u, 0x90000007u,
-            0x90000008u, 0x90000009u, 0x9000000Au, 0x9000000Bu,
-            0x9000000Cu, 0x9000000Du
-        };
-        static const uint32_t tx_frame[] = {
-            0x12340001u,
-            0x12340002u,
-            0x12340003u
-        };
+        static const uint32_t prefill_words[] = {0x90000000u, 0x90000001u, 0x90000002u, 0x90000003u,
+                                                 0x90000004u, 0x90000005u, 0x90000006u, 0x90000007u,
+                                                 0x90000008u, 0x90000009u, 0x9000000Au, 0x9000000Bu,
+                                                 0x9000000Cu, 0x9000000Du};
+        static const uint32_t tx_frame[] = {0x12340001u, 0x12340002u, 0x12340003u};
         static const uint32_t remaining_fifo[] = {
-            0x90000001u, 0x90000002u, 0x90000003u, 0x90000004u,
-            0x90000005u, 0x90000006u, 0x90000007u, 0x90000008u,
-            0x90000009u, 0x9000000Au, 0x9000000Bu, 0x9000000Cu,
-            0x9000000Du, 0x12340001u, 0x12340002u, 0x12340003u
-        };
+            0x90000001u, 0x90000002u, 0x90000003u, 0x90000004u, 0x90000005u, 0x90000006u,
+            0x90000007u, 0x90000008u, 0x90000009u, 0x9000000Au, 0x9000000Bu, 0x9000000Cu,
+            0x9000000Du, 0x12340001u, 0x12340002u, 0x12340003u};
         uint16_t start = 0;
         uint16_t length = 0;
         uint32_t drained_word = 0;
@@ -315,7 +285,7 @@ int main(void)
 
     TEST_SUBTEST_START("Masked waitirq wakes on pending inbound mailbox IRQ");
     {
-        static const uint32_t pending_frame[] = { 0x0BADCAFEu };
+        static const uint32_t pending_frame[] = {0x0BADCAFEu};
         uint32_t old_mask = 0;
 
         reset_mailbox_state();
@@ -334,15 +304,14 @@ int main(void)
         rom_isr_mailbox();
 
         expect_rx_frame(pending_frame, 1u);
-        TEST_ASSERT(rom_mailbox_inbound_empty(),
-                    "manual ISR drain clears pending mailbox frame");
+        TEST_ASSERT(rom_mailbox_inbound_empty(), "manual ISR drain clears pending mailbox frame");
         rom_picorv32_maskirq(old_mask);
     }
     TEST_SUBTEST_PASS();
 
     TEST_SUBTEST_START("Single-word frame drains into RX msgbuf");
     {
-        static const uint32_t single_word_frame[] = { 0xA5A5F00Du };
+        static const uint32_t single_word_frame[] = {0xA5A5F00Du};
 
         reset_mailbox_state();
         rom_mailbox_enable_inbound_irq();
@@ -352,21 +321,15 @@ int main(void)
         rom_isr_mailbox();
 
         expect_rx_frame(single_word_frame, 1u);
-        TEST_ASSERT(rom_mailbox_inbound_empty(),
-                    "inbound FIFO empty after single-word drain");
-        TEST_ASSERT_EQ(inbound_irq_enabled(), 1u,
-                       "inbound IRQ remains enabled after full drain");
+        TEST_ASSERT(rom_mailbox_inbound_empty(), "inbound FIFO empty after single-word drain");
+        TEST_ASSERT_EQ(inbound_irq_enabled(), 1u, "inbound IRQ remains enabled after full drain");
     }
     TEST_SUBTEST_PASS();
 
     TEST_SUBTEST_START("Multi-word frame drains into RX msgbuf");
     {
-        static const uint32_t payload_frame[] = {
-            0x11223344u,
-            0x55667788u,
-            0x99AABBCCu,
-            0xDDEEFF00u
-        };
+        static const uint32_t payload_frame[] = {0x11223344u, 0x55667788u, 0x99AABBCCu,
+                                                 0xDDEEFF00u};
 
         reset_mailbox_state();
         rom_mailbox_enable_inbound_irq();
@@ -376,8 +339,7 @@ int main(void)
         rom_isr_mailbox();
 
         expect_rx_frame(payload_frame, 4u);
-        TEST_ASSERT(rom_mailbox_inbound_empty(),
-                    "inbound FIFO empty after multi-word drain");
+        TEST_ASSERT(rom_mailbox_inbound_empty(), "inbound FIFO empty after multi-word drain");
         TEST_ASSERT_EQ(inbound_irq_enabled(), 1u,
                        "inbound IRQ remains enabled after multi-word drain");
     }
@@ -409,8 +371,7 @@ int main(void)
                        "partial state has no complete frame");
         TEST_ASSERT_EQ(rom_msgbuf_has_only_partial(&rom_rx_msgbuf), 0u,
                        "partial state is not an overflow");
-        TEST_ASSERT(!rom_mailbox_inbound_empty(),
-                    "residual inbound FIFO data is present");
+        TEST_ASSERT(!rom_mailbox_inbound_empty(), "residual inbound FIFO data is present");
         TEST_ASSERT_EQ(inbound_irq_enabled(), 0u,
                        "inbound IRQ starts disabled in stuck-state model");
 
@@ -423,8 +384,8 @@ int main(void)
 
     TEST_SUBTEST_START("Existing RX frame blocks mailbox drain");
     {
-        static const uint32_t existing_frame[] = { 0x01020304u };
-        static const uint32_t pending_frame[] = { 0x11111111u, 0x22222222u };
+        static const uint32_t existing_frame[] = {0x01020304u};
+        static const uint32_t pending_frame[] = {0x11111111u, 0x22222222u};
 
         reset_mailbox_state();
         TEST_ASSERT_EQ(rom_msgbuf_write_word(&rom_rx_msgbuf, existing_frame[0], 1u), 0u,
@@ -438,10 +399,8 @@ int main(void)
 
         TEST_ASSERT_EQ(rom_msgbuf_frame_available(&rom_rx_msgbuf), 1u,
                        "existing frame still present");
-        TEST_ASSERT(!rom_mailbox_inbound_empty(),
-                    "pending mailbox frame left in FIFO");
-        TEST_ASSERT_EQ(inbound_irq_enabled(), 0u,
-                       "inbound IRQ disabled while frame is pending");
+        TEST_ASSERT(!rom_mailbox_inbound_empty(), "pending mailbox frame left in FIFO");
+        TEST_ASSERT_EQ(inbound_irq_enabled(), 0u, "inbound IRQ disabled while frame is pending");
 
         expect_rx_frame(existing_frame, 1u);
 

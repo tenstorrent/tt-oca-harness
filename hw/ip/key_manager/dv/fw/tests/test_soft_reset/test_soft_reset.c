@@ -32,17 +32,16 @@
 /* Marker value written to a retained mid-SRAM location before reset. */
 /* Keep this outside the startup-cleared globals for the current linker layout. */
 #define RESET_MARKER_VALUE 0xDEADBEEF
-#define RESET_MARKER_ADDR  (SRAM_BASE + 0x3000)
+#define RESET_MARKER_ADDR (SRAM_BASE + 0x3000)
 
 /* Signatures to track execution phases */
-#define SIGNATURE_BEFORE_RESET 0xABADCAFE  /* "ABADCAFE" = about to reset */
-#define SIGNATURE_AFTER_RESET  0xCAFEBABE  /* "CAFEBABE" = reset complete */
+#define SIGNATURE_BEFORE_RESET 0xABADCAFE /* "ABADCAFE" = about to reset */
+#define SIGNATURE_AFTER_RESET 0xCAFEBABE  /* "CAFEBABE" = reset complete */
 
 /* Register access macros - using generated header definitions */
-#define KMCSR_SOFT_RST_CODE_REG  (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SOFT_RST_CODE_BASE_ADDR)
+#define KMCSR_SOFT_RST_CODE_REG (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SOFT_RST_CODE_BASE_ADDR)
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* Check if this is the first run (before reset) or second run (after reset) */

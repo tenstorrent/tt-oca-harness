@@ -72,8 +72,7 @@ __inline__ int metal_cache_get_enabled_ways(struct metal_cache *cache) {
  * @return 0 if the ways are successfully enabled
  * Note: API to be deprecated in next release.
  */
-__inline__ int metal_cache_set_enabled_ways(struct metal_cache *cache,
-                                            int ways) {
+__inline__ int metal_cache_set_enabled_ways(struct metal_cache *cache, int ways) {
     return metal_l2cache_set_enabled_ways(ways);
 }
 

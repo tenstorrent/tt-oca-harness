@@ -18,17 +18,16 @@
 #define OUTPUT_DATAPATH_SCENARIOS 9
 
 // Output remap 測試基礎定義
-#define OUTPUT_SRC_BASE          0x50000000
-#define OUTPUT_DEST_BASE         0x90000000
-#define AP_OUTPUT_BASE           0x60000000
-#define STEE_OUTPUT_BASE         0xA0000000
+#define OUTPUT_SRC_BASE 0x50000000
+#define OUTPUT_DEST_BASE 0x90000000
+#define AP_OUTPUT_BASE 0x60000000
+#define STEE_OUTPUT_BASE 0xA0000000
 
 // 輸出重映射模式
-#define OUTPUT_REGION_SIZE       0x100000
-#define MAX_OUTPUT_REGIONS       16
+#define OUTPUT_REGION_SIZE 0x100000
+#define MAX_OUTPUT_REGIONS 16
 
-static int test_ap_stee_full_16_regions(void)
-{
+static int test_ap_stee_full_16_regions(void) {
     printf("Starting AP/STEE full 16 regions test...\n");
 
     // 場景1: AP/STEE 全16區域覆蓋
@@ -43,12 +42,11 @@ static int test_ap_stee_full_16_regions(void)
             int channel = (region + cycle) % 2;
             uint32_t dest_addr = channel ? stee_dest : ap_dest;
 
-            if (setup_output_remap_region_extended(region,
-                                                 src_addr, dest_addr,
-                                                 1,  // enable
-                                                 channel,  // AP(0) or STEE(1)
-                                                 0xFFF00000,  // 1MB granularity
-                                                 CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_output_remap_region_extended(region, src_addr, dest_addr,
+                                                   1,          // enable
+                                                   channel,    // AP(0) or STEE(1)
+                                                   0xFFF00000, // 1MB granularity
+                                                   CACHE_ATTR_WRITEBACK) != 0) {
                 printf("ERROR: Failed to setup region %d cycle %d\n", region, cycle);
                 return -1;
             }
@@ -56,7 +54,8 @@ static int test_ap_stee_full_16_regions(void)
 
         // 測試所有16個區域的存取
         for (int region = 0; region < 16; region++) {
-            uint32_t test_addr = OUTPUT_SRC_BASE + cycle * 0x1000000 + region * OUTPUT_REGION_SIZE + 0x10000;
+            uint32_t test_addr =
+                OUTPUT_SRC_BASE + cycle * 0x1000000 + region * OUTPUT_REGION_SIZE + 0x10000;
 
             // 不同大小的存取模式
             if (test_axi_transaction(test_addr, 4, AXI_READ) != 0) {
@@ -81,18 +80,17 @@ static int test_ap_stee_full_16_regions(void)
     return 0;
 }
 
-static int test_offset_preserve_bit_range_coverage(void)
-{
+static int test_offset_preserve_bit_range_coverage(void) {
     printf("Starting offset preserve bit range coverage...\n");
 
     // 場景2: Offset-preserve bit range 覆蓋
     uint32_t offset_patterns[] = {
-        0x00001000, 0x00002000, 0x00004000, 0x00008000,  // 4KB-32KB offsets
-        0x00010000, 0x00020000, 0x00040000, 0x00080000,  // 64KB-512KB offsets
-        0x00100000, 0x00200000, 0x00400000, 0x00800000,  // 1MB-8MB offsets
-        0x01000000, 0x02000000, 0x04000000, 0x08000000,  // 16MB-128MB offsets
-        0x10000000, 0x20000000, 0x40000000, 0x80000000,  // 256MB+ offsets
-        0x12345000, 0x56789000, 0xABCDE000, 0xFEDCB000   // 複雜模式
+        0x00001000, 0x00002000, 0x00004000, 0x00008000, // 4KB-32KB offsets
+        0x00010000, 0x00020000, 0x00040000, 0x00080000, // 64KB-512KB offsets
+        0x00100000, 0x00200000, 0x00400000, 0x00800000, // 1MB-8MB offsets
+        0x01000000, 0x02000000, 0x04000000, 0x08000000, // 16MB-128MB offsets
+        0x10000000, 0x20000000, 0x40000000, 0x80000000, // 256MB+ offsets
+        0x12345000, 0x56789000, 0xABCDE000, 0xFEDCB000  // 複雜模式
     };
 
     for (int pattern_idx = 0; pattern_idx < 20; pattern_idx++) {
@@ -105,13 +103,12 @@ static int test_offset_preserve_bit_range_coverage(void)
             // 應用offset模式
             uint32_t dest_with_offset = dest_base + offset;
 
-            if (setup_output_remap_region_extended(region,
-                                                 src_base, dest_with_offset,
-                                                 1,  // enable
-                                                 (pattern_idx + region) % 2,  // 交替通道
-                                                 0xFFE00000,  // 2MB granularity
-                                                 (offset >> 24) & 0xFF) != 0) {
-                continue;  // Skip invalid offset combinations
+            if (setup_output_remap_region_extended(region, src_base, dest_with_offset,
+                                                   1,                          // enable
+                                                   (pattern_idx + region) % 2, // 交替通道
+                                                   0xFFE00000,                 // 2MB granularity
+                                                   (offset >> 24) & 0xFF) != 0) {
+                continue; // Skip invalid offset combinations
             }
 
             // 測試offset preserve行為
@@ -123,7 +120,7 @@ static int test_offset_preserve_bit_range_coverage(void)
 
             // 測試不同的preserve bit patterns
             for (int bit_test = 0; bit_test < 8; bit_test++) {
-                uint32_t bit_offset = 1 << (12 + bit_test);  // 4KB to 512KB bits
+                uint32_t bit_offset = 1 << (12 + bit_test); // 4KB to 512KB bits
                 test_axi_transaction(test_addr + bit_offset, 4, AXI_READ);
             }
         }
@@ -133,8 +130,7 @@ static int test_offset_preserve_bit_range_coverage(void)
     return 0;
 }
 
-static int test_channel_separation_stress(void)
-{
+static int test_channel_separation_stress(void) {
     printf("Starting channel separation stress test...\n");
 
     // 場景3: Channel separation 深度測試
@@ -149,7 +145,8 @@ static int test_channel_separation_stress(void)
             int is_ap = (region ^ stress_round ^ (region >> 2)) & 1;
             uint32_t dest = is_ap ? ap_dest : stee_dest;
 
-            if (setup_output_remap_region(region, region_base, dest, 1, is_ap ? AP_CHANNEL : STEE_CHANNEL) != 0) {
+            if (setup_output_remap_region(region, region_base, dest, 1,
+                                          is_ap ? AP_CHANNEL : STEE_CHANNEL) != 0) {
                 return -1;
             }
         }
@@ -159,8 +156,10 @@ static int test_channel_separation_stress(void)
             int ap_region = parallel_test % 8;
             int stee_region = 8 + (parallel_test % 8);
 
-            uint32_t ap_addr = OUTPUT_SRC_BASE + stress_round * 0x4000000 + ap_region * 0x400000 + 0x100000;
-            uint32_t stee_addr = OUTPUT_SRC_BASE + stress_round * 0x4000000 + stee_region * 0x400000 + 0x100000;
+            uint32_t ap_addr =
+                OUTPUT_SRC_BASE + stress_round * 0x4000000 + ap_region * 0x400000 + 0x100000;
+            uint32_t stee_addr =
+                OUTPUT_SRC_BASE + stress_round * 0x4000000 + stee_region * 0x400000 + 0x100000;
 
             // 快速交替存取
             test_axi_transaction(ap_addr, 4, AXI_READ);
@@ -174,21 +173,17 @@ static int test_channel_separation_stress(void)
     return 0;
 }
 
-static int test_complement_patterns_datapath(void)
-{
+static int test_complement_patterns_datapath(void) {
     printf("Starting complement patterns datapath test...\n");
 
     // 場景4: Complement patterns 測試
     uint32_t complement_pairs[][2] = {
-        {0x00000000, 0xFFFFFFFF}, {0x55555555, 0xAAAAAAAA},
-        {0x33333333, 0xCCCCCCCC}, {0x0F0F0F0F, 0xF0F0F0F0},
-        {0x00FF00FF, 0xFF00FF00}, {0x0000FFFF, 0xFFFF0000},
-        {0x000000FF, 0xFFFFFF00}, {0x12345678, 0xEDCBA987},
-        {0x13579BDF, 0xECA86420}, {0x11111111, 0xEEEEEEEE},
-        {0x22222222, 0xDDDDDDDD}, {0x44444444, 0xBBBBBBBB},
-        {0x88888888, 0x77777777}, {0x01010101, 0xFEFEFEFE},
-        {0x02040810, 0xFDFB7FEF}, {0x80402010, 0x7FBFDFEF}
-    };
+        {0x00000000, 0xFFFFFFFF}, {0x55555555, 0xAAAAAAAA}, {0x33333333, 0xCCCCCCCC},
+        {0x0F0F0F0F, 0xF0F0F0F0}, {0x00FF00FF, 0xFF00FF00}, {0x0000FFFF, 0xFFFF0000},
+        {0x000000FF, 0xFFFFFF00}, {0x12345678, 0xEDCBA987}, {0x13579BDF, 0xECA86420},
+        {0x11111111, 0xEEEEEEEE}, {0x22222222, 0xDDDDDDDD}, {0x44444444, 0xBBBBBBBB},
+        {0x88888888, 0x77777777}, {0x01010101, 0xFEFEFEFE}, {0x02040810, 0xFDFB7FEF},
+        {0x80402010, 0x7FBFDFEF}};
 
     for (int pair_idx = 0; pair_idx < 16; pair_idx++) {
         uint32_t pattern_a = complement_pairs[pair_idx][0];
@@ -199,14 +194,13 @@ static int test_complement_patterns_datapath(void)
             uint32_t src_pattern = (pattern_a & 0xFFF00000) | (region << 20);
             uint32_t dest_pattern = (pattern_b & 0xFFF00000) | (region << 20);
 
-            if (setup_output_remap_region_extended(region,
-                                                 OUTPUT_SRC_BASE + src_pattern,
-                                                 OUTPUT_DEST_BASE + dest_pattern,
-                                                 1,  // enable
-                                                 (pattern_a >> region) & 1,  // channel
-                                                 pattern_a | 0xFFF00000,  // mask based on pattern
-                                                 (pattern_b >> 24) & 0xFF) != 0) {
-                continue;  // Skip invalid combinations
+            if (setup_output_remap_region_extended(region, OUTPUT_SRC_BASE + src_pattern,
+                                                   OUTPUT_DEST_BASE + dest_pattern,
+                                                   1,                         // enable
+                                                   (pattern_a >> region) & 1, // channel
+                                                   pattern_a | 0xFFF00000, // mask based on pattern
+                                                   (pattern_b >> 24) & 0xFF) != 0) {
+                continue; // Skip invalid combinations
             }
 
             // 測試complement pattern存取
@@ -227,28 +221,26 @@ static int test_complement_patterns_datapath(void)
     return 0;
 }
 
-static int test_region_boundary_crossing(void)
-{
+static int test_region_boundary_crossing(void) {
     printf("Starting region boundary crossing test...\n");
 
     // 場景5: Region boundary crossing 測試
     for (int boundary_test = 0; boundary_test < 16; boundary_test++) {
-        for (int region = 0; region < 15; region++) {  // 避免region 15溢出
+        for (int region = 0; region < 15; region++) { // 避免region 15溢出
             uint32_t region_base = OUTPUT_SRC_BASE + boundary_test * 0x8000000 + region * 0x800000;
             uint32_t region_end = region_base + 0x800000 - 1;
             uint32_t next_region_start = region_base + 0x800000;
 
             // 設置當前區域
-            if (setup_output_remap_region(region,
-                                         region_base, OUTPUT_DEST_BASE + region * 0x800000,
-                                         1, region % 2) != 0) {
+            if (setup_output_remap_region(region, region_base, OUTPUT_DEST_BASE + region * 0x800000,
+                                          1, region % 2) != 0) {
                 continue;
             }
 
             // 設置下一個區域
-            if (setup_output_remap_region(region + 1,
-                                         next_region_start, OUTPUT_DEST_BASE + (region + 1) * 0x800000,
-                                         1, (region + 1) % 2) != 0) {
+            if (setup_output_remap_region(region + 1, next_region_start,
+                                          OUTPUT_DEST_BASE + (region + 1) * 0x800000, 1,
+                                          (region + 1) % 2) != 0) {
                 continue;
             }
 
@@ -259,7 +251,7 @@ static int test_region_boundary_crossing(void)
             test_axi_transaction(next_region_start + 4, 4, AXI_WRITE);
 
             // 大burst跨邊界
-            test_axi_transaction(region_end - 31, 64, AXI_READ);  // 64-byte跨邊界
+            test_axi_transaction(region_end - 31, 64, AXI_READ); // 64-byte跨邊界
         }
     }
 
@@ -267,8 +259,7 @@ static int test_region_boundary_crossing(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_063: Output Remap Datapath P3 Test\n");
     printf("Goals: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
     printf("Strategy: AP/STEE remap 流量覆蓋每個 region index，完整datapath矩陣\n\n");
@@ -306,7 +297,8 @@ int main(void)
     }
 
     printf("\n=== TC_FABRIC_063: OUTPUT REMAP DATAPATH P3 TEST PASSED ===\n");
-    printf("Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
+    printf(
+        "Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
 
     test_pass("TC_FABRIC_063");
     return TEST_PASS;

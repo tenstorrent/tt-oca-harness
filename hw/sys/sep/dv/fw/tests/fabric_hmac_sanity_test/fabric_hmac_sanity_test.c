@@ -15,14 +15,12 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static int check_bit(const char *name, uint32_t value)
-{
+static int check_bit(const char *name, uint32_t value) {
     printf("%s: %u - %s\n", name, value, value ? "PASS" : "FAIL");
     return value ? 1 : 0;
 }
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -36,9 +34,8 @@ int main(void)
     uint32_t err_code = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
 
     printf("HMAC_CFG    = 0x%08x\n", cfg.w);
-    printf("HMAC_STATUS = 0x%08x idle=%u empty=%u full=%u depth=%u\n",
-           status.w, status.f.hmac_idle, status.f.fifo_empty,
-           status.f.fifo_full, status.f.fifo_depth);
+    printf("HMAC_STATUS = 0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.hmac_idle,
+           status.f.fifo_empty, status.f.fifo_full, status.f.fifo_depth);
     printf("HMAC_ERR_CODE = 0x%08x\n", err_code);
 
     if (!check_bit("HMAC idle", status.f.hmac_idle)) {

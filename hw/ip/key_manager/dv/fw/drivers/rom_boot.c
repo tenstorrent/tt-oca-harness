@@ -39,13 +39,11 @@
 #endif
 
 /** @brief Weak default hook: boot wipe is enabled. */
-__attribute__((weak)) int rom_boot_wipe_enabled(void)
-{
+__attribute__((weak)) int rom_boot_wipe_enabled(void) {
     return ROM_KM_BOOT_WIPE_DEFAULT;
 }
 /** @brief Weak default hook: unrecoverable-fault wipe is enabled. */
-__attribute__((weak)) int rom_unrec_wipe_enabled(void)
-{
+__attribute__((weak)) int rom_unrec_wipe_enabled(void) {
     return ROM_KM_UNREC_WIPE_DEFAULT;
 }
 
@@ -56,8 +54,7 @@ __attribute__((weak)) int rom_unrec_wipe_enabled(void)
  * scramblers, optionally shreds key material regions, initializes software
  * state, and announces ready to SEP.
  */
-void rom_boot_init(void)
-{
+void rom_boot_init(void) {
     /* Capture cold/warm before COLD_BOOT_DONE is set at the end of this
      * function. Reads 0 on every cold boot (including the second pass after
      * rom_boot_sram_restart); reads 1 on every warm or soft reset. */
@@ -66,16 +63,16 @@ void rom_boot_init(void)
     /* ----- Enable KMCSR fault IRQs ----- */
 
     KM_CSR_IRQ_ENABLE_REG_reg_u irq_en = {0};
-    irq_en.f.rom_parity_en      = 1;
-    irq_en.f.sram_parity_en     = 1;
-    irq_en.f.rom_write_en       = 1;
+    irq_en.f.rom_parity_en = 1;
+    irq_en.f.sram_parity_en = 1;
+    irq_en.f.rom_write_en = 1;
     irq_en.f.sram_write_lock_en = 1;
-    irq_en.f.axi_slverr_en      = 1;
-    irq_en.f.axi_decerr_en      = 1;
-    irq_en.f.drbg_err_en        = 1;
-    irq_en.f.wipe_state_en      = 1;
-    irq_en.f.otp_sigint_en      = 1;
-    irq_en.f.exec_violation_en  = 1;
+    irq_en.f.axi_slverr_en = 1;
+    irq_en.f.axi_decerr_en = 1;
+    irq_en.f.drbg_err_en = 1;
+    irq_en.f.wipe_state_en = 1;
+    irq_en.f.otp_sigint_en = 1;
+    irq_en.f.exec_violation_en = 1;
     rom_kmcsr_irq_status_clear(0xFFFFFFFF);
     rom_kmcsr_irq_enable_write(irq_en.val);
 
@@ -106,8 +103,7 @@ void rom_boot_init(void)
 
     /* ----- Cold-init warm-persist region ----- */
 
-    if (is_cold)
-        rom_persist_cold_init();
+    if (is_cold) rom_persist_cold_init();
 
     /* ----- KPV scrambler init & shred all slots ----- */
 
@@ -142,7 +138,7 @@ void rom_boot_init(void)
 
     /* ----- Init message sequence state ----- */
 
-    rom_cmd_seq_num  = 0;
+    rom_cmd_seq_num = 0;
     rom_resp_seq_num = 0;
 
     /* Boot mailbox FIFO cleanup before clearing mailbox IRQ status. */
@@ -154,9 +150,9 @@ void rom_boot_init(void)
     /* Enable inbound data + error sources; keep outbound data IRQ off */
     KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u mbox_en = {0};
     mbox_en.f.inbound_read_data_avail_en = 1;
-    mbox_en.f.outbound_overflow_en       = 1;
-    mbox_en.f.inbound_underflow_en       = 1;
-    mbox_en.f.flushed_by_sep_en          = 1;
+    mbox_en.f.outbound_overflow_en = 1;
+    mbox_en.f.inbound_underflow_en = 1;
+    mbox_en.f.flushed_by_sep_en = 1;
     rom_mailbox_irq_enable_write(mbox_en.val);
 
     /* ----- Arm ABR ML-KEM shared-key IRQ ----- */

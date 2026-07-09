@@ -10,7 +10,7 @@
 #include <metal/machine/platform.h>
 
 #define METAL_REG(base, offset) (((unsigned long)(base) + (offset)))
-#define METAL_REGW(base, offset)                                               \
+#define METAL_REGW(base, offset) \
     (__METAL_ACCESS_ONCE((__metal_io_u32 *)METAL_REG((base), (offset))))
 #define METAL_MSIP(base, hart) (METAL_REGW((base), 4 * (hart)))
 
@@ -29,16 +29,13 @@ __attribute__((section(".init"))) void __metal_synchronize_harts() {
 
     /* Get the base address of the MSIP registers */
 #ifdef __METAL_DT_RISCV_CLINT0_HANDLE
-    msip_base = __metal_driver_sifive_clint0_control_base(
-        __METAL_DT_RISCV_CLINT0_HANDLE);
+    msip_base = __metal_driver_sifive_clint0_control_base(__METAL_DT_RISCV_CLINT0_HANDLE);
     msip_base += METAL_RISCV_CLINT0_MSIP_BASE;
 #elif __METAL_DT_RISCV_CLIC0_HANDLE
-    msip_base =
-        __metal_driver_sifive_clic0_control_base(__METAL_DT_RISCV_CLIC0_HANDLE);
+    msip_base = __metal_driver_sifive_clic0_control_base(__METAL_DT_RISCV_CLIC0_HANDLE);
     msip_base += METAL_RISCV_CLIC0_MSIP_BASE;
 #else
-#pragma message(No handle for CLINT or CLIC found,                             \
-                harts may be unsynchronized after init !)
+#pragma message(No handle for CLINT or CLIC found, harts may be unsynchronized after init !)
 #endif
 
     /* Disable machine interrupts as a precaution */

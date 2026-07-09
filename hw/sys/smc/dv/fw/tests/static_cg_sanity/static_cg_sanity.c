@@ -7,9 +7,9 @@
 #include "smc_test.h"
 
 // Phase completion signals
-#define TEST_COMPLETE_PHASE1    0xC0FFEE  // Clock gating enabled
-#define COCOTB_PROCEED_SIGNAL   0x77777777
-#define TEST_COMPLETE_PHASE2    0xDECAFE  // Clock gating disabled
+#define TEST_COMPLETE_PHASE1 0xC0FFEE // Clock gating enabled
+#define COCOTB_PROCEED_SIGNAL 0x77777777
+#define TEST_COMPLETE_PHASE2 0xDECAFE // Clock gating disabled
 
 int main(void) {
     // Signal firmware ready
@@ -37,7 +37,7 @@ int main(void) {
     }
 
     // Disable all peripheral clock gating (static and dynamic)
-    clock_gate_ctrl.w = 0;  // Clear all clock gating enables
+    clock_gate_ctrl.w = 0; // Clear all clock gating enables
     write_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
 
     write_scratch(5, TEST_COMPLETE_PHASE2);

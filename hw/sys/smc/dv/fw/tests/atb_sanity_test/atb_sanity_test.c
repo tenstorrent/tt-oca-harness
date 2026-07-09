@@ -43,8 +43,7 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-int main(void)
-{
+int main(void) {
     uint32_t test_step = 0;
 
     simputs("\n");
@@ -63,7 +62,8 @@ int main(void)
     test_step = 2;
     write_scratch(1, test_step);
     simputs("Step 2: Read CTRL register\n");
-    uint32_t ctrl_val = read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(0));
+    uint32_t ctrl_val =
+        read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(0));
     simputs("  CTRL: 0x");
     simputshex32("", ctrl_val);
     simputs("\n");
@@ -72,7 +72,8 @@ int main(void)
     test_step = 3;
     write_scratch(1, test_step);
     simputs("Step 3: Read STATUS register\n");
-    uint32_t status_val = read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(0));
+    uint32_t status_val =
+        read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(0));
     simputs("  STATUS: 0x");
     simputshex32("", status_val);
     simputs("\n");
@@ -81,7 +82,8 @@ int main(void)
     test_step = 4;
     write_scratch(1, test_step);
     simputs("Step 4: Read TELEMETRY_PROBE_ID register\n");
-    uint32_t probe_id_val = read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(0));
+    uint32_t probe_id_val = read_reg(
+        SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(0));
     simputs("  TELEMETRY_PROBE_ID: 0x");
     simputshex32("", probe_id_val);
     simputs("\n");
@@ -90,7 +92,8 @@ int main(void)
     test_step = 5;
     write_scratch(1, test_step);
     simputs("Step 5: Read TELEMETRY_COUNTER_VLDS register\n");
-    uint32_t counter_vlds_val = read_reg(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(0));
+    uint32_t counter_vlds_val = read_reg(
+        SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(0));
     simputs("  TELEMETRY_COUNTER_VLDS: 0x");
     simputshex32("", counter_vlds_val);
     simputs("\n");
@@ -101,7 +104,9 @@ int main(void)
     simputs("Step 6: Read telemetry counter values\n");
     simputs("  Reading first 6 counter registers...\n");
     for (int i = 0; i < 6; i++) {
-        uint32_t counter_addr = SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(0, i);
+        uint32_t counter_addr =
+            SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(0,
+                                                                                               i);
         uint32_t counter_val = read_reg(counter_addr);
         simputs("  TELEMETRY_COUNTER[");
         simputshex32("", i);

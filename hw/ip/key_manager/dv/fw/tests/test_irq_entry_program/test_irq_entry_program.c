@@ -4,7 +4,8 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_irq_entry_program.c
- * @brief Program IRQ_ENTRY_ADDR while unlocked; misaligned readback; interrupt uses last/alternate entry.
+ * @brief Program IRQ_ENTRY_ADDR while unlocked; misaligned readback; interrupt uses last/alternate
+ * entry.
  */
 
 #include "test_common.h"
@@ -18,8 +19,7 @@ static volatile uint32_t kmcsr_irq_hits;
  *
  * @param frame IRQ frame supplied by the ISR trampoline.
  */
-void rom_irq(rom_irq_frame_t *frame)
-{
+void rom_irq(rom_irq_frame_t *frame) {
     if (frame->irq_mask & PICORV32_IRQ_KMCSR) {
         kmcsr_irq_hits++;
         rom_kmcsr_irq_status_clear(irq_entry_test_all_status_mask());
@@ -31,8 +31,7 @@ void rom_irq(rom_irq_frame_t *frame)
  *
  * @return Does not return; halts via TEST_PASS or TEST_FAIL.
  */
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     TEST_SUBTEST_START("Multiple writes and misaligned readback while unlocked");

@@ -18,41 +18,38 @@
 #define CSR_TOGGLE_SCENARIOS 32
 
 // CSR欄位模式定義
-#define ADDR_PATTERN_A       0xAAAAAAAA
-#define ADDR_PATTERN_B       0x55555555
-#define ADDR_PATTERN_C       0xCCCCCCCC
-#define ADDR_PATTERN_D       0x33333333
+#define ADDR_PATTERN_A 0xAAAAAAAA
+#define ADDR_PATTERN_B 0x55555555
+#define ADDR_PATTERN_C 0xCCCCCCCC
+#define ADDR_PATTERN_D 0x33333333
 
-#define ENABLE_PATTERN_FULL  0xFFFFFFFF
-#define ENABLE_PATTERN_ALT   0x55555555
-#define ENABLE_PATTERN_INV   0xAAAAAAAA
+#define ENABLE_PATTERN_FULL 0xFFFFFFFF
+#define ENABLE_PATTERN_ALT 0x55555555
+#define ENABLE_PATTERN_INV 0xAAAAAAAA
 
-#define CHANNEL_PATTERN_AP   0x00000000
+#define CHANNEL_PATTERN_AP 0x00000000
 #define CHANNEL_PATTERN_STEE 0xFFFFFFFF
 
-static int test_address_field_precise_toggle(void)
-{
+static int test_address_field_precise_toggle(void) {
     printf("Starting address field precise toggle tests...\n");
 
     // 場景1: 位址欄位精確toggle
     uint32_t addr_patterns[] = {
-        0x00000001, 0x00000002, 0x00000004, 0x00000008,  // 單位元模式
-        0x00000010, 0x00000020, 0x00000040, 0x00000080,
-        0x00000100, 0x00000200, 0x00000400, 0x00000800,
-        0x00001000, 0x00002000, 0x00004000, 0x00008000,
-        0x00010000, 0x00020000, 0x00040000, 0x00080000,
-        0x00100000, 0x00200000, 0x00400000, 0x00800000,
-        0x01000000, 0x02000000, 0x04000000, 0x08000000,
-        0x10000000, 0x20000000, 0x40000000, 0x80000000   // 32位完整覆蓋
+        0x00000001, 0x00000002, 0x00000004, 0x00000008, // 單位元模式
+        0x00000010, 0x00000020, 0x00000040, 0x00000080, 0x00000100, 0x00000200,
+        0x00000400, 0x00000800, 0x00001000, 0x00002000, 0x00004000, 0x00008000,
+        0x00010000, 0x00020000, 0x00040000, 0x00080000, 0x00100000, 0x00200000,
+        0x00400000, 0x00800000, 0x01000000, 0x02000000, 0x04000000, 0x08000000,
+        0x10000000, 0x20000000, 0x40000000, 0x80000000 // 32位完整覆蓋
     };
 
     for (int i = 0; i < 32; i++) {
-        int region = i % 16;  // 使用所有16個區域
+        int region = i % 16; // 使用所有16個區域
         uint32_t src_addr = 0x40000000 + addr_patterns[i];
         uint32_t dest_addr = 0x50000000 + (addr_patterns[i] >> 1);
 
         if (setup_output_remap_region(region, src_addr, dest_addr, 1,
-                                     (i % 2) ? AP_CHANNEL : STEE_CHANNEL) != 0) {
+                                      (i % 2) ? AP_CHANNEL : STEE_CHANNEL) != 0) {
             printf("ERROR: Failed to setup address pattern %d\n", i);
             return -1;
         }
@@ -69,33 +66,27 @@ static int test_address_field_precise_toggle(void)
     return 0;
 }
 
-static int test_enable_bit_combinations(void)
-{
+static int test_enable_bit_combinations(void) {
     printf("Starting enable bit combination tests...\n");
 
     // 場景2: Enable位元深度toggle組合
     uint32_t enable_patterns[] = {
-        0x00000001, 0x00000003, 0x00000007, 0x0000000F,  // 累積模式
-        0x0000001F, 0x0000003F, 0x0000007F, 0x000000FF,
-        0x000001FF, 0x000003FF, 0x000007FF, 0x00000FFF,
-        0x00001FFF, 0x00003FFF, 0x00007FFF, 0x0000FFFF,
-        0x0001FFFF, 0x0003FFFF, 0x0007FFFF, 0x000FFFFF,
-        0x001FFFFF, 0x003FFFFF, 0x007FFFFF, 0x00FFFFFF,
-        0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF,
-        0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF
-    };
+        0x00000001, 0x00000003, 0x00000007, 0x0000000F, // 累積模式
+        0x0000001F, 0x0000003F, 0x0000007F, 0x000000FF, 0x000001FF, 0x000003FF, 0x000007FF,
+        0x00000FFF, 0x00001FFF, 0x00003FFF, 0x00007FFF, 0x0000FFFF, 0x0001FFFF, 0x0003FFFF,
+        0x0007FFFF, 0x000FFFFF, 0x001FFFFF, 0x003FFFFF, 0x007FFFFF, 0x00FFFFFF, 0x01FFFFFF,
+        0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF};
 
     for (int i = 0; i < 32; i++) {
         int region = i % 16;
 
         // 設置enable模式
-        if (setup_output_remap_region_extended(region,
-                                             0x60000000 + i * 0x1000,
-                                             0x70000000 + i * 0x1000,
-                                             enable_patterns[i] & 1,  // enable bit
-                                             (enable_patterns[i] >> 1) & 1,  // channel bit
-                                             enable_patterns[i] >> 2,  // mask
-                                             enable_patterns[i] >> 16) != 0) {  // attr
+        if (setup_output_remap_region_extended(region, 0x60000000 + i * 0x1000,
+                                               0x70000000 + i * 0x1000,
+                                               enable_patterns[i] & 1,           // enable bit
+                                               (enable_patterns[i] >> 1) & 1,    // channel bit
+                                               enable_patterns[i] >> 2,          // mask
+                                               enable_patterns[i] >> 16) != 0) { // attr
             printf("ERROR: Failed enable combination %d\n", i);
             return -1;
         }
@@ -117,8 +108,7 @@ static int test_enable_bit_combinations(void)
     return 0;
 }
 
-static int test_channel_selection_deep_toggle(void)
-{
+static int test_channel_selection_deep_toggle(void) {
     printf("Starting channel selection deep toggle tests...\n");
 
     // 場景3: Channel selection 深度toggle
@@ -127,8 +117,8 @@ static int test_channel_selection_deep_toggle(void)
             uint32_t base_addr = 0x80000000 + cycle * 0x10000 + region * 0x1000;
 
             // AP Channel設置
-            if (setup_output_remap_region(region, base_addr, base_addr + 0x100000,
-                                         1, AP_CHANNEL) != 0) {
+            if (setup_output_remap_region(region, base_addr, base_addr + 0x100000, 1, AP_CHANNEL) !=
+                0) {
                 return -1;
             }
 
@@ -150,32 +140,25 @@ static int test_channel_selection_deep_toggle(void)
     return 0;
 }
 
-static int test_size_mask_full_toggle(void)
-{
+static int test_size_mask_full_toggle(void) {
     printf("Starting size mask full toggle tests...\n");
 
     // 場景4: Size mask 全toggle覆蓋
-    uint32_t size_masks[] = {
-        0x00000FFF, 0x00001FFF, 0x00003FFF, 0x00007FFF,
-        0x0000FFFF, 0x0001FFFF, 0x0003FFFF, 0x0007FFFF,
-        0x000FFFFF, 0x001FFFFF, 0x003FFFFF, 0x007FFFFF,
-        0x00FFFFFF, 0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF,
-        0x0FFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF,
-        0xFFFFFFFF, 0x55555555, 0xAAAAAAAA, 0xCCCCCCCC,
-        0x33333333, 0x0F0F0F0F, 0xF0F0F0F0, 0x00FF00FF,
-        0xFF00FF00, 0x0000FFFF, 0xFFFF0000, 0x12345678
-    };
+    uint32_t size_masks[] = {0x00000FFF, 0x00001FFF, 0x00003FFF, 0x00007FFF, 0x0000FFFF, 0x0001FFFF,
+                             0x0003FFFF, 0x0007FFFF, 0x000FFFFF, 0x001FFFFF, 0x003FFFFF, 0x007FFFFF,
+                             0x00FFFFFF, 0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF, 0x1FFFFFFF,
+                             0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF, 0x55555555, 0xAAAAAAAA, 0xCCCCCCCC,
+                             0x33333333, 0x0F0F0F0F, 0xF0F0F0F0, 0x00FF00FF, 0xFF00FF00, 0x0000FFFF,
+                             0xFFFF0000, 0x12345678};
 
     for (int i = 0; i < 32; i++) {
         int region = i % 16;
 
-        if (setup_output_remap_region_extended(region,
-                                             0x90000000 + i * 0x10000,
-                                             0xA0000000 + i * 0x10000,
-                                             1,  // enable
-                                             i % 2,  // channel
-                                             size_masks[i],
-                                             (size_masks[i] >> 16) & 0xFF) != 0) {
+        if (setup_output_remap_region_extended(region, 0x90000000 + i * 0x10000,
+                                               0xA0000000 + i * 0x10000,
+                                               1,     // enable
+                                               i % 2, // channel
+                                               size_masks[i], (size_masks[i] >> 16) & 0xFF) != 0) {
             printf("ERROR: Failed size mask setup %d\n", i);
             return -1;
         }
@@ -192,22 +175,20 @@ static int test_size_mask_full_toggle(void)
     return 0;
 }
 
-static int test_attribute_flag_complete_toggle(void)
-{
+static int test_attribute_flag_complete_toggle(void) {
     printf("Starting attribute flag complete toggle tests...\n");
 
     // 場景5: 屬性旗標完整toggle
-    for (int attr_cycle = 0; attr_cycle < 256; attr_cycle++) {  // 8-bit 屬性全覆蓋
+    for (int attr_cycle = 0; attr_cycle < 256; attr_cycle++) { // 8-bit 屬性全覆蓋
         int region = attr_cycle % 16;
         uint32_t test_attr = attr_cycle;
 
-        if (setup_output_remap_region_extended(region,
-                                             0xB0000000 + attr_cycle * 0x1000,
-                                             0xC0000000 + attr_cycle * 0x1000,
-                                             1,  // enable
-                                             attr_cycle % 2,  // channel
-                                             0xFFFF0000 | attr_cycle,  // mask with attr
-                                             test_attr) != 0) {
+        if (setup_output_remap_region_extended(region, 0xB0000000 + attr_cycle * 0x1000,
+                                               0xC0000000 + attr_cycle * 0x1000,
+                                               1,                       // enable
+                                               attr_cycle % 2,          // channel
+                                               0xFFFF0000 | attr_cycle, // mask with attr
+                                               test_attr) != 0) {
             printf("ERROR: Failed attribute setup %d\n", attr_cycle);
             return -1;
         }
@@ -224,8 +205,7 @@ static int test_attribute_flag_complete_toggle(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_068: Output Remap Reg Final Push Test\n");
     printf("Goal: 86.36%% -> 90%%+ (需要 3.64%% 改進)\n");
     printf("Strategy: CSR 欄位剩餘 toggle 位元完整掃描\n\n");

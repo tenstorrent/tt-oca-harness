@@ -80,21 +80,20 @@ typedef int32_t (*func_i32_i32_t)(int32_t, int32_t);
 //-----------------------------------------------------------------------------
 // ROM function entry points (byte offsets from ROM base)
 //-----------------------------------------------------------------------------
-#define ROM_BASE    OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
-#define ROM_FUNC0   (ROM_BASE + 0x00)
-#define ROM_FUNC1   (ROM_BASE + 0x08)
-#define ROM_FUNC2   (ROM_BASE + 0x14)
-#define ROM_FUNC3   (ROM_BASE + 0x1C)
-#define ROM_FUNC4   (ROM_BASE + 0x28)
-#define ROM_FUNC5   (ROM_BASE + 0x38)
-#define ROM_FUNC6   (ROM_BASE + 0x50)
+#define ROM_BASE OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
+#define ROM_FUNC0 (ROM_BASE + 0x00)
+#define ROM_FUNC1 (ROM_BASE + 0x08)
+#define ROM_FUNC2 (ROM_BASE + 0x14)
+#define ROM_FUNC3 (ROM_BASE + 0x1C)
+#define ROM_FUNC4 (ROM_BASE + 0x28)
+#define ROM_FUNC5 (ROM_BASE + 0x38)
+#define ROM_FUNC6 (ROM_BASE + 0x50)
 
 static int test_count = 0;
 static int pass_count = 0;
 static int fail_count = 0;
 
-static void report_test(const char *name, int passed)
-{
+static void report_test(const char *name, int passed) {
     test_count++;
     if (passed) {
         pass_count++;
@@ -110,15 +109,13 @@ static void report_test(const char *name, int passed)
 // ROM Func0: addi a0, zero, 42 ; ret
 // Verifies basic IFU fetch of I-type instruction from ROM.
 //-----------------------------------------------------------------------------
-static int test_ifu_simple_return(void)
-{
+static int test_ifu_simple_return(void) {
     printf("\n--- Test: IFU Simple Return ---\n");
 
     func_void_t func = (func_void_t)ROM_FUNC0;
     int32_t result = func();
 
-    printf("  ROM@0x%08X -> %d (expected 42)\n",
-           (unsigned)ROM_FUNC0, (int)result);
+    printf("  ROM@0x%08X -> %d (expected 42)\n", (unsigned)ROM_FUNC0, (int)result);
     return result == 42;
 }
 
@@ -127,15 +124,13 @@ static int test_ifu_simple_return(void)
 // ROM Func1: addi a0, zero, 100 ; addi a0, a0, 23 ; ret
 // Verifies IFU can fetch multiple sequential instructions from ROM.
 //-----------------------------------------------------------------------------
-static int test_ifu_multi_insn(void)
-{
+static int test_ifu_multi_insn(void) {
     printf("\n--- Test: IFU Multi-Instruction ---\n");
 
     func_void_t func = (func_void_t)ROM_FUNC1;
     int32_t result = func();
 
-    printf("  ROM@0x%08X -> %d (expected 123)\n",
-           (unsigned)ROM_FUNC1, (int)result);
+    printf("  ROM@0x%08X -> %d (expected 123)\n", (unsigned)ROM_FUNC1, (int)result);
     return result == 123;
 }
 
@@ -144,15 +139,13 @@ static int test_ifu_multi_insn(void)
 // ROM Func2: addi a0, a0, 1 ; ret
 // Verifies register a0 is preserved across the SRAM->ROM->SRAM call.
 //-----------------------------------------------------------------------------
-static int test_ifu_arg_passthrough(void)
-{
+static int test_ifu_arg_passthrough(void) {
     printf("\n--- Test: IFU Argument Passthrough ---\n");
 
     func_i32_t func = (func_i32_t)ROM_FUNC2;
     int32_t result = func(99);
 
-    printf("  ROM@0x%08X(99) -> %d (expected 100)\n",
-           (unsigned)ROM_FUNC2, (int)result);
+    printf("  ROM@0x%08X(99) -> %d (expected 100)\n", (unsigned)ROM_FUNC2, (int)result);
     return result == 100;
 }
 
@@ -161,15 +154,13 @@ static int test_ifu_arg_passthrough(void)
 // ROM Func3: lui a0, 0xDEADC ; addi a0, a0, -0x111 ; ret
 // Verifies IFU can fetch U-type (LUI) instructions from ROM.
 //-----------------------------------------------------------------------------
-static int test_ifu_lui_addi(void)
-{
+static int test_ifu_lui_addi(void) {
     printf("\n--- Test: IFU LUI+ADDI ---\n");
 
     func_void_t func = (func_void_t)ROM_FUNC3;
     int32_t result = func();
 
-    printf("  ROM@0x%08X -> 0x%08X (expected 0xDEADBEEF)\n",
-           (unsigned)ROM_FUNC3, (unsigned)result);
+    printf("  ROM@0x%08X -> 0x%08X (expected 0xDEADBEEF)\n", (unsigned)ROM_FUNC3, (unsigned)result);
     return result == (int32_t)0xDEADBEEF;
 }
 
@@ -179,17 +170,14 @@ static int test_ifu_lui_addi(void)
 // The JAL skips the bracketed instruction. If jump fails, result would be -1.
 // Verifies IFU handles J-type control flow redirects within ROM.
 //-----------------------------------------------------------------------------
-static int test_ifu_jump(void)
-{
+static int test_ifu_jump(void) {
     printf("\n--- Test: IFU Jump (JAL) ---\n");
 
     func_void_t func = (func_void_t)ROM_FUNC4;
     int32_t result = func();
 
-    printf("  ROM@0x%08X -> %d (expected 55)\n",
-           (unsigned)ROM_FUNC4, (int)result);
-    if (result == -1)
-        printf("  ERROR: JAL not taken, fell through to skipped instruction\n");
+    printf("  ROM@0x%08X -> %d (expected 55)\n", (unsigned)ROM_FUNC4, (int)result);
+    if (result == -1) printf("  ERROR: JAL not taken, fell through to skipped instruction\n");
     return result == 55;
 }
 
@@ -198,15 +186,13 @@ static int test_ifu_jump(void)
 // ROM Func5: nop ; nop ; nop ; nop ; addi a0, zero, 77 ; ret
 // Verifies sustained sequential IFU fetch across potential cache line boundary.
 //-----------------------------------------------------------------------------
-static int test_ifu_nop_sled(void)
-{
+static int test_ifu_nop_sled(void) {
     printf("\n--- Test: IFU NOP Sled ---\n");
 
     func_void_t func = (func_void_t)ROM_FUNC5;
     int32_t result = func();
 
-    printf("  ROM@0x%08X -> %d (expected 77)\n",
-           (unsigned)ROM_FUNC5, (int)result);
+    printf("  ROM@0x%08X -> %d (expected 77)\n", (unsigned)ROM_FUNC5, (int)result);
     return result == 77;
 }
 
@@ -215,23 +201,20 @@ static int test_ifu_nop_sled(void)
 // ROM Func6: add a0, a0, a1 ; ret
 // Verifies IFU can fetch R-type (ADD) instructions from ROM.
 //-----------------------------------------------------------------------------
-static int test_ifu_two_args(void)
-{
+static int test_ifu_two_args(void) {
     printf("\n--- Test: IFU Two-Argument Add ---\n");
 
     func_i32_i32_t func = (func_i32_i32_t)ROM_FUNC6;
     int32_t result = func(30, 12);
 
-    printf("  ROM@0x%08X(30, 12) -> %d (expected 42)\n",
-           (unsigned)ROM_FUNC6, (int)result);
+    printf("  ROM@0x%08X(30, 12) -> %d (expected 42)\n", (unsigned)ROM_FUNC6, (int)result);
     return result == 42;
 }
 
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n");
@@ -242,13 +225,13 @@ int main(void)
     printf("NOTE: All ROM access is via IFU (instruction fetch) only.\n");
     printf("      No LSU (load/store) access to ROM is performed.\n");
 
-    report_test("IFU Simple Return",       test_ifu_simple_return());
-    report_test("IFU Multi-Instruction",   test_ifu_multi_insn());
+    report_test("IFU Simple Return", test_ifu_simple_return());
+    report_test("IFU Multi-Instruction", test_ifu_multi_insn());
     report_test("IFU Argument Passthrough", test_ifu_arg_passthrough());
-    report_test("IFU LUI+ADDI",            test_ifu_lui_addi());
-    report_test("IFU Jump (JAL)",           test_ifu_jump());
-    report_test("IFU NOP Sled",             test_ifu_nop_sled());
-    report_test("IFU Two-Argument Add",     test_ifu_two_args());
+    report_test("IFU LUI+ADDI", test_ifu_lui_addi());
+    report_test("IFU Jump (JAL)", test_ifu_jump());
+    report_test("IFU NOP Sled", test_ifu_nop_sled());
+    report_test("IFU Two-Argument Add", test_ifu_two_args());
 
     printf("\n========================================\n");
     printf("     Test Summary\n");

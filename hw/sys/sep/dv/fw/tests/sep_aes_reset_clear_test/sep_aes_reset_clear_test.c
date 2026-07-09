@@ -37,12 +37,10 @@ static void raw_puts(const char *s) {
 static void raw_hex32(uint32_t v) {
     const char hex[] = "0123456789abcdef";
     raw_puts("0x");
-    for (int i = 28; i >= 0; i -= 4)
-        raw_putc(hex[(v >> i) & 0xf]);
+    for (int i = 28; i >= 0; i -= 4) raw_putc(hex[(v >> i) & 0xf]);
 }
 
-void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval)
-    __attribute__((noreturn));
+void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) __attribute__((noreturn));
 
 void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) {
     raw_puts("\n*** TRAP ***\nmcause=");
@@ -58,40 +56,28 @@ void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) {
 
 static void trap_handler_c(void) __attribute__((naked));
 static void trap_handler_c(void) {
-    __asm__ volatile (
-        "addi  sp, sp, -16   \n"
-        "sw    ra, 12(sp)    \n"
-        "csrr  a0, mcause    \n"
-        "csrr  a1, mepc      \n"
-        "csrr  a2, mtval     \n"
-        "call  trap_dump     \n"
-    );
+    __asm__ volatile("addi  sp, sp, -16   \n"
+                     "sw    ra, 12(sp)    \n"
+                     "csrr  a0, mcause    \n"
+                     "csrr  a1, mepc      \n"
+                     "csrr  a2, mtval     \n"
+                     "call  trap_dump     \n");
 }
 
 static void install_trap_handler(void) {
     uintptr_t addr = (uintptr_t)&trap_handler_c;
-    __asm__ volatile("csrw mtvec, %0" :: "r"(addr));
+    __asm__ volatile("csrw mtvec, %0" ::"r"(addr));
 }
 
-static const uint32_t test_key[4] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09
-};
+static const uint32_t test_key[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
-static const uint32_t zero_iv[4] = {
-    0x00000000, 0x00000000, 0x00000000, 0x00000000
-};
+static const uint32_t zero_iv[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
-static const uint32_t probe_iv[4] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c
-};
+static const uint32_t probe_iv[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
 
-static const uint32_t pt0[4] = {
-    0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373
-};
+static const uint32_t pt0[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
 
-static const uint32_t ct0_exp[4] = {
-    0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624
-};
+static const uint32_t ct0_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 static void spin_delay(int cycles) {
     for (volatile int i = 0; i < cycles; i++) {
@@ -142,16 +128,15 @@ static int wait_for_output_cleared(void) {
 static void print_status(const char *tag) {
     uint32_t val = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
     printf("%s: STATUS=0x%08x (idle=%u stall=%u output_lost=%u output_valid=%u input_ready=%u)\n",
-           tag, val,
-           (val >> 0) & 1, (val >> 1) & 1, (val >> 2) & 1,
-           (val >> 3) & 1, (val >> 4) & 1);
+           tag, val, (val >> 0) & 1, (val >> 1) & 1, (val >> 2) & 1, (val >> 3) & 1,
+           (val >> 4) & 1);
 }
 
 static void write_ctrl_shadowed(uint32_t operation, uint32_t mode, uint32_t manual_operation) {
     aes__CTRL_SHADOWED_t ctrl = {.w = 0};
     ctrl.f.OPERATION = operation;
     ctrl.f.MODE = mode;
-    ctrl.f.KEY_LEN = 0x1;          /* AES-128 */
+    ctrl.f.KEY_LEN = 0x1; /* AES-128 */
     ctrl.f.SIDELOAD = 0x0;
     ctrl.f.MANUAL_OPERATION = manual_operation;
 
@@ -213,8 +198,8 @@ static void read_iv(uint32_t iv_out[4]) {
 static int compare_block(const uint32_t got[4], const uint32_t exp[4], const char *tag) {
     for (int i = 0; i < 4; i++) {
         if (got[i] != exp[i]) {
-            printf("ERROR: %s mismatch at word %d: got=0x%08x exp=0x%08x\n",
-                   tag, i, got[i], exp[i]);
+            printf("ERROR: %s mismatch at word %d: got=0x%08x exp=0x%08x\n", tag, i, got[i],
+                   exp[i]);
             return -1;
         }
     }
@@ -311,8 +296,8 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     printf("  Baseline ciphertext matches NIST reference\n");
 
     read_iv(iv_before);
-    printf("  IV before clear: 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           iv_before[0], iv_before[1], iv_before[2], iv_before[3]);
+    printf("  IV before clear: 0x%08x 0x%08x 0x%08x 0x%08x\n", iv_before[0], iv_before[1],
+           iv_before[2], iv_before[3]);
 
     aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.KEY_IV_DATA_IN_CLEAR = 1;
@@ -320,8 +305,8 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     if (wait_for_idle() != 0) return -1;
 
     read_iv(iv_after);
-    printf("  IV after  clear: 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           iv_after[0], iv_after[1], iv_after[2], iv_after[3]);
+    printf("  IV after  clear: 0x%08x 0x%08x 0x%08x 0x%08x\n", iv_after[0], iv_after[1],
+           iv_after[2], iv_after[3]);
 
     if (blocks_equal(iv_before, iv_after, 4)) {
         printf("ERROR: IV contents were not changed by KEY_IV_DATA_IN_CLEAR\n");
@@ -348,8 +333,7 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     if (wait_for_output_valid() != 0) return -1;
     read_data_out(out_after_clear);
 
-    printf("  Post-clear CT: 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           out_after_clear[0], out_after_clear[1],
+    printf("  Post-clear CT: 0x%08x 0x%08x 0x%08x 0x%08x\n", out_after_clear[0], out_after_clear[1],
            out_after_clear[2], out_after_clear[3]);
 
     if (blocks_equal(out_after_clear, ct0_exp, 4)) {
@@ -415,8 +399,8 @@ static int test_aes_sw_reset_probe(void) {
     if (wait_for_output_valid() != 0) return -1;
     read_data_out(baseline_ct);
     if (compare_block(baseline_ct, ct0_exp, "Pre-reset baseline CT") != 0) return -1;
-    printf("  Baseline CT: 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           baseline_ct[0], baseline_ct[1], baseline_ct[2], baseline_ct[3]);
+    printf("  Baseline CT: 0x%08x 0x%08x 0x%08x 0x%08x\n", baseline_ct[0], baseline_ct[1],
+           baseline_ct[2], baseline_ct[3]);
 
     /* Lock CTRL_AUX_REGWEN so we can verify reset restores it */
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_AUX_SHADOWED_BASE_ADDR, 0x00000001);
@@ -446,8 +430,7 @@ static int test_aes_sw_reset_probe(void) {
     printf("  Step 3: Verify reset values\n");
 
     status_after = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
-    printf("  STATUS after reset: 0x%08x (idle=%u)\n",
-           status_after, (status_after >> 0) & 1);
+    printf("  STATUS after reset: 0x%08x (idle=%u)\n", status_after, (status_after >> 0) & 1);
     if (((status_after >> 0) & 1) != 1) {
         printf("ERROR: AES not idle after sw reset\n");
         return -1;
@@ -461,8 +444,7 @@ static int test_aes_sw_reset_probe(void) {
     }
 
     read_iv(iv_after_reset);
-    printf("  IV after reset: 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           iv_after_reset[0], iv_after_reset[1],
+    printf("  IV after reset: 0x%08x 0x%08x 0x%08x 0x%08x\n", iv_after_reset[0], iv_after_reset[1],
            iv_after_reset[2], iv_after_reset[3]);
     if (blocks_equal(iv_after_reset, probe_iv, 4)) {
         printf("ERROR: IV registers not cleared by sw reset\n");
@@ -492,9 +474,8 @@ static int test_aes_sw_reset_probe(void) {
     if (wait_for_output_valid() != 0) return -1;
     read_data_out(post_reset_ct);
 
-    printf("  Post-reset CT (zero-key): 0x%08x 0x%08x 0x%08x 0x%08x\n",
-           post_reset_ct[0], post_reset_ct[1],
-           post_reset_ct[2], post_reset_ct[3]);
+    printf("  Post-reset CT (zero-key): 0x%08x 0x%08x 0x%08x 0x%08x\n", post_reset_ct[0],
+           post_reset_ct[1], post_reset_ct[2], post_reset_ct[3]);
 
     if (blocks_equal(post_reset_ct, baseline_ct, 4)) {
         printf("ERROR: Ciphertext matches baseline after reset -- key not cleared\n");

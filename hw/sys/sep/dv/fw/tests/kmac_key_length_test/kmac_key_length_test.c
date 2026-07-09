@@ -38,19 +38,18 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
-static int run_kmac128(const uint32_t *key, int key_words,
-                       uint32_t key_len_val, uint32_t *digest_out) {
+static int run_kmac128(const uint32_t *key, int key_words, uint32_t key_len_val,
+                       uint32_t *digest_out) {
     if (wait_for_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
     cfg.f.mode = 0x2;
     cfg.f.kstrength = 0x0;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (same as kmac_test which passes) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (same as kmac_test which passes) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -71,8 +70,7 @@ static int run_kmac128(const uint32_t *key, int key_words,
 
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001);
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + 4, 0x00004341);
-    for (int i = 2; i < 11; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
+    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = 29;
@@ -102,13 +100,9 @@ static int run_kmac128(const uint32_t *key, int key_words,
 static int test_key_length(void) {
     int errors = 0;
 
-    static const uint32_t key128[4] = {
-        0x11111111, 0x22222222, 0x33333333, 0x44444444
-    };
-    static const uint32_t key256[8] = {
-        0x11111111, 0x22222222, 0x33333333, 0x44444444,
-        0x55555555, 0x66666666, 0x77777777, 0x88888888
-    };
+    static const uint32_t key128[4] = {0x11111111, 0x22222222, 0x33333333, 0x44444444};
+    static const uint32_t key256[8] = {0x11111111, 0x22222222, 0x33333333, 0x44444444,
+                                       0x55555555, 0x66666666, 0x77777777, 0x88888888};
 
     uint32_t digest_128[8];
     uint32_t digest_256[8];
@@ -134,7 +128,10 @@ static int test_key_length(void) {
     printf("=== Comparing digests ===\n");
     int same = 1;
     for (int i = 0; i < 8; i++) {
-        if (digest_128[i] != digest_256[i]) { same = 0; break; }
+        if (digest_128[i] != digest_256[i]) {
+            same = 0;
+            break;
+        }
     }
     if (same) {
         printf("FAIL: digests are identical with different key lengths\n");
@@ -148,8 +145,14 @@ static int test_key_length(void) {
         if (digest_128[i] != 0) nz_128 = 1;
         if (digest_256[i] != 0) nz_256 = 1;
     }
-    if (!nz_128) { printf("FAIL: Key128 digest all zeros\n"); errors++; }
-    if (!nz_256) { printf("FAIL: Key256 digest all zeros\n"); errors++; }
+    if (!nz_128) {
+        printf("FAIL: Key128 digest all zeros\n");
+        errors++;
+    }
+    if (!nz_256) {
+        printf("FAIL: Key256 digest all zeros\n");
+        errors++;
+    }
 
     return errors;
 }
@@ -172,5 +175,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

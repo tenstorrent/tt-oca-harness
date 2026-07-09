@@ -29,11 +29,14 @@
 #include "rom_picorv32.h"
 #include "test_mutable_fw_blob.h"
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /*
@@ -48,7 +51,8 @@ int main(void)
         uint32_t expected = (uint32_t)(int32_t)ROM_KM_UFAULT_FW_CRC;
         if (fault_code != expected) {
             TEST_FAIL("wrong fault code: expected ROM_KM_UFAULT_FW_CRC (0x%08X), "
-                      "got 0x%08X", expected, fault_code);
+                      "got 0x%08X",
+                      expected, fault_code);
         }
         TEST_PASS();
         return 0;
@@ -57,34 +61,30 @@ int main(void)
     /*
      * First run: trigger the fault.
      */
-    if (!tb_set_timeout(2000000))
-        TEST_FAIL("timeout set failed");
+    if (!tb_set_timeout(2000000)) TEST_FAIL("timeout set failed");
 
-    if (!tb_drbg_set_seed(0xE020u, 5000))
-        TEST_FAIL("drbg set seed failed");
+    if (!tb_drbg_set_seed(0xE020u, 5000)) TEST_FAIL("drbg set seed failed");
 
-    if (!tb_set_unrecoverable_watch(1, 1000u))
-        TEST_FAIL("tb_set_unrecoverable_watch failed");
+    if (!tb_set_unrecoverable_watch(1, 1000u)) TEST_FAIL("tb_set_unrecoverable_watch failed");
 
     rom_boot_init();
 
     /* Drain RESP_KM_READY */
     {
         uint32_t ready;
-        if (!tb_sep_mbox_read(&ready, 5000))
-            TEST_FAIL("No RESP_KM_READY");
+        if (!tb_sep_mbox_read(&ready, 5000)) TEST_FAIL("No RESP_KM_READY");
     }
 
     /*
      * Build and send the CMD_SRAM_LOAD_EXEC command frame.
      * Frame: [header][fw_words_payload][sep|payload_crc]   (3 words)
      */
-    uint8_t seq         = 0;
-    uint32_t fw_words   = MUTABLE_FW_BLOB_SMALL_WORDS; /* 14 */
+    uint8_t seq = 0;
+    uint32_t fw_words = MUTABLE_FW_BLOB_SMALL_WORDS; /* 14 */
 
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = seq;
-    hdr.id          = ROM_KM_CMD_SRAM_LOAD_EXEC;
+    hdr.seq_num = seq;
+    hdr.id = ROM_KM_CMD_SRAM_LOAD_EXEC;
     hdr.payload_len = 1;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
@@ -98,14 +98,10 @@ int main(void)
     (void)rom_picorv32_maskirq(0xFFFFFFFFu);
 
     /* Write command frame */
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed");
-    if (!tb_sep_mbox_write(fw_words, 5000))
-        TEST_FAIL("fw_words write failed");
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(payload_crc, 5000))
-        TEST_FAIL("payload CRC write failed");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed");
+    if (!tb_sep_mbox_write(fw_words, 5000)) TEST_FAIL("fw_words write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(payload_crc, 5000)) TEST_FAIL("payload CRC write failed");
 
     /* Explicitly drain the command frame from FIFO into rom_rx_msgbuf. */
     test_delay(100);
@@ -120,14 +116,12 @@ int main(void)
         if (!tb_sep_mbox_write(mutable_fw_blob_small[i], 5000))
             TEST_FAIL("image word %u write failed", (unsigned)i);
     }
-    uint32_t correct_crc = rom_crc32c((const uint8_t *)mutable_fw_blob_small,
-                                       MUTABLE_FW_BLOB_SMALL_WORDS * 4u);
+    uint32_t correct_crc =
+        rom_crc32c((const uint8_t *)mutable_fw_blob_small, MUTABLE_FW_BLOB_SMALL_WORDS * 4u);
     uint32_t bad_crc = correct_crc ^ 0xDEADBEEFu;
 
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("image separator write failed");
-    if (!tb_sep_mbox_write(bad_crc, 5000))
-        TEST_FAIL("bad CRC write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("image separator write failed");
+    if (!tb_sep_mbox_write(bad_crc, 5000)) TEST_FAIL("bad CRC write failed");
 
     /*
      * Dispatch.  The handler reads 14 image words, reads the bad CRC,

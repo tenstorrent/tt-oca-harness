@@ -22,8 +22,7 @@
  *
  * @param[in,out] buf Buffer to initialize.
  */
-void rom_msgbuf_init(rom_km_msgbuf_t *buf)
-{
+void rom_msgbuf_init(rom_km_msgbuf_t *buf) {
     buf->count = 0;
     buf->has_frame = 0;
     buf->frame_len = 0;
@@ -46,12 +45,9 @@ void rom_msgbuf_init(rom_km_msgbuf_t *buf)
  * @param[in]     separator Non-zero if this word ends the frame.
  * @return 0 on success, -1 if buffer full or frame already present.
  */
-int rom_msgbuf_write_word(rom_km_msgbuf_t *buf, uint32_t word, uint8_t separator)
-{
-    if (buf->has_frame)
-        return -1;
-    if (buf->count >= ROM_KM_MSGBUF_SIZE)
-        return -1;
+int rom_msgbuf_write_word(rom_km_msgbuf_t *buf, uint32_t word, uint8_t separator) {
+    if (buf->has_frame) return -1;
+    if (buf->count >= ROM_KM_MSGBUF_SIZE) return -1;
 
     buf->data[buf->count] = word;
     buf->partial_active = 1;
@@ -79,10 +75,8 @@ int rom_msgbuf_write_word(rom_km_msgbuf_t *buf, uint32_t word, uint8_t separator
  * @param[out]    word Receives the word.
  * @return 0 on success, -1 if buffer empty.
  */
-int rom_msgbuf_peek_word(const rom_km_msgbuf_t *buf, uint32_t *word)
-{
-    if (!buf->has_frame || buf->tail >= buf->frame_len)
-        return -1;
+int rom_msgbuf_peek_word(const rom_km_msgbuf_t *buf, uint32_t *word) {
+    if (!buf->has_frame || buf->tail >= buf->frame_len) return -1;
 
     *word = buf->data[buf->tail];
     return 0;
@@ -99,10 +93,8 @@ int rom_msgbuf_peek_word(const rom_km_msgbuf_t *buf, uint32_t *word)
  * @param[out]    word Receives the word.
  * @return 0 on success, -1 if buffer empty or already exhausted.
  */
-int rom_msgbuf_pop_word(rom_km_msgbuf_t *buf, uint32_t *word)
-{
-    if (rom_msgbuf_peek_word(buf, word) != 0)
-        return -1;
+int rom_msgbuf_pop_word(rom_km_msgbuf_t *buf, uint32_t *word) {
+    if (rom_msgbuf_peek_word(buf, word) != 0) return -1;
 
     buf->tail++;
 
@@ -120,11 +112,8 @@ int rom_msgbuf_pop_word(rom_km_msgbuf_t *buf, uint32_t *word)
  * @param[out] length Receives remaining words (frame_len - tail).
  * @return 0 on success, -1 if no frame available.
  */
-int rom_msgbuf_peek_frame(const rom_km_msgbuf_t *buf,
-                          uint16_t *start, uint16_t *length)
-{
-    if (!buf->has_frame)
-        return -1;
+int rom_msgbuf_peek_frame(const rom_km_msgbuf_t *buf, uint16_t *start, uint16_t *length) {
+    if (!buf->has_frame) return -1;
 
     *start = buf->tail;
     *length = (uint16_t)(buf->frame_len - buf->tail);
@@ -138,10 +127,8 @@ int rom_msgbuf_peek_frame(const rom_km_msgbuf_t *buf,
  *
  * @param[in,out] buf Buffer.
  */
-void rom_msgbuf_consume_frame(rom_km_msgbuf_t *buf)
-{
-    if (!buf->has_frame)
-        return;
+void rom_msgbuf_consume_frame(rom_km_msgbuf_t *buf) {
+    if (!buf->has_frame) return;
 
     buf->has_frame = 0;
     buf->count = 0;
@@ -160,8 +147,7 @@ void rom_msgbuf_consume_frame(rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer to query.
  * @return 1 if a new frame can be accepted, 0 otherwise.
  */
-uint8_t rom_msgbuf_can_accept_frame(const rom_km_msgbuf_t *buf)
-{
+uint8_t rom_msgbuf_can_accept_frame(const rom_km_msgbuf_t *buf) {
     return (uint8_t)(buf->has_frame ? 0u : 1u);
 }
 
@@ -171,8 +157,7 @@ uint8_t rom_msgbuf_can_accept_frame(const rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return Available space in words.
  */
-uint16_t rom_msgbuf_space_available(const rom_km_msgbuf_t *buf)
-{
+uint16_t rom_msgbuf_space_available(const rom_km_msgbuf_t *buf) {
     return (uint16_t)(ROM_KM_MSGBUF_SIZE - buf->count);
 }
 
@@ -182,10 +167,9 @@ uint16_t rom_msgbuf_space_available(const rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return 1 if a frame is available, 0 otherwise.
  */
- uint8_t rom_msgbuf_frame_available(const rom_km_msgbuf_t *buf)
- {
-     return buf->has_frame ? 1u : 0u;
- }
+uint8_t rom_msgbuf_frame_available(const rom_km_msgbuf_t *buf) {
+    return buf->has_frame ? 1u : 0u;
+}
 
 /**
  * @brief Return whether the current frame has been fully popped.
@@ -193,8 +177,7 @@ uint16_t rom_msgbuf_space_available(const rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return 1 if a frame is present and tail has reached frame_len, 0 otherwise.
  */
-uint8_t rom_msgbuf_frame_empty(const rom_km_msgbuf_t *buf)
-{
+uint8_t rom_msgbuf_frame_empty(const rom_km_msgbuf_t *buf) {
     return (uint8_t)(buf->has_frame && buf->tail >= buf->frame_len);
 }
 
@@ -204,8 +187,7 @@ uint8_t rom_msgbuf_frame_empty(const rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return 1 if full, 0 otherwise.
  */
-uint8_t rom_msgbuf_is_full(const rom_km_msgbuf_t *buf)
-{
+uint8_t rom_msgbuf_is_full(const rom_km_msgbuf_t *buf) {
     return (buf->count >= ROM_KM_MSGBUF_SIZE) ? 1 : 0;
 }
 
@@ -215,8 +197,7 @@ uint8_t rom_msgbuf_is_full(const rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return 1 if a partial frame is active, 0 otherwise.
  */
-uint8_t rom_msgbuf_partial_active(const rom_km_msgbuf_t *buf)
-{
+uint8_t rom_msgbuf_partial_active(const rom_km_msgbuf_t *buf) {
     return buf->partial_active ? 1u : 0u;
 }
 
@@ -225,8 +206,7 @@ uint8_t rom_msgbuf_partial_active(const rom_km_msgbuf_t *buf)
  *
  * @param[in,out] buf Buffer.
  */
-void rom_msgbuf_flush(rom_km_msgbuf_t *buf)
-{
+void rom_msgbuf_flush(rom_km_msgbuf_t *buf) {
     rom_msgbuf_init(buf);
 }
 
@@ -236,9 +216,9 @@ void rom_msgbuf_flush(rom_km_msgbuf_t *buf)
  * @param[in] buf Buffer.
  * @return 1 if full with only partial frame, 0 otherwise.
  */
-uint8_t rom_msgbuf_has_only_partial(const rom_km_msgbuf_t *buf)
-{
-    return (rom_msgbuf_is_full(buf) &&
-            !rom_msgbuf_frame_available(buf) &&
-            rom_msgbuf_partial_active(buf)) ? 1u : 0u;
+uint8_t rom_msgbuf_has_only_partial(const rom_km_msgbuf_t *buf) {
+    return (rom_msgbuf_is_full(buf) && !rom_msgbuf_frame_available(buf) &&
+            rom_msgbuf_partial_active(buf))
+               ? 1u
+               : 0u;
 }

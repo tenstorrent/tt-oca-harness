@@ -15,17 +15,14 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static int check_eq(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_eq(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
 
-    printf("%s: 0x%08x expected 0x%08x - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("%s: 0x%08x expected 0x%08x - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -35,36 +32,29 @@ int main(void)
     printf("========================================\n\n");
 
     sep_cpu_ctrl__CLOCK_GATE_CTRL_t cg = {
-        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR)
-    };
+        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR)};
     printf("CLOCK_GATE_CTRL initial = 0x%08x\n", (uint32_t)cg.w);
 
     cg.f.pka_cg_enable = 1;
     WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR, (uint32_t)cg.w);
 
     sep_cpu_ctrl__CLOCK_GATE_CTRL_t cg_rb = {
-        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR)
-    };
+        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR)};
     if (cg_rb.f.pka_cg_enable != 1) {
         printf("PKA clock gate did not stay enabled\n");
         pass = 0;
     }
 
-    sep_cpu_ctrl__PKA_CTRL_t pka = {
-        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_PKA_CTRL_BASE_ADDR)
-    };
-    printf("PKA_CTRL initial = 0x%08x dpa_disable=%u noise_src=%u noise_valid=%u\n",
-           pka.w, pka.f.pka_dpa_disable, pka.f.pka_noise_src,
-           pka.f.pka_noise_src_valid);
+    sep_cpu_ctrl__PKA_CTRL_t pka = {.w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_PKA_CTRL_BASE_ADDR)};
+    printf("PKA_CTRL initial = 0x%08x dpa_disable=%u noise_src=%u noise_valid=%u\n", pka.w,
+           pka.f.pka_dpa_disable, pka.f.pka_noise_src, pka.f.pka_noise_src_valid);
 
     pka.f.pka_dpa_disable = 1;
     pka.f.pka_noise_src = 1;
     pka.f.pka_noise_src_valid = 1;
     WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_PKA_CTRL_BASE_ADDR, pka.w);
 
-    sep_cpu_ctrl__PKA_CTRL_t pka_rb = {
-        .w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_PKA_CTRL_BASE_ADDR)
-    };
+    sep_cpu_ctrl__PKA_CTRL_t pka_rb = {.w = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_PKA_CTRL_BASE_ADDR)};
     if (!check_eq("PKA_CTRL RW", pka_rb.w, pka.w)) {
         pass = 0;
     }

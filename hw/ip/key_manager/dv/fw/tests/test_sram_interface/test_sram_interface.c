@@ -19,14 +19,14 @@
 #include "test_common.h"
 
 /* Test memory regions in a mid/high SRAM scratch window away from linker-placed globals. */
-#define TEST_DATA_BASE  (SRAM_BASE + 0x2800)
-#define SRAM_CODE_BASE  (SRAM_BASE + 0x3000)  /* Area for executable code */
+#define TEST_DATA_BASE (SRAM_BASE + 0x2800)
+#define SRAM_CODE_BASE (SRAM_BASE + 0x3000) /* Area for executable code */
 
 /* Test patterns */
-#define TEST_PATTERN_1  0xDEADBEEF
-#define TEST_PATTERN_2  0xCAFEBABE
-#define TEST_PATTERN_3  0xA5A5A5A5
-#define ADD_CONSTANT    0x12345678
+#define TEST_PATTERN_1 0xDEADBEEF
+#define TEST_PATTERN_2 0xCAFEBABE
+#define TEST_PATTERN_3 0xA5A5A5A5
+#define ADD_CONSTANT 0x12345678
 
 /* Forward declarations */
 static uint32_t sram_add_function(uint32_t input);
@@ -36,24 +36,19 @@ static void sram_func_end_marker(void);
  * Simple function to be copied to SRAM and executed.
  * Position-independent: only uses relative addressing.
  */
-__attribute__((noinline))
-static uint32_t sram_add_function(uint32_t input)
-{
+__attribute__((noinline)) static uint32_t sram_add_function(uint32_t input) {
     return input + ADD_CONSTANT;
 }
 
 /* End marker to calculate function size */
-__attribute__((noinline))
-static void sram_func_end_marker(void)
-{
-    __asm__ volatile ("");
+__attribute__((noinline)) static void sram_func_end_marker(void) {
+    __asm__ volatile("");
 }
 
 /* Function pointer type */
 typedef uint32_t (*add_func_t)(uint32_t);
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* Test 1: Basic SRAM write/read */
@@ -129,7 +124,7 @@ int main(void)
         }
 
         /* Memory barrier */
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* Execute from SRAM */
         add_func_t sram_func = (add_func_t)SRAM_CODE_BASE;

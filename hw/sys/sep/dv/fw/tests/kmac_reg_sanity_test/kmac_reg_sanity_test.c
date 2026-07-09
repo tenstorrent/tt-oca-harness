@@ -31,8 +31,8 @@ static void check_rw(const char *name, uint32_t addr, uint32_t write_val, uint32
     WRITE_REG(addr, write_val);
     uint32_t actual = READ_REG(addr);
     if (actual != expected_read) {
-        printf("FAIL: %s RW write=0x%08x readback=0x%08x expected=0x%08x\n",
-               name, write_val, actual, expected_read);
+        printf("FAIL: %s RW write=0x%08x readback=0x%08x expected=0x%08x\n", name, write_val,
+               actual, expected_read);
         test_errors++;
     } else {
         printf("PASS: %s RW readback=0x%08x\n", name, actual);
@@ -42,12 +42,12 @@ static void check_rw(const char *name, uint32_t addr, uint32_t write_val, uint32
 static int test_register_defaults(void) {
     printf("\n=== Test 1: Register Default Values ===\n");
 
-    check_reg("STATUS",        OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR,        0x00004001);
-    check_reg("CFG_REGWEN",    OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR,    0x00000001);
-    check_reg("CFG_SHADOWED",  OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR,  0x00001000);
-    check_reg("ERR_CODE",      OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR,      0x00000000);
-    check_reg("INTR_ENABLE",   OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR,   0x00000000);
-    check_reg("INTR_STATE",    OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,    0x00000000);
+    check_reg("STATUS", OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR, 0x00004001);
+    check_reg("CFG_REGWEN", OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, 0x00000001);
+    check_reg("CFG_SHADOWED", OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0x00001000);
+    check_reg("ERR_CODE", OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR, 0x00000000);
+    check_reg("INTR_ENABLE", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000000);
+    check_reg("INTR_STATE", OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x00000000);
     check_reg("ENTROPY_PERIOD", OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x00000000);
 
     return 0;
@@ -68,7 +68,7 @@ static int test_intr_test_w1s(void) {
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     /* --- bit 0: kmac_done --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);  /* clear all */
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7); /* clear all */
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0x1);
     uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x1) {
@@ -154,8 +154,8 @@ static int test_entropy_period_rw(void) {
     uint32_t test_val = 0xFFFF03FF;
     WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
     kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
-    printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n",
-           ep.w, ep.f.prescaler, ep.f.wait_timer);
+    printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.prescaler,
+           ep.f.wait_timer);
 
     if (ep.f.prescaler == 0x3FF && ep.f.wait_timer == 0xFFFF) {
         printf("PASS: ENTROPY_PERIOD fields correct\n");

@@ -16,8 +16,7 @@
 #include "test_common.h"
 #include "rom_drbg.h"
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(100000)) {
@@ -75,11 +74,15 @@ int main(void)
         }
         all_same = 1u;
         for (i = 1; i < 8; i++) {
-            if (buf[i] != buf[0]) { all_same = 0u; break; }
+            if (buf[i] != buf[0]) {
+                all_same = 0u;
+                break;
+            }
         }
         if (all_same) {
             TEST_FAIL("rom_drbg_get_block returned 8 identical words 0x%08X "
-                      "(peek register read instead of consuming DATA)", buf[0]);
+                      "(peek register read instead of consuming DATA)",
+                      buf[0]);
         }
     }
     TEST_SUBTEST_PASS();
@@ -104,11 +107,15 @@ int main(void)
         }
         all_same = 1u;
         for (i = 1; i < 4; i++) {
-            if (buf2[i] != buf2[0]) { all_same = 0u; break; }
+            if (buf2[i] != buf2[0]) {
+                all_same = 0u;
+                break;
+            }
         }
         if (all_same) {
             TEST_FAIL("rom_drbg_get_block (prefetch) returned 4 identical words 0x%08X "
-                      "(peek register read instead of consuming DATA)", buf2[0]);
+                      "(peek register read instead of consuming DATA)",
+                      buf2[0]);
         }
     }
     TEST_SUBTEST_PASS();

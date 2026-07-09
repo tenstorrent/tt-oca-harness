@@ -8,10 +8,7 @@
 #define METAL__I2C_H
 
 /*! @brief Enums to enable/disable stop condition. */
-typedef enum {
-    METAL_I2C_STOP_DISABLE = 0,
-    METAL_I2C_STOP_ENABLE = 1
-} metal_i2c_stop_bit_t;
+typedef enum { METAL_I2C_STOP_DISABLE = 0, METAL_I2C_STOP_ENABLE = 1 } metal_i2c_stop_bit_t;
 
 /*! @brief Enums to set up I2C device modes. */
 typedef enum { METAL_I2C_SLAVE = 0, METAL_I2C_MASTER = 1 } metal_i2c_mode_t;
@@ -19,15 +16,13 @@ typedef enum { METAL_I2C_SLAVE = 0, METAL_I2C_MASTER = 1 } metal_i2c_mode_t;
 struct metal_i2c;
 
 struct metal_i2c_vtable {
-    void (*init)(struct metal_i2c *i2c, unsigned int baud_rate,
-                 metal_i2c_mode_t mode);
-    int (*write)(struct metal_i2c *i2c, unsigned int addr, unsigned int len,
-                 unsigned char buf[], metal_i2c_stop_bit_t stop_bit);
-    int (*read)(struct metal_i2c *i2c, unsigned int addr, unsigned int len,
-                unsigned char buf[], metal_i2c_stop_bit_t stop_bit);
-    int (*transfer)(struct metal_i2c *i2c, unsigned int addr,
-                    unsigned char txbuf[], unsigned int txlen,
-                    unsigned char rxbuf[], unsigned int rxlen);
+    void (*init)(struct metal_i2c *i2c, unsigned int baud_rate, metal_i2c_mode_t mode);
+    int (*write)(struct metal_i2c *i2c, unsigned int addr, unsigned int len, unsigned char buf[],
+                 metal_i2c_stop_bit_t stop_bit);
+    int (*read)(struct metal_i2c *i2c, unsigned int addr, unsigned int len, unsigned char buf[],
+                metal_i2c_stop_bit_t stop_bit);
+    int (*transfer)(struct metal_i2c *i2c, unsigned int addr, unsigned char txbuf[],
+                    unsigned int txlen, unsigned char rxbuf[], unsigned int rxlen);
     int (*get_baud_rate)(struct metal_i2c *i2c);
     int (*set_baud_rate)(struct metal_i2c *i2c, unsigned int baud_rate);
 };
@@ -47,8 +42,7 @@ struct metal_i2c *metal_i2c_get_device(unsigned int device_num);
  * @param baud_rate The baud rate for the I2C device to operate at.
  * @param mode I2C operation mode.
  */
-inline void metal_i2c_init(struct metal_i2c *i2c, unsigned int baud_rate,
-                           metal_i2c_mode_t mode) {
+inline void metal_i2c_init(struct metal_i2c *i2c, unsigned int baud_rate, metal_i2c_mode_t mode) {
     i2c->vtable->init(i2c, baud_rate, mode);
 }
 
@@ -60,9 +54,8 @@ inline void metal_i2c_init(struct metal_i2c *i2c, unsigned int baud_rate,
  * @param stop_bit Enable / Disable STOP condition.
  * @return 0 if the write succeeds.
  */
-inline int metal_i2c_write(struct metal_i2c *i2c, unsigned int addr,
-                           unsigned int len, unsigned char buf[],
-                           metal_i2c_stop_bit_t stop_bit) {
+inline int metal_i2c_write(struct metal_i2c *i2c, unsigned int addr, unsigned int len,
+                           unsigned char buf[], metal_i2c_stop_bit_t stop_bit) {
     return i2c->vtable->write(i2c, addr, len, buf, stop_bit);
 }
 
@@ -74,9 +67,8 @@ inline int metal_i2c_write(struct metal_i2c *i2c, unsigned int addr,
  * @param stop_bit Enable / Disable STOP condition.
  * @return 0 if the read succeeds.
  */
-inline int metal_i2c_read(struct metal_i2c *i2c, unsigned int addr,
-                          unsigned int len, unsigned char buf[],
-                          metal_i2c_stop_bit_t stop_bit) {
+inline int metal_i2c_read(struct metal_i2c *i2c, unsigned int addr, unsigned int len,
+                          unsigned char buf[], metal_i2c_stop_bit_t stop_bit) {
     return i2c->vtable->read(i2c, addr, len, buf, stop_bit);
 }
 
@@ -89,9 +81,8 @@ inline int metal_i2c_read(struct metal_i2c *i2c, unsigned int addr,
  * @param rxlen The number of bytes to read over I2C.
  * @return 0 if the transfer succeeds.
  */
-inline int metal_i2c_transfer(struct metal_i2c *i2c, unsigned int addr,
-                              unsigned char txbuf[], unsigned int txlen,
-                              unsigned char rxbuf[], unsigned int rxlen) {
+inline int metal_i2c_transfer(struct metal_i2c *i2c, unsigned int addr, unsigned char txbuf[],
+                              unsigned int txlen, unsigned char rxbuf[], unsigned int rxlen) {
     return i2c->vtable->transfer(i2c, addr, txbuf, txlen, rxbuf, rxlen);
 }
 

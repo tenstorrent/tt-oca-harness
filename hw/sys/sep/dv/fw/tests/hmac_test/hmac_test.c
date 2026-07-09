@@ -24,9 +24,7 @@
 // No need for hardcoded offsets or bit positions!
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -54,12 +52,8 @@ static int wait_for_done_or_idle(void) {
 
 static void print_status(const char *tag) {
     hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-    printf("%s STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n",
-           tag, s.w,
-           s.f.hmac_idle,
-           s.f.fifo_empty,
-           s.f.fifo_full,
-           s.f.fifo_depth);
+    printf("%s STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", tag, s.w, s.f.hmac_idle,
+           s.f.fifo_empty, s.f.fifo_full, s.f.fifo_depth);
 }
 
 static int stage_connectivity(void) {
@@ -92,11 +86,11 @@ static int stage_config(void) {
 
     // SHA-256, no swaps, SHA enabled, HMAC disabled
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;        // HMAC disabled
-    cfg.f.sha_en = 1;         // SHA enabled
-    cfg.f.endian_swap = 0;    // No endian swap
-    cfg.f.digest_swap = 0;    // No digest swap
-    cfg.f.digest_size = 1;    // SHA2_256 (value=1)
+    cfg.f.hmac_en = 0;     // HMAC disabled
+    cfg.f.sha_en = 1;      // SHA enabled
+    cfg.f.endian_swap = 0; // No endian swap
+    cfg.f.digest_swap = 0; // No digest swap
+    cfg.f.digest_size = 1; // SHA2_256 (value=1)
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start a new hash
@@ -121,7 +115,7 @@ static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
             }
             s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
-        *fifo8 = data[i];  // byte write to ensure exact length accounting
+        *fifo8 = data[i]; // byte write to ensure exact length accounting
     }
 
     // Verify message length (in bits) matches exactly
@@ -159,8 +153,8 @@ static int stage_process_and_read(uint8_t digest[32]) {
 static void to_hex(const uint8_t *in, char *out) {
     static const char *hex = "0123456789abcdef";
     for (int i = 0; i < 32; i++) {
-        out[2*i+0] = hex[(in[i] >> 4) & 0xF];
-        out[2*i+1] = hex[(in[i] >> 0) & 0xF];
+        out[2 * i + 0] = hex[(in[i] >> 4) & 0xF];
+        out[2 * i + 1] = hex[(in[i] >> 0) & 0xF];
     }
     out[64] = '\0';
 }
@@ -190,11 +184,11 @@ int main(void) {
 
     // Simple vectors
     const uint8_t empty[] = "";
-    const uint8_t abc[]   = "abc";
+    const uint8_t abc[] = "abc";
     const uint8_t hello[] = "Hello OTBN.";
 
     const char *empty_hex = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    const char *abc_hex   = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    const char *abc_hex = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
     const char *hello_hex = "2e8bd199adc454937f7f8c68e3366d8a30b486d35359fbbb83625a716eaf2403";
 
     int pass = 1;

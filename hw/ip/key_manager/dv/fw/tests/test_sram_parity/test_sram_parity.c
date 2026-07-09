@@ -24,31 +24,27 @@
 #include "key_manager_addr.h"
 #include "irq_common.h"
 
-
 /* SRAM test addresses (avoid first 0x100 bytes used by test protocol) */
-#define SRAM_TEST_BASE      (SRAM_BASE + 0x100)
+#define SRAM_TEST_BASE (SRAM_BASE + 0x100)
 
 /**
  * Read IRQ_STATUS register.
  */
-static inline uint32_t read_irq_status(void)
-{
+static inline uint32_t read_irq_status(void) {
     return KMCSR_IRQ_STATUS_REG.w;
 }
 
 /**
  * Clear IRQ_STATUS by writing 1s to sticky bits.
  */
-static inline void clear_irq_status(void)
-{
+static inline void clear_irq_status(void) {
     km_csr__irq_status_reg_t clear_val = {0};
     clear_val.f.rom_parity_err = 1;
     clear_val.f.sram_parity_err = 1;
     KMCSR_IRQ_STATUS_REG.w = clear_val.w;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
     uint32_t test_data;
     uint32_t readback;
@@ -142,7 +138,7 @@ int main(void)
 
         /* Clear IRQ_STATUS - write 1 to clear sticky bits */
         clear_irq_status();
-        test_delay(10);  /* Wait for clear to propagate */
+        test_delay(10); /* Wait for clear to propagate */
 
         /* Verify clear took effect for SRAM parity bit */
         irq_status = read_irq_status();

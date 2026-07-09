@@ -6,7 +6,7 @@
 #include "Vscrambler_4096x32.h"
 #include "tb_scrambler_common.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
     Vscrambler_4096x32 dut;
     int rc = run_bytewise_tests(dut, 4096, "4096x32");

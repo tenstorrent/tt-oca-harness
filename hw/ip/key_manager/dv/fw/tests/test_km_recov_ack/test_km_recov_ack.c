@@ -25,8 +25,12 @@
 #include "rom_isr.h"
 #include "rom_boot.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Common Helpers
@@ -34,25 +38,22 @@ int rom_unrec_wipe_enabled(void) { return 0; }
 
 static uint8_t cmd_seq = 0;
 
-static void process_and_drain(void)
-{
+static void process_and_drain(void) {
     test_delay(500);
     rom_msg_rx_process();
     test_delay(500);
 }
 
 static uint32_t send_cmd_with_payload(uint8_t cmd_id, const uint32_t *payload,
-                                       uint8_t payload_len)
-{
+                                      uint8_t payload_len) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq++;
-    hdr.id          = cmd_id;
+    hdr.seq_num = cmd_seq++;
+    hdr.id = cmd_id;
     hdr.payload_len = payload_len;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
     tb_sep_mbox_write(hdr.raw, 5000);
-    for (uint8_t i = 0; i < payload_len; i++)
-        tb_sep_mbox_write(payload[i], 5000);
+    for (uint8_t i = 0; i < payload_len; i++) tb_sep_mbox_write(payload[i], 5000);
 
     uint32_t crc = rom_crc32c((const uint8_t *)payload, payload_len * 4);
     tb_sep_mbox_write_separator_write(1, 5000);
@@ -60,11 +61,10 @@ static uint32_t send_cmd_with_payload(uint8_t cmd_id, const uint32_t *payload,
     return hdr.raw;
 }
 
-static uint32_t send_header_only(uint8_t cmd_id)
-{
+static uint32_t send_header_only(uint8_t cmd_id) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq++;
-    hdr.id          = cmd_id;
+    hdr.seq_num = cmd_seq++;
+    hdr.id = cmd_id;
     hdr.payload_len = 0;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
@@ -73,8 +73,7 @@ static uint32_t send_header_only(uint8_t cmd_id)
     return hdr.raw;
 }
 
-static int8_t read_resp_cmd(uint32_t *resp_payload, uint8_t max_words)
-{
+static int8_t read_resp_cmd(uint32_t *resp_payload, uint8_t max_words) {
     uint32_t hdr_raw;
     tb_sep_mbox_read(&hdr_raw, 5000);
     rom_km_msg_header_t rh;
@@ -88,8 +87,7 @@ static int8_t read_resp_cmd(uint32_t *resp_payload, uint8_t max_words)
         tb_sep_mbox_read(&crc, 5000);
     }
 
-    if (rh.payload_len >= 3)
-        return (int8_t)(resp_payload[2] & 0xFF);
+    if (rh.payload_len >= 3) return (int8_t)(resp_payload[2] & 0xFF);
 
     return -128;
 }
@@ -98,13 +96,11 @@ static int8_t read_resp_cmd(uint32_t *resp_payload, uint8_t max_words)
  * Drain a RESP_RECOVERABLE_FAULT from the outbound mailbox.
  * The fault response is sent directly (header + 1 payload word + CRC).
  */
-static void drain_fault_response(void)
-{
+static void drain_fault_response(void) {
     test_delay(500);
 
     uint32_t fault_hdr;
-    if (!tb_sep_mbox_read(&fault_hdr, 5000))
-        TEST_FAIL("No RESP_RECOVERABLE_FAULT in outbound");
+    if (!tb_sep_mbox_read(&fault_hdr, 5000)) TEST_FAIL("No RESP_RECOVERABLE_FAULT in outbound");
 
     rom_km_msg_header_t fh;
     fh.raw = fault_hdr;
@@ -122,15 +118,12 @@ static void drain_fault_response(void)
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(1000000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(1000000)) TEST_FAIL("Failed to set testbench timeout");
 
-    if (!tb_drbg_set_seed(0xF062u, 5000))
-        TEST_FAIL("tb_drbg_set_seed failed");
+    if (!tb_drbg_set_seed(0xF062u, 5000)) TEST_FAIL("tb_drbg_set_seed failed");
 
     rom_boot_init();
 
@@ -142,7 +135,7 @@ int main(void)
      *=================================================================*/
     TEST_SUBTEST_START("Baseline CMD_KEY_GENERATE 256-bit AES");
     {
-        uint32_t payload[2] = { 7u, (rom_km_dest_bits_t){ .aes = 1 }.raw };
+        uint32_t payload[2] = {7u, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_GENERATE, payload, 2);
         process_and_drain();
 
@@ -167,7 +160,7 @@ int main(void)
      *=================================================================*/
     TEST_SUBTEST_START("CMD_KEY_GENERATE restricted");
     {
-        uint32_t payload[2] = { 7u, (rom_km_dest_bits_t){ .aes = 1 }.raw };
+        uint32_t payload[2] = {7u, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_GENERATE, payload, 2);
         process_and_drain();
 
@@ -188,7 +181,7 @@ int main(void)
         uint32_t rp[8];
         int8_t rc = read_resp_cmd(rp, 8);
         TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_SUCCESS, "STAT success");
-        rom_km_stat_ret_t stat_ret = { .raw = rp[3] };
+        rom_km_stat_ret_t stat_ret = {.raw = rp[3]};
         TEST_ASSERT_EQ(stat_ret.recoverable_err, 1u, "recov_fault bit set");
         TEST_LOG("  STAT return_arg = 0x%08X", stat_ret.raw);
     }
@@ -213,7 +206,7 @@ int main(void)
      *=================================================================*/
     TEST_SUBTEST_START("CMD_KEY_GENERATE restored");
     {
-        uint32_t payload[2] = { 3u, (rom_km_dest_bits_t){ .hmac_sha2 = 1 }.raw };
+        uint32_t payload[2] = {3u, (rom_km_dest_bits_t){.hmac_sha2 = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_GENERATE, payload, 2);
         process_and_drain();
 

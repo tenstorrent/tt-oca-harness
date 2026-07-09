@@ -36,8 +36,7 @@
  * The default value has cs_force_high=1 for safety during power-up.
  * This function clears cs_force_high to allow normal CS# operation.
  */
-static void configure_spi_mux(void)
-{
+static void configure_spi_mux(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 
     printf("SPI mux configured: spi_sel=1 (OpenTitan), cs_force_high=0\n");
@@ -47,8 +46,7 @@ static void configure_spi_mux(void)
 // Main Test
 //==============================================================================
 
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
@@ -74,102 +72,102 @@ int main(void)
     printf("Test 1: INTR_ENABLE\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
     expected_val = 0x00000000;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = 0x00000011;  // Set ERROR and SPI_EVENT enable bits
+    write_val = 0x00000011; // Set ERROR and SPI_EVENT enable bits
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
-    printf("  Write 0x%08x, readback 0x%08x - %s\n",
-           write_val, read_val, (read_val == write_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
     // Test 2: INTR_TEST (0x8) - default 0x0
     printf("\nTest 2: INTR_TEST\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR);
     expected_val = 0x00000000;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     write_val = 0x00000011;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR);
-    printf("  Write 0x%08x, readback 0x%08x - %s\n",
-           write_val, read_val, (read_val == write_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
     // Test 3: CTRL (0x10) - default 0x0000007F (RX_WATERMARK=127)
     printf("\nTest 3: CTRL\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     expected_val = 0x0000007F;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = 0xA0001234;  // Set SPIEN, OUTPUT_EN, and watermarks
+    write_val = 0xA0001234; // Set SPIEN, OUTPUT_EN, and watermarks
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     // Mask out SW_RST bit [30] which is write-only singlepulse
     expected_val = write_val & ~(1 << 30);
-    printf("  Write 0x%08x, readback 0x%08x (expected 0x%08x) - %s\n",
-           write_val, read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x (expected 0x%08x) - %s\n", write_val, read_val,
+           expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     // Test 4: CFG (0x18) - default 0x0
     printf("\nTest 4: CFG\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     expected_val = 0x00000000;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = 0xCF0F5678;  // Set CPOL, CPHA, FULLCYC, timing fields, CLKDIV
+    write_val = 0xCF0F5678; // Set CPOL, CPHA, FULLCYC, timing fields, CLKDIV
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    printf("  Write 0x%08x, readback 0x%08x - %s\n",
-           write_val, read_val, (read_val == write_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
     // Test 5: CSID (0x1C) - default 0x0
     printf("\nTest 5: CSID\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR);
     expected_val = 0x00000000;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     write_val = 0x00000003;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR);
-    printf("  Write 0x%08x, readback 0x%08x - %s\n",
-           write_val, read_val, (read_val == write_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
     // Test 7: EVENT_ENABLE (0x34) - default 0x0
     printf("\nTest 7: EVENT_ENABLE\n");
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     expected_val = 0x00000000;
-    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n",
-           read_val, expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
+    printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
+           (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = 0x00111111;  // Enable all event interrupts
+    write_val = 0x00111111; // Enable all event interrupts
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
-    printf("  Write 0x%08x, readback 0x%08x - %s\n",
-           write_val, read_val, (read_val == write_val) ? "PASS" : "FAIL");
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
     // Final result
     printf("\n========================================\n");
     if (pass) {
         printf("=== SPI SANITY TEST PASSED ===\n");
-        test_pass(0);  // Signal testbench: TEST_PASSED
+        test_pass(0); // Signal testbench: TEST_PASSED
     } else {
         printf("=== SPI SANITY TEST FAILED ===\n");
-        test_fail(0);  // Signal testbench: TEST_FAILED
+        test_fail(0); // Signal testbench: TEST_FAILED
     }
     printf("========================================\n");
 

@@ -31,17 +31,13 @@ struct metal_spi_config {
     /*! @brief The spi dummy frame number */
     unsigned int dummy_num;
     /*! @brief The Dual/Quad spi mode selection.*/
-    enum {
-        MULTI_WIRE_ALL,
-        MULTI_WIRE_DATA_ONLY,
-        MULTI_WIRE_ADDR_DATA
-    } multi_wire;
+    enum { MULTI_WIRE_ALL, MULTI_WIRE_DATA_ONLY, MULTI_WIRE_ADDR_DATA } multi_wire;
 };
 
 struct metal_spi_vtable {
     void (*init)(struct metal_spi *spi, int baud_rate);
-    int (*transfer)(struct metal_spi *spi, struct metal_spi_config *config,
-                    size_t len, char *tx_buf, char *rx_buf);
+    int (*transfer)(struct metal_spi *spi, struct metal_spi_config *config, size_t len,
+                    char *tx_buf, char *rx_buf);
     int (*get_baud_rate)(struct metal_spi *spi);
     int (*set_baud_rate)(struct metal_spi *spi, int baud_rate);
 };
@@ -74,9 +70,8 @@ __inline__ void metal_spi_init(struct metal_spi *spi, int baud_rate) {
  * NULL, the SPI will ignore received bytes.
  * @return 0 if the transfer succeeds
  */
-__inline__ int metal_spi_transfer(struct metal_spi *spi,
-                                  struct metal_spi_config *config, size_t len,
-                                  char *tx_buf, char *rx_buf) {
+__inline__ int metal_spi_transfer(struct metal_spi *spi, struct metal_spi_config *config,
+                                  size_t len, char *tx_buf, char *rx_buf) {
     return spi->vtable->transfer(spi, config, len, tx_buf, rx_buf);
 }
 

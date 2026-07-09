@@ -12,30 +12,31 @@
 
 int main(void) {
 
-  int hartid = metal_cpu_get_current_hartid();
+    int hartid = metal_cpu_get_current_hartid();
 
-  // large numbers performed by each core
-  write_scratch(4 + hartid, 0x54045);
-  for (int i = 0; i < 4096; i++) {
-    write64_reg(SMC_TOP_SPM_MEMORY_BASE_ADDR + hartid*(SPM_TEST_WINDOW_SIZE/4) + i*8, read64_reg(SMC_TOP_SPM_MEMORY_BASE_ADDR + i*8));
-  }
-  write_scratch(4 + hartid, 0xF18A1);
-
-  if (hartid == 0) {
-    while ((read_scratch(5) != 0xF18A1) || (read_scratch(6) != 0xF18A1) || (read_scratch(7) != 0xF18A1)) {
+    // large numbers performed by each core
+    write_scratch(4 + hartid, 0x54045);
+    for (int i = 0; i < 4096; i++) {
+        write64_reg(SMC_TOP_SPM_MEMORY_BASE_ADDR + hartid * (SPM_TEST_WINDOW_SIZE / 4) + i * 8,
+                    read64_reg(SMC_TOP_SPM_MEMORY_BASE_ADDR + i * 8));
     }
-    test_pass(0);
-  }
+    write_scratch(4 + hartid, 0xF18A1);
 
-  while (true) {
-    __asm__("wfi");
-  }
+    if (hartid == 0) {
+        while ((read_scratch(5) != 0xF18A1) || (read_scratch(6) != 0xF18A1) ||
+               (read_scratch(7) != 0xF18A1)) {
+        }
+        test_pass(0);
+    }
 
-  return 0;
+    while (true) {
+        __asm__("wfi");
+    }
+
+    return 0;
 }
 
 int secondary_main(void) {
 
-  return main();
-
+    return main();
 }

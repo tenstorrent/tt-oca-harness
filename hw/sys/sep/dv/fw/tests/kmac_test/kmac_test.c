@@ -25,9 +25,10 @@ static const uint32_t test_key[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 static void print_status(const char *tag) {
     kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-    printf("%s STATUS=0x%08x idle=%u absorb=%u squeeze=%u fifo_empty=%u fifo_full=%u fifo_depth=%u\n",
-           tag, s.w, s.f.sha3_idle, s.f.sha3_absorb, s.f.sha3_squeeze,
-           s.f.fifo_empty, s.f.fifo_full, s.f.fifo_depth);
+    printf(
+        "%s STATUS=0x%08x idle=%u absorb=%u squeeze=%u fifo_empty=%u fifo_full=%u fifo_depth=%u\n",
+        tag, s.w, s.f.sha3_idle, s.f.sha3_absorb, s.f.sha3_squeeze, s.f.fifo_empty, s.f.fifo_full,
+        s.f.fifo_depth);
 }
 
 static int wait_for_idle(void) {
@@ -47,7 +48,7 @@ static int wait_for_done(void) {
     uint32_t intr_state;
     while (timeout-- > 0) {
         intr_state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
-        if (intr_state & 0x1) {  // kmac_done interrupt
+        if (intr_state & 0x1) { // kmac_done interrupt
             // Clear interrupt
             WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
             return 0;
@@ -69,18 +70,18 @@ static int kmac128_simple_test(void) {
     // Step 2: Configure for KMAC-128 BEFORE setting key
     printf("Step 2: Configuring for KMAC-128...\n");
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = 1;                      // KMAC mode
-    cfg.f.mode = 0x2;                       // cSHAKE mode (required for KMAC)
-    cfg.f.kstrength = 0x0;                  // L128 (128-bit security strength)
-    cfg.f.msg_endianness = 0;               // Little-endian
-    cfg.f.state_endianness = 0;             // Little-endian
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
-    cfg.f.entropy_ready = 0;                // Will set separately
-    cfg.f.msg_mask = 0;                     // No message masking
-    cfg.f.sideload = 0;                     // Use SW key (KEY_SHARE0/1); deprecated, DV only
+    cfg.f.kmac_en = 1;          // KMAC mode
+    cfg.f.mode = 0x2;           // cSHAKE mode (required for KMAC)
+    cfg.f.kstrength = 0x0;      // L128 (128-bit security strength)
+    cfg.f.msg_endianness = 0;   // Little-endian
+    cfg.f.state_endianness = 0; // Little-endian
+    cfg.f.entropy_mode = 0x1;   /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_ready = 0;    // Will set separately
+    cfg.f.msg_mask = 0;         // No message masking
+    cfg.f.sideload = 0;         // Use SW key (KEY_SHARE0/1); deprecated, DV only
 
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);  // Write twice (shadowed)
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); // Write twice (shadowed)
     printf("  CFG written (entropy_mode=SW)\n");
 
     // Step 2b: Provide entropy seed for SW mode
@@ -94,27 +95,27 @@ static int kmac128_simple_test(void) {
 
     // Step 2c: Signal that entropy is ready (required for EnMasking=1)
     printf("Step 2c: Setting entropy_ready...\n");
-    cfg.f.entropy_ready = 1;                // Signal entropy is ready
+    cfg.f.entropy_ready = 1; // Signal entropy is ready
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);  // Write twice (shadowed)
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); // Write twice (shadowed)
     printf("  entropy_ready set\n");
 
     // Step 3: Set key length (deprecated SW path for DV)
     printf("Step 3: Setting KEY_LEN to Key128...\n");
     kmac__KEY_LEN_t key_len = {.w = 0};
-    key_len.f.len = 0x0;  // Key128
+    key_len.f.len = 0x0; // Key128
     WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, key_len.w);
 
     // Step 4: Write key via KEY_SHARE0/1 (deprecated SW path for DV when key manager not present)
     printf("Step 4: Writing key...\n");
-    for (int i = 0; i < 4; i++) {  // 4 words = 128 bits
+    for (int i = 0; i < 4; i++) { // 4 words = 128 bits
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(0) + (i * 4), test_key[i]);
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(0) + (i * 4), 0);
     }
 
     // Step 5: Set PREFIX for KMAC
     printf("Step 5: Setting PREFIX...\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001);  // encode_string("KMAC")
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001); // encode_string("KMAC")
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341);
     for (int i = 2; i < 11; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
@@ -123,13 +124,13 @@ static int kmac128_simple_test(void) {
     // Step 6: Issue START
     printf("Step 6: Issuing START...\n");
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;  // CmdStart
+    cmd.f.cmd = 29; // CmdStart
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After START");
 
     // Step 7: Write a simple 4-byte message "test"
     printf("Step 7: Writing message 'test' (4 bytes)...\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);  // "test" in little-endian
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574); // "test" in little-endian
 
     // Step 8: Write right_encode(output_length)
     // For 256-bit output: right_encode(256) = 0x01 0x00 0x02
@@ -142,7 +143,7 @@ static int kmac128_simple_test(void) {
 
     // Step 9: Issue PROCESS
     printf("Step 9: Issuing PROCESS...\n");
-    cmd.f.cmd = 46;  // CmdProcess
+    cmd.f.cmd = 46; // CmdProcess
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After PROCESS");
 
@@ -193,7 +194,7 @@ static int kmac128_simple_test(void) {
 
     // Step 12: Issue DONE
     printf("Step 12: Issuing DONE...\n");
-    cmd.f.cmd = 22;  // CmdDone
+    cmd.f.cmd = 22; // CmdDone
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After DONE");
 

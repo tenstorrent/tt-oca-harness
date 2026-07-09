@@ -26,7 +26,7 @@ Original Author: Shay Gal-on
 /* CoreMark configuration constants */
 
 #ifndef CLOCKS_PER_SEC
-#define CLOCKS_PER_SEC 100000000  /* Assume 100MHz timer for embedded target */
+#define CLOCKS_PER_SEC 100000000 /* Assume 100MHz timer for embedded target */
 #endif
 
 #if VALIDATION_RUN
@@ -53,8 +53,7 @@ volatile ee_s32 seed5_volatile = 0;
    time.h and windows.h definitions included.
 */
 CORETIMETYPE
-barebones_clock(void)
-{
+barebones_clock(void) {
     return tb_get_time();
 }
 /* Define : TIMER_RES_DIVIDER
@@ -65,11 +64,11 @@ barebones_clock(void)
    does not occur. If there are issues with the return value overflowing,
    increase this value.
         */
-#define GETMYTIME(_t)              (*_t = barebones_clock())
-#define MYTIMEDIFF(fin, ini)       ((fin) - (ini))
-#define TIMER_RES_DIVIDER          1
+#define GETMYTIME(_t) (*_t = barebones_clock())
+#define MYTIMEDIFF(fin, ini) ((fin) - (ini))
+#define TIMER_RES_DIVIDER 1
 #define SAMPLE_TIME_IMPLEMENTATION 1
-#define EE_TICKS_PER_SEC           (CLOCKS_PER_SEC / TIMER_RES_DIVIDER)
+#define EE_TICKS_PER_SEC (CLOCKS_PER_SEC / TIMER_RES_DIVIDER)
 
 /** Define Host specific (POSIX), or target specific global time variables. */
 static CORETIMETYPE start_time_val, stop_time_val;
@@ -82,9 +81,7 @@ static CORETIMETYPE start_time_val, stop_time_val;
    example code) or zeroing some system parameters - e.g. setting the cpu clocks
    cycles to 0.
 */
-void
-start_time(void)
-{
+void start_time(void) {
     GETMYTIME(&start_time_val);
 }
 /* Function : stop_time
@@ -95,9 +92,7 @@ start_time(void)
    example code) or other system parameters - e.g. reading the current value of
    cpu cycles counter.
 */
-void
-stop_time(void)
-{
+void stop_time(void) {
     GETMYTIME(&stop_time_val);
 }
 /* Function : get_time
@@ -110,10 +105,8 @@ stop_time(void)
    controlled by <TIMER_RES_DIVIDER>
 */
 CORE_TICKS
-get_time(void)
-{
-    CORE_TICKS elapsed
-        = (CORE_TICKS)(MYTIMEDIFF(stop_time_val, start_time_val));
+get_time(void) {
+    CORE_TICKS elapsed = (CORE_TICKS)(MYTIMEDIFF(stop_time_val, start_time_val));
     return elapsed;
 }
 /* Function : time_in_secs
@@ -123,9 +116,7 @@ get_time(void)
    floating point. Default implementation implemented by the EE_TICKS_PER_SEC
    macro above.
 */
-secs_ret
-time_in_secs(CORE_TICKS ticks)
-{
+secs_ret time_in_secs(CORE_TICKS ticks) {
     secs_ret retval = ((secs_ret)ticks) / (secs_ret)EE_TICKS_PER_SEC;
     return retval;
 }
@@ -136,21 +127,16 @@ ee_u32 default_num_contexts = 1;
         Target specific initialization code
         Test for some common mistakes.
 */
-void
-portable_init(core_portable *p, int *argc, char *argv[])
-{
+void portable_init(core_portable *p, int *argc, char *argv[]) {
 
     (void)argc; // prevent unused warning
     (void)argv; // prevent unused warning
 
-    if (sizeof(ee_ptr_int) != sizeof(ee_u8 *))
-    {
-        ee_printf(
-            "ERROR! Please define ee_ptr_int to a type that holds a "
-            "pointer!\n");
+    if (sizeof(ee_ptr_int) != sizeof(ee_u8 *)) {
+        ee_printf("ERROR! Please define ee_ptr_int to a type that holds a "
+                  "pointer!\n");
     }
-    if (sizeof(ee_u32) != 4)
-    {
+    if (sizeof(ee_u32) != 4) {
         ee_printf("ERROR! Please define ee_u32 to a 32b unsigned type!\n");
     }
     p->portable_id = 1;
@@ -158,17 +144,25 @@ portable_init(core_portable *p, int *argc, char *argv[])
 /* Function : portable_fini
         Target specific final code
 */
-void
-portable_fini(core_portable *p)
-{
+void portable_fini(core_portable *p) {
     p->portable_id = 0;
 }
 
 /* Function : get_seed_32
         Return a seed value for the benchmark.
 */
-ee_s32 portme_sys1(void) { return read_scratch(15); }   // read random seed from scratch register 15
-ee_s32 portme_sys2(void) { return portme_sys1(); }                  // Same as portme_sys1
-ee_s32 portme_sys3(void) { return 0x66; }
-ee_s32 portme_sys4(void) { return ITERATIONS; }                          // Number of iterations - manually set
-ee_s32 portme_sys5(void) { return 0; }
+ee_s32 portme_sys1(void) {
+    return read_scratch(15);
+} // read random seed from scratch register 15
+ee_s32 portme_sys2(void) {
+    return portme_sys1();
+} // Same as portme_sys1
+ee_s32 portme_sys3(void) {
+    return 0x66;
+}
+ee_s32 portme_sys4(void) {
+    return ITERATIONS;
+} // Number of iterations - manually set
+ee_s32 portme_sys5(void) {
+    return 0;
+}

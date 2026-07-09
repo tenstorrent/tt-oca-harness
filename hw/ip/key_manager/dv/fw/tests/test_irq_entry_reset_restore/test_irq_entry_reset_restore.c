@@ -19,7 +19,7 @@
 enum phase {
     PHASE_INIT = 0,
     PHASE_POST_ASYNC = 0xA1u,
-    PHASE_POST_SOFT  = 0xB2u,
+    PHASE_POST_SOFT = 0xB2u,
 };
 
 /**
@@ -27,8 +27,7 @@ enum phase {
  *
  * @return Does not return on success; halts via TEST_PASS or TEST_FAIL.
  */
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     volatile uint32_t *phase = (volatile uint32_t *)PHASE_ADDR;
@@ -38,22 +37,22 @@ int main(void)
         irq_entry_addr_write(0x00005000u);
         irq_entry_lock_write1();
         if (irq_entry_addr_read() != 0x5000u || irq_entry_lock_read() != 1u) {
-            TEST_FAIL("program before async reset: addr=0x%08X lock=%u",
-                      irq_entry_addr_read(), irq_entry_lock_read());
+            TEST_FAIL("program before async reset: addr=0x%08X lock=%u", irq_entry_addr_read(),
+                      irq_entry_lock_read());
         }
         *phase = PHASE_POST_ASYNC;
         TB_CMD_STATUS = TB_STATUS_IDLE;
         TB_CMD_ARG = 0;
         TB_CMD = TB_CMD_KM_ASYNC_RESET;
         for (;;) {
-            __asm__ volatile ("nop");
+            __asm__ volatile("nop");
         }
     }
 
     if (*phase == PHASE_POST_ASYNC) {
         if (irq_entry_addr_read() != 0x10u || irq_entry_lock_read() != 0u) {
-            TEST_FAIL("after async reset: addr=0x%08X lock=%u",
-                      irq_entry_addr_read(), irq_entry_lock_read());
+            TEST_FAIL("after async reset: addr=0x%08X lock=%u", irq_entry_addr_read(),
+                      irq_entry_lock_read());
         }
         TEST_SUBTEST_PASS();
 
@@ -61,8 +60,8 @@ int main(void)
         irq_entry_addr_write(0x00006000u);
         irq_entry_lock_write1();
         if (irq_entry_addr_read() != 0x6000u || irq_entry_lock_read() != 1u) {
-            TEST_FAIL("program before soft reset: addr=0x%08X lock=%u",
-                      irq_entry_addr_read(), irq_entry_lock_read());
+            TEST_FAIL("program before soft reset: addr=0x%08X lock=%u", irq_entry_addr_read(),
+                      irq_entry_lock_read());
         }
         *phase = PHASE_POST_SOFT;
         *(volatile uint32_t *)KEY_MANAGER_KMCSR_SOFT_RST_CODE_BASE_ADDR = SOFT_RST_CODE_MAGIC;
@@ -72,8 +71,8 @@ int main(void)
 
     if (*phase == PHASE_POST_SOFT) {
         if (irq_entry_addr_read() != 0x10u || irq_entry_lock_read() != 0u) {
-            TEST_FAIL("after soft reset: addr=0x%08X lock=%u",
-                      irq_entry_addr_read(), irq_entry_lock_read());
+            TEST_FAIL("after soft reset: addr=0x%08X lock=%u", irq_entry_addr_read(),
+                      irq_entry_lock_read());
         }
         TEST_SUBTEST_PASS();
         TEST_PASS();

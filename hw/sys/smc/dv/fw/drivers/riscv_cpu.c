@@ -8,21 +8,20 @@
 #include <metal/shutdown.h>
 #include <stdint.h>
 
-#define __METAL_IRQ_VECTOR_HANDLER(id)                                         \
-    void *priv;                                                                \
-    struct __metal_driver_riscv_cpu_intc *intc;                                \
-    struct __metal_driver_cpu *cpu = __metal_cpu_table[__metal_myhart_id()];   \
-    if (cpu) {                                                                 \
-        intc = (struct __metal_driver_riscv_cpu_intc *)                        \
-            __metal_driver_cpu_interrupt_controller((struct metal_cpu *)cpu);  \
-        priv = intc->metal_int_table[id].exint_data;                           \
-        intc->metal_int_table[id].handler(id, priv);                           \
+#define __METAL_IRQ_VECTOR_HANDLER(id) \
+    void *priv; \
+    struct __metal_driver_riscv_cpu_intc *intc; \
+    struct __metal_driver_cpu *cpu = __metal_cpu_table[__metal_myhart_id()]; \
+    if (cpu) { \
+        intc = (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller( \
+            (struct metal_cpu *)cpu); \
+        priv = intc->metal_int_table[id].exint_data; \
+        intc->metal_int_table[id].handler(id, priv); \
     }
 
 extern void __metal_vector_table();
 unsigned long long __metal_driver_cpu_mtime_get(struct metal_cpu *cpu);
-int __metal_driver_cpu_mtimecmp_set(struct metal_cpu *cpu,
-                                    unsigned long long time);
+int __metal_driver_cpu_mtimecmp_set(struct metal_cpu *cpu, unsigned long long time);
 
 struct metal_cpu *__metal_driver_cpu_get(int hartid) {
     if (hartid < __METAL_DT_MAX_HARTS) {
@@ -46,58 +45,42 @@ void __metal_zero_memory(unsigned char *base, unsigned int size) {
 
 void __metal_interrupt_global_enable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrs %0, mstatus, %1"
-                     : "=r"(m)
-                     : "r"(METAL_MIE_INTERRUPT));
+    __asm__ volatile("csrrs %0, mstatus, %1" : "=r"(m) : "r"(METAL_MIE_INTERRUPT));
 }
 
 void __metal_interrupt_global_disable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrc %0, mstatus, %1"
-                     : "=r"(m)
-                     : "r"(METAL_MIE_INTERRUPT));
+    __asm__ volatile("csrrc %0, mstatus, %1" : "=r"(m) : "r"(METAL_MIE_INTERRUPT));
 }
 
 void __metal_interrupt_software_enable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrs %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_SW));
+    __asm__ volatile("csrrs %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_SW));
 }
 
 void __metal_interrupt_software_disable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrc %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_SW));
+    __asm__ volatile("csrrc %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_SW));
 }
 
 void __metal_interrupt_timer_enable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrs %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_TMR));
+    __asm__ volatile("csrrs %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_TMR));
 }
 
 void __metal_interrupt_timer_disable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrc %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_TMR));
+    __asm__ volatile("csrrc %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_TMR));
 }
 
 void __metal_interrupt_external_enable(void) {
     uintptr_t m;
-    __asm__ volatile("csrrs %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_EXT));
+    __asm__ volatile("csrrs %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_EXT));
 }
 
 void __metal_interrupt_external_disable(void) {
     unsigned long m;
-    __asm__ volatile("csrrc %0, mie, %1"
-                     : "=r"(m)
-                     : "r"(METAL_LOCAL_INTERRUPT_EXT));
+    __asm__ volatile("csrrc %0, mie, %1" : "=r"(m) : "r"(METAL_LOCAL_INTERRUPT_EXT));
 }
 
 void __metal_interrupt_local_enable(int id) {
@@ -126,8 +109,7 @@ void __attribute__((weak, interrupt)) metal_interrupt_vector_handler(void) {
 }
 
 /* The metal_software_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_software_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_software_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_SW);
 }
 
@@ -138,20 +120,19 @@ void __metal_default_sw_handler(int id, void *priv) {
 
     __asm__ volatile("csrr %0, mcause" : "=r"(mcause));
     if (cpu) {
-        intc = (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller((struct metal_cpu *)cpu);
-        intc->metal_exception_table[mcause & METAL_MCAUSE_CAUSE](
-            (struct metal_cpu *)cpu, id);
+        intc = (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(
+            (struct metal_cpu *)cpu);
+        intc->metal_exception_table[mcause & METAL_MCAUSE_CAUSE]((struct metal_cpu *)cpu, id);
     }
 }
 
 /* The metal_timer_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_timer_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_timer_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_TMR);
 }
 
-void __metal_default_beu_handler(int id, void *priv) {}
+void __metal_default_beu_handler(int id, void *priv) {
+}
 
 void __metal_default_timer_handler(int id, void *priv) {
     struct metal_cpu *cpu = __metal_driver_cpu_get(__metal_myhart_id());
@@ -162,8 +143,7 @@ void __metal_default_timer_handler(int id, void *priv) {
 }
 
 /* The metal_external_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_external_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_external_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_EXT);
 }
 
@@ -181,8 +161,8 @@ void __metal_exception_handler(void) {
     __asm__ volatile("csrr %0, mtvec" : "=r"(mtvec));
 
     if (cpu) {
-        intc = (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller((struct metal_cpu *)cpu);
+        intc = (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(
+            (struct metal_cpu *)cpu);
         id = mcause & METAL_MCAUSE_CAUSE;
         if (mcause & METAL_MCAUSE_INTR) {
             if (id == METAL_INTERRUPT_ID_BEU) {
@@ -263,38 +243,32 @@ void __attribute__((weak, interrupt)) metal_lc9_interrupt_vector_handler(void) {
 }
 
 /* The metal_lc10_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc10_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc10_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC10);
 }
 
 /* The metal_lc11_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc11_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc11_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC11);
 }
 
 /* The metal_lc12_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc12_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc12_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC12);
 }
 
 /* The metal_lc13_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc13_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc13_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC13);
 }
 
 /* The metal_lc14_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc14_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc14_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC14);
 }
 
 /* The metal_lc15_interrupt_vector_handler() function can be redefined. */
-void __attribute__((weak, interrupt))
-metal_lc15_interrupt_vector_handler(void) {
+void __attribute__((weak, interrupt)) metal_lc15_interrupt_vector_handler(void) {
     __METAL_IRQ_VECTOR_HANDLER(METAL_INTERRUPT_ID_LC15);
 }
 
@@ -315,8 +289,7 @@ metal_vector_mode __metal_controller_interrupt_vector_mode(void) {
     return METAL_DIRECT_MODE;
 }
 
-void __metal_controller_interrupt_vector(metal_vector_mode mode,
-                                         void *vec_table) {
+void __metal_controller_interrupt_vector(metal_vector_mode mode, void *vec_table) {
     uintptr_t trap_entry, val;
 
     __asm__ volatile("csrr %0, mtvec" : "=r"(val));
@@ -331,16 +304,13 @@ void __metal_controller_interrupt_vector(metal_vector_mode mode,
         break;
     case METAL_HARDWARE_VECTOR_MODE:
         __asm__ volatile("csrw 0x307, %0" ::"r"(trap_entry));
-        __asm__ volatile(
-            "csrw mtvec, %0" ::"r"(val | METAL_MTVEC_CLIC_VECTORED));
+        __asm__ volatile("csrw mtvec, %0" ::"r"(val | METAL_MTVEC_CLIC_VECTORED));
         break;
     case METAL_VECTOR_MODE:
-        __asm__ volatile(
-            "csrw mtvec, %0" ::"r"(trap_entry | METAL_MTVEC_VECTORED));
+        __asm__ volatile("csrw mtvec, %0" ::"r"(trap_entry | METAL_MTVEC_VECTORED));
         break;
     case METAL_DIRECT_MODE:
-        __asm__ volatile(
-            "csrw mtvec, %0" ::"r"(trap_entry & ~METAL_MTVEC_CLIC_VECTORED));
+        __asm__ volatile("csrw mtvec, %0" ::"r"(trap_entry & ~METAL_MTVEC_CLIC_VECTORED));
         break;
     }
 }
@@ -375,8 +345,8 @@ int __metal_valid_interrupt_id(int id) {
     return 0;
 }
 
-int __metal_local_interrupt_enable(struct metal_interrupt *controller,
-                                   metal_interrupt_id_e id, int enable) {
+int __metal_local_interrupt_enable(struct metal_interrupt *controller, metal_interrupt_id_e id,
+                                   int enable) {
     int rc = 0;
 
     if (!controller) {
@@ -452,8 +422,7 @@ int __metal_exception_register(struct metal_interrupt *controller, int ecode,
 }
 
 extern void early_trap_vector(void);
-void __metal_driver_riscv_cpu_controller_interrupt_init(
-    struct metal_interrupt *controller) {
+void __metal_driver_riscv_cpu_controller_interrupt_init(struct metal_interrupt *controller) {
     struct __metal_driver_riscv_cpu_intc *intc = (void *)(controller);
 
     if (!intc->init_done) {
@@ -476,17 +445,16 @@ void __metal_driver_riscv_cpu_controller_interrupt_init(
         uintptr_t mtvec;
         __asm__ volatile("csrr %0, mtvec" : "=r"(mtvec));
         if (mtvec == (uintptr_t)&early_trap_vector) {
-            __metal_controller_interrupt_vector(
-                METAL_DIRECT_MODE,
-                (void *)(uintptr_t)&__metal_exception_handler);
+            __metal_controller_interrupt_vector(METAL_DIRECT_MODE,
+                                                (void *)(uintptr_t)&__metal_exception_handler);
         }
         intc->init_done = 1;
     }
 }
 
-int __metal_driver_riscv_cpu_controller_interrupt_register(
-    struct metal_interrupt *controller, int id, metal_interrupt_handler_t isr,
-    void *priv) {
+int __metal_driver_riscv_cpu_controller_interrupt_register(struct metal_interrupt *controller,
+                                                           int id, metal_interrupt_handler_t isr,
+                                                           void *priv) {
     int rc = 0;
     struct __metal_driver_riscv_cpu_intc *intc = (void *)(controller);
 
@@ -539,8 +507,7 @@ int __metal_driver_riscv_cpu_controller_interrupt_register(
         case METAL_INTERRUPT_ID_LC13:
         case METAL_INTERRUPT_ID_LC14:
         case METAL_INTERRUPT_ID_LC15:
-            intc->metal_int_table[id].handler =
-                __metal_default_interrupt_handler;
+            intc->metal_int_table[id].handler = __metal_default_interrupt_handler;
             intc->metal_int_table[id].sub_int = priv;
             break;
         default:
@@ -550,68 +517,65 @@ int __metal_driver_riscv_cpu_controller_interrupt_register(
     return rc;
 }
 
-int __metal_driver_riscv_cpu_controller_interrupt_enable(
-    struct metal_interrupt *controller, int id) {
+int __metal_driver_riscv_cpu_controller_interrupt_enable(struct metal_interrupt *controller,
+                                                         int id) {
     return __metal_local_interrupt_enable(controller, id, METAL_ENABLE);
 }
 
-int __metal_driver_riscv_cpu_controller_interrupt_disable(
-    struct metal_interrupt *controller, int id) {
+int __metal_driver_riscv_cpu_controller_interrupt_disable(struct metal_interrupt *controller,
+                                                          int id) {
     return __metal_local_interrupt_enable(controller, id, METAL_DISABLE);
 }
 
-int __metal_driver_riscv_cpu_controller_interrupt_enable_vector(
-    struct metal_interrupt *controller, int id, metal_vector_mode mode) {
+int __metal_driver_riscv_cpu_controller_interrupt_enable_vector(struct metal_interrupt *controller,
+                                                                int id, metal_vector_mode mode) {
     struct __metal_driver_riscv_cpu_intc *intc = (void *)(controller);
 
     if (id == METAL_INTERRUPT_ID_BASE) {
         if (mode == METAL_DIRECT_MODE) {
-            __metal_controller_interrupt_vector(
-                mode, (void *)(uintptr_t)&__metal_exception_handler);
+            __metal_controller_interrupt_vector(mode,
+                                                (void *)(uintptr_t)&__metal_exception_handler);
             return 0;
         }
         if (mode == METAL_VECTOR_MODE) {
-            __metal_controller_interrupt_vector(
-                mode, (void *)&intc->metal_mtvec_table);
+            __metal_controller_interrupt_vector(mode, (void *)&intc->metal_mtvec_table);
             return 0;
         }
     }
     return -1;
 }
 
-int __metal_driver_riscv_cpu_controller_interrupt_disable_vector(
-    struct metal_interrupt *controller, int id) {
+int __metal_driver_riscv_cpu_controller_interrupt_disable_vector(struct metal_interrupt *controller,
+                                                                 int id) {
     if (id == METAL_INTERRUPT_ID_BASE) {
-        __metal_controller_interrupt_vector(
-            METAL_DIRECT_MODE, (void *)(uintptr_t)&__metal_exception_handler);
+        __metal_controller_interrupt_vector(METAL_DIRECT_MODE,
+                                            (void *)(uintptr_t)&__metal_exception_handler);
         return 0;
     }
     return -1;
 }
 
-metal_vector_mode __metal_driver_riscv_cpu_controller_get_vector_mode(
-    struct metal_interrupt *controller) {
+metal_vector_mode
+__metal_driver_riscv_cpu_controller_get_vector_mode(struct metal_interrupt *controller) {
     return __metal_controller_interrupt_vector_mode();
 }
 
-int __metal_driver_riscv_cpu_controller_set_vector_mode(
-    struct metal_interrupt *controller, metal_vector_mode mode) {
+int __metal_driver_riscv_cpu_controller_set_vector_mode(struct metal_interrupt *controller,
+                                                        metal_vector_mode mode) {
 
     if (mode == METAL_DIRECT_MODE) {
-        __metal_controller_interrupt_vector(
-            mode, (void *)(uintptr_t)&__metal_exception_handler);
+        __metal_controller_interrupt_vector(mode, (void *)(uintptr_t)&__metal_exception_handler);
         return 0;
     }
     if (mode == METAL_VECTOR_MODE) {
-        __metal_controller_interrupt_vector(
-            mode, (void *)(uintptr_t)__metal_vector_table);
+        __metal_controller_interrupt_vector(mode, (void *)(uintptr_t)__metal_vector_table);
         return 0;
     }
     return -1;
 }
 
-int __metal_driver_riscv_cpu_controller_command_request(
-    struct metal_interrupt *controller, int cmd, void *data) {
+int __metal_driver_riscv_cpu_controller_command_request(struct metal_interrupt *controller, int cmd,
+                                                        void *data) {
     /* NOP for now, unless local interrupt lines the like of clic, clint, plic
      */
     return 0;
@@ -655,39 +619,33 @@ unsigned long long __metal_driver_cpu_mtime_get(struct metal_cpu *cpu) {
     unsigned long long time = 0;
     struct metal_interrupt *tmr_intc;
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
         tmr_intc = intc->metal_int_table[METAL_INTERRUPT_ID_TMR].sub_int;
         if (tmr_intc) {
-            tmr_intc->vtable->command_request(tmr_intc, METAL_TIMER_MTIME_GET,
-                                              &time);
+            tmr_intc->vtable->command_request(tmr_intc, METAL_TIMER_MTIME_GET, &time);
         }
     }
     return time;
 }
 
-int __metal_driver_cpu_mtimecmp_set(struct metal_cpu *cpu,
-                                    unsigned long long time) {
+int __metal_driver_cpu_mtimecmp_set(struct metal_cpu *cpu, unsigned long long time) {
     int rc = -1;
     struct metal_interrupt *tmr_intc;
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
         tmr_intc = intc->metal_int_table[METAL_INTERRUPT_ID_TMR].sub_int;
         if (tmr_intc) {
-            rc = tmr_intc->vtable->mtimecmp_set(
-                tmr_intc, __metal_driver_cpu_hartid(cpu), time);
+            rc = tmr_intc->vtable->mtimecmp_set(tmr_intc, __metal_driver_cpu_hartid(cpu), time);
         }
     }
     return rc;
 }
 
-struct metal_interrupt *
-__metal_driver_cpu_timer_controller_interrupt(struct metal_cpu *cpu) {
+struct metal_interrupt *__metal_driver_cpu_timer_controller_interrupt(struct metal_cpu *cpu) {
 #ifdef __METAL_DT_RISCV_CLINT0_HANDLE
     return __METAL_DT_RISCV_CLINT0_HANDLE;
 #else
@@ -704,8 +662,7 @@ int __metal_driver_cpu_get_timer_interrupt_id(struct metal_cpu *cpu) {
     return METAL_INTERRUPT_ID_TMR;
 }
 
-struct metal_interrupt *
-__metal_driver_cpu_sw_controller_interrupt(struct metal_cpu *cpu) {
+struct metal_interrupt *__metal_driver_cpu_sw_controller_interrupt(struct metal_cpu *cpu) {
 #ifdef __METAL_DT_RISCV_CLINT0_HANDLE
     return __METAL_DT_RISCV_CLINT0_HANDLE;
 #else
@@ -726,14 +683,12 @@ int __metal_driver_cpu_set_sw_ipi(struct metal_cpu *cpu, int hartid) {
     int rc = -1;
     struct metal_interrupt *sw_intc;
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
         sw_intc = intc->metal_int_table[METAL_INTERRUPT_ID_SW].sub_int;
         if (sw_intc) {
-            rc = sw_intc->vtable->command_request(
-                sw_intc, METAL_SOFTWARE_IPI_SET, &hartid);
+            rc = sw_intc->vtable->command_request(sw_intc, METAL_SOFTWARE_IPI_SET, &hartid);
         }
     }
     return rc;
@@ -743,14 +698,12 @@ int __metal_driver_cpu_clear_sw_ipi(struct metal_cpu *cpu, int hartid) {
     int rc = -1;
     struct metal_interrupt *sw_intc;
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
         sw_intc = intc->metal_int_table[METAL_INTERRUPT_ID_SW].sub_int;
         if (sw_intc) {
-            rc = sw_intc->vtable->command_request(
-                sw_intc, METAL_SOFTWARE_IPI_CLEAR, &hartid);
+            rc = sw_intc->vtable->command_request(sw_intc, METAL_SOFTWARE_IPI_CLEAR, &hartid);
         }
     }
     return rc;
@@ -760,21 +713,18 @@ int __metal_driver_cpu_get_msip(struct metal_cpu *cpu, int hartid) {
     int rc = 0;
     struct metal_interrupt *sw_intc;
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
         sw_intc = intc->metal_int_table[METAL_INTERRUPT_ID_SW].sub_int;
         if (sw_intc) {
-            rc = sw_intc->vtable->command_request(
-                sw_intc, METAL_SOFTWARE_MSIP_GET, &hartid);
+            rc = sw_intc->vtable->command_request(sw_intc, METAL_SOFTWARE_MSIP_GET, &hartid);
         }
     }
     return rc;
 }
 
-struct metal_interrupt *
-__metal_driver_cpu_controller_interrupt(struct metal_cpu *cpu) {
+struct metal_interrupt *__metal_driver_cpu_controller_interrupt(struct metal_cpu *cpu) {
     return __metal_driver_cpu_interrupt_controller(cpu);
 }
 
@@ -799,27 +749,21 @@ int __metal_driver_cpu_disable_interrupt(struct metal_cpu *cpu, void *priv) {
 int __metal_driver_cpu_exception_register(struct metal_cpu *cpu, int ecode,
                                           metal_exception_handler_t isr) {
     struct __metal_driver_riscv_cpu_intc *intc =
-        (struct __metal_driver_riscv_cpu_intc *)
-            __metal_driver_cpu_interrupt_controller(cpu);
+        (struct __metal_driver_riscv_cpu_intc *)__metal_driver_cpu_interrupt_controller(cpu);
 
     if (intc) {
-        return __metal_exception_register((struct metal_interrupt *)intc, ecode,
-                                          isr);
+        return __metal_exception_register((struct metal_interrupt *)intc, ecode, isr);
     }
     return -1;
 }
 
-int __metal_driver_cpu_get_instruction_length(struct metal_cpu *cpu,
-                                              uintptr_t epc) {
+int __metal_driver_cpu_get_instruction_length(struct metal_cpu *cpu, uintptr_t epc) {
     /**
      * Per ISA compressed instruction has last two bits of opcode set.
      * The encoding '00' '01' '10' are used for compressed instruction.
      * Only enconding '11' isn't regarded as compressed instruction (>16b).
      */
-    return ((*(unsigned short *)epc & METAL_INSN_LENGTH_MASK) ==
-            METAL_INSN_NOT_COMPRESSED)
-               ? 4
-               : 2;
+    return ((*(unsigned short *)epc & METAL_INSN_LENGTH_MASK) == METAL_INSN_NOT_COMPRESSED) ? 4 : 2;
 }
 
 uintptr_t __metal_driver_cpu_get_exception_pc(struct metal_cpu *cpu) {
@@ -838,20 +782,15 @@ struct metal_buserror *__metal_driver_cpu_get_buserror(struct metal_cpu *cpu) {
 }
 
 __METAL_DEFINE_VTABLE(__metal_driver_vtable_riscv_cpu_intc) = {
-    .controller_vtable.interrupt_init =
-        __metal_driver_riscv_cpu_controller_interrupt_init,
-    .controller_vtable.interrupt_register =
-        __metal_driver_riscv_cpu_controller_interrupt_register,
-    .controller_vtable.interrupt_enable =
-        __metal_driver_riscv_cpu_controller_interrupt_enable,
-    .controller_vtable.interrupt_disable =
-        __metal_driver_riscv_cpu_controller_interrupt_disable,
+    .controller_vtable.interrupt_init = __metal_driver_riscv_cpu_controller_interrupt_init,
+    .controller_vtable.interrupt_register = __metal_driver_riscv_cpu_controller_interrupt_register,
+    .controller_vtable.interrupt_enable = __metal_driver_riscv_cpu_controller_interrupt_enable,
+    .controller_vtable.interrupt_disable = __metal_driver_riscv_cpu_controller_interrupt_disable,
     .controller_vtable.interrupt_get_vector_mode =
         __metal_driver_riscv_cpu_controller_get_vector_mode,
     .controller_vtable.interrupt_set_vector_mode =
         __metal_driver_riscv_cpu_controller_set_vector_mode,
-    .controller_vtable.command_request =
-        __metal_driver_riscv_cpu_controller_command_request,
+    .controller_vtable.command_request = __metal_driver_riscv_cpu_controller_command_request,
 };
 
 __METAL_DEFINE_VTABLE(__metal_driver_vtable_cpu) = {
@@ -859,12 +798,9 @@ __METAL_DEFINE_VTABLE(__metal_driver_vtable_cpu) = {
     .cpu_vtable.timebase_get = __metal_driver_cpu_timebase_get,
     .cpu_vtable.mtime_get = __metal_driver_cpu_mtime_get,
     .cpu_vtable.mtimecmp_set = __metal_driver_cpu_mtimecmp_set,
-    .cpu_vtable.tmr_controller_interrupt =
-        __metal_driver_cpu_timer_controller_interrupt,
-    .cpu_vtable.get_tmr_interrupt_id =
-        __metal_driver_cpu_get_timer_interrupt_id,
-    .cpu_vtable.sw_controller_interrupt =
-        __metal_driver_cpu_sw_controller_interrupt,
+    .cpu_vtable.tmr_controller_interrupt = __metal_driver_cpu_timer_controller_interrupt,
+    .cpu_vtable.get_tmr_interrupt_id = __metal_driver_cpu_get_timer_interrupt_id,
+    .cpu_vtable.sw_controller_interrupt = __metal_driver_cpu_sw_controller_interrupt,
     .cpu_vtable.get_sw_interrupt_id = __metal_driver_cpu_get_sw_interrupt_id,
     .cpu_vtable.set_sw_ipi = __metal_driver_cpu_set_sw_ipi,
     .cpu_vtable.clear_sw_ipi = __metal_driver_cpu_clear_sw_ipi,

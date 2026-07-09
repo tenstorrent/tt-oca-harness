@@ -20,8 +20,7 @@
 #include "test_common.h"
 #include "rom_otp.h"
 
-int main(void)
-{
+int main(void) {
     uint32_t buf[ROM_KM_OTP_WORDS];
     int rc;
 
@@ -39,18 +38,14 @@ int main(void)
     /* 1. Pre-lock: all fields return valid data */
     TEST_SUBTEST_START("Pre-lock: chiplet_uid readable");
     rc = rom_otp_read_chiplet_uid(buf);
-    if (rc != 0)
-        TEST_FAIL("chiplet_uid: pre-lock dual-rail check failed");
-    if (buf[0] == 0 && buf[1] == 0)
-        TEST_FAIL("chiplet_uid: pre-lock returns zero");
+    if (rc != 0) TEST_FAIL("chiplet_uid: pre-lock dual-rail check failed");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("chiplet_uid: pre-lock returns zero");
     TEST_SUBTEST_PASS();
 
     TEST_SUBTEST_START("Pre-lock: class_key readable");
     rc = rom_otp_read_class_key(buf);
-    if (rc != 0)
-        TEST_FAIL("class_key: pre-lock dual-rail check failed");
-    if (buf[0] == 0 && buf[1] == 0)
-        TEST_FAIL("class_key: pre-lock returns zero");
+    if (rc != 0) TEST_FAIL("class_key: pre-lock dual-rail check failed");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("class_key: pre-lock returns zero");
     TEST_SUBTEST_PASS();
 
     /* 2. Lock chiplet_uid */
@@ -66,8 +61,8 @@ int main(void)
      */
     rc = rom_otp_read_chiplet_uid(buf);
     /* Return code -1 is expected: all-zero from HW fails complement check */
-    if (buf[0] != 0 || buf[1] != 0 || buf[2] != 0 || buf[3] != 0 ||
-        buf[4] != 0 || buf[5] != 0 || buf[6] != 0 || buf[7] != 0) {
+    if (buf[0] != 0 || buf[1] != 0 || buf[2] != 0 || buf[3] != 0 || buf[4] != 0 || buf[5] != 0 ||
+        buf[6] != 0 || buf[7] != 0) {
         TEST_FAIL("chiplet_uid: post-lock reads non-zero (hw masking not working)");
     }
     TEST_SUBTEST_PASS();
@@ -86,16 +81,12 @@ int main(void)
     /* 4. sip_uid and sys_uid are still unlocked and readable */
     TEST_SUBTEST_START("sip_uid and sys_uid remain readable after chiplet/class locks");
     rc = rom_otp_read_sip_uid(buf);
-    if (rc != 0)
-        TEST_FAIL("sip_uid: dual-rail check failed after unrelated lock");
-    if (buf[0] == 0 && buf[1] == 0)
-        TEST_FAIL("sip_uid: unexpectedly zero after unrelated lock");
+    if (rc != 0) TEST_FAIL("sip_uid: dual-rail check failed after unrelated lock");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sip_uid: unexpectedly zero after unrelated lock");
 
     rc = rom_otp_read_sys_uid(buf);
-    if (rc != 0)
-        TEST_FAIL("sys_uid: dual-rail check failed after unrelated lock");
-    if (buf[0] == 0 && buf[1] == 0)
-        TEST_FAIL("sys_uid: unexpectedly zero after unrelated lock");
+    if (rc != 0) TEST_FAIL("sys_uid: dual-rail check failed after unrelated lock");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sys_uid: unexpectedly zero after unrelated lock");
     TEST_SUBTEST_PASS();
 
     /* 5. Write-1-only: writing 0 to OTP_READ_LOCK does not clear locked bits */
@@ -108,7 +99,8 @@ int main(void)
         rc = rom_otp_read_chiplet_uid(buf);
         for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
             if (buf[i] != 0) {
-                TEST_FAIL("chiplet_uid[%u]: not zero after 0-write to READ_LOCK (lock cleared!)", i);
+                TEST_FAIL("chiplet_uid[%u]: not zero after 0-write to READ_LOCK (lock cleared!)",
+                          i);
             }
         }
     }

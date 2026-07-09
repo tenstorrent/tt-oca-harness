@@ -52,9 +52,8 @@
  * @param load_limit Region-aligned exclusive upper bound for the firmware load
  *                   area (the static __km_fw_load_limit passed by the caller).
  */
-__attribute__((noreturn))
-void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
-                                uint32_t load_limit);
+__attribute__((noreturn)) void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
+                                                          uint32_t load_limit);
 
 /**
  * @brief Send direct RESP_CMD success and jump to pre-loaded SRAM firmware
@@ -65,8 +64,7 @@ void rom_handover_load_and_exec(uint8_t cmd_seq, uint32_t fw_words,
  * @param cmd_seq      Sequence number echo for the direct RESP_CMD.
  * @param fw_size_bytes Byte size of the loaded firmware (from sram_fw_size).
  */
-__attribute__((noreturn))
-void rom_handover_exec_existing(uint8_t cmd_seq, uint32_t fw_size_bytes);
+__attribute__((noreturn)) void rom_handover_exec_existing(uint8_t cmd_seq, uint32_t fw_size_bytes);
 
 /**
  * @brief Lock sensitive data before handover (used by both SRAM-exec paths).
@@ -111,8 +109,7 @@ void rom_handover_shred_sideload_keys(void);
  *
  * @param fw_size_bytes Byte size of the firmware image (used to compute lock mask).
  */
-__attribute__((noreturn))
-void rom_handover_finish(uint32_t fw_size_bytes);
+__attribute__((noreturn)) void rom_handover_finish(uint32_t fw_size_bytes);
 
 /**
  * @brief Deny mutable firmware access to KPV key material before handover.
@@ -141,7 +138,7 @@ void rom_handover_lock_kpv_root_keys(void);
  *
  * @param s0-s3  xoshiro128++ initial state words (passed in a0-a3).
  */
-__attribute__((noreturn))
-void rom_handover_jump(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t s3);
+__attribute__((noreturn)) void rom_handover_jump(uint32_t s0, uint32_t s1, uint32_t s2,
+                                                 uint32_t s3);
 
 #endif /* ROM_HANDOVER_H */

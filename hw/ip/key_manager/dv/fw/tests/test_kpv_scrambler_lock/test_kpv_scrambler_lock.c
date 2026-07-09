@@ -22,14 +22,14 @@
 #define KPV_SCRAMBLER_CTRL_REG \
     (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 #define KPV_KEY_WORD_ADDR(slot, word) \
-    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot) * KEY_MANAGER_KPV_KEY_ENTRY_SIZE + (uint32_t)(word) * 4u)
+    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot)*KEY_MANAGER_KPV_KEY_ENTRY_SIZE + \
+     (uint32_t)(word)*4u)
 #define KPV_KEY_WORD_REG(slot, word) \
     (*(volatile km_kpv__key_word_reg_t *)KPV_KEY_WORD_ADDR(slot, word))
-#define KPV_CTRL_ADDR(slot)  (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot) * 4u)
-#define KPV_CTRL_REG(slot)   (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
+#define KPV_CTRL_ADDR(slot) (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot)*4u)
+#define KPV_CTRL_REG(slot) (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
     if (!tb_set_timeout(30000)) TEST_FAIL("timeout");
 
@@ -43,15 +43,15 @@ int main(void)
     /* Allow reads up to word 1 for the slot we use */
     const unsigned KEY_SLOT = 0u;
     const unsigned KEY_WORD = 1u;
-    const uint32_t KEY_VAL  = 0xCAFEBABEu;
+    const uint32_t KEY_VAL = 0xCAFEBABEu;
     KPV_CTRL_REG(KEY_SLOT).f.last_dword = KEY_WORD;
 
     /* Write key data with scrambling enabled; read back and save for later check */
     KPV_KEY_WORD_REG(KEY_SLOT, KEY_WORD).w = KEY_VAL;
     uint32_t key_data_before_lock = KPV_KEY_WORD_REG(KEY_SLOT, KEY_WORD).w;
     if (key_data_before_lock != KEY_VAL) {
-        TEST_FAIL("Key data write failed: expected 0x%08X, got 0x%08X",
-                  (unsigned)KEY_VAL, (unsigned)key_data_before_lock);
+        TEST_FAIL("Key data write failed: expected 0x%08X, got 0x%08X", (unsigned)KEY_VAL,
+                  (unsigned)key_data_before_lock);
     }
 
     /* Set LOCK (write-one-only) */
@@ -76,9 +76,10 @@ int main(void)
     /* Key data must be unchanged after lock and after writing to the scrambler key register */
     uint32_t key_data_after = KPV_KEY_WORD_REG(KEY_SLOT, KEY_WORD).w;
     if (key_data_after != key_data_before_lock) {
-        TEST_FAIL("Key data[%u][%u] changed after lock+scrambler key write: before 0x%08X, after 0x%08X",
-                  (unsigned)KEY_SLOT, (unsigned)KEY_WORD,
-                  (unsigned)key_data_before_lock, (unsigned)key_data_after);
+        TEST_FAIL(
+            "Key data[%u][%u] changed after lock+scrambler key write: before 0x%08X, after 0x%08X",
+            (unsigned)KEY_SLOT, (unsigned)KEY_WORD, (unsigned)key_data_before_lock,
+            (unsigned)key_data_after);
     }
 
     /* Attempt to clear enable: must be ignored (enable still set) */
