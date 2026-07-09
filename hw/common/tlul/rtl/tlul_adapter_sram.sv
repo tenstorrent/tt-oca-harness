@@ -334,11 +334,11 @@ module tlul_adapter_sram
   logic [top_pkg::TL_DW-1:0] unused_instr, unused_data;
   logic [DataIntgWidth-1:0] error_instr_integ, error_data_integ;
   tlul_data_integ_enc u_tlul_data_integ_enc_instr (
-    .data_i(DataMaxWidth'(DataWhenInstrError)),
+    .data_i(tlul_pkg::DataMaxWidth'(DataWhenInstrError)),
     .data_intg_o({error_instr_integ, unused_instr})
   );
   tlul_data_integ_enc u_tlul_data_integ_enc_data (
-    .data_i(DataMaxWidth'(DataWhenError)),
+    .data_i(tlul_pkg::DataMaxWidth'(DataWhenError)),
     .data_intg_o({error_data_integ, unused_data})
   );
 

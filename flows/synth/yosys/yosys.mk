@@ -9,7 +9,7 @@ OCAH_YOSYS_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 include $(OCAH_YOSYS_DIR)/../../common.mk
 
 # Synthesis via yosys + yosys-slang, PDK-parametrized by TECH. Included by
-# ocah.mk (ocah-synth dispatcher) and each flow.mk (ocah-synth-one worker).
+# ocah.mk (ocah-synth-all dispatcher) and each flow.mk (ocah-synth worker).
 
 # Default PDK, forwarded into the container as PDK=$(TECH) (see
 # flows/synth/yosys/tech/ and scripts/init_tech.tcl).
@@ -19,14 +19,15 @@ OCAH_YOSYS_SYNTH_TCL := $(OCAH_YOSYS_DIR)/scripts/synth.tcl
 
 ## @section Synthesis (yosys)
 
-## Synthesize one or all hw/sys blocks with yosys + yosys-slang.
-## @param BLOCK=smu Optional block to synthesize (see flows/synth/yosys/README.md); omit for all
-## @param TECH=ihp-sg13g2 Optional PDK, see flows/synth/yosys/tech/ (default ihp-sg13g2)
-.PHONY: ocah-synth
-ocah-synth:
-	$(call ocah_flow_run,ocah-synth-one,TECH="$(TECH)")
+## Synthesize all (or BLOCK=-selected) hw/sys blocks with yosys + yosys-slang.
+## For a single block, prefer `ocah-synth` directly from that block's flow.mk.
+## @param BLOCK=smu Optional block(s) to synthesize; omit for all
+## @param TECH=ihp-sg13g2 Optional PDK (default ihp-sg13g2)
+.PHONY: ocah-synth-all
+ocah-synth-all:
+	$(call ocah_flow_run,ocah-synth,TECH="$(TECH)")
 
-OCAH_PHONY += ocah-synth
+OCAH_PHONY += ocah-synth-all
 
 ifdef FLOW_DESIGN
 
@@ -34,8 +35,9 @@ ifdef FLOW_DESIGN
 OCAH_SYNTH_DIR := build/synth/$(TECH)
 OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
 
-.PHONY: ocah-synth-one
-ocah-synth-one:
+## Synthesize this one block with yosys + yosys-slang.
+.PHONY: ocah-synth
+ocah-synth:
 	@mkdir -p $(OCAH_SYNTH_DIR)
 	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
 	$(call ocah_eda_docker_run, env PDK=$(TECH) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) yosys -c $(OCAH_YOSYS_SYNTH_TCL))

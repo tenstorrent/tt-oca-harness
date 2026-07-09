@@ -5,29 +5,38 @@ ifndef ocah_lint_slang_mk
 ocah_lint_slang_mk := 1
 
 # Semantic lint via slang (elaborating frontend, not a style linter). Included
-# by ocah.mk (ocah-lint dispatcher) and each flow.mk (ocah-lint-one worker).
+# by ocah.mk (ocah-lint-slang-all dispatcher) and each flow.mk (ocah-lint-slang worker).
 include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../common.mk
 
 ## @section Lint (slang)
 
-## Lint one or all hw/sys blocks with slang (open-source SystemVerilog frontend).
-## @param BLOCK=smu Optional block to lint (see flows/synth/yosys/README.md); omit to lint all
-.PHONY: ocah-lint
-ocah-lint:
-	$(call ocah_flow_run,ocah-lint-one)
+## Lint all (or BLOCK=-selected) hw/sys blocks with slang. For a single
+## block, prefer `ocah-lint-slang` directly from that block's own flow.mk.
+## @param BLOCK=smu Optional block(s) to lint (space-separated); omit for all
+.PHONY: ocah-lint-slang-all
+ocah-lint-slang-all:
+	$(call ocah_flow_run,ocah-lint-slang)
 
-OCAH_PHONY += ocah-lint
+OCAH_PHONY += ocah-lint-slang-all
 
 ifdef FLOW_DESIGN
 
-OCAH_LINT_DIR := build/lint
-OCAH_LINT_FLIST := $(OCAH_LINT_DIR)/$(FLOW_DESIGN).f
+OCAH_LINT_SLANG_DIR := build/lint
+OCAH_LINT_SLANG_FLIST := $(OCAH_LINT_SLANG_DIR)/$(FLOW_DESIGN).f
 
-.PHONY: ocah-lint-one
-ocah-lint-one:
-	@mkdir -p $(OCAH_LINT_DIR)
-	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_LINT_FLIST))
-	$(call ocah_eda_docker_run, slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 -f $(OCAH_LINT_FLIST))
+## Generate this block's bender filelist for lint, without running slang.
+## Reused by the CI lint job, which doesn't go through Docker (see section 3).
+.PHONY: ocah-lint-slang-flist
+ocah-lint-slang-flist:
+	@mkdir -p $(OCAH_LINT_SLANG_DIR)
+	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_LINT_SLANG_FLIST))
+
+## Lint this one block with slang.
+.PHONY: ocah-lint-slang
+ocah-lint-slang: ocah-lint-slang-flist
+	# --single-unit: slang defaults to one compilation unit per file in -f,
+	# so macros `include`d in one file aren't visible when used in another.
+	$(call ocah_eda_docker_run, slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit -f $(OCAH_LINT_SLANG_FLIST))
 
 endif
 

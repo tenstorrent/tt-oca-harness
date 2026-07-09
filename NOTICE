@@ -49,3 +49,9 @@ This project incorporates code from the following third-party sources:
    Project: https://github.com/tenstorrent/aou-rtl
    Vendored under vendor/tenstorrent/aou-rtl/upstream/
 
+6. slang_to_rdjson.py
+   Copyright 2026 ETH Zurich and University of Bologna (Nils Wistoff)
+   Licensed under the Apache License, Version 2.0
+   Project: https://github.com/pulp-platform/pulp-actions (slang/slang_to_rdjson.py)
+   Vendored under scripts/ci/slang_to_rdjson.py
+
