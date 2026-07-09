@@ -58,8 +58,7 @@ void nmi_handler(void) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     /* Initialize outbound filter to allow testpass mailbox access */
     sep_outbound_filter_init();
 
@@ -94,8 +93,7 @@ int main(void)
     printf("SEP_NMI_VEC default: 0x%08x\n", nmi_vec_default);
 
     if (nmi_vec_default != 0u) {
-        printf("ERROR: SEP_NMI_VEC default mismatch! Expected 0x%08x\n",
-               0u);
+        printf("ERROR: SEP_NMI_VEC default mismatch! Expected 0x%08x\n", 0u);
         return 1;
     }
     printf("SEP_NMI_VEC default value verified OK\n");
@@ -110,8 +108,8 @@ int main(void)
     /* Verify it was written correctly */
     uint32_t nmi_vec_readback = nmi_read_vector_reg();
     if (nmi_vec_readback != nmi_addr) {
-        printf("ERROR: SEP_NMI_VEC write failed! Expected 0x%08x, got 0x%08x\n",
-               nmi_addr, nmi_vec_readback);
+        printf("ERROR: SEP_NMI_VEC write failed! Expected 0x%08x, got 0x%08x\n", nmi_addr,
+               nmi_vec_readback);
         return 1;
     }
     printf("NMI vector set OK\n");
@@ -147,8 +145,8 @@ int main(void)
     printf("SEP_NMI_VEC after locked write: 0x%08x\n", locked_readback);
 
     if (locked_readback != nmi_addr) {
-        printf("ERROR: SEP_NMI_VEC changed despite lock! Expected 0x%08x, got 0x%08x\n",
-               nmi_addr, locked_readback);
+        printf("ERROR: SEP_NMI_VEC changed despite lock! Expected 0x%08x, got 0x%08x\n", nmi_addr,
+               locked_readback);
         return 1;
     }
     printf("SEP_NMI_VEC lock protection verified OK\n\n");

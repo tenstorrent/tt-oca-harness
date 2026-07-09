@@ -13,23 +13,25 @@
 #include <stdio.h>
 
 // Test status definitions
-#define TEST_PASS   0
-#define TEST_FAIL   -1
+#define TEST_PASS 0
+#define TEST_FAIL -1
 
 // Common test macros
-#define ASSERT(cond) do { \
-    if (!(cond)) { \
-        printf("ASSERTION FAILED: %s at %s:%d\n", #cond, __FILE__, __LINE__); \
-        return TEST_FAIL; \
-    } \
-} while(0)
+#define ASSERT(cond) \
+    do { \
+        if (!(cond)) { \
+            printf("ASSERTION FAILED: %s at %s:%d\n", #cond, __FILE__, __LINE__); \
+            return TEST_FAIL; \
+        } \
+    } while (0)
 
-#define CHECK_RESULT(result) do { \
-    if ((result) != 0) { \
-        printf("TEST FAILED at %s:%d\n", __FILE__, __LINE__); \
-        return TEST_FAIL; \
-    } \
-} while(0)
+#define CHECK_RESULT(result) \
+    do { \
+        if ((result) != 0) { \
+            printf("TEST FAILED at %s:%d\n", __FILE__, __LINE__); \
+            return TEST_FAIL; \
+        } \
+    } while (0)
 
 // Test utility functions
 static inline void test_delay_us(uint32_t us) {

@@ -33,13 +33,11 @@
 
 #define TIMEOUT_LIMIT 100000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int wait_for_ready(int timeout)
-{
+static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -50,8 +48,7 @@ static int wait_for_ready(int timeout)
     return 1;
 }
 
-static int wait_for_idle(int timeout)
-{
+static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -62,8 +59,7 @@ static int wait_for_idle(int timeout)
     return 1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -75,7 +71,8 @@ int main(void)
     spi_controller__STATUS_t status;
     spi_controller__CMD_t cmd;
     spi_controller__CFG_t cfg;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -153,8 +150,8 @@ int main(void)
     printf("  CMD issued: DIR=TX, LEN=3 (4 bytes), CSAAT=1\n");
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS: ACTIVE=%u, TXQD=%u, CMDQD=%u\n",
-           status.f.ACTIVE, status.f.TXQD, status.f.CMDQD);
+    printf("  STATUS: ACTIVE=%u, TXQD=%u, CMDQD=%u\n", status.f.ACTIVE, status.f.TXQD,
+           status.f.CMDQD);
 
     /* Step 3: Issue RX command (following TX with CSAAT) */
     printf("\nStep 3: RX command (4 bytes, CSAAT=0, release CS)\n");
@@ -178,8 +175,7 @@ int main(void)
 
     /* Check RX FIFO */
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS: RXQD=%u, RXEMPTY=%u\n",
-           status.f.RXQD, status.f.RXEMPTY);
+    printf("  STATUS: RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     if (status.f.RXQD > 0) {
         uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
@@ -211,6 +207,8 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

@@ -12,8 +12,7 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-int main(void)
-{
+int main(void) {
     const uint32_t chiplet_pattern = 0xA5A55A5Au;
     const uint32_t class_pattern = 0x3C3CC3C3u;
     const uint32_t token_pattern = 0x13579BDFu;
@@ -31,12 +30,12 @@ int main(void)
     }
 
     printf("Checking normal shadow RW fields\n");
-    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR,
-                          chiplet_pattern, "CHIPLET_UID[31:0]") != 0) {
+    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR, chiplet_pattern,
+                          "CHIPLET_UID[31:0]") != 0) {
         test_fail(1);
     }
-    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR,
-                          class_pattern, "CLASS_KEY[31:0]") != 0) {
+    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, class_pattern,
+                          "CLASS_KEY[31:0]") != 0) {
         test_fail(1);
     }
 
@@ -84,8 +83,7 @@ int main(void)
 
     rb = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR);
     if (rb != EFUSE_FW_DENY_WORD) {
-        printf("ERROR: CHIPLET_UID read lock expected 0x%08x got=0x%08x\n",
-               EFUSE_FW_DENY_WORD, rb);
+        printf("ERROR: CHIPLET_UID read lock expected 0x%08x got=0x%08x\n", EFUSE_FW_DENY_WORD, rb);
         test_fail(1);
     }
 

@@ -101,22 +101,19 @@ int metal_hpm_disable(struct metal_cpu *cpu);
  *                Event bit mask is partitioned as follows:
  *                [XLEN-1:8] - Event selection mask [7:0] - Event class
  * @return 0 If no error.*/
-int metal_hpm_set_event(struct metal_cpu *cpu, metal_hpm_counter counter,
-                        unsigned int bitmask);
+int metal_hpm_set_event(struct metal_cpu *cpu, metal_hpm_counter counter, unsigned int bitmask);
 
 /*! @brief Get events selection mask set for specified counter.
  * @param cpu The CPU device handle.
  * @param counter Hardware counter.
  * @return Event selection bit mask. refer core reference manual for details.*/
-unsigned int metal_hpm_get_event(struct metal_cpu *cpu,
-                                 metal_hpm_counter counter);
+unsigned int metal_hpm_get_event(struct metal_cpu *cpu, metal_hpm_counter counter);
 
 /*! @brief Clear event selector bits as per specified bit-mask.
  * @param cpu The CPU device handle.
  * @param counter Hardware counter.
  * @return 0 If no error.*/
-int metal_hpm_clr_event(struct metal_cpu *cpu, metal_hpm_counter counter,
-                        unsigned int bitmask);
+int metal_hpm_clr_event(struct metal_cpu *cpu, metal_hpm_counter counter, unsigned int bitmask);
 
 /*! @brief Enable counter access to next lower privilege mode.
  * @param cpu The CPU device handle.
@@ -136,8 +133,7 @@ int metal_hpm_disable_access(struct metal_cpu *cpu, metal_hpm_counter counter);
  * @param cpu The CPU device handle.
  * @param counter Hardware counter.
  * @return Current value of hardware counter on success, 0 on failure.*/
-unsigned long long metal_hpm_read_counter(struct metal_cpu *cpu,
-                                          metal_hpm_counter counter);
+unsigned long long metal_hpm_read_counter(struct metal_cpu *cpu, metal_hpm_counter counter);
 
 /*! @brief Clears off specified counter.
  * @param cpu The CPU device handle.

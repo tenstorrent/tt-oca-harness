@@ -38,8 +38,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static int test_state_read(void) {
@@ -52,7 +51,7 @@ static int test_state_read(void) {
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;
     cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -79,14 +78,12 @@ static int test_state_read(void) {
     printf("=== Step 5: Read STATE shares ===\n");
     uint32_t share0[8], share1[8], digest[8];
 
-    for (int i = 0; i < 8; i++)
-        share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
+    for (int i = 0; i < 8; i++) share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
 
     for (int i = 0; i < 8; i++)
         share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
 
-    for (int i = 0; i < 8; i++)
-        digest[i] = share0[i] ^ share1[i];
+    for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 
     printf("Share0: ");
     for (int i = 0; i < 8; i++) printf("%08x ", share0[i]);
@@ -125,7 +122,10 @@ static int test_state_read(void) {
 
     int shares_same = 1;
     for (int i = 0; i < 8; i++) {
-        if (share0[i] != share1[i]) { shares_same = 0; break; }
+        if (share0[i] != share1[i]) {
+            shares_same = 0;
+            break;
+        }
     }
     if (shares_same) {
         printf("FAIL: share0 == share1 (masking not active)\n");
@@ -166,5 +166,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

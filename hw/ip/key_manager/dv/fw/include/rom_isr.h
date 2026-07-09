@@ -23,8 +23,8 @@
  * RV32E GPR state into this frame before calling `rom_irq()`.
  */
 typedef struct rom_irq_frame {
-    uint32_t ret_addr;   /**< Saved q0 return address (bit0 encodes instruction width). */
-    uint32_t irq_mask;   /**< Saved q1 IRQ pending bitmask. */
+    uint32_t ret_addr; /**< Saved q0 return address (bit0 encodes instruction width). */
+    uint32_t irq_mask; /**< Saved q1 IRQ pending bitmask. */
     uint32_t x1_ra;
     uint32_t x2_sp;
     uint32_t x3_gp;

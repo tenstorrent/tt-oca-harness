@@ -28,80 +28,77 @@
 #include "km_mailbox_sep_regs.h"
 
 /* Register access macros using struct types */
-#define MBOX_READ_DATA_REG       (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG          (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG      (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG      (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
-#define MBOX_CTRL_REG            (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_CTRL_REG \
+    (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 /* Helper functions to construct SEP mailbox register values from struct fields.
  * NOTE: KM_MAILBOX_SEP_* types are ONLY for constructing bit patterns to pass
  * to testbench commands. SEP mailbox registers are NOT accessible from KM and
  * must be accessed via testbench command interface (tb_sep_mbox_* functions).
  */
-static inline uint32_t sep_mbox_irq_enable_inbound_overflow(void)
-{
+static inline uint32_t sep_mbox_irq_enable_inbound_overflow(void) {
     KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u enable_val = {0};
     enable_val.f.inbound_overflow_en = 1;
     return enable_val.w;
 }
 
-static inline uint32_t sep_mbox_ctrl_inbound_overflow_resp(void)
-{
+static inline uint32_t sep_mbox_ctrl_inbound_overflow_resp(void) {
     KM_MAILBOX_SEP_CTRL_REG_reg_u ctrl_val = {0};
     ctrl_val.f.inbound_overflow_resp = 1;
     return ctrl_val.w;
 }
 
 /* Mailbox FIFO depth - must match RTL parameter in km_mailbox.sv */
-#define MAILBOX_DEPTH            16
+#define MAILBOX_DEPTH 16
 
 /* AXI response codes */
-#define AXI_OKAY                 0x00
-#define AXI_SLVERR               0x02
+#define AXI_OKAY 0x00
+#define AXI_SLVERR 0x02
 
 /**
  * Read mailbox STATUS register.
  */
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
 /**
  * Check if inbound FIFO is full.
  */
-static inline int mbox_inbound_full(void)
-{
+static inline int mbox_inbound_full(void) {
     return MBOX_STATUS_REG.f.inbound_full != 0;
 }
 
 /**
  * Check if inbound FIFO is empty.
  */
-static inline int mbox_inbound_empty(void)
-{
+static inline int mbox_inbound_empty(void) {
     return MBOX_STATUS_REG.f.inbound_empty != 0;
 }
 
 /**
  * Read data from mailbox READ_DATA register (reads from inbound FIFO).
  */
-static inline uint32_t mbox_read_data(void)
-{
+static inline uint32_t mbox_read_data(void) {
     return MBOX_READ_DATA_REG.w;
 }
 
 /**
  * Clear overflow status bits (write-1-to-clear).
  */
-static inline void mbox_clear_overflow_status(void)
-{
+static inline void mbox_clear_overflow_status(void) {
     /* Note: SEP-side overflow uses SEP-side STATUS, cleared via testbench */
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t write_resp;
 
     TEST_INIT();
@@ -138,7 +135,7 @@ int main(void)
 
         /* Verify initial state */
         TEST_ASSERT_EQ(MBOX_STATUS_REG.f.inbound_full, 0,
-                      "Inbound FIFO should not be full initially");
+                       "Inbound FIFO should not be full initially");
 
         /* Fill inbound FIFO with known data pattern via SEP-side writes */
         TEST_LOG("  Filling mailbox inbound FIFO with %d entries via SEP-side...", MAILBOX_DEPTH);
@@ -148,7 +145,7 @@ int main(void)
                 TEST_FAIL("Failed to write entry %u to FIFO", i);
             }
             TEST_ASSERT_EQ(write_resp, AXI_OKAY, "Write should succeed");
-            test_delay(5);  /* Small delay between writes */
+            test_delay(5); /* Small delay between writes */
         }
         TEST_LOG("  FIFO filled with %d entries", MAILBOX_DEPTH);
 
@@ -163,8 +160,7 @@ int main(void)
         }
 
         TEST_LOG("  SEP write response: 0x%02X (0=OKAY, 2=SLVERR)", write_resp);
-        TEST_ASSERT_EQ(write_resp, AXI_SLVERR,
-                      "SEP-side write to full FIFO should return SLVERR");
+        TEST_ASSERT_EQ(write_resp, AXI_SLVERR, "SEP-side write to full FIFO should return SLVERR");
 
         /* Verify FIFO is still full */
         test_delay(10);
@@ -179,7 +175,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT(status_reg.f.inbound_overflow,
-                   "SEP-side STATUS.INBOUND_OVERFLOW should be set after overflow");
+                        "SEP-side STATUS.INBOUND_OVERFLOW should be set after overflow");
         }
 
         /* Check SEP-side IRQ signal is asserted */
@@ -188,8 +184,7 @@ int main(void)
             TEST_FAIL("Failed to check SEP mailbox IRQ signal");
         }
         TEST_LOG("  SEP-side IRQ signal: %d (1=asserted)", sep_irq_signal);
-        TEST_ASSERT_EQ(sep_irq_signal, 1,
-                   "SEP-side IRQ signal should be asserted after overflow");
+        TEST_ASSERT_EQ(sep_irq_signal, 1, "SEP-side IRQ signal should be asserted after overflow");
 
         /* Read back all data and verify it matches original (overflow data should be dropped) */
         TEST_LOG("  Reading back FIFO contents to verify data integrity...");
@@ -197,10 +192,11 @@ int main(void)
             read_data = mbox_read_data();
             TEST_LOG("    Entry %u: read=0x%08X, expected=0x%08X", i, read_data, expected_data[i]);
             if (read_data != expected_data[i]) {
-                TEST_FAIL("FIFO entry %u mismatch: read=0x%08X, expected=0x%08X (overflow write should be dropped)",
-                         i, read_data, expected_data[i]);
+                TEST_FAIL("FIFO entry %u mismatch: read=0x%08X, expected=0x%08X (overflow write "
+                          "should be dropped)",
+                          i, read_data, expected_data[i]);
             }
-            test_delay(5);  /* Small delay between reads */
+            test_delay(5); /* Small delay between reads */
         }
 
         /* Verify FIFO is now empty */
@@ -222,7 +218,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT_EQ(status_reg.f.inbound_overflow, 0,
-                      "SEP-side STATUS.INBOUND_OVERFLOW should be clear after W1C");
+                           "SEP-side STATUS.INBOUND_OVERFLOW should be clear after W1C");
         }
 
         TEST_LOG("  Overflow data was dropped, original data preserved, status/IRQ bits verified");
@@ -268,8 +264,7 @@ int main(void)
             TEST_FAIL("Failed to attempt overflow write");
         }
         TEST_LOG("  SEP write response (default): 0x%02X (0=OKAY, 2=SLVERR)", write_resp);
-        TEST_ASSERT_EQ(write_resp, AXI_SLVERR,
-                      "SEP-side overflow should return SLVERR by default");
+        TEST_ASSERT_EQ(write_resp, AXI_SLVERR, "SEP-side overflow should return SLVERR by default");
 
         test_delay(10);
         if (!tb_sep_mbox_status_read(&sep_status_val, 1000)) {
@@ -279,7 +274,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT(status_reg.f.inbound_overflow,
-                   "SEP-side STATUS.INBOUND_OVERFLOW should be set after overflow");
+                        "SEP-side STATUS.INBOUND_OVERFLOW should be set after overflow");
         }
 
         /* Configure to return OKAY */
@@ -313,7 +308,7 @@ int main(void)
         }
         TEST_LOG("  SEP write response (OKAY configured): 0x%02X (0=OKAY, 2=SLVERR)", write_resp);
         TEST_ASSERT_EQ(write_resp, AXI_OKAY,
-                      "SEP-side overflow should return OKAY when configured");
+                       "SEP-side overflow should return OKAY when configured");
 
         test_delay(10);
         /* Verify overflow status bit is still set even with OKAY response */
@@ -323,7 +318,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT(status_reg.f.inbound_overflow,
-                   "SEP-side STATUS.INBOUND_OVERFLOW should be set even with OKAY response");
+                        "SEP-side STATUS.INBOUND_OVERFLOW should be set even with OKAY response");
         }
 
         /* Restore default (SLVERR) */

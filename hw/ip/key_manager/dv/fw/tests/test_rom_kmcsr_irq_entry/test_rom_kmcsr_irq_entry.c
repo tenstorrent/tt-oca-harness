@@ -17,13 +17,11 @@
  *
  * @return Does not return; halts via TEST_PASS or TEST_FAIL.
  */
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     TEST_SUBTEST_START("Reset readback via rom_kmcsr_irq_entry_*");
-    TEST_ASSERT_EQ(rom_kmcsr_irq_entry_addr_read(), 0u,
-                   "IRQ_ENTRY_ADDR reset");
+    TEST_ASSERT_EQ(rom_kmcsr_irq_entry_addr_read(), 0u, "IRQ_ENTRY_ADDR reset");
     TEST_ASSERT_EQ((uint32_t)rom_kmcsr_irq_entry_lock_read(), 0u, "IRQ_ENTRY_LOCK reset");
     TEST_SUBTEST_PASS();
 

@@ -26,13 +26,19 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define WRAP0_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
-#define LE_INTR_STATUS_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_ENABLE_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_TEST_OFF    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define WRAP0_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
+#define LE_INTR_STATUS_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_ENABLE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_TEST_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-#define BIT_FETCH_ERR       (1u << 0)
-#define BIT_WRITE_ERR       (1u << 4)
+#define BIT_FETCH_ERR (1u << 0)
+#define BIT_WRITE_ERR (1u << 4)
 
 static void expect_status(uint32_t expect, uint32_t mask, const char *what) {
     uint32_t got = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & mask;
@@ -57,7 +63,7 @@ static void run_one_bit(uint32_t bit) {
     // Cell (ENABLE=0, INTR_TEST=pulse) — status stays 0 (gated)
     //----------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, bit);   // singlepulse
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, bit); // singlepulse
     expect_status(0u, bit, "ENABLE=0 + INTR_TEST pulse: status must stay 0 (gated)");
 
     // Confirm INTR_TEST.bit reads back 0 (singlepulse)
@@ -107,23 +113,21 @@ int main(void) {
     // Cross test: pulse both bits simultaneously with both enabled
     //--------------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF,   BIT_FETCH_ERR | BIT_WRITE_ERR);
-    expect_status(BIT_FETCH_ERR | BIT_WRITE_ERR,
-                  BIT_FETCH_ERR | BIT_WRITE_ERR,
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
+    expect_status(BIT_FETCH_ERR | BIT_WRITE_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
                   "both pulses (ENABLE=both): status not both set");
     // Selective W1C
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
     expect_status(BIT_WRITE_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
                   "selective W1C: only FETCH_ERR should clear");
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_WRITE_ERR);
-    expect_status(0u, BIT_FETCH_ERR | BIT_WRITE_ERR,
-                  "after both cleared: status not 0");
+    expect_status(0u, BIT_FETCH_ERR | BIT_WRITE_ERR, "after both cleared: status not 0");
 
     //--------------------------------------------------------------------------
     // Mixed enables: ENABLE=FETCH only, pulse both → only FETCH latches
     //--------------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF,   BIT_FETCH_ERR | BIT_WRITE_ERR);
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
     expect_status(BIT_FETCH_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
                   "ENABLE=FETCH only: only FETCH_ERR should latch");
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);

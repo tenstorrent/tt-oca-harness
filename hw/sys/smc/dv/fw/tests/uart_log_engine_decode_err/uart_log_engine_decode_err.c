@@ -25,11 +25,12 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define WRAP0_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
-#define WRAP0_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
-#define WRAP0_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
+#define WRAP0_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
+#define WRAP0_UART_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
+#define WRAP0_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
 
-#define BADCAB1E            0x0BADCAB1Eu
+#define BADCAB1E 0x0BADCAB1Eu
 
 static void check_decerr_read(uint32_t addr) {
     uint32_t got = read_reg(addr);
@@ -37,7 +38,7 @@ static void check_decerr_read(uint32_t addr) {
         info_msg_s(0, "FAIL: decerr read missing 0xBADCAB1E");
         info_msg_hex32_s(0, "  addr=", addr);
         info_msg_hex32_s(0, "  got =", got);
-        test_fail(0);  // noreturn
+        test_fail(0); // noreturn
     }
 }
 
@@ -46,7 +47,7 @@ static void check_valid_read_no_decerr(uint32_t addr) {
     if (got == BADCAB1E) {
         info_msg_s(0, "FAIL: valid addr unexpectedly returned 0xBADCAB1E");
         info_msg_hex32_s(0, "  addr=", addr);
-        test_fail(0);  // noreturn
+        test_fail(0); // noreturn
     }
 }
 
@@ -66,19 +67,19 @@ int main(void) {
     //   UART_REG_MAP @ 0x100  (size 0x028 — RBR..ITR)
     //   LOG_ENGINE   @ 0x200  (size 0x080 — CTRL..LOG_CTRL_15 at +0x7C)
     //--------------------------------------------------------------------------
-    check_decerr_read(WRAP0_CTRL_REG + 0x004u);  // just past CTRL register
-    check_decerr_read(WRAP0_CTRL_REG + 0x0FCu);  // just below UART base
-    check_decerr_read(WRAP0_CTRL_REG + 0x140u);  // just past UART region end (0x128)
-    check_decerr_read(WRAP0_CTRL_REG + 0x1FCu);  // just below LOG_ENGINE base
+    check_decerr_read(WRAP0_CTRL_REG + 0x004u); // just past CTRL register
+    check_decerr_read(WRAP0_CTRL_REG + 0x0FCu); // just below UART base
+    check_decerr_read(WRAP0_CTRL_REG + 0x140u); // just past UART region end (0x128)
+    check_decerr_read(WRAP0_CTRL_REG + 0x1FCu); // just below LOG_ENGINE base
 
     //--------------------------------------------------------------------------
     // Sanity: adjacent valid addresses still decode normally (no DECERR).
     //--------------------------------------------------------------------------
-    check_valid_read_no_decerr(WRAP0_CTRL_REG);                   // CTRL reg
-    check_valid_read_no_decerr(WRAP0_UART_BASE + 0x0Cu);          // UART LCR
-    check_valid_read_no_decerr(WRAP0_LE_BASE);                    // LE CTRL
-    check_valid_read_no_decerr(WRAP0_LE_BASE + 0x40u);            // LE LOG_CTRL_0
-    check_valid_read_no_decerr(WRAP0_LE_BASE + 0x7Cu);            // LE LOG_CTRL_15
+    check_valid_read_no_decerr(WRAP0_CTRL_REG);          // CTRL reg
+    check_valid_read_no_decerr(WRAP0_UART_BASE + 0x0Cu); // UART LCR
+    check_valid_read_no_decerr(WRAP0_LE_BASE);           // LE CTRL
+    check_valid_read_no_decerr(WRAP0_LE_BASE + 0x40u);   // LE LOG_CTRL_0
+    check_valid_read_no_decerr(WRAP0_LE_BASE + 0x7Cu);   // LE LOG_CTRL_15
 
     //--------------------------------------------------------------------------
     // Write-side DECERR — confirm writes to gap addresses complete (no bus
@@ -95,7 +96,7 @@ int main(void) {
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_decode_err_test done");
-    test_pass(0);  // noreturn
+    test_pass(0); // noreturn
 
     while (1) __asm__("wfi");
     return 0;

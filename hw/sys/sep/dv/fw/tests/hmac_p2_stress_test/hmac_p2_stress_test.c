@@ -32,41 +32,31 @@ static const uint8_t msg_abc[] = "abc";
 static const uint8_t msg_hello[] = "Hello OTBN.";
 static const uint8_t msg_iter3[] = "continuous-hmac-stress-iteration-3";
 static const uint8_t msg_64[64] = {
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
-    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 };
 static uint8_t msg_96[96];
 
-static inline uint32_t bswap32(uint32_t x)
-{
-    return ((x & 0x000000ffu) << 24) |
-           ((x & 0x0000ff00u) << 8)  |
-           ((x & 0x00ff0000u) >> 8)  |
+static inline uint32_t bswap32(uint32_t x) {
+    return ((x & 0x000000ffu) << 24) | ((x & 0x0000ff00u) << 8) | ((x & 0x00ff0000u) >> 8) |
            ((x & 0xff000000u) >> 24);
 }
 
-static void init_msg_96(void)
-{
+static void init_msg_96(void) {
     for (uint32_t i = 0; i < sizeof(msg_96); i++) {
         msg_96[i] = (uint8_t)((i * 7u + 3u) & 0xffu);
     }
 }
 
-static void clear_hmac_done(void)
-{
+static void clear_hmac_done(void) {
     hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.hmac_done = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 }
 
-static int wait_for_hmac_done(void)
-{
+static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -79,8 +69,7 @@ static int wait_for_hmac_done(void)
     return -1;
 }
 
-static int feed_msg(const uint8_t *data, uint32_t len)
-{
+static int feed_msg(const uint8_t *data, uint32_t len) {
     volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
 
     for (uint32_t i = 0; i < len; i++) {
@@ -99,8 +88,7 @@ static int feed_msg(const uint8_t *data, uint32_t len)
     return 0;
 }
 
-static void read_digest_hex(char *hex_out)
-{
+static void read_digest_hex(char *hex_out) {
     static const char hex_chars[] = "0123456789abcdef";
 
     for (int word = 0; word < 8; word++) {
@@ -116,8 +104,7 @@ static void read_digest_hex(char *hex_out)
     hex_out[64] = '\0';
 }
 
-static void cleanup_hmac(void)
-{
+static void cleanup_hmac(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -126,8 +113,7 @@ static void cleanup_hmac(void)
     clear_hmac_done();
 }
 
-static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter)
-{
+static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter) {
     printf("\n[Iteration %u] %s (%u bytes)\n", iter, test_case->name, test_case->len);
 
     clear_hmac_done();
@@ -160,9 +146,8 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter)
     }
 
     hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-    printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n",
-           status.w, status.f.hmac_idle, status.f.fifo_empty,
-           status.f.fifo_full, status.f.fifo_depth);
+    printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.hmac_idle,
+           status.f.fifo_empty, status.f.fifo_full, status.f.fifo_depth);
     if (!status.f.hmac_idle) {
         printf("  FAIL: HMAC did not return to idle after completion\n");
         return -1;
@@ -188,8 +173,7 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
     init_msg_96();
 

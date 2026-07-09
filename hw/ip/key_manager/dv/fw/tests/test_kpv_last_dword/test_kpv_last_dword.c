@@ -18,22 +18,21 @@
 
 /* KPV (KM port) register struct access (from key_manager_regs.h) */
 #define KPV_KEY_WORD_ADDR(slot, word) \
-    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot) * KEY_MANAGER_KPV_KEY_ENTRY_SIZE + (uint32_t)(word) * 4u)
+    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot)*KEY_MANAGER_KPV_KEY_ENTRY_SIZE + \
+     (uint32_t)(word)*4u)
 #define KPV_KEY_WORD_REG(slot, word) \
     (*(volatile km_kpv__key_word_reg_t *)KPV_KEY_WORD_ADDR(slot, word))
 
-#define KPV_CTRL_ADDR(slot)  (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot) * 4u)
-#define KPV_CTRL_REG(slot)   (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
+#define KPV_CTRL_ADDR(slot) (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot)*4u)
+#define KPV_CTRL_REG(slot) (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
 
-static void set_last_dword(unsigned int slot, uint32_t last_dword_val)
-{
-    km_kpv__ctrl_reg_t c = { .w = KPV_CTRL_REG(slot).w };
+static void set_last_dword(unsigned int slot, uint32_t last_dword_val) {
+    km_kpv__ctrl_reg_t c = {.w = KPV_CTRL_REG(slot).w};
     c.f.last_dword = last_dword_val & 0xFu;
     KPV_CTRL_REG(slot).w = c.w;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
     if (!tb_set_timeout(40000)) TEST_FAIL("timeout");
 
@@ -44,7 +43,7 @@ int main(void)
     {
         const unsigned int slot = 0;
         KPV_KEY_WORD_REG(slot, 0).w = 0xA1B2C3D4u;
-        KPV_KEY_WORD_REG(slot, 1).w = 0xDEADBEEFu;  /* stored but masked on read */
+        KPV_KEY_WORD_REG(slot, 1).w = 0xDEADBEEFu; /* stored but masked on read */
         set_last_dword(slot, 0u);
 
         if (KPV_KEY_WORD_REG(slot, 0).w != 0xA1B2C3D4u)
@@ -61,10 +60,9 @@ int main(void)
     TEST_SUBTEST_START("last_dword=3: words 0..3 valid");
     {
         const unsigned int slot = 0;
-        const uint32_t key[4] = { 0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u };
-        for (int w = 0; w < 4; w++)
-            KPV_KEY_WORD_REG(slot, w).w = key[w];
-        KPV_KEY_WORD_REG(slot, 4).w = 0x55555555u;   /* beyond range, masked on read */
+        const uint32_t key[4] = {0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u};
+        for (int w = 0; w < 4; w++) KPV_KEY_WORD_REG(slot, w).w = key[w];
+        KPV_KEY_WORD_REG(slot, 4).w = 0x55555555u; /* beyond range, masked on read */
         set_last_dword(slot, 3u);
 
         for (int w = 0; w < 4; w++) {

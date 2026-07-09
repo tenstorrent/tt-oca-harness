@@ -41,19 +41,19 @@
 #include "test_completion.h"
 
 /* Outbound mailbox 0 registers (axil_mailbox, base 0x10A0_0000) */
-#define MBOX0_WRITE_DATA_ADDR   OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
-#define MBOX0_STATUS_ADDR       OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
-#define MBOX0_WIRQT_ADDR        OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
-#define MBOX0_IRQS_ADDR         OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
-#define MBOX0_IRQEN_ADDR        OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
+#define MBOX0_WRITE_DATA_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
+#define MBOX0_STATUS_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
+#define MBOX0_WIRQT_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
+#define MBOX0_IRQS_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
+#define MBOX0_IRQEN_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
 
 /* Clock-gate control: bit 3 enables the mailbox clock */
-#define CLOCK_GATE_CTRL_ADDR    OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
-#define MAILBOX_CG_MASK         SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bm
+#define CLOCK_GATE_CTRL_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
+#define MAILBOX_CG_MASK SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bm
 
 /* IRQS/IRQEN: 3 status bits (write-threshold / read-threshold / error).
  * Enable + clear all three. */
-#define MBOX_IRQ_ALL            0x7u
+#define MBOX_IRQ_ALL 0x7u
 
 /* Candidate PIC sources covering the +/-1 mapping uncertainty for mailbox. */
 static const uint32_t kMailboxPicCandidates[] = {1u, 2u, 3u};
@@ -61,7 +61,7 @@ static const uint32_t kMailboxPicCandidates[] = {1u, 2u, 3u};
 
 static volatile uint32_t g_mbox_isr_fired = 0;
 static volatile uint32_t g_mbox_isr_count = 0;
-static volatile uint32_t g_mbox_claimid   = 0xFFFFFFFFu;
+static volatile uint32_t g_mbox_claimid = 0xFFFFFFFFu;
 
 /* Read the VeeR EL2 meihap CSR (0xFC8); claim id = (meihap >> 2) & 0xFF. */
 static inline uint32_t read_claimid(void) {
@@ -70,8 +70,7 @@ static inline uint32_t read_claimid(void) {
     return (meihap >> 2) & 0xFFu;
 }
 
-__attribute__((interrupt("machine")))
-void mailbox_isr(void) {
+__attribute__((interrupt("machine"))) void mailbox_isr(void) {
     g_mbox_isr_fired = 1;
     g_mbox_isr_count++;
     g_mbox_claimid = read_claimid();
@@ -107,7 +106,7 @@ int main(void) {
     for (uint32_t i = 0; i < NUM_CANDIDATES; i++) {
         uint32_t src = kMailboxPicCandidates[i];
         pic_register_handler(src, mailbox_isr);
-        pic_set_gateway(src, 0, 0);   /* level-triggered, active-high */
+        pic_set_gateway(src, 0, 0); /* level-triggered, active-high */
         pic_set_priority(src, 1);
         pic_enable_source(src);
         printf("         candidate PIC source %u armed\n", src);
@@ -116,9 +115,9 @@ int main(void) {
 
     /* Step 3: Arm the outbound mailbox IRQ: clear status, threshold=0, enable. */
     printf("[STEP 3] Arming outbound mailbox 0 interrupt...\n");
-    WRITE_REG(MBOX0_IRQS_ADDR, MBOX_IRQ_ALL);   /* clear any stale status */
-    WRITE_REG(MBOX0_WIRQT_ADDR, 0x0u);          /* interrupt when >=1 word written */
-    WRITE_REG(MBOX0_IRQEN_ADDR, MBOX_IRQ_ALL);  /* enable IRQ output */
+    WRITE_REG(MBOX0_IRQS_ADDR, MBOX_IRQ_ALL);  /* clear any stale status */
+    WRITE_REG(MBOX0_WIRQT_ADDR, 0x0u);         /* interrupt when >=1 word written */
+    WRITE_REG(MBOX0_IRQEN_ADDR, MBOX_IRQ_ALL); /* enable IRQ output */
     g_mbox_isr_fired = 0;
     g_mbox_isr_count = 0;
 
@@ -128,13 +127,16 @@ int main(void) {
 
     /* Step 5: Wait for the ISR (real delivery - no poll fallback). */
     printf("[STEP 5] Waiting for CPU trap / ISR...\n");
-    for (volatile int i = 0; i < 200000 && !g_mbox_isr_fired; ++i);
+    for (volatile int i = 0; i < 200000 && !g_mbox_isr_fired; ++i)
+        ;
 
     if (!g_mbox_isr_fired) {
         printf("FAIL: mailbox ISR never fired -- sep_interrupts[0] -> PIC -> CPU "
                "delivery is BROKEN\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     printf("[STEP 5] ISR fired (count=%u) at PIC claim id %u -- delivery confirmed\n",
            g_mbox_isr_count, g_mbox_claimid);
@@ -146,11 +148,13 @@ int main(void) {
      * exactly one entry - only that the count has STOPPED growing. */
     printf("[STEP 6] Verifying interrupt deasserted (no ongoing storm)...\n");
     uint32_t count_before = g_mbox_isr_count;
-    for (volatile int i = 0; i < 40000; ++i);
+    for (volatile int i = 0; i < 40000; ++i)
+        ;
     uint32_t count_after = g_mbox_isr_count;
     if (count_after != count_before) {
         printf("ERROR: ISR still firing (count %u -> %u) -- interrupt not "
-               "deasserted / storm\n", count_before, count_after);
+               "deasserted / storm\n",
+               count_before, count_after);
         errors++;
     } else {
         printf("[STEP 6] interrupt deasserted (stable at count=%u)\n", count_after);
@@ -159,8 +163,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("INT-MBOX: Mailbox IRQ -> PIC -> CPU\n");
     printf("  ISR fired:  YES (count=%u)\n", g_mbox_isr_count);
-    printf("  Claim id:   %u (expected 1 for sep_internal_interrupts[0])\n",
-           g_mbox_claimid);
+    printf("  Claim id:   %u (expected 1 for sep_internal_interrupts[0])\n", g_mbox_claimid);
     printf("  Errors:     %d\n", errors);
     printf("========================================\n");
 
@@ -172,5 +175,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

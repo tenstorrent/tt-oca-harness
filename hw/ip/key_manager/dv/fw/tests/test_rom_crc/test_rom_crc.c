@@ -18,64 +18,46 @@
 
 #define TEST_CRC32C_WORD_RAW_INSN 0x58B5050Bu
 #define TEST_CRC32C_BYTE_RAW_INSN 0x58B5150Bu
-#define TEST_CRC8_ROHC_RAW_INSN   0x58B5250Bu
-#define TEST_CRC_BAD_RAW_INSN     0x58B5350Bu
+#define TEST_CRC8_ROHC_RAW_INSN 0x58B5250Bu
+#define TEST_CRC_BAD_RAW_INSN 0x58B5350Bu
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-static inline uint32_t raw_crc32c_word_update(uint32_t state, uint32_t word)
-{
+static inline uint32_t raw_crc32c_word_update(uint32_t state, uint32_t word) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = word;
 
-    __asm__ volatile (
-        ".word 0x58B5050B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5050B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
-static inline uint32_t raw_crc32c_byte_update(uint32_t state, uint32_t data)
-{
+static inline uint32_t raw_crc32c_byte_update(uint32_t state, uint32_t data) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = data;
 
-    __asm__ volatile (
-        ".word 0x58B5150B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5150B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
-static inline uint32_t raw_crc8_rohc_update(uint32_t state, uint32_t data)
-{
+static inline uint32_t raw_crc8_rohc_update(uint32_t state, uint32_t data) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = data;
 
-    __asm__ volatile (
-        ".word 0x58B5250B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5250B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
-static uint32_t pack_le32(const uint8_t *data)
-{
-    return ((uint32_t)data[0]) |
-           ((uint32_t)data[1] << 8) |
-           ((uint32_t)data[2] << 16) |
+static uint32_t pack_le32(const uint8_t *data) {
+    return ((uint32_t)data[0]) | ((uint32_t)data[1] << 8) | ((uint32_t)data[2] << 16) |
            ((uint32_t)data[3] << 24);
 }
 
-static uint32_t crc32c_ref_step(uint32_t state, uint8_t data_byte)
-{
+static uint32_t crc32c_ref_step(uint32_t state, uint8_t data_byte) {
     uint32_t crc = state ^ data_byte;
 
     for (uint32_t bit_idx = 0; bit_idx < 8u; bit_idx++) {
@@ -89,8 +71,7 @@ static uint32_t crc32c_ref_step(uint32_t state, uint8_t data_byte)
     return crc;
 }
 
-static uint32_t crc32c_ref_word_update(uint32_t state, uint32_t word)
-{
+static uint32_t crc32c_ref_word_update(uint32_t state, uint32_t word) {
     state = crc32c_ref_step(state, (uint8_t)(word >> 0));
     state = crc32c_ref_step(state, (uint8_t)(word >> 8));
     state = crc32c_ref_step(state, (uint8_t)(word >> 16));
@@ -98,8 +79,7 @@ static uint32_t crc32c_ref_word_update(uint32_t state, uint32_t word)
     return state;
 }
 
-static uint32_t crc32c_ref_public(const uint8_t *data, uint32_t len)
-{
+static uint32_t crc32c_ref_public(const uint8_t *data, uint32_t len) {
     uint32_t state = 0xFFFFFFFFu;
 
     while (len >= 4u) {
@@ -117,8 +97,7 @@ static uint32_t crc32c_ref_public(const uint8_t *data, uint32_t len)
     return state ^ 0xFFFFFFFFu;
 }
 
-static uint32_t crc8_rohc_ref_step(uint32_t state, uint8_t data_byte)
-{
+static uint32_t crc8_rohc_ref_step(uint32_t state, uint8_t data_byte) {
     uint32_t crc = (state ^ data_byte) & 0xFFu;
 
     for (uint32_t bit_idx = 0; bit_idx < 8u; bit_idx++) {
@@ -133,8 +112,7 @@ static uint32_t crc8_rohc_ref_step(uint32_t state, uint8_t data_byte)
     return crc & 0xFFu;
 }
 
-static uint8_t crc8_rohc_ref_public(const uint8_t *data, uint32_t len)
-{
+static uint8_t crc8_rohc_ref_public(const uint8_t *data, uint32_t len) {
     uint32_t state = 0xFFu;
 
     for (uint32_t i = 0; i < len; i++) {
@@ -144,8 +122,7 @@ static uint8_t crc8_rohc_ref_public(const uint8_t *data, uint32_t len)
     return (uint8_t)state;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(500000u)) {
@@ -159,8 +136,7 @@ int main(void)
             TEST_FAIL("Failed to get unrecoverable fault code");
         }
 
-        TEST_ASSERT_EQ(fault_code,
-                       (uint32_t)(int32_t)ROM_KM_UFAULT_ILLEGAL_INSN,
+        TEST_ASSERT_EQ(fault_code, (uint32_t)(int32_t)ROM_KM_UFAULT_ILLEGAL_INSN,
                        "unsupported CRC encoding fault code");
     } else {
         if (!tb_drbg_set_seed(0x2130u, 5000u)) {
@@ -172,7 +148,7 @@ int main(void)
         }
 
         rom_boot_init();
-        __asm__ volatile (".word 0x58B5350B");
+        __asm__ volatile(".word 0x58B5350B");
         TEST_FAIL("Unsupported CRC encoding did not trap");
         return 0;
     }
@@ -183,18 +159,12 @@ int main(void)
         uint32_t byte_state = raw_crc32c_byte_update(0xFFFFFFFFu, 0xA5A50042u);
         uint32_t crc8_state = raw_crc8_rohc_update(0xFFu, 0x12345678u);
 
-        TEST_ASSERT_EQ(word_state,
-                       crc32c_ref_word_update(0xFFFFFFFFu, 0x33221100u),
+        TEST_ASSERT_EQ(word_state, crc32c_ref_word_update(0xFFFFFFFFu, 0x33221100u),
                        "raw CRC-32C word state");
-        TEST_ASSERT_EQ(byte_state,
-                       crc32c_ref_step(0xFFFFFFFFu, 0x42u),
-                       "raw CRC-32C byte state");
-        TEST_ASSERT_EQ(crc8_state,
-                       crc8_rohc_ref_step(0xFFu, 0x78u),
-                       "raw CRC-8 state");
+        TEST_ASSERT_EQ(byte_state, crc32c_ref_step(0xFFFFFFFFu, 0x42u), "raw CRC-32C byte state");
+        TEST_ASSERT_EQ(crc8_state, crc8_rohc_ref_step(0xFFu, 0x78u), "raw CRC-8 state");
         TEST_ASSERT_EQ(crc8_state >> 8, 0u, "raw CRC-8 zero extension");
-        TEST_ASSERT_EQ(raw_crc32c_word_update(0xFFFFFFFFu, 0x33221100u),
-                       word_state,
+        TEST_ASSERT_EQ(raw_crc32c_word_update(0xFFFFFFFFu, 0x33221100u), word_state,
                        "raw CRC-32C word deterministic");
     }
     TEST_SUBTEST_PASS();
@@ -225,11 +195,16 @@ int main(void)
     TEST_SUBTEST_START("CRC-8 header chaining and low-byte handling");
     {
         const rom_km_msg_header_t headers[] = {
-            { .seq_num = 0x01, .id = ROM_KM_CMD_HW_VER,       .payload_len = 0x00, .header_crc8 = 0x00 },
-            { .seq_num = 0x02, .id = ROM_KM_CMD_KEY_TRANSFER, .payload_len = 0x02, .header_crc8 = 0x00 },
-            { .seq_num = 0x81, .id = ROM_KM_RESP_CMD,         .payload_len = 0x01, .header_crc8 = 0x00 },
-            { .seq_num = 0x82, .id = ROM_KM_RESP_KM_READY,    .payload_len = 0x00, .header_crc8 = 0x00 }
-        };
+            {.seq_num = 0x01, .id = ROM_KM_CMD_HW_VER, .payload_len = 0x00, .header_crc8 = 0x00},
+            {.seq_num = 0x02,
+             .id = ROM_KM_CMD_KEY_TRANSFER,
+             .payload_len = 0x02,
+             .header_crc8 = 0x00},
+            {.seq_num = 0x81, .id = ROM_KM_RESP_CMD, .payload_len = 0x01, .header_crc8 = 0x00},
+            {.seq_num = 0x82,
+             .id = ROM_KM_RESP_KM_READY,
+             .payload_len = 0x00,
+             .header_crc8 = 0x00}};
 
         for (uint32_t i = 0; i < (sizeof(headers) / sizeof(headers[0])); i++) {
             uint32_t raw_state = 0xFFu;
@@ -272,8 +247,7 @@ int main(void)
         TEST_ASSERT_EQ(rom_crc32c(abcdefg, 7), 0xE627F441u, "CRC-32C abcdefg");
         TEST_ASSERT_EQ(rom_crc32c(abcdefgh, 8), 0x0A9421B7u, "CRC-32C abcdefgh");
         TEST_ASSERT_EQ(rom_crc32c(abcdefghi, 9), 0x2DDC99FCu, "CRC-32C abcdefghi");
-        TEST_ASSERT_EQ(rom_crc32c(msg, sizeof(msg) - 1u), 0x22620404u,
-                       "CRC-32C quick brown fox");
+        TEST_ASSERT_EQ(rom_crc32c(msg, sizeof(msg) - 1u), 0x22620404u, "CRC-32C quick brown fox");
     }
     TEST_SUBTEST_PASS();
 
@@ -317,9 +291,7 @@ int main(void)
 
     TEST_SUBTEST_START("CRC-32C unaligned entry covers align, word, and tail");
     {
-        static const uint32_t aligned_words[] = {
-            0x03020100u, 0x07060504u, 0x0B0A0908u
-        };
+        static const uint32_t aligned_words[] = {0x03020100u, 0x07060504u, 0x0B0A0908u};
         const uint8_t *aligned = (const uint8_t *)aligned_words;
 
         TEST_ASSERT_EQ(((uintptr_t)aligned) & 0x3u, 0u, "aligned CRC-32C test buffer");
@@ -340,14 +312,12 @@ int main(void)
         resumed_state = raw_crc32c_byte_update(resumed_state, 0xAB000000u | data[5]);
         resumed_state = raw_crc32c_byte_update(resumed_state, 0xCD000000u | data[6]);
 
-        TEST_ASSERT_EQ(resumed_state ^ 0xFFFFFFFFu,
-                       crc32c_ref_public(data, sizeof(data)),
+        TEST_ASSERT_EQ(resumed_state ^ 0xFFFFFFFFu, crc32c_ref_public(data, sizeof(data)),
                        "resumed CRC-32C final value");
         TEST_ASSERT_EQ(rom_picorv32_crc32c_word_update(0xFFFFFFFFu, pack_le32(data)), state,
                        "wrapper CRC-32C word state");
         TEST_ASSERT_EQ(rom_picorv32_crc32c_byte_update(state, data[4]),
-                       raw_crc32c_byte_update(state, data[4]),
-                       "wrapper CRC-32C byte state");
+                       raw_crc32c_byte_update(state, data[4]), "wrapper CRC-32C byte state");
     }
     TEST_SUBTEST_PASS();
 

@@ -13,8 +13,8 @@
 #include "virt_console.h"
 #include "smc_reg_access.h"
 
-#define NUM_EXTERNAL_INTERRUPTS (256)           /* 4-core: NUM_EXT_INTERRUPTS=256 */
-#define MAILBOX_INTERUPT_ID_BASE (288)          /* cpu_interrupts_o[288] */
+#define NUM_EXTERNAL_INTERRUPTS (256)  /* 4-core: NUM_EXT_INTERRUPTS=256 */
+#define MAILBOX_INTERUPT_ID_BASE (288) /* cpu_interrupts_o[288] */
 
 #include "smc_strap.h"
 #include "smc_cpu_ctrl.h"

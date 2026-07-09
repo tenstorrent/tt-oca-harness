@@ -26,31 +26,33 @@
 #include "key_manager_addr.h"
 
 /* AXI response codes */
-#define AXI_OKAY                 0x00
-#define AXI_SLVERR               0x02
+#define AXI_OKAY 0x00
+#define AXI_SLVERR 0x02
 
 #include "km_mailbox_sep_regs.h"
 
 /* Register access macros using struct types */
-#define MBOX_STATUS_REG          (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG      (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG      (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
-#define MBOX_CTRL_REG            (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_CTRL_REG \
+    (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 /* Helper functions to construct SEP mailbox register values from struct fields.
  * NOTE: KM_MAILBOX_SEP_* types are ONLY for constructing bit patterns to pass
  * to testbench commands. SEP mailbox registers are NOT accessible from KM and
  * must be accessed via testbench command interface (tb_sep_mbox_* functions).
  */
-static inline uint32_t sep_mbox_irq_enable_outbound_underflow(void)
-{
+static inline uint32_t sep_mbox_irq_enable_outbound_underflow(void) {
     KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u enable_val = {0};
     enable_val.f.outbound_underflow_en = 1;
     return enable_val.w;
 }
 
-static inline uint32_t sep_mbox_ctrl_outbound_underflow_resp(void)
-{
+static inline uint32_t sep_mbox_ctrl_outbound_underflow_resp(void) {
     KM_MAILBOX_SEP_CTRL_REG_reg_u ctrl_val = {0};
     ctrl_val.f.outbound_underflow_resp = 1;
     return ctrl_val.w;
@@ -59,37 +61,32 @@ static inline uint32_t sep_mbox_ctrl_outbound_underflow_resp(void)
 /**
  * Read mailbox STATUS register.
  */
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
 /**
  * Check if outbound FIFO is empty.
  */
-static inline int mbox_outbound_empty(void)
-{
+static inline int mbox_outbound_empty(void) {
     return MBOX_STATUS_REG.f.outbound_empty != 0;
 }
 
 /**
  * Write mailbox IRQ_STATUS register (for clearing sticky bits).
  */
-static inline void mbox_write_irq_status(uint32_t value)
-{
+static inline void mbox_write_irq_status(uint32_t value) {
     MBOX_IRQ_STATUS_REG.w = value;
 }
 
 /**
  * Clear underflow status bits (write-1-to-clear).
  */
-static inline void mbox_clear_underflow_status(void)
-{
+static inline void mbox_clear_underflow_status(void) {
     /* Note: SEP-side underflow uses SEP-side STATUS, cleared via testbench */
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* Set timeout */
@@ -125,7 +122,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT_EQ(status_reg.f.outbound_underflow, 0,
-                      "SEP-side STATUS.OUTBOUND_UNDERFLOW should be clear initially");
+                           "SEP-side STATUS.OUTBOUND_UNDERFLOW should be clear initially");
         }
 
         /* SEP-side read from empty outbound FIFO - this triggers SEP-side underflow */
@@ -135,21 +132,19 @@ int main(void)
         }
         TEST_LOG("  SEP read response: 0x%02X (0=OKAY, 2=SLVERR)", read_resp);
         TEST_LOG("  SEP read data: 0x%08X", read_data);
-        TEST_ASSERT_EQ(read_resp, AXI_SLVERR,
-                      "SEP-side read from empty FIFO should return SLVERR");
+        TEST_ASSERT_EQ(read_resp, AXI_SLVERR, "SEP-side read from empty FIFO should return SLVERR");
 
         /* Small delay to allow interrupt to propagate */
         test_delay(20);
 
-        /* Check SEP-side IRQ signal is asserted (tb_sep_mbox_irq_check returns IRQ signal, not IRQ_STATUS register) */
+        /* Check SEP-side IRQ signal is asserted (tb_sep_mbox_irq_check returns IRQ signal, not
+         * IRQ_STATUS register) */
         uint32_t sep_irq_signal;
         if (!tb_sep_mbox_irq_check(&sep_irq_signal, 1000)) {
             TEST_FAIL("Failed to check SEP mailbox IRQ signal");
         }
         TEST_LOG("  SEP-side IRQ signal: %d (1=asserted)", sep_irq_signal);
-        TEST_ASSERT_EQ(sep_irq_signal, 1,
-                   "SEP-side IRQ signal should be asserted after underflow");
-
+        TEST_ASSERT_EQ(sep_irq_signal, 1, "SEP-side IRQ signal should be asserted after underflow");
 
         /* Check SEP-side underflow status bit is set */
         if (!tb_sep_mbox_status_read(&sep_status_val, 1000)) {
@@ -158,8 +153,9 @@ int main(void)
         TEST_LOG("  SEP-side STATUS register: 0x%08X", sep_status_val);
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
-            TEST_ASSERT(status_reg.f.outbound_underflow,
-                   "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set after SEP-side underflow");
+            TEST_ASSERT(
+                status_reg.f.outbound_underflow,
+                "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set after SEP-side underflow");
         }
 
         /* Verify FIFO is still empty */
@@ -180,7 +176,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT_EQ(status_reg.f.outbound_underflow, 0,
-                      "SEP-side STATUS.OUTBOUND_UNDERFLOW should be clear after W1C");
+                           "SEP-side STATUS.OUTBOUND_UNDERFLOW should be clear after W1C");
         }
 
         TEST_LOG("  SEP-side underflow status/IRQ bits verified");
@@ -224,8 +220,7 @@ int main(void)
             TEST_FAIL("Failed to perform SEP-side read");
         }
         TEST_LOG("  SEP read response (default): 0x%02X (0=OKAY, 2=SLVERR)", read_resp);
-        TEST_ASSERT_EQ(read_resp, AXI_SLVERR,
-                      "Outbound underflow should return SLVERR by default");
+        TEST_ASSERT_EQ(read_resp, AXI_SLVERR, "Outbound underflow should return SLVERR by default");
 
         test_delay(10);
         /* Check SEP-side STATUS register for underflow status bit */
@@ -236,7 +231,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT(status_reg.f.outbound_underflow,
-                   "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set after underflow");
+                        "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set after underflow");
         }
 
         /* Configure to return OKAY */
@@ -258,7 +253,7 @@ int main(void)
         }
         TEST_LOG("  SEP read response (OKAY configured): 0x%02X (0=OKAY, 2=SLVERR)", read_resp);
         TEST_ASSERT_EQ(read_resp, AXI_OKAY,
-                      "Outbound underflow should return OKAY when configured");
+                       "Outbound underflow should return OKAY when configured");
 
         test_delay(10);
         /* Verify underflow status bit is still set even with OKAY response */
@@ -268,7 +263,7 @@ int main(void)
         {
             KM_MAILBOX_SEP_STATUS_REG_reg_u status_reg = {.w = sep_status_val};
             TEST_ASSERT(status_reg.f.outbound_underflow,
-                   "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set even with OKAY response");
+                        "SEP-side STATUS.OUTBOUND_UNDERFLOW should be set even with OKAY response");
         }
 
         /* Restore default (SLVERR) */

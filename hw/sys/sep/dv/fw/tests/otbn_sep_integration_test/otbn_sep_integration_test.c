@@ -19,19 +19,19 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define OTBN_STATUS_IDLE          0x00u
-#define OTBN_STATUS_BUSY_EXECUTE  0x01u
+#define OTBN_STATUS_IDLE 0x00u
+#define OTBN_STATUS_BUSY_EXECUTE 0x01u
 
-#define OTBN_CMD_EXECUTE          0xD8u
+#define OTBN_CMD_EXECUTE 0xD8u
 
-#define EXPECTED_OUTER_INC        10u
-#define EXPECTED_INNER_COUNT      3u
-#define EXPECTED_INNER_INC        1u
-#define EXPECTED_RESULT           52u
-#define EXPECTED_INSN_CNT         39u
+#define EXPECTED_OUTER_INC 10u
+#define EXPECTED_INNER_COUNT 3u
+#define EXPECTED_INNER_INC 1u
+#define EXPECTED_RESULT 52u
+#define EXPECTED_INSN_CNT 39u
 
-#define OTBN_IDLE_TIMEOUT         20000
-#define OTBN_DONE_TIMEOUT         20000
+#define OTBN_IDLE_TIMEOUT 20000
+#define OTBN_DONE_TIMEOUT 20000
 
 static inline uint32_t otbn_dmem_read_offset(uint32_t offset) {
     return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u);
@@ -72,14 +72,14 @@ static int otbn_wait_for_idle(void) {
 }
 
 static int otbn_wait_for_done(void) {
-    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n", OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n",
+           OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
     for (int timeout = OTBN_DONE_TIMEOUT; timeout > 0; --timeout) {
         uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
         if (timeout == OTBN_DONE_TIMEOUT) {
             printf("[DBG] wait_for_done: first INTR_STATE=0x%08x\n", intr_state);
         } else if ((timeout % 2000) == 0) {
-            printf("[DBG] wait_for_done: INTR_STATE=0x%08x remaining=%d\n",
-                   intr_state, timeout);
+            printf("[DBG] wait_for_done: INTR_STATE=0x%08x remaining=%d\n", intr_state, timeout);
         }
 
         if ((intr_state & 1u) != 0u) {
@@ -96,7 +96,8 @@ static int otbn_wait_for_done(void) {
 
 static int verify_address_map(void) {
     printf("[DBG] Verifying OTBN address map constants\n");
-    if ((OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR) != (OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR)) {
+    if ((OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR) !=
+        (OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR)) {
         printf("ERROR: STATUS address/offset mismatch\n");
         return -1;
     }
@@ -193,11 +194,13 @@ static int otbn_load_app(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_sep_integration_imem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i,
+                       otbn_otbn_sep_integration_imem[i]);
     }
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_sep_integration_dmem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i,
+                       otbn_otbn_sep_integration_dmem[i]);
     }
 
     const uint32_t checksum = READ_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
@@ -216,9 +219,12 @@ static int run_execution_flow(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xffffffffu);
     WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 1u);
 
-    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_outer_inc), EXPECTED_OUTER_INC);
-    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_inner_count), EXPECTED_INNER_COUNT);
-    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_inner_inc), EXPECTED_INNER_INC);
+    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_outer_inc),
+                           EXPECTED_OUTER_INC);
+    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_inner_count),
+                           EXPECTED_INNER_COUNT);
+    otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, input_inner_inc),
+                           EXPECTED_INNER_INC);
     otbn_dmem_write_offset(OTBN_ADDR_T_INIT(otbn_sep_integration, result), 0u);
     printf("[DBG] DMEM inputs written\n");
 
@@ -237,8 +243,8 @@ static int run_execution_flow(void) {
     const uint32_t insn_cnt = READ_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR);
     printf("[DBG] INSN_CNT=%u\n", insn_cnt);
 
-    printf("Integration result: result=%u err_bits=0x%08x insn_cnt=%u\n",
-           result, err_bits, insn_cnt);
+    printf("Integration result: result=%u err_bits=0x%08x insn_cnt=%u\n", result, err_bits,
+           insn_cnt);
 
     if (err_bits != 0u || result != EXPECTED_RESULT || insn_cnt != EXPECTED_INSN_CNT) {
         printf("ERROR: OTBN execution flow verification failed\n");
@@ -253,8 +259,8 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("=== OTBN SEP Address and Bus Access Test ===\n");
-    printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n",
-           OCH_SEP_TOP_OTBN_BASE_ADDR, OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
+    printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
+           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
 
     if (verify_address_map() != 0) {
         fail_and_halt(1, "OTBN address map verification failed");

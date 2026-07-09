@@ -5,8 +5,7 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 

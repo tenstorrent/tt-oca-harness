@@ -19,8 +19,7 @@
  * @param[in] k Number of bits to rotate left (0-31).
  * @return Rotated value.
  */
-uint32_t rom_rotl32(uint32_t x, int k)
-{
+uint32_t rom_rotl32(uint32_t x, int k) {
     return (x << k) | (x >> (32 - k));
 }
 
@@ -31,8 +30,7 @@ uint32_t rom_rotl32(uint32_t x, int k)
  *
  * @param[in,out] state PRNG state to seed.
  */
-void rom_prng_seed(rom_km_prng_state_t *state)
-{
+void rom_prng_seed(rom_km_prng_state_t *state) {
     state->s[0] = rom_drbg_get_word();
     state->s[1] = rom_drbg_get_word();
     state->s[2] = rom_drbg_get_word();
@@ -50,8 +48,7 @@ void rom_prng_seed(rom_km_prng_state_t *state)
  * @param[in,out] state PRNG state.
  * @return Next pseudorandom 32-bit value.
  */
-uint32_t rom_prng_next(rom_km_prng_state_t *state)
-{
+uint32_t rom_prng_next(rom_km_prng_state_t *state) {
     const uint32_t result = rom_rotl32(state->s[0] + state->s[3], 7) + state->s[0];
     const uint32_t t = state->s[1] << 9;
 
@@ -60,7 +57,7 @@ uint32_t rom_prng_next(rom_km_prng_state_t *state)
     state->s[1] ^= state->s[2];
     state->s[0] ^= state->s[3];
     state->s[2] ^= t;
-    state->s[3]  = rom_rotl32(state->s[3], 11);
+    state->s[3] = rom_rotl32(state->s[3], 11);
 
     return result;
 }

@@ -29,27 +29,24 @@
 
 const uint32_t NUM_GPIOS = 68;       // GPIO_0 through GPIO_67
 const uint32_t gpio_skips[1] = {64}; // GPIO_64 is cool_reset_in, will reset chip if toggled
-const uint32_t write_filter_skips[9] = {11, 12, 15, 16, 19, 20, 23, 24, 64}; // UART GPIOs cannot be write-locked
-                                        // write-locking them prevents switching back to LSIO interface for UART sequence
+const uint32_t write_filter_skips[9] = {11, 12, 15, 16, 19,
+                                        20, 23, 24, 64}; // UART GPIOs cannot be write-locked
+                                                         // write-locking them prevents switching
+                                                         // back to LSIO interface for UART sequence
 const size_t len_gpio_skips = sizeof(gpio_skips) / sizeof(gpio_skips[0]);
 const size_t len_write_filter_skips = sizeof(write_filter_skips) / sizeof(write_filter_skips[0]);
 
-struct gpio_sanity_sequence_globals_s
-{
+struct gpio_sanity_sequence_globals_s {
     uint64_t locked_gpios_63_0;
     uint64_t locked_gpios_127_64;
 };
 
-struct gpio_sanity_sequence_globals_s GPIO_SANITY_SEQUENCE_GLOBALS = {
-    .locked_gpios_63_0 = 0,
-    .locked_gpios_127_64 = 0};
+struct gpio_sanity_sequence_globals_s GPIO_SANITY_SEQUENCE_GLOBALS = {.locked_gpios_63_0 = 0,
+                                                                      .locked_gpios_127_64 = 0};
 
-bool check_gpio_skip(int hartid, uint32_t gpio_num, uint32_t num_skips, uint32_t *gpio_skips)
-{
-    for (int i = 0; i < num_skips; i++)
-    {
-        if (gpio_num == gpio_skips[i])
-        {
+bool check_gpio_skip(int hartid, uint32_t gpio_num, uint32_t num_skips, uint32_t *gpio_skips) {
+    for (int i = 0; i < num_skips; i++) {
+        if (gpio_num == gpio_skips[i]) {
             info_msg_hex32_s(hartid, "Skipping gpio ", gpio_num);
             return true;
         }
@@ -57,32 +54,24 @@ bool check_gpio_skip(int hartid, uint32_t gpio_num, uint32_t num_skips, uint32_t
     return false;
 }
 
-void set_gpio_wr_locked(uint32_t gpio_num)
-{
-    if (gpio_num < 64)
-    {
+void set_gpio_wr_locked(uint32_t gpio_num) {
+    if (gpio_num < 64) {
         GPIO_SANITY_SEQUENCE_GLOBALS.locked_gpios_63_0 |= ((uint64_t)1 << gpio_num);
-    }
-    else
-    {
+    } else {
         GPIO_SANITY_SEQUENCE_GLOBALS.locked_gpios_127_64 |= ((uint64_t)1 << (gpio_num - 64));
     }
 }
 
-bool is_gpio_wr_locked(uint32_t gpio_num)
-{
-    if (gpio_num < 64)
-    {
+bool is_gpio_wr_locked(uint32_t gpio_num) {
+    if (gpio_num < 64) {
         return ((GPIO_SANITY_SEQUENCE_GLOBALS.locked_gpios_63_0 & ((uint64_t)1 << gpio_num)) != 0);
-    }
-    else
-    {
-        return ((GPIO_SANITY_SEQUENCE_GLOBALS.locked_gpios_127_64 & ((uint64_t)1 << (gpio_num - 64))) != 0);
+    } else {
+        return ((GPIO_SANITY_SEQUENCE_GLOBALS.locked_gpios_127_64 &
+                 ((uint64_t)1 << (gpio_num - 64))) != 0);
     }
 }
 
-void test_rw_chip2pad(int hartid, uint32_t gpio_num)
-{
+void test_rw_chip2pad(int hartid, uint32_t gpio_num) {
 
     info_msg_hex32_s(hartid, "test_rw_chip2pad: Testing GPIO: ", gpio_num);
 
@@ -102,8 +91,7 @@ void test_rw_chip2pad(int hartid, uint32_t gpio_num)
 
     // Setup the expected value
     uint32_t expected_val = gpio_data_control.w;
-    if (is_gpio_wr_locked(gpio_num))
-    {
+    if (is_gpio_wr_locked(gpio_num)) {
         info_msg_s(hartid, "test_rw_chip2pad: GPIO is write locked. Expect no change");
         expected_val = read_data_control;
     }
@@ -112,26 +100,21 @@ void test_rw_chip2pad(int hartid, uint32_t gpio_num)
 
     if (gpio_num == 74) // TODO update when err slv added
     {
-        if (read_data_control_updated != BLOCKED_REQUEST)
-        {
+        if (read_data_control_updated != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
         }
-    }
-    else if (expected_val != read_data_control_updated)
-    {
+    } else if (expected_val != read_data_control_updated) {
         raise_error_s(hartid, "test_rw_chip2pad: read data control mis-match");
         info_msg_hex32_s(hartid, "Expected: ", expected_val);
         info_msg_hex32_s(hartid, "Actual: ", read_data_control_updated);
     }
 }
 
-void test_read_filter(int hartid, uint32_t gpio_num)
-{
+void test_read_filter(int hartid, uint32_t gpio_num) {
 
     info_msg_hex32_s(hartid, "test_read_filter: Testing GPIO: ", gpio_num);
 
-    if (is_gpio_wr_locked(gpio_num))
-    {
+    if (is_gpio_wr_locked(gpio_num)) {
         info_msg_s(hartid, "test_read_filter: GPIO is write locked. Skipping");
         return;
     }
@@ -147,7 +130,7 @@ void test_read_filter(int hartid, uint32_t gpio_num)
     gpio_filter = gpio_filter_default;
     gpio_filter.f.read_filter_enable = 1;
 
-    gpio_filter.f.arprot_requirement = 2;                                  // 3'b010 which is default
+    gpio_filter.f.arprot_requirement = 2;                                // 3'b010 which is default
     write_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET, gpio_filter.w); // set the new filter
 
     uint32_t read_data = read_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET);
@@ -155,7 +138,7 @@ void test_read_filter(int hartid, uint32_t gpio_num)
     write_scratch(3, read_data);
 
     if ((read_data == BLOCKED_REQUEST) && (gpio_num != 74)) // TODO update when err slv added
-    {                                                       // index 74 is dummy "error slv" and is expected to return 0x0badcab1e
+    { // index 74 is dummy "error slv" and is expected to return 0x0badcab1e
         raise_error_s(hartid, "test_read_filter: First Read was blocked");
     }
 
@@ -167,8 +150,7 @@ void test_read_filter(int hartid, uint32_t gpio_num)
     read_data = read_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET);
     write_scratch(4, read_data);
 
-    if (read_data != BLOCKED_REQUEST)
-    {
+    if (read_data != BLOCKED_REQUEST) {
         raise_error_s(hartid, "test_read_filter: Second Read was not blocked");
     }
 
@@ -182,24 +164,19 @@ void test_read_filter(int hartid, uint32_t gpio_num)
 
     if ((gpio_num == 74)) // TODO update when err slv added
     {
-        if (read_data != BLOCKED_REQUEST)
-        {
+        if (read_data != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
         }
-    }
-    else if (read_data != gpio_filter_default.w)
-    {
+    } else if (read_data != gpio_filter_default.w) {
         raise_error_s(hartid, "test_read_filter: Filter was not re-written back to default");
         info_msg_hex32_s(hartid, "Expected: ", gpio_filter_default.w);
         info_msg_hex32_s(hartid, "Actual: ", read_data);
     }
 }
 
-void test_write_filter(int hartid, uint32_t gpio_num)
-{
+void test_write_filter(int hartid, uint32_t gpio_num) {
 
-    if (is_gpio_wr_locked(gpio_num))
-    {
+    if (is_gpio_wr_locked(gpio_num)) {
         info_msg_s(hartid, "test_write_filter: GPIO is write locked. Skipping");
         return;
     }
@@ -216,13 +193,13 @@ void test_write_filter(int hartid, uint32_t gpio_num)
     gpio_filter.f.write_filter_enable = 1;
     gpio_filter.f.awprot_requirement = 2;
 
-    write_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET, gpio_filter.w); // set the new filter with write filter enabled
+    write_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET,
+               gpio_filter.w); // set the new filter with write filter enabled
 
     // Read back the filter to check it was written correctly
     uint32_t read_filter = read_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET);
     gpio_bad_cab1e_check(hartid, gpio_num, read_filter);
-    if (read_filter != gpio_filter.w)
-    {
+    if (read_filter != gpio_filter.w) {
         raise_error_s(hartid, "test_write_filter: Filter was not written correctly");
         info_msg_hex32_s(hartid, "Expected: ", gpio_filter.w);
         info_msg_hex32_s(hartid, "Actual: ", read_filter);
@@ -230,30 +207,28 @@ void test_write_filter(int hartid, uint32_t gpio_num)
 
     gpio_data_control.f.core2pad = 1;
     gpio_data_control.f.interface_enable = 1;
-    write_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET, gpio_data_control.w); // since correct prot (secure transaction), should write
+    write_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET,
+               gpio_data_control.w); // since correct prot (secure transaction), should write
     uint32_t read_data_allowed = read_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET);
     gpio_bad_cab1e_check(hartid, gpio_num, read_data_allowed);
 
     if (gpio_num == 74) // TODO update when err slv added
     {
-        if (read_data_allowed != BLOCKED_REQUEST)
-        {
+        if (read_data_allowed != BLOCKED_REQUEST) {
             raise_error_s(hartid, "test_write_filter: GPIO index 74 should return 0x0badcab1e");
         }
-    }
-    else if (read_data_allowed != gpio_data_control.w)
-    { // should be equal
+    } else if (read_data_allowed != gpio_data_control.w) { // should be equal
         raise_error_s(hartid, "test_write_filter: Write was not matching");
     }
 
-    gpio_filter.f.awprot_requirement = 1;                                         // only transactions with prot = 1 should be allowed to write
+    gpio_filter.f.awprot_requirement =
+        1; // only transactions with prot = 1 should be allowed to write
     write_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET, gpio_filter.w); // set the new filter
 
     // Read back the filter to check it was written correctly
     read_filter = read_gpio(gpio_num, GPIO_INTF_ACCESS_FILTER_OFFSET);
     gpio_bad_cab1e_check(hartid, gpio_num, read_filter);
-    if (read_filter != gpio_filter.w)
-    {
+    if (read_filter != gpio_filter.w) {
         raise_error_s(hartid, "test_write_filter: Filter was not written correctly");
         info_msg_hex32_s(hartid, "Expected: ", gpio_filter.w);
         info_msg_hex32_s(hartid, "Actual: ", read_filter);
@@ -266,13 +241,10 @@ void test_write_filter(int hartid, uint32_t gpio_num)
 
     if ((gpio_num == 74)) // TODO update when err slv added
     {
-        if (read_data_unchanged != BLOCKED_REQUEST)
-        {
+        if (read_data_unchanged != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
         }
-    }
-    else if (read_data_unchanged == gpio_data_control.w)
-    {
+    } else if (read_data_unchanged == gpio_data_control.w) {
         raise_error_s(hartid, "test_write_filter: Write was not filtered");
         info_msg_hex32_s(hartid, "Read data: ", read_data_unchanged);
     }
@@ -280,8 +252,7 @@ void test_write_filter(int hartid, uint32_t gpio_num)
     set_gpio_wr_locked(gpio_num);
 }
 
-int gpio_sanity_sequence(int hartid)
-{
+int gpio_sanity_sequence(int hartid) {
     info_msg_s(hartid, "gpio_sanity_sequence Start");
 
     uint32_t random_num;
@@ -290,8 +261,7 @@ int gpio_sanity_sequence(int hartid)
     gpio_intf__DATA_CTRL_t gpio_data_control;
 
     // Test the chip2pad value can be set and read properly for all gpios
-    do
-    {
+    do {
         // Randomly pick a GPIO to test, try again if it should be skipped
         random_num = get_random_int();
         gpio_num = random_num % NUM_GPIOS;
@@ -304,7 +274,8 @@ int gpio_sanity_sequence(int hartid)
     write_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET, gpio_data_control.w);
 
     // Test the read filter, positive and negative tests by changing the prot value
-    // Randomly pick a GPIO to test, GPI0 67 (cool_reset_in) can be safely read so no need to check for skip
+    // Randomly pick a GPIO to test, GPI0 67 (cool_reset_in) can be safely read so no need to check
+    // for skip
     random_num = get_random_int();
     gpio_num = random_num % NUM_GPIOS;
     test_read_filter(hartid, gpio_num);
@@ -314,8 +285,7 @@ int gpio_sanity_sequence(int hartid)
     write_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET, gpio_data_control.w);
 
     // Test the write filter, positive and negative tests by changing the prot value
-    do
-    {
+    do {
         // Randomly pick a GPIO to test, try again if it should be skipped
         random_num = get_random_int();
         gpio_num = random_num % NUM_GPIOS;
@@ -332,17 +302,14 @@ int gpio_sanity_sequence(int hartid)
     return 0;
 }
 
-int gpio_total_sanity_sequence(int hartid)
-{
+int gpio_total_sanity_sequence(int hartid) {
     info_msg_s(hartid, "gpio_total_sanity_sequence Start");
 
     gpio_intf__DATA_CTRL_t gpio_data_control;
 
-    for (int gpio_idx = 0; gpio_idx < NUM_GPIOS; gpio_idx++)
-    {
+    for (int gpio_idx = 0; gpio_idx < NUM_GPIOS; gpio_idx++) {
 
-        if (check_gpio_skip(hartid, gpio_idx, len_gpio_skips, gpio_skips))
-        {
+        if (check_gpio_skip(hartid, gpio_idx, len_gpio_skips, gpio_skips)) {
             continue;
         }
 

@@ -5,8 +5,7 @@
 
 #include <metal/machine/platform.h>
 
-#if defined(METAL_SIFIVE_FU540_C000_PRCI0) ||                                  \
-    defined(METAL_SIFIVE_FU740_C000_PRCI0)
+#if defined(METAL_SIFIVE_FU540_C000_PRCI0) || defined(METAL_SIFIVE_FU740_C000_PRCI0)
 
 #include <metal/drivers/sifive_prci0.h>
 #include <metal/init.h>
@@ -70,21 +69,17 @@
 
 #define PRCI_REG(x) __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + x))
 
-unsigned long __metal_driver_sifive_prci0_get_reg(struct metal_prci *prci,
-                                                  unsigned long offset) {
+unsigned long __metal_driver_sifive_prci0_get_reg(struct metal_prci *prci, unsigned long offset) {
     unsigned long control_base = __metal_driver_sifive_prci0_control_base(prci);
-    if (!control_base)
-        return 0;
+    if (!control_base) return 0;
 
     return PRCI_REG(offset);
 }
 
-unsigned long __metal_driver_sifive_prci0_set_reg(struct metal_prci *prci,
-                                                  unsigned long offset,
+unsigned long __metal_driver_sifive_prci0_set_reg(struct metal_prci *prci, unsigned long offset,
                                                   unsigned long value) {
     unsigned long control_base = __metal_driver_sifive_prci0_control_base(prci);
-    if (!control_base)
-        return 0;
+    if (!control_base) return 0;
 
     return PRCI_REG(offset) = value;
 }
@@ -94,8 +89,7 @@ void __metal_driver_sifive_prci0_init(void) {
     struct metal_prci *prci = metal_prci_get_device();
     unsigned long control_base = __metal_driver_sifive_prci0_control_base(prci);
 
-    if (!control_base)
-        return;
+    if (!control_base) return;
 
     /* CORE PLL */
     uint32_t coreHz;
@@ -118,8 +112,7 @@ void __metal_driver_sifive_prci0_init(void) {
         ;
 
     uint32_t core_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                        (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                        (PLLOUT_CLK_EN(1));
+                        (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
     PRCI_REG(METAL_SIFIVE_PRCI0_COREPLLOUTDIV) = core_out;
 
@@ -138,8 +131,7 @@ void __metal_driver_sifive_prci0_init(void) {
         ;
 
     uint32_t gemgxlctl_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                             (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                             (PLLOUT_CLK_EN(1));
+                             (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
     PRCI_REG(METAL_SIFIVE_PRCI0_GEMGXLPLLOUTDIV) = gemgxlctl_out;
 
@@ -154,8 +146,7 @@ void __metal_driver_sifive_prci0_init(void) {
     struct metal_prci *prci = metal_prci_get_device();
     unsigned long control_base = __metal_driver_sifive_prci0_control_base(prci);
 
-    if (!control_base)
-        return;
+    if (!control_base) return;
 
     /* CORE PLL */
     uint32_t coreHz;
@@ -180,8 +171,7 @@ void __metal_driver_sifive_prci0_init(void) {
         ;
 
     uint32_t core_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                        (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                        (PLLOUT_CLK_EN(1));
+                        (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
     PRCI_REG(METAL_SIFIVE_PRCI0_COREPLLOUTDIV) = core_out;
 
@@ -192,8 +182,7 @@ void __metal_driver_sifive_prci0_init(void) {
         /* HFPCLK PLL */
         uint32_t hfpclk250mhz = (PLL_R(0)) | (PLL_F(79)) | // 4000MHz VCO
                                 (PLL_Q(4)) |               // /16
-                                (PLL_RANGE(0x3)) | (PLL_BYPASS(1)) |
-                                (PLL_FSE(1));
+                                (PLL_RANGE(0x3)) | (PLL_BYPASS(1)) | (PLL_FSE(1));
 
         PRCI_REG(METAL_SIFIVE_PRCI0_HFPCLKPLLCFG) |= PLL_BYPASS(1);
         PRCI_REG(METAL_SIFIVE_PRCI0_HFPCLKPLLCFG) = hfpclk250mhz;
@@ -204,8 +193,7 @@ void __metal_driver_sifive_prci0_init(void) {
             ;
 
         uint32_t hfpclkpll_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                                 (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                                 (PLLOUT_CLK_EN(1));
+                                 (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
         PRCI_REG(METAL_SIFIVE_PRCI0_HFPCLKPLLOUTDIV) = hfpclkpll_out;
 
@@ -226,8 +214,7 @@ void __metal_driver_sifive_prci0_init(void) {
             ;
 
         uint32_t cltxctl_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                               (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                               (PLLOUT_CLK_EN(1));
+                               (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
         PRCI_REG(METAL_SIFIVE_PRCI0_CLTXPLLOUTDIV) = cltxctl_out;
     }
@@ -246,8 +233,7 @@ void __metal_driver_sifive_prci0_init(void) {
         ;
 
     uint32_t gemgxlctl_out = (PLLOUT_DIV(PLLOUT_DIV_default)) |
-                             (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) |
-                             (PLLOUT_CLK_EN(1));
+                             (PLLOUT_DIV_BY_1(PLLOUT_DIV_BY_1_default)) | (PLLOUT_CLK_EN(1));
 
     PRCI_REG(METAL_SIFIVE_PRCI0_GEMGXLPLLOUTDIV) = gemgxlctl_out;
 

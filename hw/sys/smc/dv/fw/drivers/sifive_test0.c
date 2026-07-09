@@ -14,15 +14,13 @@
 #include <metal/drivers/sifive_test0.h>
 #include <metal/io.h>
 
-void __metal_driver_sifive_test0_exit(const struct __metal_shutdown *sd,
-                                      int code) __attribute__((noreturn));
-void __metal_driver_sifive_test0_exit(const struct __metal_shutdown *sd,
-                                      int code) {
+void __metal_driver_sifive_test0_exit(const struct __metal_shutdown *sd, int code)
+    __attribute__((noreturn));
+void __metal_driver_sifive_test0_exit(const struct __metal_shutdown *sd, int code) {
     long base = __metal_driver_sifive_test0_base(sd);
     uint32_t out = (code << 16) + (code == 0 ? 0x5555 : 0x3333);
     while (1) {
-        __METAL_ACCESS_ONCE((
-            __metal_io_u32 *)(base + METAL_SIFIVE_TEST0_FINISHER_OFFSET)) = out;
+        __METAL_ACCESS_ONCE((__metal_io_u32 *)(base + METAL_SIFIVE_TEST0_FINISHER_OFFSET)) = out;
     }
 }
 

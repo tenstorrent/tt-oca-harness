@@ -22,24 +22,42 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define WRAP0_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
-#define WRAP0_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
-#define WRAP0_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
+#define WRAP0_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
+#define WRAP0_UART_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
+#define WRAP0_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
 
-#define LE_CTRL_OFF         (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_REGION_SIZE_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_REGION_ADDR_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_WRITE_ADDR_OFF   (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_STATUS_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_LOG_CTRL0_OFF    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_CTRL_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_SIZE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_ADDR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_WRITE_ADDR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_STATUS_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_LOG_CTRL0_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-#define UART_RBR_OFF        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
-#define UART_MCR_OFF        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_RBR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_MCR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
 
-#define LOG_BUFFER_BASE     (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)  // SRAM scratch area
-#define LOG_REGION_SIZE     0x100u    // 256 bytes (slot 0 covers 256/16 = 16 bytes)
-#define LONG_XFER_LEN       0x200u    // intentionally larger than slot 0 — will fault?
-                                      // Use a smaller value for sanity; pick 16 = slot 0 size.
+#define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u) // SRAM scratch area
+#define LOG_REGION_SIZE 0x100u // 256 bytes (slot 0 covers 256/16 = 16 bytes)
+#define LONG_XFER_LEN \
+    0x200u // intentionally larger than slot 0 — will fault?
+           // Use a smaller value for sanity; pick 16 = slot 0 size.
 
 int main(void) {
     info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test start");
@@ -50,22 +68,21 @@ int main(void) {
     //--------------------------------------------------------------------------
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     for (uint32_t i = 0; i < 16; i++) {
-        buf[i] = (uint8_t)(0xA0u + i);  // distinguishable pattern
+        buf[i] = (uint8_t)(0xA0u + i); // distinguishable pattern
     }
 
     // Disable engine + UART CSR access path entirely before configuring
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_CTRL_REG, 1u);  // pad-mux enable so UART is reachable
+    write_reg(WRAP0_CTRL_REG, 1u); // pad-mux enable so UART is reachable
 
     // Engine to line-loopback through UART RBR/THR: set LOG_WRITE_ADDR to the
     // UART RBR/THR offset and set MCR.LINE_LOOPBACK so TX feeds back into RX.
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x20u);   // LINE_LOOPBACK = 1
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x20u); // LINE_LOOPBACK = 1
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, LOG_REGION_SIZE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
-    write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF,
-              WRAP0_UART_BASE + UART_RBR_OFF);
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);          // engine enable
+    write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u); // engine enable
 
     //--------------------------------------------------------------------------
     // Trigger entry 0 with the slot size (16 bytes) and immediately disable.
@@ -98,7 +115,8 @@ int main(void) {
     // whatever's currently in the FIFO without asserting an exact count
     // (since precise count depends on engine fetch timing).
     //--------------------------------------------------------------------------
-    for (volatile int i = 0; i < 1000; i++) { /* settle */ }
+    for (volatile int i = 0; i < 1000; i++) { /* settle */
+    }
     for (int i = 0; i < 32; i++) {
         // Drain by reading RBR; ignore values
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
@@ -107,7 +125,7 @@ int main(void) {
     //--------------------------------------------------------------------------
     // Re-enable and trigger again — should complete cleanly.
     //--------------------------------------------------------------------------
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);  // W1C any stale bits
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // W1C any stale bits
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
 
@@ -141,8 +159,7 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: multi-entry simultaneous trigger");
 
-    #define LE_LOG_CTRL_I_OFF(i) \
-        (0u + (i) * 4u)
+#define LE_LOG_CTRL_I_OFF(i) (0u + (i)*4u)
 
     // Pre-load all 16 slots' worth of pattern bytes
     for (uint32_t i = 0; i < LOG_REGION_SIZE; i++) {
@@ -201,7 +218,8 @@ int main(void) {
     // Spin a few cycles so the FSM advances past REQ into WAIT.
     // ~50 cycles should be enough at SMC clock for the first AXI read to
     // land and the fetch FSM to transition.
-    for (volatile int i = 0; i < 50; i++) { /* settle */ }
+    for (volatile int i = 0; i < 50; i++) { /* settle */
+    }
 
     // Now disable — this catches the FSM in WAIT and forces WAIT → IDLE
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
@@ -214,7 +232,8 @@ int main(void) {
         // Just record for waveform inspection.
     }
 
-    for (volatile int i = 0; i < 1000; i++) { /* settle */ }
+    for (volatile int i = 0; i < 1000; i++) { /* settle */
+    }
     for (int i = 0; i < 16; i++) {
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
     }
@@ -227,24 +246,24 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: drive replica[1] log_engine");
 
-    #define WRAP1_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(1)
-    #define WRAP1_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1)
-    #define WRAP1_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(1)
-    #define WRAP1_LE_CTRL_OFF      LE_CTRL_OFF       /* same offset within block */
-    #define WRAP1_LE_REGION_SIZE   LE_REGION_SIZE_OFF
-    #define WRAP1_LE_REGION_ADDR   LE_REGION_ADDR_OFF
-    #define WRAP1_LE_WRITE_ADDR    LE_WRITE_ADDR_OFF
-    #define WRAP1_LE_LOG_CTRL0     LE_LOG_CTRL0_OFF
-    #define WRAP1_UART_RBR         UART_RBR_OFF
-    #define WRAP1_UART_MCR         UART_MCR_OFF
+#define WRAP1_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(1)
+#define WRAP1_UART_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1)
+#define WRAP1_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(1)
+#define WRAP1_LE_CTRL_OFF LE_CTRL_OFF /* same offset within block */
+#define WRAP1_LE_REGION_SIZE LE_REGION_SIZE_OFF
+#define WRAP1_LE_REGION_ADDR LE_REGION_ADDR_OFF
+#define WRAP1_LE_WRITE_ADDR LE_WRITE_ADDR_OFF
+#define WRAP1_LE_LOG_CTRL0 LE_LOG_CTRL0_OFF
+#define WRAP1_UART_RBR UART_RBR_OFF
+#define WRAP1_UART_MCR UART_MCR_OFF
 
     write_reg(WRAP1_CTRL_REG, 1u);
-    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x20u);  // line loopback
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x20u); // line loopback
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR + 4, 0u);
-    write_reg(WRAP1_LE_BASE + WRAP1_LE_WRITE_ADDR,
-              WRAP1_UART_BASE + WRAP1_UART_RBR);
+    write_reg(WRAP1_LE_BASE + WRAP1_LE_WRITE_ADDR, WRAP1_UART_BASE + WRAP1_UART_RBR);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, 1u);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0, 16u);
 
@@ -266,7 +285,7 @@ int main(void) {
 
     // Cleanup
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);  // clear LINE_LOOPBACK
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u); // clear LINE_LOOPBACK
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test done");

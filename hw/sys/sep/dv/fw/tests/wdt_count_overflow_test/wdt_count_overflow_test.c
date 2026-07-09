@@ -31,17 +31,17 @@
 #include "nmi.h"
 #include "test_completion.h"
 
-static volatile int nmi_count   = 0;
-static volatile int nmi_errors  = 0;
-static volatile int phase       = 0;  /* 0=wait first bark, 1=done */
+static volatile int nmi_count = 0;
+static volatile int nmi_errors = 0;
+static volatile int phase = 0; /* 0=wait first bark, 1=done */
 
-#define BARK_THOLD_VAL  (0xFFFFFFF0u)  /* fires quickly when count near max */
-#define BITE_THOLD_VAL  (0xFFFFFFFFu)  /* prevent bite from firing on wrap */
+#define BARK_THOLD_VAL (0xFFFFFFF0u) /* fires quickly when count near max */
+#define BITE_THOLD_VAL (0xFFFFFFFFu) /* prevent bite from firing on wrap */
 
 void wdt_nmi_handler(void) {
     nmi_count++;
     uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);  /* W1C immediately (level NMI) */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2); /* W1C immediately (level NMI) */
 
     if (!(state & 0x2)) {
         nmi_errors++;
@@ -61,8 +61,7 @@ void wdt_nmi_handler(void) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_015: WDT Counter 32-bit Overflow Test\n");
@@ -75,21 +74,22 @@ int main(void)
     int errors = 0;
 
     /* STEP 1: Write count near 0xFFFFFFFF, set thresholds */
-    printf("// STEP 1: Write WDOG_COUNT=0xFFFFFFF0, BARK=0x%08x, BITE=0x%08x\n",
-           BARK_THOLD_VAL, BITE_THOLD_VAL);
+    printf("// STEP 1: Write WDOG_COUNT=0xFFFFFFF0, BARK=0x%08x, BITE=0x%08x\n", BARK_THOLD_VAL,
+           BITE_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFF0u);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
 
     /* STEP 2: Enable and wait for BARK NMI */
-    printf("// STEP 2: Enable WDT — BARK fires when count reaches 0x%08x\n",
-           BARK_THOLD_VAL);
+    printf("// STEP 2: Enable WDT — BARK fires when count reaches 0x%08x\n", BARK_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Wait for phase=1 (first BARK NMI + pet) */
     int timeout = 5000000;
-    while (phase == 0 && timeout-- > 0) { __asm__ volatile("wfi"); }
+    while (phase == 0 && timeout-- > 0) {
+        __asm__ volatile("wfi");
+    }
 
     if (timeout <= 0) {
         printf("  FAIL: Timeout waiting for BARK NMI at near-max count\n");
@@ -101,10 +101,12 @@ int main(void)
 
     /* STEP 3: Verify count is small (was petted in NMI handler) */
     printf("\n// STEP 3: Verify WDOG_COUNT is small after pet\n");
-    for (volatile int i = 0; i < 500; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 500; i++) {
+        __asm__ volatile("nop");
+    }
     uint32_t cnt_after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-    printf("  WDOG_COUNT = 0x%08x (should be small, far below 0x%08x)\n",
-           cnt_after_pet, BARK_THOLD_VAL);
+    printf("  WDOG_COUNT = 0x%08x (should be small, far below 0x%08x)\n", cnt_after_pet,
+           BARK_THOLD_VAL);
     if (cnt_after_pet >= BARK_THOLD_VAL) {
         printf("  FAIL: Count still at or above BARK_THOLD\n");
         errors++;
@@ -115,7 +117,9 @@ int main(void)
     /* STEP 4: Verify no second BARK for a while */
     printf("\n// STEP 4: Verify no spurious BARK NMI after pet\n");
     int prev_nmi = nmi_count;
-    for (volatile int i = 0; i < 200000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 200000; i++) {
+        __asm__ volatile("nop");
+    }
     if (nmi_count != prev_nmi) {
         printf("  FAIL: Spurious NMI after pet (extra=%d)\n", nmi_count - prev_nmi);
         errors++;
@@ -139,7 +143,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     timeout = 5000000;
-    while (phase == 0 && timeout-- > 0) { __asm__ volatile("wfi"); }
+    while (phase == 0 && timeout-- > 0) {
+        __asm__ volatile("wfi");
+    }
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
 
@@ -148,8 +154,7 @@ int main(void)
         errors++;
     } else {
         uint32_t cnt_wrap = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-        printf("  PASS: BARK fired at count=0xFFFFFFFF, count after pet = 0x%08x\n",
-               cnt_wrap);
+        printf("  PASS: BARK fired at count=0xFFFFFFFF, count after pet = 0x%08x\n", cnt_wrap);
         printf("  Count wrapped from 0xFFFFFFFF to 0x00000000 correctly\n");
     }
 
@@ -166,5 +171,7 @@ finish:
     }
     printf("===============================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

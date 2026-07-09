@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# DTP lint/synth flow descriptor, shared by `make lint BLOCK=dtp` and
-# `make synth BLOCK=dtp TECH=...`.
+# DTP lint/synth flow descriptor, shared by `make lint-slang-all BLOCK=dtp`
+# and `make synth-all BLOCK=dtp TECH=...`.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 

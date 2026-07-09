@@ -34,19 +34,15 @@
  * @param slot KPV slot index.
  * @return 1 if available, 0 otherwise.
  */
-static int slot_available(uint8_t slot)
-{
-    if (slot >= ROM_KM_KPV_NUM_SLOTS)
-        return 0;
+static int slot_available(uint8_t slot) {
+    if (slot >= ROM_KM_KPV_NUM_SLOTS) return 0;
 
     KM_KPV_CTRL_REG_reg_u ctrl;
     ctrl.val = KPV_CTRL(slot).val;
 
-    if (ctrl.f.lock_write || ctrl.f.lock_use)
-        return 0;
+    if (ctrl.f.lock_write || ctrl.f.lock_use) return 0;
 
-    if (rom_keyreg_get_handle(&rom_keyreg_state, slot) != ROM_KM_KEY_HANDLE_NULL)
-        return 0;
+    if (rom_keyreg_get_handle(&rom_keyreg_state, slot) != ROM_KM_KEY_HANDLE_NULL) return 0;
 
     return 1;
 }
@@ -60,15 +56,13 @@ static int slot_available(uint8_t slot)
  * @param base_slot Output base slot on success.
  * @return 0 on success, -1 if no run of the required length exists.
  */
-static int find_consecutive_slots(uint8_t num_slots, uint8_t *base_slot)
-{
+static int find_consecutive_slots(uint8_t num_slots, uint8_t *base_slot) {
     uint8_t start = (uint8_t)(rom_drbg_get_word() % ROM_KM_KPV_NUM_SLOTS);
 
     for (uint8_t tried = 0; tried < ROM_KM_KPV_NUM_SLOTS; tried++) {
         uint8_t candidate = (uint8_t)((start + tried) % ROM_KM_KPV_NUM_SLOTS);
 
-        if (candidate + num_slots > ROM_KM_KPV_NUM_SLOTS)
-            continue;
+        if (candidate + num_slots > ROM_KM_KPV_NUM_SLOTS) continue;
 
         uint8_t ok = 1;
         for (uint8_t s = 0; s < num_slots; s++) {
@@ -102,10 +96,8 @@ static int find_consecutive_slots(uint8_t num_slots, uint8_t *base_slot)
  * @return 0 on success, -1 on invalid args or slot-fit failure,
  *         -2 on handle exhaustion, -3 on KPV write failure.
  */
-int rom_generate_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, uint8_t *handle)
-{
-    if (key_size > 127u)
-        return -1;
+int rom_generate_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, uint8_t *handle) {
+    if (key_size > 127u) return -1;
 
     uint32_t key_buf[ROM_KM_MAX_KEY_WORDS];
     rom_drbg_get_block(key_buf, key_size + 1);
@@ -125,23 +117,18 @@ int rom_generate_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, uint8_t *h
  * @param handle Key handle.
  * @return 0 if CRC matches, -1 on error, -2 on CRC mismatch.
  */
-int rom_check_key(uint8_t handle)
-{
+int rom_check_key(uint8_t handle) {
     uint8_t base_slot;
-    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0)
-        return -1;
+    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0) return -1;
 
     uint32_t stored_crc;
-    if (rom_keyreg_get_crc(&rom_keyreg_state, handle, &stored_crc) < 0)
-        return -1;
+    if (rom_keyreg_get_crc(&rom_keyreg_state, handle, &stored_crc) < 0) return -1;
 
     uint8_t key_len;
     rom_km_dest_bits_t dest_valid;
-    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0)
-        return -1;
+    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0) return -1;
 
-    if (key_len > ROM_KM_MAX_KEY_WORDS)
-        return -1;
+    if (key_len > ROM_KM_MAX_KEY_WORDS) return -1;
 
     uint32_t key_buf[ROM_KM_MAX_KEY_WORDS];
     if (rom_kpv_read_key(base_slot, key_buf, &key_len, &dest_valid) < 0) {
@@ -178,22 +165,17 @@ int rom_check_key(uint8_t handle)
  * @return 0 on success, -1 on CRC failure, invalid handle, or
  *         destination permission violation.
  */
-int rom_transfer_key(uint8_t handle, rom_km_dest_bits_t dest_engines)
-{
-    if (rom_check_key(handle) != 0)
-        return -1;
+int rom_transfer_key(uint8_t handle, rom_km_dest_bits_t dest_engines) {
+    if (rom_check_key(handle) != 0) return -1;
 
     uint8_t base_slot;
-    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0)
-        return -1;
+    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0) return -1;
 
     uint8_t key_len;
     rom_km_dest_bits_t dest_valid;
-    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0)
-        return -1;
+    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0) return -1;
 
-    if (key_len > ROM_KM_MAX_KEY_WORDS)
-        return -1;
+    if (key_len > ROM_KM_MAX_KEY_WORDS) return -1;
 
     uint32_t key_buf[ROM_KM_MAX_KEY_WORDS];
     if (rom_kpv_read_key(base_slot, key_buf, &key_len, &dest_valid) < 0) {
@@ -246,19 +228,16 @@ int rom_transfer_key(uint8_t handle, rom_km_dest_bits_t dest_engines)
  * @param handle Key handle.
  * @return 0 on success, -1 if the handle is invalid.
  */
-int rom_revoke_key(uint8_t handle)
-{
+int rom_revoke_key(uint8_t handle) {
     uint8_t base_slot;
-    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0)
-        return -1;
+    if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0) return -1;
 
     /* Program lock_use before lock_write; once write lock is set, subsequent
      * CTRL updates may be blocked by hardware policy. */
     rom_kpv_read_lock(base_slot);
     rom_kpv_write_lock(base_slot);
 
-    if (rom_keyreg_destroy(&rom_keyreg_state, handle) < 0)
-        return -1;
+    if (rom_keyreg_destroy(&rom_keyreg_state, handle) < 0) return -1;
 
     return 0;
 }
@@ -288,32 +267,25 @@ int rom_revoke_key(uint8_t handle)
  * @return 0 on success, -1 on invalid args or slot-fit failure,
  *         -2 on handle exhaustion, -3 on KPV write failure.
  */
-int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid,
-                 const uint32_t *key_data, uint8_t *handle)
-{
-    if (key_size > 127u || dest_valid.raw == 0)
-        return -1;
+int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, const uint32_t *key_data,
+                 uint8_t *handle) {
+    if (key_size > 127u || dest_valid.raw == 0) return -1;
 
     uint8_t num_slots = (uint8_t)(key_size / ROM_KM_KPV_WORDS_PER_SLOT + 1);
-    if (num_slots > 8)
-        return -1;
+    if (num_slots > 8) return -1;
 
     uint8_t base;
-    if (find_consecutive_slots(num_slots, &base) < 0)
-        return -1;
+    if (find_consecutive_slots(num_slots, &base) < 0) return -1;
 
     /* CRC the SEP-supplied key data before writing to KPV. */
-    uint32_t key_crc = rom_crc32c((const uint8_t *)key_data,
-                                   (uint32_t)(key_size + 1u) * 4u);
+    uint32_t key_crc = rom_crc32c((const uint8_t *)key_data, (uint32_t)(key_size + 1u) * 4u);
 
     /* Register the handle before any KPV mutation; roll back on KPV failure. */
     int h = rom_keyreg_generate(&rom_keyreg_state, base, num_slots, key_crc);
-    if (h < 0)
-        return -2;
+    if (h < 0) return -2;
 
     /* Shred all selected slots before writing SEP-supplied data. */
-    for (uint8_t s = 0; s < num_slots; s++)
-        rom_kpv_shred_slot(base + s, &rom_prng_state);
+    for (uint8_t s = 0; s < num_slots; s++) rom_kpv_shred_slot(base + s, &rom_prng_state);
 
     /* Write key data and control fields (EXTEND, LAST_DWORD, DEST_VALID). */
     if (rom_kpv_write_key(base, key_data, (uint8_t)(key_size + 1u), dest_valid) < 0) {
@@ -327,4 +299,3 @@ int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid,
     *handle = (uint8_t)h;
     return 0;
 }
-

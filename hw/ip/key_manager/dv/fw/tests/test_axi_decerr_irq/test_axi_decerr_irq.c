@@ -24,20 +24,18 @@
 #include "key_manager_addr.h"
 
 /* Start of unmapped region per key_manager.rdl; accesses here return AXI DECERR */
-#define UNMAPPED_DECERR_ADDR    0x0001C000U
+#define UNMAPPED_DECERR_ADDR 0x0001C000U
 
 /**
  * Trigger a bus DECERR by reading from an unmapped address.
  * The CPU AXI transaction will get DECERR; picorv32_wrapper
  * drives axi_decerr_o and KMCSR sets IRQ_STATUS.AXI_DECERR.
  */
-static inline void access_unmapped_read(void)
-{
+static inline void access_unmapped_read(void) {
     (void)*(volatile uint32_t *)UNMAPPED_DECERR_ADDR;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
 
     TEST_INIT();
@@ -58,7 +56,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(!status_reg.f.axi_decerr,
-                    "IRQ_STATUS.AXI_DECERR must be clear at test start (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_DECERR must be clear at test start (status=0x%08X)",
+                    irq_status);
     }
     TEST_LOG("  Verified IRQ_STATUS.AXI_DECERR is clear at start");
 
@@ -73,7 +72,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(status_reg.f.axi_decerr,
-                    "IRQ_STATUS.AXI_DECERR must be set after unmapped read (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_DECERR must be set after unmapped read (status=0x%08X)",
+                    irq_status);
     }
 
     /* Clear the sticky bit (W1C) */

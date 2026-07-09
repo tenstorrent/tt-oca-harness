@@ -20,28 +20,27 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-int cla_sanity_sequence(int hartid)
-{
-  info_msg_s(hartid, "cla_sanity_sequence: Starting");
+int cla_sanity_sequence(int hartid) {
+    info_msg_s(hartid, "cla_sanity_sequence: Starting");
 
-  // Read from cla functional register
-  uint32_t read_cla_cdgnode0ap0;
-  read_cla_cdgnode0ap0 = read_reg(SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR);
-  write_scratch(2, read_cla_cdgnode0ap0);
+    // Read from cla functional register
+    uint32_t read_cla_cdgnode0ap0;
+    read_cla_cdgnode0ap0 = read_reg(SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR);
+    write_scratch(2, read_cla_cdgnode0ap0);
 
-  // Read from ctrl status cla functional register
-  uint32_t read_cla_ctrl_status;
-  read_cla_ctrl_status = read_reg(SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR);
-  write_scratch(2, read_cla_ctrl_status);
+    // Read from ctrl status cla functional register
+    uint32_t read_cla_ctrl_status;
+    read_cla_ctrl_status = read_reg(SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR);
+    write_scratch(2, read_cla_ctrl_status);
 
-  // Read from cla status functional register
-  uint32_t read_cla_scratch;
-  read_cla_scratch = read_reg(SMC_TOP_SMC_CLA_SCRATCH_BASE_ADDR);
-  write_scratch(2, read_cla_scratch);
+    // Read from cla status functional register
+    uint32_t read_cla_scratch;
+    read_cla_scratch = read_reg(SMC_TOP_SMC_CLA_SCRATCH_BASE_ADDR);
+    write_scratch(2, read_cla_scratch);
 
-  info_msg_s(hartid, "cla_sanity_sequence: Ending");
+    info_msg_s(hartid, "cla_sanity_sequence: Ending");
 
-  return 0;
+    return 0;
 }
 
 #endif

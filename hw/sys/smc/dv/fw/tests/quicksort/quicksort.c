@@ -16,7 +16,7 @@
 static int arr[INT_POW];
 
 // Function to swap two elements
-void swap(int* a, int* b) {
+void swap(int *a, int *b) {
     int t = *a;
     *a = *b;
     *b = t;
@@ -69,12 +69,12 @@ void fill_array(int arr[], int size) {
 
 int main() {
 
-    if (metal_cpu_get_current_hartid() == 0){
+    if (metal_cpu_get_current_hartid() == 0) {
         init_test(0);
 
         for (int size_log = 0; size_log < ARRAY_SIZES; size_log++) {
             int size = (int)int_pow(2, size_log);
-            start_counter(); 
+            start_counter();
             for (int i = 0; i < N_ITER; i++) {
                 // Measure the time taken for merge sort
                 fill_array(arr, size);
@@ -85,8 +85,8 @@ int main() {
             end_counter();
         }
 
-		test_pass(0);
-	}
+        test_pass(0);
+    }
 
     while (true) {
         __asm__("wfi");
@@ -96,17 +96,17 @@ int main() {
 }
 
 int other_main(int hartid) {
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {
-  int hartid = metal_cpu_get_current_hartid();
+    int hartid = metal_cpu_get_current_hartid();
 
-  if (hartid == 0) {
-    return main();
-  } else {
-    return other_main(hartid);
-  }
+    if (hartid == 0) {
+        return main();
+    } else {
+        return other_main(hartid);
+    }
 }

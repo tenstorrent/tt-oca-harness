@@ -8,20 +8,16 @@
 
 /* Raw DMA_CTRL register-block accessors (the smc_dma.* driver builds on these). */
 
-static inline void write_dma_ctrl_reg(uint64_t offset, uint64_t value)
-{
-  volatile uint64_t *p_addr =
-      (volatile uint64_t *)(uintptr_t)(SMC_TOP_DMA_CTRL_BASE_ADDR +
-                                       offset);
-  *p_addr = value;
+static inline void write_dma_ctrl_reg(uint64_t offset, uint64_t value) {
+    volatile uint64_t *p_addr =
+        (volatile uint64_t *)(uintptr_t)(SMC_TOP_DMA_CTRL_BASE_ADDR + offset);
+    *p_addr = value;
 }
 
-static inline uint64_t read_dma_ctrl_reg(uint64_t offset)
-{
-  volatile uint64_t *p_addr =
-      (volatile uint64_t *)(uintptr_t)(SMC_TOP_DMA_CTRL_BASE_ADDR +
-                                       offset);
-  return *p_addr;
+static inline uint64_t read_dma_ctrl_reg(uint64_t offset) {
+    volatile uint64_t *p_addr =
+        (volatile uint64_t *)(uintptr_t)(SMC_TOP_DMA_CTRL_BASE_ADDR + offset);
+    return *p_addr;
 }
 
 #endif /* SMC_DMA_CTRL_H */

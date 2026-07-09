@@ -37,20 +37,23 @@ static uint8_t crc8_rohc_table[256];
  *
  * @return Always 0 to keep the benchmark path focused on CRC measurement.
  */
-int rom_boot_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
 
 /**
  * @brief Disable unrecoverable-fault wipe for this focused benchmark image.
  *
  * @return Always 0 to keep the benchmark path focused on CRC measurement.
  */
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /**
  * @brief Build the software CRC-32C lookup table used as the baseline model.
  */
-static void init_crc32c_table(void)
-{
+static void init_crc32c_table(void) {
     for (uint32_t i = 0; i < 256u; ++i) {
         uint32_t crc = i;
         for (uint32_t bit = 0; bit < 8u; ++bit) {
@@ -67,8 +70,7 @@ static void init_crc32c_table(void)
 /**
  * @brief Build the software CRC-8/ROHC lookup table used as the baseline model.
  */
-static void init_crc8_rohc_table(void)
-{
+static void init_crc8_rohc_table(void) {
     for (uint32_t i = 0; i < 256u; ++i) {
         uint8_t crc = (uint8_t)i;
         for (uint32_t bit = 0; bit < 8u; ++bit) {
@@ -88,8 +90,7 @@ static void init_crc8_rohc_table(void)
  * @param[out] word_inputs Output array for CRC-32C word-update trials.
  * @param[out] byte_inputs Output array for byte-oriented CRC trials.
  */
-static void init_inputs(uint32_t *word_inputs, uint8_t *byte_inputs)
-{
+static void init_inputs(uint32_t *word_inputs, uint8_t *byte_inputs) {
     uint32_t state = 0x2130C0DEu;
 
     for (uint32_t i = 0; i < BENCH_UPDATES; ++i) {
@@ -109,8 +110,7 @@ static void init_inputs(uint32_t *word_inputs, uint8_t *byte_inputs)
  * @param[in] data Next input byte.
  * @return Updated CRC-32C chaining state.
  */
-static uint32_t sw_crc32c_byte_update(uint32_t state, uint8_t data)
-{
+static uint32_t sw_crc32c_byte_update(uint32_t state, uint8_t data) {
     return (state >> 8) ^ crc32c_table[(state ^ data) & 0xFFu];
 }
 
@@ -121,8 +121,7 @@ static uint32_t sw_crc32c_byte_update(uint32_t state, uint8_t data)
  * @param[in] word Next 32-bit input word.
  * @return Updated CRC-32C chaining state.
  */
-static uint32_t sw_crc32c_word_update(uint32_t state, uint32_t word)
-{
+static uint32_t sw_crc32c_word_update(uint32_t state, uint32_t word) {
     uint32_t crc = state;
 
     crc = sw_crc32c_byte_update(crc, (uint8_t)(word >> 0));
@@ -140,8 +139,7 @@ static uint32_t sw_crc32c_word_update(uint32_t state, uint32_t word)
  * @param[in] data Next input byte.
  * @return Updated CRC-8/ROHC chaining state.
  */
-static uint32_t sw_crc8_rohc_byte_update(uint32_t state, uint8_t data)
-{
+static uint32_t sw_crc8_rohc_byte_update(uint32_t state, uint8_t data) {
     return (uint32_t)crc8_rohc_table[((uint8_t)state) ^ data];
 }
 
@@ -152,17 +150,11 @@ static uint32_t sw_crc8_rohc_byte_update(uint32_t state, uint8_t data)
  * @param[in] word Next 32-bit input word.
  * @return Updated CRC-32C chaining state.
  */
-static inline uint32_t bench_pcpi_crc32c_word_update(uint32_t state, uint32_t word)
-{
+static inline uint32_t bench_pcpi_crc32c_word_update(uint32_t state, uint32_t word) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = word;
 
-    __asm__ volatile (
-        ".word 0x58B5050B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5050B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
@@ -173,17 +165,11 @@ static inline uint32_t bench_pcpi_crc32c_word_update(uint32_t state, uint32_t wo
  * @param[in] data Next input byte in bits [7:0].
  * @return Updated CRC-32C chaining state.
  */
-static inline uint32_t bench_pcpi_crc32c_byte_update(uint32_t state, uint32_t data)
-{
+static inline uint32_t bench_pcpi_crc32c_byte_update(uint32_t state, uint32_t data) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = data;
 
-    __asm__ volatile (
-        ".word 0x58B5150B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5150B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
@@ -194,17 +180,11 @@ static inline uint32_t bench_pcpi_crc32c_byte_update(uint32_t state, uint32_t da
  * @param[in] data Next input byte in bits [7:0].
  * @return Updated CRC-8/ROHC chaining state.
  */
-static inline uint32_t bench_pcpi_crc8_rohc_update(uint32_t state, uint32_t data)
-{
+static inline uint32_t bench_pcpi_crc8_rohc_update(uint32_t state, uint32_t data) {
     register uint32_t a0 __asm__("a0") = state;
     register uint32_t a1 __asm__("a1") = data;
 
-    __asm__ volatile (
-        ".word 0x58B5250B"
-        : "+r"(a0)
-        : "r"(a1)
-        :
-    );
+    __asm__ volatile(".word 0x58B5250B" : "+r"(a0) : "r"(a1) :);
     return a0;
 }
 
@@ -215,8 +195,7 @@ static inline uint32_t bench_pcpi_crc8_rohc_update(uint32_t state, uint32_t data
  * @param[out] final_state Final CRC-32C chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc32c_word_sw(const uint32_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc32c_word_sw(const uint32_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFFFFFFFu;
@@ -244,8 +223,7 @@ static uint32_t bench_crc32c_word_sw(const uint32_t *inputs, uint32_t *final_sta
  * @param[out] final_state Final CRC-32C chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc32c_word_pcpi(const uint32_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc32c_word_pcpi(const uint32_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFFFFFFFu;
@@ -273,8 +251,7 @@ static uint32_t bench_crc32c_word_pcpi(const uint32_t *inputs, uint32_t *final_s
  * @param[out] final_state Final CRC-32C chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc32c_byte_sw(const uint8_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc32c_byte_sw(const uint8_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFFFFFFFu;
@@ -302,8 +279,7 @@ static uint32_t bench_crc32c_byte_sw(const uint8_t *inputs, uint32_t *final_stat
  * @param[out] final_state Final CRC-32C chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc32c_byte_pcpi(const uint8_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc32c_byte_pcpi(const uint8_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFFFFFFFu;
@@ -331,8 +307,7 @@ static uint32_t bench_crc32c_byte_pcpi(const uint8_t *inputs, uint32_t *final_st
  * @param[out] final_state Final CRC-8/ROHC chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc8_rohc_byte_sw(const uint8_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc8_rohc_byte_sw(const uint8_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFu;
@@ -360,8 +335,7 @@ static uint32_t bench_crc8_rohc_byte_sw(const uint8_t *inputs, uint32_t *final_s
  * @param[out] final_state Final CRC-8/ROHC chaining state after the loop.
  * @return Elapsed benchmark cycles for the measured loop.
  */
-static uint32_t bench_crc8_rohc_byte_pcpi(const uint8_t *inputs, uint32_t *final_state)
-{
+static uint32_t bench_crc8_rohc_byte_pcpi(const uint8_t *inputs, uint32_t *final_state) {
     uint32_t start_cycles;
     uint32_t end_cycles;
     uint32_t state = 0xFFu;
@@ -391,13 +365,11 @@ static uint32_t bench_crc8_rohc_byte_pcpi(const uint8_t *inputs, uint32_t *final
  * @param[in] pcpi_cycles Measured PCPI cycle count.
  * @return Signed percentage improvement.
  */
-static int32_t improvement_pct(uint32_t software_cycles, uint32_t pcpi_cycles)
-{
+static int32_t improvement_pct(uint32_t software_cycles, uint32_t pcpi_cycles) {
     return ((int32_t)software_cycles - (int32_t)pcpi_cycles) * 100 / (int32_t)software_cycles;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t word_inputs[BENCH_UPDATES];
     uint8_t byte_inputs[BENCH_UPDATES];
 
@@ -420,11 +392,9 @@ int main(void)
         int32_t improve = improvement_pct(sw_cycles, pcpi_cycles);
 
         TEST_ASSERT_EQ(pcpi_state, sw_state, "CRC-32C word final state");
-        TEST_ASSERT(sw_cycles > pcpi_cycles,
-                    "CRC-32C word expected software=%u > pcpi=%u",
+        TEST_ASSERT(sw_cycles > pcpi_cycles, "CRC-32C word expected software=%u > pcpi=%u",
                     sw_cycles, pcpi_cycles);
-        TEST_ASSERT(improve >= 50,
-                    "CRC-32C word improvement=%d%% (< 50%%)", (int)improve);
+        TEST_ASSERT(improve >= 50, "CRC-32C word improvement=%d%% (< 50%%)", (int)improve);
 
         TEST_LOG("CRC-32C word software Cycles: %u", sw_cycles);
         TEST_LOG("CRC-32C word PCPI Cycles: %u", pcpi_cycles);
@@ -441,11 +411,9 @@ int main(void)
         int32_t improve = improvement_pct(sw_cycles, pcpi_cycles);
 
         TEST_ASSERT_EQ(pcpi_state, sw_state, "CRC-32C byte final state");
-        TEST_ASSERT(sw_cycles > pcpi_cycles,
-                    "CRC-32C byte expected software=%u > pcpi=%u",
+        TEST_ASSERT(sw_cycles > pcpi_cycles, "CRC-32C byte expected software=%u > pcpi=%u",
                     sw_cycles, pcpi_cycles);
-        TEST_ASSERT(improve >= 50,
-                    "CRC-32C byte improvement=%d%% (< 50%%)", (int)improve);
+        TEST_ASSERT(improve >= 50, "CRC-32C byte improvement=%d%% (< 50%%)", (int)improve);
 
         TEST_LOG("CRC-32C byte software Cycles: %u", sw_cycles);
         TEST_LOG("CRC-32C byte PCPI Cycles: %u", pcpi_cycles);

@@ -53,12 +53,12 @@
 
 /* Phase marker: must be below BSS_START so crt0.s does not clear it on warm
  * restart.  Use a distinct offset from other multi-phase tests. */
-#define MARKER_ADDR   (SRAM_BASE + 0x2400u)
+#define MARKER_ADDR (SRAM_BASE + 0x2400u)
 #define MARKER_PHASE1 0xCC000001u
 
 /* Sentinel sram_fw_size written in Phase 0 and verified in Phase 1.
  * A plausible-looking byte count distinct from 0 and easy to spot in traces. */
-#define SENTINEL_SIZE 0x00001800u   /* 6 KB — representative SRAM image size */
+#define SENTINEL_SIZE 0x00001800u /* 6 KB — representative SRAM image size */
 
 /* Value used to attempt a write into the locked persist region. Must differ
  * from SENTINEL_SIZE so a successful (bad) write would be detectable. */
@@ -68,15 +68,13 @@
  * Helpers
  *===========================================================================*/
 
-static void clear_violation(void)
-{
+static void clear_violation(void) {
     volatile uint32_t *viol =
         (volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR;
-    *viol = 0xFFFFFFFFu;  /* W1C: clear all violation bits */
+    *viol = 0xFFFFFFFFu; /* W1C: clear all violation bits */
 }
 
-static uint32_t read_violation(void)
-{
+static uint32_t read_violation(void) {
     volatile uint32_t *viol =
         (volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR;
     return *viol;
@@ -86,8 +84,7 @@ static uint32_t read_violation(void)
  * main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     volatile uint32_t *marker = (volatile uint32_t *)MARKER_ADDR;
@@ -101,24 +98,23 @@ int main(void)
         TEST_SUBTEST_START("Phase 0: cold-init zeroes sram_fw_size");
 
         rom_persist_cold_init();
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         uint32_t sz = rom_persist_get_sram_fw_size();
         if (sz != 0u) {
-            TEST_FAIL("Phase 0: sram_fw_size not zeroed by cold_init (got 0x%08X)",
-                      (unsigned)sz);
+            TEST_FAIL("Phase 0: sram_fw_size not zeroed by cold_init (got 0x%08X)", (unsigned)sz);
         }
 
         TEST_SUBTEST_PASS();
         TEST_SUBTEST_START("Phase 0: set and readback sentinel sram_fw_size");
 
         rom_persist_set_sram_fw_size(SENTINEL_SIZE);
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         sz = rom_persist_get_sram_fw_size();
         if (sz != SENTINEL_SIZE) {
-            TEST_FAIL("Phase 0: readback mismatch (got 0x%08X, expected 0x%08X)",
-                      (unsigned)sz, (unsigned)SENTINEL_SIZE);
+            TEST_FAIL("Phase 0: readback mismatch (got 0x%08X, expected 0x%08X)", (unsigned)sz,
+                      (unsigned)SENTINEL_SIZE);
         }
 
         TEST_SUBTEST_PASS();
@@ -128,7 +124,7 @@ int main(void)
         rom_kmcsr_cold_boot_done_set();
 
         *marker = MARKER_PHASE1;
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         if (!tb_km_warm_reset(5000u)) {
             TEST_FAIL("TB_CMD_KM_WARM_RESET not acknowledged");
@@ -163,19 +159,20 @@ int main(void)
 
         clear_violation();
         rom_persist_lock();
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         uint32_t lock_val = rom_kmcsr_sram_lock_read();
         if ((lock_val & ROM_KM_PERSIST_LOCK_MASK) == 0u) {
             TEST_FAIL("Phase 1: SRAM_LOCK bit 31 not set after rom_persist_lock() "
-                      "(SRAM_LOCK=0x%08X)", (unsigned)lock_val);
+                      "(SRAM_LOCK=0x%08X)",
+                      (unsigned)lock_val);
         }
 
         TEST_SUBTEST_PASS();
         TEST_SUBTEST_START("Phase 1: write to locked persist region is dropped");
 
         rom_persist_set_sram_fw_size(LOCK_WRITE_ATTEMPT);
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         uint32_t after = rom_persist_get_sram_fw_size();
         if (after != sz) {
@@ -190,7 +187,8 @@ int main(void)
         uint32_t viol = read_violation();
         if ((viol & ROM_KM_PERSIST_LOCK_MASK) == 0u) {
             TEST_FAIL("Phase 1: SRAM_WRITE_LOCK_VIOLATION bit 31 not set "
-                      "(reg=0x%08X)", (unsigned)viol);
+                      "(reg=0x%08X)",
+                      (unsigned)viol);
         }
 
         TEST_SUBTEST_PASS();

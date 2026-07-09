@@ -30,13 +30,10 @@
 #define UART_RXWM (1 << 1)
 
 #define UART_REG(offset) (((unsigned long)control_base + offset))
-#define UART_REGB(offset)                                                      \
-    (__METAL_ACCESS_ONCE((__metal_io_u8 *)UART_REG(offset)))
-#define UART_REGW(offset)                                                      \
-    (__METAL_ACCESS_ONCE((__metal_io_u32 *)UART_REG(offset)))
+#define UART_REGB(offset) (__METAL_ACCESS_ONCE((__metal_io_u8 *)UART_REG(offset)))
+#define UART_REGW(offset) (__METAL_ACCESS_ONCE((__metal_io_u32 *)UART_REG(offset)))
 
-struct metal_interrupt *
-__metal_driver_sifive_uart0_interrupt_controller(struct metal_uart *uart) {
+struct metal_interrupt *__metal_driver_sifive_uart0_interrupt_controller(struct metal_uart *uart) {
     return __metal_driver_sifive_uart0_interrupt_parent(uart);
 }
 
@@ -78,8 +75,7 @@ int __metal_driver_sifive_uart0_txready(struct metal_uart *uart) {
     return !!((UART_REGW(METAL_SIFIVE_UART0_TXDATA) & UART_TXFULL));
 }
 
-int __metal_driver_sifive_uart0_set_tx_watermark(struct metal_uart *uart,
-                                                 size_t level) {
+int __metal_driver_sifive_uart0_set_tx_watermark(struct metal_uart *uart, size_t level) {
     long control_base = __metal_driver_sifive_uart0_control_base(uart);
 
     UART_REGW(METAL_SIFIVE_UART0_TXCTRL) |= UART_TXCNT(level);
@@ -92,8 +88,7 @@ size_t __metal_driver_sifive_uart0_get_tx_watermark(struct metal_uart *uart) {
     return ((UART_REGW(METAL_SIFIVE_UART0_TXCTRL) >> 16) & 0x7);
 }
 
-int __metal_driver_sifive_uart0_set_rx_watermark(struct metal_uart *uart,
-                                                 size_t level) {
+int __metal_driver_sifive_uart0_set_rx_watermark(struct metal_uart *uart, size_t level) {
     long control_base = __metal_driver_sifive_uart0_control_base(uart);
 
     UART_REGW(METAL_SIFIVE_UART0_RXCTRL) |= UART_RXCNT(level);
@@ -135,8 +130,7 @@ int __metal_driver_sifive_uart0_get_baud_rate(struct metal_uart *guart) {
     return uart->baud_rate;
 }
 
-int __metal_driver_sifive_uart0_set_baud_rate(struct metal_uart *guart,
-                                              int baud_rate) {
+int __metal_driver_sifive_uart0_set_baud_rate(struct metal_uart *guart, int baud_rate) {
     struct __metal_driver_sifive_uart0 *uart = (void *)guart;
     long control_base = __metal_driver_sifive_uart0_control_base(guart);
     struct metal_clock *clock = __metal_driver_sifive_uart0_clock(guart);
@@ -154,10 +148,8 @@ int __metal_driver_sifive_uart0_set_baud_rate(struct metal_uart *guart,
 
 static void pre_rate_change_callback_func(void *priv) {
     struct __metal_driver_sifive_uart0 *uart = priv;
-    long control_base =
-        __metal_driver_sifive_uart0_control_base((struct metal_uart *)priv);
-    struct metal_clock *clock =
-        __metal_driver_sifive_uart0_clock((struct metal_uart *)priv);
+    long control_base = __metal_driver_sifive_uart0_control_base((struct metal_uart *)priv);
+    struct metal_clock *clock = __metal_driver_sifive_uart0_clock((struct metal_uart *)priv);
 
     /* Detect when the TXDATA is empty by setting the transmit watermark count
      * to one and waiting until an interrupt is pending */
@@ -172,13 +164,11 @@ static void pre_rate_change_callback_func(void *priv) {
      * Calculate the time we must drain to finish transmitting and then wait
      * that long. */
 
-    long bits_per_symbol =
-        (UART_REGW(METAL_SIFIVE_UART0_TXCTRL) & (1 << 1)) ? 9 : 10;
+    long bits_per_symbol = (UART_REGW(METAL_SIFIVE_UART0_TXCTRL) & (1 << 1)) ? 9 : 10;
     long clk_freq = clock->vtable->get_rate_hz(clock);
     long cycles_to_wait = bits_per_symbol * clk_freq / uart->baud_rate;
 
-    for (volatile long x = 0; x < cycles_to_wait; x++)
-        __asm__("nop");
+    for (volatile long x = 0; x < cycles_to_wait; x++) __asm__("nop");
 }
 
 static void post_rate_change_callback_func(void *priv) {
@@ -189,32 +179,24 @@ static void post_rate_change_callback_func(void *priv) {
 void __metal_driver_sifive_uart0_init(struct metal_uart *guart, int baud_rate) {
     struct __metal_driver_sifive_uart0 *uart = (void *)(guart);
     struct metal_clock *clock = __metal_driver_sifive_uart0_clock(guart);
-    struct __metal_driver_sifive_gpio0 *pinmux =
-        __metal_driver_sifive_uart0_pinmux(guart);
+    struct __metal_driver_sifive_gpio0 *pinmux = __metal_driver_sifive_uart0_pinmux(guart);
 
     if (clock != NULL) {
-        uart->pre_rate_change_callback.callback =
-            &pre_rate_change_callback_func;
+        uart->pre_rate_change_callback.callback = &pre_rate_change_callback_func;
         uart->pre_rate_change_callback.priv = guart;
-        metal_clock_register_pre_rate_change_callback(
-            clock, &(uart->pre_rate_change_callback));
+        metal_clock_register_pre_rate_change_callback(clock, &(uart->pre_rate_change_callback));
 
-        uart->post_rate_change_callback.callback =
-            &post_rate_change_callback_func;
+        uart->post_rate_change_callback.callback = &post_rate_change_callback_func;
         uart->post_rate_change_callback.priv = guart;
-        metal_clock_register_post_rate_change_callback(
-            clock, &(uart->post_rate_change_callback));
+        metal_clock_register_post_rate_change_callback(clock, &(uart->post_rate_change_callback));
     }
 
     metal_uart_set_baud_rate(&(uart->uart), baud_rate);
 
     if (pinmux != NULL) {
-        long pinmux_output_selector =
-            __metal_driver_sifive_uart0_pinmux_output_selector(guart);
-        long pinmux_source_selector =
-            __metal_driver_sifive_uart0_pinmux_source_selector(guart);
-        pinmux->gpio.vtable->enable_io((struct metal_gpio *)pinmux,
-                                       pinmux_output_selector,
+        long pinmux_output_selector = __metal_driver_sifive_uart0_pinmux_output_selector(guart);
+        long pinmux_source_selector = __metal_driver_sifive_uart0_pinmux_source_selector(guart);
+        pinmux->gpio.vtable->enable_io((struct metal_gpio *)pinmux, pinmux_output_selector,
                                        pinmux_source_selector);
     }
 }
@@ -226,15 +208,12 @@ __METAL_DEFINE_VTABLE(__metal_driver_vtable_sifive_uart0) = {
     .uart.txready = __metal_driver_sifive_uart0_txready,
     .uart.get_baud_rate = __metal_driver_sifive_uart0_get_baud_rate,
     .uart.set_baud_rate = __metal_driver_sifive_uart0_set_baud_rate,
-    .uart.controller_interrupt =
-        __metal_driver_sifive_uart0_interrupt_controller,
+    .uart.controller_interrupt = __metal_driver_sifive_uart0_interrupt_controller,
     .uart.get_interrupt_id = __metal_driver_sifive_uart0_get_interrupt_id,
     .uart.tx_interrupt_enable = __metal_driver_sifive_uart0_tx_interrupt_enable,
-    .uart.tx_interrupt_disable =
-        __metal_driver_sifive_uart0_tx_interrupt_disable,
+    .uart.tx_interrupt_disable = __metal_driver_sifive_uart0_tx_interrupt_disable,
     .uart.rx_interrupt_enable = __metal_driver_sifive_uart0_rx_interrupt_enable,
-    .uart.rx_interrupt_disable =
-        __metal_driver_sifive_uart0_rx_interrupt_disable,
+    .uart.rx_interrupt_disable = __metal_driver_sifive_uart0_rx_interrupt_disable,
     .uart.set_tx_watermark = __metal_driver_sifive_uart0_set_tx_watermark,
     .uart.get_tx_watermark = __metal_driver_sifive_uart0_get_tx_watermark,
     .uart.set_rx_watermark = __metal_driver_sifive_uart0_set_rx_watermark,

@@ -28,11 +28,14 @@
 #include "key_manager_addr.h"
 
 /* Disable the SRAM wipe paths so they do not interfere with this test. */
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* After the unrecoverable fault, the watcher cold-resets the DUT and the
@@ -44,8 +47,7 @@ int main(void)
         }
         if (fault_code != (uint32_t)(int32_t)ROM_KM_UFAULT_OTP_SIGINT) {
             TEST_FAIL("Wrong fault code: expected OTP_SIGINT (0x%08X), got 0x%08X",
-                      (unsigned)(uint32_t)(int32_t)ROM_KM_UFAULT_OTP_SIGINT,
-                      (unsigned)fault_code);
+                      (unsigned)(uint32_t)(int32_t)ROM_KM_UFAULT_OTP_SIGINT, (unsigned)fault_code);
         }
         TEST_PASS();
         return 0;

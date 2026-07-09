@@ -28,62 +28,40 @@
 /* Test Vectors (NIST SP 800-38A, AES-128)                            */
 /* ------------------------------------------------------------------ */
 
-static const uint32_t test_key[4] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09
-};
+static const uint32_t test_key[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
-static const uint32_t zero_iv[4] = {
-    0x00000000, 0x00000000, 0x00000000, 0x00000000
-};
+static const uint32_t zero_iv[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
-static const uint32_t cbc_iv[4] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c
-};
+static const uint32_t cbc_iv[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
 
-static const uint32_t ctr_iv[4] = {
-    0xf3f2f1f0, 0xf7f6f5f4, 0xfbfaf9f8, 0xfffefdfc
-};
+static const uint32_t ctr_iv[4] = {0xf3f2f1f0, 0xf7f6f5f4, 0xfbfaf9f8, 0xfffefdfc};
 
 /* NIST F.1 ECB block #1 */
-static const uint32_t ecb_pt[4] = {
-    0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373
-};
-static const uint32_t ecb_ct_exp[4] = {
-    0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624
-};
+static const uint32_t ecb_pt[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
+static const uint32_t ecb_ct_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 /* NIST F.2 CBC 3-block (shared plaintext for all chained modes) */
-static const uint32_t cbc_pt[3][4] = {
-    {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373},
-    {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45},
-    {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}
-};
-static const uint32_t cbc_ct_exp[3][4] = {
-    {0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912},
-    {0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691},
-    {0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222}
-};
+static const uint32_t cbc_pt[3][4] = {{0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373},
+                                      {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45},
+                                      {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}};
+static const uint32_t cbc_ct_exp[3][4] = {{0xacab4976, 0x46b21981, 0x9b8ee9ce, 0x7d19e912},
+                                          {0x9bcb8650, 0xee197250, 0x3a11db95, 0xb2787691},
+                                          {0xb8d6be73, 0x3b74c1e3, 0x9ee61671, 0x16952222}};
 
 /* NIST F.3 CFB128 3-block */
-static const uint32_t cfb_ct_exp[3][4] = {
-    {0x2ed93f3b, 0x20ad2db7, 0xf8493433, 0x4afb3ce8},
-    {0x3745a6c8, 0x3fa9b3a0, 0xadcde3cd, 0x8be51c9f},
-    {0x671f7526, 0x40b1cba3, 0xf18c80b1, 0xdff4a487}
-};
+static const uint32_t cfb_ct_exp[3][4] = {{0x2ed93f3b, 0x20ad2db7, 0xf8493433, 0x4afb3ce8},
+                                          {0x3745a6c8, 0x3fa9b3a0, 0xadcde3cd, 0x8be51c9f},
+                                          {0x671f7526, 0x40b1cba3, 0xf18c80b1, 0xdff4a487}};
 
 /* NIST F.4 OFB128 3-block */
-static const uint32_t ofb_ct_exp[3][4] = {
-    {0x2ed93f3b, 0x20ad2db7, 0xf8493433, 0x4afb3ce8},
-    {0x8d508977, 0x038f9116, 0xda523cf5, 0x25d84ec5},
-    {0x1e054097, 0xf6ec5f9c, 0xa8f74443, 0xcced6022}
-};
+static const uint32_t ofb_ct_exp[3][4] = {{0x2ed93f3b, 0x20ad2db7, 0xf8493433, 0x4afb3ce8},
+                                          {0x8d508977, 0x038f9116, 0xda523cf5, 0x25d84ec5},
+                                          {0x1e054097, 0xf6ec5f9c, 0xa8f74443, 0xcced6022}};
 
 /* NIST F.5 CTR128 3-block */
-static const uint32_t ctr_ct_exp[3][4] = {
-    {0x91614d87, 0x26e320b6, 0x6468ef1b, 0xceb60d99},
-    {0x6bf60698, 0xfffd7079, 0x7b181786, 0xfffdffb9},
-    {0x3edfe45a, 0x5ed3d5db, 0x02094f5b, 0xab3eb00d}
-};
+static const uint32_t ctr_ct_exp[3][4] = {{0x91614d87, 0x26e320b6, 0x6468ef1b, 0xceb60d99},
+                                          {0x6bf60698, 0xfffd7079, 0x7b181786, 0xfffdffb9},
+                                          {0x3edfe45a, 0x5ed3d5db, 0x02094f5b, 0xab3eb00d}};
 
 /* ------------------------------------------------------------------ */
 /* KEY_SHARE1 Test Vectors                                            */
@@ -93,10 +71,8 @@ static const uint32_t ctr_ct_exp[3][4] = {
 /* share0 = test_key XOR share1                                       */
 /* ------------------------------------------------------------------ */
 
-static const uint32_t ks1_nonzero[8] = {
-    0xA5A5A5A5, 0x5A5A5A5A, 0xA5A5A5A5, 0x5A5A5A5A,
-    0x00000000, 0x00000000, 0x00000000, 0x00000000
-};
+static const uint32_t ks1_nonzero[8] = {0xA5A5A5A5, 0x5A5A5A5A, 0xA5A5A5A5, 0x5A5A5A5A,
+                                        0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
 static const uint32_t ks0_for_split[4] = {
     0xB3B0DB8E, /* 0x16157e2b ^ 0xA5A5A5A5 */
@@ -115,8 +91,7 @@ static int run_ecb_roundtrip(void) {
     printf("\n--- ECB encrypt single block ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key, zero_iv) != 0)
-        return -1;
+    if (configure_aes(0x1 /* ENC */, 0x1 /* ECB */, test_key, zero_iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
     write_data_in(ecb_pt);
@@ -132,8 +107,7 @@ static int run_ecb_roundtrip(void) {
     printf("\n--- ECB decrypt roundtrip ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(0x2 /* DEC */, 0x1 /* ECB */, test_key, zero_iv) != 0)
-        return -1;
+    if (configure_aes(0x2 /* DEC */, 0x1 /* ECB */, test_key, zero_iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
     write_data_in(ecb_ct_exp);
@@ -152,22 +126,18 @@ static int run_ecb_roundtrip(void) {
 /* Generic 3-block chained mode helper                                */
 /* ------------------------------------------------------------------ */
 
-static int run_chained_3block(const char *mode_name, uint32_t operation,
-                              uint32_t mode, const uint32_t iv[4],
-                              const uint32_t input[3][4],
-                              const uint32_t expected[3][4],
-                              int verify_iv_update,
+static int run_chained_3block(const char *mode_name, uint32_t operation, uint32_t mode,
+                              const uint32_t iv[4], const uint32_t input[3][4],
+                              const uint32_t expected[3][4], int verify_iv_update,
                               const uint32_t (*iv_expected)[4]) {
     uint32_t out[4];
     uint32_t iv_readback[4];
     char tag[64];
 
-    printf("\n--- %s 3-block %s ---\n", mode_name,
-           (operation == 0x1) ? "encrypt" : "decrypt");
+    printf("\n--- %s 3-block %s ---\n", mode_name, (operation == 0x1) ? "encrypt" : "decrypt");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes(operation, mode, test_key, iv) != 0)
-        return -1;
+    if (configure_aes(operation, mode, test_key, iv) != 0) return -1;
 
     if (wait_for_input_ready() != 0) return -1;
 
@@ -192,8 +162,8 @@ static int run_chained_3block(const char *mode_name, uint32_t operation,
         } else if (verify_iv_update) {
             /* Just verify IV changed from initial value */
             read_iv_out(iv_readback);
-            if (iv_readback[0] == iv[0] && iv_readback[1] == iv[1] &&
-                iv_readback[2] == iv[2] && iv_readback[3] == iv[3]) {
+            if (iv_readback[0] == iv[0] && iv_readback[1] == iv[1] && iv_readback[2] == iv[2] &&
+                iv_readback[3] == iv[3]) {
                 printf("  WARNING: IV did not change after block %d\n", block);
             }
         }
@@ -203,8 +173,8 @@ static int run_chained_3block(const char *mode_name, uint32_t operation,
         }
     }
 
-    snprintf(tag, sizeof(tag), "%s %s complete",
-             mode_name, (operation == 0x1) ? "encrypt" : "decrypt");
+    snprintf(tag, sizeof(tag), "%s %s complete", mode_name,
+             (operation == 0x1) ? "encrypt" : "decrypt");
     if (check_no_alert(tag) != 0) return -1;
 
     return 0;
@@ -216,17 +186,15 @@ static int run_chained_3block(const char *mode_name, uint32_t operation,
 
 static int run_cbc_3block_encrypt(void) {
     /* For CBC, IV after block N = ciphertext of block N */
-    return run_chained_3block("CBC", 0x1 /* ENC */, 0x2 /* CBC */,
-                              cbc_iv, cbc_pt, cbc_ct_exp,
-                              1, cbc_ct_exp);
+    return run_chained_3block("CBC", 0x1 /* ENC */, 0x2 /* CBC */, cbc_iv, cbc_pt, cbc_ct_exp, 1,
+                              cbc_ct_exp);
 }
 
 static int run_cbc_3block_decrypt(void) {
     /* CBC decrypt: feed ciphertext, expect plaintext */
     /* IV after block N = input ciphertext block N */
-    return run_chained_3block("CBC", 0x2 /* DEC */, 0x2 /* CBC */,
-                              cbc_iv, cbc_ct_exp, cbc_pt,
-                              1, cbc_ct_exp);
+    return run_chained_3block("CBC", 0x2 /* DEC */, 0x2 /* CBC */, cbc_iv, cbc_ct_exp, cbc_pt, 1,
+                              cbc_ct_exp);
 }
 
 /* ------------------------------------------------------------------ */
@@ -235,16 +203,14 @@ static int run_cbc_3block_decrypt(void) {
 
 static int run_cfb_3block_encrypt(void) {
     /* For CFB encrypt, IV after block N = ciphertext of block N */
-    return run_chained_3block("CFB", 0x1 /* ENC */, 0x4 /* CFB */,
-                              cbc_iv, cbc_pt, cfb_ct_exp,
-                              1, cfb_ct_exp);
+    return run_chained_3block("CFB", 0x1 /* ENC */, 0x4 /* CFB */, cbc_iv, cbc_pt, cfb_ct_exp, 1,
+                              cfb_ct_exp);
 }
 
 static int run_cfb_3block_decrypt(void) {
     /* CFB decrypt: feed ciphertext, expect plaintext */
-    return run_chained_3block("CFB", 0x2 /* DEC */, 0x4 /* CFB */,
-                              cbc_iv, cfb_ct_exp, cbc_pt,
-                              1, cfb_ct_exp);
+    return run_chained_3block("CFB", 0x2 /* DEC */, 0x4 /* CFB */, cbc_iv, cfb_ct_exp, cbc_pt, 1,
+                              cfb_ct_exp);
 }
 
 /* ------------------------------------------------------------------ */
@@ -254,17 +220,15 @@ static int run_cfb_3block_decrypt(void) {
 static int run_ofb_3block_encrypt(void) {
     /* OFB IV update = keystream block (cannot predict without AES forward).
      * Just verify IV changed. */
-    return run_chained_3block("OFB", 0x1 /* ENC */, 0x8 /* OFB */,
-                              cbc_iv, cbc_pt, ofb_ct_exp,
-                              1, NULL);
+    return run_chained_3block("OFB", 0x1 /* ENC */, 0x8 /* OFB */, cbc_iv, cbc_pt, ofb_ct_exp, 1,
+                              NULL);
 }
 
 static int run_ofb_3block_decrypt(void) {
     /* OFB decrypt with OPERATION=DEC. OFB uses forward cipher for both
      * directions, but we set DEC to exercise the control logic path. */
-    return run_chained_3block("OFB", 0x2 /* DEC */, 0x8 /* OFB */,
-                              cbc_iv, ofb_ct_exp, cbc_pt,
-                              1, NULL);
+    return run_chained_3block("OFB", 0x2 /* DEC */, 0x8 /* OFB */, cbc_iv, ofb_ct_exp, cbc_pt, 1,
+                              NULL);
 }
 
 /* ------------------------------------------------------------------ */
@@ -273,16 +237,14 @@ static int run_ofb_3block_decrypt(void) {
 
 static int run_ctr_3block_encrypt(void) {
     /* CTR IV = counter. Just verify it changed. */
-    return run_chained_3block("CTR", 0x1 /* ENC */, 0x10 /* CTR */,
-                              ctr_iv, cbc_pt, ctr_ct_exp,
-                              1, NULL);
+    return run_chained_3block("CTR", 0x1 /* ENC */, 0x10 /* CTR */, ctr_iv, cbc_pt, ctr_ct_exp, 1,
+                              NULL);
 }
 
 static int run_ctr_3block_decrypt(void) {
     /* CTR decrypt: feed ciphertext, expect plaintext */
-    return run_chained_3block("CTR", 0x2 /* DEC */, 0x10 /* CTR */,
-                              ctr_iv, ctr_ct_exp, cbc_pt,
-                              1, NULL);
+    return run_chained_3block("CTR", 0x2 /* DEC */, 0x10 /* CTR */, ctr_iv, ctr_ct_exp, cbc_pt, 1,
+                              NULL);
 }
 
 /* ------------------------------------------------------------------ */
@@ -295,8 +257,8 @@ static int run_ctr_manual_mode(void) {
     printf("\n--- CTR manual-operation mode ---\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(0x1 /* ENC */, 0x10 /* CTR */, 0x1 /* AES-128 */,
-                           test_key, 4, NULL, ctr_iv, 0x1 /* manual */) != 0)
+    if (configure_aes_full(0x1 /* ENC */, 0x10 /* CTR */, 0x1 /* AES-128 */, test_key, 4, NULL,
+                           ctr_iv, 0x1 /* manual */) != 0)
         return -1;
 
     if (wait_for_input_ready() != 0) return -1;
@@ -331,9 +293,8 @@ static int run_key_share_ecb_roundtrip(void) {
     printf("  key = share0 XOR share1 = test_key\n");
 
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(0x1 /* ENC */, 0x1 /* ECB */, 0x1 /* AES-128 */,
-                           ks0_for_split, 4, ks1_nonzero,
-                           zero_iv, 0x0 /* auto */) != 0)
+    if (configure_aes_full(0x1 /* ENC */, 0x1 /* ECB */, 0x1 /* AES-128 */, ks0_for_split, 4,
+                           ks1_nonzero, zero_iv, 0x0 /* auto */) != 0)
         return -1;
 
     if (wait_for_input_ready() != 0) return -1;
@@ -347,9 +308,8 @@ static int run_key_share_ecb_roundtrip(void) {
 
     /* Decrypt roundtrip with same split key */
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(0x2 /* DEC */, 0x1 /* ECB */, 0x1 /* AES-128 */,
-                           ks0_for_split, 4, ks1_nonzero,
-                           zero_iv, 0x0) != 0)
+    if (configure_aes_full(0x2 /* DEC */, 0x1 /* ECB */, 0x1 /* AES-128 */, ks0_for_split, 4,
+                           ks1_nonzero, zero_iv, 0x0) != 0)
         return -1;
 
     if (wait_for_input_ready() != 0) return -1;

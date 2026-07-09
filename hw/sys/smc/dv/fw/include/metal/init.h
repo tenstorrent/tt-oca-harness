@@ -26,7 +26,7 @@ typedef void (*metal_destructor_t)(void);
  * Metal constructors. By default, these functions are called before main by
  * the metal_init() function.
  */
-#define METAL_CONSTRUCTOR(function_name)                                       \
+#define METAL_CONSTRUCTOR(function_name) \
     METAL_CONSTRUCTOR_PRIO(function_name, METAL_INIT_DEFAULT_PRIORITY)
 
 /*! @def METAL_CONSTRUCTOR_PRIO
@@ -40,7 +40,7 @@ typedef void (*metal_destructor_t)(void);
  * Metal constructors. By default, these functions are called before main by
  * the metal_init() function.
  */
-#define METAL_CONSTRUCTOR_PRIO(function_name, priority)                        \
+#define METAL_CONSTRUCTOR_PRIO(function_name, priority) \
     __METAL_CONSTRUCTOR_PRIO(function_name, priority)
 
 /* We use this wrapper for METAL_CONSTRUCTOR_PRIORITY so that macros passed
@@ -49,10 +49,10 @@ typedef void (*metal_destructor_t)(void);
  * METAL_CONSTRUCTOR(my_fn_name, METAL_INIT_DEFAULT_PRIORITY)
  * results in .metal.init_array.METAL_INIT_DEFAULT_PRIORITY instead of
  * .metal.init_array.5000 */
-#define __METAL_CONSTRUCTOR_PRIO(function_name, priority)                      \
-    __attribute__((section(".metal.ctors"))) void function_name(void);         \
-    __attribute__((section(".metal.init_array." #priority)))                   \
-        metal_constructor_t _##function_name##_ptr = &function_name;           \
+#define __METAL_CONSTRUCTOR_PRIO(function_name, priority) \
+    __attribute__((section(".metal.ctors"))) void function_name(void); \
+    __attribute__((section(".metal.init_array." #priority))) \
+    metal_constructor_t _##function_name##_ptr = &function_name; \
     void function_name(void)
 
 /*! @def METAL_DESTRUCTOR
@@ -62,7 +62,7 @@ typedef void (*metal_destructor_t)(void);
  * Metal destructors. By default, these functions are called on exit by
  * the metal_fini() function.
  */
-#define METAL_DESTRUCTOR(function_name)                                        \
+#define METAL_DESTRUCTOR(function_name) \
     METAL_DESTRUCTOR_PRIO(function_name, METAL_INIT_DEFAULT_PRIORITY)
 
 /*! @def METAL_DESTRUCTOR_PRIO
@@ -76,12 +76,12 @@ typedef void (*metal_destructor_t)(void);
  * Metal destructors. By default, these functions are called on exit by
  * the metal_fini() function.
  */
-#define METAL_DESTRUCTOR_PRIO(function_name, priority)                         \
+#define METAL_DESTRUCTOR_PRIO(function_name, priority) \
     __METAL_DESTRUCTOR_PRIO(function_name, priority)
-#define __METAL_DESTRUCTOR_PRIO(function_name, priority)                       \
-    __attribute__((section(".metal.dtors"))) void function_name(void);         \
-    __attribute__((section(".metal.fini_array." #priority)))                   \
-        metal_destructor_t _##function_name##_ptr = &function_name;            \
+#define __METAL_DESTRUCTOR_PRIO(function_name, priority) \
+    __attribute__((section(".metal.dtors"))) void function_name(void); \
+    __attribute__((section(".metal.fini_array." #priority))) \
+    metal_destructor_t _##function_name##_ptr = &function_name; \
     void function_name(void)
 
 /*!

@@ -20,17 +20,15 @@ struct __metal_driver_vtable_ucb_htif0_uart {
 
 struct __metal_driver_ucb_htif0;
 
-void __metal_driver_ucb_htif0_exit(const struct __metal_shutdown *test,
-                                   int code) __attribute__((noreturn));
+void __metal_driver_ucb_htif0_exit(const struct __metal_shutdown *test, int code)
+    __attribute__((noreturn));
 
 void __metal_driver_ucb_htif0_init(struct metal_uart *uart, int baud_rate);
 int __metal_driver_ucb_htif0_putc(struct metal_uart *uart, int c);
 int __metal_driver_ucb_htif0_getc(struct metal_uart *uart, int *c);
 int __metal_driver_ucb_htif0_get_baud_rate(struct metal_uart *guart);
-int __metal_driver_ucb_htif0_set_baud_rate(struct metal_uart *guart,
-                                           int baud_rate);
-struct metal_interrupt *
-__metal_driver_ucb_htif0_interrupt_controller(struct metal_uart *uart);
+int __metal_driver_ucb_htif0_set_baud_rate(struct metal_uart *guart, int baud_rate);
+struct metal_interrupt *__metal_driver_ucb_htif0_interrupt_controller(struct metal_uart *uart);
 int __metal_driver_ucb_htif0_get_interrupt_id(struct metal_uart *uart);
 
 __METAL_DECLARE_VTABLE(__metal_driver_vtable_ucb_htif0_shutdown)

@@ -21,7 +21,7 @@
  *
  */
 
-#define TX_FIFO_DEPTH 73  /* effective capacity: 72 FIFO slots + 1 byte_select stage */
+#define TX_FIFO_DEPTH 73 /* effective capacity: 72 FIFO slots + 1 byte_select stage */
 
 #include <stdint.h>
 #include <stdio.h>
@@ -30,21 +30,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -56,7 +52,8 @@ int main(void)
     spi_controller__CFG_t cfg;
     spi_controller__STATUS_t status;
     spi_controller__CMD_t cmd;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
     uint32_t i;
@@ -75,8 +72,7 @@ int main(void)
     /* Step 1: ERROR_ENABLE defaults */
     printf("\nStep 1: ERROR_ENABLE defaults (all enabled)\n");
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE default", err_enable.w,
-                   0x11111u)) pass = 0;
+    if (!check_reg("ERROR_ENABLE default", err_enable.w, 0x11111u)) pass = 0;
     if (!check_reg("CMDBUSY enable", err_enable.f.CMDBUSY, 1)) pass = 0;
     if (!check_reg("OVERFLOW enable", err_enable.f.OVERFLOW, 1)) pass = 0;
     if (!check_reg("UNDERFLOW enable", err_enable.f.UNDERFLOW, 1)) pass = 0;
@@ -95,8 +91,7 @@ int main(void)
     (void)dummy;
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS=0x%08x, UNDERFLOW=%u\n",
-           err_status.w, err_status.f.UNDERFLOW);
+    printf("  ERROR_STATUS=0x%08x, UNDERFLOW=%u\n", err_status.w, err_status.f.UNDERFLOW);
     if (err_status.f.UNDERFLOW) {
         printf("  PASS: UNDERFLOW error detected\n");
     } else {
@@ -139,7 +134,8 @@ int main(void)
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 1000; delay++) {}
+    for (delay = 0; delay < 1000; delay++) {
+    }
 
     /* Step 4.6: CMDINVAL test (CMD.SPEED=3, reserved value) */
     printf("\nStep 4.6: CMDINVAL test (CMD.SPEED=3)\n");
@@ -151,12 +147,13 @@ int main(void)
     } while (!status.f.READY);
     if (status.f.READY) {
         cmd.w = 0;
-        cmd.f.LEN       = 0;
-        cmd.f.SPEED     = 3;    /* reserved speed → CMDINVAL */
+        cmd.f.LEN = 0;
+        cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
         cmd.f.DIRECTION = 2;
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-        for (delay = 0; delay < 100; delay++) {}
+        for (delay = 0; delay < 100; delay++) {
+        }
         err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
         printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n", err_status.w, err_status.f.CMDINVAL);
         if (err_status.f.CMDINVAL) {
@@ -184,9 +181,9 @@ int main(void)
     int cmdbusy_detected = 0;
     for (i = 0; i < 8; i++) {
         cmd.w = 0;
-        cmd.f.LEN       = 0;    /* 1 byte TX per CMD */
+        cmd.f.LEN = 0; /* 1 byte TX per CMD */
         cmd.f.DIRECTION = 2;
-        cmd.f.SPEED     = 0;
+        cmd.f.SPEED = 0;
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
         err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
         if (err_status.f.CMDBUSY) {
@@ -204,7 +201,8 @@ int main(void)
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 1000; delay++) {}
+    for (delay = 0; delay < 1000; delay++) {
+    }
     /* Restore CLKDIV */
     cfg.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
@@ -222,16 +220,14 @@ int main(void)
     dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     (void)dummy;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS with UNDERFLOW masked: 0x%08x, UNDERFLOW=%u\n",
-           err_status.w, err_status.f.UNDERFLOW);
+    printf("  ERROR_STATUS with UNDERFLOW masked: 0x%08x, UNDERFLOW=%u\n", err_status.w,
+           err_status.f.UNDERFLOW);
 
     /* Step 6: Restore all error enables */
     printf("\nStep 6: Restore ERROR_ENABLE\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
-              0x11111u);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, 0x11111u);
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE restored", err_enable.w,
-                   0x11111u)) pass = 0;
+    if (!check_reg("ERROR_ENABLE restored", err_enable.w, 0x11111u)) pass = 0;
 
     /* Step 7: ERROR_ENABLE individual field write-readback */
     printf("\nStep 7: ERROR_ENABLE field toggle\n");
@@ -249,8 +245,7 @@ int main(void)
     if (!check_reg("UNDERFLOW still off", err_enable.f.UNDERFLOW, 0)) pass = 0;
 
     /* Restore defaults */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
-              0x11111u);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, 0x11111u);
 
     printf("\n========================================\n");
     if (pass) {
@@ -262,6 +257,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

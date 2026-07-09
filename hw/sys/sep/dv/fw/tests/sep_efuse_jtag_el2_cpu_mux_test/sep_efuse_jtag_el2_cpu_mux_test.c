@@ -16,18 +16,17 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define SYNC_CPU_READY_REG  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
-#define SYNC_UVM_DONE_REG   OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
-#define SYNC_CPU_COUNT_REG  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
+#define SYNC_CPU_READY_REG OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define SYNC_UVM_DONE_REG OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
+#define SYNC_CPU_COUNT_REG OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
 
-#define CPU_READY_MARKER    0xE9050001u
-#define UVM_DONE_MARKER     0xE90500D0u
+#define CPU_READY_MARKER 0xE9050001u
+#define UVM_DONE_MARKER 0xE90500D0u
 
 #define MIN_CPU_EFUSE_LOOPS 256u
 #define MAX_CPU_EFUSE_LOOPS 200000u
 
-static void cpu_efuse_traffic_loop(void)
-{
+static void cpu_efuse_traffic_loop(void) {
     uint32_t loop_count = 0;
     uint32_t done = 0;
 
@@ -61,8 +60,7 @@ static void cpu_efuse_traffic_loop(void)
     printf("EL2 eFuse traffic loops completed: %u\n", loop_count);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("SEP eFuse JTAG/EL2 CPU mux arbitration FW test\n");

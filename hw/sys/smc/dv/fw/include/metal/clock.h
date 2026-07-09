@@ -48,8 +48,7 @@ typedef struct _metal_clock_callback_t metal_clock_callback;
 /*!
  * @brief Call all callbacks in the linked list, if any are registered
  */
-__inline__ void
-_metal_clock_call_all_callbacks(const metal_clock_callback *const list) {
+__inline__ void _metal_clock_call_all_callbacks(const metal_clock_callback *const list) {
     const metal_clock_callback *current = list;
     while (current) {
         current->callback(current->priv);
@@ -60,9 +59,8 @@ _metal_clock_call_all_callbacks(const metal_clock_callback *const list) {
 /*!
  * @brief Append a callback to the linked list and return the head of the list
  */
-__inline__ metal_clock_callback *
-_metal_clock_append_to_callbacks(metal_clock_callback *list,
-                                 metal_clock_callback *const cb) {
+__inline__ metal_clock_callback *_metal_clock_append_to_callbacks(metal_clock_callback *list,
+                                                                  metal_clock_callback *const cb) {
     cb->_next = NULL;
 
     if (!list) {
@@ -143,9 +141,8 @@ __inline__ long metal_clock_set_rate_hz(struct metal_clock *clk, long hz) {
  * @param clk The handle for the clock
  * @param cb The callback to be registered
  */
-__inline__ void
-metal_clock_register_pre_rate_change_callback(struct metal_clock *clk,
-                                              metal_clock_callback *cb) {
+__inline__ void metal_clock_register_pre_rate_change_callback(struct metal_clock *clk,
+                                                              metal_clock_callback *cb) {
     clk->_pre_rate_change_callback =
         _metal_clock_append_to_callbacks(clk->_pre_rate_change_callback, cb);
 }
@@ -156,9 +153,8 @@ metal_clock_register_pre_rate_change_callback(struct metal_clock *clk,
  * @param clk The handle for the clock
  * @param cb The callback to be registered
  */
-__inline__ void
-metal_clock_register_post_rate_change_callback(struct metal_clock *clk,
-                                               metal_clock_callback *cb) {
+__inline__ void metal_clock_register_post_rate_change_callback(struct metal_clock *clk,
+                                                               metal_clock_callback *cb) {
     clk->_post_rate_change_callback =
         _metal_clock_append_to_callbacks(clk->_post_rate_change_callback, cb);
 }

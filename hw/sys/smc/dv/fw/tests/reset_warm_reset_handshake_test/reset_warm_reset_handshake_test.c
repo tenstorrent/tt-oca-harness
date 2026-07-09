@@ -22,82 +22,81 @@
 //   0xC700FFAA
 
 static inline void set_stage(uint32_t ss_idx, uint32_t stage) {
-  write_scratch(1, 0xC7000000u | ((ss_idx & 0xFFu) << 8) | (stage & 0xFFu));
+    write_scratch(1, 0xC7000000u | ((ss_idx & 0xFFu) << 8) | (stage & 0xFFu));
 }
 
 static inline uint32_t get_ss_complete_bit(uint32_t ss_idx) {
-  return (read_reg(SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR) >> ss_idx) & 0x1u;
+    return (read_reg(SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR) >> ss_idx) & 0x1u;
 }
 
 static void warm_reset_handshake(int hartid, uint32_t ss_idx) {
-  info_msg_hex32_s(hartid, "Warm reset handshake start ss_idx=", ss_idx);
+    info_msg_hex32_s(hartid, "Warm reset handshake start ss_idx=", ss_idx);
 
-  // Assert warm reset (active low) for the chosen subsystem
-  uint32_t warm_reset_n = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR);
-  warm_reset_n &= ~(1u << ss_idx);
-  write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, warm_reset_n);
+    // Assert warm reset (active low) for the chosen subsystem
+    uint32_t warm_reset_n = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR);
+    warm_reset_n &= ~(1u << ss_idx);
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, warm_reset_n);
 
-  set_stage(ss_idx, 0x01);
+    set_stage(ss_idx, 0x01);
 
-  // Wait for subsystem to indicate reset in-progress by deasserting complete (1->0)
-  while (get_ss_complete_bit(ss_idx) == 1u) {
-    __asm__ volatile("nop");
-  }
+    // Wait for subsystem to indicate reset in-progress by deasserting complete (1->0)
+    while (get_ss_complete_bit(ss_idx) == 1u) {
+        __asm__ volatile("nop");
+    }
 
-  set_stage(ss_idx, 0x02);
+    set_stage(ss_idx, 0x02);
 
-  // Wait for subsystem to indicate reset complete by reasserting complete (0->1)
-  while (get_ss_complete_bit(ss_idx) == 0u) {
-    __asm__ volatile("nop");
-  }
+    // Wait for subsystem to indicate reset complete by reasserting complete (0->1)
+    while (get_ss_complete_bit(ss_idx) == 0u) {
+        __asm__ volatile("nop");
+    }
 
-  set_stage(ss_idx, 0x03);
+    set_stage(ss_idx, 0x03);
 
-  // Deassert warm reset
-  warm_reset_n = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR);
-  warm_reset_n |= (1u << ss_idx);
-  write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, warm_reset_n);
+    // Deassert warm reset
+    warm_reset_n = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR);
+    warm_reset_n |= (1u << ss_idx);
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, warm_reset_n);
 
-  set_stage(ss_idx, 0x04);
+    set_stage(ss_idx, 0x04);
 
-  info_msg_hex32_s(hartid, "Warm reset handshake done ss_idx=", ss_idx);
+    info_msg_hex32_s(hartid, "Warm reset handshake done ss_idx=", ss_idx);
 }
 
 int main(void) {
-  int hartid = metal_cpu_get_current_hartid();
+    int hartid = metal_cpu_get_current_hartid();
 
-  init_test(hartid);
+    init_test(hartid);
 
-  // Clear status
-  write_scratch(0, 0x0);
-  write_scratch(1, 0x0);
+    // Clear status
+    write_scratch(0, 0x0);
+    write_scratch(1, 0x0);
 
-  // Ensure warm reset is deasserted for all subsystems before starting.
-  write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, 0xFFFFFFFFu);
+    // Ensure warm reset is deasserted for all subsystems before starting.
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, 0xFFFFFFFFu);
 
-  // Repeat for multiple subsystems (per requirement).
-  warm_reset_handshake(hartid, 0);
-  warm_reset_handshake(hartid, 1);
+    // Repeat for multiple subsystems (per requirement).
+    warm_reset_handshake(hartid, 0);
+    warm_reset_handshake(hartid, 1);
 
-  // Signal completion to testbench.
-  write_scratch(1, 0xC700FFAAu);
+    // Signal completion to testbench.
+    write_scratch(1, 0xC700FFAAu);
 
-  end_test(hartid);
-  return 0;
+    end_test(hartid);
+    return 0;
 }
 
 int other_main(int hartid) {
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {
-  int hartid = metal_cpu_get_current_hartid();
-  if (hartid == 0) {
-    return main();
-  } else {
-    return other_main(hartid);
-  }
+    int hartid = metal_cpu_get_current_hartid();
+    if (hartid == 0) {
+        return main();
+    } else {
+        return other_main(hartid);
+    }
 }
-

@@ -28,15 +28,12 @@ void *rom_memcpy(void *dest, const void *src, size_t n);
  * @param[in]  n    Number of bytes to copy.
  * @return dest.
  */
-void *rom_memcpy(void *dest, const void *src, size_t n)
-{
+void *rom_memcpy(void *dest, const void *src, size_t n) {
     register uint8_t *d = (uint8_t *)dest;
     register const uint8_t *s = (const uint8_t *)src;
     register size_t remaining = n;
 
-    if (remaining >= 4 &&
-        ((uintptr_t)d & 3) == 0 &&
-        ((uintptr_t)s & 3) == 0) {
+    if (remaining >= 4 && ((uintptr_t)d & 3) == 0 && ((uintptr_t)s & 3) == 0) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
         register uint32_t *dw = (uint32_t *)d;

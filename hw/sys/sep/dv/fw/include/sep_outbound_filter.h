@@ -36,9 +36,9 @@
 #define OUTBOUND_FILTER_BASE OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
 
 // Register offsets (each filter occupies 0x100 bytes)
-#define FILTER_CONFIG_OFFSET 0x0   // 64-bit: Configuration and control
-#define START_ADDR_OFFSET    0x8   // 64-bit: Start of address range
-#define END_ADDR_OFFSET      0x10  // 64-bit: End of address range
+#define FILTER_CONFIG_OFFSET 0x0 // 64-bit: Configuration and control
+#define START_ADDR_OFFSET 0x8    // 64-bit: Start of address range
+#define END_ADDR_OFFSET 0x10     // 64-bit: End of address range
 
 //==============================================================================
 // Filter Configuration Values
@@ -56,7 +56,7 @@
 
 // Address range for testpass mailbox at 0x8000_0000
 #define FILTER_START_ADDR 0x0000000080000000ULL
-#define FILTER_END_ADDR   0x00000000800000FFULL  // Extended range for multiple writes
+#define FILTER_END_ADDR 0x00000000800000FFULL // Extended range for multiple writes
 
 //==============================================================================
 // Initialization Function

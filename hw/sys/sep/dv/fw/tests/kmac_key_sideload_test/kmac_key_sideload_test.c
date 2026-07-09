@@ -49,8 +49,7 @@ static const uint32_t zero_mask[4] = {0, 0, 0, 0};
 /* KMAC helpers                                                        */
 /* ------------------------------------------------------------------ */
 
-static int wait_idle(void)
-{
+static int wait_idle(void) {
     int t = 2000000;
     while (t-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -60,13 +59,12 @@ static int wait_idle(void)
     return -1;
 }
 
-static int wait_done(void)
-{
+static int wait_done(void) {
     int t = 2000000;
     while (t-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);  /* W1C */
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1); /* W1C */
             return 0;
         }
     }
@@ -78,16 +76,15 @@ static int wait_done(void)
  * Configure KMAC-128 with given sideload setting.
  * entropy_mode = 1 (EDN) avoids SW entropy hang in KMAC modes.
  */
-static int kmac_configure(int sideload)
-{
+static int kmac_configure(int sideload) {
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en       = 1;
-    cfg.f.mode          = 0x2;   /* cSHAKE (required for KMAC) */
-    cfg.f.kstrength     = 0x0;   /* L128 */
-    cfg.f.entropy_mode  = 0x1;   /* EDN */
-    cfg.f.sideload      = sideload ? 1 : 0;
+    cfg.f.kmac_en = 1;
+    cfg.f.mode = 0x2;         /* cSHAKE (required for KMAC) */
+    cfg.f.kstrength = 0x0;    /* L128 */
+    cfg.f.entropy_mode = 0x1; /* EDN */
+    cfg.f.sideload = sideload ? 1 : 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);  /* shadowed: write twice */
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); /* shadowed: write twice */
 
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
@@ -96,10 +93,9 @@ static int kmac_configure(int sideload)
 }
 
 /* Write 128-bit SW key via KEY_SHARE0 (share1 = all zeros for masking) */
-static void write_sw_key(void)
-{
+static void write_sw_key(void) {
     kmac__KEY_LEN_t kl = {.w = 0};
-    kl.f.len = 0x0;  /* Key128 */
+    kl.f.len = 0x0; /* Key128 */
     WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
     for (int i = 0; i < 4; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(0) + (i * 4), sw_key[i]);
@@ -108,21 +104,18 @@ static void write_sw_key(void)
 }
 
 /* Set KMAC custom prefix = encode_string("KMAC") */
-static void write_kmac_prefix(void)
-{
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0),     0x4D4B2001U);
+static void write_kmac_prefix(void) {
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + 4, 0x00004341U);
-    for (int i = 2; i < 11; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
+    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + (i * 4), 0);
 }
 
 /* Run one KMAC-128("test", 256) operation; store 8-word digest into out[] */
-static int run_kmac_op(uint32_t out[8])
-{
+static int run_kmac_op(uint32_t out[8]) {
     kmac__CMD_t cmd = {.w = 0};
 
     /* START */
-    cmd.f.cmd = 29;  /* CmdStart */
+    cmd.f.cmd = 29; /* CmdStart */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Write message "test" (4 bytes LE) */
@@ -131,18 +124,18 @@ static int run_kmac_op(uint32_t out[8])
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001U);
 
     /* PROCESS */
-    cmd.f.cmd = 46;  /* CmdProcess */
+    cmd.f.cmd = 46; /* CmdProcess */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_done() != 0) return -1;
 
     /* Read digest: XOR two masked shares */
     for (int i = 0; i < 8; i++)
-        out[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))
-                ^ READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
+        out[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)) ^
+                 READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
 
     /* DONE */
-    cmd.f.cmd = 22;  /* CmdDone */
+    cmd.f.cmd = 22; /* CmdDone */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
@@ -152,8 +145,7 @@ static int run_kmac_op(uint32_t out[8])
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -216,8 +208,11 @@ int main(void)
      * -------------------------------------------------------------- */
     printf("\n=== Phase 2: KMAC-128 with SW key (sideload=0) ===\n");
 
-    if (wait_idle() != 0) { errors++; goto done; }
-    kmac_configure(0);    /* sideload=0 */
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
+    kmac_configure(0); /* sideload=0 */
     write_sw_key();
     write_kmac_prefix();
 
@@ -255,16 +250,19 @@ int main(void)
     printf("\n=== Phase 3: SHAKE-128 with sideload=1 (kmac_en=0, non-keyed) ===\n");
     printf("  (sideload=1 should not block non-KMAC hash operations)\n");
 
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
 
     /* Configure SHAKE-128: kmac_en=0, mode=0x2, sideload=1 */
     {
         kmac__CFG_SHADOWED_t cfg_shake = {.w = 0};
-        cfg_shake.f.kmac_en      = 0;
-        cfg_shake.f.mode         = 0x2;   /* SHAKE mode */
-        cfg_shake.f.kstrength    = 0x0;   /* L128 */
-        cfg_shake.f.entropy_mode = 0x1;   /* EDN */
-        cfg_shake.f.sideload     = 1;     /* sideload=1 — not needed for SHAKE */
+        cfg_shake.f.kmac_en = 0;
+        cfg_shake.f.mode = 0x2;         /* SHAKE mode */
+        cfg_shake.f.kstrength = 0x0;    /* L128 */
+        cfg_shake.f.entropy_mode = 0x1; /* EDN */
+        cfg_shake.f.sideload = 1;       /* sideload=1 — not needed for SHAKE */
         WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
         WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
         cfg_shake.f.entropy_ready = 1;
@@ -290,7 +288,10 @@ int main(void)
      * -------------------------------------------------------------- */
     printf("\n=== Phase 4: Determinism check (sideload=0, same SW key) ===\n");
 
-    if (wait_idle() != 0) { errors++; goto done; }
+    if (wait_idle() != 0) {
+        errors++;
+        goto done;
+    }
     kmac_configure(0);
     write_sw_key();
     write_kmac_prefix();
@@ -303,7 +304,10 @@ int main(void)
 
     int mismatch = 0;
     for (int i = 0; i < 8; i++)
-        if (digest_retry[i] != digest_sw[i]) { mismatch = 1; break; }
+        if (digest_retry[i] != digest_sw[i]) {
+            mismatch = 1;
+            break;
+        }
     if (!mismatch) {
         printf("  CHK[9] PASS: retry digest matches Phase 2 (deterministic)\n");
     } else {
@@ -327,5 +331,7 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

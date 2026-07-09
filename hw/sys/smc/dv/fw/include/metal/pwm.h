@@ -7,10 +7,7 @@
 #define METAL__PWM_H
 
 /*! @brief Enums for PWM running modes. */
-typedef enum {
-    METAL_PWM_CONTINUOUS = 0,
-    METAL_PWM_ONE_SHOT = 1
-} metal_pwm_run_mode_t;
+typedef enum { METAL_PWM_CONTINUOUS = 0, METAL_PWM_ONE_SHOT = 1 } metal_pwm_run_mode_t;
 
 /*! @brief Enums for Phase correct PWM. */
 typedef enum {
@@ -35,8 +32,7 @@ struct metal_pwm_vtable {
                     metal_pwm_phase_correct_t phase_corr);
     unsigned int (*get_duty)(struct metal_pwm *pwm, unsigned int idx);
     unsigned int (*get_freq)(struct metal_pwm *pwm, unsigned int idx);
-    int (*trigger)(struct metal_pwm *pwm, unsigned int idx,
-                   metal_pwm_run_mode_t mode);
+    int (*trigger)(struct metal_pwm *pwm, unsigned int idx, metal_pwm_run_mode_t mode);
     int (*stop)(struct metal_pwm *pwm, unsigned int idx);
     int (*cfg_interrupt)(struct metal_pwm *pwm, metal_pwm_interrupt_t flag);
     int (*clr_interrupt)(struct metal_pwm *pwm, unsigned int idx);
@@ -73,8 +69,7 @@ inline int metal_pwm_disable(struct metal_pwm *pwm) {
  * @param idx PWM channel id.
  * @param freq PWM frequency in Hz.
  * @return 0 If no error.*/
-inline int metal_pwm_set_freq(struct metal_pwm *pwm, unsigned int idx,
-                              unsigned int freq) {
+inline int metal_pwm_set_freq(struct metal_pwm *pwm, unsigned int idx, unsigned int freq) {
     return pwm->vtable->set_freq(pwm, idx, freq);
 }
 
@@ -85,8 +80,7 @@ inline int metal_pwm_set_freq(struct metal_pwm *pwm, unsigned int idx,
  * @param duty PWM duty cycle value.
  * @param phase_corr Enable / Disable phase correct mode.
  * @return 0 If no error.*/
-inline int metal_pwm_set_duty(struct metal_pwm *pwm, unsigned int idx,
-                              unsigned int duty,
+inline int metal_pwm_set_duty(struct metal_pwm *pwm, unsigned int idx, unsigned int duty,
                               metal_pwm_phase_correct_t phase_corr) {
     return pwm->vtable->set_duty(pwm, idx, duty, phase_corr);
 }
@@ -95,8 +89,7 @@ inline int metal_pwm_set_duty(struct metal_pwm *pwm, unsigned int idx,
  * @param pwm PWM device handle.
  * @param idx PWM channel id.
  * @return PWM duty cycle value.*/
-inline unsigned int metal_pwm_get_duty(struct metal_pwm *pwm,
-                                       unsigned int idx) {
+inline unsigned int metal_pwm_get_duty(struct metal_pwm *pwm, unsigned int idx) {
     return pwm->vtable->get_duty(pwm, idx);
 }
 
@@ -104,8 +97,7 @@ inline unsigned int metal_pwm_get_duty(struct metal_pwm *pwm,
  * @param pwm PWM device handle.
  * @param idx PWM channel id.
  * @return PWM frequency in Hz.*/
-inline unsigned int metal_pwm_get_freq(struct metal_pwm *pwm,
-                                       unsigned int idx) {
+inline unsigned int metal_pwm_get_freq(struct metal_pwm *pwm, unsigned int idx) {
     return pwm->vtable->get_freq(pwm, idx);
 }
 
@@ -113,8 +105,7 @@ inline unsigned int metal_pwm_get_freq(struct metal_pwm *pwm,
  * @param pwm PWM device handle.
  * @param idx PWM channel id.
  * @return 0 If no error.*/
-inline int metal_pwm_trigger(struct metal_pwm *pwm, unsigned int idx,
-                             metal_pwm_run_mode_t mode) {
+inline int metal_pwm_trigger(struct metal_pwm *pwm, unsigned int idx, metal_pwm_run_mode_t mode) {
     return pwm->vtable->trigger(pwm, idx, mode);
 }
 
@@ -130,8 +121,7 @@ inline int metal_pwm_stop(struct metal_pwm *pwm, unsigned int idx) {
  * @param pwm PWM device handle.
  * @param flag PWM interrupt enable flag.
  * @return 0 If no error.*/
-inline int metal_pwm_cfg_interrupt(struct metal_pwm *pwm,
-                                   metal_pwm_interrupt_t flag) {
+inline int metal_pwm_cfg_interrupt(struct metal_pwm *pwm, metal_pwm_interrupt_t flag) {
     return pwm->vtable->cfg_interrupt(pwm, flag);
 }
 
@@ -148,8 +138,7 @@ inline int metal_pwm_clr_interrupt(struct metal_pwm *pwm, unsigned int idx) {
  * registered or enabled with it.
  * @param pwm PWM device handle.
  * @return The handle for the PWM interrupt controller.*/
-inline struct metal_interrupt *
-metal_pwm_interrupt_controller(struct metal_pwm *pwm) {
+inline struct metal_interrupt *metal_pwm_interrupt_controller(struct metal_pwm *pwm) {
     return pwm->vtable->get_interrupt_controller(pwm);
 }
 

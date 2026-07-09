@@ -25,11 +25,10 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define BITE_THOLD_VAL  (200u)
-#define BARK_THOLD_VAL  (5000u)
+#define BITE_THOLD_VAL (200u)
+#define BARK_THOLD_VAL (5000u)
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_014: WDT Bite Before Bark Test\n");
@@ -38,9 +37,9 @@ int main(void)
     int errors = 0;
 
     /* STEP 1: Configure BITE_THOLD(200) < BARK_THOLD(5000) */
-    printf("// STEP 1: Configure BITE_THOLD(%u) < BARK_THOLD(%u)\n",
-           BITE_THOLD_VAL, BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);   /* clear residual */
+    printf("// STEP 1: Configure BITE_THOLD(%u) < BARK_THOLD(%u)\n", BITE_THOLD_VAL,
+           BARK_THOLD_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
@@ -51,40 +50,36 @@ int main(void)
     uint32_t bite_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
 
     if (bark_rb != BARK_THOLD_VAL) {
-        printf("  FAIL: BARK_THOLD read back 0x%08x (expected 0x%08x)\n",
-               bark_rb, BARK_THOLD_VAL);
+        printf("  FAIL: BARK_THOLD read back 0x%08x (expected 0x%08x)\n", bark_rb, BARK_THOLD_VAL);
         errors++;
     } else {
         printf("  PASS: BARK_THOLD = %u\n", bark_rb);
     }
 
     if (bite_rb != BITE_THOLD_VAL) {
-        printf("  FAIL: BITE_THOLD read back 0x%08x (expected 0x%08x)\n",
-               bite_rb, BITE_THOLD_VAL);
+        printf("  FAIL: BITE_THOLD read back 0x%08x (expected 0x%08x)\n", bite_rb, BITE_THOLD_VAL);
         errors++;
     } else {
         printf("  PASS: BITE_THOLD = %u\n", bite_rb);
     }
 
     if (bite_rb >= bark_rb) {
-        printf("  FAIL: BITE(%u) should be < BARK(%u) — inverted ordering not accepted\n",
-               bite_rb, bark_rb);
+        printf("  FAIL: BITE(%u) should be < BARK(%u) — inverted ordering not accepted\n", bite_rb,
+               bark_rb);
         errors++;
     } else {
-        printf("  PASS: BITE(%u) < BARK(%u) — inverted ordering accepted\n",
-               bite_rb, bark_rb);
+        printf("  PASS: BITE(%u) < BARK(%u) — inverted ordering accepted\n", bite_rb, bark_rb);
     }
 
     /* STEP 3: Enable WDT */
-    printf("\n// STEP 3: Enable WDT (BITE fires at %u, BARK would fire at %u)\n",
-           BITE_THOLD_VAL, BARK_THOLD_VAL);
+    printf("\n// STEP 3: Enable WDT (BITE fires at %u, BARK would fire at %u)\n", BITE_THOLD_VAL,
+           BARK_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* STEP 4: Signal result immediately (before BITE fires at count=200) */
     printf("\n// STEP 4: Signal test result\n");
     printf("  wdog_reset_req_o will assert at count=%u\n", BITE_THOLD_VAL);
-    printf("  wdog_intr_o would assert at count=%u (never reached before reset)\n",
-           BARK_THOLD_VAL);
+    printf("  wdog_intr_o would assert at count=%u (never reached before reset)\n", BARK_THOLD_VAL);
 
     if (errors == 0) {
         printf("TC_WDT_014: PASS\n");
@@ -95,5 +90,7 @@ int main(void)
     }
 
     /* BITE fires at count=200 — reset latched, system held in reset */
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

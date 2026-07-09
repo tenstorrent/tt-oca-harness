@@ -18,26 +18,27 @@
 #define ADVANCED_OUTPUT_SCENARIOS 8
 
 // Advanced 測試定義
-#define COMPLEX_REGION_COUNT     16
-#define ADVANCED_PATTERN_COUNT   32
-#define MULTI_CHANNEL_SCENARIOS  8
+#define COMPLEX_REGION_COUNT 16
+#define ADVANCED_PATTERN_COUNT 32
+#define MULTI_CHANNEL_SCENARIOS 8
 
 // Advanced addressing modes
-#define VIRTUAL_ADDR_SPACE       0x80000000
-#define PHYSICAL_ADDR_SPACE      0x40000000
-#define CACHED_ADDR_SPACE        0x20000000
-#define UNCACHED_ADDR_SPACE      0x60000000
+#define VIRTUAL_ADDR_SPACE 0x80000000
+#define PHYSICAL_ADDR_SPACE 0x40000000
+#define CACHED_ADDR_SPACE 0x20000000
+#define UNCACHED_ADDR_SPACE 0x60000000
 
-static int test_multi_level_address_translation(void)
-{
+static int test_multi_level_address_translation(void) {
     printf("Starting multi-level address translation test...\n");
 
     // 場景1: Multi-level address translation
     for (int translation_level = 0; translation_level < 16; translation_level++) {
         for (int region = 0; region < 16; region++) {
             // Level 1: Virtual to Intermediate
-            uint32_t virtual_base = VIRTUAL_ADDR_SPACE + translation_level * 0x2000000 + region * 0x200000;
-            uint32_t intermediate_base = PHYSICAL_ADDR_SPACE + translation_level * 0x2000000 + region * 0x200000;
+            uint32_t virtual_base =
+                VIRTUAL_ADDR_SPACE + translation_level * 0x2000000 + region * 0x200000;
+            uint32_t intermediate_base =
+                PHYSICAL_ADDR_SPACE + translation_level * 0x2000000 + region * 0x200000;
 
             // Level 2: Intermediate to Physical
             uint32_t physical_base = intermediate_base + 0x10000000 + (region << 20);
@@ -46,12 +47,12 @@ static int test_multi_level_address_translation(void)
             uint32_t mapping_pattern = (translation_level << 24) | (region << 20) | 0x80000;
             uint32_t final_dest = physical_base ^ mapping_pattern;
 
-            if (setup_output_remap_region_multi_level(region,
-                                                    virtual_base, intermediate_base, final_dest,
-                                                    1,  // enable
-                                                    translation_level % 2,  // channel
-                                                    0xFFE00000,  // 2MB granularity
-                                                    CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_output_remap_region_multi_level(region, virtual_base, intermediate_base,
+                                                      final_dest,
+                                                      1,                     // enable
+                                                      translation_level % 2, // channel
+                                                      0xFFE00000,            // 2MB granularity
+                                                      CACHE_ATTR_WRITEBACK) != 0) {
                 continue;
             }
 
@@ -78,23 +79,23 @@ static int test_multi_level_address_translation(void)
     return 0;
 }
 
-static int test_dynamic_region_reconfiguration(void)
-{
+static int test_dynamic_region_reconfiguration(void) {
     printf("Starting dynamic region reconfiguration test...\n");
 
     // 場景2: Dynamic region reconfiguration
     for (int reconfig_round = 0; reconfig_round < 24; reconfig_round++) {
         // Phase 1: 初始配置
         for (int region = 0; region < 16; region++) {
-            uint32_t initial_src = VIRTUAL_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
-            uint32_t initial_dest = PHYSICAL_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
+            uint32_t initial_src =
+                VIRTUAL_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
+            uint32_t initial_dest =
+                PHYSICAL_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
 
-            if (setup_output_remap_region_extended(region,
-                                                 initial_src, initial_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,  // 2MB granularity
-                                                 CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_output_remap_region_extended(region, initial_src, initial_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000, // 2MB granularity
+                                                   CACHE_ATTR_WRITEBACK) != 0) {
                 continue;
             }
 
@@ -108,15 +109,15 @@ static int test_dynamic_region_reconfiguration(void)
         for (int region = 0; region < 16; region++) {
             // Hot reconfiguration - 不同的destination
             uint32_t new_src = CACHED_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
-            uint32_t new_dest = UNCACHED_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
+            uint32_t new_dest =
+                UNCACHED_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
 
             // 在有active traffic的情況下reconfigure
-            if (setup_output_remap_region_extended(region,
-                                                 new_src, new_dest,
-                                                 1,  // enable
-                                                 (region + 1) % 2,  // 切換channel
-                                                 0xFFF00000,  // 1MB granularity
-                                                 CACHE_ATTR_NORMAL_NC) != 0) {  // 切換cache屬性
+            if (setup_output_remap_region_extended(region, new_src, new_dest,
+                                                   1,                            // enable
+                                                   (region + 1) % 2,             // 切換channel
+                                                   0xFFF00000,                   // 1MB granularity
+                                                   CACHE_ATTR_NORMAL_NC) != 0) { // 切換cache屬性
                 continue;
             }
 
@@ -127,12 +128,11 @@ static int test_dynamic_region_reconfiguration(void)
 
             // Phase 3: 再次動態調整
             uint32_t final_dest = new_dest + 0x8000000 + (region << 18);
-            if (setup_output_remap_region_extended(region,
-                                                 new_src, final_dest,
-                                                 1,  // enable
-                                                 region % 2,  // 再次切換channel
-                                                 0xFFFC0000,  // 256KB granularity
-                                                 CACHE_ATTR_DEVICE) != 0) {
+            if (setup_output_remap_region_extended(region, new_src, final_dest,
+                                                   1,          // enable
+                                                   region % 2, // 再次切換channel
+                                                   0xFFFC0000, // 256KB granularity
+                                                   CACHE_ATTR_DEVICE) != 0) {
                 continue;
             }
 
@@ -146,8 +146,7 @@ static int test_dynamic_region_reconfiguration(void)
     return 0;
 }
 
-static int test_complex_overlap_resolution(void)
-{
+static int test_complex_overlap_resolution(void) {
     printf("Starting complex overlap resolution test...\n");
 
     // 場景3: Complex overlap resolution
@@ -159,22 +158,19 @@ static int test_complex_overlap_resolution(void)
 
                 // 創建不同層級的重疊
                 uint32_t overlap_src = base_addr + region * 0x400000 - layer * 0x200000;
-                uint32_t overlap_dest = PHYSICAL_ADDR_SPACE + overlap_scenario * 0x8000000 +
-                                       region * 0x600000;
+                uint32_t overlap_dest =
+                    PHYSICAL_ADDR_SPACE + overlap_scenario * 0x8000000 + region * 0x600000;
 
                 // 不同優先級和大小，創建複雜重疊
-                uint32_t region_size = (1 << (20 + layer));  // 1MB, 2MB, 4MB, 8MB
+                uint32_t region_size = (1 << (20 + layer)); // 1MB, 2MB, 4MB, 8MB
                 uint32_t mask = ~(region_size - 1);
-                int priority = (layer * 4) + (region % 4);  // 0-15 priority range
+                int priority = (layer * 4) + (region % 4); // 0-15 priority range
 
-                if (setup_output_remap_region_priority(region,
-                                                     overlap_src & mask,
-                                                     overlap_dest,
-                                                     1,  // enable
-                                                     priority,
-                                                     layer % 2,  // channel
-                                                     mask,
-                                                     CACHE_ATTR_WRITEBACK) != 0) {
+                if (setup_output_remap_region_priority(region, overlap_src & mask, overlap_dest,
+                                                       1, // enable
+                                                       priority,
+                                                       layer % 2, // channel
+                                                       mask, CACHE_ATTR_WRITEBACK) != 0) {
                     continue;
                 }
             }
@@ -203,36 +199,33 @@ static int test_complex_overlap_resolution(void)
     return 0;
 }
 
-static int test_cache_coherency_advanced_scenarios(void)
-{
+static int test_cache_coherency_advanced_scenarios(void) {
     printf("Starting cache coherency advanced scenarios test...\n");
 
     // 場景4: Cache coherency advanced scenarios
-    uint32_t coherency_scenarios[] = {
-        CACHE_ATTR_WRITEBACK | CACHE_ATTR_READ_ALLOCATE,
-        CACHE_ATTR_WRITETHROUGH | CACHE_ATTR_WRITE_ALLOCATE,
-        CACHE_ATTR_NORMAL_NC | CACHE_ATTR_SHAREABLE,
-        CACHE_ATTR_DEVICE | CACHE_ATTR_STRONGLY_ORDERED,
-        CACHE_ATTR_WRITE_COMBINING | CACHE_ATTR_BUFFERABLE,
-        CACHE_ATTR_STRONGLY_ORDERED | CACHE_ATTR_NON_SHAREABLE,
-        CACHE_ATTR_NORMAL_WT | CACHE_ATTR_READ_ALLOCATE | CACHE_ATTR_WRITE_ALLOCATE,
-        CACHE_ATTR_NORMAL_WB | CACHE_ATTR_INNER_SHAREABLE
-    };
+    uint32_t coherency_scenarios[] = {CACHE_ATTR_WRITEBACK | CACHE_ATTR_READ_ALLOCATE,
+                                      CACHE_ATTR_WRITETHROUGH | CACHE_ATTR_WRITE_ALLOCATE,
+                                      CACHE_ATTR_NORMAL_NC | CACHE_ATTR_SHAREABLE,
+                                      CACHE_ATTR_DEVICE | CACHE_ATTR_STRONGLY_ORDERED,
+                                      CACHE_ATTR_WRITE_COMBINING | CACHE_ATTR_BUFFERABLE,
+                                      CACHE_ATTR_STRONGLY_ORDERED | CACHE_ATTR_NON_SHAREABLE,
+                                      CACHE_ATTR_NORMAL_WT | CACHE_ATTR_READ_ALLOCATE |
+                                          CACHE_ATTR_WRITE_ALLOCATE,
+                                      CACHE_ATTR_NORMAL_WB | CACHE_ATTR_INNER_SHAREABLE};
 
     for (int coherency_test = 0; coherency_test < 32; coherency_test++) {
         for (int region = 0; region < 16; region++) {
             uint32_t cache_attr = coherency_scenarios[coherency_test % 8];
-            uint32_t coherency_src = CACHED_ADDR_SPACE + coherency_test * 0x2000000 +
-                                   region * 0x200000;
-            uint32_t coherency_dest = PHYSICAL_ADDR_SPACE + coherency_test * 0x2000000 +
-                                    region * 0x200000;
+            uint32_t coherency_src =
+                CACHED_ADDR_SPACE + coherency_test * 0x2000000 + region * 0x200000;
+            uint32_t coherency_dest =
+                PHYSICAL_ADDR_SPACE + coherency_test * 0x2000000 + region * 0x200000;
 
-            if (setup_output_remap_region_extended(region,
-                                                 coherency_src, coherency_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,  // 2MB granularity
-                                                 cache_attr) != 0) {
+            if (setup_output_remap_region_extended(region, coherency_src, coherency_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000, // 2MB granularity
+                                                   cache_attr) != 0) {
                 continue;
             }
 
@@ -240,15 +233,15 @@ static int test_cache_coherency_advanced_scenarios(void)
             uint32_t test_addr = coherency_src + 0x40000;
 
             // Scenario 1: Write-Read coherency
-            test_axi_transaction(test_addr, 32, AXI_WRITE);  // Write first
-            test_axi_transaction(test_addr, 32, AXI_READ);   // Then read
+            test_axi_transaction(test_addr, 32, AXI_WRITE); // Write first
+            test_axi_transaction(test_addr, 32, AXI_READ);  // Then read
 
             // Scenario 2: Read-Modify-Write
             test_axi_transaction(test_addr + 0x1000, 16, AXI_READ);
             test_axi_transaction(test_addr + 0x1000, 16, AXI_WRITE);
 
             // Scenario 3: Cache line boundary crossing
-            test_axi_transaction(test_addr + 0x3E, 4, AXI_WRITE);  // Cross cache line
+            test_axi_transaction(test_addr + 0x3E, 4, AXI_WRITE); // Cross cache line
             test_axi_transaction(test_addr + 0x3E, 4, AXI_READ);
 
             // Scenario 4: Multiple cache line access
@@ -261,13 +254,11 @@ static int test_cache_coherency_advanced_scenarios(void)
             if ((region % 2) == 0) {
                 // Alternate between cacheable and non-cacheable
                 uint32_t nc_attr = CACHE_ATTR_NORMAL_NC;
-                if (setup_output_remap_region_extended((region + 8) % 16,
-                                                     coherency_src + 0x100000,
-                                                     coherency_dest + 0x100000,
-                                                     1,  // enable
-                                                     (region + 1) % 2,  // different channel
-                                                     0xFFE00000,
-                                                     nc_attr) == 0) {
+                if (setup_output_remap_region_extended((region + 8) % 16, coherency_src + 0x100000,
+                                                       coherency_dest + 0x100000,
+                                                       1,                // enable
+                                                       (region + 1) % 2, // different channel
+                                                       0xFFE00000, nc_attr) == 0) {
 
                     // Cross-coherency testing
                     test_axi_transaction(test_addr + 0x80000, 16, AXI_WRITE);  // Cacheable
@@ -283,8 +274,7 @@ static int test_cache_coherency_advanced_scenarios(void)
     return 0;
 }
 
-static int test_performance_critical_patterns(void)
-{
+static int test_performance_critical_patterns(void) {
     printf("Starting performance critical patterns test...\n");
 
     // 場景5: Performance critical patterns
@@ -293,12 +283,11 @@ static int test_performance_critical_patterns(void)
             uint32_t perf_src = VIRTUAL_ADDR_SPACE + perf_test * 0x4000000 + region * 0x400000;
             uint32_t perf_dest = PHYSICAL_ADDR_SPACE + perf_test * 0x4000000 + region * 0x400000;
 
-            if (setup_output_remap_region_extended(region,
-                                                 perf_src, perf_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,  // 2MB granularity
-                                                 CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_output_remap_region_extended(region, perf_src, perf_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000, // 2MB granularity
+                                                   CACHE_ATTR_WRITEBACK) != 0) {
                 continue;
             }
 
@@ -347,53 +336,50 @@ static int test_performance_critical_patterns(void)
     return 0;
 }
 
-static int test_error_recovery_advanced_scenarios(void)
-{
+static int test_error_recovery_advanced_scenarios(void) {
     printf("Starting error recovery advanced scenarios test...\n");
 
     // 場景6: Error recovery advanced scenarios
     for (int error_scenario = 0; error_scenario < 12; error_scenario++) {
         for (int region = 0; region < 16; region++) {
-            uint32_t error_src = VIRTUAL_ADDR_SPACE + error_scenario * 0x2000000 + region * 0x200000;
-            uint32_t error_dest = PHYSICAL_ADDR_SPACE + error_scenario * 0x2000000 + region * 0x200000;
+            uint32_t error_src =
+                VIRTUAL_ADDR_SPACE + error_scenario * 0x2000000 + region * 0x200000;
+            uint32_t error_dest =
+                PHYSICAL_ADDR_SPACE + error_scenario * 0x2000000 + region * 0x200000;
 
             // 設置normal configuration
-            if (setup_output_remap_region_extended(region,
-                                                 error_src, error_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,  // 2MB granularity
-                                                 CACHE_ATTR_WRITEBACK) != 0) {
+            if (setup_output_remap_region_extended(region, error_src, error_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000, // 2MB granularity
+                                                   CACHE_ATTR_WRITEBACK) != 0) {
                 continue;
             }
 
             uint32_t test_addr = error_src + 0x40000;
 
             // Error Scenario 1: Address overflow
-            uint32_t overflow_addr = error_src + 0x200000 - 1;  // Just at boundary
-            test_axi_transaction(overflow_addr, 4, AXI_READ);   // Should be OK
+            uint32_t overflow_addr = error_src + 0x200000 - 1;    // Just at boundary
+            test_axi_transaction(overflow_addr, 4, AXI_READ);     // Should be OK
             test_axi_transaction(overflow_addr + 1, 4, AXI_READ); // Should overflow
 
             // Error Scenario 2: Burst spanning regions
             test_axi_transaction(overflow_addr - 16, 32, AXI_READ); // Spans boundary
 
             // Error Scenario 3: Invalid cache attribute combinations
-            if (setup_output_remap_region_extended(region,
-                                                 error_src, error_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,
-                                                 0xFF) != 0) { // Invalid cache attr
+            if (setup_output_remap_region_extended(region, error_src, error_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000,
+                                                   0xFF) != 0) { // Invalid cache attr
                 // Should fail, continue with recovery
             }
 
             // Recovery: Reconfigure with valid settings
-            if (setup_output_remap_region_extended(region,
-                                                 error_src, error_dest,
-                                                 1,  // enable
-                                                 region % 2,  // channel
-                                                 0xFFE00000,
-                                                 CACHE_ATTR_NORMAL_NC) == 0) {
+            if (setup_output_remap_region_extended(region, error_src, error_dest,
+                                                   1,          // enable
+                                                   region % 2, // channel
+                                                   0xFFE00000, CACHE_ATTR_NORMAL_NC) == 0) {
 
                 // Verify recovery worked
                 test_axi_transaction(test_addr, 16, AXI_READ);
@@ -404,12 +390,11 @@ static int test_error_recovery_advanced_scenarios(void)
             if (region < 8) {
                 // Try to configure overlapping region with conflicting settings
                 if (setup_output_remap_region_extended(region + 8,
-                                                     error_src,  // Same source
-                                                     error_dest + 0x1000000,  // Different dest
-                                                     1,  // enable
-                                                     (region + 1) % 2,  // Different channel
-                                                     0xFFE00000,
-                                                     CACHE_ATTR_DEVICE) != 0) {
+                                                       error_src,              // Same source
+                                                       error_dest + 0x1000000, // Different dest
+                                                       1,                      // enable
+                                                       (region + 1) % 2,       // Different channel
+                                                       0xFFE00000, CACHE_ATTR_DEVICE) != 0) {
                     // Expected to fail or be resolved by hardware
                 }
             }
@@ -420,32 +405,29 @@ static int test_error_recovery_advanced_scenarios(void)
     return 0;
 }
 
-static int test_system_integration_stress(void)
-{
+static int test_system_integration_stress(void) {
     printf("Starting system integration stress test...\n");
 
     // 場景7: System integration stress
     for (int stress_round = 0; stress_round < 8; stress_round++) {
         // Configure all 16 regions simultaneously
         for (int region = 0; region < 16; region++) {
-            uint32_t stress_src = VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 +
-                                 region * 0x800000;
-            uint32_t stress_dest = PHYSICAL_ADDR_SPACE + stress_round * 0x8000000 +
-                                  region * 0x800000;
+            uint32_t stress_src = VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 + region * 0x800000;
+            uint32_t stress_dest =
+                PHYSICAL_ADDR_SPACE + stress_round * 0x8000000 + region * 0x800000;
 
             // Complex configuration
             int channel = (stress_round + region) % 2;
-            uint32_t cache_attr = (region % 4 == 0) ? CACHE_ATTR_WRITEBACK :
-                                 (region % 4 == 1) ? CACHE_ATTR_WRITETHROUGH :
-                                 (region % 4 == 2) ? CACHE_ATTR_NORMAL_NC :
-                                                     CACHE_ATTR_DEVICE;
+            uint32_t cache_attr = (region % 4 == 0)   ? CACHE_ATTR_WRITEBACK
+                                  : (region % 4 == 1) ? CACHE_ATTR_WRITETHROUGH
+                                  : (region % 4 == 2) ? CACHE_ATTR_NORMAL_NC
+                                                      : CACHE_ATTR_DEVICE;
 
-            if (setup_output_remap_region_extended(region,
-                                                 stress_src, stress_dest,
-                                                 1,  // enable
-                                                 channel,
-                                                 0xFF800000,  // 8MB granularity
-                                                 cache_attr) != 0) {
+            if (setup_output_remap_region_extended(region, stress_src, stress_dest,
+                                                   1, // enable
+                                                   channel,
+                                                   0xFF800000, // 8MB granularity
+                                                   cache_attr) != 0) {
                 continue;
             }
         }
@@ -454,23 +436,23 @@ static int test_system_integration_stress(void)
         for (int concurrent_round = 0; concurrent_round < 32; concurrent_round++) {
             for (int region = 0; region < 16; region++) {
                 uint32_t concurrent_addr = VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 +
-                                         region * 0x800000 + concurrent_round * 0x1000;
+                                           region * 0x800000 + concurrent_round * 0x1000;
 
                 // Mixed access patterns
                 int access_type = (concurrent_round + region) % 4;
                 switch (access_type) {
-                    case 0:
-                        test_axi_transaction(concurrent_addr, 4, AXI_READ);
-                        break;
-                    case 1:
-                        test_axi_transaction(concurrent_addr, 8, AXI_WRITE);
-                        break;
-                    case 2:
-                        test_axi_transaction(concurrent_addr, 32, AXI_READ);
-                        break;
-                    case 3:
-                        test_axi_transaction(concurrent_addr, 16, AXI_WRITE);
-                        break;
+                case 0:
+                    test_axi_transaction(concurrent_addr, 4, AXI_READ);
+                    break;
+                case 1:
+                    test_axi_transaction(concurrent_addr, 8, AXI_WRITE);
+                    break;
+                case 2:
+                    test_axi_transaction(concurrent_addr, 32, AXI_READ);
+                    break;
+                case 3:
+                    test_axi_transaction(concurrent_addr, 16, AXI_WRITE);
+                    break;
                 }
             }
         }
@@ -478,22 +460,20 @@ static int test_system_integration_stress(void)
         // Dynamic reconfiguration during stress
         for (int reconfig = 0; reconfig < 4; reconfig++) {
             int target_region = (stress_round * 4 + reconfig) % 16;
-            uint32_t new_dest = UNCACHED_ADDR_SPACE + stress_round * 0x8000000 +
-                              target_region * 0x800000;
+            uint32_t new_dest =
+                UNCACHED_ADDR_SPACE + stress_round * 0x8000000 + target_region * 0x800000;
 
             // Reconfigure while maintaining traffic
-            setup_output_remap_region_extended(target_region,
-                                             VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 +
-                                             target_region * 0x800000,
-                                             new_dest,
-                                             1,  // enable
-                                             (target_region + 1) % 2,  // different channel
-                                             0xFF800000,
-                                             CACHE_ATTR_NORMAL_NC);
+            setup_output_remap_region_extended(
+                target_region,
+                VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 + target_region * 0x800000, new_dest,
+                1,                       // enable
+                (target_region + 1) % 2, // different channel
+                0xFF800000, CACHE_ATTR_NORMAL_NC);
 
             // Continue traffic to verify seamless transition
-            uint32_t reconfig_test_addr = VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 +
-                                        target_region * 0x800000 + 0x100000;
+            uint32_t reconfig_test_addr =
+                VIRTUAL_ADDR_SPACE + stress_round * 0x8000000 + target_region * 0x800000 + 0x100000;
             test_axi_transaction(reconfig_test_addr, 64, AXI_READ);
             test_axi_transaction(reconfig_test_addr + 0x1000, 64, AXI_WRITE);
         }
@@ -503,8 +483,7 @@ static int test_system_integration_stress(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_066: Output Remap Advanced P3 Test\n");
     printf("Goals: output_remap 進階測試場景，完整性能優化\n");
     printf("Strategy: 進階output remap scenario，複雜配置組合\n\n");

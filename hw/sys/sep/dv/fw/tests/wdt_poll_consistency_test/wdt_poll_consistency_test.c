@@ -24,8 +24,7 @@
 
 #define POLL_ITERS 200
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_012: WDT Poll Consistency Test\n");
@@ -48,7 +47,9 @@ int main(void)
 
     for (int i = 0; i < POLL_ITERS; i++) {
         /* Small delay between reads */
-        for (volatile int j = 0; j < 1000; j++) { __asm__ volatile("nop"); }
+        for (volatile int j = 0; j < 1000; j++) {
+            __asm__ volatile("nop");
+        }
 
         uint32_t curr = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
 
@@ -57,7 +58,7 @@ int main(void)
             printf("  FAIL[%d]: counter decreased 0x%08x -> 0x%08x\n", i, prev, curr);
             monotonic_violations++;
         } else if (curr == prev) {
-            same_count++;  /* allowed: CPU clock >> AON clock */
+            same_count++; /* allowed: CPU clock >> AON clock */
         }
 
         prev = curr;
@@ -86,11 +87,13 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
     uint32_t snap1 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
 
-    for (volatile int i = 0; i < 100000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 100000; i++) {
+        __asm__ volatile("nop");
+    }
 
     uint32_t snap2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Disabled: count before=0x%08x, after=0x%08x\n", snap1, snap2);
-    if (snap2 > snap1 + 2) {  /* allow small delta for CDC read */
+    if (snap2 > snap1 + 2) { /* allow small delta for CDC read */
         printf("  FAIL: Counter still incrementing after disable (delta=%u)\n", snap2 - snap1);
         errors++;
     } else {
@@ -107,5 +110,7 @@ int main(void)
     }
     printf("=======================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

@@ -26,22 +26,22 @@
 // The local alias base address (default 0xC000_0000)
 // When CPU accesses address X in range [local_alias_base, local_alias_base + region_size),
 // it gets remapped to X - local_alias_base + target_base (where target_base = 0)
-#define LOCAL_ALIAS_BASE     0xC0000000UL
-#define LOCAL_ALIAS_OFFSET   0xC0000000UL  // = LOCAL_ALIAS_BASE - target_base (0)
+#define LOCAL_ALIAS_BASE 0xC0000000UL
+#define LOCAL_ALIAS_OFFSET 0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0)
 
 // Direct peripheral addresses (physical addresses at 0x1000_0000 region)
-#define SCRATCH_COLD_DIRECT_BASE  OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR  // 0x1080_2000
-#define SCRATCH_WARM_DIRECT_BASE  OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR  // 0x1080_2080
-#define SRAM_DIRECT_BASE          OCH_SEP_TOP_SEP_SRAM_BASE_ADDR              // 0x1000_0000
+#define SCRATCH_COLD_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR // 0x1080_2000
+#define SCRATCH_WARM_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR // 0x1080_2080
+#define SRAM_DIRECT_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR                 // 0x1000_0000
 
 // Aliased peripheral addresses (accessed via local alias at 0xD000_0000 region)
-#define SCRATCH_COLD_ALIAS_BASE   (SCRATCH_COLD_DIRECT_BASE + LOCAL_ALIAS_OFFSET)  // 0xD080_2000
-#define SCRATCH_WARM_ALIAS_BASE   (SCRATCH_WARM_DIRECT_BASE + LOCAL_ALIAS_OFFSET)  // 0xD080_2080
-#define SRAM_ALIAS_BASE           (SRAM_DIRECT_BASE + LOCAL_ALIAS_OFFSET)          // 0xD000_0000
+#define SCRATCH_COLD_ALIAS_BASE (SCRATCH_COLD_DIRECT_BASE + LOCAL_ALIAS_OFFSET) // 0xD080_2000
+#define SCRATCH_WARM_ALIAS_BASE (SCRATCH_WARM_DIRECT_BASE + LOCAL_ALIAS_OFFSET) // 0xD080_2080
+#define SRAM_ALIAS_BASE (SRAM_DIRECT_BASE + LOCAL_ALIAS_OFFSET)                 // 0xD000_0000
 
 // SEP CPU Control registers for configuring local alias
-#define SEP_LOCAL_BASE_ADDR_REG   OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR  // 0x10A300C8
-#define SEP_REGION_SIZE_REG       OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR      // 0x10A300D0
+#define SEP_LOCAL_BASE_ADDR_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR // 0x10A300C8
+#define SEP_REGION_SIZE_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR         // 0x10A300D0
 
 //-----------------------------------------------------------------------------
 // Test State
@@ -55,8 +55,7 @@ static int fail_count = 0;
 // Helper Functions
 //-----------------------------------------------------------------------------
 
-static void report_test(const char *name, int passed)
-{
+static void report_test(const char *name, int passed) {
     test_count++;
     if (passed) {
         pass_count++;
@@ -70,8 +69,7 @@ static void report_test(const char *name, int passed)
 //-----------------------------------------------------------------------------
 // Test: Verify Local Alias Configuration
 //-----------------------------------------------------------------------------
-static int test_local_alias_config(void)
-{
+static int test_local_alias_config(void) {
     printf("\n--- Test: Verify Local Alias Configuration ---\n");
 
     // Read current configuration
@@ -99,8 +97,8 @@ static int test_local_alias_config(void)
         printf("         Alias region ends at 0x%08lX\n", (unsigned long)alias_end);
         config_ok = 0;
     } else {
-        printf("  Alias region: [0x%08lX, 0x%08lX)\n",
-               (unsigned long)local_base, (unsigned long)alias_end);
+        printf("  Alias region: [0x%08lX, 0x%08lX)\n", (unsigned long)local_base,
+               (unsigned long)alias_end);
     }
 
     return config_ok;
@@ -109,8 +107,7 @@ static int test_local_alias_config(void)
 //-----------------------------------------------------------------------------
 // Test: Set Local Alias Base to 0
 //-----------------------------------------------------------------------------
-static int test_set_local_base_to_zero(void)
-{
+static int test_set_local_base_to_zero(void) {
     printf("\n--- Test: Set Local Alias Base to 0 ---\n");
 
     // Write 0 to local base address register
@@ -142,8 +139,7 @@ static int test_set_local_base_to_zero(void)
 //-----------------------------------------------------------------------------
 // Test: Scratch Register Access via Direct and Alias Paths
 //-----------------------------------------------------------------------------
-static int test_scratch_alias(void)
-{
+static int test_scratch_alias(void) {
     printf("\n--- Test: Scratch Register Alias Access ---\n");
 
     // Test pattern
@@ -152,7 +148,8 @@ static int test_scratch_alias(void)
 
     // Step 1: Write via DIRECT path, read via ALIAS path
     printf("  Test 1: Write direct (0x%08X) -> Read alias (0x%08lX)\n",
-           OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (unsigned long)SCRATCH_COLD_ALIAS_BASE);
+           OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0),
+           (unsigned long)SCRATCH_COLD_ALIAS_BASE);
 
     WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), test_pattern);
     read_alias = READ_REG(SCRATCH_COLD_ALIAS_BASE);
@@ -167,7 +164,8 @@ static int test_scratch_alias(void)
     // Step 2: Write via ALIAS path, read via DIRECT path
     test_pattern = 0xCAFEBABE;
     printf("  Test 2: Write alias (0x%08lX) -> Read direct (0x%08X)\n",
-           (unsigned long)SCRATCH_COLD_ALIAS_BASE, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
+           (unsigned long)SCRATCH_COLD_ALIAS_BASE,
+           OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
 
     WRITE_REG(SCRATCH_COLD_ALIAS_BASE, test_pattern);
     read_direct = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
@@ -193,8 +191,8 @@ static int test_scratch_alias(void)
         uint32_t readback = READ_REG(direct_addr);
 
         if (readback != pattern) {
-            printf("    ERROR: Scratch[%d] mismatch: wrote 0x%08X, got 0x%08X\n",
-                   i, pattern, readback);
+            printf("    ERROR: Scratch[%d] mismatch: wrote 0x%08X, got 0x%08X\n", i, pattern,
+                   readback);
             return 0;
         }
     }
@@ -206,13 +204,12 @@ static int test_scratch_alias(void)
 //-----------------------------------------------------------------------------
 // Test: SRAM Access via Alias Path (0xD000_0000 -> 0x1000_0000)
 //-----------------------------------------------------------------------------
-static int test_sram_alias(void)
-{
+static int test_sram_alias(void) {
     printf("\n--- Test: SRAM Alias Access (0xD000_0000 -> 0x1000_0000) ---\n");
 
     // Test a small region of SRAM
     volatile uint32_t *sram_direct = (volatile uint32_t *)SRAM_DIRECT_BASE;
-    volatile uint32_t *sram_alias  = (volatile uint32_t *)SRAM_ALIAS_BASE;
+    volatile uint32_t *sram_alias = (volatile uint32_t *)SRAM_ALIAS_BASE;
 
     printf("  Direct SRAM base: 0x%08X\n", SRAM_DIRECT_BASE);
     printf("  Alias SRAM base:  0x%08lX\n", (unsigned long)SRAM_ALIAS_BASE);
@@ -230,8 +227,8 @@ static int test_sram_alias(void)
     for (int i = 0; i < num_patterns; i++) {
         uint32_t readback = sram_direct[i];
         if (readback != test_patterns[i]) {
-            printf("    ERROR at offset %d: wrote 0x%08X, read 0x%08X\n",
-                   i, test_patterns[i], readback);
+            printf("    ERROR at offset %d: wrote 0x%08X, read 0x%08X\n", i, test_patterns[i],
+                   readback);
             return 0;
         }
     }
@@ -239,7 +236,7 @@ static int test_sram_alias(void)
     // Reverse test: write via direct, read via alias
     printf("  Writing patterns via direct path...\n");
     for (int i = 0; i < num_patterns; i++) {
-        sram_direct[i] = ~test_patterns[i];  // Inverted patterns
+        sram_direct[i] = ~test_patterns[i]; // Inverted patterns
     }
 
     printf("  Reading patterns via alias path...\n");
@@ -247,8 +244,7 @@ static int test_sram_alias(void)
         uint32_t readback = sram_alias[i];
         uint32_t expected = ~test_patterns[i];
         if (readback != expected) {
-            printf("    ERROR at offset %d: wrote 0x%08X, read 0x%08X\n",
-                   i, expected, readback);
+            printf("    ERROR at offset %d: wrote 0x%08X, read 0x%08X\n", i, expected, readback);
             return 0;
         }
     }
@@ -260,12 +256,11 @@ static int test_sram_alias(void)
 //-----------------------------------------------------------------------------
 // Test: 64-bit Access via Alias Path
 //-----------------------------------------------------------------------------
-static int test_64bit_alias(void)
-{
+static int test_64bit_alias(void) {
     printf("\n--- Test: 64-bit Access via Alias Path ---\n");
 
     volatile uint64_t *sram_direct = (volatile uint64_t *)SRAM_DIRECT_BASE;
-    volatile uint64_t *sram_alias  = (volatile uint64_t *)SRAM_ALIAS_BASE;
+    volatile uint64_t *sram_alias = (volatile uint64_t *)SRAM_ALIAS_BASE;
 
     uint64_t test_value = 0xDEADBEEFCAFEBABEULL;
 
@@ -289,15 +284,14 @@ static int test_64bit_alias(void)
 //-----------------------------------------------------------------------------
 // Test: Address Boundary Test
 //-----------------------------------------------------------------------------
-static int test_boundary(void)
-{
+static int test_boundary(void) {
     printf("\n--- Test: Address Boundary Test ---\n");
 
     // Test addresses at different offsets from 0xD000_0000
     // These should all map correctly to 0x1000_0000 + offset
 
     volatile uint32_t *sram_direct = (volatile uint32_t *)SRAM_DIRECT_BASE;
-    volatile uint32_t *sram_alias  = (volatile uint32_t *)SRAM_ALIAS_BASE;
+    volatile uint32_t *sram_alias = (volatile uint32_t *)SRAM_ALIAS_BASE;
 
     // Test at various offsets
     uint32_t offsets[] = {0, 0x100, 0x1000, 0x10000};
@@ -316,9 +310,8 @@ static int test_boundary(void)
         // Read via direct
         uint32_t readback = sram_direct[word_idx];
 
-        printf("  Offset 0x%05X: alias=0x%08lX, direct=0x%08X\n",
-               offset, (unsigned long)(SRAM_ALIAS_BASE + offset),
-               SRAM_DIRECT_BASE + offset);
+        printf("  Offset 0x%05X: alias=0x%08lX, direct=0x%08X\n", offset,
+               (unsigned long)(SRAM_ALIAS_BASE + offset), SRAM_DIRECT_BASE + offset);
 
         if (readback != pattern) {
             printf("    ERROR: wrote 0x%08X, read 0x%08X\n", pattern, readback);
@@ -333,8 +326,7 @@ static int test_boundary(void)
 //-----------------------------------------------------------------------------
 // Test: DMA Transfer via Local Alias Path
 //-----------------------------------------------------------------------------
-static int test_dma_alias(void)
-{
+static int test_dma_alias(void) {
     printf("\n--- Test: DMA Transfer (SRAM to SRAM via Physical Address) ---\n");
     printf("  Note: DMA uses physical addresses only (ROPEN-009).\n");
     printf("  Local alias (0xD000_0000) only applies to CPU/LSU traffic, not DMA.\n");
@@ -345,16 +337,16 @@ static int test_dma_alias(void)
     // DMA must target physical addresses (ROPEN-009).
 
     // Use different SRAM regions to avoid overlap
-    uint32_t src_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000;  // 0x1000_2000
-    uint32_t dst_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x3000;  // 0x1000_3000 (physical)
-    uint32_t transfer_size = 0x100;  // 256 bytes
+    uint32_t src_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000; // 0x1000_2000
+    uint32_t dst_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x3000; // 0x1000_3000 (physical)
+    uint32_t transfer_size = 0x100;                                     // 256 bytes
 
     volatile uint32_t *src_ptr = (volatile uint32_t *)src_direct_addr;
     volatile uint32_t *dst_ptr = (volatile uint32_t *)dst_direct_addr;
 
     // Initialize source with test pattern, clear destination
     printf("  Initializing source memory...\n");
-    for (int i = 0; i < (int)(transfer_size/4); i++) {
+    for (int i = 0; i < (int)(transfer_size / 4); i++) {
         src_ptr[i] = 0xD1A00000 | i;
         dst_ptr[i] = 0x0;
     }
@@ -372,8 +364,7 @@ static int test_dma_alias(void)
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_direct_addr);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
 
-    printf("  DMA: 0x%08X -> 0x%08X (physical SRAM)\n",
-           src_direct_addr, dst_direct_addr);
+    printf("  DMA: 0x%08X -> 0x%08X (physical SRAM)\n", src_direct_addr, dst_direct_addr);
 
     // Configure DMA transfer
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0u);
@@ -385,7 +376,8 @@ static int test_dma_alias(void)
 
     // Start transfer
     printf("  Starting DMA transfer...\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+              SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm);
 
     // Poll for completion
     int timeout = 100000;
@@ -407,12 +399,12 @@ static int test_dma_alias(void)
     // Verify: Read from DIRECT address (not alias) to confirm data landed correctly
     printf("  Verifying data at direct address 0x%08X...\n", dst_direct_addr);
     int errors = 0;
-    for (int i = 0; i < (int)(transfer_size/4); i++) {
+    for (int i = 0; i < (int)(transfer_size / 4); i++) {
         if (dst_ptr[i] != src_ptr[i]) {
-            printf("    Mismatch at offset %d: expected 0x%08X, got 0x%08X\n",
-                   i, src_ptr[i], dst_ptr[i]);
+            printf("    Mismatch at offset %d: expected 0x%08X, got 0x%08X\n", i, src_ptr[i],
+                   dst_ptr[i]);
             errors++;
-            if (errors > 3) break;  // Limit error output
+            if (errors > 3) break; // Limit error output
         }
     }
 
@@ -426,8 +418,7 @@ static int test_dma_alias(void)
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 

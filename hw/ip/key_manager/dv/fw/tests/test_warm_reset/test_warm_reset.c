@@ -61,7 +61,7 @@
  *===========================================================================*/
 
 /* Soft reset magic ("SRST" in ASCII) — must match km_csr.sv */
-#define SOFT_RST_CODE_MAGIC  0x53525354u
+#define SOFT_RST_CODE_MAGIC 0x53525354u
 
 /* SRAM word used as phase marker.
  * Must be below BSS_START (currently 0x7670) so crt0.s does not clear it
@@ -70,7 +70,7 @@
  * the mid-SRAM range that is also well above any plausible stack depth.
  * See test_soft_reset.c (+0x3000) and test_irq_entry_reset_restore.c
  * (+0x2E00) for the same pattern. */
-#define MARKER_ADDR   (SRAM_BASE + 0x2C00u)
+#define MARKER_ADDR (SRAM_BASE + 0x2C00u)
 #define MARKER_PHASE1 0xAA000001u
 #define MARKER_PHASE2 0xAA000002u
 
@@ -83,45 +83,39 @@
  * The test only needs to set the bit and check it clears; no write to the
  * locked region is performed, so no CPU fault risk. */
 #define TEST_SRAM_LOCK_REGION 5u
-#define TEST_SRAM_LOCK_MASK   (1u << TEST_SRAM_LOCK_REGION)
+#define TEST_SRAM_LOCK_MASK (1u << TEST_SRAM_LOCK_REGION)
 
 /*===========================================================================
  * Direct register access helpers
  *===========================================================================*/
 
-static inline uint32_t irq_enable_read(void)
-{
+static inline uint32_t irq_enable_read(void) {
     volatile km_csr__irq_enable_reg_t *r =
         (volatile km_csr__irq_enable_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENABLE_BASE_ADDR;
     return r->w;
 }
 
-static inline void irq_enable_write(uint32_t v)
-{
+static inline void irq_enable_write(uint32_t v) {
     volatile km_csr__irq_enable_reg_t *r =
         (volatile km_csr__irq_enable_reg_t *)KEY_MANAGER_KMCSR_IRQ_ENABLE_BASE_ADDR;
     r->w = v;
 }
 
-static inline uint32_t kpv_ctrl0_lock_write_read(void)
-{
+static inline uint32_t kpv_ctrl0_lock_write_read(void) {
     return KPV_CTRL(0u).f.lock_write;
 }
 
-static inline uint32_t kpv_ctrl0_lock_use_read(void)
-{
+static inline uint32_t kpv_ctrl0_lock_use_read(void) {
     return KPV_CTRL(0u).f.lock_use;
 }
 
-static inline void kpv_ctrl0_lock_write_set(void)
-{
+static inline void kpv_ctrl0_lock_write_set(void) {
     km_kpv__ctrl_reg_t w = KPV_CTRL(0u);
     w.f.lock_write = 1u;
     KPV_CTRL(0u) = w;
 }
 
-static inline void kpv_ctrl0_lock_use_set(void)
-{
+static inline void kpv_ctrl0_lock_use_set(void) {
     km_kpv__ctrl_reg_t w = KPV_CTRL(0u);
     w.f.lock_use = 1u;
     KPV_CTRL(0u) = w;
@@ -138,8 +132,7 @@ static inline void kpv_ctrl0_lock_use_set(void)
  * and SRAM_LOCK.  Called before each warm reset so the subsequent verification
  * has something meaningful to check.
  */
-static void set_warm_resettable_state(void)
-{
+static void set_warm_resettable_state(void) {
     /* Enable at least one IRQ bit */
     km_csr__irq_enable_reg_t en = {0};
     en.f.rom_parity_en = 1u;
@@ -157,7 +150,7 @@ static void set_warm_resettable_state(void)
 }
 
 /* Reset value of IRQ_ENTRY_ADDR.ADDR (ROM IRQ vector default PC = 0x10). */
-#define IRQ_ENTRY_ADDR_RESET  0x10u
+#define IRQ_ENTRY_ADDR_RESET 0x10u
 
 /**
  * @brief Verify all warm-resettable registers are at their reset values.
@@ -165,13 +158,12 @@ static void set_warm_resettable_state(void)
  * Fails the test immediately if any register retains its pre-reset value.
  * Note: IRQ_ENTRY_ADDR resets to 0x10 (ROM vector default), not 0.
  */
-static void verify_warm_resettable_cleared(void)
-{
-    uint32_t irq_en     = irq_enable_read();
+static void verify_warm_resettable_cleared(void) {
+    uint32_t irq_en = irq_enable_read();
     uint32_t entry_addr = irq_entry_addr_read();
-    uint32_t lw         = kpv_ctrl0_lock_write_read();
-    uint32_t lu         = kpv_ctrl0_lock_use_read();
-    uint32_t sram_lock  = rom_kmcsr_sram_lock_read();
+    uint32_t lw = kpv_ctrl0_lock_write_read();
+    uint32_t lu = kpv_ctrl0_lock_use_read();
+    uint32_t sram_lock = rom_kmcsr_sram_lock_read();
 
     if (irq_en != 0u) {
         TEST_FAIL("IRQ_ENABLE not cleared by warm reset: 0x%08X", (unsigned)irq_en);
@@ -195,8 +187,7 @@ static void verify_warm_resettable_cleared(void)
  * main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /*
@@ -226,7 +217,8 @@ int main(void)
 
         /* Sanity: verify the writes took effect before we reset */
         TEST_ASSERT_NE(irq_enable_read(), 0u, "IRQ_ENABLE set before reset");
-        TEST_ASSERT_EQ(irq_entry_addr_read(), TEST_IRQ_ENTRY_ADDR, "IRQ_ENTRY_ADDR set before reset");
+        TEST_ASSERT_EQ(irq_entry_addr_read(), TEST_IRQ_ENTRY_ADDR,
+                       "IRQ_ENTRY_ADDR set before reset");
         TEST_ASSERT_EQ(kpv_ctrl0_lock_write_read(), 1u, "KPV lock_write set before reset");
         TEST_ASSERT_EQ(kpv_ctrl0_lock_use_read(), 1u, "KPV lock_use set before reset");
         TEST_ASSERT_NE(rom_kmcsr_sram_lock_read(), 0u, "SRAM_LOCK set before reset");
@@ -236,7 +228,7 @@ int main(void)
 
         /* Advance phase before triggering reset */
         *marker = MARKER_PHASE1;
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* Ask testbench to pulse warm_rst_n; CPU will restart and run Phase 1 */
         if (!tb_km_warm_reset(5000u)) {
@@ -258,7 +250,8 @@ int main(void)
         verify_warm_resettable_cleared();
         TEST_SUBTEST_PASS();
 
-        TEST_SUBTEST_START("Phase 1: COLD_BOOT_DONE persists (ROM re-set, warm reset did not clear)");
+        TEST_SUBTEST_START(
+            "Phase 1: COLD_BOOT_DONE persists (ROM re-set, warm reset did not clear)");
         TEST_ASSERT_EQ(tb_cold_boot_done_read(), 1u, "COLD_BOOT_DONE after warm-from-external");
         TEST_SUBTEST_PASS();
 
@@ -270,7 +263,7 @@ int main(void)
 
         /* Advance phase before triggering reset */
         *marker = MARKER_PHASE2;
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* Write magic code to trigger soft warm reset.
          * SOFT_RST_CODE is itself warm-resettable, so it clears on the resulting

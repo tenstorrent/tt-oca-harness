@@ -12,40 +12,38 @@
 
 int main(void) {
 
-  int hartid = metal_cpu_get_current_hartid();
+    int hartid = metal_cpu_get_current_hartid();
 
-  init_test(hartid);
+    init_test(hartid);
 
+    uint32_t loop_count = (get_random_int() % 5) + 1;
+    info_msg_hex32_s(hartid, "Running reset_ctrl_sequence with loop_count: ", loop_count);
 
-  uint32_t loop_count = (get_random_int() % 5) + 1;
-  info_msg_hex32_s(hartid, "Running reset_ctrl_sequence with loop_count: ", loop_count);
+    for (uint32_t i = 0; i < loop_count; i++) {
+        // The reset_ctrl_sequence will read/write to the reset
+        // ctrl registers and check the values from the CPU
+        // side.  The cocotb side will check the output of the
+        // signals at the top-level pins
+        int result = reset_ctrl_sequence(hartid);
+    }
 
-  for (uint32_t i = 0; i < loop_count; i++) {
-    // The reset_ctrl_sequence will read/write to the reset
-    // ctrl registers and check the values from the CPU
-    // side.  The cocotb side will check the output of the
-    // signals at the top-level pins
-    int result = reset_ctrl_sequence(hartid);
-  }
+    end_test(hartid);
 
-
-  end_test(hartid);
-
-  return 0;
+    return 0;
 }
 
 int other_main(int hartid) {
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {
-  int hartid = metal_cpu_get_current_hartid();
+    int hartid = metal_cpu_get_current_hartid();
 
-  if (hartid == 0) {
-    return main();
-  } else {
-    return other_main(hartid);
-  }
+    if (hartid == 0) {
+        return main();
+    } else {
+        return other_main(hartid);
+    }
 }

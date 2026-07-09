@@ -23,17 +23,15 @@
 #include "key_manager_addr.h"
 #include "irq_common.h"
 
-
 /* ROM address for test reads (ROM_BASE + ROM_TEST_OFFSET from test_common.h) */
-#define ROM_TEST_ADDR       (ROM_BASE + ROM_TEST_OFFSET)
+#define ROM_TEST_ADDR (ROM_BASE + ROM_TEST_OFFSET)
 
 /**
  * Force a read from ROM address.
  * Uses volatile to ensure the read isn't optimized away.
  * -Warray-bounds is suppressed: addr is a hardware address, not an array index.
  */
-static inline uint32_t read_rom(uint32_t addr)
-{
+static inline uint32_t read_rom(uint32_t addr) {
     volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)addr;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
@@ -45,24 +43,21 @@ static inline uint32_t read_rom(uint32_t addr)
 /**
  * Read IRQ_STATUS register.
  */
-static inline uint32_t read_irq_status(void)
-{
+static inline uint32_t read_irq_status(void) {
     return KMCSR_IRQ_STATUS_REG.w;
 }
 
 /**
  * Clear IRQ_STATUS by writing 1s to sticky bits.
  */
-static inline void clear_irq_status(void)
-{
+static inline void clear_irq_status(void) {
     km_csr__irq_status_reg_t clear_val = {0};
     clear_val.f.rom_parity_err = 1;
     clear_val.f.sram_parity_err = 1;
     KMCSR_IRQ_STATUS_REG.w = clear_val.w;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
     uint32_t rom_data;
 
@@ -140,11 +135,11 @@ int main(void)
          * instruction fetches happen constantly. We need to wait long
          * enough for all in-flight bad-parity fetches to complete.
          */
-        test_delay(500);  /* Wait for all in-flight instruction fetches */
+        test_delay(500); /* Wait for all in-flight instruction fetches */
 
         /* Clear IRQ_STATUS - write 1 to clear sticky bits */
         clear_irq_status();
-        test_delay(10);  /* Wait for clear to propagate */
+        test_delay(10); /* Wait for clear to propagate */
 
         /* Verify clear took effect */
         irq_status = read_irq_status();

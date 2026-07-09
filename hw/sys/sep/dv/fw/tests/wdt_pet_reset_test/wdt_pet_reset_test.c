@@ -38,8 +38,7 @@ static void wait_for_count(uint32_t target) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_005: WDT Pet/Reset Test\n");
@@ -53,8 +52,8 @@ int main(void)
     nmi_lock_vector_reg();
 
     /* Use a high BARK threshold so petting prevents it */
-    uint32_t high_bark  = 0x00FFFFFF;
-    uint32_t high_bite  = 0xFFFFFFFF;
+    uint32_t high_bark = 0x00FFFFFF;
+    uint32_t high_bite = 0xFFFFFFFF;
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, high_bark);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, high_bite);
@@ -134,7 +133,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, high_bark);
     uint32_t snap1 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-    for (volatile int i = 0; i < 20000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 20000; i++) {
+        __asm__ volatile("nop");
+    }
     uint32_t snap2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Count t1=0x%08x, t2=0x%08x\n", snap1, snap2);
     if (snap2 <= snap1) {
@@ -157,5 +158,7 @@ int main(void)
     }
     printf("================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

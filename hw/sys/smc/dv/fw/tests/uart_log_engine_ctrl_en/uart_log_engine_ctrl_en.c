@@ -21,7 +21,8 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define WRAP0_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
+#define WRAP0_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
 
 static void check_eq(uint32_t got, uint32_t expect, const char *name) {
     if (got != expect) {
@@ -48,8 +49,7 @@ int main(void) {
     check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x1u, "after write 1, UART_EN != 1");
 
     // Reserved bits should remain 0
-    check_eq(read_reg(WRAP0_CTRL_REG) & 0xFFFFFFFEu, 0x0u,
-             "reserved bits set after write 1");
+    check_eq(read_reg(WRAP0_CTRL_REG) & 0xFFFFFFFEu, 0x0u, "reserved bits set after write 1");
 
     //--------------------------------------------------------------------------
     // Write 0 → read 0
@@ -62,8 +62,7 @@ int main(void) {
     // (bit 0) should latch, reserved bits drop.
     //--------------------------------------------------------------------------
     write_reg(WRAP0_CTRL_REG, 0xFFFFFFFFu);
-    check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x1u,
-             "after write 0xFFFFFFFF, UART_EN != 1");
+    check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x1u, "after write 0xFFFFFFFF, UART_EN != 1");
     check_eq(read_reg(WRAP0_CTRL_REG) & 0xFFFFFFFEu, 0x0u,
              "after write 0xFFFFFFFF, reserved bits not RAZ");
 

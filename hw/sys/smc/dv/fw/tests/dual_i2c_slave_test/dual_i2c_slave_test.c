@@ -20,20 +20,20 @@
 #include "i2c_opentitan.h"
 #include "smc_io.h"
 
-#define SCRATCH_REG_OFFSET(n)       SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(n)
-#define SCRATCH_0                   SCRATCH_REG_OFFSET(0)
-#define SCRATCH_1                   SCRATCH_REG_OFFSET(1)
-#define SCRATCH_2                   SCRATCH_REG_OFFSET(2)
+#define SCRATCH_REG_OFFSET(n) SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(n)
+#define SCRATCH_0 SCRATCH_REG_OFFSET(0)
+#define SCRATCH_1 SCRATCH_REG_OFFSET(1)
+#define SCRATCH_2 SCRATCH_REG_OFFSET(2)
 
-#define TEST_PASS                   0xACFECA01
-#define TEST_FAIL                   0xFFFFFFFF
-#define TEST_INIT                   0x12345678
-#define BFM_READY                   0xEBEDEBE4
-#define DUT_START_SIGNAL            0xDDD1C000
+#define TEST_PASS 0xACFECA01
+#define TEST_FAIL 0xFFFFFFFF
+#define TEST_INIT 0x12345678
+#define BFM_READY 0xEBEDEBE4
+#define DUT_START_SIGNAL 0xDDD1C000
 
-#define BFM_SLAVE_ADDR              0x10
-#define I2C_CTRL_IDX                0
-#define TEST_DATA_LEN               4
+#define BFM_SLAVE_ADDR 0x10
+#define I2C_CTRL_IDX 0
+#define TEST_DATA_LEN 4
 
 static inline void write32(uint32_t addr, uint32_t val) {
     *(volatile uint32_t *)addr = val;
@@ -45,7 +45,8 @@ static inline uint32_t read32(uint32_t addr) {
 
 static void delay_cycles(uint32_t cycles) {
     volatile uint32_t count = cycles;
-    while (count--);
+    while (count--)
+        ;
 }
 
 static void delay_us(uint32_t us) {
@@ -62,9 +63,9 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     // bit[0] = i2c_en (1)
     // bit[4] = i2c_controller_mode_en
     // bit[8] = smbus_en (1)
-    uint32_t ctrl_val = 0x101;  // i2c_en (bit 0) + smbus_en (bit 8)
+    uint32_t ctrl_val = 0x101; // i2c_en (bit 0) + smbus_en (bit 8)
     if (controller_mode) {
-        ctrl_val |= (1 << 4);   // Set i2c_controller_mode_en (bit 4)
+        ctrl_val |= (1 << 4); // Set i2c_controller_mode_en (bit 4)
     }
     write32(wrapper_addr, ctrl_val);
 }
@@ -98,7 +99,8 @@ int main(void) {
     // Step 1: Initialize I2C Master immediately
     if (!init_i2c_master()) {
         set_result(TEST_FAIL);
-        while (1);
+        while (1)
+            ;
     }
 
     delay_us(1000);
@@ -117,7 +119,8 @@ int main(void) {
 
     if (timeout_count >= max_timeout) {
         set_result(TEST_FAIL);
-        while (1);
+        while (1)
+            ;
     }
 
     delay_us(1000);
@@ -125,7 +128,8 @@ int main(void) {
     // Step 3: Send I2C Write transaction to BFM Slave
     if (!i2c_master_write_test(BFM_SLAVE_ADDR, test_data, TEST_DATA_LEN)) {
         set_result(TEST_FAIL);
-        while (1);
+        while (1)
+            ;
     }
 
     set_result(TEST_PASS);

@@ -20,10 +20,9 @@
 #include "rom_isr.h"
 #include "rom_picorv32.h"
 
-
-/* Helper to construct IRQ enable/clear mask from struct fields (all software-triggerable sources) */
-static inline uint32_t irq_all_sources_mask(void)
-{
+/* Helper to construct IRQ enable/clear mask from struct fields (all software-triggerable sources)
+ */
+static inline uint32_t irq_all_sources_mask(void) {
     km_csr__irq_status_reg_t mask = {0};
     mask.f.rom_parity_err = 1;
     mask.f.sram_parity_err = 1;
@@ -37,128 +36,112 @@ static inline uint32_t irq_all_sources_mask(void)
 }
 
 /* Helper to construct IRQ enable value for ROM parity */
-static inline uint32_t irq_rom_parity_enable(void)
-{
+static inline uint32_t irq_rom_parity_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.rom_parity_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for SRAM parity */
-static inline uint32_t irq_sram_parity_enable(void)
-{
+static inline uint32_t irq_sram_parity_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.sram_parity_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for ROM write */
-static inline uint32_t irq_rom_write_enable(void)
-{
+static inline uint32_t irq_rom_write_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.rom_write_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for SRAM write-lock */
-static inline uint32_t irq_sram_write_lock_enable(void)
-{
+static inline uint32_t irq_sram_write_lock_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.sram_write_lock_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for AXI SLVERR */
-static inline uint32_t irq_axi_slverr_enable(void)
-{
+static inline uint32_t irq_axi_slverr_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.axi_slverr_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for AXI DECERR */
-static inline uint32_t irq_axi_decerr_enable(void)
-{
+static inline uint32_t irq_axi_decerr_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.axi_decerr_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ_SET value for ROM write */
-static inline uint32_t irq_set_rom_write(void)
-{
+static inline uint32_t irq_set_rom_write(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.rom_write_err_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for SRAM write-lock */
-static inline uint32_t irq_set_sram_write_lock(void)
-{
+static inline uint32_t irq_set_sram_write_lock(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.sram_write_lock_err_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for ROM parity */
-static inline uint32_t irq_set_rom_parity(void)
-{
+static inline uint32_t irq_set_rom_parity(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.rom_parity_err_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for SRAM parity */
-static inline uint32_t irq_set_sram_parity(void)
-{
+static inline uint32_t irq_set_sram_parity(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.sram_parity_err_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for AXI SLVERR */
-static inline uint32_t irq_set_axi_slverr(void)
-{
+static inline uint32_t irq_set_axi_slverr(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.axi_slverr_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for AXI DECERR */
-static inline uint32_t irq_set_axi_decerr(void)
-{
+static inline uint32_t irq_set_axi_decerr(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.axi_decerr_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ enable value for DRBG error */
-static inline uint32_t irq_drbg_err_enable(void)
-{
+static inline uint32_t irq_drbg_err_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.drbg_err_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ enable value for wipe state */
-static inline uint32_t irq_wipe_state_enable(void)
-{
+static inline uint32_t irq_wipe_state_enable(void) {
     km_csr__irq_enable_reg_t enable = {0};
     enable.f.wipe_state_en = 1;
     return enable.w;
 }
 
 /* Helper to construct IRQ_SET value for DRBG error */
-static inline uint32_t irq_set_drbg_err(void)
-{
+static inline uint32_t irq_set_drbg_err(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.drbg_err_set = 1;
     return set_val.w;
 }
 
 /* Helper to construct IRQ_SET value for wipe state */
-static inline uint32_t irq_set_wipe_state(void)
-{
+static inline uint32_t irq_set_wipe_state(void) {
     km_csr__irq_set_reg_t set_val = {0};
     set_val.f.wipe_state_set = 1;
     return set_val.w;
@@ -184,8 +167,7 @@ static volatile int clear_irq_in_handler = 1;
  * IRQ handler called from crt0.s (overrides weak rom_irq).
  * @param frame Pointer to saved IRQ frame.
  */
-void rom_irq(rom_irq_frame_t *frame)
-{
+void rom_irq(rom_irq_frame_t *frame) {
     uint32_t irq_mask = frame->irq_mask;
     last_picorv32_irq_mask = irq_mask;
 
@@ -224,8 +206,7 @@ void rom_irq(rom_irq_frame_t *frame)
 /**
  * Test 1: Software-triggered ROM parity error interrupt
  */
-static int test_sw_rom_parity_irq(void)
-{
+static int test_sw_rom_parity_irq(void) {
     TEST_SUBTEST_START("Software-triggered ROM parity IRQ");
 
     /* Reset state */
@@ -245,8 +226,9 @@ static int test_sw_rom_parity_irq(void)
     rom_kmcsr_irq_set(irq_set_rom_parity());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -257,7 +239,8 @@ static int test_sw_rom_parity_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.rom_parity_err) {
-            TEST_FAIL("IRQ_STATUS did not show ROM parity bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show ROM parity bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -275,8 +258,7 @@ static int test_sw_rom_parity_irq(void)
 /**
  * Test 2: Software-triggered SRAM parity error interrupt
  */
-static int test_sw_sram_parity_irq(void)
-{
+static int test_sw_sram_parity_irq(void) {
     TEST_SUBTEST_START("Software-triggered SRAM parity IRQ");
 
     /* Reset state */
@@ -296,8 +278,9 @@ static int test_sw_sram_parity_irq(void)
     rom_kmcsr_irq_set(irq_set_sram_parity());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -308,7 +291,8 @@ static int test_sw_sram_parity_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.sram_parity_err) {
-            TEST_FAIL("IRQ_STATUS did not show SRAM parity bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show SRAM parity bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -326,8 +310,7 @@ static int test_sw_sram_parity_irq(void)
 /**
  * Test 3: Software-triggered ROM write error interrupt
  */
-static int test_sw_rom_write_irq(void)
-{
+static int test_sw_rom_write_irq(void) {
     TEST_SUBTEST_START("Software-triggered ROM write IRQ");
 
     /* Reset state */
@@ -347,8 +330,9 @@ static int test_sw_rom_write_irq(void)
     rom_kmcsr_irq_set(irq_set_rom_write());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -359,7 +343,8 @@ static int test_sw_rom_write_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.rom_write_err) {
-            TEST_FAIL("IRQ_STATUS did not show ROM write bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show ROM write bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -377,8 +362,7 @@ static int test_sw_rom_write_irq(void)
 /**
  * Test: Software-triggered SRAM write-lock interrupt
  */
-static int test_sw_sram_write_lock_irq(void)
-{
+static int test_sw_sram_write_lock_irq(void) {
     TEST_SUBTEST_START("Software-triggered SRAM write-lock IRQ");
 
     /* Reset state */
@@ -398,8 +382,9 @@ static int test_sw_sram_write_lock_irq(void)
     rom_kmcsr_irq_set(irq_set_sram_write_lock());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -429,8 +414,7 @@ static int test_sw_sram_write_lock_irq(void)
 /**
  * Test: Multiple IRQ sources simultaneously
  */
-static int test_multiple_irq_sources(void)
-{
+static int test_multiple_irq_sources(void) {
     TEST_SUBTEST_START("Multiple IRQ sources");
 
     /* Reset state */
@@ -460,8 +444,9 @@ static int test_multiple_irq_sources(void)
     }
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -474,8 +459,8 @@ static int test_multiple_irq_sources(void)
     expected_reg.f.sram_parity_err = 1;
     uint32_t expected = expected_reg.w;
     if ((last_kmcsr_irq_status & expected) != expected) {
-        TEST_FAIL("IRQ_STATUS missing bits (status=0x%08X, expected=0x%08X)",
-                  last_kmcsr_irq_status, expected);
+        TEST_FAIL("IRQ_STATUS missing bits (status=0x%08X, expected=0x%08X)", last_kmcsr_irq_status,
+                  expected);
     }
 
     /* Verify IRQs were cleared */
@@ -492,14 +477,13 @@ static int test_multiple_irq_sources(void)
 /**
  * Test 4: IRQ masking (disabled IRQ should not trigger ISR)
  */
-static int test_irq_masking(void)
-{
+static int test_irq_masking(void) {
     TEST_SUBTEST_START("IRQ masking");
 
     /* Reset state */
     external_irq_count = 0;
     last_kmcsr_irq_status = 0;
-    clear_irq_in_handler = 0;  /* Don't clear in handler for this test */
+    clear_irq_in_handler = 0; /* Don't clear in handler for this test */
 
     /* Clear any pending IRQs first */
     rom_kmcsr_irq_status_clear(irq_all_sources_mask());
@@ -513,8 +497,9 @@ static int test_irq_masking(void)
     rom_kmcsr_irq_set(irq_set_rom_parity());
 
     /* Memory barrier and small delay */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was NOT called (IRQ was masked) */
     if (external_irq_count != 0) {
@@ -535,8 +520,9 @@ static int test_irq_masking(void)
     rom_kmcsr_irq_enable_write(irq_rom_parity_enable());
 
     /* Small delay for IRQ to trigger */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called after enabling */
     if (external_irq_count == 0) {
@@ -551,8 +537,7 @@ static int test_irq_masking(void)
 /**
  * Test 5: IRQ enable toggle
  */
-static int test_irq_enable_toggle(void)
-{
+static int test_irq_enable_toggle(void) {
     TEST_SUBTEST_START("IRQ enable toggle");
 
     /* Reset state */
@@ -569,8 +554,7 @@ static int test_irq_enable_toggle(void)
     /* Read back and verify */
     uint32_t enable = rom_kmcsr_irq_enable_read();
     if (!KMCSR_IRQ_ENABLE_REG.f.rom_parity_en) {
-        TEST_FAIL("IRQ_ENABLE readback mismatch (got=0x%08X, expected ROM parity enabled)",
-                  enable);
+        TEST_FAIL("IRQ_ENABLE readback mismatch (got=0x%08X, expected ROM parity enabled)", enable);
     }
 
     /* Disable all */
@@ -588,8 +572,8 @@ static int test_irq_enable_toggle(void)
     rom_kmcsr_irq_enable_write(multi);
     enable = rom_kmcsr_irq_enable_read();
     if (enable != multi) {
-        TEST_FAIL("IRQ_ENABLE multi readback mismatch (got=0x%08X, expected=0x%08X)",
-                  enable, multi);
+        TEST_FAIL("IRQ_ENABLE multi readback mismatch (got=0x%08X, expected=0x%08X)", enable,
+                  multi);
     }
 
     printf("  IRQ enable toggle works correctly\n");
@@ -600,8 +584,7 @@ static int test_irq_enable_toggle(void)
 /**
  * Test 7: Software-triggered AXI SLVERR error interrupt
  */
-static int test_sw_axi_slverr_irq(void)
-{
+static int test_sw_axi_slverr_irq(void) {
     TEST_SUBTEST_START("Software-triggered AXI SLVERR IRQ");
 
     /* Reset state */
@@ -621,8 +604,9 @@ static int test_sw_axi_slverr_irq(void)
     rom_kmcsr_irq_set(irq_set_axi_slverr());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -633,7 +617,8 @@ static int test_sw_axi_slverr_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.axi_slverr) {
-            TEST_FAIL("IRQ_STATUS did not show AXI SLVERR bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show AXI SLVERR bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -651,8 +636,7 @@ static int test_sw_axi_slverr_irq(void)
 /**
  * Test 8: Software-triggered AXI DECERR error interrupt
  */
-static int test_sw_axi_decerr_irq(void)
-{
+static int test_sw_axi_decerr_irq(void) {
     TEST_SUBTEST_START("Software-triggered AXI DECERR IRQ");
 
     /* Reset state */
@@ -672,8 +656,9 @@ static int test_sw_axi_decerr_irq(void)
     rom_kmcsr_irq_set(irq_set_axi_decerr());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -684,7 +669,8 @@ static int test_sw_axi_decerr_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.axi_decerr) {
-            TEST_FAIL("IRQ_STATUS did not show AXI DECERR bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show AXI DECERR bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -702,8 +688,7 @@ static int test_sw_axi_decerr_irq(void)
 /**
  * Test 9: Software-triggered DRBG Sampler error interrupt
  */
-static int test_sw_drbg_err_irq(void)
-{
+static int test_sw_drbg_err_irq(void) {
     TEST_SUBTEST_START("Software-triggered DRBG error IRQ");
 
     /* Reset state */
@@ -723,8 +708,9 @@ static int test_sw_drbg_err_irq(void)
     rom_kmcsr_irq_set(irq_set_drbg_err());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -735,7 +721,8 @@ static int test_sw_drbg_err_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.drbg_err) {
-            TEST_FAIL("IRQ_STATUS did not show DRBG error bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show DRBG error bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -753,8 +740,7 @@ static int test_sw_drbg_err_irq(void)
 /**
  * Test 10: Software-triggered wipe state interrupt
  */
-static int test_sw_wipe_state_irq(void)
-{
+static int test_sw_wipe_state_irq(void) {
     TEST_SUBTEST_START("Software-triggered wipe state IRQ");
 
     /* Reset state */
@@ -774,8 +760,9 @@ static int test_sw_wipe_state_irq(void)
     rom_kmcsr_irq_set(irq_set_wipe_state());
 
     /* Memory barrier and small delay to ensure IRQ is processed */
-    __asm__ volatile ("fence" ::: "memory");
-    for (volatile int i = 0; i < 100; i++) { }
+    __asm__ volatile("fence" ::: "memory");
+    for (volatile int i = 0; i < 100; i++) {
+    }
 
     /* Verify ISR was called */
     if (external_irq_count == 0) {
@@ -786,7 +773,8 @@ static int test_sw_wipe_state_irq(void)
     {
         km_csr__irq_status_reg_t status_reg = {.w = last_kmcsr_irq_status};
         if (!status_reg.f.wipe_state) {
-            TEST_FAIL("IRQ_STATUS did not show wipe state bit (status=0x%08X)", last_kmcsr_irq_status);
+            TEST_FAIL("IRQ_STATUS did not show wipe state bit (status=0x%08X)",
+                      last_kmcsr_irq_status);
         }
     }
 
@@ -805,8 +793,7 @@ static int test_sw_wipe_state_irq(void)
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* Set timeout to accommodate all 11 interrupt tests (needs ~300k cycles) */

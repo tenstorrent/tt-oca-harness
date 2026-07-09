@@ -75,7 +75,7 @@ container as its image's own default user instead:
 OCAH_DOCKER_UIDGID= ./scripts/docker-run.sh shell
 ```
 
-Lint/synth/format (`make lint`/`make synth`/`make format[-check]`) run through
+Lint/synth/format (`make lint-slang-all`/`make synth-all`/`make format-sv[-check]`) run through
 Docker automatically and need no separate invocation - they call
 `./scripts/docker-run.sh eda-run` internally. The subcommand is also available
 directly, e.g. for ad-hoc debugging:

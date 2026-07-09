@@ -30,14 +30,12 @@
 static volatile uint32_t g_changed_mask = 0;
 static volatile int g_change_irq_fired = 0;
 
-void rom_otp_on_change(uint32_t changed_mask)
-{
+void rom_otp_on_change(uint32_t changed_mask) {
     g_changed_mask = changed_mask;
     g_change_irq_fired = 1;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(200000)) {
@@ -84,7 +82,7 @@ int main(void)
                 /* Manually invoke the KMCSR ISR to simulate the path */
                 rom_isr_kmcsr();
             }
-            __asm__ volatile ("nop");
+            __asm__ volatile("nop");
         }
         if (!g_change_irq_fired) {
             TEST_FAIL("OTP_CHANGE IRQ never fired (timeout)");
@@ -101,8 +99,7 @@ int main(void)
          */
         uint32_t expected = ROM_KM_OTP_CHANGE_ALL_MASK;
         if ((g_changed_mask & expected) != expected) {
-            TEST_FAIL("Changed-fields mask: expected 0x%08X, got 0x%08X",
-                      expected, g_changed_mask);
+            TEST_FAIL("Changed-fields mask: expected 0x%08X, got 0x%08X", expected, g_changed_mask);
         }
     }
     TEST_SUBTEST_PASS();

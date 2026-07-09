@@ -73,6 +73,25 @@ Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_packag
 
 When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
 
+## Linting & CI
+
+Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
+(plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
+
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on every push/PR
+(`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
+artifacts; jobs report through `.github/actions/reviewdog-report`.
+
+| CI job | Reviewdog check(s) | Local command |
+|---|---|---|
+| `lint-sv-slang` | `lint-sv-slang/smu`, `lint-sv-slang/aou` | `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl` |
+| `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
+| `format-c` | `format-c` | `make format-c-check` |
+| `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
+
+Local slang/verible runs use the Docker EDA image; CI installs slang `v11.0` and verible
+`v0.0-4080-ga0a8d8eb` natively.
+
 ## Submitting Changes
 
 * Keep pull requests focused; unrelated changes belong in separate PRs.

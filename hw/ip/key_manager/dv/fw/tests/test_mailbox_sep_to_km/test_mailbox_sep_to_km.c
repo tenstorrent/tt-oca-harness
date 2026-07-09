@@ -28,90 +28,86 @@
 #include "km_mailbox_sep_regs.h"
 
 /* Register access macros using struct types */
-#define MBOX_WRITE_DATA_REG      (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
-#define MBOX_READ_DATA_REG       (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG          (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG      (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG      (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_WRITE_DATA_REG \
+    (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
 
 /* Test patterns */
-#define TEST_MESSAGE_1           0xDEADBEEF
-#define TEST_MESSAGE_2           0xCAFEBABE
-#define TEST_MESSAGE_3           0x12345678
-#define TEST_MESSAGE_4           0xA5A5A5A5
+#define TEST_MESSAGE_1 0xDEADBEEF
+#define TEST_MESSAGE_2 0xCAFEBABE
+#define TEST_MESSAGE_3 0x12345678
+#define TEST_MESSAGE_4 0xA5A5A5A5
 
 /**
  * Read mailbox STATUS register.
  */
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
 /**
  * Read mailbox IRQ_STATUS register.
  */
-static inline uint32_t mbox_read_irq_status(void)
-{
+static inline uint32_t mbox_read_irq_status(void) {
     return MBOX_IRQ_STATUS_REG.w;
 }
 
 /**
  * Read mailbox IRQ_ENABLE register.
  */
-static inline uint32_t mbox_read_irq_enable(void)
-{
+static inline uint32_t mbox_read_irq_enable(void) {
     return MBOX_IRQ_ENABLE_REG.w;
 }
 
 /**
  * Write mailbox IRQ_ENABLE register.
  */
-static inline void mbox_write_irq_enable(uint32_t value)
-{
+static inline void mbox_write_irq_enable(uint32_t value) {
     MBOX_IRQ_ENABLE_REG.w = value;
 }
 
 /**
  * Read mailbox READ_DATA register (reads from inbound FIFO).
  */
-static inline uint32_t mbox_read_data(void)
-{
+static inline uint32_t mbox_read_data(void) {
     return MBOX_READ_DATA_REG.w;
 }
 
 /**
  * Check if inbound FIFO is empty.
  */
-static inline int mbox_inbound_empty(void)
-{
+static inline int mbox_inbound_empty(void) {
     return MBOX_STATUS_REG.f.inbound_empty != 0;
 }
 
 /**
  * Check if inbound FIFO is full.
  */
-static inline int mbox_inbound_full(void)
-{
+static inline int mbox_inbound_full(void) {
     return MBOX_STATUS_REG.f.inbound_full != 0;
 }
 
 /**
  * Wait for inbound FIFO to become non-empty (with timeout).
  */
-static inline int mbox_wait_for_data(uint32_t timeout_cycles)
-{
+static inline int mbox_wait_for_data(uint32_t timeout_cycles) {
     for (uint32_t i = 0; i < timeout_cycles; i++) {
         if (!mbox_inbound_empty()) {
-            return 1;  /* Data available */
+            return 1; /* Data available */
         }
         test_delay(1);
     }
-    return 0;  /* Timeout */
+    return 0; /* Timeout */
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status_val;
     uint32_t irq_enable_val;
     uint32_t read_data;
@@ -148,13 +144,13 @@ int main(void)
         test_delay(10);
         irq_enable_val = mbox_read_irq_enable();
         TEST_ASSERT_EQ(MBOX_IRQ_ENABLE_REG.f.inbound_read_data_avail_en, 1,
-                      "Mailbox IRQ_ENABLE set");
+                       "Mailbox IRQ_ENABLE set");
 
         /* Check IRQ_STATUS is 0 (FIFO empty) */
         irq_status_val = mbox_read_irq_status();
         TEST_LOG("  MBOX IRQ_STATUS: 0x%08X", irq_status_val);
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_read_data_avail, 0,
-                      "IRQ_STATUS clear when FIFO empty");
+                       "IRQ_STATUS clear when FIFO empty");
     }
     TEST_SUBTEST_PASS();
 
@@ -178,7 +174,7 @@ int main(void)
         irq_status_val = mbox_read_irq_status();
         TEST_LOG("  MBOX IRQ_STATUS: 0x%08X", irq_status_val);
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_read_data_avail, 1,
-                      "IRQ_STATUS shows data available");
+                       "IRQ_STATUS shows data available");
 
         /* Read message from inbound FIFO */
         read_data = mbox_read_data();
@@ -192,7 +188,7 @@ int main(void)
         /* Verify IRQ_STATUS cleared after FIFO empty */
         irq_status_val = mbox_read_irq_status();
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_read_data_avail, 0,
-                      "IRQ_STATUS cleared when FIFO empty");
+                       "IRQ_STATUS cleared when FIFO empty");
     }
     TEST_SUBTEST_PASS();
 
@@ -201,9 +197,8 @@ int main(void)
      *=========================================================================*/
     TEST_SUBTEST_START("Multiple message sequence");
     {
-        uint32_t test_messages[4] = {
-            TEST_MESSAGE_1, TEST_MESSAGE_2, TEST_MESSAGE_3, TEST_MESSAGE_4
-        };
+        uint32_t test_messages[4] = {TEST_MESSAGE_1, TEST_MESSAGE_2, TEST_MESSAGE_3,
+                                     TEST_MESSAGE_4};
 
         /* Write 4 messages via testbench */
         TEST_LOG("  Writing 4 messages to SEP mailbox...");
@@ -211,7 +206,7 @@ int main(void)
             if (!tb_sep_mbox_write(test_messages[i], 1000)) {
                 TEST_FAIL("Failed to write message %u", i);
             }
-            test_delay(5);  /* Small delay between writes */
+            test_delay(5); /* Small delay between writes */
         }
 
         /* Wait for all data to arrive */
@@ -221,10 +216,8 @@ int main(void)
         TEST_LOG("  Reading messages in FIFO order...");
         for (unsigned i = 0; i < 4; i++) {
             read_data = mbox_read_data();
-            TEST_LOG("    Message %u: expected 0x%08X, got 0x%08X",
-                    i, test_messages[i], read_data);
-            TEST_ASSERT_EQ(read_data, test_messages[i],
-                          "Message order correct");
+            TEST_LOG("    Message %u: expected 0x%08X, got 0x%08X", i, test_messages[i], read_data);
+            TEST_ASSERT_EQ(read_data, test_messages[i], "Message order correct");
             test_delay(5);
         }
 
@@ -293,7 +286,7 @@ int main(void)
         /* IRQ_STATUS should still show data available */
         irq_status_val = mbox_read_irq_status();
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_read_data_avail, 1,
-                      "IRQ_STATUS still set with data in FIFO");
+                       "IRQ_STATUS still set with data in FIFO");
 
         /* Read remaining message */
         read_data = mbox_read_data();
@@ -304,7 +297,7 @@ int main(void)
         TEST_ASSERT(mbox_inbound_empty(), "FIFO empty after full drain");
         irq_status_val = mbox_read_irq_status();
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_read_data_avail, 0,
-                      "IRQ_STATUS cleared when FIFO empty");
+                       "IRQ_STATUS cleared when FIFO empty");
     }
     TEST_SUBTEST_PASS();
 
@@ -334,7 +327,7 @@ int main(void)
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_LOG("  SEP IRQ_STATUS (before enable): 0x%08X", sep_irq_status_val);
         TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "SEP IRQ_STATUS inbound_write_space_avail should be set when FIFO has space");
+                    "SEP IRQ_STATUS inbound_write_space_avail should be set when FIFO has space");
 
         /* Enable the inbound write space IRQ via testbench */
         {
@@ -368,7 +361,7 @@ int main(void)
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_LOG("  SEP IRQ_STATUS (FIFO full): 0x%08X", sep_irq_status_val);
         TEST_ASSERT_EQ(sep_irq_status_u.f.inbound_write_space_avail, 0,
-                      "SEP IRQ_STATUS inbound_write_space_avail should be clear when FIFO full");
+                       "SEP IRQ_STATUS inbound_write_space_avail should be clear when FIFO full");
 
         /* SEP IRQ line should be deasserted (only write-space enabled, FIFO full) */
         if (!tb_sep_mbox_irq_check(&sep_irq_status, 1000)) {
@@ -386,8 +379,9 @@ int main(void)
         }
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_LOG("  SEP IRQ_STATUS (after one KM read): 0x%08X", sep_irq_status_val);
-        TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "SEP IRQ_STATUS inbound_write_space_avail should be set after KM reads one entry");
+        TEST_ASSERT(
+            sep_irq_status_u.f.inbound_write_space_avail,
+            "SEP IRQ_STATUS inbound_write_space_avail should be set after KM reads one entry");
 
         /* SEP IRQ should be asserted again */
         if (!tb_sep_mbox_irq_check(&sep_irq_status, 1000)) {
@@ -428,7 +422,7 @@ int main(void)
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_LOG("  SEP IRQ_STATUS (IRQ disabled, FIFO has space): 0x%08X", sep_irq_status_val);
         TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "Status inbound_write_space_avail reflects FIFO state even when IRQ disabled");
+                    "Status inbound_write_space_avail reflects FIFO state even when IRQ disabled");
 
         /* SEP IRQ line should NOT be asserted (IRQ disabled) */
         if (!tb_sep_mbox_irq_check(&sep_irq_status, 1000)) {
@@ -451,7 +445,7 @@ int main(void)
         }
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_ASSERT_EQ(sep_irq_status_u.f.inbound_write_space_avail, 0,
-                      "Status inbound_write_space_avail clear when FIFO full (IRQ disabled)");
+                       "Status inbound_write_space_avail clear when FIFO full (IRQ disabled)");
 
         /* Drain all entries via KM reads */
         for (unsigned i = 0; i < 16; i++) {
@@ -465,8 +459,9 @@ int main(void)
             TEST_FAIL("Failed to read SEP IRQ_STATUS");
         }
         sep_irq_status_u.w = sep_irq_status_val;
-        TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "Status inbound_write_space_avail set when FIFO has space (IRQ still disabled)");
+        TEST_ASSERT(
+            sep_irq_status_u.f.inbound_write_space_avail,
+            "Status inbound_write_space_avail set when FIFO has space (IRQ still disabled)");
 
         /* SEP IRQ line should still not be asserted */
         if (!tb_sep_mbox_irq_check(&sep_irq_status, 1000)) {
@@ -502,7 +497,7 @@ int main(void)
         }
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "Status inbound_write_space_avail set when FIFO empty (has space)");
+                    "Status inbound_write_space_avail set when FIFO empty (has space)");
 
         /* Fill FIFO to full */
         for (unsigned i = 0; i < 16; i++) {
@@ -519,7 +514,7 @@ int main(void)
         }
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_ASSERT_EQ(sep_irq_status_u.f.inbound_write_space_avail, 0,
-                      "Status inbound_write_space_avail clear when FIFO full");
+                       "Status inbound_write_space_avail clear when FIFO full");
 
         /* Drain all entries */
         for (unsigned i = 0; i < 16; i++) {
@@ -534,7 +529,7 @@ int main(void)
         }
         sep_irq_status_u.w = sep_irq_status_val;
         TEST_ASSERT(sep_irq_status_u.f.inbound_write_space_avail,
-                   "Status inbound_write_space_avail reasserts after FIFO drained");
+                    "Status inbound_write_space_avail reasserts after FIFO drained");
 
         /* Clean up */
         if (!tb_sep_mbox_irq_enable(0, 1000)) {

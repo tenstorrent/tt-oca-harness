@@ -5,8 +5,8 @@ ifndef ocah_flow_common_mk
 ocah_flow_common_mk := 1
 
 # Shared plumbing for the lint/synth/format flows. Included by ocah.mk
-# (top-level ocah-lint/ocah-synth/... dispatch) and by each
-# hw/sys/<block>/flow.mk (per-block ocah-lint-one/ocah-synth-one worker).
+# (top-level ocah-lint-slang-all/ocah-synth-all/... dispatch) and by each
+# hw/sys/<block>/flow.mk (per-block ocah-lint-slang/ocah-synth worker).
 include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/preamble.mk
 
 OCAH_BENDER ?= bender

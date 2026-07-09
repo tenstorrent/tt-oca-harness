@@ -18,24 +18,18 @@
 #define ALIAS_CSR_SCENARIOS 128
 
 // 別名配置模式定義
-#define ALIAS_SRC_BASE       0x10000000
-#define ALIAS_DEST_BASE      0x20000000
-#define ALIAS_SIZE_PATTERNS  16
+#define ALIAS_SRC_BASE 0x10000000
+#define ALIAS_DEST_BASE 0x20000000
+#define ALIAS_SIZE_PATTERNS 16
 
 // 高強度toggle模式
 static const uint32_t intensive_patterns[] = {
-    0x00000001, 0x00000002, 0x00000004, 0x00000008,
-    0x00000010, 0x00000020, 0x00000040, 0x00000080,
-    0x00000100, 0x00000200, 0x00000400, 0x00000800,
-    0x00001000, 0x00002000, 0x00004000, 0x00008000,
-    0x55555555, 0xAAAAAAAA, 0xCCCCCCCC, 0x33333333,
-    0x0F0F0F0F, 0xF0F0F0F0, 0x00FF00FF, 0xFF00FF00,
-    0x0000FFFF, 0xFFFF0000, 0x12345678, 0x87654321,
-    0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBADC0FFE
-};
+    0x00000001, 0x00000002, 0x00000004, 0x00000008, 0x00000010, 0x00000020, 0x00000040, 0x00000080,
+    0x00000100, 0x00000200, 0x00000400, 0x00000800, 0x00001000, 0x00002000, 0x00004000, 0x00008000,
+    0x55555555, 0xAAAAAAAA, 0xCCCCCCCC, 0x33333333, 0x0F0F0F0F, 0xF0F0F0F0, 0x00FF00FF, 0xFF00FF00,
+    0x0000FFFF, 0xFFFF0000, 0x12345678, 0x87654321, 0xDEADBEEF, 0xCAFEBABE, 0xFEEDFACE, 0xBADC0FFE};
 
-static int test_all_16_alias_entries_comprehensive(void)
-{
+static int test_all_16_alias_entries_comprehensive(void) {
     printf("Starting comprehensive 16 alias entries test...\n");
 
     // 場景1: 全部16個別名條目完整掃描
@@ -47,14 +41,12 @@ static int test_all_16_alias_entries_comprehensive(void)
 
             uint32_t src_addr = ALIAS_SRC_BASE + (entry * 0x100000) + src_pattern;
             uint32_t dest_addr = ALIAS_DEST_BASE + (entry * 0x100000) + dest_pattern;
-            uint32_t size_mask = size_pattern & 0xFFFFF000;  // 4KB aligned
+            uint32_t size_mask = size_pattern & 0xFFFFF000; // 4KB aligned
 
-            if (setup_output_remap_region_extended(entry,
-                                                 src_addr, dest_addr,
-                                                 1,  // enable
-                                                 entry % 2,  // channel (AP/STEE)
-                                                 size_mask,
-                                                 (src_pattern >> 24) & 0xFF) != 0) {
+            if (setup_output_remap_region_extended(entry, src_addr, dest_addr,
+                                                   1,         // enable
+                                                   entry % 2, // channel (AP/STEE)
+                                                   size_mask, (src_pattern >> 24) & 0xFF) != 0) {
                 printf("ERROR: Failed comprehensive alias setup %d:%d\n", entry, pattern_idx);
                 return -1;
             }
@@ -79,8 +71,7 @@ static int test_all_16_alias_entries_comprehensive(void)
     return 0;
 }
 
-static int test_enable_disable_state_transitions(void)
-{
+static int test_enable_disable_state_transitions(void) {
     printf("Starting enable/disable state transitions test...\n");
 
     // 場景2: 啟用/停用狀態轉換
@@ -89,19 +80,18 @@ static int test_enable_disable_state_transitions(void)
             uint32_t addr_offset = cycle * 0x10000 + entry * 0x1000;
 
             // 設置基礎配置
-            if (setup_output_remap_region(entry,
-                                         ALIAS_SRC_BASE + addr_offset,
-                                         ALIAS_DEST_BASE + addr_offset + 0x100000,
-                                         0,  // 開始時disable
-                                         entry % 2) != 0) {
+            if (setup_output_remap_region(entry, ALIAS_SRC_BASE + addr_offset,
+                                          ALIAS_DEST_BASE + addr_offset + 0x100000,
+                                          0, // 開始時disable
+                                          entry % 2) != 0) {
                 return -1;
             }
 
             // 快速狀態轉換序列
-            if (toggle_output_remap_region_enable(entry) != 0) return -1;  // enable
-            if (toggle_output_remap_region_enable(entry) != 0) return -1;  // disable
-            if (toggle_output_remap_region_enable(entry) != 0) return -1;  // enable
-            if (toggle_output_remap_region_enable(entry) != 0) return -1;  // disable
+            if (toggle_output_remap_region_enable(entry) != 0) return -1; // enable
+            if (toggle_output_remap_region_enable(entry) != 0) return -1; // disable
+            if (toggle_output_remap_region_enable(entry) != 0) return -1; // enable
+            if (toggle_output_remap_region_enable(entry) != 0) return -1; // disable
 
             // 檢查最終狀態
             uint32_t status;
@@ -115,8 +105,7 @@ static int test_enable_disable_state_transitions(void)
     return 0;
 }
 
-static int test_region_validity_combinations(void)
-{
+static int test_region_validity_combinations(void) {
     printf("Starting region validity combinations test...\n");
 
     // 場景3: 區域有效性組合
@@ -127,13 +116,11 @@ static int test_region_validity_combinations(void)
 
             if (is_valid) {
                 // 設置有效配置
-                if (setup_output_remap_region_extended(entry,
-                                                     test_addr,
-                                                     test_addr + 0x200000,
-                                                     1,  // enable
-                                                     entry % 2,
-                                                     0xFFFFF000,  // 4KB mask
-                                                     (validity_pattern) & 0xFF) != 0) {
+                if (setup_output_remap_region_extended(entry, test_addr, test_addr + 0x200000,
+                                                       1, // enable
+                                                       entry % 2,
+                                                       0xFFFFF000, // 4KB mask
+                                                       (validity_pattern)&0xFF) != 0) {
                     return -1;
                 }
             } else {
@@ -155,8 +142,7 @@ static int test_region_validity_combinations(void)
     return 0;
 }
 
-static int test_source_destination_address_patterns(void)
-{
+static int test_source_destination_address_patterns(void) {
     printf("Starting source/destination address patterns test...\n");
 
     // 場景4: 來源/目標位址模式
@@ -166,8 +152,8 @@ static int test_source_destination_address_patterns(void)
             uint32_t dest_pattern = intensive_patterns[(addr_test + 16) % 32];
 
             // 不同的位址對齊模式
-            uint32_t src_addr = (src_pattern & 0xFFFFF000) + (entry * 0x100000);  // 4KB aligned
-            uint32_t dest_addr = (dest_pattern & 0xFFFFF000) + (entry * 0x100000);  // 4KB aligned
+            uint32_t src_addr = (src_pattern & 0xFFFFF000) + (entry * 0x100000);   // 4KB aligned
+            uint32_t dest_addr = (dest_pattern & 0xFFFFF000) + (entry * 0x100000); // 4KB aligned
 
             if (setup_output_remap_region(entry, src_addr, dest_addr, 1, entry % 2) != 0) {
                 printf("ERROR: Failed address pattern %d:%d\n", addr_test, entry);
@@ -185,8 +171,7 @@ static int test_source_destination_address_patterns(void)
     return 0;
 }
 
-static int test_cross_field_dependency_scenarios(void)
-{
+static int test_cross_field_dependency_scenarios(void) {
     printf("Starting cross-field dependency scenarios test...\n");
 
     // 場景5: 跨欄位相依性場景
@@ -200,20 +185,15 @@ static int test_cross_field_dependency_scenarios(void)
             uint32_t mask_val = intensive_patterns[scenario % 32] >> entry;
             uint32_t attr_val = (scenario * entry + field_combo) & 0xFF;
 
-            if (setup_output_remap_region_extended(entry,
-                                                 ALIAS_SRC_BASE + field_combo,
-                                                 ALIAS_DEST_BASE + field_combo + 0x100000,
-                                                 enable_val,
-                                                 channel_val,
-                                                 mask_val & 0xFFFFF000,
-                                                 attr_val) != 0) {
+            if (setup_output_remap_region_extended(
+                    entry, ALIAS_SRC_BASE + field_combo, ALIAS_DEST_BASE + field_combo + 0x100000,
+                    enable_val, channel_val, mask_val & 0xFFFFF000, attr_val) != 0) {
                 return -1;
             }
 
             // 測試欄位相依性
             if (enable_val) {
-                test_axi_transaction(ALIAS_SRC_BASE + field_combo + (entry * 64),
-                                   4, entry % 2);
+                test_axi_transaction(ALIAS_SRC_BASE + field_combo + (entry * 64), 4, entry % 2);
             }
 
             // 動態修改enable狀態測試相依性
@@ -227,8 +207,7 @@ static int test_cross_field_dependency_scenarios(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     printf("TC_FABRIC_069: Alias Reg Intensive Toggle Test\n");
     printf("Goal: 82.81%% -> 90%%+ (需要 7.19%% 改進)\n");
     printf("Strategy: 16個別名條目的深度 CSR 欄位 toggle 強化\n\n");

@@ -14,8 +14,8 @@
  *    a. Get from TB the value it will send on the next handshake (next_expected); that value
  *       will be loaded into prefetch when we read DATA in this iteration.
  *    b. Wait for PREFETCHED; verify PREFETCH_DATA and DATA equal expected.
- *    c. Read DATA (consumes prefetch and triggers handshake; prefetch is filled with next_expected).
- *    d. Set expected = next_expected; repeat.
+ *    c. Read DATA (consumes prefetch and triggers handshake; prefetch is filled with
+ * next_expected). d. Set expected = next_expected; repeat.
  * 4. Disable prefetch; verify PREFETCH_DATA is zero.
  * 5. Get next pending value from TB; read DATA and verify it matches (no-prefetch path).
  *
@@ -28,16 +28,20 @@
 #include "key_manager_addr.h"
 
 /* DRBG Sampler registers (generated struct types from key_manager_regs.h) */
-#define DRBG_DATA_REG        (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
-#define DRBG_CFG_REG         (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
-#define DRBG_STATUS_REG      (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
-#define DRBG_PREFETCH_DATA_REG (*(volatile km_drbg_sampler__prefetch_data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR)
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+#define DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define DRBG_PREFETCH_DATA_REG \
+    (*(volatile km_drbg_sampler__prefetch_data_reg_t *) \
+         KEY_MANAGER_DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR)
 
-#define PREFETCH_LOOP_ITERATIONS  5
-#define PREFETCH_WAIT_MAX_CYCLES  2000
+#define PREFETCH_LOOP_ITERATIONS 5
+#define PREFETCH_WAIT_MAX_CYCLES 2000
 
-static int wait_for_prefetched(void)
-{
+static int wait_for_prefetched(void) {
     for (uint32_t i = 0; i < PREFETCH_WAIT_MAX_CYCLES; i++) {
         if (DRBG_STATUS_REG.f.prefetched != 0) {
             return 1;
@@ -46,8 +50,7 @@ static int wait_for_prefetched(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t expected;
     uint32_t prefetch_val;
     uint32_t data_val;
@@ -73,21 +76,25 @@ int main(void)
     TEST_ASSERT_EQ(DRBG_CFG_REG.f.prefetch, 1u, "CFG.PREFETCH");
     TEST_SUBTEST_PASS();
 
-    /* Steps 3–6: Loop – get next expected at start (value TB will send when we read DATA); compare and read; then expected for next iter is that value */
+    /* Steps 3–6: Loop – get next expected at start (value TB will send when we read DATA); compare
+     * and read; then expected for next iter is that value */
     for (int i = 0; i < PREFETCH_LOOP_ITERATIONS; i++) {
         uint32_t next_expected;
-        const char *subtest_name = (i == 0) ? "DRBG prefetch iter 1" :
-            (i == 1) ? "DRBG prefetch iter 2" :
-            (i == 2) ? "DRBG prefetch iter 3" :
-            (i == 3) ? "DRBG prefetch iter 4" : "DRBG prefetch iter 5";
+        const char *subtest_name = (i == 0)   ? "DRBG prefetch iter 1"
+                                   : (i == 1) ? "DRBG prefetch iter 2"
+                                   : (i == 2) ? "DRBG prefetch iter 3"
+                                   : (i == 3) ? "DRBG prefetch iter 4"
+                                              : "DRBG prefetch iter 5";
         TEST_SUBTEST_START(subtest_name);
 
-        /* Get value TB will send on next handshake (loaded into prefetch when we read DATA); use as expected for next iteration */
+        /* Get value TB will send on next handshake (loaded into prefetch when we read DATA); use as
+         * expected for next iteration */
         if (!tb_drbg_get_next_value(&next_expected, 1000)) {
             TEST_FAIL("tb_drbg_get_next_value failed");
         }
 
-        /* Use expected from previous iteration (or initial GET for i==0) for this iteration's comparisons */
+        /* Use expected from previous iteration (or initial GET for i==0) for this iteration's
+         * comparisons */
         if (!wait_for_prefetched()) {
             TEST_FAIL("PREFETCHED not set within timeout");
         }
@@ -96,12 +103,13 @@ int main(void)
         prefetch_val = DRBG_PREFETCH_DATA_REG.f.data;
         TEST_ASSERT_EQ(prefetch_val, expected, "PREFETCH_DATA");
 
-        /* Step 4: DATA read returns same value (consumes prefetch; RTL handshakes and prefetch gets next_expected) */
+        /* Step 4: DATA read returns same value (consumes prefetch; RTL handshakes and prefetch gets
+         * next_expected) */
         data_val = DRBG_DATA_REG.f.data;
         TEST_ASSERT_EQ(data_val, expected, "DATA");
 
-        TEST_LOG("  PREFETCH_DATA=0x%08X DATA=0x%08X expected=0x%08X",
-                 prefetch_val, data_val, expected);
+        TEST_LOG("  PREFETCH_DATA=0x%08X DATA=0x%08X expected=0x%08X", prefetch_val, data_val,
+                 expected);
 
         expected = next_expected;
         TEST_SUBTEST_PASS();

@@ -41,9 +41,10 @@
 
 //     // Make sure block is disabled before timing/programming
 //     DWC_I2C_OPERATIONAL_BLOCK_IC_ENABLE_reg_u ic_enable;
-//     ic_enable.w = read_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET);
-//     ic_enable.f.enable = 0x0;
-//     write_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET, ic_enable.w);
+//     ic_enable.w = read_reg(op_base_addr(i2c_idx) +
+//     I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET); ic_enable.f.enable = 0x0;
+//     write_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET,
+//     ic_enable.w);
 // }
 
 // static void i2c_set_tar(uint32_t i2c_idx, uint32_t seven_bit_addr)
@@ -73,9 +74,11 @@
 //     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SPKLEN_REG_OFFSET, 0x2);
 
 //     // Optional: set stuck-at-low timeouts similar to i2c_sanity
-//     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SCL_STUCK_AT_LOW_TIMEOUT_REG_OFFSET, 0xffffffff);
-//     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SCL_STUCK_AT_LOW_TIMEOUT_MAX_REG_OFFSET, 0xffffffff);
-//     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SDA_STUCK_AT_LOW_TIMEOUT_REG_OFFSET, 0xffffffff);
+//     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SCL_STUCK_AT_LOW_TIMEOUT_REG_OFFSET,
+//     0xffffffff); write_reg(base +
+//     I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SCL_STUCK_AT_LOW_TIMEOUT_MAX_REG_OFFSET, 0xffffffff);
+//     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_SDA_STUCK_AT_LOW_TIMEOUT_REG_OFFSET,
+//     0xffffffff);
 
 //     // Clear & enable I2C interrupts (like i2c_sanity)
 //     DWC_I2C_I2C_BLOCK_IC_INTR_CLR_reg_u intr_clr;
@@ -131,18 +134,21 @@
 //     // SMBus: bus idle timeout similar to i2c_sanity
 //     DWC_I2C_SMBUS_BLOCK_IC_SMBUS_THIGH_MAX_IDLE_COUNT_reg_u max_idle_cnt;
 //     const uint32_t smb_base = smb_base_addr(i2c_idx);
-//     max_idle_cnt.w = read_reg(smb_base + I2C_0_DWC_I2C_SMBUS_BLOCK_A_IC_SMBUS_THIGH_MAX_IDLE_COUNT_REG_OFFSET);
+//     max_idle_cnt.w = read_reg(smb_base +
+//     I2C_0_DWC_I2C_SMBUS_BLOCK_A_IC_SMBUS_THIGH_MAX_IDLE_COUNT_REG_OFFSET);
 //     max_idle_cnt.f.smbus_thigh_max_bus_idle_cnt = 0xee;
-//     write_reg(smb_base + I2C_0_DWC_I2C_SMBUS_BLOCK_A_IC_SMBUS_THIGH_MAX_IDLE_COUNT_REG_OFFSET, max_idle_cnt.w);
+//     write_reg(smb_base + I2C_0_DWC_I2C_SMBUS_BLOCK_A_IC_SMBUS_THIGH_MAX_IDLE_COUNT_REG_OFFSET,
+//     max_idle_cnt.w);
 
 //     // Register timeout
 //     write_reg(base + I2C_0_DWC_I2C_I2C_BLOCK_A_IC_REG_TIMEOUT_RST_REG_OFFSET, 0x8);
 
 //     // Finally enable operational block
 //     DWC_I2C_OPERATIONAL_BLOCK_IC_ENABLE_reg_u ic_enable;
-//     ic_enable.w = read_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET);
-//     ic_enable.f.enable = 0x1;
-//     write_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET, ic_enable.w);
+//     ic_enable.w = read_reg(op_base_addr(i2c_idx) +
+//     I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET); ic_enable.f.enable = 0x1;
+//     write_reg(op_base_addr(i2c_idx) + I2C_0_DWC_I2C_OPERATIONAL_BLOCK_A_IC_ENABLE_REG_OFFSET,
+//     ic_enable.w);
 // }
 
 // static void i2c_host_read_bytes(uint32_t i2c_idx, uint32_t num_bytes)
@@ -236,7 +242,8 @@
 //     write_reg(base + I2C_0_DWC_I2C_SMBUS_BLOCK_A_IC_SMBUS_INTR_CLR_REG_OFFSET, clr.w);
 // }
 
-// static bool wait_until(bool (*cond_fn)(uint32_t), uint32_t idx, bool expected, uint32_t timeout_cycles)
+// static bool wait_until(bool (*cond_fn)(uint32_t), uint32_t idx, bool expected, uint32_t
+// timeout_cycles)
 // {
 //     while (timeout_cycles--) {
 //         if (cond_fn(idx) == expected) {
@@ -336,26 +343,23 @@
 //     test_pass(0);
 // }
 
-
 #include <stdint.h>
 
 #include "smc_io.h"
 #include "smc_test.h"
 
-
 int main(void) {
 
-  test_pass(0);
+    test_pass(0);
 
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 
-  return 0;
+    return 0;
 }
 
 int secondary_main(void) {
 
-  return main();
-
+    return main();
 }

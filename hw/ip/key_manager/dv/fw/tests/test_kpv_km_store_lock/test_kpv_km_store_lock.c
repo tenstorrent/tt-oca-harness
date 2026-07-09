@@ -21,32 +21,30 @@
 
 /* KPV (KM port) register struct access (from key_manager_regs.h) */
 #define KPV_KEY_WORD_ADDR(slot, word) \
-    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot) * KEY_MANAGER_KPV_KEY_ENTRY_SIZE + (uint32_t)(word) * 4u)
+    (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot)*KEY_MANAGER_KPV_KEY_ENTRY_SIZE + \
+     (uint32_t)(word)*4u)
 #define KPV_KEY_WORD_REG(slot, word) \
     (*(volatile km_kpv__key_word_reg_t *)KPV_KEY_WORD_ADDR(slot, word))
-#define KPV_CTRL_ADDR(slot)   (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot) * 4u)
-#define KPV_CTRL_REG(slot)    (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
+#define KPV_CTRL_ADDR(slot) (KEY_MANAGER_KPV_CTRL_BASE_ADDR(0) + (uint32_t)(slot)*4u)
+#define KPV_CTRL_REG(slot) (*(volatile km_kpv__ctrl_reg_t *)KPV_CTRL_ADDR(slot))
 
-#define SLOT_ID  1
-#define CTRL_EXTEND_VAL      2u
-#define CTRL_DEST_VALID_VAL  0x5Au
-#define CTRL_LAST_DWORD_VAL  3u   /* words 0..3 valid */
+#define SLOT_ID 1
+#define CTRL_EXTEND_VAL 2u
+#define CTRL_DEST_VALID_VAL 0x5Au
+#define CTRL_LAST_DWORD_VAL 3u /* words 0..3 valid */
 
-static void clear_axi_slverr(void)
-{
+static void clear_axi_slverr(void) {
     km_csr__irq_status_reg_t clear_val = {0};
     clear_val.f.axi_slverr = 1;
     rom_kmcsr_irq_status_clear(clear_val.w);
 }
 
-static int check_axi_slverr_set(void)
-{
-    km_csr__irq_status_reg_t s = { .w = rom_kmcsr_irq_status_read() };
+static int check_axi_slverr_set(void) {
+    km_csr__irq_status_reg_t s = {.w = rom_kmcsr_irq_status_read()};
     return s.f.axi_slverr != 0u;
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
     if (!tb_set_timeout(50000)) TEST_FAIL("timeout");
 
@@ -59,9 +57,9 @@ int main(void)
     KPV_KEY_WORD_REG(SLOT_ID, 2).w = 0x12345678u;
     KPV_KEY_WORD_REG(SLOT_ID, 3).w = 0xABCDEF00u;
 
-    km_kpv__ctrl_reg_t ctrl = { .w = 0u };
+    km_kpv__ctrl_reg_t ctrl = {.w = 0u};
     ctrl.f.last_dword = CTRL_LAST_DWORD_VAL;
-    ctrl.f.extend     = CTRL_EXTEND_VAL;
+    ctrl.f.extend = CTRL_EXTEND_VAL;
     ctrl.f.dest_valid = CTRL_DEST_VALID_VAL;
     KPV_CTRL_REG(SLOT_ID).w = ctrl.w;
 
@@ -70,9 +68,8 @@ int main(void)
     if (r0 != 0xCAFEBABEu || r1 != 0xDEADBEEFu) {
         TEST_FAIL("Key readback: expected 0xCAFEBABE/0xDEADBEEF, got 0x%08X/0x%08X", r0, r1);
     }
-    km_kpv__ctrl_reg_t ctrl_read = { .w = KPV_CTRL_REG(SLOT_ID).w };
-    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL ||
-        ctrl_read.f.extend != CTRL_EXTEND_VAL ||
+    km_kpv__ctrl_reg_t ctrl_read = {.w = KPV_CTRL_REG(SLOT_ID).w};
+    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL ||
         ctrl_read.f.dest_valid != CTRL_DEST_VALID_VAL) {
         TEST_FAIL("CTRL readback: extend=0x%X dest_valid=0x%X last_dword=0x%X",
                   (unsigned)ctrl_read.f.extend, (unsigned)ctrl_read.f.dest_valid,
@@ -107,17 +104,17 @@ int main(void)
      * 3. lock_write: CTRL metadata write blocked (OKAY, metadata unchanged).
      * ----------------------------------------------------------------------- */
     TEST_SUBTEST_START("lock_write: CTRL metadata write blocked (OKAY, metadata unchanged)");
-    km_kpv__ctrl_reg_t ctrl_try = { .w = KPV_CTRL_REG(SLOT_ID).w };
+    km_kpv__ctrl_reg_t ctrl_try = {.w = KPV_CTRL_REG(SLOT_ID).w};
     ctrl_try.f.last_dword = 0u;
-    ctrl_try.f.extend     = 0u;
+    ctrl_try.f.extend = 0u;
     ctrl_try.f.dest_valid = 0u;
     KPV_CTRL_REG(SLOT_ID).w = ctrl_try.w;
 
     ctrl_read.w = KPV_CTRL_REG(SLOT_ID).w;
-    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL ||
-        ctrl_read.f.extend != CTRL_EXTEND_VAL ||
+    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL ||
         ctrl_read.f.dest_valid != CTRL_DEST_VALID_VAL) {
-        TEST_FAIL("CTRL metadata should be unchanged after write (last_dword=0x%X extend=0x%X dest_valid=0x%X)",
+        TEST_FAIL("CTRL metadata should be unchanged after write (last_dword=0x%X extend=0x%X "
+                  "dest_valid=0x%X)",
                   (unsigned)ctrl_read.f.last_dword, (unsigned)ctrl_read.f.extend,
                   (unsigned)ctrl_read.f.dest_valid);
     }
@@ -132,7 +129,7 @@ int main(void)
         TEST_FAIL("lock_write not set before clear attempt (ctrl=0x%08X)", ctrl_read.w);
     }
     /* Attempt to clear lock_write by writing CTRL with lock_write=0 */
-    km_kpv__ctrl_reg_t ctrl_clear_lw = { .w = KPV_CTRL_REG(SLOT_ID).w };
+    km_kpv__ctrl_reg_t ctrl_clear_lw = {.w = KPV_CTRL_REG(SLOT_ID).w};
     ctrl_clear_lw.f.lock_write = 0u;
     KPV_CTRL_REG(SLOT_ID).w = ctrl_clear_lw.w;
     ctrl_read.w = KPV_CTRL_REG(SLOT_ID).w;
@@ -173,7 +170,7 @@ int main(void)
         TEST_FAIL("lock_use not set before clear attempt (ctrl=0x%08X)", ctrl_read.w);
     }
     /* Attempt to clear lock_use by writing CTRL with lock_use=0 */
-    km_kpv__ctrl_reg_t ctrl_clear_lu = { .w = KPV_CTRL_REG(SLOT_ID).w };
+    km_kpv__ctrl_reg_t ctrl_clear_lu = {.w = KPV_CTRL_REG(SLOT_ID).w};
     ctrl_clear_lu.f.lock_use = 0u;
     KPV_CTRL_REG(SLOT_ID).w = ctrl_clear_lu.w;
     ctrl_read.w = KPV_CTRL_REG(SLOT_ID).w;

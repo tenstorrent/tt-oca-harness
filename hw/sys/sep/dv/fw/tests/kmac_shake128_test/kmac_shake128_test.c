@@ -48,8 +48,7 @@ static int wait_for_squeeze(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static void read_state(uint32_t *out, int words) {
@@ -68,9 +67,9 @@ static int test_shake128_xof(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x2;   // SHAKE = value 2 per hjson (sha3_mode_e::Shake = 2'b10)
+    cfg.f.mode = 0x2; // SHAKE = value 2 per hjson (sha3_mode_e::Shake = 2'b10)
     cfg.f.kstrength = 0x0;
-    cfg.f.entropy_mode = 0x1;  /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -131,7 +130,10 @@ static int test_shake128_xof(void) {
     printf("=== Step 8: Compare squeezes ===\n");
     int same = 1;
     for (int i = 0; i < 8; i++) {
-        if (first_squeeze[i] != second_squeeze[i]) { same = 0; break; }
+        if (first_squeeze[i] != second_squeeze[i]) {
+            same = 0;
+            break;
+        }
     }
     if (same) {
         printf("FAIL: first and second squeezes are identical\n");
@@ -165,5 +167,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

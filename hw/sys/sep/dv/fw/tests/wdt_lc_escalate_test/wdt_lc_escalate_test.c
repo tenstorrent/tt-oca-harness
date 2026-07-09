@@ -33,8 +33,7 @@ void wdt_nmi_handler(void) {
     printf("  WDT bark NMI received (bark_fired=%d)\n", bark_fired);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_007: WDT LC Escalate Test\n");
@@ -59,7 +58,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
-    for (volatile int i = 0; i < 40000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 40000; i++) {
+        __asm__ volatile("nop");
+    }
 
     uint32_t cnt = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDT count = 0x%08x (expect non-zero)\n", cnt);
@@ -79,7 +80,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
-    while (bark_fired == 0) { __asm__ volatile("wfi"); }
+    while (bark_fired == 0) {
+        __asm__ volatile("wfi");
+    }
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
     printf("  PASS: Bark fired normally with lc_escalate=Off\n");
@@ -98,5 +101,7 @@ int main(void)
     }
     printf("==================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

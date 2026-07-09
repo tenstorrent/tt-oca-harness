@@ -18,16 +18,13 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-static int wait_hmac_done(void)
-{
+static int wait_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -43,8 +40,7 @@ static int wait_hmac_done(void)
     return 0;
 }
 
-static void clear_all_interrupts(void)
-{
+static void clear_all_interrupts(void) {
     hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.hmac_done = 1;
     clear.f.fifo_empty = 1;
@@ -52,8 +48,7 @@ static void clear_all_interrupts(void)
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 }
 
-static void hmac_cleanup(void)
-{
+static void hmac_cleanup(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -62,8 +57,7 @@ static void hmac_cleanup(void)
     clear_all_interrupts();
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -120,7 +114,8 @@ int main(void)
      * At idle (no active hash), FIFO is always empty → bit stays set after W1C.
      * Accept re-assertion as INFO, not a test failure (same behavior as KMAC). */
     if (intr.f.fifo_empty) {
-        printf("  INFO: INTR_STATE.fifo_empty re-asserted after W1C (level-triggered, FIFO empty) - expected\n");
+        printf("  INFO: INTR_STATE.fifo_empty re-asserted after W1C (level-triggered, FIFO empty) "
+               "- expected\n");
     } else {
         printf("  INTR_STATE.fifo_empty after W1C: 0x00000000 (expected 0x00000000) - PASS\n");
     }
@@ -205,6 +200,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

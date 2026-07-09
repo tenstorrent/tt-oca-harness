@@ -19,37 +19,38 @@
 #include "key_manager_addr.h"
 #include "km_mailbox_sep_regs.h"
 
-#define MBOX_WRITE_DATA_REG  (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
-#define MBOX_READ_DATA_REG   (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG      (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG  (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG  (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
-#define MBOX_CTRL_REG        (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
+#define MBOX_WRITE_DATA_REG \
+    (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_CTRL_REG \
+    (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 #define TB_TIMEOUT_CYCLES 5000
 
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
-static inline void mbox_write_data(uint32_t data)
-{
+static inline void mbox_write_data(uint32_t data) {
     MBOX_WRITE_DATA_REG.w = data;
 }
 
-static inline int mbox_inbound_empty(void)
-{
+static inline int mbox_inbound_empty(void) {
     return MBOX_STATUS_REG.f.inbound_empty != 0;
 }
 
-static inline int mbox_outbound_empty(void)
-{
+static inline int mbox_outbound_empty(void) {
     return MBOX_STATUS_REG.f.outbound_empty != 0;
 }
 
-static int poll_km_irq_flushed_by_sep(uint32_t timeout_cycles)
-{
+static int poll_km_irq_flushed_by_sep(uint32_t timeout_cycles) {
     for (uint32_t i = 0; i < timeout_cycles; i++) {
         if (MBOX_IRQ_STATUS_REG.f.flushed_by_sep != 0) {
             return 1;
@@ -58,8 +59,7 @@ static int poll_km_irq_flushed_by_sep(uint32_t timeout_cycles)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t st;
     uint32_t sep_irq_status;
 
@@ -84,10 +84,12 @@ int main(void)
         /* Verify both FIFOs non-empty before flush */
         st = mbox_read_status();
         if (mbox_inbound_empty()) {
-            TEST_FAIL("Inbound FIFO should be non-empty before SEP flush (st=0x%08X)", (unsigned)st);
+            TEST_FAIL("Inbound FIFO should be non-empty before SEP flush (st=0x%08X)",
+                      (unsigned)st);
         }
         if (mbox_outbound_empty()) {
-            TEST_FAIL("Outbound FIFO should be non-empty before SEP flush (st=0x%08X)", (unsigned)st);
+            TEST_FAIL("Outbound FIFO should be non-empty before SEP flush (st=0x%08X)",
+                      (unsigned)st);
         }
 
         /* SEP performs flush */
@@ -133,7 +135,8 @@ int main(void)
             TEST_FAIL("Inbound FIFO should be non-empty before KM flush (st=0x%08X)", (unsigned)st);
         }
         if (mbox_outbound_empty()) {
-            TEST_FAIL("Outbound FIFO should be non-empty before KM flush (st=0x%08X)", (unsigned)st);
+            TEST_FAIL("Outbound FIFO should be non-empty before KM flush (st=0x%08X)",
+                      (unsigned)st);
         }
 
         /* KM performs flush */
@@ -142,7 +145,7 @@ int main(void)
             ctrl_val.f.flush = 1;
             MBOX_CTRL_REG.w = ctrl_val.w;
         }
-        test_delay(2);  /* Allow FIFO clear to take effect */
+        test_delay(2); /* Allow FIFO clear to take effect */
 
         /* Verify both FIFOs empty after KM flush */
         st = mbox_read_status();
@@ -199,7 +202,7 @@ int main(void)
             TEST_FAIL("tb_sep_mbox_irq_status_read failed");
         }
         {
-            KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u sep_irq_u = { .w = sep_irq_status };
+            KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u sep_irq_u = {.w = sep_irq_status};
             if (sep_irq_u.f.flushed_by_km != 0) {
                 TEST_FAIL("SEP (initiator) should not have FLUSHED_BY_KM set (IRQ_STATUS=0x%08X)",
                           (unsigned)sep_irq_status);
@@ -244,7 +247,7 @@ int main(void)
             TEST_FAIL("tb_sep_mbox_irq_status_read failed");
         }
         {
-            KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u sep_irq_u = { .w = sep_irq_status };
+            KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u sep_irq_u = {.w = sep_irq_status};
             if (sep_irq_u.f.flushed_by_km == 0) {
                 TEST_FAIL("SEP IRQ_STATUS should show FLUSHED_BY_KM (read 0x%08X)",
                           (unsigned)sep_irq_status);

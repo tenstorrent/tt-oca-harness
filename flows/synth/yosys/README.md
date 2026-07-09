@@ -11,17 +11,17 @@ for how the container is invoked.
 ## Commands
 
 ```bash
-make lint  [BLOCK=<block>]              # slang --lint-only
-make synth [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
-make format [FORMAT_PATH=<path>]        # verible-verilog-format --inplace
-make format-check [FORMAT_PATH=<path>]  # verible-verilog-format --verify
+make lint-slang-all     [BLOCK=<block>]              # slang --lint-only
+make synth-all          [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
+make format-sv          [FORMAT_PATH=<path>]         # verible-verilog-format --inplace
+make format-sv-check    [FORMAT_PATH=<path>]         # verible-verilog-format --verify
 ```
 
 `BLOCK` selects one of the discovered blocks (`smc`/`sep`/`smu`/`dtp`/
 `aou-rtl`; omit to run all of them - see [Layout](#layout) for how a block is
 discovered). It is not called `TARGET` because `hw/common/regs/classify.mk`
 already validates a top-level `TARGET=` against the (disjoint) register-block
-namespace, unconditionally, for every goal - `make lint TARGET=smu` would fail with
+namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` would fail with
 "Unknown OCAH register block 'smu'" before lint ever ran, since `smu`/`dtp`
 have no registers. `FORMAT_PATH` scopes formatting to a subtree (default
 `hw`); it is not called `PATH` for the same kind of reason - that would
@@ -61,8 +61,8 @@ two near-duplicate per-block files.
 a PDK later never touches an existing one:
 
 ```bash
-make synth BLOCK=smu TECH=ihp-sg13g2   # default
-make synth BLOCK=smu TECH=sky130A      # once wired up (see below)
+make synth-all BLOCK=smu TECH=ihp-sg13g2   # default
+make synth-all BLOCK=smu TECH=sky130A      # once wired up (see below)
 ```
 
 The value is literally the PDK subdirectory name `hpretl/iic-osic-tools`
@@ -104,7 +104,7 @@ for every clock domain, `set_clock_groups`, and `set_input_delay`/
 actual RTL port lists and hierarchy (see the header comment in each file for
 block-specific caveats).
 
-**None of this is read by `make synth` today**, and that is intentional, not
+**None of this is read by `make synth-all` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at
 all - ABC's timing model is a driving-cell/load pair
 (`tech/ihp-sg13g2/abc.constr`, i.e. `set_driving_cell`/`set_load`) plus a single
@@ -129,9 +129,9 @@ work could land as pure documentation first.
 ```
 flows/
 ├── common.mk                # shared plumbing: docker-run + bender-flist + dispatch-loop macros
-├── lint/slang.mk             # ocah-lint / ocah-lint-one
+├── lint/slang.mk             # ocah-lint-slang-all / ocah-lint-slang
 ├── synth/yosys/
-│   ├── yosys.mk              # ocah-synth / ocah-synth-one, TECH ?= ihp-sg13g2
+│   ├── yosys.mk              # ocah-synth-all / ocah-synth, TECH ?= ihp-sg13g2
 │   ├── scripts/
 │   │   ├── common.tcl        # env vars, out/tmp/reports dirs
 │   │   ├── init_tech.tcl     # resolves $PDK, sources tech/$PDK/tech.tcl
@@ -141,7 +141,7 @@ flows/
 │       └── ihp-sg13g2/
 │           ├── tech.tcl      # liberty paths, tie cells, dont_use
 │           └── abc.constr    # ABC driving-cell/load constraint
-└── format/verible.mk         # ocah-format / ocah-format-check
+└── lint/verible.mk           # ocah-lint-sv-verible, ocah-format-sv / ocah-format-sv-check
 ```
 
 Each `hw/sys/<block>/flow.mk` sets `FLOW_DESIGN`/`FLOW_BENDER_TARGETS` and

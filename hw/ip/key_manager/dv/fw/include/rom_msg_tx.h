@@ -31,8 +31,7 @@
  * @param payload Pointer to payload words (NULL if payload_len == 0).
  * @param payload_len Number of 32-bit payload words (0..255).
  */
-void rom_msg_tx_send(uint8_t resp_id, const uint32_t *payload,
-                     uint8_t payload_len);
+void rom_msg_tx_send(uint8_t resp_id, const uint32_t *payload, uint8_t payload_len);
 
 /**
  * @brief Send a response frame directly to the outbound mailbox FIFO.
@@ -46,7 +45,7 @@ void rom_msg_tx_send(uint8_t resp_id, const uint32_t *payload,
  * @param payload Pointer to payload words (NULL if payload_len == 0).
  * @param payload_len Number of 32-bit payload words (0..255).
  */
-void rom_msg_tx_send_direct(uint8_t resp_id, const uint32_t *payload,
-                            uint8_t payload_len) __attribute__((cold));
+void rom_msg_tx_send_direct(uint8_t resp_id, const uint32_t *payload, uint8_t payload_len)
+    __attribute__((cold));
 
 #endif /* ROM_MSG_TX_H */

@@ -18,7 +18,7 @@
 
 // Test completion magic protocol (2-word sequence to STDOUT)
 // TB expects: 1) TEST_MAGIC0, then 2) TEST_MAGIC_PASS or TEST_MAGIC_FAIL
-#define TEST_MAGIC0     0xA5A55A5A
+#define TEST_MAGIC0 0xA5A55A5A
 #define TEST_MAGIC_PASS 0xCAFEBABE
 #define TEST_MAGIC_FAIL 0xDEADBEEF
 

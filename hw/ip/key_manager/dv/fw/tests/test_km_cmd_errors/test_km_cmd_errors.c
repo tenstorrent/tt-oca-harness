@@ -28,8 +28,12 @@
 #include "rom_crc.h"
 #include "rom_isr.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Helpers
@@ -39,40 +43,29 @@ int rom_unrec_wipe_enabled(void) { return 0; }
  * Send a single-word (header-only, no payload) command frame via SEP
  * mailbox.  Sets separator before the header word.
  */
-static void send_header_only(rom_km_msg_header_t hdr)
-{
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("sep mbox write failed");
+static void send_header_only(rom_km_msg_header_t hdr) {
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("sep mbox write failed");
 }
 
 /**
  * Send a multi-word command frame via SEP mailbox.
  * Frame: header + payload[0..N-1] + CRC (separator on last word).
  */
-static void send_frame_with_payload(rom_km_msg_header_t hdr,
-                                     const uint32_t *payload,
-                                     uint8_t payload_len,
-                                     uint32_t crc)
-{
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed");
+static void send_frame_with_payload(rom_km_msg_header_t hdr, const uint32_t *payload,
+                                    uint8_t payload_len, uint32_t crc) {
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed");
     for (uint8_t i = 0; i < payload_len; i++) {
-        if (!tb_sep_mbox_write(payload[i], 5000))
-            TEST_FAIL("payload write %u failed", (unsigned)i);
+        if (!tb_sep_mbox_write(payload[i], 5000)) TEST_FAIL("payload write %u failed", (unsigned)i);
     }
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(crc, 5000))
-        TEST_FAIL("CRC write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(crc, 5000)) TEST_FAIL("CRC write failed");
 }
 
 /**
  * Process the queued frame and drain the response to the outbound FIFO.
  */
-static void process_and_drain(void)
-{
+static void process_and_drain(void) {
     test_delay(1000);
     rom_msg_rx_process();
     rom_isr_mailbox();
@@ -87,46 +80,38 @@ static void process_and_drain(void)
  * @param[out] rc        Return code (sign-extended to int8_t).
  * @param[out] arg       Return argument (valid only when header.payload_len >= 4).
  */
-static void read_resp_cmd(rom_km_msg_header_t *rhdr,
-                           uint32_t *seq_echo, uint32_t *cmd_echo,
-                           int8_t *rc, uint32_t *arg)
-{
+static void read_resp_cmd(rom_km_msg_header_t *rhdr, uint32_t *seq_echo, uint32_t *cmd_echo,
+                          int8_t *rc, uint32_t *arg) {
     uint32_t payload_words[4] = {0};
     uint32_t word;
-    if (!tb_sep_mbox_read(&word, 5000))
-        TEST_FAIL("Failed to read response header");
+    if (!tb_sep_mbox_read(&word, 5000)) TEST_FAIL("Failed to read response header");
     rhdr->raw = word;
 
     uint8_t exp_crc = rom_crc8_rohc((const uint8_t *)&word, 3);
     TEST_ASSERT_EQ(rhdr->header_crc8, exp_crc, "resp header CRC");
     TEST_ASSERT_EQ(rhdr->id, (uint32_t)ROM_KM_RESP_CMD, "resp ID");
 
-    if (!tb_sep_mbox_read(seq_echo, 5000))
-        TEST_FAIL("Failed to read seq echo");
+    if (!tb_sep_mbox_read(seq_echo, 5000)) TEST_FAIL("Failed to read seq echo");
     payload_words[0] = *seq_echo;
-    if (!tb_sep_mbox_read(cmd_echo, 5000))
-        TEST_FAIL("Failed to read cmd echo");
+    if (!tb_sep_mbox_read(cmd_echo, 5000)) TEST_FAIL("Failed to read cmd echo");
     payload_words[1] = *cmd_echo;
 
     uint32_t rc_word;
-    if (!tb_sep_mbox_read(&rc_word, 5000))
-        TEST_FAIL("Failed to read return code");
+    if (!tb_sep_mbox_read(&rc_word, 5000)) TEST_FAIL("Failed to read return code");
     *rc = (int8_t)(rc_word & 0xFF);
     payload_words[2] = rc_word;
 
     if (rhdr->payload_len >= 4) {
-        if (!tb_sep_mbox_read(arg, 5000))
-            TEST_FAIL("Failed to read return arg");
+        if (!tb_sep_mbox_read(arg, 5000)) TEST_FAIL("Failed to read return arg");
         payload_words[3] = *arg;
     } else {
         *arg = 0;
     }
 
     uint32_t crc_word;
-    if (!tb_sep_mbox_read(&crc_word, 5000))
-        TEST_FAIL("Failed to read payload CRC");
-    TEST_ASSERT(rhdr->payload_len == 3u || rhdr->payload_len == 4u,
-                "resp payload_len=%u", (unsigned)rhdr->payload_len);
+    if (!tb_sep_mbox_read(&crc_word, 5000)) TEST_FAIL("Failed to read payload CRC");
+    TEST_ASSERT(rhdr->payload_len == 3u || rhdr->payload_len == 4u, "resp payload_len=%u",
+                (unsigned)rhdr->payload_len);
     TEST_ASSERT_EQ(crc_word,
                    rom_crc32c((const uint8_t *)payload_words, (uint32_t)rhdr->payload_len * 4u),
                    "resp payload CRC");
@@ -136,8 +121,7 @@ static void read_resp_cmd(rom_km_msg_header_t *rhdr,
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(1000000)) {
@@ -153,8 +137,7 @@ int main(void)
     /* Discard RESP_KM_READY */
     {
         uint32_t ready;
-        if (!tb_sep_mbox_read(&ready, 5000))
-            TEST_FAIL("No RESP_KM_READY");
+        if (!tb_sep_mbox_read(&ready, 5000)) TEST_FAIL("No RESP_KM_READY");
     }
 
     /*
@@ -172,8 +155,8 @@ int main(void)
     TEST_SUBTEST_START("Bad header CRC");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq;
-        cmd.id          = ROM_KM_CMD_HW_VER;
+        cmd.seq_num = expected_cmd_seq;
+        cmd.id = ROM_KM_CMD_HW_VER;
         cmd.payload_len = 0;
         cmd.header_crc8 = 0xAA; /* deliberately wrong */
 
@@ -202,8 +185,8 @@ int main(void)
     TEST_SUBTEST_START("Out-of-sequence");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq + 5; /* deliberately wrong */
-        cmd.id          = ROM_KM_CMD_ROM_VER;
+        cmd.seq_num = expected_cmd_seq + 5; /* deliberately wrong */
+        cmd.id = ROM_KM_CMD_ROM_VER;
         cmd.payload_len = 0;
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
@@ -217,8 +200,7 @@ int main(void)
 
         TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_CMD_NOSEQ, "rc = CMD_NOSEQ");
         TEST_ASSERT_EQ(rhdr.payload_len, 4u, "has return_arg");
-        TEST_ASSERT_EQ(arg & 0xFF, (uint32_t)expected_cmd_seq,
-                       "arg = next expected seq");
+        TEST_ASSERT_EQ(arg & 0xFF, (uint32_t)expected_cmd_seq, "arg = next expected seq");
         /* expected_cmd_seq unchanged */
     }
     TEST_SUBTEST_PASS();
@@ -233,8 +215,8 @@ int main(void)
     TEST_SUBTEST_START("Invalid command ID");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq;
-        cmd.id          = 0x05; /* reserved gap: 0x05-0x0F are never valid */
+        cmd.seq_num = expected_cmd_seq;
+        cmd.id = 0x05; /* reserved gap: 0x05-0x0F are never valid */
         cmd.payload_len = 0;
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
@@ -261,8 +243,8 @@ int main(void)
     TEST_SUBTEST_START("Wrong payload length");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq;
-        cmd.id          = ROM_KM_CMD_HW_VER;
+        cmd.seq_num = expected_cmd_seq;
+        cmd.id = ROM_KM_CMD_HW_VER;
         cmd.payload_len = 2; /* claim 2 payload words */
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
@@ -292,8 +274,8 @@ int main(void)
     TEST_SUBTEST_START("Bad payload CRC");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq;
-        cmd.id          = ROM_KM_CMD_HW_VER;
+        cmd.seq_num = expected_cmd_seq;
+        cmd.id = ROM_KM_CMD_HW_VER;
         cmd.payload_len = 1;
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
@@ -311,8 +293,7 @@ int main(void)
         TEST_ASSERT_EQ(rhdr.payload_len, 4u, "has return_arg");
 
         /* arg should contain the correctly computed CRC */
-        uint32_t exp_crc = rom_crc32c(
-            (const uint8_t *)&payload_word, 4);
+        uint32_t exp_crc = rom_crc32c((const uint8_t *)&payload_word, 4);
         TEST_ASSERT_EQ(arg, exp_crc, "arg = computed CRC");
         expected_cmd_seq++;
     }
@@ -328,8 +309,8 @@ int main(void)
     TEST_SUBTEST_START("Validation order: header CRC before seq");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = expected_cmd_seq + 99; /* wrong seq */
-        cmd.id          = ROM_KM_CMD_STAT;
+        cmd.seq_num = expected_cmd_seq + 99; /* wrong seq */
+        cmd.id = ROM_KM_CMD_STAT;
         cmd.payload_len = 0;
         cmd.header_crc8 = 0xBB; /* wrong CRC */
 
@@ -341,8 +322,7 @@ int main(void)
         int8_t rc;
         read_resp_cmd(&rhdr, &seq_e, &cmd_e, &rc, &arg);
 
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_HEADER_CRC,
-                       "rc = HEADER_CRC (not CMD_NOSEQ)");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_HEADER_CRC, "rc = HEADER_CRC (not CMD_NOSEQ)");
         /* expected_cmd_seq unchanged since header CRC fails first */
     }
     TEST_SUBTEST_PASS();

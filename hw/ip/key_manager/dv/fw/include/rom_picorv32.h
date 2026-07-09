@@ -13,20 +13,19 @@
 #include <stdint.h>
 
 /** @brief PicoRV32 IRQ bit: EBREAK / illegal instruction trap. */
-#define PICORV32_IRQ_EBREAK     (1 << 1)
+#define PICORV32_IRQ_EBREAK (1 << 1)
 /** @brief PicoRV32 IRQ bit: bus error / misaligned access trap. */
-#define PICORV32_IRQ_BUSERR     (1 << 2)
+#define PICORV32_IRQ_BUSERR (1 << 2)
 /** @brief PicoRV32 IRQ bit: KMCSR sticky errors (level-sensitive). */
-#define PICORV32_IRQ_KMCSR          (1 << 3)
+#define PICORV32_IRQ_KMCSR (1 << 3)
 /** @brief PicoRV32 IRQ bit: mailbox inbound data (level-sensitive). */
-#define PICORV32_IRQ_MBOX           (1 << 4)
+#define PICORV32_IRQ_MBOX (1 << 4)
 /** @brief PicoRV32 IRQ bit: ABR ML-KEM shared-key ready (latched pulse, bit 5). */
-#define PICORV32_IRQ_ABR_SHAREDKEY  (1 << 5)
+#define PICORV32_IRQ_ABR_SHAREDKEY (1 << 5)
 
 /** @brief Bitmask of all IRQ sources handled by rom_irq(). */
 #define PICORV32_IRQ_KNOWN_MASK \
-    (PICORV32_IRQ_EBREAK | PICORV32_IRQ_BUSERR | \
-     PICORV32_IRQ_KMCSR  | PICORV32_IRQ_MBOX   | \
+    (PICORV32_IRQ_EBREAK | PICORV32_IRQ_BUSERR | PICORV32_IRQ_KMCSR | PICORV32_IRQ_MBOX | \
      PICORV32_IRQ_ABR_SHAREDKEY)
 
 /**
@@ -92,7 +91,6 @@ uint32_t rom_picorv32_crc8_rohc_update(uint32_t state, uint32_t data);
  * neither of which holds after masking).  The trap output is asserted
  * permanently.  A software loop follows as a defense-in-depth fallback.
  */
-__attribute__((noreturn))
-void rom_picorv32_halt_trap(void);
+__attribute__((noreturn)) void rom_picorv32_halt_trap(void);
 
 #endif /* ROM_PICORV32_H */

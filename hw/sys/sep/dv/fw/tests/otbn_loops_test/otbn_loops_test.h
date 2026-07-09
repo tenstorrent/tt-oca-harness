@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 /* Expected test results */
-#define EXPECTED_INSN_COUNT     28      /* Exact OpenTitan loops.exp instruction count */
+#define EXPECTED_INSN_COUNT 28 /* Exact OpenTitan loops.exp instruction count */
 
 /* Note: INSN_CNT is read from CPU-side register, not DMEM */
 

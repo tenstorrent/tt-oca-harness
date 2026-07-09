@@ -41,8 +41,7 @@ struct metal_switch *metal_switch_get(char *label);
  * @param sw The handle for the switch
  * @return The interrupt controller handle
  */
-__inline__ struct metal_interrupt *
-metal_switch_interrupt_controller(struct metal_switch *sw) {
+__inline__ struct metal_interrupt *metal_switch_interrupt_controller(struct metal_switch *sw) {
     return sw->vtable->interrupt_controller(sw);
 }
 

@@ -24,8 +24,12 @@
 #include "rom_isr.h"
 #include "rom_boot.h"
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Helpers
@@ -33,54 +37,42 @@ int rom_unrec_wipe_enabled(void) { return 0; }
 
 static uint8_t cmd_seq;
 
-static void send_load_exec(uint32_t fw_words)
-{
+static void send_load_exec(uint32_t fw_words) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq;
-    hdr.id          = ROM_KM_CMD_SRAM_LOAD_EXEC;
+    hdr.seq_num = cmd_seq;
+    hdr.id = ROM_KM_CMD_SRAM_LOAD_EXEC;
     hdr.payload_len = 1;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed");
-    if (!tb_sep_mbox_write(fw_words, 5000))
-        TEST_FAIL("payload write failed");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed");
+    if (!tb_sep_mbox_write(fw_words, 5000)) TEST_FAIL("payload write failed");
     uint32_t crc = rom_crc32c((const uint8_t *)&fw_words, 4);
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(crc, 5000))
-        TEST_FAIL("CRC write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(crc, 5000)) TEST_FAIL("CRC write failed");
 
     test_delay(1000);
     rom_msg_rx_process();
     rom_isr_mailbox();
 }
 
-static int8_t read_resp_rc(void)
-{
+static int8_t read_resp_rc(void) {
     uint32_t hdr_word;
-    if (!tb_sep_mbox_read(&hdr_word, 5000))
-        TEST_FAIL("no response header");
+    if (!tb_sep_mbox_read(&hdr_word, 5000)) TEST_FAIL("no response header");
     rom_km_msg_header_t rhdr;
     rhdr.raw = hdr_word;
     TEST_ASSERT_EQ(rhdr.id, (uint32_t)ROM_KM_RESP_CMD, "resp ID");
 
     uint32_t pwords[4] = {0};
     for (uint8_t i = 0; i < rhdr.payload_len && i < 4u; i++) {
-        if (!tb_sep_mbox_read(&pwords[i], 5000))
-            TEST_FAIL("no payload word %u", (unsigned)i);
+        if (!tb_sep_mbox_read(&pwords[i], 5000)) TEST_FAIL("no payload word %u", (unsigned)i);
     }
     uint32_t crc_word;
     if (!tb_sep_mbox_read(&crc_word, 5000)) TEST_FAIL("no payload CRC");
-    TEST_ASSERT_EQ(crc_word,
-                   rom_crc32c((const uint8_t *)pwords,
-                              (uint32_t)rhdr.payload_len * 4u),
+    TEST_ASSERT_EQ(crc_word, rom_crc32c((const uint8_t *)pwords, (uint32_t)rhdr.payload_len * 4u),
                    "payload CRC");
 
-    TEST_ASSERT_EQ(pwords[0] & 0xFFu, (uint32_t)cmd_seq,
-                   "seq echo");
-    TEST_ASSERT_EQ(pwords[1] & 0xFFu,
-                   (uint32_t)ROM_KM_CMD_SRAM_LOAD_EXEC, "cmd echo");
+    TEST_ASSERT_EQ(pwords[0] & 0xFFu, (uint32_t)cmd_seq, "seq echo");
+    TEST_ASSERT_EQ(pwords[1] & 0xFFu, (uint32_t)ROM_KM_CMD_SRAM_LOAD_EXEC, "cmd echo");
 
     cmd_seq++;
     return (int8_t)(pwords[2] & 0xFFu);
@@ -90,23 +82,19 @@ static int8_t read_resp_rc(void)
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(500000))
-        TEST_FAIL("timeout set failed");
+    if (!tb_set_timeout(500000)) TEST_FAIL("timeout set failed");
 
-    if (!tb_drbg_set_seed(0xE002u, 5000))
-        TEST_FAIL("drbg seed failed");
+    if (!tb_drbg_set_seed(0xE002u, 5000)) TEST_FAIL("drbg seed failed");
 
     rom_boot_init();
 
     /* Discard RESP_KM_READY */
     {
         uint32_t ready;
-        if (!tb_sep_mbox_read(&ready, 5000))
-            TEST_FAIL("No RESP_KM_READY");
+        if (!tb_sep_mbox_read(&ready, 5000)) TEST_FAIL("No RESP_KM_READY");
     }
 
     cmd_seq = 0;
@@ -118,8 +106,7 @@ int main(void)
     {
         send_load_exec(0u);
         int8_t rc = read_resp_rc();
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG,
-                       "zero fw_words rejected");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "zero fw_words rejected");
         TEST_LOG("  FW_WORDS=0 returned INVALID_ARG");
     }
     TEST_SUBTEST_PASS();
@@ -132,8 +119,7 @@ int main(void)
     {
         send_load_exec(0xFFFFu);
         int8_t rc = read_resp_rc();
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG,
-                       "oversize fw_words rejected");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "oversize fw_words rejected");
         TEST_LOG("  FW_WORDS=0xFFFF returned INVALID_ARG (no image transferred)");
     }
     TEST_SUBTEST_PASS();
@@ -146,8 +132,7 @@ int main(void)
         /* Bits [31:16] must be zero per spec. */
         send_load_exec(0xABCD0001u);
         int8_t rc = read_resp_rc();
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG,
-                       "reserved bits rejected");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "reserved bits rejected");
         TEST_LOG("  Reserved bits in FW_WORDS word returned INVALID_ARG");
     }
     TEST_SUBTEST_PASS();

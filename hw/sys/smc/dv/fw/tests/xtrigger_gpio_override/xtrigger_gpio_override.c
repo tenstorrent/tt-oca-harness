@@ -22,15 +22,18 @@
 /**
  * Enable hardware override on a specific GPIO
  */
-static uint32_t enable_gpio_hw_override(uint32_t gpio_num)
-{
+static uint32_t enable_gpio_hw_override(uint32_t gpio_num) {
     gpio_ctrl__CONTROL_t gpio_ctrl;
-    gpio_ctrl.w = read_gpio_shim(gpio_num, (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));
-    gpio_ctrl.f.hw2_ovrd = 0x1;  // Enable secondary HW function override
-    write_gpio_shim(gpio_num, (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)), gpio_ctrl.w);
+    gpio_ctrl.w = read_gpio_shim(
+        gpio_num, (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));
+    gpio_ctrl.f.hw2_ovrd = 0x1; // Enable secondary HW function override
+    write_gpio_shim(gpio_num,
+                    (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)),
+                    gpio_ctrl.w);
 
     // check that enabling worked
-    gpio_ctrl.w = read_gpio_shim(gpio_num, (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));
+    gpio_ctrl.w = read_gpio_shim(
+        gpio_num, (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));
     if (gpio_ctrl.f.hw2_ovrd != 0x1) {
         test_fail(0);
     }
@@ -41,8 +44,7 @@ static uint32_t enable_gpio_hw_override(uint32_t gpio_num)
 /**
  * Main test function
  */
-int main(void)
-{
+int main(void) {
     simputs("=== Xtrigger GPIO Override Simple Test ===\n");
 
     // Enable HW override on test GPIOs for two xtrigger interfaces
@@ -67,8 +69,7 @@ int main(void)
         test_fail(0);
     }
 
-    while (true)
-    {
+    while (true) {
         __asm__("wfi");
     }
 

@@ -91,8 +91,7 @@ int sifive_pl2cache0_set_enabled_ways(uint32_t ways);
  * @param dir ECC error direction.
  * @param type ECC error target type.
  * @return None.*/
-void sifive_pl2cache0_inject_ecc_error(uint32_t bitindex,
-                                       sifive_pl2cache0_ecc_errtarget_t target,
+void sifive_pl2cache0_inject_ecc_error(uint32_t bitindex, sifive_pl2cache0_ecc_errtarget_t target,
                                        sifive_pl2cache0_ecc_errdirection_t dir,
                                        sifive_pl2cache0_ecc_errtype_t type);
 

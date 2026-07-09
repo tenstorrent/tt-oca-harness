@@ -21,7 +21,7 @@ static inline void test_pass(int code) {
     (void)code;
     volatile unsigned int *stdout_w = (volatile unsigned int *)STDOUT;
     *stdout_w = (unsigned int)TEST_MAGIC0;
-    __asm__ volatile("fence" ::: "memory");  // Ensure first write completes
+    __asm__ volatile("fence" ::: "memory"); // Ensure first write completes
     *stdout_w = (unsigned int)TEST_MAGIC_PASS;
 }
 
@@ -29,7 +29,7 @@ static inline void test_fail(int code) {
     (void)code;
     volatile unsigned int *stdout_w = (volatile unsigned int *)STDOUT;
     *stdout_w = (unsigned int)TEST_MAGIC0;
-    __asm__ volatile("fence" ::: "memory");  // Ensure first write completes
+    __asm__ volatile("fence" ::: "memory"); // Ensure first write completes
     *stdout_w = (unsigned int)TEST_MAGIC_FAIL;
 }
 

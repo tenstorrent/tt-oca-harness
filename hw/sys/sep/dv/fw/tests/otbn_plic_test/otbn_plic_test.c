@@ -40,19 +40,19 @@
 #include "test_completion.h"
 
 /* OTBN constants */
-#define OTBN_STATUS_IDLE          0x00u
-#define OTBN_CMD_SEC_WIPE_DMEM    0xC3u
-#define OTBN_CMD_SEC_WIPE_IMEM    0x1Eu
+#define OTBN_STATUS_IDLE 0x00u
+#define OTBN_CMD_SEC_WIPE_DMEM 0xC3u
+#define OTBN_CMD_SEC_WIPE_IMEM 0x1Eu
 
-#define OTBN_IDLE_TIMEOUT         20000
+#define OTBN_IDLE_TIMEOUT 20000
 
 /* OTBN PIC source ID — sep_internal_interrupts[27] -> PIC source 28 (idx + 1) */
-#define OTBN_PIC_SOURCE_ID        28u
+#define OTBN_PIC_SOURCE_ID 28u
 
 /* Volatile flag set by ISR */
 static volatile uint32_t g_otbn_isr_fired = 0;
 static volatile uint32_t g_otbn_isr_count = 0;
-static volatile uint32_t g_otbn_claimid   = 0xFFFFFFFFu;
+static volatile uint32_t g_otbn_claimid = 0xFFFFFFFFu;
 
 /* Forward declarations */
 static int otbn_wait_for_idle(void);
@@ -68,8 +68,7 @@ static inline uint32_t read_claimid(void) {
  * OTBN done interrupt service routine.
  * Declared with interrupt attribute for VeeR EL2 PIC.
  */
-__attribute__((interrupt("machine")))
-void otbn_done_isr(void) {
+__attribute__((interrupt("machine"))) void otbn_done_isr(void) {
     g_otbn_isr_fired = 1;
     g_otbn_isr_count++;
     g_otbn_claimid = read_claimid();
@@ -82,7 +81,8 @@ static int otbn_wait_for_idle(void) {
     for (int t = OTBN_IDLE_TIMEOUT; t > 0; --t) {
         uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
         if (status == OTBN_STATUS_IDLE) return 0;
-        for (volatile int i = 0; i < 256; ++i);
+        for (volatile int i = 0; i < 256; ++i)
+            ;
     }
     printf("ERROR: Timed out waiting for OTBN IDLE\n");
     return -1;
@@ -91,7 +91,9 @@ static int otbn_wait_for_idle(void) {
 static void fail_and_halt(int code, const char *msg) {
     printf("FAIL: %s\n", msg);
     test_fail(code);
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }
 
 int main(void) {
@@ -115,8 +117,7 @@ int main(void) {
     /* ----------------------------------------------------------------
      * Step 2: Register OTBN interrupt handler
      * ---------------------------------------------------------------- */
-    printf("[STEP 2/8] Registering OTBN interrupt handler (source_id=%u)...\n",
-           OTBN_PIC_SOURCE_ID);
+    printf("[STEP 2/8] Registering OTBN interrupt handler (source_id=%u)...\n", OTBN_PIC_SOURCE_ID);
     pic_register_handler(OTBN_PIC_SOURCE_ID, otbn_done_isr);
     printf("[STEP 2/8] Handler registered\n");
 
@@ -124,7 +125,7 @@ int main(void) {
      * Step 3: Enable OTBN interrupt in PIC
      * ---------------------------------------------------------------- */
     printf("[STEP 3/8] Configuring PIC for OTBN interrupt...\n");
-    pic_set_gateway(OTBN_PIC_SOURCE_ID, 0, 0);  /* level-triggered, active-high */
+    pic_set_gateway(OTBN_PIC_SOURCE_ID, 0, 0); /* level-triggered, active-high */
     pic_set_priority(OTBN_PIC_SOURCE_ID, 1);
     pic_enable_source(OTBN_PIC_SOURCE_ID);
     pic_enable_interrupts();
@@ -153,7 +154,8 @@ int main(void) {
      * the IP status register proves nothing about delivery to the CPU.
      * ---------------------------------------------------------------- */
     printf("[STEP 6/8] Waiting for CPU trap / ISR...\n");
-    for (volatile int i = 0; i < 20000 && !g_otbn_isr_fired; ++i);
+    for (volatile int i = 0; i < 20000 && !g_otbn_isr_fired; ++i)
+        ;
 
     if (g_otbn_isr_fired) {
         printf("[STEP 6/8] ISR fired (count=%u) at PIC claim id %u — delivery confirmed\n",
@@ -168,11 +170,10 @@ int main(void) {
      * Step 7: Clear interrupt
      * ---------------------------------------------------------------- */
     printf("[STEP 7/8] Clearing OTBN done interrupt...\n");
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u);  /* W1C */
+    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u); /* W1C */
     uint32_t intr_after_clear = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
     if (intr_after_clear & 0x1u) {
-        printf("WARNING: INTR_STATE.done still set after W1C (=0x%08x)\n",
-               intr_after_clear);
+        printf("WARNING: INTR_STATE.done still set after W1C (=0x%08x)\n", intr_after_clear);
         errors++;
     } else {
         printf("[STEP 7/8] INTR_STATE.done cleared\n");
@@ -192,7 +193,8 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_SEC_WIPE_IMEM);
 
-    for (volatile int i = 0; i < 10000; ++i);
+    for (volatile int i = 0; i < 10000; ++i)
+        ;
 
     if (g_otbn_isr_fired) {
         printf("SEC_WIPE_IMEM: ISR fired (count=%u)\n", g_otbn_isr_count);
@@ -209,10 +211,8 @@ int main(void) {
     /* === Report === */
     printf("\n========================================\n");
     printf("INT-002: OTBN Interrupt to PLIC Test\n");
-    printf("  ISR fired:   %s (count=%u)\n",
-           g_otbn_isr_count > 0 ? "YES" : "NO", g_otbn_isr_count);
-    printf("  Claim id:    %u (expected 28 for sep_internal_interrupts[27])\n",
-           g_otbn_claimid);
+    printf("  ISR fired:   %s (count=%u)\n", g_otbn_isr_count > 0 ? "YES" : "NO", g_otbn_isr_count);
+    printf("  Claim id:    %u (expected 28 for sep_internal_interrupts[27])\n", g_otbn_claimid);
     printf("  Errors:      %d\n", errors);
     printf("========================================\n");
 
@@ -224,5 +224,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

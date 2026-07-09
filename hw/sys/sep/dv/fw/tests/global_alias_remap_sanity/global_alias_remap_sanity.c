@@ -37,28 +37,29 @@
 // Must be < EXTERNAL_TO_CHIPLET_BASE_ADDR (0x1_0000_0000) to route through
 // SEP_LOCAL path in the AXI demux and reach the global-to-local remap unit.
 // Also must not overlap SMC range (0x4000_0000~0x8000_0000) configured in TB.
-#define SEP_GLOBAL_BASE_ADDR_VALUE    0x20000000ULL
+#define SEP_GLOBAL_BASE_ADDR_VALUE 0x20000000ULL
 
 // Global address that Cocotb will write to.
 // Remap: 0x3000_0000 - 0x2000_0000 + 0 = 0x1000_0000 (SRAM)
-#define SEP_SRAM_GLOBAL_ADDR          0x30000000ULL
+#define SEP_SRAM_GLOBAL_ADDR 0x30000000ULL
 
 // Local SRAM address (where writes will be remapped to)
-#define SEP_SRAM_LOCAL_BASE           OCH_SEP_TOP_SEP_SRAM_BASE_ADDR  // 0x1000_0000
+#define SEP_SRAM_LOCAL_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR // 0x1000_0000
 
 // SEP CPU Control register for global base address
-#define SEP_GLOBAL_BASE_ADDR_REG      OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR  // 0x10A300C0
+#define SEP_GLOBAL_BASE_ADDR_REG \
+    OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR // 0x10A300C0
 
 // Scratch registers for CPU <-> Cocotb synchronization
-#define SYNC_CPU_READY_REG            OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)  // 0x10802000
-#define SYNC_COCOTB_DONE_REG          OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)  // 0x10802008
+#define SYNC_CPU_READY_REG OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)   // 0x10802000
+#define SYNC_COCOTB_DONE_REG OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) // 0x10802008
 
 // Synchronization markers
-#define CPU_READY_MARKER              0x12345678
-#define COCOTB_DONE_MARKER            0x87654321
+#define CPU_READY_MARKER 0x12345678
+#define COCOTB_DONE_MARKER 0x87654321
 
 // Poll timeout (in iterations)
-#define POLL_TIMEOUT                  100000
+#define POLL_TIMEOUT 100000
 
 //-----------------------------------------------------------------------------
 // Test Patterns (must match Cocotb test)
@@ -68,12 +69,7 @@
 static const uint32_t test_offsets[] = {0x00, 0x10, 0x20, 0x30};
 
 // Expected test patterns at each offset
-static const uint32_t test_patterns[] = {
-    0xDEADBEEF,
-    0xCAFEBABE,
-    0x55AA55AA,
-    0xFF00FF00
-};
+static const uint32_t test_patterns[] = {0xDEADBEEF, 0xCAFEBABE, 0x55AA55AA, 0xFF00FF00};
 
 #define NUM_PATTERNS (sizeof(test_patterns) / sizeof(test_patterns[0]))
 
@@ -89,8 +85,7 @@ static int fail_count = 0;
 // Helper Functions
 //-----------------------------------------------------------------------------
 
-static void report_test(const char *name, int passed)
-{
+static void report_test(const char *name, int passed) {
     test_count++;
     if (passed) {
         pass_count++;
@@ -104,8 +99,7 @@ static void report_test(const char *name, int passed)
 //-----------------------------------------------------------------------------
 // Test: Configure Global Base Address
 //-----------------------------------------------------------------------------
-static int test_config_global_base(void)
-{
+static int test_config_global_base(void) {
     printf("\n--- Test: Configure Global Base Address ---\n");
 
     // Read current value
@@ -135,8 +129,7 @@ static int test_config_global_base(void)
 //-----------------------------------------------------------------------------
 // Test: Signal Ready and Wait for Cocotb
 //-----------------------------------------------------------------------------
-static int test_sync_with_cocotb(void)
-{
+static int test_sync_with_cocotb(void) {
     printf("\n--- Test: Synchronization with Cocotb ---\n");
 
     // Clear sync registers first
@@ -161,32 +154,30 @@ static int test_sync_with_cocotb(void)
         poll_count++;
     }
 
-    printf("  ERROR: Timeout waiting for Cocotb (polls=%u, last_val=0x%08X)\n",
-           poll_count, done_val);
+    printf("  ERROR: Timeout waiting for Cocotb (polls=%u, last_val=0x%08X)\n", poll_count,
+           done_val);
     return 0;
 }
 
 //-----------------------------------------------------------------------------
 // Test: Verify SRAM Contents
 //-----------------------------------------------------------------------------
-static int test_verify_sram(void)
-{
+static int test_verify_sram(void) {
     printf("\n--- Test: Verify SRAM Contents ---\n");
 
     volatile uint32_t *sram_base = (volatile uint32_t *)SEP_SRAM_LOCAL_BASE;
     int errors = 0;
 
-    printf("  Verifying %u patterns at SRAM base 0x%08X...\n",
-           (unsigned)NUM_PATTERNS, SEP_SRAM_LOCAL_BASE);
+    printf("  Verifying %u patterns at SRAM base 0x%08X...\n", (unsigned)NUM_PATTERNS,
+           SEP_SRAM_LOCAL_BASE);
 
     for (unsigned i = 0; i < NUM_PATTERNS; i++) {
         uint32_t offset = test_offsets[i];
-        uint32_t word_idx = offset / 4;  // Convert byte offset to word index
+        uint32_t word_idx = offset / 4; // Convert byte offset to word index
         uint32_t expected = test_patterns[i];
         uint32_t actual = sram_base[word_idx];
 
-        printf("    Offset 0x%02X: expected=0x%08X, actual=0x%08X",
-               offset, expected, actual);
+        printf("    Offset 0x%02X: expected=0x%08X, actual=0x%08X", offset, expected, actual);
 
         if (actual == expected) {
             printf(" [OK]\n");
@@ -208,8 +199,7 @@ static int test_verify_sram(void)
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
@@ -224,10 +214,8 @@ int main(void)
     printf("  Remapped to local:    0x%08X (SRAM)\n", SEP_SRAM_LOCAL_BASE);
     printf("\n");
     printf("Remap formula:\n");
-    printf("  0x%llX - 0x%llX + 0 = 0x%08X\n",
-           (unsigned long long)SEP_SRAM_GLOBAL_ADDR,
-           (unsigned long long)SEP_GLOBAL_BASE_ADDR_VALUE,
-           SEP_SRAM_LOCAL_BASE);
+    printf("  0x%llX - 0x%llX + 0 = 0x%08X\n", (unsigned long long)SEP_SRAM_GLOBAL_ADDR,
+           (unsigned long long)SEP_GLOBAL_BASE_ADDR_VALUE, SEP_SRAM_LOCAL_BASE);
     printf("\n");
 
     // Step 1: Configure global base address

@@ -85,8 +85,7 @@
 #define METAL_LOCAL_INTR_RESERVE10 1024
 #define METAL_LOCAL_INTERRUPT_EXT 2048 /* Bit11 0x800 */
 /* Bit12 to Bit15 are Reserved */
-#define METAL_LOCAL_INTERRUPT(X)                                               \
-    (0x10000 << X) /* Bit16+ Start of Custom Local Interrupt */
+#define METAL_LOCAL_INTERRUPT(X) (0x10000 << X) /* Bit16+ Start of Custom Local Interrupt */
 #define METAL_MIE_INTERRUPT METAL_MSTATUS_MIE
 
 #define METAL_INSN_LENGTH_MASK 3
@@ -169,8 +168,7 @@ struct __metal_driver_vtable_riscv_cpu_intc {
 void __metal_interrupt_global_enable(void);
 void __metal_interrupt_global_disable(void);
 metal_vector_mode __metal_controller_interrupt_vector_mode(void);
-void __metal_controller_interrupt_vector(metal_vector_mode mode,
-                                         void *vec_table);
+void __metal_controller_interrupt_vector(metal_vector_mode mode, void *vec_table);
 
 __METAL_DECLARE_VTABLE(__metal_driver_vtable_riscv_cpu_intc)
 

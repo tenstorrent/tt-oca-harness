@@ -6,7 +6,7 @@
  *
  * Focus: STATUS transitions, STALL/OUTPUT_LOST behavior, and TRIGGER clear operations.
  */
- 
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -20,26 +20,16 @@
 /* Test Vectors (AES-128, NIST SP 800-38A)                             */
 /* ------------------------------------------------------------------ */
 
-static const uint32_t test_key[4] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09
-};
+static const uint32_t test_key[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
 
-static const uint32_t zero_iv[4] = {
-    0x00000000, 0x00000000, 0x00000000, 0x00000000
-};
+static const uint32_t zero_iv[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
 /* NIST F.1 ECB block #1 */
-static const uint32_t pt0[4] = {
-    0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373
-};
-static const uint32_t ct0_exp[4] = {
-    0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624
-};
+static const uint32_t pt0[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
+static const uint32_t ct0_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 /* Distinct plaintext used for flow-control/error scenarios (no golden compare). */
-static const uint32_t pt1[4] = {
-    0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45
-};
+static const uint32_t pt1[4] = {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45};
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
@@ -117,8 +107,8 @@ static int wait_for_iv_not_equal(const uint32_t prev_iv[4]) {
 
         uint32_t iv_out[4];
         read_iv(iv_out);
-        if (iv_out[0] != prev_iv[0] || iv_out[1] != prev_iv[1] ||
-            iv_out[2] != prev_iv[2] || iv_out[3] != prev_iv[3]) {
+        if (iv_out[0] != prev_iv[0] || iv_out[1] != prev_iv[1] || iv_out[2] != prev_iv[2] ||
+            iv_out[3] != prev_iv[3]) {
             return 0;
         }
     }
@@ -133,8 +123,8 @@ static int wait_for_iv_not_equal(const uint32_t prev_iv[4]) {
 static int compare_block(const uint32_t got[4], const uint32_t exp[4], const char *tag) {
     for (int i = 0; i < 4; i++) {
         if (got[i] != exp[i]) {
-            printf("ERROR: %s mismatch at word %d: got=0x%08x exp=0x%08x\n",
-                   tag, i, got[i], exp[i]);
+            printf("ERROR: %s mismatch at word %d: got=0x%08x exp=0x%08x\n", tag, i, got[i],
+                   exp[i]);
             return -1;
         }
     }
@@ -174,11 +164,11 @@ static void trigger_start(void) {
 
 static int configure_aes_ecb_enc_auto(void) {
     aes__CTRL_SHADOWED_t ctrl = {.w = 0};
-    ctrl.f.OPERATION = 0x1;           /* ENC */
-    ctrl.f.MODE = 0x1;                /* ECB */
-    ctrl.f.KEY_LEN = 0x1;             /* AES_128 */
+    ctrl.f.OPERATION = 0x1; /* ENC */
+    ctrl.f.MODE = 0x1;      /* ECB */
+    ctrl.f.KEY_LEN = 0x1;   /* AES_128 */
     ctrl.f.SIDELOAD = 0x0;
-    ctrl.f.MANUAL_OPERATION = 0x0;    /* automatic */
+    ctrl.f.MANUAL_OPERATION = 0x0; /* automatic */
 
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
@@ -208,11 +198,11 @@ static int configure_aes_ecb_enc_auto(void) {
 
 static int configure_aes_ecb_enc_manual(void) {
     aes__CTRL_SHADOWED_t ctrl = {.w = 0};
-    ctrl.f.OPERATION = 0x1;           /* ENC */
-    ctrl.f.MODE = 0x1;                /* ECB */
-    ctrl.f.KEY_LEN = 0x1;             /* AES_128 */
+    ctrl.f.OPERATION = 0x1; /* ENC */
+    ctrl.f.MODE = 0x1;      /* ECB */
+    ctrl.f.KEY_LEN = 0x1;   /* AES_128 */
     ctrl.f.SIDELOAD = 0x0;
-    ctrl.f.MANUAL_OPERATION = 0x1;    /* manual trigger */
+    ctrl.f.MANUAL_OPERATION = 0x1; /* manual trigger */
 
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
     WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
@@ -383,30 +373,30 @@ static int test_trigger_clear_ops(void) {
     if (wait_for_idle(1) != 0) return -1;
     if (configure_aes_ecb_enc_auto() != 0) return -1;
 
-    static const uint32_t iv_set[4] = {
-        0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c
-    };
+    static const uint32_t iv_set[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
     for (int i = 0; i < 4; i++) {
         WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(0) + (i * 4), iv_set[i]);
     }
     uint32_t iv_rd[4];
     read_iv(iv_rd);
-    if (iv_rd[0] != iv_set[0] || iv_rd[1] != iv_set[1] || iv_rd[2] != iv_set[2] || iv_rd[3] != iv_set[3]) {
-        printf("ERROR: IV write/readback failed (got %08x %08x %08x %08x)\n",
-               iv_rd[0], iv_rd[1], iv_rd[2], iv_rd[3]);
+    if (iv_rd[0] != iv_set[0] || iv_rd[1] != iv_set[1] || iv_rd[2] != iv_set[2] ||
+        iv_rd[3] != iv_set[3]) {
+        printf("ERROR: IV write/readback failed (got %08x %08x %08x %08x)\n", iv_rd[0], iv_rd[1],
+               iv_rd[2], iv_rd[3]);
         return -1;
     }
 
     trigger_key_iv_data_in_clear();
     if (wait_for_iv_not_equal(iv_set) != 0) return -1;
     read_iv(iv_rd);
-    printf("  After KEY_IV_DATA_IN_CLEAR: IV=%08x %08x %08x %08x\n",
-           iv_rd[0], iv_rd[1], iv_rd[2], iv_rd[3]);
+    printf("  After KEY_IV_DATA_IN_CLEAR: IV=%08x %08x %08x %08x\n", iv_rd[0], iv_rd[1], iv_rd[2],
+           iv_rd[3]);
 
     /* KEY_IV_DATA_IN_CLEAR wipes key material; reconfigure before running DATA_OUT_CLEAR check. */
     if (configure_aes_ecb_enc_auto() != 0) return -1;
 
-    /* DATA_OUT_CLEAR: generate output, clear output_valid, and ensure output data is overwritten. */
+    /* DATA_OUT_CLEAR: generate output, clear output_valid, and ensure output data is overwritten.
+     */
     write_data_in(pt0);
     if (wait_for_output_valid(1) != 0) return -1;
     print_status("  Before DATA_OUT_CLEAR");
@@ -418,7 +408,8 @@ static int test_trigger_clear_ops(void) {
     read_data_out(out);
     /* Some integrations may not guarantee a literal 0 readback here; require that the value
      * is no longer the previous ciphertext block. */
-    if (out[0] == ct0_exp[0] && out[1] == ct0_exp[1] && out[2] == ct0_exp[2] && out[3] == ct0_exp[3]) {
+    if (out[0] == ct0_exp[0] && out[1] == ct0_exp[1] && out[2] == ct0_exp[2] &&
+        out[3] == ct0_exp[3]) {
         printf("ERROR: DATA_OUT_CLEAR did not overwrite output data\n");
         return -1;
     }

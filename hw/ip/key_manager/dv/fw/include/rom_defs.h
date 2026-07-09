@@ -23,27 +23,27 @@
  *===========================================================================*/
 
 /** @brief ROM base address. */
-#define ROM_KM_ROM_BASE             0x00000000
+#define ROM_KM_ROM_BASE 0x00000000
 /** @brief ROM size in bytes (16 KB). */
-#define ROM_KM_ROM_SIZE             0x00004000
+#define ROM_KM_ROM_SIZE 0x00004000
 /** @brief SRAM base address. */
-#define ROM_KM_SRAM_BASE            0x00004000
+#define ROM_KM_SRAM_BASE 0x00004000
 /** @brief SRAM size in bytes (16 KB). */
-#define ROM_KM_SRAM_SIZE            0x00004000
+#define ROM_KM_SRAM_SIZE 0x00004000
 /** @brief First address past the end of SRAM. */
-#define ROM_KM_SRAM_END             (ROM_KM_SRAM_BASE + ROM_KM_SRAM_SIZE)
+#define ROM_KM_SRAM_END (ROM_KM_SRAM_BASE + ROM_KM_SRAM_SIZE)
 
 /** @brief ROM warm-persist region base address (highest 512 B of SRAM, region 31). */
-#define ROM_KM_PERSIST_BASE         (ROM_KM_SRAM_END - ROM_KM_PERSIST_SIZE)
+#define ROM_KM_PERSIST_BASE (ROM_KM_SRAM_END - ROM_KM_PERSIST_SIZE)
 /* ROM-owned warm-persist region: the highest 512 B of SRAM, reserved for ROM
  * firmware state that must survive warm reset. It is NOT for mutable
  * (SRAM-loaded) firmware, which ROM write-locks out of it before handoff. */
 /** @brief ROM warm-persist region size in bytes (512 B = one SRAM write-lock region). */
-#define ROM_KM_PERSIST_SIZE         0x00000200
+#define ROM_KM_PERSIST_SIZE 0x00000200
 /** @brief SRAM write-lock region index covering the warm-persist region (top region). */
-#define ROM_KM_PERSIST_LOCK_REGION  31u
+#define ROM_KM_PERSIST_LOCK_REGION 31u
 /** @brief SRAM_LOCK bitmask for the warm-persist region (bit 31). */
-#define ROM_KM_PERSIST_LOCK_MASK    (1u << ROM_KM_PERSIST_LOCK_REGION)
+#define ROM_KM_PERSIST_LOCK_MASK (1u << ROM_KM_PERSIST_LOCK_REGION)
 
 /**
  * @brief Granularity of one SRAM write-lock region in bytes.
@@ -52,7 +52,7 @@
  * register has one bit per region.  Used by the mutable-firmware bounds check
  * and the firmware-region lock-mask computation.
  */
-#define SRAM_LOCK_REGION_BYTES      0x00000200u
+#define SRAM_LOCK_REGION_BYTES 0x00000200u
 
 /**
  * @brief Exclusive upper bound (CPU address) of the mutable-firmware load area.
@@ -83,16 +83,16 @@ extern const uint8_t __km_fw_load_limit[];
 #define ROM_KM_ROM_IRQ_ENTRY 0x10u
 
 /** @brief Key Provisioning Vault register base address. */
-#define ROM_KM_KPV_BASE             0x0000D000
+#define ROM_KM_KPV_BASE 0x0000D000
 /** @brief Key Manager CSR register base address. */
-#define ROM_KM_KMCSR_BASE           0x0000E000
+#define ROM_KM_KMCSR_BASE 0x0000E000
 /** @brief DRBG sampler register base address. */
-#define ROM_KM_DRBG_BASE            0x0000F000
+#define ROM_KM_DRBG_BASE 0x0000F000
 /** @brief Mailbox register base address. */
-#define ROM_KM_MAILBOX_BASE         0x00010000
+#define ROM_KM_MAILBOX_BASE 0x00010000
 
 /** @brief Words per mailbox FIFO (matches RTL MAILBOX_DEPTH default) */
-#define ROM_KM_MAILBOX_FIFO_DEPTH   16
+#define ROM_KM_MAILBOX_FIFO_DEPTH 16
 
 /**
  * @brief OTP/eFuse AXI-Lite window base address (KM CPU view).
@@ -105,56 +105,56 @@ extern const uint8_t __km_fw_load_limit[];
  *   OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR (0x00011400) — eFuse Interface CTRL
  *   OTP_EFUSE_MMR_REG_MAP_BASE_ADDR  (0x00011500) — eFuse MMR
  */
-#define ROM_KM_OTP_BASE             0x00011000
+#define ROM_KM_OTP_BASE 0x00011000
 
 /*===========================================================================
  * Firmware Version
  *===========================================================================*/
 
 /** @brief ROM firmware major version. */
-#define ROM_KM_ROM_VERSION_MAJOR    1
+#define ROM_KM_ROM_VERSION_MAJOR 1
 /** @brief ROM firmware minor version. */
-#define ROM_KM_ROM_VERSION_MINOR    1
+#define ROM_KM_ROM_VERSION_MINOR 1
 /** @brief ROM firmware patch version. */
-#define ROM_KM_ROM_VERSION_PATCH    0
+#define ROM_KM_ROM_VERSION_PATCH 0
 
 /*===========================================================================
  * Shred Parameters
  *===========================================================================*/
 
 /** @brief Number of additional shred passes (total = SHRED_ITER + 1 = 3) */
-#define ROM_KM_SHRED_ITER           2
+#define ROM_KM_SHRED_ITER 2
 
 /*===========================================================================
  * KPV Parameters
  *===========================================================================*/
 
 /** @brief Number of slots in the Key Provisioning Vault. */
-#define ROM_KM_KPV_NUM_SLOTS        32
+#define ROM_KM_KPV_NUM_SLOTS 32
 /** @brief 32-bit words per KPV slot. */
-#define ROM_KM_KPV_WORDS_PER_SLOT   16
+#define ROM_KM_KPV_WORDS_PER_SLOT 16
 /** @brief Total 32-bit words across the entire KPV (largest shred region). */
-#define ROM_KM_KPV_TOTAL_WORDS      ((uint16_t)(ROM_KM_KPV_NUM_SLOTS * ROM_KM_KPV_WORDS_PER_SLOT))
+#define ROM_KM_KPV_TOTAL_WORDS ((uint16_t)(ROM_KM_KPV_NUM_SLOTS * ROM_KM_KPV_WORDS_PER_SLOT))
 
 /*===========================================================================
  * Message Buffer Parameters
  *===========================================================================*/
 
 /** @brief Maximum message payload length in 32-bit words */
-#define ROM_KM_MAX_PAYLOAD_LEN      255
+#define ROM_KM_MAX_PAYLOAD_LEN 255
 
 /** @brief Message buffer size in 32-bit words (header + max payload + CRC) */
-#define ROM_KM_MSGBUF_SIZE          (1 + ROM_KM_MAX_PAYLOAD_LEN + 1)
+#define ROM_KM_MSGBUF_SIZE (1 + ROM_KM_MAX_PAYLOAD_LEN + 1)
 
 /*===========================================================================
  * Key Handle Parameters
  *===========================================================================*/
 
 /** @brief Maximum simultaneous key handles (0x01-0xFF) */
-#define ROM_KM_MAX_KEY_HANDLES      255
+#define ROM_KM_MAX_KEY_HANDLES 255
 
 /** @brief Null key handle (reserved, never assigned) */
-#define ROM_KM_KEY_HANDLE_NULL      0x00
+#define ROM_KM_KEY_HANDLE_NULL 0x00
 
 /**
  * @brief Maximum key length in 32-bit words.
@@ -162,43 +162,43 @@ extern const uint8_t __km_fw_load_limit[];
  * The wire-encoded key size is `actual word count - 1` and is bounded to 127
  * (see rom_load_key / CMD_KEY_LOAD), so the largest key occupies 128 words.
  */
-#define ROM_KM_MAX_KEY_WORDS        128
+#define ROM_KM_MAX_KEY_WORDS 128
 
 /*===========================================================================
  * Crypto Engine Share Sizes (words per share)
  *===========================================================================*/
 
 /** @brief HMAC key share size in 32-bit words (256-bit). */
-#define ROM_KM_HMAC_WORDS_PER_SHARE  8
+#define ROM_KM_HMAC_WORDS_PER_SHARE 8
 /** @brief KMAC key share size in 32-bit words (256-bit). */
-#define ROM_KM_KMAC_WORDS_PER_SHARE  8
+#define ROM_KM_KMAC_WORDS_PER_SHARE 8
 /** @brief AES key share size in 32-bit words (256-bit). */
-#define ROM_KM_AES_WORDS_PER_SHARE   8
+#define ROM_KM_AES_WORDS_PER_SHARE 8
 /** @brief OTBN key share size in 32-bit words (384-bit). */
-#define ROM_KM_OTBN_WORDS_PER_SHARE  12
+#define ROM_KM_OTBN_WORDS_PER_SHARE 12
 /** @brief Adams Bridge seed share size in 32-bit words (256-bit). */
-#define ROM_KM_ABR_WORDS_PER_SHARE   8
+#define ROM_KM_ABR_WORDS_PER_SHARE 8
 
 /** @brief Largest crypto-engine key share width in words (OTBN = 12). */
-#define ROM_KM_MAX_WORDS_PER_SHARE   ROM_KM_OTBN_WORDS_PER_SHARE
+#define ROM_KM_MAX_WORDS_PER_SHARE ROM_KM_OTBN_WORDS_PER_SHARE
 
 /*===========================================================================
  * Crypto Engine Register Layout (common across all wrappers)
  *===========================================================================*/
 
 /** @brief Byte offset of SHARE0 from wrapper base. */
-#define ROM_KM_ENGINE_KEY_SHARE0_OFFSET          0x000
+#define ROM_KM_ENGINE_KEY_SHARE0_OFFSET 0x000
 /** @brief Byte offset of SHARE1 from wrapper base; (words) is words per share. */
-#define ROM_KM_ENGINE_KEY_SHARE1_OFFSET(words)   ((words) * 4)
+#define ROM_KM_ENGINE_KEY_SHARE1_OFFSET(words) ((words)*4)
 
 /*===========================================================================
  * IRQ Bit Positions
  *===========================================================================*/
 
 /** @brief PicoRV32 IRQ bitmask for the mailbox interrupt (bit 4). */
-#define ROM_KM_IRQ_MBOX_BIT                 (1 << 4)
+#define ROM_KM_IRQ_MBOX_BIT (1 << 4)
 /** @brief PicoRV32 IRQ bitmask for the ABR ML-KEM shared-key pulse (bit 5). */
-#define ROM_KM_IRQ_ABR_SHAREDKEY_BIT        (1 << 5)
+#define ROM_KM_IRQ_ABR_SHAREDKEY_BIT (1 << 5)
 
 #ifndef __ASSEMBLER__
 /*===========================================================================
@@ -207,26 +207,26 @@ extern const uint8_t __km_fw_load_limit[];
 
 /** @brief Command identifiers (sparse: 0x00-0x04, 0x10-0x12, and 0x22-0x26). */
 typedef enum {
-    ROM_KM_CMD_HW_VER              = 0x00, /**< Query hardware version */
-    ROM_KM_CMD_ROM_VER             = 0x01, /**< Query ROM firmware version */
-    ROM_KM_CMD_SRAM_VER            = 0x02, /**< Query SRAM firmware version */
-    ROM_KM_CMD_STAT                = 0x03, /**< Query recoverable-error status */
-    ROM_KM_CMD_RECOV_ACK           = 0x04, /**< Acknowledge recoverable error */
-    ROM_KM_CMD_EXEC_ROM            = 0x10, /**< Continue executing ROM; ignore subsequent handover commands */
-    ROM_KM_CMD_SRAM_LOAD_EXEC      = 0x11, /**< Accept firmware image via mailbox, load to SRAM, and execute */
-    ROM_KM_CMD_SRAM_EXEC           = 0x12, /**< Jump to pre-loaded mutable firmware in SRAM */
-    ROM_KM_CMD_KEY_GENERATE        = 0x22, /**< Generate a random key */
-    ROM_KM_CMD_KEY_REVOKE          = 0x23, /**< Revoke a key by handle */
-    ROM_KM_CMD_KEY_TRANSFER        = 0x24, /**< Transfer a key to crypto engines */
-    ROM_KM_CMD_ENGINE_SHRED        = 0x25, /**< Shred crypto engine sideload keys */
-    ROM_KM_CMD_KEY_LOAD            = 0x26, /**< Load SEP-supplied key material via mailbox */
-    ROM_KM_CMD_ABR_SK_TRANSFER     = 0x27  /**< Capture ML-KEM shared key from ABR into KPV */
+    ROM_KM_CMD_HW_VER = 0x00,    /**< Query hardware version */
+    ROM_KM_CMD_ROM_VER = 0x01,   /**< Query ROM firmware version */
+    ROM_KM_CMD_SRAM_VER = 0x02,  /**< Query SRAM firmware version */
+    ROM_KM_CMD_STAT = 0x03,      /**< Query recoverable-error status */
+    ROM_KM_CMD_RECOV_ACK = 0x04, /**< Acknowledge recoverable error */
+    ROM_KM_CMD_EXEC_ROM = 0x10,  /**< Continue executing ROM; ignore subsequent handover commands */
+    ROM_KM_CMD_SRAM_LOAD_EXEC =
+        0x11, /**< Accept firmware image via mailbox, load to SRAM, and execute */
+    ROM_KM_CMD_SRAM_EXEC = 0x12,      /**< Jump to pre-loaded mutable firmware in SRAM */
+    ROM_KM_CMD_KEY_GENERATE = 0x22,   /**< Generate a random key */
+    ROM_KM_CMD_KEY_REVOKE = 0x23,     /**< Revoke a key by handle */
+    ROM_KM_CMD_KEY_TRANSFER = 0x24,   /**< Transfer a key to crypto engines */
+    ROM_KM_CMD_ENGINE_SHRED = 0x25,   /**< Shred crypto engine sideload keys */
+    ROM_KM_CMD_KEY_LOAD = 0x26,       /**< Load SEP-supplied key material via mailbox */
+    ROM_KM_CMD_ABR_SK_TRANSFER = 0x27 /**< Capture ML-KEM shared key from ABR into KPV */
 } rom_km_cmd_id_t;
 
 /** @brief Evaluate to non-zero if @p id is a valid command ID. */
-#define ROM_KM_CMD_IS_VALID(id)     ((id) <= 0x04 || \
-                                     ((id) >= 0x10 && (id) <= 0x12) || \
-                                     ((id) >= 0x22 && (id) <= 0x27))
+#define ROM_KM_CMD_IS_VALID(id) \
+    ((id) <= 0x04 || ((id) >= 0x10 && (id) <= 0x12) || ((id) >= 0x22 && (id) <= 0x27))
 
 /*===========================================================================
  * Response IDs
@@ -234,11 +234,11 @@ typedef enum {
 
 /** @brief Response identifiers sent from KM to SEP. */
 typedef enum {
-    ROM_KM_RESP_CMD                    = 0x00, /**< Command response */
-    ROM_KM_RESP_KM_READY               = 0x55, /**< Boot-complete announcement */
-    ROM_KM_RESP_ABR_SHARED_KEY_READY   = 0x56, /**< ML-KEM shared key available */
-    ROM_KM_RESP_RECOVERABLE_FAULT      = 0xFE, /**< Recoverable fault notification */
-    ROM_KM_RESP_UNRECOVERABLE_FAULT    = 0xFF  /**< Unrecoverable fault notification */
+    ROM_KM_RESP_CMD = 0x00,                  /**< Command response */
+    ROM_KM_RESP_KM_READY = 0x55,             /**< Boot-complete announcement */
+    ROM_KM_RESP_ABR_SHARED_KEY_READY = 0x56, /**< ML-KEM shared key available */
+    ROM_KM_RESP_RECOVERABLE_FAULT = 0xFE,    /**< Recoverable fault notification */
+    ROM_KM_RESP_UNRECOVERABLE_FAULT = 0xFF   /**< Unrecoverable fault notification */
 } rom_km_resp_id_t;
 
 /*===========================================================================
@@ -247,14 +247,14 @@ typedef enum {
 
 /** @brief Command return codes (signed 8-bit, carried in RESP_CMD). */
 typedef enum {
-    ROM_KM_RC_SUCCESS       =  0, /**< Command completed successfully */
-    ROM_KM_RC_FAILURE       = -1, /**< Generic failure */
-    ROM_KM_RC_HEADER_CRC    = -2, /**< Header CRC-8 mismatch */
-    ROM_KM_RC_CMD_NOSEQ     = -3, /**< Sequence number mismatch */
-    ROM_KM_RC_INVALID_CMD   = -4, /**< Unknown command ID */
-    ROM_KM_RC_INVALID_LEN   = -5, /**< Payload length mismatch */
-    ROM_KM_RC_PAYLOAD_CRC   = -6, /**< Payload CRC-32C mismatch */
-    ROM_KM_RC_INVALID_ARG   = -7  /**< Invalid argument value */
+    ROM_KM_RC_SUCCESS = 0,      /**< Command completed successfully */
+    ROM_KM_RC_FAILURE = -1,     /**< Generic failure */
+    ROM_KM_RC_HEADER_CRC = -2,  /**< Header CRC-8 mismatch */
+    ROM_KM_RC_CMD_NOSEQ = -3,   /**< Sequence number mismatch */
+    ROM_KM_RC_INVALID_CMD = -4, /**< Unknown command ID */
+    ROM_KM_RC_INVALID_LEN = -5, /**< Payload length mismatch */
+    ROM_KM_RC_PAYLOAD_CRC = -6, /**< Payload CRC-32C mismatch */
+    ROM_KM_RC_INVALID_ARG = -7  /**< Invalid argument value */
 } rom_km_return_code_t;
 
 /*===========================================================================
@@ -263,11 +263,11 @@ typedef enum {
 
 /** @brief Recoverable fault codes (signed 8-bit). */
 typedef enum {
-    ROM_KM_RFAULT_KEY_SLOT_CRC      = -1, /**< Key slot CRC integrity failure */
-    ROM_KM_RFAULT_RX_BUFF_OFLOW     = -2, /**< RX buffer overflow (unterminated msg) */
-    ROM_KM_RFAULT_MBOX_OVERFLOW     = -3, /**< Outbound mailbox FIFO overflow */
-    ROM_KM_RFAULT_MBOX_UNDERFLOW    = -4, /**< Inbound mailbox FIFO underflow */
-    ROM_KM_RFAULT_FLUSHED_BY_SEP    = -5  /**< Mailbox flushed by SEP */
+    ROM_KM_RFAULT_KEY_SLOT_CRC = -1,   /**< Key slot CRC integrity failure */
+    ROM_KM_RFAULT_RX_BUFF_OFLOW = -2,  /**< RX buffer overflow (unterminated msg) */
+    ROM_KM_RFAULT_MBOX_OVERFLOW = -3,  /**< Outbound mailbox FIFO overflow */
+    ROM_KM_RFAULT_MBOX_UNDERFLOW = -4, /**< Inbound mailbox FIFO underflow */
+    ROM_KM_RFAULT_FLUSHED_BY_SEP = -5  /**< Mailbox flushed by SEP */
 } rom_km_recov_fault_code_t;
 
 /*===========================================================================
@@ -276,23 +276,24 @@ typedef enum {
 
 /** @brief Unrecoverable fault codes (signed 8-bit). */
 typedef enum {
-    ROM_KM_UFAULT_WIPE_STATE        = -1,  /**< WIPE_STATE asserted */
-    ROM_KM_UFAULT_ROM_PARITY        = -2,  /**< ROM parity error */
-    ROM_KM_UFAULT_SRAM_PARITY       = -3,  /**< SRAM parity error */
-    ROM_KM_UFAULT_ROM_WRITE         = -4,  /**< Illegal write to ROM */
-    ROM_KM_UFAULT_SRAM_WRITE_LOCK   = -5,  /**< Write to locked SRAM region */
-    ROM_KM_UFAULT_AXI_DECERR        = -6,  /**< AXI decode error */
-    ROM_KM_UFAULT_AXI_SLVERR        = -7,  /**< AXI slave error */
-    ROM_KM_UFAULT_DRBG_ERR          = -8,  /**< DRBG hardware error */
-    ROM_KM_UFAULT_ILLEGAL_INSN      = -9,  /**< Illegal instruction trap */
-    ROM_KM_UFAULT_BUS_ERROR         = -10, /**< AXI bus-error trap */
-    ROM_KM_UFAULT_EBREAK            = -11, /**< EBREAK instruction trap */
-    ROM_KM_UFAULT_SPURIOUS_IRQ      = -12, /**< Unrecognised IRQ source */
-    ROM_KM_UFAULT_OTP_SIGINT        = -13, /**< OTP dual-rail integrity violation */
-    ROM_KM_UFAULT_FW_CRC            = -14, /**< Mutable firmware image CRC-32C mismatch */
-    ROM_KM_UFAULT_FW_STACK_OVF      = -15, /**< Firmware load destination exceeded stack guard */
-    ROM_KM_UFAULT_SHRED_RANGE       = -16, /**< Shred word count exceeded the shred-order buffer */
-    ROM_KM_UFAULT_EXEC              = -17  /**< Instruction fetch from non-whitelisted (non-executable) memory region */
+    ROM_KM_UFAULT_WIPE_STATE = -1,      /**< WIPE_STATE asserted */
+    ROM_KM_UFAULT_ROM_PARITY = -2,      /**< ROM parity error */
+    ROM_KM_UFAULT_SRAM_PARITY = -3,     /**< SRAM parity error */
+    ROM_KM_UFAULT_ROM_WRITE = -4,       /**< Illegal write to ROM */
+    ROM_KM_UFAULT_SRAM_WRITE_LOCK = -5, /**< Write to locked SRAM region */
+    ROM_KM_UFAULT_AXI_DECERR = -6,      /**< AXI decode error */
+    ROM_KM_UFAULT_AXI_SLVERR = -7,      /**< AXI slave error */
+    ROM_KM_UFAULT_DRBG_ERR = -8,        /**< DRBG hardware error */
+    ROM_KM_UFAULT_ILLEGAL_INSN = -9,    /**< Illegal instruction trap */
+    ROM_KM_UFAULT_BUS_ERROR = -10,      /**< AXI bus-error trap */
+    ROM_KM_UFAULT_EBREAK = -11,         /**< EBREAK instruction trap */
+    ROM_KM_UFAULT_SPURIOUS_IRQ = -12,   /**< Unrecognised IRQ source */
+    ROM_KM_UFAULT_OTP_SIGINT = -13,     /**< OTP dual-rail integrity violation */
+    ROM_KM_UFAULT_FW_CRC = -14,         /**< Mutable firmware image CRC-32C mismatch */
+    ROM_KM_UFAULT_FW_STACK_OVF = -15,   /**< Firmware load destination exceeded stack guard */
+    ROM_KM_UFAULT_SHRED_RANGE = -16,    /**< Shred word count exceeded the shred-order buffer */
+    ROM_KM_UFAULT_EXEC =
+        -17 /**< Instruction fetch from non-whitelisted (non-executable) memory region */
 } rom_km_unrecov_fault_code_t;
 
 /*===========================================================================
@@ -311,23 +312,21 @@ typedef enum {
  *===========================================================================*/
 
 /**
- * @brief Read-lock mask for the secret OTP fields ROM may lock. This is the only OTP read-lock aggregate.
+ * @brief Read-lock mask for the secret OTP fields ROM may lock. This is the only OTP read-lock
+ * aggregate.
  */
-#define ROM_KM_OTP_LOCK_SECRET_MASK  (KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK | \
-                                      KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK     | \
-                                      KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK     | \
-                                      KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK)
+#define ROM_KM_OTP_LOCK_SECRET_MASK \
+    (KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK | KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK | \
+     KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK | KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK)
 
 /**
  * @brief OTP_CHANGE_STATUS aggregate covering all six monitored fields. Used
  *        to verify/clear change status.
  */
-#define ROM_KM_OTP_CHANGE_ALL_MASK   (KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK | \
-                                      KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_MASK   | \
-                                      KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_MASK | \
-                                      KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_MASK    | \
-                                      KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_MASK    | \
-                                      KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK)
+#define ROM_KM_OTP_CHANGE_ALL_MASK \
+    (KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK | KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_MASK | \
+     KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_MASK | KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_MASK | \
+     KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_MASK | KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK)
 
 /*===========================================================================
  * Message Header Layout
@@ -337,10 +336,10 @@ typedef enum {
 typedef union {
     uint32_t raw;
     struct {
-        uint8_t seq_num;        /**< [7:0]   Sequence number */
-        uint8_t id;             /**< [15:8]  Command or response ID */
-        uint8_t payload_len;    /**< [23:16] Payload length in words */
-        uint8_t header_crc8;    /**< [31:24] CRC-8/ROHC of lower 24 bits */
+        uint8_t seq_num;     /**< [7:0]   Sequence number */
+        uint8_t id;          /**< [15:8]  Command or response ID */
+        uint8_t payload_len; /**< [23:16] Payload length in words */
+        uint8_t header_crc8; /**< [31:24] CRC-8/ROHC of lower 24 bits */
     } __attribute__((packed));
 } rom_km_msg_header_t;
 
@@ -350,9 +349,9 @@ typedef union {
 
 /** @brief Result returned by every command handler. */
 typedef struct {
-    int8_t   return_code;   /**< Return code from rom_km_return_code_t */
-    uint8_t  has_arg;       /**< 1 if return_arg is valid */
-    uint32_t return_arg;    /**< Optional packed 32-bit return argument */
+    int8_t return_code;  /**< Return code from rom_km_return_code_t */
+    uint8_t has_arg;     /**< 1 if return_arg is valid */
+    uint32_t return_arg; /**< Optional packed 32-bit return argument */
 } rom_km_cmd_result_t;
 
 /*===========================================================================
@@ -361,24 +360,24 @@ typedef struct {
 
 /** @brief Payload for CMD_KEY_GENERATE (0x22): 2 words. */
 typedef struct {
-    uint32_t req_size;      /**< [6:0] requested key size in words minus 1 */
-    uint32_t dest_valid;    /**< [7:0] destination engine bitmask */
+    uint32_t req_size;   /**< [6:0] requested key size in words minus 1 */
+    uint32_t dest_valid; /**< [7:0] destination engine bitmask */
 } rom_km_cmd_key_generate_args_t;
 
 /** @brief Payload for CMD_KEY_REVOKE (0x23): 1 word. */
 typedef struct {
-    uint32_t handle;        /**< [7:0] key handle to revoke */
+    uint32_t handle; /**< [7:0] key handle to revoke */
 } rom_km_cmd_key_revoke_args_t;
 
 /** @brief Payload for CMD_KEY_TRANSFER (0x24): 2 words. */
 typedef struct {
-    uint32_t handle;        /**< [7:0] key handle to transfer */
-    uint32_t dest_engines;  /**< [7:0] destination engine bitmask */
+    uint32_t handle;       /**< [7:0] key handle to transfer */
+    uint32_t dest_engines; /**< [7:0] destination engine bitmask */
 } rom_km_cmd_key_transfer_args_t;
 
 /** @brief Payload for CMD_ENGINE_SHRED (0x25): 1 word. */
 typedef struct {
-    uint32_t dest;          /**< [7:0] engine bitmask to shred */
+    uint32_t dest; /**< [7:0] engine bitmask to shred */
 } rom_km_cmd_engine_shred_args_t;
 
 /** @brief Payload for CMD_KEY_LOAD (0x26): variable length (KEY_SIZE+3 words).
@@ -390,9 +389,9 @@ typedef struct {
  * Total payload length = KEY_SIZE + 3 32-bit words (not counting PAYLOAD_CRC32).
  */
 typedef struct {
-    uint32_t key_size;      /**< [6:0] key word count minus 1; RESERVED[31:7] must be 0 */
-    uint32_t dest_valid;    /**< [7:0] destination engine bitmask; RESERVED[31:8] must be 0 */
-    uint32_t key_data[];    /**< KEY_SIZE+1 key words (flexible array member) */
+    uint32_t key_size;   /**< [6:0] key word count minus 1; RESERVED[31:7] must be 0 */
+    uint32_t dest_valid; /**< [7:0] destination engine bitmask; RESERVED[31:8] must be 0 */
+    uint32_t key_data[]; /**< KEY_SIZE+1 key words (flexible array member) */
 } rom_km_cmd_key_load_args_t;
 
 /** @brief Payload for CMD_ABR_SK_TRANSFER (0x27): 1 word.
@@ -401,7 +400,7 @@ typedef struct {
  *   the captured key.  Must be non-zero with no bits above [7] set.
  */
 typedef struct {
-    uint32_t dest_valid;    /**< [7:0] destination engine bitmask; RESERVED[31:8] must be 0 */
+    uint32_t dest_valid; /**< [7:0] destination engine bitmask; RESERVED[31:8] must be 0 */
 } rom_km_cmd_abr_sk_transfer_args_t;
 
 /**
@@ -413,7 +412,7 @@ typedef struct {
  *   against __km_fw_load_limit, the worst-case-stack-aligned load ceiling).
  */
 typedef struct {
-    uint32_t fw_words;  /**< [15:0] firmware image word count; RESERVED[31:16] must be 0 */
+    uint32_t fw_words; /**< [15:0] firmware image word count; RESERVED[31:16] must be 0 */
 } rom_km_cmd_sram_load_exec_args_t;
 
 /*===========================================================================
@@ -422,21 +421,21 @@ typedef struct {
 
 /** @brief Crypto engine destination bitmask (shared by DEST_VALID / DEST_ENGINE). */
 typedef union {
-    uint8_t raw;                    /**< Raw 8-bit value */
+    uint8_t raw; /**< Raw 8-bit value */
     struct {
-        uint8_t hmac_sha2        : 1; /**< bit 0: HMAC-SHA2 engine */
-        uint8_t kmac_sha3        : 1; /**< bit 1: KMAC-SHA3 engine */
-        uint8_t aes              : 1; /**< bit 2: AES engine */
-        uint8_t otbn             : 1; /**< bit 3: OTBN engine */
-        uint8_t abr_mldsa_seed   : 1; /**< bit 4: Adams Bridge ML-DSA seed */
+        uint8_t hmac_sha2 : 1;        /**< bit 0: HMAC-SHA2 engine */
+        uint8_t kmac_sha3 : 1;        /**< bit 1: KMAC-SHA3 engine */
+        uint8_t aes : 1;              /**< bit 2: AES engine */
+        uint8_t otbn : 1;             /**< bit 3: OTBN engine */
+        uint8_t abr_mldsa_seed : 1;   /**< bit 4: Adams Bridge ML-DSA seed */
         uint8_t abr_mlkem_seed_d : 1; /**< bit 5: Adams Bridge ML-KEM seed D */
         uint8_t abr_mlkem_seed_z : 1; /**< bit 6: Adams Bridge ML-KEM seed Z */
-        uint8_t abr_mlkem_msg    : 1; /**< bit 7: Adams Bridge ML-KEM message */
+        uint8_t abr_mlkem_msg : 1;    /**< bit 7: Adams Bridge ML-KEM message */
     };
 } rom_km_dest_bits_t;
 
 /** @brief All valid destination bits (bits [7:0]). */
-#define ROM_KM_DEST_VALID_MASK  0xFFu
+#define ROM_KM_DEST_VALID_MASK 0xFFu
 
 /*===========================================================================
  * Command Return Argument Structs
@@ -446,10 +445,10 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t patch  : 8;   /* [7:0]   */
-        uint32_t minor  : 8;   /* [15:8]  */
-        uint32_t major  : 8;   /* [23:16] */
-        uint32_t _rsvd  : 8;   /* [31:24] */
+        uint32_t patch : 8; /* [7:0]   */
+        uint32_t minor : 8; /* [15:8]  */
+        uint32_t major : 8; /* [23:16] */
+        uint32_t _rsvd : 8; /* [31:24] */
     };
 } rom_km_version_ret_t;
 
@@ -457,8 +456,8 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t recoverable_err : 1;  /* [0]    */
-        uint32_t _rsvd           : 31; /* [31:1] */
+        uint32_t recoverable_err : 1; /* [0]    */
+        uint32_t _rsvd : 31;          /* [31:1] */
     };
 } rom_km_stat_ret_t;
 
@@ -466,8 +465,8 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t key_handle : 8;   /* [7:0]  */
-        uint32_t _rsvd      : 24;  /* [31:8] */
+        uint32_t key_handle : 8; /* [7:0]  */
+        uint32_t _rsvd : 24;     /* [31:8] */
     };
 } rom_km_handle_ret_t;
 
@@ -475,11 +474,11 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t key_handle  : 8;  /* [7:0]   */
-        uint32_t req_size    : 7;  /* [14:8]  */
-        uint32_t _rsvd0      : 1;  /* [15]    */
-        uint32_t dest_valid  : 8;  /* [23:16] */
-        uint32_t _rsvd1      : 8;  /* [31:24] */
+        uint32_t key_handle : 8; /* [7:0]   */
+        uint32_t req_size : 7;   /* [14:8]  */
+        uint32_t _rsvd0 : 1;     /* [15]    */
+        uint32_t dest_valid : 8; /* [23:16] */
+        uint32_t _rsvd1 : 8;     /* [31:24] */
     };
 } rom_km_key_generate_ret_t;
 
@@ -487,9 +486,9 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t key_handle   : 8;  /* [7:0]   */
-        uint32_t dest_engine  : 8;  /* [15:8]  */
-        uint32_t _rsvd        : 16; /* [31:16] */
+        uint32_t key_handle : 8;  /* [7:0]   */
+        uint32_t dest_engine : 8; /* [15:8]  */
+        uint32_t _rsvd : 16;      /* [31:16] */
     };
 } rom_km_key_transfer_ret_t;
 
@@ -497,8 +496,8 @@ typedef union {
 typedef union {
     uint32_t raw;
     struct {
-        uint32_t dest_engine : 8;  /* [7:0]  */
-        uint32_t _rsvd       : 24; /* [31:8] */
+        uint32_t dest_engine : 8; /* [7:0]  */
+        uint32_t _rsvd : 24;      /* [31:8] */
     };
 } rom_km_engine_shred_ret_t;
 
@@ -509,11 +508,11 @@ typedef union {
  *===========================================================================*/
 
 /** @brief RISC-V EBREAK instruction encoding (used by ISR to distinguish deliberate halt). */
-#define ROM_KM_EBREAK_OPCODE        0x00100073
+#define ROM_KM_EBREAK_OPCODE 0x00100073
 
 /** @brief RISC-V C.EBREAK (compressed) instruction encoding.
  *  With -march=rv32emc the compiler/assembler may emit the 2-byte form.
  *  A 32-bit load at the ebreak PC will place c.ebreak in the lower half-word. */
-#define ROM_KM_C_EBREAK_OPCODE      0x9002
+#define ROM_KM_C_EBREAK_OPCODE 0x9002
 
 #endif /* ROM_DEFS_H */

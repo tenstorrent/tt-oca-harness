@@ -14,8 +14,7 @@
  *
  * @return Does not return; halts via TEST_PASS or TEST_FAIL.
  */
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     TEST_SUBTEST_START("Lock write-1-only and post-lock addr writes ignored");

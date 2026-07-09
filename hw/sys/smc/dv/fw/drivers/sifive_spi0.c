@@ -47,17 +47,13 @@
 #define METAL_SPI_CONTROL_MAPPED 1
 
 #define METAL_SPI_REG(offset) (((unsigned long)control_base + offset))
-#define METAL_SPI_REGB(offset)                                                 \
-    (__METAL_ACCESS_ONCE((__metal_io_u8 *)METAL_SPI_REG(offset)))
-#define METAL_SPI_REGW(offset)                                                 \
-    (__METAL_ACCESS_ONCE((__metal_io_u32 *)METAL_SPI_REG(offset)))
+#define METAL_SPI_REGB(offset) (__METAL_ACCESS_ONCE((__metal_io_u8 *)METAL_SPI_REG(offset)))
+#define METAL_SPI_REGW(offset) (__METAL_ACCESS_ONCE((__metal_io_u32 *)METAL_SPI_REG(offset)))
 
 #define METAL_SPI_RXDATA_TIMEOUT 1
 
-static int configure_spi(struct __metal_driver_sifive_spi0 *spi,
-                         struct metal_spi_config *config) {
-    long control_base =
-        __metal_driver_sifive_spi0_control_base((struct metal_spi *)spi);
+static int configure_spi(struct __metal_driver_sifive_spi0 *spi, struct metal_spi_config *config) {
+    long control_base = __metal_driver_sifive_spi0_control_base((struct metal_spi *)spi);
     /* Set protocol */
     METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) &= ~(METAL_SPI_PROTO_MASK);
     switch (config->protocol) {
@@ -83,20 +79,16 @@ static int configure_spi(struct __metal_driver_sifive_spi0 *spi,
 
     /* Set Polarity */
     if (config->polarity) {
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) |=
-            (1 << METAL_SPI_SCKMODE_POL_SHIFT);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) |= (1 << METAL_SPI_SCKMODE_POL_SHIFT);
     } else {
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) &=
-            ~(1 << METAL_SPI_SCKMODE_POL_SHIFT);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) &= ~(1 << METAL_SPI_SCKMODE_POL_SHIFT);
     }
 
     /* Set Phase */
     if (config->phase) {
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) |=
-            (1 << METAL_SPI_SCKMODE_PHA_SHIFT);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) |= (1 << METAL_SPI_SCKMODE_PHA_SHIFT);
     } else {
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) &=
-            ~(1 << METAL_SPI_SCKMODE_PHA_SHIFT);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKMODE) &= ~(1 << METAL_SPI_SCKMODE_PHA_SHIFT);
     }
 
     /* Set Endianness */
@@ -120,8 +112,7 @@ static int configure_spi(struct __metal_driver_sifive_spi0 *spi,
     if ((METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) & METAL_SPI_FRAME_LEN_MASK) !=
         (8 << METAL_SPI_FRAME_LEN_SHIFT)) {
         METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) &= ~(METAL_SPI_FRAME_LEN_MASK);
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) |=
-            (8 << METAL_SPI_FRAME_LEN_SHIFT);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) |= (8 << METAL_SPI_FRAME_LEN_SHIFT);
     }
 
     /* Set CS line */
@@ -139,11 +130,9 @@ static int configure_spi(struct __metal_driver_sifive_spi0 *spi,
     return 0;
 }
 
-static void spi_mode_switch(struct __metal_driver_sifive_spi0 *spi,
-                            struct metal_spi_config *config,
+static void spi_mode_switch(struct __metal_driver_sifive_spi0 *spi, struct metal_spi_config *config,
                             unsigned int trans_stage) {
-    long control_base =
-        __metal_driver_sifive_spi0_control_base((struct metal_spi *)spi);
+    long control_base = __metal_driver_sifive_spi0_control_base((struct metal_spi *)spi);
 
     if (config->multi_wire == trans_stage) {
         METAL_SPI_REGW(METAL_SIFIVE_SPI0_FMT) &= ~(METAL_SPI_PROTO_MASK);
@@ -161,10 +150,8 @@ static void spi_mode_switch(struct __metal_driver_sifive_spi0 *spi,
     }
 }
 
-int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi,
-                                        struct metal_spi_config *config,
-                                        size_t len, char *tx_buf,
-                                        char *rx_buf) {
+int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi, struct metal_spi_config *config,
+                                        size_t len, char *tx_buf, char *rx_buf) {
     struct __metal_driver_sifive_spi0 *spi = (void *)gspi;
     long control_base = __metal_driver_sifive_spi0_control_base(gspi);
     int rc = 0;
@@ -197,11 +184,9 @@ int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi,
 
         endwait = metal_time() + METAL_SPI_RXDATA_TIMEOUT;
 
-        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) &
-               METAL_SPI_RXDATA_EMPTY) {
+        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) & METAL_SPI_RXDATA_EMPTY) {
             if (metal_time() > endwait) {
-                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &=
-                    ~(METAL_SPI_CSMODE_MASK);
+                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &= ~(METAL_SPI_CSMODE_MASK);
 
                 return 1;
             }
@@ -229,11 +214,9 @@ int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi,
 
         endwait = metal_time() + METAL_SPI_RXDATA_TIMEOUT;
 
-        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) &
-               METAL_SPI_RXDATA_EMPTY) {
+        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) & METAL_SPI_RXDATA_EMPTY) {
             if (metal_time() > endwait) {
-                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &=
-                    ~(METAL_SPI_CSMODE_MASK);
+                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &= ~(METAL_SPI_CSMODE_MASK);
 
                 return 1;
             }
@@ -258,11 +241,9 @@ int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi,
 
         endwait = metal_time() + METAL_SPI_RXDATA_TIMEOUT;
 
-        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) &
-               METAL_SPI_RXDATA_EMPTY) {
+        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) & METAL_SPI_RXDATA_EMPTY) {
             if (metal_time() > endwait) {
-                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &=
-                    ~(METAL_SPI_CSMODE_MASK);
+                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &= ~(METAL_SPI_CSMODE_MASK);
                 return 1;
             }
         }
@@ -297,12 +278,10 @@ int __metal_driver_sifive_spi0_transfer(struct metal_spi *gspi,
          * account the device specs */
         endwait = metal_time() + METAL_SPI_RXDATA_TIMEOUT;
 
-        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) &
-               METAL_SPI_RXDATA_EMPTY) {
+        while ((rxdata = METAL_SPI_REGW(METAL_SIFIVE_SPI0_RXDATA)) & METAL_SPI_RXDATA_EMPTY) {
             if (metal_time() > endwait) {
                 /* If timeout, deassert the CS */
-                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &=
-                    ~(METAL_SPI_CSMODE_MASK);
+                METAL_SPI_REGW(METAL_SIFIVE_SPI0_CSMODE) &= ~(METAL_SPI_CSMODE_MASK);
 
                 /* If timeout, return error code 1 immediately */
                 return 1;
@@ -333,8 +312,7 @@ int __metal_driver_sifive_spi0_get_baud_rate(struct metal_spi *gspi) {
     return spi->baud_rate;
 }
 
-int __metal_driver_sifive_spi0_set_baud_rate(struct metal_spi *gspi,
-                                             int baud_rate) {
+int __metal_driver_sifive_spi0_set_baud_rate(struct metal_spi *gspi, int baud_rate) {
     long control_base = __metal_driver_sifive_spi0_control_base(gspi);
     struct metal_clock *clock = __metal_driver_sifive_spi0_clock(gspi);
     struct __metal_driver_sifive_spi0 *spi = (void *)gspi;
@@ -355,16 +333,14 @@ int __metal_driver_sifive_spi0_set_baud_rate(struct metal_spi *gspi,
 
         /* Set divider */
         METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKDIV) &= ~METAL_SPI_SCKDIV_MASK;
-        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKDIV) |=
-            (div & METAL_SPI_SCKDIV_MASK);
+        METAL_SPI_REGW(METAL_SIFIVE_SPI0_SCKDIV) |= (div & METAL_SPI_SCKDIV_MASK);
     }
 
     return 0;
 }
 
 static void pre_rate_change_callback_func(void *priv) {
-    long control_base =
-        __metal_driver_sifive_spi0_control_base((struct metal_spi *)priv);
+    long control_base = __metal_driver_sifive_spi0_control_base((struct metal_spi *)priv);
 
     /* Detect when the TXDATA is empty by setting the transmit watermark count
      * to one and waiting until an interrupt is pending (indicating an empty
@@ -384,31 +360,24 @@ static void post_rate_change_callback_func(void *priv) {
 void __metal_driver_sifive_spi0_init(struct metal_spi *gspi, int baud_rate) {
     struct __metal_driver_sifive_spi0 *spi = (void *)(gspi);
     struct metal_clock *clock = __metal_driver_sifive_spi0_clock(gspi);
-    struct __metal_driver_sifive_gpio0 *pinmux =
-        __metal_driver_sifive_spi0_pinmux(gspi);
+    struct __metal_driver_sifive_gpio0 *pinmux = __metal_driver_sifive_spi0_pinmux(gspi);
 
     if (clock != NULL) {
         spi->pre_rate_change_callback.callback = &pre_rate_change_callback_func;
         spi->pre_rate_change_callback.priv = spi;
-        metal_clock_register_pre_rate_change_callback(
-            clock, &(spi->pre_rate_change_callback));
+        metal_clock_register_pre_rate_change_callback(clock, &(spi->pre_rate_change_callback));
 
-        spi->post_rate_change_callback.callback =
-            &post_rate_change_callback_func;
+        spi->post_rate_change_callback.callback = &post_rate_change_callback_func;
         spi->post_rate_change_callback.priv = spi;
-        metal_clock_register_post_rate_change_callback(
-            clock, &(spi->post_rate_change_callback));
+        metal_clock_register_post_rate_change_callback(clock, &(spi->post_rate_change_callback));
     }
 
     metal_spi_set_baud_rate(&(spi->spi), baud_rate);
 
     if (pinmux != NULL) {
-        long pinmux_output_selector =
-            __metal_driver_sifive_spi0_pinmux_output_selector(gspi);
-        long pinmux_source_selector =
-            __metal_driver_sifive_spi0_pinmux_source_selector(gspi);
-        pinmux->gpio.vtable->enable_io((struct metal_gpio *)pinmux,
-                                       pinmux_output_selector,
+        long pinmux_output_selector = __metal_driver_sifive_spi0_pinmux_output_selector(gspi);
+        long pinmux_source_selector = __metal_driver_sifive_spi0_pinmux_source_selector(gspi);
+        pinmux->gpio.vtable->enable_io((struct metal_gpio *)pinmux, pinmux_output_selector,
                                        pinmux_source_selector);
     }
 }

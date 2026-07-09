@@ -24,11 +24,14 @@
 #include "rom_crc.h"
 #include "rom_isr.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(500000)) {
@@ -50,8 +53,7 @@ int main(void)
         }
         rom_km_msg_header_t rdy_hdr;
         rdy_hdr.raw = ready;
-        TEST_ASSERT_EQ(rdy_hdr.id, (uint32_t)ROM_KM_RESP_KM_READY,
-                       "boot response id");
+        TEST_ASSERT_EQ(rdy_hdr.id, (uint32_t)ROM_KM_RESP_KM_READY, "boot response id");
     }
     TEST_SUBTEST_PASS();
 
@@ -60,8 +62,8 @@ int main(void)
     {
         /* Build header: seq=0, cmd=HW_VER, payload_len=0, CRC-8 */
         rom_km_msg_header_t cmd;
-        cmd.seq_num     = 0;
-        cmd.id          = ROM_KM_CMD_HW_VER;
+        cmd.seq_num = 0;
+        cmd.id = ROM_KM_CMD_HW_VER;
         cmd.payload_len = 0;
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
@@ -91,8 +93,8 @@ int main(void)
         rhdr.raw = resp_hdr_word;
 
         TEST_LOG("  RESP header: 0x%08X", resp_hdr_word);
-        TEST_LOG("  id=0x%02X seq=%u len=%u crc=0x%02X",
-                 rhdr.id, rhdr.seq_num, rhdr.payload_len, rhdr.header_crc8);
+        TEST_LOG("  id=0x%02X seq=%u len=%u crc=0x%02X", rhdr.id, rhdr.seq_num, rhdr.payload_len,
+                 rhdr.header_crc8);
 
         TEST_ASSERT_EQ(rhdr.id, (uint32_t)ROM_KM_RESP_CMD, "Response ID");
 
@@ -126,8 +128,7 @@ int main(void)
             TEST_FAIL("Failed to read payload CRC word");
         }
 
-        uint32_t exp_payload_crc = rom_crc32c(
-            (const uint8_t *)pw, (uint32_t)plen * 4);
+        uint32_t exp_payload_crc = rom_crc32c((const uint8_t *)pw, (uint32_t)plen * 4);
         TEST_ASSERT_EQ(crc_word, exp_payload_crc, "Payload CRC-32C");
     }
     TEST_SUBTEST_PASS();

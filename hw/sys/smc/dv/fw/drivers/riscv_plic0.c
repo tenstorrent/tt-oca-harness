@@ -7,7 +7,7 @@
 
 #ifdef METAL_RISCV_PLIC0
 
-#define PLIC0_MAX_INTERRUPTS 336  /* 328 CPU-exposed sources + 8 PLIC-internal sources */
+#define PLIC0_MAX_INTERRUPTS 336 /* 328 CPU-exposed sources + 8 PLIC-internal sources */
 
 #include <metal/drivers/riscv_plic0.h>
 #include <metal/interrupt.h>
@@ -15,108 +15,96 @@
 #include <metal/machine.h>
 #include <metal/shutdown.h>
 
-unsigned int
-__metal_plic0_claim_interrupt(struct __metal_driver_riscv_plic0 *plic,
-                              int context_id) {
-    unsigned long control_base = __metal_driver_sifive_plic0_control_base(
-        (struct metal_interrupt *)plic);
+unsigned int __metal_plic0_claim_interrupt(struct __metal_driver_riscv_plic0 *plic,
+                                           int context_id) {
+    unsigned long control_base =
+        __metal_driver_sifive_plic0_control_base((struct metal_interrupt *)plic);
     return __METAL_ACCESS_ONCE(
         (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
                            (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
                            METAL_RISCV_PLIC0_CONTEXT_CLAIM));
 }
 
-void __metal_plic0_complete_interrupt(struct __metal_driver_riscv_plic0 *plic,
-                                      int context_id, unsigned int id) {
-    unsigned long control_base = __metal_driver_sifive_plic0_control_base(
-        (struct metal_interrupt *)plic);
-    __METAL_ACCESS_ONCE(
-        (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
-                           (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
-                           METAL_RISCV_PLIC0_CONTEXT_CLAIM)) = id;
+void __metal_plic0_complete_interrupt(struct __metal_driver_riscv_plic0 *plic, int context_id,
+                                      unsigned int id) {
+    unsigned long control_base =
+        __metal_driver_sifive_plic0_control_base((struct metal_interrupt *)plic);
+    __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
+                                           (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
+                                           METAL_RISCV_PLIC0_CONTEXT_CLAIM)) = id;
 }
 
-int __metal_plic0_set_threshold(struct metal_interrupt *controller,
-                                int context_id, unsigned int threshold) {
-    unsigned long control_base =
-        __metal_driver_sifive_plic0_control_base(controller);
-    __METAL_ACCESS_ONCE(
-        (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
-                           (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
-                           METAL_RISCV_PLIC0_CONTEXT_THRESHOLD)) = threshold;
+int __metal_plic0_set_threshold(struct metal_interrupt *controller, int context_id,
+                                unsigned int threshold) {
+    unsigned long control_base = __metal_driver_sifive_plic0_control_base(controller);
+    __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
+                                           (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
+                                           METAL_RISCV_PLIC0_CONTEXT_THRESHOLD)) = threshold;
     return 0;
 }
 
-unsigned int __metal_plic0_get_threshold(struct metal_interrupt *controller,
-                                         int context_id) {
-    unsigned long control_base =
-        __metal_driver_sifive_plic0_control_base(controller);
+unsigned int __metal_plic0_get_threshold(struct metal_interrupt *controller, int context_id) {
+    unsigned long control_base = __metal_driver_sifive_plic0_control_base(controller);
     return __METAL_ACCESS_ONCE(
         (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_CONTEXT_BASE +
                            (context_id * METAL_RISCV_PLIC0_CONTEXT_PER_HART) +
                            METAL_RISCV_PLIC0_CONTEXT_THRESHOLD));
 }
 
-int __metal_driver_riscv_plic0_set_priority(struct metal_interrupt *controller,
-                                            int id, unsigned int priority) {
-    unsigned long control_base = __metal_driver_sifive_plic0_control_base(
-        (struct metal_interrupt *)controller);
-    unsigned int max_priority = __metal_driver_sifive_plic0_max_priority(
-        (struct metal_interrupt *)controller);
+int __metal_driver_riscv_plic0_set_priority(struct metal_interrupt *controller, int id,
+                                            unsigned int priority) {
+    unsigned long control_base =
+        __metal_driver_sifive_plic0_control_base((struct metal_interrupt *)controller);
+    unsigned int max_priority =
+        __metal_driver_sifive_plic0_max_priority((struct metal_interrupt *)controller);
     if ((max_priority) && (priority < max_priority)) {
-        __METAL_ACCESS_ONCE(
-            (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_PRIORITY_BASE +
-                               (id << METAL_PLIC_SOURCE_PRIORITY_SHIFT))) =
+        __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_PRIORITY_BASE +
+                                               (id << METAL_PLIC_SOURCE_PRIORITY_SHIFT))) =
             priority;
         return 0;
     }
     return -1;
 }
 
-unsigned int
-__metal_driver_riscv_plic0_get_priority(struct metal_interrupt *controller,
-                                        int id) {
-    unsigned long control_base =
-        __metal_driver_sifive_plic0_control_base(controller);
+unsigned int __metal_driver_riscv_plic0_get_priority(struct metal_interrupt *controller, int id) {
+    unsigned long control_base = __metal_driver_sifive_plic0_control_base(controller);
 
-    return __METAL_ACCESS_ONCE(
-        (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_PRIORITY_BASE +
-                           (id << METAL_PLIC_SOURCE_PRIORITY_SHIFT)));
+    return __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_PRIORITY_BASE +
+                                                  (id << METAL_PLIC_SOURCE_PRIORITY_SHIFT)));
 }
 
-int __metal_plic0_enable(struct __metal_driver_riscv_plic0 *plic,
-                         int context_id, int id, int enable) {
+int __metal_plic0_enable(struct __metal_driver_riscv_plic0 *plic, int context_id, int id,
+                         int enable) {
     unsigned int current;
-    unsigned long control_base = __metal_driver_sifive_plic0_control_base(
-        (struct metal_interrupt *)plic);
+    unsigned long control_base =
+        __metal_driver_sifive_plic0_control_base((struct metal_interrupt *)plic);
 
-    current = __METAL_ACCESS_ONCE(
-        (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_ENABLE_BASE +
-                           (context_id * METAL_RISCV_PLIC0_ENABLE_PER_HART) +
-                           (id >> METAL_PLIC_SOURCE_SHIFT) * 4));
-    __METAL_ACCESS_ONCE(
-        (__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_ENABLE_BASE +
-                           (context_id * METAL_RISCV_PLIC0_ENABLE_PER_HART) +
-                           ((id >> METAL_PLIC_SOURCE_SHIFT) * 4))) =
+    current =
+        __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_ENABLE_BASE +
+                                               (context_id * METAL_RISCV_PLIC0_ENABLE_PER_HART) +
+                                               (id >> METAL_PLIC_SOURCE_SHIFT) * 4));
+    __METAL_ACCESS_ONCE((__metal_io_u32 *)(control_base + METAL_RISCV_PLIC0_ENABLE_BASE +
+                                           (context_id * METAL_RISCV_PLIC0_ENABLE_PER_HART) +
+                                           ((id >> METAL_PLIC_SOURCE_SHIFT) * 4))) =
         enable ? (current | (1 << (id & METAL_PLIC_SOURCE_MASK)))
                : (current & ~(1 << (id & METAL_PLIC_SOURCE_MASK)));
 
     return 0;
 }
 
-void __metal_plic0_default_handler(int id, void *priv) { metal_shutdown(300); }
+void __metal_plic0_default_handler(int id, void *priv) {
+    metal_shutdown(300);
+}
 
 void __metal_plic0_handler(int id, void *priv) {
     struct __metal_driver_riscv_plic0 *plic = priv;
-    int contextid =
-        __metal_driver_sifive_plic0_context_ids(__metal_myhart_id());
+    int contextid = __metal_driver_sifive_plic0_context_ids(__metal_myhart_id());
     unsigned int idx = __metal_plic0_claim_interrupt(plic, contextid);
-    unsigned int num_interrupts = __metal_driver_sifive_plic0_num_interrupts(
-        (struct metal_interrupt *)plic);
+    unsigned int num_interrupts =
+        __metal_driver_sifive_plic0_num_interrupts((struct metal_interrupt *)plic);
 
     if ((idx < num_interrupts) && (plic->metal_exint_table[idx])) {
-        plic->metal_exint_table[idx](idx,
-                                     plic->metal_exdata_table[idx].exint_data);
+        plic->metal_exint_table[idx](idx, plic->metal_exdata_table[idx].exint_data);
     }
 
     __metal_plic0_complete_interrupt(plic, contextid, idx);
@@ -130,12 +118,9 @@ void __metal_driver_riscv_plic0_init(struct metal_interrupt *controller) {
         struct metal_interrupt *intc;
 
         for (int parent = 0; parent < __METAL_PLIC_NUM_PARENTS; parent++) {
-            num_interrupts =
-                __metal_driver_sifive_plic0_num_interrupts(controller);
-            intc = __metal_driver_sifive_plic0_interrupt_parents(controller,
-                                                                 parent);
-            line =
-                __metal_driver_sifive_plic0_interrupt_lines(controller, parent);
+            num_interrupts = __metal_driver_sifive_plic0_num_interrupts(controller);
+            intc = __metal_driver_sifive_plic0_interrupt_parents(controller, parent);
+            line = __metal_driver_sifive_plic0_interrupt_lines(controller, parent);
 
             /* Initialize ist parent controller, aka cpu_intc. */
             intc->vtable->interrupt_init(intc);
@@ -155,8 +140,7 @@ void __metal_driver_riscv_plic0_init(struct metal_interrupt *controller) {
             /* Register plic (ext) interrupt with with parent controller */
             intc->vtable->interrupt_register(intc, line, NULL, plic);
             /* Register plic handler for dispatching its device interrupts */
-            intc->vtable->interrupt_register(intc, line, __metal_plic0_handler,
-                                             plic);
+            intc->vtable->interrupt_register(intc, line, __metal_plic0_handler, plic);
             /* Enable plic (ext) interrupt with with parent controller */
             intc->vtable->interrupt_enable(intc, line);
         }
@@ -164,9 +148,8 @@ void __metal_driver_riscv_plic0_init(struct metal_interrupt *controller) {
     }
 }
 
-int __metal_driver_riscv_plic0_register(struct metal_interrupt *controller,
-                                        int id, metal_interrupt_handler_t isr,
-                                        void *priv) {
+int __metal_driver_riscv_plic0_register(struct metal_interrupt *controller, int id,
+                                        metal_interrupt_handler_t isr, void *priv) {
     struct __metal_driver_riscv_plic0 *plic = (void *)(controller);
 
     if (id >= __metal_driver_sifive_plic0_num_interrupts(controller)) {
@@ -186,8 +169,7 @@ int __metal_driver_riscv_plic0_register(struct metal_interrupt *controller,
     return 0;
 }
 
-int __metal_driver_riscv_plic0_enable(struct metal_interrupt *controller,
-                                      int id) {
+int __metal_driver_riscv_plic0_enable(struct metal_interrupt *controller, int id) {
     struct __metal_driver_riscv_plic0 *plic = (void *)(controller);
 
     if (id >= __metal_driver_sifive_plic0_num_interrupts(controller)) {
@@ -198,8 +180,7 @@ int __metal_driver_riscv_plic0_enable(struct metal_interrupt *controller,
     return 0;
 }
 
-int __metal_driver_riscv_plic0_disable(struct metal_interrupt *controller,
-                                       int id) {
+int __metal_driver_riscv_plic0_disable(struct metal_interrupt *controller, int id) {
     struct __metal_driver_riscv_plic0 *plic = (void *)(controller);
 
     if (id >= __metal_driver_sifive_plic0_num_interrupts(controller)) {
@@ -211,18 +192,15 @@ int __metal_driver_riscv_plic0_disable(struct metal_interrupt *controller,
 
 int __metal_driver_riscv_plic0_set_threshold(struct metal_interrupt *controller,
                                              unsigned int threshold) {
-    return __metal_plic0_set_threshold(controller, __metal_myhart_id(),
-                                       threshold);
+    return __metal_plic0_set_threshold(controller, __metal_myhart_id(), threshold);
 }
 
-unsigned int
-__metal_driver_riscv_plic0_get_threshold(struct metal_interrupt *controller) {
+unsigned int __metal_driver_riscv_plic0_get_threshold(struct metal_interrupt *controller) {
     return __metal_plic0_get_threshold(controller, __metal_myhart_id());
 }
 
-metal_affinity
-__metal_driver_riscv_plic0_affinity_enable(struct metal_interrupt *controller,
-                                           metal_affinity bitmask, int id) {
+metal_affinity __metal_driver_riscv_plic0_affinity_enable(struct metal_interrupt *controller,
+                                                          metal_affinity bitmask, int id) {
     metal_affinity ret = {0};
     int context;
 
@@ -235,17 +213,15 @@ __metal_driver_riscv_plic0_affinity_enable(struct metal_interrupt *controller,
 
     for_each_metal_affinity(context, bitmask) {
         if (context != 0)
-            metal_affinity_set_bit(
-                ret, context,
-                __metal_plic0_enable(plic, context, id, METAL_ENABLE));
+            metal_affinity_set_bit(ret, context,
+                                   __metal_plic0_enable(plic, context, id, METAL_ENABLE));
     }
 
     return ret;
 }
 
-metal_affinity
-__metal_driver_riscv_plic0_affinity_disable(struct metal_interrupt *controller,
-                                            metal_affinity bitmask, int id) {
+metal_affinity __metal_driver_riscv_plic0_affinity_disable(struct metal_interrupt *controller,
+                                                           metal_affinity bitmask, int id) {
     metal_affinity ret = {0};
     int context;
 
@@ -258,32 +234,30 @@ __metal_driver_riscv_plic0_affinity_disable(struct metal_interrupt *controller,
 
     for_each_metal_affinity(context, bitmask) {
         if (context != 0)
-            metal_affinity_set_bit(
-                ret, context,
-                __metal_plic0_enable(plic, context, id, METAL_DISABLE));
+            metal_affinity_set_bit(ret, context,
+                                   __metal_plic0_enable(plic, context, id, METAL_DISABLE));
     }
 
     return ret;
 }
 
-metal_affinity __metal_driver_riscv_plic0_affinity_set_threshold(
-    struct metal_interrupt *controller, metal_affinity bitmask,
-    unsigned int threshold) {
+metal_affinity __metal_driver_riscv_plic0_affinity_set_threshold(struct metal_interrupt *controller,
+                                                                 metal_affinity bitmask,
+                                                                 unsigned int threshold) {
     metal_affinity ret = {0};
     int context;
 
     for_each_metal_affinity(context, bitmask) {
         if (context != 0)
-            metal_affinity_set_bit(
-                ret, context,
-                __metal_plic0_set_threshold(controller, context, threshold));
+            metal_affinity_set_bit(ret, context,
+                                   __metal_plic0_set_threshold(controller, context, threshold));
     }
 
     return ret;
 }
 
-unsigned int __metal_driver_riscv_plic0_affinity_get_threshold(
-    struct metal_interrupt *controller, int context_id) {
+unsigned int __metal_driver_riscv_plic0_affinity_get_threshold(struct metal_interrupt *controller,
+                                                               int context_id) {
     __metal_plic0_get_threshold(controller, context_id);
     return 0;
 }
@@ -293,18 +267,12 @@ __METAL_DEFINE_VTABLE(__metal_driver_vtable_riscv_plic0) = {
     .plic_vtable.interrupt_register = __metal_driver_riscv_plic0_register,
     .plic_vtable.interrupt_enable = __metal_driver_riscv_plic0_enable,
     .plic_vtable.interrupt_disable = __metal_driver_riscv_plic0_disable,
-    .plic_vtable.interrupt_get_threshold =
-        __metal_driver_riscv_plic0_get_threshold,
-    .plic_vtable.interrupt_set_threshold =
-        __metal_driver_riscv_plic0_set_threshold,
-    .plic_vtable.interrupt_get_priority =
-        __metal_driver_riscv_plic0_get_priority,
-    .plic_vtable.interrupt_set_priority =
-        __metal_driver_riscv_plic0_set_priority,
-    .plic_vtable.interrupt_affinity_enable =
-        __metal_driver_riscv_plic0_affinity_enable,
-    .plic_vtable.interrupt_affinity_disable =
-        __metal_driver_riscv_plic0_affinity_disable,
+    .plic_vtable.interrupt_get_threshold = __metal_driver_riscv_plic0_get_threshold,
+    .plic_vtable.interrupt_set_threshold = __metal_driver_riscv_plic0_set_threshold,
+    .plic_vtable.interrupt_get_priority = __metal_driver_riscv_plic0_get_priority,
+    .plic_vtable.interrupt_set_priority = __metal_driver_riscv_plic0_set_priority,
+    .plic_vtable.interrupt_affinity_enable = __metal_driver_riscv_plic0_affinity_enable,
+    .plic_vtable.interrupt_affinity_disable = __metal_driver_riscv_plic0_affinity_disable,
     .plic_vtable.interrupt_affinity_get_threshold =
         __metal_driver_riscv_plic0_affinity_get_threshold,
     .plic_vtable.interrupt_affinity_set_threshold =

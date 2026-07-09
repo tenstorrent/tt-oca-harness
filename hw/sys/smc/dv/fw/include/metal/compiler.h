@@ -10,11 +10,10 @@
 
 #define __METAL_DEFINE_VTABLE(type) const struct type type
 
-#define __METAL_GET_FIELD(reg, mask)                                           \
-    (((reg) & (mask)) / ((mask) & ~((mask) << 1)))
+#define __METAL_GET_FIELD(reg, mask) (((reg) & (mask)) / ((mask) & ~((mask) << 1)))
 
 /* Set field with mask for a given value */
-#define __METAL_SET_FIELD(reg, mask, val)                                      \
+#define __METAL_SET_FIELD(reg, mask, val) \
     (((reg) & ~(mask)) | (((val) * ((mask) & ~((mask) << 1))) & (mask)))
 
 #define __METAL_MIN(a, b) ((a) < (b) ? (a) : (b))

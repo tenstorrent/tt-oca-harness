@@ -33,29 +33,48 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define WRAP0_CTRL_REG      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
-#define WRAP0_UART_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
-#define WRAP0_LE_BASE       SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
+#define WRAP0_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
+#define WRAP0_UART_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)
+#define WRAP0_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0)
 
-#define LE_CTRL_OFF         (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_REGION_SIZE_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_REGION_ADDR_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_WRITE_ADDR_OFF   (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_STATUS_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_INTR_ENABLE_OFF  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
-#define LE_LOG_CTRL0_OFF    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_CTRL_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_SIZE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_ADDR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_WRITE_ADDR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_STATUS_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_ENABLE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_LOG_CTRL0_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-#define UART_RBR_OFF        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_RBR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
 
-#define BIT_FETCH_ERR       (1u << 0)
-#define BIT_WRITE_ERR       (1u << 4)
-#define LE_INTR_TEST_OFF    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define BIT_FETCH_ERR (1u << 0)
+#define BIT_WRITE_ERR (1u << 4)
+#define LE_INTR_TEST_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-#define UNMAPPED_ADDR       0xC0001000u
+#define UNMAPPED_ADDR 0xC0001000u
 
 static void fail_at(const char *msg) {
     info_msg_s(0, msg);
-    test_fail(0);  // noreturn
+    test_fail(0); // noreturn
 }
 
 int main(void) {
@@ -88,16 +107,16 @@ int main(void) {
     info_msg_s(0, "scenario 0: INTR_TEST self-test term (FETCH_ERR + WRITE_ERR)");
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF,   BIT_FETCH_ERR);                  // pulse fetch self-test
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF,   BIT_WRITE_ERR);                  // pulse write self-test
-    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF,   BIT_FETCH_ERR | BIT_WRITE_ERR);  // both
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR); // pulse fetch self-test
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_WRITE_ERR); // pulse write self-test
+    write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR); // both
     // Mask + W1C to leave a clean slate for scenario A.
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
 
     // Program engine: fetch from UNMAPPED_ADDR → DECERR
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
-    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF,     UNMAPPED_ADDR);
+    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, UNMAPPED_ADDR);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
 
@@ -134,9 +153,9 @@ int main(void) {
     // it first (disable ENABLE → next gated to 0), then W1C. See ticket on
     // the stuck-log_fetch_err behavior.
     //--------------------------------------------------------------------------
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);          // disable engine
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);   // mask → gate next to 0
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);  // W1C
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);                   // disable engine
+    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);            // mask → gate next to 0
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); // W1C
     if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) != 0u) {
         fail_at("FAIL: W1C did not clear LOG_FETCH_ERR after masking ENABLE");
     }
@@ -145,8 +164,9 @@ int main(void) {
     // ENABLE=0 → status must NOT re-latch
     //--------------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);  // clear stale
-    for (volatile int i = 0; i < 200; i++) { }
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); // clear stale
+    for (volatile int i = 0; i < 200; i++) {
+    }
     if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) != 0u) {
         fail_at("FAIL: ENABLE=0 but status latched (gating broken)");
     }
@@ -219,7 +239,7 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario C: log_write FSM error-path exercise");
 
-    #define LOG_BUF_BASE        (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
+#define LOG_BUF_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
 
     // Pre-load SRAM with pattern (harmless; fetch target below is UNMAPPED so
     // the fetch DECERRs before any write — avoids the fabric write-hang).
@@ -231,7 +251,7 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
 
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
-    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, UNMAPPED_ADDR);      // fetch DECERRs
+    write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, UNMAPPED_ADDR); // fetch DECERRs
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, UNMAPPED_ADDR);
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
@@ -256,8 +276,8 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     for (int i = 0; i < 100; i++) {
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) &
-             (BIT_FETCH_ERR | BIT_WRITE_ERR)) == 0u) break;
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & (BIT_FETCH_ERR | BIT_WRITE_ERR)) == 0u)
+            break;
     }
 
     //--------------------------------------------------------------------------
@@ -266,9 +286,10 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: replica[1] fetch DECERR");
 
-    #define WRAP1_CTRL_REG    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(1)
-    #define WRAP1_UART_BASE   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1)
-    #define WRAP1_LE_BASE     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(1)
+#define WRAP1_CTRL_REG \
+    SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(1)
+#define WRAP1_UART_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1)
+#define WRAP1_LE_BASE SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(1)
 
     write_reg(WRAP1_CTRL_REG, 1u);
     write_reg(WRAP1_LE_BASE + LE_CTRL_OFF, 0u);
@@ -306,7 +327,7 @@ int main(void) {
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_fetch_err_test done");
-    test_pass(0);  // noreturn
+    test_pass(0); // noreturn
 
     while (1) __asm__("wfi");
     return 0;

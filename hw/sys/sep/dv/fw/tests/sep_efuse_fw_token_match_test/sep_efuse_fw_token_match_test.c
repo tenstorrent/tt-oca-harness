@@ -12,8 +12,7 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-int main(void)
-{
+int main(void) {
     const uint32_t zero_token[8] = {0};
     const uint32_t mismatch_token[8] = {
         0x00000001u, 0x00000000u, 0x00000000u, 0x00000000u,

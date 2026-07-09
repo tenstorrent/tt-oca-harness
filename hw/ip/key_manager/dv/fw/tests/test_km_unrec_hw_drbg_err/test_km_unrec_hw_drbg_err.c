@@ -16,11 +16,14 @@
 #include "key_manager.h"
 #include "key_manager_addr.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {

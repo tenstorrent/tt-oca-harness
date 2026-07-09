@@ -39,22 +39,21 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-#define MUBI4_TRUE  0x6
+#define MUBI4_TRUE 0x6
 
-#define DMA_RX_SIZE     64
-#define DMA_CHUNK_SIZE  16   /* SPI_RX_WATERMARK * TRANSFER_WIDTH_BYTES: drain FIFO to below WM, deasserts trigger */
-#define SPI_TX_WATERMARK    0   /* Set to 0 so tx_wm is never asserted in RX-only mode */
-#define SPI_RX_WATERMARK    4
-#define SPI_CLKDIV      9
-#define DMA_TIMEOUT     200000
+#define DMA_RX_SIZE 64
+#define DMA_CHUNK_SIZE \
+    16 /* SPI_RX_WATERMARK * TRANSFER_WIDTH_BYTES: drain FIFO to below WM, deasserts trigger */
+#define SPI_TX_WATERMARK 0 /* Set to 0 so tx_wm is never asserted in RX-only mode */
+#define SPI_RX_WATERMARK 4
+#define SPI_CLKDIV 9
+#define DMA_TIMEOUT 200000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static void init_spi_controller(void)
-{
+static void init_spi_controller(void) {
     spi_controller__CTRL_t ctrl;
     ctrl.w = 0;
     ctrl.f.RX_WATERMARK = SPI_RX_WATERMARK;
@@ -74,22 +73,22 @@ static void init_spi_controller(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_en.w);
 }
 
-static int configure_dma_for_spi_rx(uint32_t dst_addr, uint32_t total_size, uint32_t chunk_size)
-{
+static int configure_dma_for_spi_rx(uint32_t dst_addr, uint32_t total_size, uint32_t chunk_size) {
     uint32_t cfg_regwen = READ_REG(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
         printf("  WARNING: DMA may be busy or locked (CFG_REGWEN=0x%x)\n", cfg_regwen);
     }
 
     /* Set up side effect region for DMA */
-    __asm__ volatile ("csrw 0x7c0, %0" : : "r" (0x8));
+    __asm__ volatile("csrw 0x7c0, %0" : : "r"(0x8));
 
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
 
     /* SRC: SPI RXDATA (fixed register), DST: SRAM (incrementing) */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+              OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_addr);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
@@ -114,8 +113,7 @@ static int configure_dma_for_spi_rx(uint32_t dst_addr, uint32_t total_size, uint
     return 0;
 }
 
-static int start_dma_and_wait(void)
-{
+static int start_dma_and_wait(void) {
     secure_dma__CONTROL_t control;
     control.w = 0;
     control.f.OPCODE = 0;
@@ -145,8 +143,7 @@ static int start_dma_and_wait(void)
     return -2;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -204,11 +201,11 @@ int main(void)
     spi_controller__STATUS_t spi_status;
     spi_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("\nSPI STATUS after DMA: 0x%08x\n", spi_status.w);
-    printf("  TXQD=%u, RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n",
-           spi_status.f.TXQD, spi_status.f.RXQD,
+    printf("  TXQD=%u, RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n", spi_status.f.TXQD, spi_status.f.RXQD,
            spi_status.f.RXEMPTY, spi_status.f.ACTIVE);
 
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err_status.w != 0) {
         printf("  SPI ERROR_STATUS=0x%08x\n", err_status.w);
@@ -251,6 +248,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

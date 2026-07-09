@@ -20,14 +20,12 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static void write_cfg_shadowed_twice(uint32_t val)
-{
+static void write_cfg_shadowed_twice(uint32_t val) {
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
 }
 
-static int wait_for_idle(void)
-{
+static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -40,8 +38,7 @@ static int wait_for_idle(void)
     return -1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -89,10 +86,9 @@ int main(void)
 
     uint32_t after_bad = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-    printf("  first=0x%08x second=0x%08x after=0x%08x\n",
-           first.w, second.w, after_bad);
-    printf("  STATUS=0x%08x alert_recov_ctrl_update_err=%u alert_fatal_fault=%u\n",
-           status.w, status.f.ALERT_RECOV_CTRL_UPDATE_ERR, status.f.ALERT_FATAL_FAULT);
+    printf("  first=0x%08x second=0x%08x after=0x%08x\n", first.w, second.w, after_bad);
+    printf("  STATUS=0x%08x alert_recov_ctrl_update_err=%u alert_fatal_fault=%u\n", status.w,
+           status.f.ALERT_RECOV_CTRL_UPDATE_ERR, status.f.ALERT_FATAL_FAULT);
 
     if (after_bad == second.w) {
         printf("  FAIL: mismatched second shadow write committed\n");

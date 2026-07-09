@@ -24,16 +24,15 @@
 #include "test_completion.h"
 
 /* WDOG_CTRL bit 0 = enable, bit 1 = pause_in_sleep */
-#define WDOG_CTRL_ENABLE        0x1
-#define WDOG_CTRL_PAUSE_SLEEP   0x3   /* enable=1, pause_in_sleep=1 */
+#define WDOG_CTRL_ENABLE 0x1
+#define WDOG_CTRL_PAUSE_SLEEP 0x3 /* enable=1, pause_in_sleep=1 */
 
 static void wdt_disable(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_003: WDT Pause in Sleep Test\n");
@@ -78,7 +77,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
 
     /* Spin for a while to let the AON counter advance */
-    for (volatile int i = 0; i < 50000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 50000; i++) {
+        __asm__ volatile("nop");
+    }
 
     uint32_t count1 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (pause_in_sleep=1, sleep=0) = 0x%08x\n", count1);
@@ -97,7 +98,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
 
-    for (volatile int i = 0; i < 50000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 50000; i++) {
+        __asm__ volatile("nop");
+    }
 
     uint32_t count2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (pause_in_sleep=0) = 0x%08x\n", count2);
@@ -116,7 +119,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* WDT is disabled from wdt_disable() above */
 
-    for (volatile int i = 0; i < 50000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 50000; i++) {
+        __asm__ volatile("nop");
+    }
 
     uint32_t count3 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (disabled) = 0x%08x\n", count3);
@@ -138,5 +143,7 @@ int main(void)
     }
     printf("=====================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

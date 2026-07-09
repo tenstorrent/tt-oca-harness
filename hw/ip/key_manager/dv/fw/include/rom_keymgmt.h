@@ -82,7 +82,7 @@ int rom_revoke_key(uint8_t handle);
  * @return 0 on success, -1 on invalid args or slot-fit failure,
  *         -2 on handle exhaustion, -3 on KPV write failure.
  */
-int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid,
-                 const uint32_t *key_data, uint8_t *handle);
+int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, const uint32_t *key_data,
+                 uint8_t *handle);
 
 #endif /* ROM_KEYMGMT_H */

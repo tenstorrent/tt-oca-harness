@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "och_sep_common.h"
-#include "sep.h"   // generated register address/mask/default defines
+#include "sep.h" // generated register address/mask/default defines
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "nmi.h"
@@ -31,14 +31,13 @@ void reset_ctrl_nmi_handler(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), prev + 1);
 
     uint32_t mdseac;
-    __asm__ volatile ("csrr %0, 0xFC0" : "=r"(mdseac));
+    __asm__ volatile("csrr %0, 0xFC0" : "=r"(mdseac));
     printf("NMI: mdseac = 0x%08x\n", mdseac);
 
-    __asm__ volatile ("csrw 0xBC0, zero");
+    __asm__ volatile("csrw 0xBC0, zero");
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("SEP Reset Controller CSR Sanity Test\n");
@@ -84,44 +83,48 @@ int main(void)
      */
     struct {
         const char *name;
-        uint32_t    bit_mask;
-        uint32_t    probe_addr;
-        uint32_t    write_val;          // value to write to the probe
-        uint32_t    expect_after_rst;   // probe value expected after reset pulse
+        uint32_t bit_mask;
+        uint32_t probe_addr;
+        uint32_t write_val;        // value to write to the probe
+        uint32_t expect_after_rst; // probe value expected after reset pulse
     } reset_bits[] = {
-        { "otbn", (1u << 1), OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR,    0x00000001, OTBN__INTR_ENABLE__DONE_reset     },
-        { "aes",  (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000, AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset  },
-        { "hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR,    0x00000007, HMAC__INTR_ENABLE__HMAC_DONE_reset     },
-        { "kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR,    0x00000007, KMAC__INTR_ENABLE__KMAC_DONE_reset     },
+        {"otbn", (1u << 1), OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x00000001,
+         OTBN__INTR_ENABLE__DONE_reset},
+        {"aes", (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
+         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
+        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         HMAC__INTR_ENABLE__HMAC_DONE_reset},
+        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         KMAC__INTR_ENABLE__KMAC_DONE_reset},
     };
 
     for (size_t i = 0; i < sizeof(reset_bits) / sizeof(reset_bits[0]); i++) {
-        const char *name             = reset_bits[i].name;
-        uint32_t    bit_mask         = reset_bits[i].bit_mask;
-        uint32_t    probe_addr       = reset_bits[i].probe_addr;
-        uint32_t    write_val        = reset_bits[i].write_val;
-        uint32_t    expect_after_rst = reset_bits[i].expect_after_rst;
-        uint32_t    asserted         = 0x1eu & ~bit_mask;
+        const char *name = reset_bits[i].name;
+        uint32_t bit_mask = reset_bits[i].bit_mask;
+        uint32_t probe_addr = reset_bits[i].probe_addr;
+        uint32_t write_val = reset_bits[i].write_val;
+        uint32_t expect_after_rst = reset_bits[i].expect_after_rst;
+        uint32_t asserted = 0x1eu & ~bit_mask;
 
-        printf("Step 2.%u: %s - writing 0x%08x to 0x%08x...\n",
-               (unsigned)i, name, write_val, probe_addr);
+        printf("Step 2.%u: %s - writing 0x%08x to 0x%08x...\n", (unsigned)i, name, write_val,
+               probe_addr);
         WRITE_REG(probe_addr, write_val);
         uint32_t rd_written = READ_REG(probe_addr);
         if (rd_written != write_val) {
-            printf("ERROR: %s probe readback - got 0x%08x, expected 0x%08x\n",
-                   name, rd_written, write_val);
+            printf("ERROR: %s probe readback - got 0x%08x, expected 0x%08x\n", name, rd_written,
+                   write_val);
             test_fail(1);
         }
 
-        printf("Step 2.%u: %s - pulsing reset (SW_RESET_N <- 0x%08x then 0x%08x)...\n",
-               (unsigned)i, name, asserted, 0x1eu);
+        printf("Step 2.%u: %s - pulsing reset (SW_RESET_N <- 0x%08x then 0x%08x)...\n", (unsigned)i,
+               name, asserted, 0x1eu);
         WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, asserted);
         WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, 0x1eu);
 
         uint32_t rd_after = READ_REG(probe_addr);
         if (rd_after != expect_after_rst) {
-            printf("ERROR: %s probe did not reset - got 0x%08x, expected 0x%08x\n",
-                   name, rd_after, expect_after_rst);
+            printf("ERROR: %s probe did not reset - got 0x%08x, expected 0x%08x\n", name, rd_after,
+                   expect_after_rst);
             test_fail(1);
         }
 
@@ -134,8 +137,7 @@ int main(void)
     uint32_t sw_reset_n_restored = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("Final SW_RESET_N value: 0x%08x\n", sw_reset_n_restored);
     if (sw_reset_n_restored != 0x1eu) {
-        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n",
-               0x1eu);
+        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", 0x1eu);
         test_fail(1);
     }
 

@@ -42,57 +42,54 @@
 #include "key_manager_addr.h"
 
 /* DRBG Sampler registers */
-#define DRBG_DATA_REG    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
-#define DRBG_CFG_REG     (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
-#define DRBG_STATUS_REG  (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+#define DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 
 /* KMCSR IRQ regs: KMCSR_IRQ_STATUS_REG / KMCSR_IRQ_ENABLE_REG from irq_common.h */
 
 /* Settle cycles for hwset -> STATUS sticky bit -> IRQ propagation through km_csr */
-#define SETTLE_CYCLES  64u
+#define SETTLE_CYCLES 64u
 
 /* Number of reads to attempt when waiting for the DRBG to consume the glitch beat
  * in the active-read subtest (the glitch stops the TB; the read will stall until
  * the FSM detects the violation and returns SLVERR). */
 #define ACTIVE_READ_STALL_READS 8u
 
-static void clear_stream_err(void)
-{
+static void clear_stream_err(void) {
     km_drbg_sampler__status_reg_t w1c = {0};
     w1c.f.stream_err = 1;
     DRBG_STATUS_REG.w = w1c.w;
 }
 
-static void clear_count_bad(void)
-{
+static void clear_count_bad(void) {
     km_drbg_sampler__status_reg_t w = {0};
     w.f.count_bad = 1u;
     DRBG_STATUS_REG.w = w.w;
 }
 
-static void clear_kmcsr_drbg_err(void)
-{
+static void clear_kmcsr_drbg_err(void) {
     km_csr__irq_status_reg_t w1c = {0};
     w1c.f.drbg_err = 1;
     rom_kmcsr_irq_status_clear(w1c.w);
 }
 
-static void enable_drbg_irq(void)
-{
+static void enable_drbg_irq(void) {
     km_csr__irq_enable_reg_t en = {.w = rom_kmcsr_irq_enable_read()};
     en.f.drbg_err_en = 1;
     rom_kmcsr_irq_enable_write(en.w);
 }
 
-static void disable_drbg_irq(void)
-{
+static void disable_drbg_irq(void) {
     km_csr__irq_enable_reg_t en = {.w = rom_kmcsr_irq_enable_read()};
     en.f.drbg_err_en = 0;
     rom_kmcsr_irq_enable_write(en.w);
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     /* 30000 cycles: boot takes ~10000 cycles before firmware runs; glitch is near-instant */

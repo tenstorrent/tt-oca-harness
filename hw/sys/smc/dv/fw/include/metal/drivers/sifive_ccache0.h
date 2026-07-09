@@ -55,8 +55,7 @@ int sifive_ccache0_set_enabled_ways(uint32_t ways);
  * @param bitindex Bit index to be corrupted on next cache operation.
  * @param type ECC error target location.
  * @return None.*/
-void sifive_ccache0_inject_ecc_error(uint32_t bitindex,
-                                     sifive_ccache0_ecc_errtype_t type);
+void sifive_ccache0_inject_ecc_error(uint32_t bitindex, sifive_ccache0_ecc_errtype_t type);
 
 /*! @brief Flush out entire cache block containing given address.
  * @param flush_addr Address for the cache block to be flushed.

@@ -28,21 +28,21 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define OTBN_STATUS_IDLE          0x00u
-#define OTBN_STATUS_BUSY_EXECUTE  0x01u
+#define OTBN_STATUS_IDLE 0x00u
+#define OTBN_STATUS_BUSY_EXECUTE 0x01u
 
-#define OTBN_CMD_EXECUTE          0xD8u
+#define OTBN_CMD_EXECUTE 0xD8u
 
-#define OTBN_DONE_INTR_BIT        0u
+#define OTBN_DONE_INTR_BIT 0u
 
-#define OTBN_IDLE_TIMEOUT         20000
-#define OTBN_DONE_TIMEOUT         20000
+#define OTBN_IDLE_TIMEOUT 20000
+#define OTBN_DONE_TIMEOUT 20000
 
-#define EXPECTED_OUTER_INC        10u
-#define EXPECTED_INNER_COUNT      3u
-#define EXPECTED_INNER_INC        1u
-#define EXPECTED_RESULT           52u
-#define EXPECTED_INSN_CNT         39u
+#define EXPECTED_OUTER_INC 10u
+#define EXPECTED_INNER_COUNT 3u
+#define EXPECTED_INNER_INC 1u
+#define EXPECTED_RESULT 52u
+#define EXPECTED_INSN_CNT 39u
 
 static inline uint32_t otbn_dmem_read_offset(uint32_t offset) {
     return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u);
@@ -83,14 +83,14 @@ static int otbn_wait_for_idle(void) {
 }
 
 static int otbn_wait_for_done(void) {
-    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n", OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    printf("[DBG] wait_for_done: reading INTR_STATE @ 0x%08x\n",
+           OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
     for (int timeout = OTBN_DONE_TIMEOUT; timeout > 0; --timeout) {
         uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
         if (timeout == OTBN_DONE_TIMEOUT) {
             printf("[DBG] wait_for_done: first INTR_STATE=0x%08x\n", intr_state);
         } else if ((timeout % 2000) == 0) {
-            printf("[DBG] wait_for_done: INTR_STATE=0x%08x remaining=%d\n",
-                   intr_state, timeout);
+            printf("[DBG] wait_for_done: INTR_STATE=0x%08x remaining=%d\n", intr_state, timeout);
         }
 
         if ((intr_state & (1u << OTBN_DONE_INTR_BIT)) != 0u) {
@@ -113,8 +113,8 @@ static void otbn_clear_w1c_regs(void) {
 }
 
 static int otbn_load_app(void) {
-    printf("[DBG] Loading OTBN app: imem_words=%zu dmem_words=%zu\n",
-           otbn_otbn_smoke_imem_words, otbn_otbn_smoke_dmem_words);
+    printf("[DBG] Loading OTBN app: imem_words=%zu dmem_words=%zu\n", otbn_otbn_smoke_imem_words,
+           otbn_otbn_smoke_dmem_words);
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_smoke_imem_words; ++i) {
@@ -153,8 +153,8 @@ int main(void) {
     printf("******************************************\n");
     printf("*    OTBN Basic Execution Smoke Test     *\n");
     printf("******************************************\n\n");
-    printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n",
-           OCH_SEP_TOP_OTBN_BASE_ADDR, OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
+    printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
+           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
 
     printf("[STEP 1/7] Waiting for OTBN IDLE (secure wipe)...\n");
     if (otbn_wait_for_idle() != 0) {
@@ -185,8 +185,7 @@ int main(void) {
 
     const uint32_t status_after_cmd = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
     printf("[STEP 6/7] STATUS after EXECUTE = 0x%08x\n", status_after_cmd);
-    if ((status_after_cmd != OTBN_STATUS_BUSY_EXECUTE) &&
-        (status_after_cmd != OTBN_STATUS_IDLE)) {
+    if ((status_after_cmd != OTBN_STATUS_BUSY_EXECUTE) && (status_after_cmd != OTBN_STATUS_IDLE)) {
         printf("ERROR: unexpected STATUS after EXECUTE: 0x%08x\n", status_after_cmd);
         fail_and_halt(4, "Unexpected STATUS after EXECUTE");
     }
@@ -205,8 +204,8 @@ int main(void) {
     const uint32_t insn_cnt = READ_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR);
 
     printf("\n========================================\n");
-    printf("Smoke result: err_bits=0x%08x insn_cnt=%u (expected=%u)\n",
-           err_bits, insn_cnt, EXPECTED_INSN_CNT);
+    printf("Smoke result: err_bits=0x%08x insn_cnt=%u (expected=%u)\n", err_bits, insn_cnt,
+           EXPECTED_INSN_CNT);
     printf("========================================\n");
 
     if (err_bits != 0u) {
@@ -215,8 +214,8 @@ int main(void) {
     }
 
     if (insn_cnt != EXPECTED_INSN_CNT) {
-        printf("ERROR: OTBN INSN_CNT mismatch, expected=%u actual=%u\n",
-               EXPECTED_INSN_CNT, insn_cnt);
+        printf("ERROR: OTBN INSN_CNT mismatch, expected=%u actual=%u\n", EXPECTED_INSN_CNT,
+               insn_cnt);
         fail_and_halt(8, "OTBN INSN_CNT mismatch");
     }
 

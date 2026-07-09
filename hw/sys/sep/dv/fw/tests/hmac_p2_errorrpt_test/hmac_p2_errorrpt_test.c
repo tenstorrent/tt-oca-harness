@@ -23,16 +23,13 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-static int wait_for_idle(void)
-{
+static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
@@ -45,8 +42,7 @@ static int wait_for_idle(void)
     return -1;
 }
 
-static int wait_for_hmac_done(void)
-{
+static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -69,8 +65,7 @@ static int wait_for_hmac_done(void)
     return 0;
 }
 
-static int recover_hmac_state(void)
-{
+static int recover_hmac_state(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
     cfg.f.hmac_en = 0;
@@ -104,13 +99,13 @@ static int recover_hmac_state(void)
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 
     printf("  Recovery: ERR_CODE=0x%08x STATUS=0x%08x\n",
-           READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR), READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR));
+           READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR),
+           READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR));
 
     return wait_for_idle();
 }
 
-static int expect_hmac_error(const char *name, uint32_t expected_err)
-{
+static int expect_hmac_error(const char *name, uint32_t expected_err) {
     uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
 
@@ -128,8 +123,7 @@ static int expect_hmac_error(const char *name, uint32_t expected_err)
     return pass ? 0 : -1;
 }
 
-static int test_push_when_sha_disabled(void)
-{
+static int test_push_when_sha_disabled(void) {
     printf("\nStep 1: MSG_FIFO push while sha_en=0\n");
 
     hmac__CFG_t cfg = {.w = 0};
@@ -146,8 +140,7 @@ static int test_push_when_sha_disabled(void)
     return recover_hmac_state();
 }
 
-static int test_hash_start_when_busy(void)
-{
+static int test_hash_start_when_busy(void) {
     printf("\nStep 2: hash_start while engine is active\n");
 
     hmac__CFG_t cfg = {.w = 0};
@@ -167,8 +160,7 @@ static int test_hash_start_when_busy(void)
     return recover_hmac_state();
 }
 
-static int test_fifo_saturation_and_reset_recovery(void)
-{
+static int test_fifo_saturation_and_reset_recovery(void) {
     printf("\nStep 3: Fill MSG_FIFO to fifo_full and recover by process/drain\n");
 
     hmac__CFG_t cfg = {.w = 0};
@@ -205,8 +197,8 @@ static int test_fifo_saturation_and_reset_recovery(void)
         max_depth = final_status.f.fifo_depth;
     }
 
-    printf("  words_written=%u fifo_full=%u fifo_depth=%u max_depth=%u\n",
-           words_written, final_status.f.fifo_full, final_status.f.fifo_depth, max_depth);
+    printf("  words_written=%u fifo_full=%u fifo_depth=%u max_depth=%u\n", words_written,
+           final_status.f.fifo_full, final_status.f.fifo_depth, max_depth);
 
     if (!full_seen && !final_status.f.fifo_full) {
         printf("  INFO: fifo_full not observed; SHA engine drained FIFO while FW streamed data\n");
@@ -242,8 +234,7 @@ static int test_fifo_saturation_and_reset_recovery(void)
     return pass ? 0 : -1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");

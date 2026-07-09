@@ -33,21 +33,17 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -79,8 +75,8 @@ int main(void)
     /* Step 1: Verify TXWM when TX FIFO empty (TXQD=0 < SPI_TX_WATERMARK=4) */
     printf("\nStep 1: TXWM with empty FIFO (expect TXWM=1)\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u, TXEMPTY=%u\n",
-           status.w, status.f.TXWM, status.f.TXQD, status.f.TXEMPTY);
+    printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u, TXEMPTY=%u\n", status.w, status.f.TXWM,
+           status.f.TXQD, status.f.TXEMPTY);
     if (status.f.TXWM != 1) {
         printf("  FAIL: TXWM should be 1 when TXQD < SPI_TX_WATERMARK\n");
         pass = 0;
@@ -95,8 +91,7 @@ int main(void)
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xA0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u\n",
-           status.w, status.f.TXWM, status.f.TXQD);
+    printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u\n", status.w, status.f.TXWM, status.f.TXQD);
     if (status.f.TXWM != 0) {
         printf("  INFO: TXWM still 1 (TXQD may not exceed watermark yet)\n");
     } else {
@@ -110,11 +105,12 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     volatile int delay;
-    for (delay = 0; delay < 5000; delay++) {}
+    for (delay = 0; delay < 5000; delay++) {
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After SW_RST: TXWM=%u, TXQD=%u, TXEMPTY=%u\n",
-           status.f.TXWM, status.f.TXQD, status.f.TXEMPTY);
+    printf("  After SW_RST: TXWM=%u, TXQD=%u, TXEMPTY=%u\n", status.f.TXWM, status.f.TXQD,
+           status.f.TXEMPTY);
 
     /* Step 4: Verify RX watermark field */
     printf("\nStep 4: SPI_RX_WATERMARK configuration\n");
@@ -123,8 +119,8 @@ int main(void)
 
     /* Re-read STATUS for RXWM (empty RX FIFO, RXQD=0 < SPI_RX_WATERMARK=1) */
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  RXWM=%u, RXQD=%u, RXEMPTY=%u (RXWM=0 expected: RXQD < threshold)\n",
-           status.f.RXWM, status.f.RXQD, status.f.RXEMPTY);
+    printf("  RXWM=%u, RXQD=%u, RXEMPTY=%u (RXWM=0 expected: RXQD < threshold)\n", status.f.RXWM,
+           status.f.RXQD, status.f.RXEMPTY);
 
     /* Step 5: DMA HANDSHAKE_INTR_ENABLE register */
     printf("\nStep 5: DMA HANDSHAKE_INTR_ENABLE register access\n");
@@ -153,9 +149,11 @@ int main(void)
 
     /* Step 7: DMA INTR_SRC_ADDR_0 register (configure source address for handshake) */
     printf("\nStep 7: DMA INTR_SRC_ADDR_0 register\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR,
+              OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR);
-    if (!check_reg("INTR_SRC_ADDR_0", read_val, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR)) pass = 0;
+    if (!check_reg("INTR_SRC_ADDR_0", read_val, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR))
+        pass = 0;
 
     /* Step 8: EVENT_ENABLE for DMA trigger path */
     printf("\nStep 8: SPI EVENT_ENABLE for DMA trigger events\n");
@@ -181,6 +179,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

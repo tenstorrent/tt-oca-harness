@@ -20,47 +20,53 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-#define SYNC_CPU_READY_REG    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)  /* EL2 -> UVM : ready  */
-#define SYNC_UVM_DONE_REG     OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)  /* UVM -> EL2 : done   */
-#define SYNC_CPU_COUNT_REG    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)  /* host loop count     */
+#define SYNC_CPU_READY_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) /* EL2 -> UVM : ready  */
+#define SYNC_UVM_DONE_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) /* UVM -> EL2 : done   */
+#define SYNC_CPU_COUNT_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2) /* host loop count     */
 /* Measured-evidence summary (read + checked directly by the UVM): */
-#define SYNC_BAD_UID_REG      OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(3)  /* CHIPLET_UID corrupt count */
-#define SYNC_MMR_CHANGES_REG  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)  /* KM counter changes seen   */
-#define SYNC_MMR_BACK_REG     OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)  /* KM counter went backward  */
-#define SYNC_MMR_BADTAG_REG   OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)  /* tag/attribution failures  */
+#define SYNC_BAD_UID_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(3) /* CHIPLET_UID corrupt count */
+#define SYNC_MMR_CHANGES_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4) /* KM counter changes seen   */
+#define SYNC_MMR_BACK_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5) /* KM counter went backward  */
+#define SYNC_MMR_BADTAG_REG \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6) /* tag/attribution failures  */
 
 /* KM-owned MMR pattern (must match test_efuse_km_coexist.c). */
-#define MMR0_ADDR        OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
-#define MMR1_ADDR        OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
-#define KM_TAG0          0xA5000000u
-#define KM_TAG1          0x5A000000u
-#define KM_TAG_MASK      0xFF000000u
-#define KM_PAYLOAD_MASK  0x00FFFFFFu
+#define MMR0_ADDR OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
+#define MMR1_ADDR OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
+#define KM_TAG0 0xA5000000u
+#define KM_TAG1 0x5A000000u
+#define KM_TAG_MASK 0xFF000000u
+#define KM_PAYLOAD_MASK 0x00FFFFFFu
 
-#define CPU_READY_MARKER    0xE9050001u
-#define UVM_DONE_MARKER     0xE90500D0u
+#define CPU_READY_MARKER 0xE9050001u
+#define UVM_DONE_MARKER 0xE90500D0u
 
 /* Mailbox handshake tokens (must match test_efuse_km_coexist.c). */
-#define KM_READY_TOKEN      0xA11FE5EEu   /* KM -> EL2 : KM up and ready  */
-#define EL2_GO_TOKEN        0x60600060u   /* EL2 -> KM : start write loop */
+#define KM_READY_TOKEN 0xA11FE5EEu /* KM -> EL2 : KM up and ready  */
+#define EL2_GO_TOKEN 0x60600060u   /* EL2 -> KM : start write loop */
 
 /* SEP Reset Controller: release the KM CPU from warm/software reset. */
-#define SW_RESET_N_ADDR     OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
-#define SW_RESET_N_KM_MASK  0x1u   /* bit0 = km_sw_rst_n */
+#define SW_RESET_N_ADDR OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
+#define SW_RESET_N_KM_MASK 0x1u /* bit0 = km_sw_rst_n */
 
-#define KNOWN_UID           0xDEADBEEFu   /* CHIPLET_UID word0 (default_efuse preload) */
+#define KNOWN_UID 0xDEADBEEFu /* CHIPLET_UID word0 (default_efuse preload) */
 
 #define MIN_CPU_EFUSE_LOOPS 256u
 #define MAX_CPU_EFUSE_LOOPS 200000u
-#define MBOX_WAIT_LIMIT     500000u
+#define MBOX_WAIT_LIMIT 500000u
 
 /* Receive one word from the KM (outbound FIFO), bounded. */
-static int km_mbox_get(uint32_t *word)
-{
+static int km_mbox_get(uint32_t *word) {
     uint32_t guard = MBOX_WAIT_LIMIT;
     while (guard != 0u) {
-        if ((READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR)
-             & KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm) == 0u) {
+        if ((READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR) &
+             KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm) == 0u) {
             *word = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
             return 0;
         }
@@ -70,22 +76,20 @@ static int km_mbox_get(uint32_t *word)
 }
 
 /* Send one word to the KM (inbound FIFO), separator-terminated. */
-static void km_mbox_send(uint32_t word)
-{
+static void km_mbox_send(uint32_t word) {
     WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
     WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, word);
 }
 
-int main(void)
-{
-    uint32_t loop_count   = 0u;
-    uint32_t km_ready     = 0u;
-    uint32_t bad_uid      = 0u;   /* host MAP read corrupted under contention   */
-    uint32_t mmr_changes  = 0u;   /* KM counter advanced (KM reached the mux)   */
-    uint32_t mmr_backward = 0u;   /* KM counter went backward (torn/stale)      */
-    uint32_t mmr_bad_tag  = 0u;   /* wrong owner tag or m1<m0 (cross-attribution)*/
-    uint32_t last_p0      = 0u;
-    uint32_t started      = 0u;   /* set once both KM owner tags are first seen */
+int main(void) {
+    uint32_t loop_count = 0u;
+    uint32_t km_ready = 0u;
+    uint32_t bad_uid = 0u;      /* host MAP read corrupted under contention   */
+    uint32_t mmr_changes = 0u;  /* KM counter advanced (KM reached the mux)   */
+    uint32_t mmr_backward = 0u; /* KM counter went backward (torn/stale)      */
+    uint32_t mmr_bad_tag = 0u;  /* wrong owner tag or m1<m0 (cross-attribution)*/
+    uint32_t last_p0 = 0u;
+    uint32_t started = 0u; /* set once both KM owner tags are first seen */
 
     sep_outbound_filter_init();
     printf("SEP eFuse KM/EL2 mux coexistence FW test\n");
@@ -138,20 +142,20 @@ int main(void)
                 last_p0 = p0;
             }
         } else {
-            if ((m0 & KM_TAG_MASK) != KM_TAG0) mmr_bad_tag++;  /* MMR0 must carry tag A5 */
-            if ((m1 & KM_TAG_MASK) != KM_TAG1) mmr_bad_tag++;  /* MMR1 must carry tag 5A */
-            if (p1 < p0)                       mmr_bad_tag++;  /* MMR1 leads -> p1>=p0   */
+            if ((m0 & KM_TAG_MASK) != KM_TAG0) mmr_bad_tag++; /* MMR0 must carry tag A5 */
+            if ((m1 & KM_TAG_MASK) != KM_TAG1) mmr_bad_tag++; /* MMR1 must carry tag 5A */
+            if (p1 < p0) mmr_bad_tag++;                       /* MMR1 leads -> p1>=p0   */
             if (p0 != last_p0) mmr_changes++;
-            if (p0 <  last_p0) mmr_backward++;  /* KM only increments (no wrap in-window) */
+            if (p0 < last_p0) mmr_backward++; /* KM only increments (no wrap in-window) */
             last_p0 = p0;
         }
 
         loop_count++;
-        WRITE_REG(SYNC_CPU_COUNT_REG,   loop_count);
-        WRITE_REG(SYNC_BAD_UID_REG,     bad_uid);
+        WRITE_REG(SYNC_CPU_COUNT_REG, loop_count);
+        WRITE_REG(SYNC_BAD_UID_REG, bad_uid);
         WRITE_REG(SYNC_MMR_CHANGES_REG, mmr_changes);
-        WRITE_REG(SYNC_MMR_BACK_REG,    mmr_backward);
-        WRITE_REG(SYNC_MMR_BADTAG_REG,  mmr_bad_tag);
+        WRITE_REG(SYNC_MMR_BACK_REG, mmr_backward);
+        WRITE_REG(SYNC_MMR_BADTAG_REG, mmr_bad_tag);
 
         if ((READ_REG(SYNC_UVM_DONE_REG) == UVM_DONE_MARKER) &&
             (loop_count >= MIN_CPU_EFUSE_LOOPS)) {

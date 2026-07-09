@@ -56,10 +56,7 @@ struct metal_pmp_config {
     int _pad : 2;
 
     /*! @brief Sets whether the PMP region is locked */
-    enum metal_pmp_locked {
-        METAL_PMP_UNLOCKED = 0,
-        METAL_PMP_LOCKED = 1
-    } L : 1;
+    enum metal_pmp_locked { METAL_PMP_UNLOCKED = 0, METAL_PMP_LOCKED = 1 } L : 1;
 };
 
 /*!
@@ -103,8 +100,8 @@ void metal_pmp_init(struct metal_pmp *pmp);
  * @param address The desired address of the PMP region
  * @return 0 upon success
  */
-int metal_pmp_set_region(struct metal_pmp *pmp, unsigned int region,
-                         struct metal_pmp_config config, size_t address);
+int metal_pmp_set_region(struct metal_pmp *pmp, unsigned int region, struct metal_pmp_config config,
+                         size_t address);
 
 /*!
  * @brief Get the configuration for a PMP region
@@ -132,8 +129,7 @@ int metal_pmp_lock(struct metal_pmp *pmp, unsigned int region);
  * @param address The desired address of the PMP region
  * @return 0 if the address is successfully set
  */
-int metal_pmp_set_address(struct metal_pmp *pmp, unsigned int region,
-                          size_t address);
+int metal_pmp_set_address(struct metal_pmp *pmp, unsigned int region, size_t address);
 
 /*!
  * @brief Get the address of a PMP region
@@ -159,8 +155,7 @@ int metal_pmp_set_address_mode(struct metal_pmp *pmp, unsigned int region,
  * @param region The PMP region to read
  * @return The address mode of the PMP region
  */
-enum metal_pmp_address_mode metal_pmp_get_address_mode(struct metal_pmp *pmp,
-                                                       unsigned int region);
+enum metal_pmp_address_mode metal_pmp_get_address_mode(struct metal_pmp *pmp, unsigned int region);
 
 /*!
  * @brief Set the executable bit for a PMP region

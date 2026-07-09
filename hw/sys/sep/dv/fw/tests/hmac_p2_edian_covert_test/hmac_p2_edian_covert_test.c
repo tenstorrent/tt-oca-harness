@@ -24,16 +24,12 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-static inline uint32_t bswap32(uint32_t x)
-{
-    return ((x & 0x000000ffu) << 24) |
-           ((x & 0x0000ff00u) << 8)  |
-           ((x & 0x00ff0000u) >> 8)  |
+static inline uint32_t bswap32(uint32_t x) {
+    return ((x & 0x000000ffu) << 24) | ((x & 0x0000ff00u) << 8) | ((x & 0x00ff0000u) >> 8) |
            ((x & 0xff000000u) >> 24);
 }
 
-static int wait_for_hmac_done(void)
-{
+static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -47,15 +43,13 @@ static int wait_for_hmac_done(void)
     return -1;
 }
 
-static void clear_hmac_done(void)
-{
+static void clear_hmac_done(void) {
     hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.hmac_done = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 }
 
-static void cleanup_hmac(void)
-{
+static void cleanup_hmac(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -64,8 +58,7 @@ static void cleanup_hmac(void)
     clear_hmac_done();
 }
 
-static int feed_msg_words(const uint32_t *words, uint32_t count)
-{
+static int feed_msg_words(const uint32_t *words, uint32_t count) {
     volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
 
     for (uint32_t i = 0; i < count; i++) {
@@ -84,8 +77,7 @@ static int feed_msg_words(const uint32_t *words, uint32_t count)
     return 0;
 }
 
-static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_out[8])
-{
+static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_out[8]) {
     clear_hmac_done();
 
     hmac__INTR_ENABLE_t intr_en = {.w = 0};
@@ -115,8 +107,7 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
 
     uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     if (msg_len != sizeof(msg_words) * 8u) {
-        printf("  FAIL: MSG_LENGTH=%u expected=%u\n", msg_len,
-               (unsigned)(sizeof(msg_words) * 8u));
+        printf("  FAIL: MSG_LENGTH=%u expected=%u\n", msg_len, (unsigned)(sizeof(msg_words) * 8u));
         return -1;
     }
 
@@ -134,8 +125,7 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
     return 0;
 }
 
-static void print_digest(const char *label, const uint32_t digest[8])
-{
+static void print_digest(const char *label, const uint32_t digest[8]) {
     printf("  %s:", label);
     for (int i = 0; i < 8; i++) {
         printf(" 0x%08x", digest[i]);
@@ -143,8 +133,7 @@ static void print_digest(const char *label, const uint32_t digest[8])
     printf("\n");
 }
 
-static int digest_equal(const uint32_t a[8], const uint32_t b[8])
-{
+static int digest_equal(const uint32_t a[8], const uint32_t b[8]) {
     for (int i = 0; i < 8; i++) {
         if (a[i] != b[i]) {
             return 0;
@@ -153,20 +142,18 @@ static int digest_equal(const uint32_t a[8], const uint32_t b[8])
     return 1;
 }
 
-static int digest_is_bswap_of(const uint32_t swapped[8], const uint32_t raw[8])
-{
+static int digest_is_bswap_of(const uint32_t swapped[8], const uint32_t raw[8]) {
     for (int i = 0; i < 8; i++) {
         if (swapped[i] != bswap32(raw[i])) {
-            printf("  Word %d mismatch: got=0x%08x expected_bswap=0x%08x raw=0x%08x\n",
-                   i, swapped[i], bswap32(raw[i]), raw[i]);
+            printf("  Word %d mismatch: got=0x%08x expected_bswap=0x%08x raw=0x%08x\n", i,
+                   swapped[i], bswap32(raw[i]), raw[i]);
             return 0;
         }
     }
     return 1;
 }
 
-static int check_key_swap_cfg_bit(void)
-{
+static int check_key_swap_cfg_bit(void) {
     printf("\nStep 5: key_swap CFG bit readback (deprecated path)\n");
 
     hmac__CFG_t cfg = {.w = 0};
@@ -190,8 +177,7 @@ static int check_key_swap_cfg_bit(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");

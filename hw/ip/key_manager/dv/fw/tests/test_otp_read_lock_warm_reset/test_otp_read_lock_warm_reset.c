@@ -40,11 +40,10 @@
 /* SRAM word used as phase marker.  Must be below BSS_START so crt0.s does not
  * clear it when it re-executes after the warm reset (crt0 only clears .bss).
  * Mirrors the convention in test_warm_reset.c (+0x2C00). */
-#define MARKER_ADDR   (SRAM_BASE + 0x2C00u)
+#define MARKER_ADDR (SRAM_BASE + 0x2C00u)
 #define MARKER_PHASE1 0xA5000001u
 
-int main(void)
-{
+int main(void) {
     uint32_t buf[ROM_KM_OTP_WORDS];
     int rc;
 
@@ -99,7 +98,7 @@ int main(void)
         /* 3. Advance phase marker before resetting */
         TEST_SUBTEST_START("Phase 0: warm reset via external warm_rst_n");
         *marker = MARKER_PHASE1;
-        __asm__ volatile ("fence" ::: "memory");
+        __asm__ volatile("fence" ::: "memory");
 
         /* 4. Request warm reset; CPU restarts and runs Phase 1 */
         if (!tb_km_warm_reset(30000u)) {

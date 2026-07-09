@@ -26,88 +26,83 @@
 #include "key_manager_addr.h"
 
 /* Register access macros using struct types */
-#define MBOX_READ_DATA_REG       (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
-#define MBOX_STATUS_REG          (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
-#define MBOX_IRQ_STATUS_REG      (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
-#define MBOX_IRQ_ENABLE_REG      (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
-#define MBOX_CTRL_REG            (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
+#define MBOX_READ_DATA_REG \
+    (*(volatile km_mailbox_km__read_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR)
+#define MBOX_STATUS_REG \
+    (*(volatile km_mailbox_km__status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR)
+#define MBOX_IRQ_STATUS_REG \
+    (*(volatile km_mailbox_km__irq_status_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_STATUS_BASE_ADDR)
+#define MBOX_IRQ_ENABLE_REG \
+    (*(volatile km_mailbox_km__irq_enable_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR)
+#define MBOX_CTRL_REG \
+    (*(volatile km_mailbox_km__ctrl_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_CTRL_BASE_ADDR)
 
 /**
  * Read mailbox STATUS register.
  */
-static inline uint32_t mbox_read_status(void)
-{
+static inline uint32_t mbox_read_status(void) {
     return MBOX_STATUS_REG.w;
 }
 
 /**
  * Read mailbox IRQ_STATUS register.
  */
-static inline uint32_t mbox_read_irq_status(void)
-{
+static inline uint32_t mbox_read_irq_status(void) {
     return MBOX_IRQ_STATUS_REG.w;
 }
 
 /**
  * Write mailbox IRQ_STATUS register (for clearing sticky bits).
  */
-static inline void mbox_write_irq_status(uint32_t value)
-{
+static inline void mbox_write_irq_status(uint32_t value) {
     MBOX_IRQ_STATUS_REG.w = value;
 }
 
 /**
  * Write mailbox IRQ_ENABLE register.
  */
-static inline void mbox_write_irq_enable(uint32_t value)
-{
+static inline void mbox_write_irq_enable(uint32_t value) {
     MBOX_IRQ_ENABLE_REG.w = value;
 }
 
 /**
  * Read mailbox READ_DATA register (reads from inbound FIFO).
  */
-static inline uint32_t mbox_read_data(void)
-{
+static inline uint32_t mbox_read_data(void) {
     return MBOX_READ_DATA_REG.w;
 }
 
 /**
  * Read mailbox CTRL register.
  */
-static inline uint32_t mbox_read_ctrl(void)
-{
+static inline uint32_t mbox_read_ctrl(void) {
     return MBOX_CTRL_REG.w;
 }
 
 /**
  * Write mailbox CTRL register.
  */
-static inline void mbox_write_ctrl(uint32_t value)
-{
+static inline void mbox_write_ctrl(uint32_t value) {
     MBOX_CTRL_REG.w = value;
 }
 
 /**
  * Check if inbound FIFO is empty.
  */
-static inline int mbox_inbound_empty(void)
-{
+static inline int mbox_inbound_empty(void) {
     return MBOX_STATUS_REG.f.inbound_empty != 0;
 }
 
 /**
  * Clear underflow status bits (write-1-to-clear).
  */
-static inline void mbox_clear_underflow_status(void)
-{
+static inline void mbox_clear_underflow_status(void) {
     km_mailbox_km__status_reg_t clear_val = {0};
     clear_val.f.inbound_underflow = 1;
     MBOX_STATUS_REG.w = clear_val.w;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t status_val;
     uint32_t irq_status_val;
     uint32_t read_data;
@@ -132,12 +127,12 @@ int main(void)
         status_val = mbox_read_status();
         TEST_LOG("  Initial STATUS: 0x%08X", status_val);
         TEST_ASSERT_EQ(MBOX_STATUS_REG.f.inbound_underflow, 0,
-                      "STATUS.INBOUND_UNDERFLOW should be clear initially");
-        
+                       "STATUS.INBOUND_UNDERFLOW should be clear initially");
+
         irq_status_val = mbox_read_irq_status();
         TEST_LOG("  Initial IRQ_STATUS: 0x%08X", irq_status_val);
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_underflow, 0,
-                      "IRQ_STATUS.INBOUND_UNDERFLOW should be clear initially");
+                       "IRQ_STATUS.INBOUND_UNDERFLOW should be clear initially");
 
         /* Verify inbound FIFO is empty (KM reads from this) */
         TEST_ASSERT(mbox_inbound_empty(), "Inbound FIFO should be empty after reset");
@@ -158,13 +153,13 @@ int main(void)
         irq_status_val = mbox_read_irq_status();
         TEST_LOG("  MBOX IRQ_STATUS: 0x%08X", irq_status_val);
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.inbound_underflow,
-                   "IRQ_STATUS.INBOUND_UNDERFLOW should be set after underflow");
+                    "IRQ_STATUS.INBOUND_UNDERFLOW should be set after underflow");
 
         /* Check KM-side STATUS register for underflow status bit */
         status_val = mbox_read_status();
         TEST_LOG("  MBOX STATUS: 0x%08X", status_val);
         TEST_ASSERT(MBOX_STATUS_REG.f.inbound_underflow,
-                   "STATUS.INBOUND_UNDERFLOW should be set after underflow");
+                    "STATUS.INBOUND_UNDERFLOW should be set after underflow");
 
         /* Verify FIFO is still empty */
         TEST_ASSERT(mbox_inbound_empty(), "Inbound FIFO should still be empty after read");
@@ -174,7 +169,7 @@ int main(void)
         test_delay(5);
         status_val = mbox_read_status();
         TEST_ASSERT_EQ(MBOX_STATUS_REG.f.inbound_underflow, 0,
-                      "STATUS.INBOUND_UNDERFLOW should be clear after W1C");
+                       "STATUS.INBOUND_UNDERFLOW should be clear after W1C");
 
         /* Clear KM-side mailbox IRQ_STATUS underflow bit (write-1-to-clear) */
         {
@@ -185,7 +180,7 @@ int main(void)
         test_delay(5);
         irq_status_val = mbox_read_irq_status();
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.inbound_underflow, 0,
-                      "IRQ_STATUS.INBOUND_UNDERFLOW should be clear after W1C");
+                       "IRQ_STATUS.INBOUND_UNDERFLOW should be clear after W1C");
     }
     TEST_SUBTEST_PASS();
 
@@ -209,7 +204,7 @@ int main(void)
         ctrl_val = mbox_read_ctrl();
         TEST_LOG("  CTRL register (default): 0x%08X", ctrl_val);
         TEST_ASSERT_EQ(MBOX_CTRL_REG.f.inbound_underflow_resp, 0,
-                      "CTRL.INBOUND_UNDERFLOW_RESP should default to 0 (SLVERR)");
+                       "CTRL.INBOUND_UNDERFLOW_RESP should default to 0 (SLVERR)");
 
         /* KM-side read from empty inbound FIFO - default should be SLVERR */
         read_data = mbox_read_data();
@@ -219,7 +214,7 @@ int main(void)
         status_val = mbox_read_status();
         TEST_LOG("  STATUS register: 0x%08X", status_val);
         TEST_ASSERT(MBOX_STATUS_REG.f.inbound_underflow,
-                   "STATUS.INBOUND_UNDERFLOW should be set after underflow");
+                    "STATUS.INBOUND_UNDERFLOW should be set after underflow");
 
         /* Configure to return OKAY */
         mbox_clear_underflow_status();
@@ -232,7 +227,7 @@ int main(void)
         ctrl_val = mbox_read_ctrl();
         TEST_LOG("  CTRL register (OKAY configured): 0x%08X", ctrl_val);
         TEST_ASSERT(MBOX_CTRL_REG.f.inbound_underflow_resp,
-                   "CTRL.INBOUND_UNDERFLOW_RESP should be set");
+                    "CTRL.INBOUND_UNDERFLOW_RESP should be set");
 
         /* KM-side read with OKAY response */
         read_data = mbox_read_data();
@@ -241,7 +236,7 @@ int main(void)
         /* Verify underflow status bit is still set even with OKAY response */
         status_val = mbox_read_status();
         TEST_ASSERT(MBOX_STATUS_REG.f.inbound_underflow,
-                   "STATUS.INBOUND_UNDERFLOW should be set even with OKAY response");
+                    "STATUS.INBOUND_UNDERFLOW should be set even with OKAY response");
 
         /* Restore default (SLVERR) */
         mbox_write_ctrl(0);

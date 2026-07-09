@@ -21,9 +21,7 @@
 #include "sep_outbound_filter.h"
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -115,7 +113,9 @@ int main(void) {
     if (sha256_abc(digest1) != 0) {
         printf("FAIL: First SHA-256(abc) failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     printf("First digest words:");
     for (int i = 0; i < 8; i++) printf(" 0x%08x", digest1[i]);
@@ -157,7 +157,9 @@ int main(void) {
     if (sha256_abc(digest2) != 0) {
         printf("FAIL: Second SHA-256(abc) failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     uint8_t d2_bytes[32];
@@ -182,5 +184,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

@@ -19,9 +19,11 @@
 #include "key_manager_addr.h"
 
 /** @brief DRBG sampler status register (volatile, read-only). */
-#define ROM_DRBG_STATUS_REG (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define ROM_DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 /** @brief DRBG sampler data register (volatile, read-only). */
-#define ROM_DRBG_DATA_REG   (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define ROM_DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
 
 /**
  * @brief Read the DRBG status register.

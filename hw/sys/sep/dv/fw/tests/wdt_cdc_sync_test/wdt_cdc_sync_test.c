@@ -36,8 +36,7 @@ static int check_reg(uint32_t addr, uint32_t expected, const char *name) {
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("TC_WDT_009: WDT CDC Sync / Register Consistency Test\n");
@@ -53,14 +52,16 @@ int main(void)
     uint32_t test_vals[] = {0x00000001, 0x0000FFFF, 0x12345678, 0xFFFFFFFF, 0x00001000};
     for (int i = 0; i < 5; i++) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i]);
-        errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i], "BARK_THOLD");
+        errors +=
+            check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i], "BARK_THOLD");
     }
 
     /* STEP 2: WDOG_BITE_THOLD write/readback */
     printf("\n// STEP 2: WDOG_BITE_THOLD R/W consistency\n");
     for (int i = 0; i < 5; i++) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i]);
-        errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i], "BITE_THOLD");
+        errors +=
+            check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i], "BITE_THOLD");
     }
 
     /* STEP 3: WDOG_CTRL write/readback */
@@ -87,7 +88,9 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Let it count a bit */
-    for (volatile int i = 0; i < 30000; i++) { __asm__ volatile("nop"); }
+    for (volatile int i = 0; i < 30000; i++) {
+        __asm__ volatile("nop");
+    }
     uint32_t before_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Count before pet = 0x%08x\n", before_pet);
 
@@ -107,10 +110,12 @@ int main(void)
     printf("\n// STEP 5: Sequential multi-register write - no corruption\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xABCD1234);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR,      0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* Verify all still correct */
-    errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xABCD1234, "BARK_THOLD after seq");
-    errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678, "BITE_THOLD after seq");
+    errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xABCD1234,
+                        "BARK_THOLD after seq");
+    errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678,
+                        "BITE_THOLD after seq");
 
     /* STEP 6: WKUP registers accessible (coverage for unused but present registers) */
     printf("\n// STEP 6: WKUP_CTRL register accessible\n");
@@ -129,5 +134,7 @@ int main(void)
     }
     printf("======================================================\n");
 
-    while (1) { __asm__ volatile("wfi"); }
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }

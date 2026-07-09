@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 /* Ring Buffer Configuration - Compile Time Constants */
-#define SMC_RING_BUFFER_SIZE        512     /* Number of entries */
+#define SMC_RING_BUFFER_SIZE 512 /* Number of entries */
 
 /* Result codes */
 typedef enum {
@@ -32,24 +32,24 @@ typedef struct {
 /* Ring buffer API */
 
 /* Initialize ring buffer */
-void smc_ring_buffer_init(smc_ring_buffer_t* buffer);
+void smc_ring_buffer_init(smc_ring_buffer_t *buffer);
 
 /* Write entry to ring buffer - overwrites oldest entry if full */
-smc_ring_buffer_result_t smc_ring_buffer_write(smc_ring_buffer_t* buffer, uint32_t entry);
+smc_ring_buffer_result_t smc_ring_buffer_write(smc_ring_buffer_t *buffer, uint32_t entry);
 
 /* Read entry from ring buffer */
-smc_ring_buffer_result_t smc_ring_buffer_read(smc_ring_buffer_t* buffer, uint32_t* entry);
+smc_ring_buffer_result_t smc_ring_buffer_read(smc_ring_buffer_t *buffer, uint32_t *entry);
 
 /* Check if buffer is empty */
-bool smc_ring_buffer_is_empty(const smc_ring_buffer_t* buffer);
+bool smc_ring_buffer_is_empty(const smc_ring_buffer_t *buffer);
 
 /* Check if buffer is full */
-bool smc_ring_buffer_is_full(const smc_ring_buffer_t* buffer);
+bool smc_ring_buffer_is_full(const smc_ring_buffer_t *buffer);
 
 /* Get number of used entries */
-uint32_t smc_ring_buffer_count(const smc_ring_buffer_t* buffer);
+uint32_t smc_ring_buffer_count(const smc_ring_buffer_t *buffer);
 
 /* Get ring buffer capacity (number of entries) */
-uint32_t smc_ring_buffer_capacity(const smc_ring_buffer_t* buffer);
+uint32_t smc_ring_buffer_capacity(const smc_ring_buffer_t *buffer);
 
 #endif /* SMC_RING_BUFFER_H */

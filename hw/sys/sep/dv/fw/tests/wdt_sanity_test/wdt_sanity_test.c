@@ -121,8 +121,7 @@ void wdt_nmi_handler(void) {
     }
 }
 
-int main(void)
-{
+int main(void) {
     /* Initialize outbound filter to allow testpass mailbox access */
     sep_outbound_filter_init();
 

@@ -25,7 +25,7 @@
 #include "key_manager_addr.h"
 
 /* DEBUG register is at offset 0x1FC (0xE1FC). Unmapped slot just before it: 0x1F8 (0xE1F8) */
-#define KMCSR_UNMAPPED_REG_ADDR  (KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR - 4U)
+#define KMCSR_UNMAPPED_REG_ADDR (KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR - 4U)
 
 /**
  * Trigger a bus SLVERR by writing to an unmapped register within KMCSR.
@@ -33,13 +33,11 @@
  * --err-if-bad-addr); picorv32_wrapper drives axi_slverr_o and KMCSR
  * sets IRQ_STATUS.AXI_SLVERR.
  */
-static inline void write_unmapped_kmcsr_reg(uint32_t addr, uint32_t data)
-{
+static inline void write_unmapped_kmcsr_reg(uint32_t addr, uint32_t data) {
     *(volatile uint32_t *)addr = data;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t irq_status;
 
     TEST_INIT();
@@ -60,13 +58,15 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(!status_reg.f.axi_slverr,
-                    "IRQ_STATUS.AXI_SLVERR must be clear at test start (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_SLVERR must be clear at test start (status=0x%08X)",
+                    irq_status);
     }
     TEST_LOG("  Verified IRQ_STATUS.AXI_SLVERR is clear at start");
 
     /* Cause a real bus SLVERR by writing to unmapped register within KMCSR */
-    TEST_LOG("  Writing 0xDEADBEEF to unmapped KMCSR register at 0x%08X (just before DEBUG @ 0x%08X)...",
-             KMCSR_UNMAPPED_REG_ADDR, KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR);
+    TEST_LOG(
+        "  Writing 0xDEADBEEF to unmapped KMCSR register at 0x%08X (just before DEBUG @ 0x%08X)...",
+        KMCSR_UNMAPPED_REG_ADDR, KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR);
     write_unmapped_kmcsr_reg(KMCSR_UNMAPPED_REG_ADDR, 0xDEADBEEF);
 
     /* Verify IRQ_STATUS.AXI_SLVERR is set */
@@ -76,7 +76,8 @@ int main(void)
         km_csr__irq_status_reg_t status_reg;
         status_reg.w = irq_status;
         TEST_ASSERT(status_reg.f.axi_slverr,
-                    "IRQ_STATUS.AXI_SLVERR must be set after unmapped KMCSR write (status=0x%08X)", irq_status);
+                    "IRQ_STATUS.AXI_SLVERR must be set after unmapped KMCSR write (status=0x%08X)",
+                    irq_status);
     }
 
     /* Clear the sticky bit (W1C) */

@@ -29,21 +29,17 @@
 
 #define TIMEOUT_LIMIT 100000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -54,7 +50,8 @@ int main(void)
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__CMD_t cmd;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
     configure_spi_mux_ot();
@@ -105,8 +102,8 @@ int main(void)
         cmd.f.SPEED = 0;
         cmd.f.DIRECTION = 2;
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-        printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n",
-               cmd.f.LEN, cmd.f.SPEED, cmd.f.DIRECTION, cmd.f.CSAAT);
+        printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n", cmd.f.LEN, cmd.f.SPEED,
+               cmd.f.DIRECTION, cmd.f.CSAAT);
 
         err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
         printf("  ERROR_STATUS=0x%08x (should be clean)\n", err_status.w);
@@ -127,18 +124,18 @@ int main(void)
 
     if (status.f.READY) {
         cmd.w = 0;
-        cmd.f.LEN       = 0;
-        cmd.f.SPEED     = 3;    /* reserved speed → CMDINVAL */
+        cmd.f.LEN = 0;
+        cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
         cmd.f.DIRECTION = 2;
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
         volatile int delay;
-        for (delay = 0; delay < 100; delay++) {}
+        for (delay = 0; delay < 100; delay++) {
+        }
 
         err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-        printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n",
-               err_status.w, err_status.f.CMDINVAL);
+        printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n", err_status.w, err_status.f.CMDINVAL);
         if (err_status.f.CMDINVAL) {
             printf("  PASS: CMDINVAL error detected\n");
         } else {
@@ -171,11 +168,11 @@ int main(void)
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
         volatile int delay;
-        for (delay = 0; delay < 100; delay++) {}
+        for (delay = 0; delay < 100; delay++) {
+        }
 
         err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-        printf("  ERROR_STATUS=0x%08x, CSIDINVAL=%u\n",
-               err_status.w, err_status.f.CSIDINVAL);
+        printf("  ERROR_STATUS=0x%08x, CSIDINVAL=%u\n", err_status.w, err_status.f.CSIDINVAL);
         if (err_status.f.CSIDINVAL) {
             printf("  PASS: CSIDINVAL error detected\n");
         } else {
@@ -210,6 +207,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

@@ -36,8 +36,8 @@
 #define NUM_STEE_REMAPS 16
 
 // Traffic Generation Configuration
-#define SEGMENT_SIZE        0x80000     // 512KB per segment (8MB / 16 segments)
-#define NUM_TRAFFIC_WRITES  4           // Number of writes per segment
+#define SEGMENT_SIZE 0x80000            // 512KB per segment (8MB / 16 segments)
+#define NUM_TRAFFIC_WRITES 4            // Number of writes per segment
 #define TRAFFIC_PATTERN_BASE 0xC0FFEE00 // Base pattern for traffic
 
 //-----------------------------------------------------------------------------
@@ -53,23 +53,21 @@ static int fail_count = 0;
 //-----------------------------------------------------------------------------
 
 // Generate a 64-bit random value where each bit has equal chance of being 0 or 1
-static uint64_t generate_random_64bit(void)
-{
+static uint64_t generate_random_64bit(void) {
     // Use multiple rand() calls to ensure full 64-bit coverage
     uint64_t random_val = 0;
 
     // Combine multiple rand() calls to cover all 64 bits
-    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 0;   // bits 0-15
-    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 16;  // bits 16-31
-    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 32;  // bits 32-47
-    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 48;  // bits 48-63
+    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 0;  // bits 0-15
+    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 16; // bits 16-31
+    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 32; // bits 32-47
+    random_val |= ((uint64_t)rand() & 0xFFFFULL) << 48; // bits 48-63
 
     return random_val;
 }
 
 // Generate a random address within a segment boundary, maintaining 8-byte alignment
-static uint64_t generate_random_segment_address(uint64_t segment_base, uint64_t segment_size)
-{
+static uint64_t generate_random_segment_address(uint64_t segment_base, uint64_t segment_size) {
     // Ensure we have room for at least one aligned address
     if (segment_size < 8) {
         return segment_base;
@@ -84,8 +82,7 @@ static uint64_t generate_random_segment_address(uint64_t segment_base, uint64_t 
     return segment_base + random_offset;
 }
 
-static void report_test(const char *name, int passed)
-{
+static void report_test(const char *name, int passed) {
     test_count++;
     if (passed) {
         pass_count++;
@@ -99,25 +96,26 @@ static void report_test(const char *name, int passed)
 //-----------------------------------------------------------------------------
 // Test: Configure AP Output Remap
 //-----------------------------------------------------------------------------
-static int test_config_ap_output_remap(void)
-{
+static int test_config_ap_output_remap(void) {
     printf("\n--- Test: Configure AP Output Remap ---\n");
 
     output_remap__output_remap_region__REGION_ATTRS_t ap_remap_ctrl;
     ap_remap_ctrl.f.offset = 0x0;
 
-    for (int i = 0; i < NUM_AP_REMAPS; i++)
-    {
+    for (int i = 0; i < NUM_AP_REMAPS; i++) {
         ap_remap_ctrl.f.offset = generate_random_64bit();
         // printf("  Setting AP output remap control register %d...\n", i);
-        // printf("  Register: 0x%08X\n", OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
-        // printf("  Value: 0x%016llX\n", (unsigned long long)ap_remap_ctrl.f.offset);
+        // printf("  Register: 0x%08X\n",
+        // OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)); printf("  Value:
+        // 0x%016llX\n", (unsigned long long)ap_remap_ctrl.f.offset);
 
         // Write the remap configuration
-        WRITE_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i), ap_remap_ctrl.w);
+        WRITE_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
+                    ap_remap_ctrl.w);
 
         // Read back to verify
-        uint64_t readback = READ_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
+        uint64_t readback =
+            READ_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
         // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
         // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
@@ -132,30 +130,31 @@ static int test_config_ap_output_remap(void)
     printf("  AP output remap configured successfully\n");
 
     return 1;
-
-    }
+}
 
 //-----------------------------------------------------------------------------
 // Test: Configure STEE Output Remap
 //-----------------------------------------------------------------------------
-static int test_config_stee_output_remap(void)
-{
+static int test_config_stee_output_remap(void) {
     printf("\n--- Test: Configure STEE Output Remap ---\n");
 
     output_remap__output_remap_region__REGION_ATTRS_t stee_remap_ctrl;
     stee_remap_ctrl.f.offset = 0x0;
 
-    for (int i=0; i<NUM_STEE_REMAPS; i++) {
+    for (int i = 0; i < NUM_STEE_REMAPS; i++) {
         stee_remap_ctrl.f.offset = generate_random_64bit();
         // printf("  Setting STEE output remap control register %d...\n", i);
-        // printf("  Register: 0x%08X\n", OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
-        // printf("  Value: 0x%016llX\n", (unsigned long long)stee_remap_ctrl.f.offset);
+        // printf("  Register: 0x%08X\n",
+        // OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)); printf("  Value:
+        // 0x%016llX\n", (unsigned long long)stee_remap_ctrl.f.offset);
 
         // Write the remap configuration
-        WRITE_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i), stee_remap_ctrl.w);
+        WRITE_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
+                    stee_remap_ctrl.w);
 
         // Read back to verify
-        uint64_t readback = READ_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
+        uint64_t readback =
+            READ_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
         // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
         // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
@@ -174,21 +173,22 @@ static int test_config_stee_output_remap(void)
 //-----------------------------------------------------------------------------
 // Test: Generate Traffic for All AP Segments
 //-----------------------------------------------------------------------------
-static int test_ap_segment_traffic(void)
-{
+static int test_ap_segment_traffic(void) {
     printf("\n--- Test: Generate Traffic for All AP Segments ---\n");
 
     for (int segment = 0; segment < NUM_AP_REMAPS; segment++) {
         uint64_t segment_base = OCH_SEP_TOP_AP_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
 
-        printf("  Generating traffic for AP segment %d (base: 0x%016llX)...\n", segment, (unsigned long long)segment_base);
+        printf("  Generating traffic for AP segment %d (base: 0x%016llX)...\n", segment,
+               (unsigned long long)segment_base);
 
         // Generate multiple writes within this segment
         for (int write_idx = 0; write_idx < NUM_TRAFFIC_WRITES; write_idx++) {
             uint64_t traffic_addr = generate_random_segment_address(segment_base, SEGMENT_SIZE);
             uint32_t write_pattern = TRAFFIC_PATTERN_BASE + (segment << 8) + write_idx;
 
-            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long long)traffic_addr, write_pattern);
+            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long
+            // long)traffic_addr, write_pattern);
 
             // Perform write & read (this will be remapped by hardware)
             WRITE_REG(traffic_addr, write_pattern);
@@ -203,21 +203,22 @@ static int test_ap_segment_traffic(void)
 //-----------------------------------------------------------------------------
 // Test: Generate Traffic for All STEE Segments
 //-----------------------------------------------------------------------------
-static int test_stee_segment_traffic(void)
-{
+static int test_stee_segment_traffic(void) {
     printf("\n--- Test: Generate Traffic for All STEE Segments ---\n");
 
     for (int segment = 0; segment < NUM_STEE_REMAPS; segment++) {
         uint64_t segment_base = OCH_SEP_TOP_STEE_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
 
-        printf("  Generating traffic for STEE segment %d (base: 0x%08llX)...\n", segment, (unsigned long long)segment_base);
+        printf("  Generating traffic for STEE segment %d (base: 0x%08llX)...\n", segment,
+               (unsigned long long)segment_base);
 
         // Generate multiple writes within this segment
         for (int write_idx = 0; write_idx < NUM_TRAFFIC_WRITES; write_idx++) {
             uint64_t traffic_addr = generate_random_segment_address(segment_base, SEGMENT_SIZE);
             uint32_t write_pattern = TRAFFIC_PATTERN_BASE + 0x1000 + (segment << 8) + write_idx;
 
-            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long long)traffic_addr, write_pattern);
+            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long
+            // long)traffic_addr, write_pattern);
 
             // Perform write & read (this will be remapped by hardware)
             WRITE_REG(traffic_addr, write_pattern);
@@ -232,8 +233,7 @@ static int test_stee_segment_traffic(void)
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
@@ -263,8 +263,10 @@ int main(void)
     printf("============================================\n");
     printf("\n");
     printf("Output Remap Configuration:\n");
-    printf("  AP Remap Ctrl 0:    0x%08X\n", OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
-    printf("  STEE Remap Ctrl 0:  0x%08X\n", OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
+    printf("  AP Remap Ctrl 0:    0x%08X\n",
+           OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
+    printf("  STEE Remap Ctrl 0:  0x%08X\n",
+           OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
     printf("  AP Remap Region:    0x%08lX\n", (unsigned long)OCH_SEP_TOP_AP_REGION_BASE_ADDR);
     printf("  STEE Remap Region:  0x%08lX\n", (unsigned long)OCH_SEP_TOP_STEE_REGION_BASE_ADDR);
     printf("\n");

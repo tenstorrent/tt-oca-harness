@@ -36,12 +36,11 @@ typedef enum {
 
     /*! @brief Used to set/clear all interrupts or query/clear all accrued
        events */
-    METAL_BUSERROR_EVENT_ALL =
-        METAL_BUSERROR_EVENT_INST_CORRECTABLE_ECC_ERROR |
-        METAL_BUSERROR_EVENT_INST_UNCORRECTABLE_ECC_ERROR |
-        METAL_BUSERROR_EVENT_LOAD_STORE_ERROR |
-        METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR |
-        METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
+    METAL_BUSERROR_EVENT_ALL = METAL_BUSERROR_EVENT_INST_CORRECTABLE_ECC_ERROR |
+                               METAL_BUSERROR_EVENT_INST_UNCORRECTABLE_ECC_ERROR |
+                               METAL_BUSERROR_EVENT_LOAD_STORE_ERROR |
+                               METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR |
+                               METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
     /*! @brief A synonym of METAL_BUSERROR_EVENT_ALL */
     METAL_BUSERROR_EVENT_ANY = METAL_BUSERROR_EVENT_ALL,
 
@@ -69,8 +68,7 @@ struct metal_buserror {
  * disabled
  * @return 0 upon success
  */
-int metal_buserror_set_event_enabled(struct metal_buserror *beu,
-                                     metal_buserror_event_t events,
+int metal_buserror_set_event_enabled(struct metal_buserror *beu, metal_buserror_event_t events,
                                      bool enabled);
 
 /*!
@@ -78,8 +76,7 @@ int metal_buserror_set_event_enabled(struct metal_buserror *beu,
  * @param beu The bus error unit handle
  * @return A mask of all enabled events
  */
-metal_buserror_event_t
-metal_buserror_get_event_enabled(struct metal_buserror *beu);
+metal_buserror_event_t metal_buserror_get_event_enabled(struct metal_buserror *beu);
 
 /*!
  * @brief Enable or disable the platform interrupt
@@ -89,8 +86,7 @@ metal_buserror_get_event_enabled(struct metal_buserror *beu);
  * @param enabled True if the interrupt should be enabled
  * @return 0 upon success
  */
-int metal_buserror_set_platform_interrupt(struct metal_buserror *beu,
-                                          metal_buserror_event_t events,
+int metal_buserror_set_platform_interrupt(struct metal_buserror *beu, metal_buserror_event_t events,
                                           bool enabled);
 
 /*!
@@ -101,8 +97,7 @@ int metal_buserror_set_platform_interrupt(struct metal_buserror *beu,
  * @param enabled True if the interrupt should be enabled
  * @return 0 upon success
  */
-int metal_buserror_set_local_interrupt(struct metal_buserror *beu,
-                                       metal_buserror_event_t events,
+int metal_buserror_set_local_interrupt(struct metal_buserror *beu, metal_buserror_event_t events,
                                        bool enabled);
 
 /*!
@@ -145,8 +140,7 @@ uintptr_t metal_buserror_get_event_address(struct metal_buserror *beu);
  * @param event The event to query
  * @return True if the event is set in the accrued register
  */
-bool metal_buserror_is_event_accrued(struct metal_buserror *beu,
-                                     metal_buserror_event_t events);
+bool metal_buserror_is_event_accrued(struct metal_buserror *beu, metal_buserror_event_t events);
 
 /*!
  * @brief Clear the given event from the accrued register
@@ -155,8 +149,7 @@ bool metal_buserror_is_event_accrued(struct metal_buserror *beu,
  * @param event The event to clear
  * @return 0 upon success
  */
-int metal_buserror_clear_event_accrued(struct metal_buserror *beu,
-                                       metal_buserror_event_t events);
+int metal_buserror_clear_event_accrued(struct metal_buserror *beu, metal_buserror_event_t events);
 
 /*!
  * @brief get the platform-level interrupt parent of the bus error unit
@@ -164,8 +157,7 @@ int metal_buserror_clear_event_accrued(struct metal_buserror *beu,
  * @param beu The bus error unit handle
  * @return A pointer to the interrupt parent
  */
-struct metal_interrupt *
-metal_buserror_get_platform_interrupt_parent(struct metal_buserror *beu);
+struct metal_interrupt *metal_buserror_get_platform_interrupt_parent(struct metal_buserror *beu);
 
 /*!
  * @brief Get the platform-level interrupt id for the bus error unit interrupt

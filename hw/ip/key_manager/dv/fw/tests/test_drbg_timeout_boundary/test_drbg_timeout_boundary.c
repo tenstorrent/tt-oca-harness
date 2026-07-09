@@ -41,20 +41,22 @@
 #include "key_manager.h"
 #include "key_manager_addr.h"
 
-#define DRBG_DATA_REG    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
-#define DRBG_CFG_REG     (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
-#define DRBG_STATUS_REG  (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+#define DRBG_STATUS_REG \
+    (*(volatile km_drbg_sampler__status_reg_t *)KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR)
 
 /* Use a moderate timeout: large enough that a 1-cycle bug is unambiguous,
  * small enough that the test simulates quickly. */
-#define BOUNDARY_TIMEOUT_CYCLES  50u
+#define BOUNDARY_TIMEOUT_CYCLES 50u
 
 /* Clear DRBG STATUS sticky bits (W1C) so a measurement starts cleanly. */
-static void clear_drbg_sticky_status(void)
-{
+static void clear_drbg_sticky_status(void) {
     km_drbg_sampler__status_reg_t w1c = {0};
     w1c.f.timeout_err = 1;
-    w1c.f.stream_err  = 1;
+    w1c.f.stream_err = 1;
     DRBG_STATUS_REG.w = w1c.w;
 }
 
@@ -64,8 +66,7 @@ static void clear_drbg_sticky_status(void)
  * @return Cycles elapsed between two `tb_get_cycle_count` snapshots that
  *         bracket exactly one `(void)DRBG_DATA_REG.f.data;` access.
  */
-static uint32_t measure_data_read_cycles(void)
-{
+static uint32_t measure_data_read_cycles(void) {
     uint32_t t_start;
     uint32_t t_end;
 
@@ -79,8 +80,7 @@ static uint32_t measure_data_read_cycles(void)
     return t_end - t_start;
 }
 
-int main(void)
-{
+int main(void) {
     uint32_t delta_success;
     uint32_t delta_timeout;
     uint32_t observed_diff;
@@ -101,9 +101,9 @@ int main(void)
         TEST_FAIL("tb_drbg_set_seed failed");
     }
 
-    DRBG_CFG_REG.w        = 0u;
+    DRBG_CFG_REG.w = 0u;
     DRBG_CFG_REG.f.prefetch = 0u;
-    DRBG_CFG_REG.f.timeout  = (uint16_t)BOUNDARY_TIMEOUT_CYCLES;
+    DRBG_CFG_REG.f.timeout = (uint16_t)BOUNDARY_TIMEOUT_CYCLES;
     clear_drbg_sticky_status();
 
     /*-----------------------------------------------------------------------
@@ -112,12 +112,10 @@ int main(void)
     TEST_SUBTEST_START("DRBG DATA read baseline (TVALID immediate)");
     delta_success = measure_data_read_cycles();
     if (DRBG_STATUS_REG.f.timeout_err != 0u) {
-        TEST_FAIL("Baseline read unexpectedly set TIMEOUT_ERR (delta=%u)",
-                  (unsigned)delta_success);
+        TEST_FAIL("Baseline read unexpectedly set TIMEOUT_ERR (delta=%u)", (unsigned)delta_success);
     }
     if (DRBG_STATUS_REG.f.count_good == 0u) {
-        TEST_FAIL("Baseline read did not increment COUNT_GOOD (delta=%u)",
-                  (unsigned)delta_success);
+        TEST_FAIL("Baseline read did not increment COUNT_GOOD (delta=%u)", (unsigned)delta_success);
     }
     TEST_LOG("  baseline delta=%u cycles", (unsigned)delta_success);
     TEST_SUBTEST_PASS();
@@ -131,7 +129,7 @@ int main(void)
     if (!tb_drbg_stop(1000u)) {
         TEST_FAIL("tb_drbg_stop failed");
     }
-    (void)DRBG_DATA_REG.f.data;  /* drain the residual beat */
+    (void)DRBG_DATA_REG.f.data; /* drain the residual beat */
     if (DRBG_STATUS_REG.f.timeout_err != 0u) {
         TEST_FAIL("Drain read unexpectedly set TIMEOUT_ERR");
     }
@@ -143,12 +141,10 @@ int main(void)
     TEST_SUBTEST_START("DRBG DATA read timeout (TVALID stalled)");
     delta_timeout = measure_data_read_cycles();
     if (DRBG_STATUS_REG.f.timeout_err == 0u) {
-        TEST_FAIL("Timeout read failed to set TIMEOUT_ERR (delta=%u)",
-                  (unsigned)delta_timeout);
+        TEST_FAIL("Timeout read failed to set TIMEOUT_ERR (delta=%u)", (unsigned)delta_timeout);
     }
     if (DRBG_STATUS_REG.f.count_bad == 0u) {
-        TEST_FAIL("Timeout read failed to increment COUNT_BAD (delta=%u)",
-                  (unsigned)delta_timeout);
+        TEST_FAIL("Timeout read failed to increment COUNT_BAD (delta=%u)", (unsigned)delta_timeout);
     }
     TEST_LOG("  timeout  delta=%u cycles", (unsigned)delta_timeout);
     TEST_SUBTEST_PASS();
@@ -176,17 +172,13 @@ int main(void)
         TEST_FAIL("DRBG timeout boundary off-by-one: CFG.TIMEOUT=%u "
                   "baseline=%u timeout=%u observed_diff=%u expected_diff=%u "
                   "(timeout fired %d cycle(s) %s)",
-                  (unsigned)BOUNDARY_TIMEOUT_CYCLES,
-                  (unsigned)delta_success,
-                  (unsigned)delta_timeout,
-                  (unsigned)observed_diff,
-                  (unsigned)expected_diff,
+                  (unsigned)BOUNDARY_TIMEOUT_CYCLES, (unsigned)delta_success,
+                  (unsigned)delta_timeout, (unsigned)observed_diff, (unsigned)expected_diff,
                   (int)((int32_t)observed_diff - (int32_t)expected_diff),
                   (observed_diff > expected_diff) ? "late" : "early");
     }
     TEST_LOG("  CFG.TIMEOUT=%u observed_diff=%u expected_diff=%u (OK)",
-             (unsigned)BOUNDARY_TIMEOUT_CYCLES,
-             (unsigned)observed_diff, (unsigned)expected_diff);
+             (unsigned)BOUNDARY_TIMEOUT_CYCLES, (unsigned)observed_diff, (unsigned)expected_diff);
     TEST_SUBTEST_PASS();
 
     /* Restart TB driver so any subsequent diagnostic reads do not block. */

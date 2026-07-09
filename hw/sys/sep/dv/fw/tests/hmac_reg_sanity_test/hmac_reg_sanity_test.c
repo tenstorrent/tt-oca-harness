@@ -18,23 +18,19 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-static int check_reg(const char *name, uint32_t actual, uint32_t expected)
-{
+static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
-    printf("  %s: 0x%08x (expected 0x%08x) - %s\n",
-           name, actual, expected, ok ? "PASS" : "FAIL");
+    printf("  %s: 0x%08x (expected 0x%08x) - %s\n", name, actual, expected, ok ? "PASS" : "FAIL");
     return ok;
 }
 
-static int check_rw(const char *name, uint32_t addr, uint32_t val)
-{
+static int check_rw(const char *name, uint32_t addr, uint32_t val) {
     WRITE_REG(addr, val);
     uint32_t rb = READ_REG(addr);
     return check_reg(name, rb, val);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -66,8 +62,12 @@ int main(void)
     if (!check_reg("INTR_STATE after W1C", intr.w, 0x0)) pass = 0;
 
     printf("\nStep 5: MSG_LENGTH RW\n");
-    if (!check_rw("MSG_LENGTH_LOWER=0x12345678", OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, 0x12345678)) pass = 0;
-    if (!check_rw("MSG_LENGTH_UPPER=0x9ABCDEF0", OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, 0x9ABCDEF0)) pass = 0;
+    if (!check_rw("MSG_LENGTH_LOWER=0x12345678", OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR,
+                  0x12345678))
+        pass = 0;
+    if (!check_rw("MSG_LENGTH_UPPER=0x9ABCDEF0", OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR,
+                  0x9ABCDEF0))
+        pass = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, 0);
 
@@ -75,7 +75,8 @@ int main(void)
     /* DIGEST registers are HW-driven (hw2reg path always active). SW writes are
      * valid only for context restore before hash_continue, not for simple RW test.
      * Verify the reset default (0x0) is readable. */
-    if (!check_reg("DIGEST_0 default=0", READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0)), 0x0)) pass = 0;
+    if (!check_reg("DIGEST_0 default=0", READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0)), 0x0))
+        pass = 0;
 
     printf("\n========================================\n");
     if (pass) {
@@ -87,6 +88,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

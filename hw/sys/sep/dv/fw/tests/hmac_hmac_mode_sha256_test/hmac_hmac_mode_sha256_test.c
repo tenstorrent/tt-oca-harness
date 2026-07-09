@@ -27,9 +27,7 @@
 #include "sep_outbound_filter.h"
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -101,8 +99,8 @@ int main(void) {
     cfg.f.sha_en = 1;
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
-    cfg.f.digest_size = 1;     /* SHA2_256 */
-    cfg.f.key_length = 0x02;   /* 256-bit key */
+    cfg.f.digest_size = 1;   /* SHA2_256 */
+    cfg.f.key_length = 0x02; /* 256-bit key */
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     /* Start hash */
@@ -115,7 +113,9 @@ int main(void) {
     if (feed_msg(msg, msg_len) != 0) {
         printf("FAIL: FIFO feed error\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* Process */
@@ -125,7 +125,9 @@ int main(void) {
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Timeout\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* Read digest and byte-swap */
@@ -158,5 +160,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

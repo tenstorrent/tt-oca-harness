@@ -28,15 +28,13 @@
 #include "sep_outbound_filter.h"
 
 #define TIMEOUT_LIMIT 100000
-#define TX_FIFO_DEPTH 73  /* effective capacity: 72 FIFO slots + 1 byte_select stage */
+#define TX_FIFO_DEPTH 73 /* effective capacity: 72 FIFO slots + 1 byte_select stage */
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -46,7 +44,8 @@ int main(void)
     int pass = 1;
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -61,8 +60,7 @@ int main(void)
     /* Step 1: Verify TX FIFO empty initially */
     printf("\nStep 1: TX FIFO initial state\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  TXEMPTY=%u, TXFULL=%u, TXQD=%u\n",
-           status.f.TXEMPTY, status.f.TXFULL, status.f.TXQD);
+    printf("  TXEMPTY=%u, TXFULL=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXFULL, status.f.TXQD);
     if (status.f.TXEMPTY != 1) {
         printf("  FAIL: TXEMPTY should be 1\n");
         pass = 0;
@@ -83,8 +81,8 @@ int main(void)
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xA0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After 8 writes: TXQD=%u, TXEMPTY=%u, TXFULL=%u\n",
-           status.f.TXQD, status.f.TXEMPTY, status.f.TXFULL);
+    printf("  After 8 writes: TXQD=%u, TXEMPTY=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXEMPTY,
+           status.f.TXFULL);
     if (status.f.TXEMPTY != 0) {
         printf("  FAIL: TXEMPTY should be 0 after writes\n");
         pass = 0;
@@ -109,8 +107,7 @@ int main(void)
         WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xB0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After filling: TXQD=%u, TXFULL=%u\n",
-           status.f.TXQD, status.f.TXFULL);
+    printf("  After filling: TXQD=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXFULL);
     if (!status.f.TXFULL) {
         printf("  FAIL: TXFULL should be 1 after filling %d words\n", TX_FIFO_DEPTH);
         pass = 0;
@@ -125,8 +122,7 @@ int main(void)
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xDEADBEEF);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS=0x%08x, OVERFLOW=%u\n",
-           err_status.w, err_status.f.OVERFLOW);
+    printf("  ERROR_STATUS=0x%08x, OVERFLOW=%u\n", err_status.w, err_status.f.OVERFLOW);
     if (err_status.f.OVERFLOW) {
         printf("  PASS: Overflow error detected\n");
     } else {
@@ -144,11 +140,11 @@ int main(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     volatile int delay;
-    for (delay = 0; delay < 5000; delay++) {}
+    for (delay = 0; delay < 5000; delay++) {
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n",
-           status.f.TXEMPTY, status.f.TXQD);
+    printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXQD);
 
     printf("\n========================================\n");
     if (pass) {
@@ -160,6 +156,8 @@ int main(void)
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

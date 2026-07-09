@@ -20,9 +20,7 @@
 #include "sep_outbound_filter.h"
 
 static inline uint32_t bswap32(uint32_t x) {
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
@@ -73,7 +71,7 @@ static int hmac_hash_with_key_length(uint32_t klen_val, uint32_t digest_out[8]) 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 1;
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;       /* SHA2_256 */
+    cfg.f.digest_size = 1; /* SHA2_256 */
     cfg.f.key_length = klen_val;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
@@ -121,9 +119,8 @@ int main(void) {
         WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
         hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-        printf("key_length=%s: wrote=0x%02x readback=0x%02x %s\n",
-               klen_names[t], klen_vals[t], rb.f.key_length,
-               (rb.f.key_length == klen_vals[t]) ? "OK" : "MISMATCH");
+        printf("key_length=%s: wrote=0x%02x readback=0x%02x %s\n", klen_names[t], klen_vals[t],
+               rb.f.key_length, (rb.f.key_length == klen_vals[t]) ? "OK" : "MISMATCH");
         if (rb.f.key_length != klen_vals[t]) {
             pass = 0;
         }
@@ -137,14 +134,18 @@ int main(void) {
     if (hmac_hash_with_key_length(0x01, digest_128) != 0) {
         printf("FAIL: HMAC with key_length=128 failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     printf("HMAC with key_length=256b...\n");
     if (hmac_hash_with_key_length(0x02, digest_256) != 0) {
         printf("FAIL: HMAC with key_length=256 failed\n");
         test_fail(1);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     printf("Digest (128b key):");
@@ -174,5 +175,7 @@ int main(void) {
         test_fail(1);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }

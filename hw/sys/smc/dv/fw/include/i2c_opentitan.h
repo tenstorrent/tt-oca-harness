@@ -27,93 +27,94 @@ extern "C" {
 // ============================================================================
 
 // I2C Instance IDs
-#define I2C_INSTANCE_0    0
-#define I2C_INSTANCE_1    1
+#define I2C_INSTANCE_0 0
+#define I2C_INSTANCE_1 1
 
 // I2C Speed Modes
-#define I2C_SPEED_STANDARD    0  // 100 kHz
-#define I2C_SPEED_FAST        1  // 400 kHz
-#define I2C_SPEED_FAST_PLUS   2  // 1 MHz
+#define I2C_SPEED_STANDARD 0  // 100 kHz
+#define I2C_SPEED_FAST 1      // 400 kHz
+#define I2C_SPEED_FAST_PLUS 2 // 1 MHz
 
 // I2C Status Codes
-#define I2C_OK                0
-#define I2C_ERROR            -1
-#define I2C_ERROR_TIMEOUT    -2
-#define I2C_ERROR_NACK       -3
-#define I2C_ERROR_OVERFLOW   -4
-#define I2C_ERROR_BUSY       -5
-#define I2C_ERROR_INVALID    -6
-#define I2C_ERROR_FIFO_FULL  -7
+#define I2C_OK 0
+#define I2C_ERROR -1
+#define I2C_ERROR_TIMEOUT -2
+#define I2C_ERROR_NACK -3
+#define I2C_ERROR_OVERFLOW -4
+#define I2C_ERROR_BUSY -5
+#define I2C_ERROR_INVALID -6
+#define I2C_ERROR_FIFO_FULL -7
 
 // ACQDATA Signal Types (Target Mode)
-#define I2C_ACQ_SIGNAL_DATA           0  // Normal data byte (ACKed)
-#define I2C_ACQ_SIGNAL_START          1  // START + address byte
-#define I2C_ACQ_SIGNAL_STOP           2  // STOP condition
-#define I2C_ACQ_SIGNAL_RESTART        3  // Repeated START + address
-#define I2C_ACQ_SIGNAL_NACK           4  // NACKed data byte
-#define I2C_ACQ_SIGNAL_NACK_START     5  // NACK Start (address ACKed, data NACKed)
-#define I2C_ACQ_SIGNAL_NACK_STOP      6  // NACK Stop (transaction error)
+#define I2C_ACQ_SIGNAL_DATA 0       // Normal data byte (ACKed)
+#define I2C_ACQ_SIGNAL_START 1      // START + address byte
+#define I2C_ACQ_SIGNAL_STOP 2       // STOP condition
+#define I2C_ACQ_SIGNAL_RESTART 3    // Repeated START + address
+#define I2C_ACQ_SIGNAL_NACK 4       // NACKed data byte
+#define I2C_ACQ_SIGNAL_NACK_START 5 // NACK Start (address ACKed, data NACKed)
+#define I2C_ACQ_SIGNAL_NACK_STOP 6  // NACK Stop (transaction error)
 
 // Default FIFO Thresholds
-#define I2C_DEFAULT_RX_THRESH         29
-#define I2C_DEFAULT_FMT_THRESH        5
-#define I2C_DEFAULT_TX_THRESH         5
-#define I2C_DEFAULT_ACQ_THRESH        29
+#define I2C_DEFAULT_RX_THRESH 29
+#define I2C_DEFAULT_FMT_THRESH 5
+#define I2C_DEFAULT_TX_THRESH 5
+#define I2C_DEFAULT_ACQ_THRESH 29
 
 // Timeout values (in system clock cycles)
-#define I2C_TIMEOUT_DEFAULT           I2C_TIMEOUT_INFINITE  // Use infinite timeout - polling loops will handle duration
-#define I2C_TIMEOUT_INFINITE          0xFFFFFFFF
+#define I2C_TIMEOUT_DEFAULT \
+    I2C_TIMEOUT_INFINITE // Use infinite timeout - polling loops will handle duration
+#define I2C_TIMEOUT_INFINITE 0xFFFFFFFF
 
 // Minimum cycles for clock stretching detection
-#define I2C_MIN_SCL_CYCLES            4
+#define I2C_MIN_SCL_CYCLES 4
 
 // SMBus Special Addresses
-#define SMBUS_ADDR_ARA                0x0C  // Alert Response Address
-#define SMBUS_ADDR_DEVICE_DEFAULT     0x61  // SMBus Device Default Address
-#define SMBUS_ADDR_HOST               0x08  // SMBus Host Address
+#define SMBUS_ADDR_ARA 0x0C            // Alert Response Address
+#define SMBUS_ADDR_DEVICE_DEFAULT 0x61 // SMBus Device Default Address
+#define SMBUS_ADDR_HOST 0x08           // SMBus Host Address
 
 // SMBus/PMBus Commands
-#define SMBUS_CMD_QUICK               0x00  // Quick Command
-#define PMBUS_CMD_PAGE                0x00  // PMBus PAGE command
-#define PMBUS_CMD_OPERATION           0x01  // PMBus OPERATION command
-#define PMBUS_CMD_ON_OFF_CONFIG       0x02  // PMBus ON_OFF_CONFIG
-#define PMBUS_CMD_CLEAR_FAULTS        0x03  // PMBus CLEAR_FAULTS
-#define PMBUS_CMD_WRITE_PROTECT       0x10  // PMBus WRITE_PROTECT
-#define PMBUS_CMD_VOUT_MODE           0x20  // PMBus VOUT_MODE
-#define PMBUS_CMD_VOUT_COMMAND        0x21  // PMBus VOUT_COMMAND
-#define PMBUS_CMD_VOUT_MAX            0x24  // PMBus VOUT_MAX
-#define PMBUS_CMD_STATUS_BYTE         0x78  // PMBus STATUS_BYTE
-#define PMBUS_CMD_STATUS_WORD         0x79  // PMBus STATUS_WORD
-#define PMBUS_CMD_READ_VOUT           0x8B  // PMBus READ_VOUT
-#define PMBUS_CMD_READ_IOUT           0x8C  // PMBus READ_IOUT
-#define PMBUS_CMD_READ_TEMPERATURE    0x8D  // PMBus READ_TEMPERATURE
-#define PMBUS_CMD_READ_VIN            0x88  // PMBus READ_VIN
-#define PMBUS_CMD_MFR_ID              0x99  // PMBus Manufacturer ID
-#define PMBUS_CMD_MFR_MODEL           0x9A  // PMBus Manufacturer Model
-#define PMBUS_CMD_MFR_REVISION        0x9B  // PMBus Manufacturer Revision
-#define PMBUS_CMD_MFR_SERIAL          0x9E  // PMBus Manufacturer Serial
+#define SMBUS_CMD_QUICK 0x00            // Quick Command
+#define PMBUS_CMD_PAGE 0x00             // PMBus PAGE command
+#define PMBUS_CMD_OPERATION 0x01        // PMBus OPERATION command
+#define PMBUS_CMD_ON_OFF_CONFIG 0x02    // PMBus ON_OFF_CONFIG
+#define PMBUS_CMD_CLEAR_FAULTS 0x03     // PMBus CLEAR_FAULTS
+#define PMBUS_CMD_WRITE_PROTECT 0x10    // PMBus WRITE_PROTECT
+#define PMBUS_CMD_VOUT_MODE 0x20        // PMBus VOUT_MODE
+#define PMBUS_CMD_VOUT_COMMAND 0x21     // PMBus VOUT_COMMAND
+#define PMBUS_CMD_VOUT_MAX 0x24         // PMBus VOUT_MAX
+#define PMBUS_CMD_STATUS_BYTE 0x78      // PMBus STATUS_BYTE
+#define PMBUS_CMD_STATUS_WORD 0x79      // PMBus STATUS_WORD
+#define PMBUS_CMD_READ_VOUT 0x8B        // PMBus READ_VOUT
+#define PMBUS_CMD_READ_IOUT 0x8C        // PMBus READ_IOUT
+#define PMBUS_CMD_READ_TEMPERATURE 0x8D // PMBus READ_TEMPERATURE
+#define PMBUS_CMD_READ_VIN 0x88         // PMBus READ_VIN
+#define PMBUS_CMD_MFR_ID 0x99           // PMBus Manufacturer ID
+#define PMBUS_CMD_MFR_MODEL 0x9A        // PMBus Manufacturer Model
+#define PMBUS_CMD_MFR_REVISION 0x9B     // PMBus Manufacturer Revision
+#define PMBUS_CMD_MFR_SERIAL 0x9E       // PMBus Manufacturer Serial
 
 // SMBus Protocol Types
-#define SMBUS_PROTOCOL_QUICK          0  // Quick Command
-#define SMBUS_PROTOCOL_BYTE           1  // Send/Receive Byte
-#define SMBUS_PROTOCOL_BYTE_DATA      2  // Read/Write Byte
-#define SMBUS_PROTOCOL_WORD_DATA      3  // Read/Write Word
-#define SMBUS_PROTOCOL_PROC_CALL      4  // Process Call
-#define SMBUS_PROTOCOL_BLOCK          5  // Block Read/Write
-#define SMBUS_PROTOCOL_BLOCK_PROC     6  // Block Process Call
+#define SMBUS_PROTOCOL_QUICK 0      // Quick Command
+#define SMBUS_PROTOCOL_BYTE 1       // Send/Receive Byte
+#define SMBUS_PROTOCOL_BYTE_DATA 2  // Read/Write Byte
+#define SMBUS_PROTOCOL_WORD_DATA 3  // Read/Write Word
+#define SMBUS_PROTOCOL_PROC_CALL 4  // Process Call
+#define SMBUS_PROTOCOL_BLOCK 5      // Block Read/Write
+#define SMBUS_PROTOCOL_BLOCK_PROC 6 // Block Process Call
 
 // PMBus Protocol Types
-#define PMBUS_PROTOCOL_SEND_BYTE      1  // Send Byte (write command only)
-#define PMBUS_PROTOCOL_WRITE_BYTE     2  // Write Byte (command + 1 byte)
-#define PMBUS_PROTOCOL_WRITE_WORD     3  // Write Word (command + 2 bytes)
-#define PMBUS_PROTOCOL_READ_BYTE      4  // Read Byte (command, then read 1)
-#define PMBUS_PROTOCOL_READ_WORD      5  // Read Word (command, then read 2)
-#define PMBUS_PROTOCOL_BLOCK_WRITE    6  // Block Write (cmd + count + data)
-#define PMBUS_PROTOCOL_BLOCK_READ     7  // Block Read (cmd, then read count+data)
-#define PMBUS_PROTOCOL_BLOCK_WR_RD    8  // Block Write-Read Process Call
+#define PMBUS_PROTOCOL_SEND_BYTE 1   // Send Byte (write command only)
+#define PMBUS_PROTOCOL_WRITE_BYTE 2  // Write Byte (command + 1 byte)
+#define PMBUS_PROTOCOL_WRITE_WORD 3  // Write Word (command + 2 bytes)
+#define PMBUS_PROTOCOL_READ_BYTE 4   // Read Byte (command, then read 1)
+#define PMBUS_PROTOCOL_READ_WORD 5   // Read Word (command, then read 2)
+#define PMBUS_PROTOCOL_BLOCK_WRITE 6 // Block Write (cmd + count + data)
+#define PMBUS_PROTOCOL_BLOCK_READ 7  // Block Read (cmd, then read count+data)
+#define PMBUS_PROTOCOL_BLOCK_WR_RD 8 // Block Write-Read Process Call
 
 // PEC (Packet Error Code) - CRC-8
-#define SMBUS_PEC_POLYNOMIAL          0x07  // x^8 + x^2 + x + 1
+#define SMBUS_PEC_POLYNOMIAL 0x07 // x^8 + x^2 + x + 1
 
 // ============================================================================
 // Data Structures
@@ -126,11 +127,11 @@ extern "C" {
  * Use this to compute timing parameters automatically based on I2C specification.
  */
 typedef struct {
-    uint8_t  speed;                // I2C_SPEED_STANDARD, FAST, or FAST_PLUS
-    uint32_t clock_period_nanos;   // System clock period in nanoseconds
-    uint32_t sda_rise_nanos;       // SDA rise time in nanoseconds (typical: 300ns)
-    uint32_t sda_fall_nanos;       // SDA fall time in nanoseconds (typical: 100ns)
-    uint32_t scl_period_nanos;     // Desired SCL period (0 = use minimum for speed)
+    uint8_t speed;               // I2C_SPEED_STANDARD, FAST, or FAST_PLUS
+    uint32_t clock_period_nanos; // System clock period in nanoseconds
+    uint32_t sda_rise_nanos;     // SDA rise time in nanoseconds (typical: 300ns)
+    uint32_t sda_fall_nanos;     // SDA fall time in nanoseconds (typical: 100ns)
+    uint32_t scl_period_nanos;   // Desired SCL period (0 = use minimum for speed)
 } i2c_timing_physical_t;
 
 /**
@@ -140,26 +141,26 @@ typedef struct {
  * Can be computed from physical parameters using i2c_compute_timing_from_physical().
  */
 typedef struct {
-    uint16_t thigh;      // SCL high period (cycles)
-    uint16_t tlow;       // SCL low period (cycles)
-    uint16_t t_r;        // Rise time (cycles)
-    uint16_t t_f;        // Fall time (cycles)
-    uint16_t tsu_sta;    // START setup time (cycles)
-    uint16_t thd_sta;    // START hold time (cycles)
-    uint16_t tsu_dat;    // Data setup time (cycles)
-    uint16_t thd_dat;    // Data hold time (cycles)
-    uint16_t tsu_sto;    // STOP setup time (cycles)
-    uint16_t t_buf;      // Bus free time (cycles)
+    uint16_t thigh;   // SCL high period (cycles)
+    uint16_t tlow;    // SCL low period (cycles)
+    uint16_t t_r;     // Rise time (cycles)
+    uint16_t t_f;     // Fall time (cycles)
+    uint16_t tsu_sta; // START setup time (cycles)
+    uint16_t thd_sta; // START hold time (cycles)
+    uint16_t tsu_dat; // Data setup time (cycles)
+    uint16_t thd_dat; // Data hold time (cycles)
+    uint16_t tsu_sto; // STOP setup time (cycles)
+    uint16_t t_buf;   // Bus free time (cycles)
 } i2c_timing_config_t;
 
 /**
  * @brief I2C FIFO Configuration
  */
 typedef struct {
-    uint16_t rx_thresh;   // RX FIFO threshold
-    uint16_t fmt_thresh;  // FMT FIFO threshold
-    uint16_t tx_thresh;   // TX FIFO threshold
-    uint16_t acq_thresh;  // ACQ FIFO threshold
+    uint16_t rx_thresh;  // RX FIFO threshold
+    uint16_t fmt_thresh; // FMT FIFO threshold
+    uint16_t tx_thresh;  // TX FIFO threshold
+    uint16_t acq_thresh; // ACQ FIFO threshold
 } i2c_fifo_config_t;
 
 /**
@@ -167,65 +168,65 @@ typedef struct {
  */
 typedef struct {
     i2c_timing_config_t timing;
-    i2c_fifo_config_t   fifo;
-    bool                enable_interrupts;
-    uint32_t            timeout_cycles;
+    i2c_fifo_config_t fifo;
+    bool enable_interrupts;
+    uint32_t timeout_cycles;
 } i2c_controller_config_t;
 
 /**
  * @brief I2C Target Configuration
  */
 typedef struct {
-    uint8_t             address0;         // Primary 7-bit address
-    uint8_t             mask0;            // Address mask (0x7F for exact match)
-    uint8_t             address1;         // Secondary address (optional)
-    uint8_t             mask1;            // Secondary address mask
+    uint8_t address0; // Primary 7-bit address
+    uint8_t mask0;    // Address mask (0x7F for exact match)
+    uint8_t address1; // Secondary address (optional)
+    uint8_t mask1;    // Secondary address mask
     i2c_timing_config_t timing;
-    i2c_fifo_config_t   fifo;
-    bool                enable_interrupts;
-    bool                ack_ctrl_mode;    // Software ACK control
-    bool                tx_stretch_ctrl;  // TX stretch control
-    uint32_t            timeout_cycles;
+    i2c_fifo_config_t fifo;
+    bool enable_interrupts;
+    bool ack_ctrl_mode;   // Software ACK control
+    bool tx_stretch_ctrl; // TX stretch control
+    uint32_t timeout_cycles;
 } i2c_target_config_t;
 
 /**
  * @brief I2C Transaction Data (for Target Mode receive)
  */
 typedef struct {
-    uint8_t  signal;      // Signal type
-    uint8_t  data;        // Data byte
-    bool     is_write;    // true = write, false = read
-    bool     is_start;    // START condition
-    bool     is_stop;     // STOP condition
+    uint8_t signal; // Signal type
+    uint8_t data;   // Data byte
+    bool is_write;  // true = write, false = read
+    bool is_start;  // START condition
+    bool is_stop;   // STOP condition
 } i2c_acq_entry_t;
 
 /**
  * @brief SMBus/PMBus Transaction Data
  */
 typedef struct {
-    uint8_t  device_addr;     // 7-bit device address
-    uint8_t  command;         // Command code
-    uint8_t  *data;           // Data buffer
-    uint16_t data_len;        // Data length
-    uint8_t  pec;             // Packet Error Code (CRC-8)
-    bool     use_pec;         // Enable PEC
-    bool     read_not_write;  // true = read, false = write
+    uint8_t device_addr; // 7-bit device address
+    uint8_t command;     // Command code
+    uint8_t *data;       // Data buffer
+    uint16_t data_len;   // Data length
+    uint8_t pec;         // Packet Error Code (CRC-8)
+    bool use_pec;        // Enable PEC
+    bool read_not_write; // true = read, false = write
 } smbus_transaction_t;
 
 /**
  * @brief PMBus Linear Data Format (LINEAR11)
  */
 typedef struct {
-    int16_t mantissa;  // 11-bit mantissa (signed)
-    int8_t  exponent;  // 5-bit exponent (signed)
+    int16_t mantissa; // 11-bit mantissa (signed)
+    int8_t exponent;  // 5-bit exponent (signed)
 } pmbus_linear11_t;
 
 /**
  * @brief PMBus Linear Data Format (LINEAR16)
  */
 typedef struct {
-    uint16_t mantissa;  // 16-bit mantissa
-    int8_t   exponent;  // Exponent (from VOUT_MODE)
+    uint16_t mantissa; // 16-bit mantissa
+    int8_t exponent;   // Exponent (from VOUT_MODE)
 } pmbus_linear16_t;
 
 // ============================================================================
@@ -245,8 +246,7 @@ uint32_t i2c_get_base(uint32_t idx);
  * @param sys_clk_mhz System clock frequency in MHz
  * @param config Pointer to timing configuration structure (output)
  */
-void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz,
-                           i2c_timing_config_t *config);
+void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz, i2c_timing_config_t *config);
 
 /**
  * @brief Compute timing configuration from physical parameters
@@ -292,8 +292,7 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config);
  * @param reset_tx Reset TX FIFO (Target mode)
  * @param reset_acq Reset ACQ FIFO (Target mode)
  */
-void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt,
-                     bool reset_tx, bool reset_acq);
+void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx, bool reset_acq);
 
 // ============================================================================
 // Controller Mode Functions
@@ -343,8 +342,8 @@ int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles);
  * @param send_stop true to send STOP, false for repeated START
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_controller_write(uint32_t idx, uint8_t target_addr,
-                         const uint8_t *data, uint32_t len, bool send_stop);
+int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data, uint32_t len,
+                         bool send_stop);
 
 /**
  * @brief Controller read transaction
@@ -355,8 +354,8 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr,
  * @param send_stop true to send STOP, false for repeated START
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_controller_read(uint32_t idx, uint8_t target_addr,
-                        uint8_t *data, uint32_t len, bool send_stop);
+int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32_t len,
+                        bool send_stop);
 
 /**
  * @brief Controller write-then-read transaction (combined format)
@@ -368,9 +367,8 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr,
  * @param read_len Number of bytes to read
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_controller_write_read(uint32_t idx, uint8_t target_addr,
-                              const uint8_t *write_data, uint32_t write_len,
-                              uint8_t *read_data, uint32_t read_len);
+int i2c_controller_write_read(uint32_t idx, uint8_t target_addr, const uint8_t *write_data,
+                              uint32_t write_len, uint8_t *read_data, uint32_t read_len);
 
 /**
  * @brief Controller write with length header (protocol used in i2c_sanity test)
@@ -380,8 +378,8 @@ int i2c_controller_write_read(uint32_t idx, uint8_t target_addr,
  * @param len Number of bytes to write
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr,
-                                     const uint8_t *data, uint32_t len);
+int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr, const uint8_t *data,
+                                     uint32_t len);
 
 /**
  * @brief Non-blocking controller write with length header
@@ -407,8 +405,7 @@ int i2c_controller_write_with_header_nonblock(uint32_t idx, uint8_t target_addr,
  * @param fmt_level Output: FMT FIFO level (can be NULL)
  * @param rx_level Output: RX FIFO level (can be NULL)
  */
-void i2c_controller_get_fifo_status(uint32_t idx, uint32_t *fmt_level,
-                                    uint32_t *rx_level);
+void i2c_controller_get_fifo_status(uint32_t idx, uint32_t *fmt_level, uint32_t *rx_level);
 
 /**
  * @brief Wait for FMT FIFO to have available space
@@ -443,8 +440,7 @@ int i2c_controller_wait_rx_fifo_data(uint32_t idx, uint32_t required_entries,
  * @param timeout_cycles Maximum cycles to wait (0 = infinite)
  * @return I2C_OK if data available, I2C_ERROR_TIMEOUT if timeout
  */
-int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries,
-                                  uint32_t timeout_cycles);
+int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries, uint32_t timeout_cycles);
 
 /**
  * @brief Controller write transaction with automatic ACQ FIFO cleanup
@@ -463,9 +459,8 @@ int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries,
  * @param send_stop true to send STOP, false for repeated START
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx,
-                         uint8_t target_addr, const uint8_t *data, uint32_t len,
-                         bool send_stop);
+int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t target_addr,
+                         const uint8_t *data, uint32_t len, bool send_stop);
 
 /**
  * @brief Controller read transaction with automatic ACQ FIFO cleanup
@@ -484,9 +479,8 @@ int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx,
  * @param send_stop true to send STOP, false for repeated START
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx,
-                        uint8_t target_addr, uint8_t *data, uint32_t len,
-                        bool send_stop);
+int i2c_read_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t target_addr,
+                        uint8_t *data, uint32_t len, bool send_stop);
 
 // ============================================================================
 // Target Mode Functions
@@ -555,9 +549,8 @@ int i2c_target_receive_entry(uint32_t idx, i2c_acq_entry_t *entry);
  * @param timeout_cycles Maximum cycles to wait (0 = infinite)
  * @return I2C_OK on success, negative error code otherwise
  */
-int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
-                                   uint32_t buffer_size, uint32_t *received_len,
-                                   uint32_t timeout_cycles);
+int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
+                                   uint32_t *received_len, uint32_t timeout_cycles);
 
 /**
  * @brief Get Target FIFO status
@@ -565,8 +558,7 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer,
  * @param tx_level Output: TX FIFO level (can be NULL)
  * @param acq_level Output: ACQ FIFO level (can be NULL)
  */
-void i2c_target_get_fifo_status(uint32_t idx, uint32_t *tx_level,
-                                uint32_t *acq_level);
+void i2c_target_get_fifo_status(uint32_t idx, uint32_t *tx_level, uint32_t *acq_level);
 
 /**
  * @brief Check if ACQ FIFO is empty
@@ -660,8 +652,7 @@ void i2c_clear_target_events(uint32_t idx, uint32_t event_mask);
  * @param stretch_mode true for stretch timeout, false for bus timeout
  * @param enable Enable timeout
  */
-void i2c_config_timeout(uint32_t idx, uint32_t timeout_val,
-                       bool stretch_mode, bool enable);
+void i2c_config_timeout(uint32_t idx, uint32_t timeout_val, bool stretch_mode, bool enable);
 
 /**
  * @brief Configure Controller NACK handler timeout
@@ -764,8 +755,8 @@ int smbus_receive_byte(uint32_t idx, uint8_t device_addr, uint8_t *data, bool us
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t data, bool use_pec);
+int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t data,
+                     bool use_pec);
 
 /**
  * @brief SMBus Read Byte (command, then read data byte)
@@ -776,8 +767,8 @@ int smbus_write_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
-                    uint8_t *data, bool use_pec);
+int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                    bool use_pec);
 
 /**
  * @brief SMBus Write Word (command + 2 data bytes, LSB first)
@@ -788,8 +779,8 @@ int smbus_read_byte(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint16_t data, bool use_pec);
+int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t data,
+                     bool use_pec);
 
 /**
  * @brief SMBus Read Word (command, then read 2 data bytes, LSB first)
@@ -800,8 +791,8 @@ int smbus_write_word(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command,
-                    uint16_t *data, bool use_pec);
+int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t *data,
+                    bool use_pec);
 
 /**
  * @brief SMBus Block Write (command + byte count + data bytes)
@@ -813,8 +804,8 @@ int smbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
-                      const uint8_t *data, uint8_t len, bool use_pec);
+int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command, const uint8_t *data,
+                      uint8_t len, bool use_pec);
 
 /**
  * @brief SMBus Block Read (command, then read byte count + data bytes)
@@ -827,8 +818,8 @@ int smbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t *data, uint8_t *len, uint8_t max_len, bool use_pec);
+int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                     uint8_t *len, uint8_t max_len, bool use_pec);
 
 /**
  * @brief SMBus Process Call (command + 2 write bytes, then read 2 bytes)
@@ -840,8 +831,8 @@ int smbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param use_pec Enable PEC
  * @return I2C_OK on success, negative error code otherwise
  */
-int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
-                       uint16_t write_data, uint16_t *read_data, bool use_pec);
+int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t write_data,
+                       uint16_t *read_data, bool use_pec);
 
 /**
  * @brief SMBus Block Process Call (cmd + write count + write data, then read count + read data)
@@ -857,9 +848,8 @@ int smbus_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @return I2C_OK on success, negative error code otherwise
  */
 int smbus_block_process_call(uint32_t idx, uint8_t device_addr, uint8_t command,
-                             const uint8_t *write_data, uint8_t write_len,
-                             uint8_t *read_data, uint8_t *read_len,
-                             uint8_t max_read_len, bool use_pec);
+                             const uint8_t *write_data, uint8_t write_len, uint8_t *read_data,
+                             uint8_t *read_len, uint8_t max_read_len, bool use_pec);
 
 /**
  * @brief SMBus Alert Response Address (ARA) - Read alert source
@@ -931,8 +921,8 @@ int pmbus_read_word(uint32_t idx, uint8_t device_addr, uint8_t command, uint16_t
  * @param len Data length
  * @return I2C_OK on success, negative error code otherwise
  */
-int pmbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
-                      const uint8_t *data, uint8_t len);
+int pmbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command, const uint8_t *data,
+                      uint8_t len);
 
 /**
  * @brief PMBus Block Read (command, then read byte count + data)
@@ -944,8 +934,8 @@ int pmbus_block_write(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param max_len Maximum buffer size
  * @return I2C_OK on success, negative error code otherwise
  */
-int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                     uint8_t *data, uint8_t *len, uint8_t max_len);
+int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command, uint8_t *data,
+                     uint8_t *len, uint8_t max_len);
 
 /**
  * @brief PMBus Block Write-Read Process Call
@@ -960,8 +950,8 @@ int pmbus_block_read(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @return I2C_OK on success, negative error code otherwise
  */
 int pmbus_block_write_read(uint32_t idx, uint8_t device_addr, uint8_t command,
-                           const uint8_t *write_data, uint8_t write_len,
-                           uint8_t *read_data, uint8_t *read_len, uint8_t max_read_len);
+                           const uint8_t *write_data, uint8_t write_len, uint8_t *read_data,
+                           uint8_t *read_len, uint8_t max_read_len);
 
 /**
  * @brief PMBus Group Command (send to multiple devices)
@@ -973,9 +963,8 @@ int pmbus_block_write_read(uint32_t idx, uint8_t device_addr, uint8_t command,
  * @param num_devices Number of devices
  * @return I2C_OK on success, negative error code otherwise
  */
-int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs,
-                       const uint8_t *commands, const uint8_t **data_arrays,
-                       const uint8_t *data_lens, uint8_t num_devices);
+int pmbus_group_command(uint32_t idx, const uint8_t *device_addrs, const uint8_t *commands,
+                        const uint8_t **data_arrays, const uint8_t *data_lens, uint8_t num_devices);
 
 // ============================================================================
 // PMBus Data Format Conversion Functions
@@ -1043,8 +1032,7 @@ void i2c_override_signals(uint32_t idx, bool enable, bool scl_val, bool sda_val)
  * @param scl_samples Output: last 16 SCL samples (can be NULL)
  * @param sda_samples Output: last 16 SDA samples (can be NULL)
  */
-void i2c_get_signal_samples(uint32_t idx, uint16_t *scl_samples,
-                           uint16_t *sda_samples);
+void i2c_get_signal_samples(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_samples);
 
 /**
  * @brief Register verification write (write and read back)
@@ -1064,7 +1052,7 @@ int i2c_reg_verify_write(uint32_t base, uint32_t offset, uint32_t value);
  * @param error Error code
  * @return Error description string
  */
-const char* i2c_error_to_string(int error);
+const char *i2c_error_to_string(int error);
 
 /**
  * @brief Dump I2C registers (for debug)
@@ -1150,17 +1138,17 @@ int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t
  * @brief Clock timeout types
  */
 typedef enum {
-    I2C_TIMEOUT_DISABLED = 0,   // Timeout disabled
-    I2C_TIMEOUT_STRETCH = 1,    // Stretch timeout (target stretching limit)
-    I2C_TIMEOUT_BUS = 2         // Bus timeout (SCL low limit, SMBus compatible)
+    I2C_TIMEOUT_DISABLED = 0, // Timeout disabled
+    I2C_TIMEOUT_STRETCH = 1,  // Stretch timeout (target stretching limit)
+    I2C_TIMEOUT_BUS = 2       // Bus timeout (SCL low limit, SMBus compatible)
 } i2c_timeout_type_t;
 
 /**
  * @brief Acquired data structure from target ACQ FIFO
  */
 typedef struct {
-    uint8_t data;      // Data byte
-    uint8_t signal;    // Signal flags (START, STOP, NACK, etc.)
+    uint8_t data;   // Data byte
+    uint8_t signal; // Signal flags (START, STOP, NACK, etc.)
 } i2c_acq_data_t;
 
 /**
@@ -1295,8 +1283,8 @@ int i2c_override_sample_pins(uint32_t idx, uint16_t *scl_samples, uint16_t *sda_
  * @brief Target ID structure for address configuration
  */
 typedef struct {
-    uint8_t address;  // 7-bit I2C address
-    uint8_t mask;     // Address mask
+    uint8_t address; // 7-bit I2C address
+    uint8_t mask;    // Address mask
 } i2c_target_id_t;
 
 /**
@@ -1375,8 +1363,8 @@ int i2c_get_all_fifo_levels(uint32_t idx, uint32_t *fmt_level, uint32_t *rx_leve
  * @param suppress_nak_irq Suppress NAK interrupt for this byte
  * @return I2C_OK on success, error code on failure
  */
-int i2c_write_byte_formatted(uint32_t idx, uint8_t byte, bool start, bool stop,
-                             bool read, bool read_cont, bool suppress_nak_irq);
+int i2c_write_byte_formatted(uint32_t idx, uint8_t byte, bool start, bool stop, bool read,
+                             bool read_cont, bool suppress_nak_irq);
 
 #ifdef __cplusplus
 }

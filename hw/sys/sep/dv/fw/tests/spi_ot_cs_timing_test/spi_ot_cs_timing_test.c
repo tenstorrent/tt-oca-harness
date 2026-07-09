@@ -34,15 +34,12 @@
 
 #define TIMEOUT_LIMIT 100000
 
-static void configure_spi_mux_ot(void)
-{
+static void configure_spi_mux_ot(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
 }
 
-static int check_timing(const char *label,
-                        uint32_t csnidle, uint32_t csnlead, uint32_t csntrail,
-                        uint32_t exp_csnidle, uint32_t exp_csnlead, uint32_t exp_csntrail)
-{
+static int check_timing(const char *label, uint32_t csnidle, uint32_t csnlead, uint32_t csntrail,
+                        uint32_t exp_csnidle, uint32_t exp_csnlead, uint32_t exp_csntrail) {
     int ok = 1;
     printf("  %s:\n", label);
     if (csnidle != exp_csnidle) {
@@ -66,8 +63,7 @@ static int check_timing(const char *label,
     return ok;
 }
 
-static int wait_for_ready(int timeout)
-{
+static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -78,8 +74,7 @@ static int wait_for_ready(int timeout)
     return 1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
@@ -90,7 +85,8 @@ int main(void)
     spi_controller__CTRL_t ctrl;
     spi_controller__CFG_t cfg;
     spi_controller__CMD_t cmd;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t err_status;
+    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
+        err_status;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -107,16 +103,15 @@ int main(void)
     /* ------------------------------------------------------------------ */
     printf("Step 1: Min CS timing values (all 0)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV   = 9;
-    cfg.f.CPOL     = 0;
-    cfg.f.CPHA     = 0;
-    cfg.f.CSNIDLE  = 0;
-    cfg.f.CSNLEAD  = 0;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CPOL = 0;
+    cfg.f.CPHA = 0;
+    cfg.f.CSNIDLE = 0;
+    cfg.f.CSNLEAD = 0;
     cfg.f.CSNTRAIL = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_timing("Min values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL,
-                      0, 0, 0))
+    if (!check_timing("Min values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 0, 0, 0))
         pass = 0;
 
     /* ------------------------------------------------------------------ */
@@ -124,14 +119,13 @@ int main(void)
     /* ------------------------------------------------------------------ */
     printf("\nStep 2: Max CS timing values (all 15)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV   = 9;
-    cfg.f.CSNIDLE  = 15;
-    cfg.f.CSNLEAD  = 15;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CSNIDLE = 15;
+    cfg.f.CSNLEAD = 15;
     cfg.f.CSNTRAIL = 15;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_timing("Max values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL,
-                      15, 15, 15))
+    if (!check_timing("Max values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 15, 15, 15))
         pass = 0;
 
     /* ------------------------------------------------------------------ */
@@ -139,14 +133,13 @@ int main(void)
     /* ------------------------------------------------------------------ */
     printf("\nStep 3: Mixed CS timing values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV   = 9;
-    cfg.f.CSNIDLE  = 5;
-    cfg.f.CSNLEAD  = 10;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CSNIDLE = 5;
+    cfg.f.CSNLEAD = 10;
     cfg.f.CSNTRAIL = 3;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_timing("Mixed values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL,
-                      5, 10, 3))
+    if (!check_timing("Mixed values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 5, 10, 3))
         pass = 0;
 
     /* ------------------------------------------------------------------ */
@@ -154,35 +147,40 @@ int main(void)
     /* ------------------------------------------------------------------ */
     printf("\nStep 4: Restore working values (all=2) and issue TX command\n");
     cfg.w = 0;
-    cfg.f.CLKDIV   = 9;
-    cfg.f.CPOL     = 0;
-    cfg.f.CPHA     = 0;
-    cfg.f.CSNIDLE  = 2;
-    cfg.f.CSNLEAD  = 2;
+    cfg.f.CLKDIV = 9;
+    cfg.f.CPOL = 0;
+    cfg.f.CPHA = 0;
+    cfg.f.CSNIDLE = 2;
+    cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_timing("Restored values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL,
-                      2, 2, 2))
+    if (!check_timing("Restored values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 2, 2, 2))
         pass = 0;
 
     /* Issue a simple 1-byte TX command to verify SPI still works */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
-    cmd.w         = 0;
-    cmd.f.LEN       = 0;    /* 1 byte */
-    cmd.f.CSAAT     = 0;
-    cmd.f.SPEED     = 0;    /* Standard */
-    cmd.f.DIRECTION = 2;    /* TX */
+    cmd.w = 0;
+    cmd.f.LEN = 0; /* 1 byte */
+    cmd.f.CSAAT = 0;
+    cmd.f.SPEED = 0;     /* Standard */
+    cmd.f.DIRECTION = 2; /* TX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    if (wait_for_ready(TIMEOUT_LIMIT)) { pass = 0; goto done; }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n",
-           err_status.w, err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
+    printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
+           err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
         printf("  FAIL: CMD error after restoring CS timing\n");
         pass = 0;
@@ -201,6 +199,8 @@ done:
     }
     printf("========================================\n");
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return pass ? 0 : -1;
 }

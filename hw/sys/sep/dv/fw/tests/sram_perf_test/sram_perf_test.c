@@ -22,43 +22,40 @@
 // MRAC register values
 // Region 1 (0x10000000-0x1FFFFFFF) contains SRAM at 0x10100000
 // Bits [3:2] control region 1: 01 = normal, 10 = side-effect
-#define MRAC_NORMAL_MODE      0xAAAAAA64  // Region 1 = no side-effect (cacheable)
-#define MRAC_SIDEEFFECT_MODE  0xAAAAAA68  // Region 1 = side-effect
+#define MRAC_NORMAL_MODE 0xAAAAAA64     // Region 1 = no side-effect (cacheable)
+#define MRAC_SIDEEFFECT_MODE 0xAAAAAA68 // Region 1 = side-effect
 
 // Test parameters - tuned for ~50k total operations
 // 256 words × 50 iters × 2 patterns × 2 modes = 51,200 operations
-#define NUM_WORDS       256     // Number of SRAM words to test (1KB)
-#define NUM_ITERATIONS  50      // Number of test iterations
+#define NUM_WORDS 256     // Number of SRAM words to test (1KB)
+#define NUM_ITERATIONS 50 // Number of test iterations
 
 // Use only 90% of SRAM to leave safety margin at the end
 // SRAM is at 0x10100000 (separate from DTCM/stack at 0x00080000-0x0009FFFF)
-#define SRAM_SAFETY_MARGIN  0x4000  // 16KB safety buffer at end
-#define SRAM_USABLE_SIZE    (OCH_SEP_TOP_SEP_SRAM_SIZE - SRAM_SAFETY_MARGIN)
-#define SRAM_WORD_MAX       (SRAM_USABLE_SIZE / 4)  // Max word offset in usable SRAM
+#define SRAM_SAFETY_MARGIN 0x4000 // 16KB safety buffer at end
+#define SRAM_USABLE_SIZE (OCH_SEP_TOP_SEP_SRAM_SIZE - SRAM_SAFETY_MARGIN)
+#define SRAM_WORD_MAX (SRAM_USABLE_SIZE / 4) // Max word offset in usable SRAM
 
 // LFSR seed for reproducible random addresses
-#define LFSR_SEED       0xACE1u
+#define LFSR_SEED 0xACE1u
 
 //-----------------------------------------------------------------------------
 // Timing functions using mcycle CSR
 //-----------------------------------------------------------------------------
 
-static inline uint32_t read_mcycle_lo(void)
-{
+static inline uint32_t read_mcycle_lo(void) {
     uint32_t val;
-    __asm__ volatile ("csrr %0, mcycle" : "=r"(val));
+    __asm__ volatile("csrr %0, mcycle" : "=r"(val));
     return val;
 }
 
-static inline uint32_t read_mcycle_hi(void)
-{
+static inline uint32_t read_mcycle_hi(void) {
     uint32_t val;
-    __asm__ volatile ("csrr %0, mcycleh" : "=r"(val));
+    __asm__ volatile("csrr %0, mcycleh" : "=r"(val));
     return val;
 }
 
-static inline uint64_t read_mcycle(void)
-{
+static inline uint64_t read_mcycle(void) {
     uint32_t lo, hi, hi2;
     // Read hi, lo, hi again to handle wraparound
     do {
@@ -73,13 +70,12 @@ static inline uint64_t read_mcycle(void)
 // MRAC control
 //-----------------------------------------------------------------------------
 
-static inline void set_mrac(uint32_t val)
-{
-    __asm__ volatile (
-        "csrw 0x7c0, %0\n"
-        "fence\n"           // Required after MRAC change for load/store regions
-        : : "r"(val) : "memory"
-    );
+static inline void set_mrac(uint32_t val) {
+    __asm__ volatile("csrw 0x7c0, %0\n"
+                     "fence\n" // Required after MRAC change for load/store regions
+                     :
+                     : "r"(val)
+                     : "memory");
 }
 
 //-----------------------------------------------------------------------------
@@ -88,18 +84,16 @@ static inline void set_mrac(uint32_t val)
 
 static uint16_t lfsr_state = LFSR_SEED;
 
-static void lfsr_reset(void)
-{
+static void lfsr_reset(void) {
     lfsr_state = LFSR_SEED;
 }
 
 // 16-bit Galois LFSR with taps at 16, 14, 13, 11 (maximal period 65535)
-static uint16_t lfsr_next(void)
-{
+static uint16_t lfsr_next(void) {
     uint16_t lsb = lfsr_state & 1;
     lfsr_state >>= 1;
     if (lsb) {
-        lfsr_state ^= 0xB400;  // Taps: 16, 14, 13, 11
+        lfsr_state ^= 0xB400; // Taps: 16, 14, 13, 11
     }
     return lfsr_state;
 }
@@ -112,13 +106,12 @@ static uint16_t lfsr_next(void)
 
 static uint32_t random_offsets[NUM_WORDS];
 
-static void generate_random_offsets(void)
-{
+static void generate_random_offsets(void) {
     // Use deterministic sequential offsets with fixed stride
     // This GUARANTEES no duplicates - each offset is exactly 'stride' apart
     // Stride is chosen to spread accesses across SRAM while staying within bounds
-    uint32_t stride = SRAM_WORD_MAX / NUM_WORDS;  // ~60 words apart
-    uint32_t start_offset = 0;  // Start from beginning of SRAM
+    uint32_t stride = SRAM_WORD_MAX / NUM_WORDS; // ~60 words apart
+    uint32_t start_offset = 0;                   // Start from beginning of SRAM
 
     for (int i = 0; i < NUM_WORDS; i++) {
         random_offsets[i] = start_offset + (uint32_t)i * stride;
@@ -132,8 +125,7 @@ static void generate_random_offsets(void)
 static volatile uint32_t *sram = (volatile uint32_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
 
 // Sequential pattern: Write all locations, then read all back
-static int test_sequential(void)
-{
+static int test_sequential(void) {
     uint32_t pattern_base = 0xDEAD0000;
     int total_ops = NUM_ITERATIONS * NUM_WORDS;
     int last_progress = -1;
@@ -183,10 +175,9 @@ static int test_sequential(void)
 }
 
 // Interleaved pattern: Write-read-verify each location immediately
-static int test_interleaved(void)
-{
+static int test_interleaved(void) {
     uint32_t pattern_base = 0xBEEF0000;
-    int total_ops = NUM_ITERATIONS * NUM_WORDS * 2;  // write + read per word
+    int total_ops = NUM_ITERATIONS * NUM_WORDS * 2; // write + read per word
     int last_progress = -1;
     int op_count = 0;
 
@@ -234,8 +225,7 @@ static int test_interleaved(void)
 // Main
 //-----------------------------------------------------------------------------
 
-int main(void)
-{
+int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
@@ -251,10 +241,8 @@ int main(void)
     printf("========================================\n");
     printf("SRAM Base: 0x%08X\n", OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
     printf("SRAM Size: %d bytes\n", OCH_SEP_TOP_SEP_SRAM_SIZE);
-    printf("Usable Range: 0x%08X - 0x%08X (%d bytes)\n",
-           OCH_SEP_TOP_SEP_SRAM_BASE_ADDR,
-           OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + SRAM_USABLE_SIZE - 1,
-           SRAM_USABLE_SIZE);
+    printf("Usable Range: 0x%08X - 0x%08X (%d bytes)\n", OCH_SEP_TOP_SEP_SRAM_BASE_ADDR,
+           OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + SRAM_USABLE_SIZE - 1, SRAM_USABLE_SIZE);
     printf("Test Size: %d bytes (%d random words)\n", NUM_WORDS * 4, NUM_WORDS);
     printf("Iterations: %d\n", NUM_ITERATIONS);
     printf("\n");
@@ -348,15 +336,11 @@ int main(void)
             int_ratio_frac = (uint32_t)((se_int_cycles * 100 / nm_int_cycles) % 100);
         }
 
-        printf("Sequential:       %-14llu  %-14llu  %u.%02ux\n",
-               (unsigned long long)se_seq_cycles,
-               (unsigned long long)nm_seq_cycles,
-               seq_ratio_int, seq_ratio_frac);
+        printf("Sequential:       %-14llu  %-14llu  %u.%02ux\n", (unsigned long long)se_seq_cycles,
+               (unsigned long long)nm_seq_cycles, seq_ratio_int, seq_ratio_frac);
 
-        printf("Interleaved:      %-14llu  %-14llu  %u.%02ux\n",
-               (unsigned long long)se_int_cycles,
-               (unsigned long long)nm_int_cycles,
-               int_ratio_int, int_ratio_frac);
+        printf("Interleaved:      %-14llu  %-14llu  %u.%02ux\n", (unsigned long long)se_int_cycles,
+               (unsigned long long)nm_int_cycles, int_ratio_int, int_ratio_frac);
 
         printf("\n*** TEST PASSED ***\n");
         test_pass(0);

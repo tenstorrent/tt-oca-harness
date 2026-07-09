@@ -22,8 +22,12 @@
 #include "rom_defs.h"
 #include "rom_isr.h"
 
-int rom_boot_wipe_enabled(void) { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Common Helpers
@@ -33,15 +37,12 @@ int rom_unrec_wipe_enabled(void) { return 0; }
  * Main
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(500000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(500000)) TEST_FAIL("Failed to set testbench timeout");
 
-    if (!tb_drbg_set_seed(0xF061u, 5000))
-        TEST_FAIL("tb_drbg_set_seed failed");
+    if (!tb_drbg_set_seed(0xF061u, 5000)) TEST_FAIL("tb_drbg_set_seed failed");
 
     rom_boot_init();
 
@@ -78,8 +79,7 @@ int main(void)
         test_delay(500);
 
         uint32_t fault_hdr;
-        if (!tb_sep_mbox_read(&fault_hdr, 5000))
-            TEST_FAIL("No RESP_RECOVERABLE_FAULT in outbound");
+        if (!tb_sep_mbox_read(&fault_hdr, 5000)) TEST_FAIL("No RESP_RECOVERABLE_FAULT in outbound");
 
         rom_km_msg_header_t fh;
         fh.raw = fault_hdr;

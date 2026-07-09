@@ -7,11 +7,11 @@
 # tech/<pdk>/ directory - this file never changes for it (see
 # flows/synth/yosys/scripts/init_tech.tcl and README.md).
 set pdk_root [ocah_env PDK_ROOT "/foss/pdks"]
-set pdk_dir  "$pdk_root/$tech"
+set pdk_dir "$pdk_root/$tech"
 
 set pdk_cells_lib "$pdk_dir/libs.ref/sg13g2_stdcell/lib"
-set pdk_sram_lib  "$pdk_dir/libs.ref/sg13g2_sram/lib"
-set pdk_io_lib    "$pdk_dir/libs.ref/sg13g2_io/lib"
+set pdk_sram_lib "$pdk_dir/libs.ref/sg13g2_sram/lib"
+set pdk_io_lib "$pdk_dir/libs.ref/sg13g2_io/lib"
 
 set tech_cells [list "$pdk_cells_lib/sg13g2_stdcell_typ_1p20V_25C.lib"]
 set tech_macros [glob -nocomplain -directory $pdk_sram_lib *_typ_1p20V_25C.lib]
