@@ -223,7 +223,7 @@ ocah-fw-check-toolchain:
 		echo "error: RISC-V toolchain not found (looking for '$(CC)')."; \
 		echo "set RISCV_TOOLCHAIN=/path/to/bin (a directory with $(RISCV_PREFIX)* tools),"; \
 		echo "put the toolchain on PATH, or run via the toolchain container:"; \
-		echo "  ./scripts/docker-run.sh run make dv-fw TARGET=<subsystem>"; \
+		echo "  ./scripts/docker-run.sh run make dv-fw-libs TARGET=<subsystem>"; \
 		exit 1; \
 	}
 

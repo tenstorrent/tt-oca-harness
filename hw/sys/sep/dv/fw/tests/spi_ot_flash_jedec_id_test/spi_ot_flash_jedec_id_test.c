@@ -55,13 +55,13 @@ static void configure_spi_mux_ot(void) {
 }
 
 static void init_spi_controller(void) {
-    spi_controller__CTRL_t ctrl;
+    spi_controller__none__CONTROL_t ctrl;
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
 
-    spi_controller__CFG_t cfg;
+    spi_controller__none__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -69,16 +69,16 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR, cfg.w);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 }
 
 static int wait_for_ready(int timeout) {
-    spi_controller__STATUS_t status;
+    spi_controller__none__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
     }
     printf("  TIMEOUT waiting for READY\n");
@@ -86,9 +86,9 @@ static int wait_for_ready(int timeout) {
 }
 
 static int wait_for_idle(int timeout) {
-    spi_controller__STATUS_t status;
+    spi_controller__none__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
     }
     printf("  TIMEOUT waiting for ACTIVE=0\n");
@@ -110,7 +110,7 @@ int main(void) {
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);
 
-    spi_controller__CMD_t cmd;
+    spi_controller__none__COMMAND_t cmd;
 
     /* ----------------------------------------------------------------
      * Segment 1: TX JEDEC ID command (0x9F), keep CS low
@@ -122,14 +122,14 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x0000009F);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x0000009F);
 
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 2; /* TX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=TX, SPEED=Std, LEN=0(1B), CSAAT=1\n");
 
     /* ----------------------------------------------------------------
@@ -146,7 +146,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 1; /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=RX, SPEED=Std, LEN=2(3B), CSAAT=0\n");
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
@@ -158,13 +158,13 @@ int main(void) {
      * RXDATA[7:0]=MFR, [15:8]=mem_type, [23:16]=capacity
      * ---------------------------------------------------------------- */
     printf("\nStep 3: Read JEDEC response from RXDATA\n");
-    spi_controller__STATUS_t status;
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    spi_controller__none__STATUS_t status;
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("  RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     uint8_t mfr_id = 0xFF, mem_type = 0xFF, capacity = 0xFF;
     if (status.f.RXQD >= 1) {
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_RXDATA_BASE_ADDR(0));
         mfr_id = (uint8_t)(rxdata & 0xFF);
         mem_type = (uint8_t)((rxdata >> 8) & 0xFF);
         capacity = (uint8_t)((rxdata >> 16) & 0xFF);
@@ -193,9 +193,8 @@ int main(void) {
      * Step 4: Verify no critical SPI controller errors
      * ---------------------------------------------------------------- */
     printf("\nStep 4: Check SPI error status\n");
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
-        err;
-    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    spi_controller__none__ERROR_STATUS_t err;
+    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x\n", err.w);
     if (err.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL (invalid speed/direction combination)\n");

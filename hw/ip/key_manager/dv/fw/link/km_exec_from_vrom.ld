@@ -1,40 +1,38 @@
 /* Copyright 2026 Tenstorrent Inc. */
-/* Key Manager Firmware Linker Script - default for tests (execute from VROM) */
-/* Minimal bootstrap in ROM (reset, IRQ vec, IRQ handler); main .text and .rodata in VROM (0x1000_0000). */
+/*
+ * Key Manager test firmware linker script (default; execute from VROM).
+ *
+ * A minimal bootstrap (reset, IRQ vector, IRQ handler) lives in physical ROM;
+ * main code and read-only data live in testbench-only Virtual ROM. The .data
+ * initializer image is stored in VROM and copied to SRAM at startup. The SRAM
+ * layout is shared with the production linker via km_sram_layout.ld.
+ *
+ *   ROM   0x0000_0000-0x0000_1FFF  (8 KB)   : bootstrap vectors
+ *   SRAM  0x0000_4000-0x0000_7FFF  (16 KB)  : .data, .bss, stack, .rom_persist
+ *   VROM  0x1000_0000-0x1000_FFFF  (64 KB)  : code, rodata, .data load image
+ */
 
-OUTPUT_ARCH( "riscv" )
+OUTPUT_ARCH("riscv")
 
 MEMORY {
-    rom(rx):  ORIGIN = 0x00000000, LENGTH = 0x2000  /* 8KB ROM */
-    sram(rwx): ORIGIN = 0x00004000, LENGTH = 0x4000  /* 16KB SRAM */
-    vrom(r):  ORIGIN = 0x10000000, LENGTH = 0x10000  /* 64KB Virtual ROM (testbench only) */
+    rom  (rx)  : ORIGIN = 0x00000000, LENGTH = 0x2000    /* 8 KB ROM */
+    sram (rwx) : ORIGIN = 0x00004000, LENGTH = 0x4000    /* 16 KB SRAM */
+    vrom (r)   : ORIGIN = 0x10000000, LENGTH = 0x10000   /* 64 KB VROM (testbench only) */
 }
 
 ENTRY(_start)
 
+/* The .data load image is stored in VROM for the test (execute-from-VROM) build. */
+REGION_ALIAS("DATA_LOAD", vrom)
+
 SECTIONS {
-    /* Minimal code in physical ROM (reset, IRQ vector, IRQ handler only). */
-    . = ORIGIN(rom);
+    /* ----- ROM: bootstrap vectors only ----- */
+    .text.reset 0x00000000 : { KEEP(*(.text._start)) } > rom
+    .text.irq_vec 0x00000010 : { KEEP(*(.text.irq_vec)) } > rom
+    .text.irq_handler : { KEEP(*(.text.irq_handler)) } > rom
 
-    .text.reset 0x00000000 : {
-        KEEP(*(.text._start))
-    } > rom
-
-    .text.irq_vec 0x00000010 : {
-        KEEP(*(.text.irq_vec))
-    } > rom
-
-    .text.irq_handler : {
-        KEEP(*(.text.irq_handler))
-    } > rom
-
-    /* Main code and rodata in Virtual ROM. */
-    . = ORIGIN(vrom);
-
-    /* Fixed VROM address for alternate IRQ-entry tests (program IRQ_ENTRY_ADDR here). */
-    .text.alt_irq 0x10000100 : {
-        KEEP(*(.text.alt_irq))
-    } > vrom
+    /* ----- VROM: code and read-only data ----- */
+    .text.alt_irq 0x10000100 : { KEEP(*(.text.alt_irq)) } > vrom
 
     .text : {
         . = ALIGN(4);
@@ -50,46 +48,13 @@ SECTIONS {
         *(.srodata.*)
     } > vrom
 
-    /* Pack runtime SRAM from the top down: .bss at the top, .data below it. */
-    .bss ORIGIN(sram) + LENGTH(sram) - SIZEOF(.bss) : {
-        BSS_START = .;
-        . = ALIGN(4);
-        *(.bss)
-        *(.bss.*)
-        *(.sbss)
-        *(.sbss.*)
-        . = ALIGN(16);
-        BSS_END = .;
-    } > sram
+    /* ----- SRAM: shared data layout (.rom_persist, .bss, .data, stack) ----- */
+    INCLUDE km_sram_layout.ld
 
-    .data ADDR(.bss) - SIZEOF(.data) : {
-        DATA_START = .;
-        . = ALIGN(4);
-        *(.data)
-        *(.data.*)
-        *(.sdata)
-        *(.sdata.*)
-        . = ALIGN(16);
-        DATA_END = .;
-    } > sram AT> vrom
-    DATA_LOAD_START = LOADADDR(.data);
-
-    /* Anchor for gp-relative small-data accesses. */
-    PROVIDE(__global_pointer$ = DATA_START + 0x800);
-
-    /* Main stack grows downward immediately below .data. */
-    STACK = ADDR(.data);
-    stack = STACK;
-    _stack = STACK;
-
-    /* Overflow assertions */
+    /* ----- ROM / VROM image overflow assertions ----- */
     ASSERT(SIZEOF(.text.reset) + SIZEOF(.text.irq_vec) + SIZEOF(.text.irq_handler)
            <= LENGTH(rom),
            "ROM overflow: bootstrap code exceeds 8KB ROM")
     ASSERT(SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.data) <= LENGTH(vrom),
            "VROM overflow: text + rodata + data load image exceeds 64KB VROM")
-    ASSERT(ADDR(.data) >= ORIGIN(sram),
-           "SRAM overflow: data + bss exceed 16KB SRAM")
-    ASSERT(_stack >= ORIGIN(sram) + 16,
-           "SRAM overflow: data + bss leave no aligned stack space")
 }

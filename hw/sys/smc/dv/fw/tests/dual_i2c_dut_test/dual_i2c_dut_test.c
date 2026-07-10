@@ -46,7 +46,7 @@ int main(void) {
     simputs("[INIT] Initializing I2C_0 as Master (Controller)\n");
 
     // Enable I2C_0 Wrapper in Master mode
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_BASE_ADDR(0);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(0);
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1;
     ctrl.f.I2C_CONTROLLER_MODE_EN = 1; // Master mode

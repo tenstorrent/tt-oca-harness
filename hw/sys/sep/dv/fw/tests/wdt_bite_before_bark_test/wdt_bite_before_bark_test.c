@@ -39,15 +39,15 @@ int main(void) {
     /* STEP 1: Configure BITE_THOLD(200) < BARK_THOLD(5000) */
     printf("// STEP 1: Configure BITE_THOLD(%u) < BARK_THOLD(%u)\n", BITE_THOLD_VAL,
            BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
 
     /* STEP 2: Verify register read-back */
     printf("// STEP 2: Verify register read-back\n");
-    uint32_t bark_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR);
-    uint32_t bite_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
+    uint32_t bark_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR);
+    uint32_t bite_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR);
 
     if (bark_rb != BARK_THOLD_VAL) {
         printf("  FAIL: BARK_THOLD read back 0x%08x (expected 0x%08x)\n", bark_rb, BARK_THOLD_VAL);
@@ -74,7 +74,7 @@ int main(void) {
     /* STEP 3: Enable WDT */
     printf("\n// STEP 3: Enable WDT (BITE fires at %u, BARK would fire at %u)\n", BITE_THOLD_VAL,
            BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* STEP 4: Signal result immediately (before BITE fires at count=200) */
     printf("\n// STEP 4: Signal test result\n");

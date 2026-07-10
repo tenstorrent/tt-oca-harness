@@ -32,7 +32,7 @@
  * Reference: i2c_controller_driver.c I2C_release_reset()
  */
 static void i2c_wrapper_disable(uint32_t idx) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 0;
@@ -50,7 +50,7 @@ static void i2c_wrapper_disable(uint32_t idx) {
  * Reference: i2c_controller_driver.c init_i2c_ctrlr()
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1;

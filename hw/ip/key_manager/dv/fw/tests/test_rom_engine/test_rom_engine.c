@@ -57,10 +57,14 @@ static void write_otbn(const uint32_t *k, uint8_t l, rom_km_prng_state_t *p) {
 }
 
 static const engine_desc_t engines[] = {
-    {"HMAC", ROM_KM_HMAC_WRAPPER_BASE, ROM_KM_HMAC_WORDS_PER_SHARE, 8, shred_hmac, write_hmac},
-    {"KMAC", ROM_KM_KMAC_WRAPPER_BASE, ROM_KM_KMAC_WORDS_PER_SHARE, 8, shred_kmac, write_kmac},
-    {"AES", ROM_KM_AES_WRAPPER_BASE, ROM_KM_AES_WORDS_PER_SHARE, 8, shred_aes, write_aes},
-    {"OTBN", ROM_KM_OTBN_WRAPPER_BASE, ROM_KM_OTBN_WORDS_PER_SHARE, 12, shred_otbn, write_otbn},
+    {"HMAC", KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR, ROM_KM_HMAC_WORDS_PER_SHARE, 8, shred_hmac,
+     write_hmac},
+    {"KMAC", KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR, ROM_KM_KMAC_WORDS_PER_SHARE, 8, shred_kmac,
+     write_kmac},
+    {"AES", KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR, ROM_KM_AES_WORDS_PER_SHARE, 8, shred_aes,
+     write_aes},
+    {"OTBN", KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR, ROM_KM_OTBN_WORDS_PER_SHARE, 12, shred_otbn,
+     write_otbn},
 };
 
 #define NUM_ENGINES (sizeof(engines) / sizeof(engines[0]))

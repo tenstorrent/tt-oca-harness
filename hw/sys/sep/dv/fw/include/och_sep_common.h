@@ -29,7 +29,7 @@
  * @param value 32-bit value to write
  *
  * Example:
- *   WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+ *   WRITE_REG(OCH_SEP_TOP_OTBN_NONE_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
  */
 #define WRITE_REG(addr, value) (*((volatile uint32_t *)(uintptr_t)(addr)) = (value))
 
@@ -40,7 +40,7 @@
  * @return     32-bit value read from the register
  *
  * Example:
- *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+ *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
  */
 #define READ_REG(addr) (*((volatile uint32_t *)(uintptr_t)(addr)))
 
@@ -204,14 +204,14 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask, uint32_t expec
  *     (*((volatile uint32_t *)(uintptr_t)(addr)))
  *
  * This is because sep.h / sep_addr.h already provides absolute addresses:
- *   #define OCH_SEP_TOP_OTBN_CMD_BASE_ADDR (0x40000010)  // Already absolute!
+ *   #define OCH_SEP_TOP_OTBN_NONE_CMD_BASE_ADDR (0x40000010)  // Already absolute!
  *
  * Usage in firmware/tests:
  *   #include "sep.h"  // Get absolute addresses
  *   #include "och_sep_common.h"   // Get register access macros
  *
- *   WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
- *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+ *   WRITE_REG(OCH_SEP_TOP_OTBN_NONE_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+ *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
  */
 
 #endif // OCH_SEP_COMMON_H

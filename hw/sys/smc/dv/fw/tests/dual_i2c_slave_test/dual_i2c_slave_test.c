@@ -58,7 +58,7 @@ static void set_result(uint32_t result) {
 }
 
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_BASE_ADDR(idx);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
     // Build I2C_CTRL register value:
     // bit[0] = i2c_en (1)
     // bit[4] = i2c_controller_mode_en

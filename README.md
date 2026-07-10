@@ -57,8 +57,8 @@ classification, and rules); a dedicated user-guide page will follow.
 
 ## DV firmware
 
-Per-subsystem DV firmware (runtime **drivers**, not tests) is built via
-`make dv-fw [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk`
+Per-subsystem DV firmware libraries (runtime **drivers**, not tests) are built via
+`make dv-fw-libs [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk`
 under `hw/{ip,sys}/<name>/dv/fw/` and builds as an independent recursive sub-make so the
 target CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state.
 

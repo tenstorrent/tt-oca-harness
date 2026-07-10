@@ -47,12 +47,11 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
-    spi_controller__STATUS_t status;
-    spi_controller__CMD_t cmd;
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
-        err_status;
-    spi_controller__ERROR_ENABLE_t err_enable;
+    spi_controller__none__CONTROL_t ctrl;
+    spi_controller__none__STATUS_t status;
+    spi_controller__none__COMMAND_t cmd;
+    spi_controller__none__ERROR_STATUS_t err_status;
+    spi_controller__none__ERROR_ENABLE_t err_enable;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -61,37 +60,37 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure clock */
-    spi_controller__CFG_t cfg;
+    spi_controller__none__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = 9;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Step 1: Verify CMDQD initial state */
     printf("\nStep 1: Command queue initial state\n");
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("  CMDQD=%u, READY=%u\n", status.f.CMDQD, status.f.READY);
 
     /* Step 2: Set CSID and verify */
     printf("\nStep 2: CSID configuration\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    uint32_t csid_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
+    uint32_t csid_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR);
     if (!check_reg("CSID=0", csid_val, 0)) pass = 0;
 
     /* Step 3: Issue valid command */
     printf("\nStep 3: Issue valid command (TX, Standard, LEN=3)\n");
     /* Clear prior errors */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Load TX data first */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x9F000000);
 
     /* Wait for READY */
     int timeout = TIMEOUT_LIMIT;
     do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (--timeout <= 0) break;
     } while (status.f.READY == 0);
 
@@ -101,11 +100,11 @@ int main(void) {
         cmd.f.CSAAT = 0;
         cmd.f.SPEED = 0;
         cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
         printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n", cmd.f.LEN, cmd.f.SPEED,
                cmd.f.DIRECTION, cmd.f.CSAAT);
 
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
         printf("  ERROR_STATUS=0x%08x (should be clean)\n", err_status.w);
     } else {
         printf("  WARN: Controller not READY, skipping CMD issue\n");
@@ -113,12 +112,12 @@ int main(void) {
 
     /* Step 3.5: Test CMDINVAL error (SPEED=3, reserved value) */
     printf("\nStep 3.5: CMDINVAL error test (SPEED=3)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
 
     timeout = TIMEOUT_LIMIT;
     do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (--timeout <= 0) break;
     } while (status.f.READY == 0);
 
@@ -127,14 +126,14 @@ int main(void) {
         cmd.f.LEN = 0;
         cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
         cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x00);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
         volatile int delay;
         for (delay = 0; delay < 100; delay++) {
         }
 
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
         printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n", err_status.w, err_status.f.CMDINVAL);
         if (err_status.f.CMDINVAL) {
             printf("  PASS: CMDINVAL error detected\n");
@@ -143,19 +142,19 @@ int main(void) {
             pass = 0;
         }
         /* Clear errors */
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
     } else {
         printf("  WARN: Controller not READY, skipping CMDINVAL test\n");
     }
 
     /* Step 4: Test CSIDINVAL error */
     printf("\nStep 4: CSIDINVAL error test (CSID=5, NUM_CS=1)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 5);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 5);
 
     timeout = TIMEOUT_LIMIT;
     do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (--timeout <= 0) break;
     } while (status.f.READY == 0);
 
@@ -164,14 +163,14 @@ int main(void) {
         cmd.f.LEN = 0;
         cmd.f.SPEED = 0;
         cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x00);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
         volatile int delay;
         for (delay = 0; delay < 100; delay++) {
         }
 
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
         printf("  ERROR_STATUS=0x%08x, CSIDINVAL=%u\n", err_status.w, err_status.f.CSIDINVAL);
         if (err_status.f.CSIDINVAL) {
             printf("  PASS: CSIDINVAL error detected\n");
@@ -182,19 +181,19 @@ int main(void) {
     }
 
     /* Restore CSID=0 */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
 
     /* Step 5: Test ERROR_STATUS W1C */
     printf("\nStep 5: ERROR_STATUS W1C clear\n");
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
     printf("  Before clear: ERROR_STATUS=0x%08x\n", err_status.w);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, err_status.w);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, err_status.w);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
     printf("  After W1C: ERROR_STATUS=0x%08x\n", err_status.w);
 
     /* Step 6: Test ERROR_ENABLE defaults */
     printf("\nStep 6: ERROR_ENABLE default check\n");
-    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
+    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_ENABLE_BASE_ADDR);
     if (!check_reg("ERROR_ENABLE default", err_enable.w, 0x11111u)) pass = 0;
 
     printf("\n========================================\n");

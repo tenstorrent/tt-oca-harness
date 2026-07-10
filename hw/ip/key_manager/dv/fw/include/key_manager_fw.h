@@ -17,5 +17,10 @@
 #include "km_kpv.h"
 #include "km_mailbox_km.h"
 #include "km_mailbox_sep.h"
+#include "aes_wrapper_key.h"
+#include "hmac_wrapper_key.h"
+#include "kmac_wrapper_key.h"
+#include "otbn_wrapper_key.h"
+#include "abr_wrapper_key.h"
 
 #endif /* KEY_MANAGER_FW_H */

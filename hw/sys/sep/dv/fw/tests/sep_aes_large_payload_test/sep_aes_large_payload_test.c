@@ -126,7 +126,7 @@ static void gen_pt_block(uint32_t pt[4]) {
 /* Per-block status check: OUTPUT_LOST + alert                        */
 /* ------------------------------------------------------------------ */
 static int check_block_status(uint32_t block, const char *phase) {
-    aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+    aes__none__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
         printf("  ERROR: OUTPUT_LOST at %s block %u (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;

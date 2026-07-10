@@ -32,9 +32,9 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.hmac_done || status.f.hmac_idle) {
+        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        if (intr.f.HMAC_DONE || status.f.HMAC_IDLE) {
             return 0;
         }
     }
@@ -44,32 +44,33 @@ static int wait_for_hmac_done(void) {
 }
 
 static void clear_hmac_done(void) {
-    hmac__INTR_STATE_t clear = {.w = 0};
-    clear.f.hmac_done = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    hmac__none__INTR_STATE_t clear = {.w = 0};
+    clear.f.HMAC_DONE = 1;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
 }
 
 static void cleanup_hmac(void) {
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    hmac__none__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    cfg.f.SHA_EN = 0;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, 0);
     clear_hmac_done();
 }
 
 static int feed_msg_words(const uint32_t *words, uint32_t count) {
-    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 =
+        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
 
     for (uint32_t i = 0; i < count; i++) {
         int spins = 0;
-        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        while (status.f.fifo_full) {
+        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        while (status.f.FIFO_FULL) {
             if (spins++ > 10000) {
                 printf("  FIFO full timeout at word %u\n", i);
                 return -1;
             }
-            status.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            status.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR);
         }
         *fifo32 = words[i];
     }
@@ -80,20 +81,20 @@ static int feed_msg_words(const uint32_t *words, uint32_t count) {
 static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_out[8]) {
     clear_hmac_done();
 
-    hmac__INTR_ENABLE_t intr_en = {.w = 0};
-    intr_en.f.hmac_done = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    hmac__none__INTR_ENABLE_t intr_en = {.w = 0};
+    intr_en.f.HMAC_DONE = 1;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.sha_en = 1;
-    cfg.f.hmac_en = 0;
-    cfg.f.digest_size = 1;
-    cfg.f.endian_swap = endian_swap;
-    cfg.f.digest_swap = digest_swap;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    hmac__none__CFG_t cfg = {.w = 0};
+    cfg.f.SHA_EN = 1;
+    cfg.f.HMAC_EN = 0;
+    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.ENDIAN_SWAP = endian_swap;
+    cfg.f.DIGEST_SWAP = digest_swap;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t start = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
+    hmac__none__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
 
     const uint32_t msg_words[] = {
         0x01234567u,
@@ -105,20 +106,20 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
         return -1;
     }
 
-    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_LOWER_BASE_ADDR);
     if (msg_len != sizeof(msg_words) * 8u) {
         printf("  FAIL: MSG_LENGTH=%u expected=%u\n", msg_len, (unsigned)(sizeof(msg_words) * 8u));
         return -1;
     }
 
-    hmac__CMD_t process = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
+    hmac__none__CMD_t process = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, process.w);
     if (wait_for_hmac_done() != 0) {
         return -1;
     }
 
     for (int i = 0; i < 8; i++) {
-        digest_out[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + i * 4);
+        digest_out[i] = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(i));
     }
 
     cleanup_hmac();
@@ -156,19 +157,19 @@ static int digest_is_bswap_of(const uint32_t swapped[8], const uint32_t raw[8]) 
 static int check_key_swap_cfg_bit(void) {
     printf("\nStep 5: key_swap CFG bit readback (deprecated path)\n");
 
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;
-    cfg.f.key_swap = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    hmac__none__CFG_t cfg = {.w = 0};
+    cfg.f.SHA_EN = 1;
+    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.KEY_SWAP = 1;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    printf("  CFG write=0x%08x read=0x%08x key_swap=%u\n", cfg.w, rb.w, rb.f.key_swap);
+    hmac__none__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    printf("  CFG write=0x%08x read=0x%08x key_swap=%u\n", cfg.w, rb.w, rb.f.KEY_SWAP);
 
-    cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    cfg.f.SHA_EN = 0;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
 
-    if (rb.f.key_swap != 1) {
+    if (rb.f.KEY_SWAP != 1) {
         printf("  FAIL: key_swap CFG bit did not read back as writable\n");
         return -1;
     }

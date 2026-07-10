@@ -37,13 +37,13 @@ firmware image once before `run` / `shell` / `verify`:
 # Firmware (build ocah-toolchain once, then run)
 ./scripts/docker-run.sh build
 ./scripts/docker-run.sh verify
-./scripts/docker-run.sh run make ocah-dv-fw TARGET=sep
+./scripts/docker-run.sh run make ocah-dv-fw-libs TARGET=sep
 ```
 
 Build all subsystems:
 
 ```bash
-./scripts/docker-run.sh run make ocah-dv-fw
+./scripts/docker-run.sh run make ocah-dv-fw-libs
 ```
 
 Build both documentation products:
@@ -111,7 +111,7 @@ docker run --rm --user "$(id -u):$(id -g)" ocah-toolchain riscv64-unknown-elf-gc
 docker run --rm --user "$(id -u):$(id -g)" ocah-toolchain riscv64-unknown-elf-gcc -print-multi-lib
 
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/work:Z -w /work ocah-toolchain \
-    make ocah-dv-fw TARGET=sep
+    make ocah-dv-fw-libs TARGET=sep
 
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/work:Z -w /work \
     "$PDF_IMAGE" \
@@ -150,14 +150,13 @@ own default user instead.
 
 ## Verification (`ocah-toolchain`)
 
-| Target | `ocah-dv-fw` in container | Notes |
+| Target | `ocah-dv-fw-libs` in container | Notes |
 |--------|---------------------------|-------|
 | SEP | **Pass** | `--specs=picolibc.specs` in `toolchain.mk` |
 | KM | **Pass** | Same specs on compile; `-nostdlib` at link (headers only) |
-| SMC | **Pass** | Same specs on compile; libgloss link flags deferred to DV-test milestone |
+| SMC | **Pass** | Same specs on compile |
 
-All three subsystems use `--specs=picolibc.specs` for compile-time headers. One
-container covers the full driver-archive milestone.
+All three subsystems use `--specs=picolibc.specs` for compile-time headers.
 
 ## Pinned image digests
 
@@ -184,11 +183,7 @@ the change.
 
 - **KM** targets `rv32emc` / `ilp32e` (RV32E). Stock Debian multilib does not
   include an `ilp32e` libc variant. KM builds `-nostdlib -ffreestanding` into an
-  **archive** (`libkm.a`), so compilation does not need that multilib. A future
-  link stage would require a custom multilib build.
-- **SMC final link (later).** Archive compile uses picolibc headers via
-  `--specs=picolibc.specs`. Final ELF link still references legacy libgloss
-  crt0/`-lgloss` from tt-oca-hw; migrate to picolibc crt0 at the DV-test milestone.
+  **archive** (`libkey_manager.a`), so compilation does not need that multilib.
 - The base image is pinned (see [Pinned image digests](#pinned-image-digests)),
   but the `apt-get install` package versions inside it still float with
   whatever is current in Debian trixie at build time. Pin specific package

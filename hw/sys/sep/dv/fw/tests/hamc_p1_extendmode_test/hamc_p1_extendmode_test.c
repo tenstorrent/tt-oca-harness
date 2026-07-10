@@ -43,9 +43,9 @@ static int wait_for_done(void) {
     int timeout = 2000000;
 
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        if (intr.f.hmac_done) {
-            WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
+        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+        if (intr.f.HMAC_DONE) {
+            WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, intr.w);
             return 0;
         }
     }
@@ -55,18 +55,19 @@ static int wait_for_done(void) {
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 =
+        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
 
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
-        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
 
-        while (s.f.fifo_full) {
+        while (s.f.FIFO_FULL) {
             if (spins++ > 10000) {
                 printf("FAIL: FIFO full timeout\n");
                 return -1;
             }
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR);
         }
         *fifo8 = data[i];
     }
@@ -76,18 +77,18 @@ static int feed_msg(const uint8_t *data, uint32_t len) {
 
 static void write_repeated_key(uint32_t key_words) {
     for (uint32_t i = 0; i < key_words; i++) {
-        WRITE_REG(OCH_SEP_TOP_HMAC_KEY_BASE_ADDR(0) + (i * 4), 0x0B0B0B0Bu);
+        WRITE_REG(OCH_SEP_TOP_HMAC_NONE_KEY_0_BASE_ADDR(i), 0x0B0B0B0Bu);
     }
 }
 
 static void cleanup_hmac(void) {
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__none__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
 
-    cfg.f.sha_en = 0;
-    cfg.f.hmac_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    cfg.f.SHA_EN = 0;
+    cfg.f.HMAC_EN = 0;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, 0);
 }
 
 static int run_hmac_case(const char *name, uint32_t digest_size, uint32_t key_length,
@@ -100,41 +101,41 @@ static int run_hmac_case(const char *name, uint32_t digest_size, uint32_t key_le
     cleanup_hmac();
     write_repeated_key(key_words);
 
-    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    hmac__none__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 1;
-    cfg.f.sha_en = 1;
-    cfg.f.endian_swap = 0;
-    cfg.f.digest_swap = 0;
-    cfg.f.digest_size = digest_size;
-    cfg.f.key_length = key_length;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    hmac__none__CFG_t cfg = {.w = 0};
+    cfg.f.HMAC_EN = 1;
+    cfg.f.SHA_EN = 1;
+    cfg.f.ENDIAN_SWAP = 0;
+    cfg.f.DIGEST_SWAP = 0;
+    cfg.f.DIGEST_SIZE = digest_size;
+    cfg.f.KEY_LENGTH = key_length;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    if (rb.f.digest_size != digest_size || rb.f.key_length != key_length) {
-        printf("FAIL: CFG readback digest_size=0x%x key_length=0x%x\n", rb.f.digest_size,
-               rb.f.key_length);
+    hmac__none__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    if (rb.f.DIGEST_SIZE != digest_size || rb.f.KEY_LENGTH != key_length) {
+        printf("FAIL: CFG readback digest_size=0x%x key_length=0x%x\n", rb.f.DIGEST_SIZE,
+               rb.f.KEY_LENGTH);
         return 0;
     }
 
-    hmac__CMD_t start = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
+    hmac__none__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
 
     if (feed_msg(msg, sizeof(msg) - 1) != 0) {
         return 0;
     }
 
-    hmac__CMD_t process = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
+    hmac__none__CMD_t process = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, process.w);
 
     if (wait_for_done() != 0) {
         return 0;
     }
 
     for (uint32_t i = 0; i < digest_words; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(i));
         digest[i] = bswap32(raw);
     }
 

@@ -20,8 +20,8 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (s.f.sha3_idle) return 0;
+        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
     return -1;
@@ -30,27 +30,27 @@ static int wait_for_idle(void) {
 static void write_cfg_and_verify(const char *label, uint32_t kmac_en, uint32_t mode,
                                  uint32_t kstrength, uint32_t entropy_mode, uint32_t msg_endian,
                                  uint32_t state_endian) {
-    kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = kmac_en;
-    cfg.f.mode = mode;
-    cfg.f.kstrength = kstrength;
-    cfg.f.entropy_mode = entropy_mode;
-    cfg.f.msg_endianness = msg_endian;
-    cfg.f.state_endianness = state_endian;
-    cfg.f.entropy_ready = 0;
+    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    cfg.f.KMAC_EN = kmac_en;
+    cfg.f.MODE = mode;
+    cfg.f.KSTRENGTH = kstrength;
+    cfg.f.ENTROPY_MODE = entropy_mode;
+    cfg.f.MSG_ENDIANNESS = msg_endian;
+    cfg.f.STATE_ENDIANNESS = state_endian;
+    cfg.f.ENTROPY_READY = 0;
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    kmac__CFG_SHADOWED_t rb = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
+    kmac__none__CFG_SHADOWED_t rb = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR)};
 
     int pass = 1;
-    if (rb.f.kmac_en != kmac_en) pass = 0;
-    if (rb.f.mode != mode) pass = 0;
-    if (rb.f.kstrength != kstrength) pass = 0;
-    if (rb.f.entropy_mode != entropy_mode) pass = 0;
-    if (rb.f.msg_endianness != msg_endian) pass = 0;
-    if (rb.f.state_endianness != state_endian) pass = 0;
+    if (rb.f.KMAC_EN != kmac_en) pass = 0;
+    if (rb.f.MODE != mode) pass = 0;
+    if (rb.f.KSTRENGTH != kstrength) pass = 0;
+    if (rb.f.ENTROPY_MODE != entropy_mode) pass = 0;
+    if (rb.f.MSG_ENDIANNESS != msg_endian) pass = 0;
+    if (rb.f.STATE_ENDIANNESS != state_endian) pass = 0;
 
     if (pass) {
         printf("PASS: %s cfg=0x%08x\n", label, rb.w);
@@ -107,8 +107,8 @@ int main(void) {
     write_cfg_and_verify("entropy_mode=EDN", 0, 0x0, 0x2, 0x1, 0, 0);
 
     /* Restore default */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, 0u);
 
     printf("\n========================================\n");
     if (test_errors == 0) {

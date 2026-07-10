@@ -37,9 +37,9 @@ static void configure_spi_mux_ot(void) {
 }
 
 static int wait_for_ready(int timeout) {
-    spi_controller__STATUS_t status;
+    spi_controller__none__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
         timeout--;
     }
@@ -48,9 +48,9 @@ static int wait_for_ready(int timeout) {
 }
 
 static int wait_for_idle(int timeout) {
-    spi_controller__STATUS_t status;
+    spi_controller__none__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
         timeout--;
     }
@@ -59,17 +59,16 @@ static int wait_for_idle(int timeout) {
 }
 
 static int check_no_errors(const char *seg_name) {
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
-        err_status;
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    spi_controller__none__ERROR_STATUS_t err_status;
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL || err_status.f.CMDBUSY) {
         printf("  FAIL %s: ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u CMDBUSY=%u)\n", seg_name,
                err_status.w, err_status.f.CMDINVAL, err_status.f.CSIDINVAL, err_status.f.CMDBUSY);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
         return 0;
     }
     printf("  PASS %s: no CMD errors\n", seg_name);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
     return 1;
 }
 
@@ -81,10 +80,10 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
-    spi_controller__CFG_t cfg;
-    spi_controller__CMD_t cmd;
-    spi_controller__STATUS_t status;
+    spi_controller__none__CONTROL_t ctrl;
+    spi_controller__none__CONFIGOPTS_t cfg;
+    spi_controller__none__COMMAND_t cmd;
+    spi_controller__none__STATUS_t status;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -93,7 +92,7 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: CLKDIV=9, Mode 0, standard CS timing */
     cfg.w = 0;
@@ -103,9 +102,9 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Segment 1: TX 1 byte command (0xEB = Quad Fast Read), CSAAT=1      */
@@ -116,16 +115,16 @@ int main(void) {
         goto done;
     }
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("  Pre-seg1: CMDQD=%u READY=%u\n", status.f.CMDQD, status.f.READY);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xEB000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0xEB000000);
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 0;     /* Standard for command byte */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -142,13 +141,13 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00123400);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x00123400);
     cmd.w = 0;
     cmd.f.LEN = 2;       /* 3 bytes */
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -170,7 +169,7 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 0; /* Dummy */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -187,7 +186,7 @@ int main(void) {
         goto done;
     }
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("  Pre-seg4: CMDQD=%u READY=%u\n", status.f.CMDQD, status.f.READY);
 
     cmd.w = 0;
@@ -195,17 +194,17 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
 
     wait_for_idle(TIMEOUT_LIMIT);
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("  Post-seg4: CMDQD=%u ACTIVE=%u RXQD=%u\n", status.f.CMDQD, status.f.ACTIVE,
            status.f.RXQD);
     if (!check_no_errors("Seg4")) pass = 0;
 
     /* Verify CMDQD returned to 0 after full chain completes */
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
     printf("\nFinal state: CMDQD=%u (expected 0)\n", status.f.CMDQD);
     if (status.f.CMDQD != 0) {
         printf("  FAIL: CMDQD should be 0 after all segments complete\n");

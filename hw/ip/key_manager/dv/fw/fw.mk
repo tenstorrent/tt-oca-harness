@@ -3,7 +3,7 @@
 
 # key_manager DV firmware build.
 #
-# Built via the DV firmware dispatcher: make dv-fw TARGET=key_manager
+# Built via the DV firmware dispatcher: make dv-fw-libs TARGET=key_manager
 FW_NAME := key_manager
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
@@ -25,7 +25,7 @@ FW_INCLUDES := \
 FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
 FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/km_exec_from_vrom.ld
 FW_TEST_LDFLAGS = \
-  $(FW_LDFLAGS) -Wl,--defsym=__rom_max_stack=0x600 -L$(FW_DIR)
+  $(FW_LDFLAGS) -Wl,--defsym=__rom_max_stack=0x600 -L$(FW_DIR)/link
 FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
 
 define FW_TEST_POSTPROCESS

@@ -21,15 +21,15 @@
 #include "test_completion.h"
 
 static void write_cfg_shadowed_twice(uint32_t val) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, val);
 }
 
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (status.f.sha3_idle) {
+        kmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        if (status.f.SHA3_IDLE) {
             return 0;
         }
     }
@@ -50,22 +50,22 @@ int main(void) {
         pass = 0;
     }
 
-    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
-    printf("  CFG_REGWEN.en=%u\n", regwen.f.en);
-    if (regwen.f.en != 1) {
+    kmac__none__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_REGWEN_BASE_ADDR)};
+    printf("  CFG_REGWEN.en=%u\n", regwen.f.EN);
+    if (regwen.f.EN != 1) {
         printf("  FAIL: CFG_SHADOWED is not writable at idle\n");
         pass = 0;
     }
 
     printf("\nStep 1: Valid matching shadowed write\n");
-    kmac__CFG_SHADOWED_t valid = {.w = 0};
-    valid.f.kmac_en = 0;
-    valid.f.mode = 0x0;
-    valid.f.kstrength = 0x2;
-    valid.f.entropy_mode = 0x1;
+    kmac__none__CFG_SHADOWED_t valid = {.w = 0};
+    valid.f.KMAC_EN = 0;
+    valid.f.MODE = 0x0;
+    valid.f.KSTRENGTH = 0x2;
+    valid.f.ENTROPY_MODE = 0x1;
     write_cfg_shadowed_twice(valid.w);
 
-    uint32_t committed = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    uint32_t committed = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
     printf("  wrote=0x%08x read=0x%08x\n", valid.w, committed);
     if (committed != valid.w) {
         printf("  FAIL: matching shadowed write did not commit\n");
@@ -73,19 +73,19 @@ int main(void) {
     }
 
     printf("\nStep 2: Mismatched shadowed write should be rejected\n");
-    kmac__CFG_SHADOWED_t first = valid;
-    first.f.mode = 0x1;
-    first.f.kstrength = 0x2;
+    kmac__none__CFG_SHADOWED_t first = valid;
+    first.f.MODE = 0x1;
+    first.f.KSTRENGTH = 0x2;
 
-    kmac__CFG_SHADOWED_t second = valid;
-    second.f.mode = 0x2;
-    second.f.kstrength = 0x0;
+    kmac__none__CFG_SHADOWED_t second = valid;
+    second.f.MODE = 0x2;
+    second.f.KSTRENGTH = 0x0;
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, first.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, second.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, first.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, second.w);
 
-    uint32_t after_bad = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
-    kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+    uint32_t after_bad = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
+    kmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
     printf("  first=0x%08x second=0x%08x after=0x%08x\n", first.w, second.w, after_bad);
     printf("  STATUS=0x%08x alert_recov_ctrl_update_err=%u alert_fatal_fault=%u\n", status.w,
            status.f.ALERT_RECOV_CTRL_UPDATE_ERR, status.f.ALERT_FATAL_FAULT);
@@ -102,14 +102,14 @@ int main(void) {
 
     printf("\nStep 3: Restore valid configuration after mismatch\n");
     write_cfg_shadowed_twice(valid.w);
-    uint32_t restored = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    uint32_t restored = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
     printf("  restored read=0x%08x\n", restored);
     if (restored != valid.w) {
         printf("  FAIL: CFG_SHADOWED did not accept valid write after mismatch\n");
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
 
     printf("\n========================================\n");
     if (pass) {

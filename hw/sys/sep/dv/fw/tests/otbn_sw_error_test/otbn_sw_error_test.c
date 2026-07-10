@@ -54,7 +54,7 @@ static void init_recoverable_cases(otbn_error_app_t cases[5]) {
         .dmem = otbn_bad_data_addr_dmem,
         .dmem_words = otbn_bad_data_addr_dmem_words,
         .expected_crc = OTBN_BAD_DATA_ADDR_EXPECTED_CRC,
-        .expected_err_bits = OTBN__ERR_BITS__BAD_DATA_ADDR_bm,
+        .expected_err_bits = OTBN__NONE__ERR_BITS__BAD_DATA_ADDR_bm,
     };
 
     cases[1] = (otbn_error_app_t){
@@ -64,7 +64,7 @@ static void init_recoverable_cases(otbn_error_app_t cases[5]) {
         .dmem = otbn_bad_insn_addr_dmem,
         .dmem_words = otbn_bad_insn_addr_dmem_words,
         .expected_crc = OTBN_BAD_INSN_ADDR_EXPECTED_CRC,
-        .expected_err_bits = OTBN__ERR_BITS__BAD_INSN_ADDR_bm,
+        .expected_err_bits = OTBN__NONE__ERR_BITS__BAD_INSN_ADDR_bm,
     };
 
     cases[2] = (otbn_error_app_t){
@@ -74,7 +74,7 @@ static void init_recoverable_cases(otbn_error_app_t cases[5]) {
         .dmem = otbn_illegal_insn_dmem,
         .dmem_words = otbn_illegal_insn_dmem_words,
         .expected_crc = OTBN_ILLEGAL_INSN_EXPECTED_CRC,
-        .expected_err_bits = OTBN__ERR_BITS__ILLEGAL_INSN_bm,
+        .expected_err_bits = OTBN__NONE__ERR_BITS__ILLEGAL_INSN_bm,
     };
 
     cases[3] = (otbn_error_app_t){
@@ -84,7 +84,7 @@ static void init_recoverable_cases(otbn_error_app_t cases[5]) {
         .dmem = otbn_call_stack_dmem,
         .dmem_words = otbn_call_stack_dmem_words,
         .expected_crc = OTBN_CALL_STACK_EXPECTED_CRC,
-        .expected_err_bits = OTBN__ERR_BITS__CALL_STACK_bm,
+        .expected_err_bits = OTBN__NONE__ERR_BITS__CALL_STACK_bm,
     };
 
     cases[4] = (otbn_error_app_t){
@@ -94,7 +94,7 @@ static void init_recoverable_cases(otbn_error_app_t cases[5]) {
         .dmem = otbn_loop_error_dmem,
         .dmem_words = otbn_loop_error_dmem_words,
         .expected_crc = OTBN_LOOP_ERROR_EXPECTED_CRC,
-        .expected_err_bits = OTBN__ERR_BITS__LOOP_bm,
+        .expected_err_bits = OTBN__NONE__ERR_BITS__LOOP_bm,
     };
 }
 
@@ -113,7 +113,7 @@ static void fail_and_halt(int code, const char *msg) {
 
 static int otbn_wait_for_status(uint32_t expected_status, const char *status_name) {
     for (int timeout = OTBN_STATUS_TIMEOUT; timeout > 0; --timeout) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
         if (timeout == OTBN_STATUS_TIMEOUT) {
             printf("[DBG] wait_for_%s: first STATUS=0x%08x\n", status_name, status);
         } else if ((timeout % 2000) == 0) {
@@ -127,44 +127,44 @@ static int otbn_wait_for_status(uint32_t expected_status, const char *status_nam
     }
 
     printf("ERROR: timed out waiting for OTBN %s, STATUS=0x%08x\n", status_name,
-           READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR));
+           READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR));
     return -1;
 }
 
 static void otbn_clear_w1c_regs(void) {
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_INTR_STATE_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_ERR_BITS_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_INSN_CNT_BASE_ADDR, 0xffffffffu);
 }
 
 static int otbn_load_app(const otbn_error_app_t *app) {
     printf("[DBG] Loading app %-14s imem_words=%zu dmem_words=%zu\n", app->name, app->imem_words,
            app->dmem_words);
 
-    WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < app->imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i, app->imem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_NONE_IMEM_BASE_ADDR(0), (uint32_t)i, app->imem[i]);
     }
 
     for (size_t i = 0; i < app->dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i, app->dmem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_NONE_DMEM_BASE_ADDR(0), (uint32_t)i, app->dmem[i]);
     }
 
-    uint32_t checksum = READ_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
+    uint32_t checksum = READ_REG(OCH_SEP_TOP_OTBN_NONE_LOAD_CHECKSUM_BASE_ADDR);
     if (checksum != app->expected_crc) {
         printf("ERROR: app %s checksum mismatch, expected=0x%08x actual=0x%08x\n", app->name,
                app->expected_crc, checksum);
         return -1;
     }
 
-    WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_LOAD_CHECKSUM_BASE_ADDR, 0u);
     return 0;
 }
 
 static int otbn_set_sw_errs_fatal(uint32_t value) {
-    WRITE_REG(OCH_SEP_TOP_OTBN_CTRL_BASE_ADDR, value);
-    uint32_t ctrl = READ_REG(OCH_SEP_TOP_OTBN_CTRL_BASE_ADDR) & OTBN_CTRL_SW_ERRS_FATAL;
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_CTRL_BASE_ADDR, value);
+    uint32_t ctrl = READ_REG(OCH_SEP_TOP_OTBN_NONE_CTRL_BASE_ADDR) & OTBN_CTRL_SW_ERRS_FATAL;
     printf("[DBG] CTRL.software_errs_fatal programmed to %u, readback=%u\n",
            value & OTBN_CTRL_SW_ERRS_FATAL, ctrl);
     return ctrl == (value & OTBN_CTRL_SW_ERRS_FATAL) ? 0 : -1;
@@ -173,9 +173,9 @@ static int otbn_set_sw_errs_fatal(uint32_t value) {
 static int otbn_clear_recoverable_state(void) {
     otbn_clear_w1c_regs();
 
-    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
-    uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
-    uint32_t insn_cnt = READ_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR);
+    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_NONE_ERR_BITS_BASE_ADDR);
+    uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_NONE_INTR_STATE_BASE_ADDR);
+    uint32_t insn_cnt = READ_REG(OCH_SEP_TOP_OTBN_NONE_INSN_CNT_BASE_ADDR);
 
     if (err_bits != 0u || intr_state != 0u || insn_cnt != 0u) {
         printf("ERROR: OTBN W1C clear failed err_bits=0x%08x intr_state=0x%08x insn_cnt=0x%08x\n",
@@ -205,10 +205,10 @@ static int run_recoverable_case(const otbn_error_app_t *app) {
     }
 
     printf("[DBG] Executing recoverable case %s\n", app->name);
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 1u);
-    WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_INTR_ENABLE_BASE_ADDR, 1u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
 
-    uint32_t status_after_cmd = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+    uint32_t status_after_cmd = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
     if ((status_after_cmd != OTBN_STATUS_BUSY_EXECUTE) && (status_after_cmd != OTBN_STATUS_IDLE)) {
         printf("ERROR: unexpected STATUS after EXECUTE for %s: 0x%08x\n", app->name,
                status_after_cmd);
@@ -219,10 +219,10 @@ static int run_recoverable_case(const otbn_error_app_t *app) {
         return -1;
     }
 
-    uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
-    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
-    uint32_t fatal_alert = READ_REG(OCH_SEP_TOP_OTBN_FATAL_ALERT_CAUSE_BASE_ADDR);
-    uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
+    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_NONE_ERR_BITS_BASE_ADDR);
+    uint32_t fatal_alert = READ_REG(OCH_SEP_TOP_OTBN_NONE_FATAL_ALERT_CAUSE_BASE_ADDR);
+    uint32_t intr_state = READ_REG(OCH_SEP_TOP_OTBN_NONE_INTR_STATE_BASE_ADDR);
 
     printf("[DBG] %-14s status=0x%08x err_bits=0x%08x intr_state=0x%08x fatal_alert=0x%08x\n",
            app->name, status, err_bits, intr_state, fatal_alert);
@@ -271,16 +271,16 @@ static int run_fatal_case(const otbn_error_app_t *app) {
     }
 
     printf("[DBG] Executing fatal-mode case %s\n", app->name);
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 1u);
-    WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_INTR_ENABLE_BASE_ADDR, 1u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_NONE_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
 
     if (otbn_wait_for_status(OTBN_STATUS_LOCKED, "LOCKED") != 0) {
         return -1;
     }
 
-    uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
-    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
-    uint32_t fatal_alert = READ_REG(OCH_SEP_TOP_OTBN_FATAL_ALERT_CAUSE_BASE_ADDR);
+    uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_NONE_STATUS_BASE_ADDR);
+    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_NONE_ERR_BITS_BASE_ADDR);
+    uint32_t fatal_alert = READ_REG(OCH_SEP_TOP_OTBN_NONE_FATAL_ALERT_CAUSE_BASE_ADDR);
 
     printf("[DBG] fatal %-8s status=0x%08x err_bits=0x%08x fatal_alert=0x%08x\n", app->name, status,
            err_bits, fatal_alert);
@@ -296,12 +296,12 @@ static int run_fatal_case(const otbn_error_app_t *app) {
         return -1;
     }
 
-    if ((err_bits & OTBN__ERR_BITS__FATAL_SOFTWARE_bm) == 0u) {
+    if ((err_bits & OTBN__NONE__ERR_BITS__FATAL_SOFTWARE_bm) == 0u) {
         printf("ERROR: fatal-mode %s missing FATAL_SOFTWARE bit\n", app->name);
         return -1;
     }
 
-    if ((fatal_alert & OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bm) == 0u) {
+    if ((fatal_alert & OTBN__NONE__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bm) == 0u) {
         printf("ERROR: fatal-mode %s missing fatal_software alert cause\n", app->name);
         return -1;
     }
@@ -317,7 +317,7 @@ int main(void) {
 
     printf("=== OTBN Software Error Handling Test ===\n");
     printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
-           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
+           OCH_SEP_TOP_OTBN_NONE_IMEM_BASE_ADDR(0), OCH_SEP_TOP_OTBN_NONE_DMEM_BASE_ADDR(0));
 
     if (otbn_wait_for_status(OTBN_STATUS_IDLE, "IDLE") != 0) {
         fail_and_halt(1, "OTBN did not reach IDLE");

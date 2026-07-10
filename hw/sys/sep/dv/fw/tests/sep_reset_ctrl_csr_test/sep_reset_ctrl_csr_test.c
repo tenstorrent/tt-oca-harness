@@ -88,14 +88,14 @@ int main(void) {
         uint32_t write_val;        // value to write to the probe
         uint32_t expect_after_rst; // probe value expected after reset pulse
     } reset_bits[] = {
-        {"otbn", (1u << 1), OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x00000001,
-         OTBN__INTR_ENABLE__DONE_reset},
-        {"aes", (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
-         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
-        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
-         HMAC__INTR_ENABLE__HMAC_DONE_reset},
-        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
-         KMAC__INTR_ENABLE__KMAC_DONE_reset},
+        {"otbn", (1u << 1), OCH_SEP_TOP_OTBN_NONE_INTR_ENABLE_BASE_ADDR, 0x00000001,
+         OTBN__NONE__INTR_ENABLE__DONE_reset},
+        {"aes", (1u << 2), OCH_SEP_TOP_AES_NONE_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
+         AES__NONE__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
+        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         HMAC__NONE__INTR_ENABLE__HMAC_DONE_reset},
+        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         KMAC__NONE__INTR_ENABLE__KMAC_DONE_reset},
     };
 
     for (size_t i = 0; i < sizeof(reset_bits) / sizeof(reset_bits[0]); i++) {
