@@ -10,6 +10,8 @@
  * search path:
  *   - smc_addr.h, the local sub-block headers: hw/sys/smc/regs/gen/c[/blocks]
  *   - hw/ip block headers: each hw/ip/<block>/regs/gen/c
+ *   - common AXI fabric headers: each hw/common/axi/<block>/regs/gen/c
+ *   - DV shim headers under hw/sys/smc/dv/shims/regs/gen/c and hw/ip/.../dv/shims
  * Add a line here when a sub-block is added to smc.rdl.
  */
 #ifndef SMC_H
@@ -19,18 +21,18 @@
 #include "avsbus_controller.h"
 #include "dma_ctrl.h"
 #include "dfx_ctrl_status.h"
-#include "axi_filter.h"
+#include "filter_ctrl.h"
 #include "gpio_wrap.h"
 #include "gpio_poc_pbias_ctrl.h"
 #include "pvt_wrap.h"
 #include "reset_unit.h"
-#include "axi_alias_remap.h"
+#include "alias_remap.h"
 #include "axil_mailbox_smc_wrap.h"
 #include "output_remap.h"
 #include "system_timer_octs.h"
 #include "telemetry_receiver_wrap.h"
 #include "uart_wrap.h"
-#include "zeroer.h"
+#include "zeroer_ctrl.h"
 #include "misc_wrap.h"
 #include "bus_error_unit.h"
 #include "clint.h"
@@ -45,7 +47,7 @@
 #include "pll_wrap.h"
 #include "i2c_wrap.h"
 #include "debug_module.h"
-#include "dfd.h"
+#include "smc_cla.h"
 #include "smc_axil_extension.h"
 
 #endif /* SMC_H */

@@ -326,8 +326,8 @@ data movement patterns.
 
 ==== Detailed Register Map
 
-// NOTE: The DMA controller registers come from the vendored iDMA RDL
-// (vendor/pulp-platform/idma/overlay/rdl/dma_ctrl.rdl), which is currently only
-// wired into the SMC composite as an include and is not yet a standalone
-// discoverable register block. The generated register table is therefore not
-// auto-included here; wiring it as a reg block is a follow-up (reg-flow) task.
+include::partial$smc/regs/gen/html/blocks/dma_ctrl.html[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/dma_ctrl.adoc[]
+endif::backend-pdf[]
