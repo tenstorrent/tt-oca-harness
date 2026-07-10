@@ -1,38 +1,40 @@
-# OCAH toolchain container
+# OCAH containers
 
-Provides containerized open tools used by OCAH:
+`tools/docker/Dockerfile` builds **only** the RISC-V DV firmware image
+(`ocah-toolchain`). Docs and EDA use **pulled** public images.
+`scripts/docker-run.sh` is the shared front door: each subcommand picks an
+image.
 
-- The local Dockerfile builds only the RISC-V DV firmware image
-  (`ocah-toolchain`) from Debian's prebuilt `gcc-riscv64-unknown-elf` and
-  `picolibc-riscv64-unknown-elf` packages.
-- Documentation uses pulled public images directly:
-  `docker.io/antora/antora:3.1.10` for HTML and a digest-pinned
-  `docker.io/asciidoctor/docker-asciidoctor` release for PDF (see
-  [Pinned image digests](#pinned-image-digests)).
-- The open-source lint/synth/format flows (`flows/`) use a third pulled image,
-  [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools):
-  `slang`, `yosys` (with the `yosys-slang` plugin), `verible`, and several open
-  PDKs (IHP SG13G2, Sky130A, GF180mcuD, ...) baked in - see
-  `flows/synth/yosys/README.md` for flow-specific usage.
+| Need | Image | How you get it | `docker-run.sh` |
+|------|--------|----------------|-----------------|
+| DV firmware (`riscv64-unknown-elf-gcc`, picolibc) | `ocah-toolchain` | **Build** from `tools/docker/Dockerfile` | `build`, `run`, `shell`, `verify` |
+| Docs HTML | `docker.io/antora/antora:3.1.10` | Pull | `doc-html` |
+| Docs PDF | digest-pinned `docker.io/asciidoctor/docker-asciidoctor` | Pull (see [Pinned image digests](#pinned-image-digests)) | `doc-pdf` |
+| EDA (yosys + PDKs; also slang/verible in-container) | [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools) | Pull | `eda-run`, `eda-shell` |
 
 Host OS does not matter; only Docker or Podman is required. Partners building
-PDF/HTML docs do not need to build an OCAH image or install the firmware
-toolchain.
+PDF/HTML docs do not need to build `ocah-toolchain` or install the firmware
+toolchain. Lint/format Make targets prefer tools on `PATH`; use `eda-run` when
+you want the container instead. Synth Make targets still call `eda-run` by
+default — see `flows/synth/yosys/README.md`.
 
 ## Prerequisites
 
 - Docker or Podman (on RHEL, `docker` is often an alias for Podman)
 
-## Quick start (helper script)
+## Quick start (`docker-run.sh`)
 
-From `tt-oca/` (or anywhere — the script resolves the repo root):
+From `tt-oca/` (or anywhere — the script resolves the repo root). Build the
+firmware image once before `run` / `shell` / `verify`:
 
 ```bash
+# Docs (pulled images; no local build)
 ./scripts/docker-run.sh doc-html trm
 ./scripts/docker-run.sh doc-pdf trm
 ./scripts/docker-run.sh doc-html integrator
 ./scripts/docker-run.sh doc-pdf integrator
 
+# Firmware (build ocah-toolchain once, then run)
 ./scripts/docker-run.sh build
 ./scripts/docker-run.sh verify
 ./scripts/docker-run.sh run make ocah-dv-fw TARGET=sep
@@ -146,7 +148,7 @@ own default user instead.
 - Users with a compatible host toolchain can skip Docker and run
   the same `make` targets directly.
 
-## Verification (Debian trixie image)
+## Verification (`ocah-toolchain`)
 
 | Target | `ocah-dv-fw` in container | Notes |
 |--------|---------------------------|-------|
@@ -196,7 +198,7 @@ the change.
 
 | Path | Role |
 |------|------|
-| `tools/docker/Dockerfile` | Image definition |
-| `scripts/docker-run.sh` | Helper script for running repo commands in the image |
-| `hw/common/dv/fw/compile.mk` | Firmware build engine (toolchain contract) |
-| `flows/common.mk` | Lint/synth/format build engine (EDA container contract) |
+| `tools/docker/Dockerfile` | Builds `ocah-toolchain` (firmware only) |
+| `scripts/docker-run.sh` | Multi-image helper (`build`/`run`/`doc-*`/`eda-*`) |
+| `hw/common/dv/fw/compile.mk` | Firmware build engine (native or `run`) |
+| `flows/common.mk` | Lint/synth helpers (`eda-run` for synth; native-or-fail for slang/verible) |
