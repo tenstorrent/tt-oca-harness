@@ -74,7 +74,7 @@ FIFO_SIM_OUT = tb_entropy_fifo
 FIFO_VCD_FILE = entropy_fifo.vcd
 
 # AXI4-Lite Register Interface Test configuration (Verilator)
-AXI4LITE_INTF = ../../../common/axi/rtl/axi4lite_intf.sv
+AXI4LITE_INTF = ../../../common/axi/axi4lite_intf.sv
 AXI4LITE_SOURCES = $(AXI4LITE_INTF) \
                    $(REG_RTL_DIR)/entropy_source_reg_pkg.sv $(RTL_DIR)/entropy_source_pkg.sv \
                    $(COMMON_RTL) $(RTL_DIR)/entropy_ring_oscillator.sv \

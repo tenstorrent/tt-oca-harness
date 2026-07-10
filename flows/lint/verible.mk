@@ -17,7 +17,7 @@ LINT_PATH ?= hw
 # Chipyard/CIRCT-generated CPU core internals, OpenTitan-origin package
 # stubs (hw/common/ot_pkg), and a couple of individually-generated files
 # living in otherwise hand-written directories.
-ocah_lint_sv_verible_files := $(shell find $(OCAH_ROOT)/$(LINT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
+ocah_lint_sv_verible_files = $(shell find $(OCAH_ROOT)/$(LINT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
 	-not -path '*/build/*' \
 	-not -path '*/vendor/*' \
 	-not -path '*/regs/gen/*' \
@@ -33,18 +33,14 @@ ocah_lint_sv_verible_check_files = @[ -n "$(strip $(ocah_lint_sv_verible_files))
 ## @section Lint (verible)
 
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
-## reported violations). Runs through Docker by default; set
-## OCAH_LINT_SV_VERIBLE_NATIVE=1 to use a `verible-verilog-lint` already on PATH
-## instead (CI installs it natively rather than pulling the EDA image).
+## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
+## install it or run via `./scripts/docker-run.sh eda-run make lint-sv-verible`.
 ## @param LINT_PATH=hw/sys/smu Optional path to scope the lint; default hw
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
 	$(ocah_lint_sv_verible_check_files)
-ifdef OCAH_LINT_SV_VERIBLE_NATIVE
+	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh eda-run make lint-sv-verible)
 	verible-verilog-lint $(ocah_lint_sv_verible_files)
-else
-	$(call ocah_eda_docker_run, verible-verilog-lint $(ocah_lint_sv_verible_files))
-endif
 
 OCAH_PHONY += ocah-lint-sv-verible
 
@@ -54,25 +50,29 @@ FORMAT_PATH ?= hw
 
 # .sv/.svh/.v files under FORMAT_PATH, excluding build output and vendored
 # third-party sources.
-ocah_format_sv_files := $(shell find $(OCAH_ROOT)/$(FORMAT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) -not -path '*/build/*' -not -path '*/vendor/*' 2>/dev/null)
+ocah_format_sv_files = $(shell find $(OCAH_ROOT)/$(FORMAT_PATH) \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) -not -path '*/build/*' -not -path '*/vendor/*' 2>/dev/null)
 
 ocah_format_sv_check_files = @[ -n "$(strip $(ocah_format_sv_files))" ] || { echo "error: no .sv/.svh/.v files under $(FORMAT_PATH)" >&2; exit 1; }
 
 ## @section Format (verible)
 
 ## Format SystemVerilog sources in place with verible-verilog-format.
+## Requires `verible-verilog-format` on PATH; otherwise install it or run via
+## `./scripts/docker-run.sh eda-run make format-sv`.
 ## @param FORMAT_PATH=hw/sys/smu Optional path to scope formatting; default hw
 .PHONY: ocah-format-sv
 ocah-format-sv:
 	$(ocah_format_sv_check_files)
-	$(call ocah_eda_docker_run, verible-verilog-format --inplace $(ocah_format_sv_files))
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv)
+	verible-verilog-format --inplace $(ocah_format_sv_files)
 
 ## Check formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param FORMAT_PATH=hw/sys/smu Optional path to scope the check; default hw
 .PHONY: ocah-format-sv-check
 ocah-format-sv-check:
 	$(ocah_format_sv_check_files)
-	$(call ocah_eda_docker_run, verible-verilog-format --verify $(ocah_format_sv_files))
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv-check)
+	verible-verilog-format --verify $(ocah_format_sv_files)
 
 OCAH_PHONY += ocah-format-sv ocah-format-sv-check
 

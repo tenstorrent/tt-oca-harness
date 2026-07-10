@@ -39,6 +39,15 @@ ocah_flow_dir_for = $(call ocah_flow_mkdir,$(strip $(foreach m,$(OCAH_FLOW_MKS),
 # $(1) = command to run inside the EDA image.
 ocah_eda_docker_run = $(OCAH_ROOT)/scripts/docker-run.sh eda-run $(1)
 
+# Require a host tool for native-or-fail Make targets. $(1) = binary name.
+# $(2) = docker-run.sh example command printed on failure.
+ocah_require_host_tool = @command -v "$(1)" >/dev/null 2>&1 || { \
+	echo "error: $(1) not found on PATH." >&2; \
+	echo "install $(1), or run via the project container:" >&2; \
+	echo "  $(2)" >&2; \
+	exit 1; \
+}
+
 # Native bender flist wrapper; bender always runs on the host, auto-discovering
 # Bender.yml from whichever directory it's invoked in.
 # $(1) = extra block-specific bender targets (FLOW_BENDER_TARGETS)

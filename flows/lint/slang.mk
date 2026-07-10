@@ -25,7 +25,7 @@ OCAH_LINT_SLANG_DIR := build/lint
 OCAH_LINT_SLANG_FLIST := $(OCAH_LINT_SLANG_DIR)/$(FLOW_DESIGN).f
 
 ## Generate this block's bender filelist for lint, without running slang.
-## Reused by the CI lint job, which doesn't go through Docker (see section 3).
+## Reused by the CI lint job.
 .PHONY: ocah-lint-slang-flist
 ocah-lint-slang-flist:
 	@mkdir -p $(OCAH_LINT_SLANG_DIR)
@@ -36,7 +36,8 @@ ocah-lint-slang-flist:
 ocah-lint-slang: ocah-lint-slang-flist
 	# --single-unit: slang defaults to one compilation unit per file in -f,
 	# so macros `include`d in one file aren't visible when used in another.
-	$(call ocah_eda_docker_run, slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit -f $(OCAH_LINT_SLANG_FLIST))
+	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh eda-run make lint-slang)
+	slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit -f $(OCAH_LINT_SLANG_FLIST)
 
 endif
 

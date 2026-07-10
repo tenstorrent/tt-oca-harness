@@ -32,6 +32,13 @@ ocah_fw_common_mk := 1
 #   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
 # A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
 
+# Parallelize object compiles / test links by default (same pattern as
+# regen-regs). Explicit -j / --jobs on the command line wins.
+OCAH_DV_FW_JOBS ?= 8
+ifeq ($(filter -j% --jobs%,$(MAKEFLAGS)),)
+MAKEFLAGS += -j$(OCAH_DV_FW_JOBS)
+endif
+
 # Toolchain resolution. RISCV_TOOLCHAIN = dir of riscv64-unknown-elf-* tools, or
 # empty to use the toolchain on PATH (provisioned via Docker).
 RISCV_TOOLCHAIN ?=
@@ -66,7 +73,8 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c))
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c))
 FW_INCLUDES += $(if $(strip $(FW_REG_SYS)),$(call ocah_fw_reg_includes,$(FW_REG_SYS)))
 
 # Derived build variables.
@@ -214,7 +222,8 @@ ocah-fw-check-toolchain:
 	@command -v "$(CC)" >/dev/null 2>&1 || { \
 		echo "error: RISC-V toolchain not found (looking for '$(CC)')."; \
 		echo "set RISCV_TOOLCHAIN=/path/to/bin (a directory with $(RISCV_PREFIX)* tools),"; \
-		echo "or put the toolchain on PATH."; \
+		echo "put the toolchain on PATH, or run via the toolchain container:"; \
+		echo "  ./scripts/docker-run.sh run make dv-fw TARGET=<subsystem>"; \
 		exit 1; \
 	}
 

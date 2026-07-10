@@ -397,15 +397,15 @@ sources:
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
       - hw/sys/smu/rtl/smu_axi_xbar_pkg.sv
       - hw/sys/smu/rtl/smu_pkg.sv
-      - hw/common/axi/rtl/axi4lite_intf.sv
-      - hw/common/axi/rtl/axi4lite_to_pulp_axi_lite.sv
-      - hw/common/axi/rtl/axi_cg_snoop.sv
+      - hw/common/axi/axi4lite_intf.sv
+      - hw/common/axi/axi4lite_to_pulp_axi_lite.sv
+      - hw/common/axi/axi_cg_snoop.sv
       # top_pkg.sv/tlul_pkg.sv/prim_secded_pkg.sv omitted: compiled earlier by the
       # opentitan package. prim_mubi_pkg.sv omitted: compiled earlier by the
       # register_interface package.
-      - hw/common/axi/rtl/axi_lite_to_tlul.sv
-      - hw/common/axi/rtl/tlul_to_axi_lite.sv
-      - hw/common/axi/rtl/tlul_to_reg_async.sv
+      - hw/common/axi/axi_lite_to_tlul.sv
+      - hw/common/axi/tlul_to_axi_lite.sv
+      - hw/common/tlul/rtl/tlul_to_reg_async.sv
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
       - hw/common/och_prim/rtl/prim_apb_mux.sv

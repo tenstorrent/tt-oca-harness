@@ -24,7 +24,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   csrng edn secure_dma spi_controller \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
-  el2_pic aon_timer dfd smc_cla
+  el2_pic aon_timer dfd smc_cla dma_ctrl
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)

@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Thin SMC discoverable wrapper around the vendor iDMA register map (single
+// source of truth). PeakRDL / the SMC composite find this via regs/blocks/.
+`include "../../../../../../vendor/pulp-platform/idma/overlay/rdl/dma_ctrl.rdl"

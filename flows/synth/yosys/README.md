@@ -1,12 +1,13 @@
 # Open-source lint/synth/format flows
 
-Docker-by-default flows for the four `hw/sys` blocks (`smc`, `sep`, `smu`,
-`dtp`) plus vendored IP packages (currently `aou-rtl`), built on open-source
-tooling bundled in one pulled image,
-[`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools): `slang`
-(lint), `yosys` + the `yosys-slang` plugin (synthesis), and `verible`
-(formatting). See [`tools/docker/README.md`](../../../tools/docker/README.md)
-for how the container is invoked.
+Slang and verible Make targets are native-or-fail (tools must be on `PATH`);
+yosys synthesis is Docker-by-default. Covered blocks: the four `hw/sys`
+blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
+`aou-rtl`). The EDA container image,
+[`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools), bundles
+`slang`, `yosys` + the `yosys-slang` plugin, and `verible`. See
+[`tools/docker/README.md`](../../../tools/docker/README.md) for how the
+container is invoked.
 
 ## Commands
 
@@ -25,10 +26,11 @@ namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` wo
 "Unknown OCAH register block 'smu'" before lint ever ran, since `smu`/`dtp`
 have no registers. `FORMAT_PATH` scopes formatting to a subtree (default
 `hw`); it is not called `PATH` for the same kind of reason - that would
-clobber the shell's own command-search path for every recipe. All four
-commands run through Docker unconditionally (`OCAH_EDA_IMAGE`, overridable) -
-there is no native-tool fallback, since essentially nobody has
-`yosys`+`yosys-slang`+an open PDK on `PATH` the way a C compiler might be.
+clobber the shell's own command-search path for every recipe. `make
+lint-slang*` / `format-sv*` / `lint-sv-verible` require the matching tool on
+`PATH` (or use `./scripts/docker-run.sh eda-run make …`). Only `make synth*`
+runs through Docker by default (`OCAH_EDA_IMAGE`, overridable), since few
+hosts have `yosys`+`yosys-slang`+an open PDK installed.
 
 For ad-hoc debugging, the container is also reachable directly:
 

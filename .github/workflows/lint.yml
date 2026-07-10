@@ -88,7 +88,7 @@ jobs:
   #       uses: chipsalliance/verible-actions-common/install-verible@main
   #       with: { verible_version: v0.0-4080-ga0a8d8eb }
   #     - name: Lint SystemVerilog style (verible-verilog-lint)
-  #       run: make ocah-lint-sv-verible OCAH_LINT_SV_VERIBLE_NATIVE=1 2>&1 | tee lint_sv_verible.log || true
+  #       run: make ocah-lint-sv-verible 2>&1 | tee lint_sv_verible.log || true
   #     - uses: ./.github/actions/reviewdog-report
   #       with: { log-file: lint_sv_verible.log, efm: '%f:%l:%c: %m', level: error, name: lint-sv-verible, fail-level: none }
 
