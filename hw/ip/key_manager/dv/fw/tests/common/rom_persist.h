@@ -5,11 +5,11 @@
 #define ROM_PERSIST_H
 
 #include <stdint.h>
-#include "key_manager_addr.h"
+#include "rom_defs.h"
+#include "rom_kmcsr.h"
 
+/* DV stub: absolute address used by open-tree tests; production uses .rom_persist. */
 #define ROM_PERSIST_SRAM_FW_SIZE_ADDR 0x00007E00u
-#define ROM_PERSIST_LOCK_REGION_BIT 31u
-#define ROM_KM_PERSIST_LOCK_MASK (1u << ROM_PERSIST_LOCK_REGION_BIT)
 
 static inline volatile uint32_t *rom_persist_sram_fw_size_ptr(void) {
     return (volatile uint32_t *)ROM_PERSIST_SRAM_FW_SIZE_ADDR;
@@ -28,7 +28,7 @@ static inline uint32_t rom_persist_get_sram_fw_size(void) {
 }
 
 static inline void rom_persist_lock(void) {
-    *(volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR = ROM_KM_PERSIST_LOCK_MASK;
+    rom_kmcsr_sram_lock_set(ROM_KM_PERSIST_LOCK_MASK);
 }
 
 #endif /* ROM_PERSIST_H */

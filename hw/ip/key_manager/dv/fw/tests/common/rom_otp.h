@@ -1,34 +1,31 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* Test-only OTP helper surface used by imported KM firmware tests. */
+/* Test-only OTP helper surface used by imported KM firmware tests / open lib. */
 #ifndef ROM_OTP_H
 #define ROM_OTP_H
 
 #include <stdint.h>
-#include "test_common.h"
+#include "key_manager_fw.h"
+#include "key_manager_addr.h"
+#include "key_manager_regs.h"
+#include "rom_defs.h"
 
+#ifndef ROM_KM_OTP_WORDS
 #define ROM_KM_OTP_WORDS 8u
-#define ROM_KM_OTP_CHANGE_LIFE_CYCLE_bm 0x01u
-#define ROM_KM_OTP_CHANGE_DEMOTION_bm 0x02u
-#define ROM_KM_OTP_CHANGE_CHIPLET_UID_bm 0x04u
-#define ROM_KM_OTP_CHANGE_SIP_UID_bm 0x08u
-#define ROM_KM_OTP_CHANGE_SYS_UID_bm 0x10u
-#define ROM_KM_OTP_CHANGE_CLASS_KEY_bm 0x20u
-#define ROM_KM_OTP_CHANGE_ALL_MASK 0x3fu
+#endif
 
-#define KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK 0x01u
-#define KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK 0x02u
-#define KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK 0x04u
-#define KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK 0x08u
+/* ROM_KM_OTP_* change/lock aggregates come from rom_defs.h when available. */
 
+#ifndef ROM_KM_IRQ_STATUS_OTP_CHANGE_MASK
 #define ROM_KM_IRQ_STATUS_OTP_CHANGE_MASK 0x100u
+#endif
 
 #define ROM_OTP_LIFE_CYCLE (*(volatile uint32_t *)KEY_MANAGER_KMCSR_OTP_LIFE_CYCLE_BASE_ADDR)
 #define ROM_OTP_DEMOTION_STATE \
     (*(volatile uint32_t *)KEY_MANAGER_KMCSR_OTP_DEMOTION_STATE_BASE_ADDR)
 #define ROM_OTP_READ_LOCK \
-    (*(volatile km_csr__otp_read_lock_reg_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
+    (*(volatile km_csr__otp_read_lock_reg_t *)KEY_MANAGER_KMCSR_OTP_READ_LOCK_BASE_ADDR)
 #define ROM_OTP_READ_LOCK_REG ROM_OTP_READ_LOCK
 
 void rom_otp_on_change(uint32_t changed_mask);

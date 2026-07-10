@@ -11,8 +11,7 @@
 #define IRQ_COMMON_H
 
 #include <stdint.h>
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /** @brief KMCSR IRQ status register (volatile, W1C). */
 #define KMCSR_IRQ_STATUS_REG \

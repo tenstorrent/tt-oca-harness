@@ -20,7 +20,7 @@
 
 #include "test_common.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 /* DEBUG is read-only (all fields sw=r). Writing triggers SLVERR when err_if_bad_rw enabled. */

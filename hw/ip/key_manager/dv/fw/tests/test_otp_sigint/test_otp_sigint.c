@@ -24,7 +24,7 @@
 #include "rom_defs.h"
 #include "rom_otp.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 /* Disable the SRAM wipe paths so they do not interfere with this test. */

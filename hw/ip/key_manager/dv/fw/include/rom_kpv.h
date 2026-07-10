@@ -17,8 +17,7 @@
 #include <stdint.h>
 #include "rom_defs.h"
 #include "rom_prng.h"
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /*===========================================================================
  * Indexed Register Access Macros

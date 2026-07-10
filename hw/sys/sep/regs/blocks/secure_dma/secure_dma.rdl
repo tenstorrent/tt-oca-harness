@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Thin SEP discoverable wrapper around the vendor OpenTitan secure_dma map
+// (single source of truth). PeakRDL / the SEP composite find this via regs/blocks/.
+`include "../../../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl"

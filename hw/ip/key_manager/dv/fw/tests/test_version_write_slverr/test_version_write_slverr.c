@@ -16,7 +16,7 @@
 
 #include "test_common.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 #define KMCSR_VERSION_REG_ADDR_PTR ((volatile uint32_t *)KEY_MANAGER_KMCSR_VERSION_BASE_ADDR)

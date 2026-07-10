@@ -253,7 +253,7 @@ typedef union {
 
 // mem - hmac::none::MSG_FIFO
 typedef struct __attribute__ ((__packed__)) {
-    uint4_t mem[1];
+    uint8_t mem[1];
 } hmac__none__MSG_FIFO_t;
 
 // addrmap - hmac::none

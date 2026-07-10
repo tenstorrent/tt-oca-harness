@@ -399,10 +399,10 @@ addrmap kmac {
             } ERR_CODE[31:0] = 0x0;
         } ERR_CODE @ 0xE0;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external STATE[128] @ 0x400 += 0x1;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external MSG_FIFO[512] @ 0x800 += 0x1;
     } none @ 0x0;
 };

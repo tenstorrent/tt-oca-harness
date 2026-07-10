@@ -15,8 +15,7 @@
 
 #include <stdint.h>
 
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /** @brief DRBG sampler status register (volatile, read-only). */
 #define ROM_DRBG_STATUS_REG \

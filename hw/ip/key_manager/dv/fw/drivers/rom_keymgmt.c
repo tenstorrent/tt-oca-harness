@@ -37,8 +37,8 @@
 static int slot_available(uint8_t slot) {
     if (slot >= ROM_KM_KPV_NUM_SLOTS) return 0;
 
-    KM_KPV_CTRL_REG_reg_u ctrl;
-    ctrl.val = KPV_CTRL(slot).val;
+    km_kpv__ctrl_reg_t ctrl;
+    ctrl.w = KPV_CTRL(slot).w;
 
     if (ctrl.f.lock_write || ctrl.f.lock_use) return 0;
 

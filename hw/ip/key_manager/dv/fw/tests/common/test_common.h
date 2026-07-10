@@ -50,22 +50,38 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "vuart.h"
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 #include "rom_boot.h"
 #include "rom_picorv32.h"
 #include "rom_kmcsr.h"
 #include "irq_common.h"
 
-/* Test-only external windows not represented by the native KM register block. */
+/* Test-only external windows not represented by the native KM register block.
+ * Guard against key_manager_regs.h when both are included. */
+#ifndef OTP_EFUSE_MAP_REG_MAP_BASE_ADDR
 #define OTP_EFUSE_MAP_REG_MAP_BASE_ADDR 0x00011000u
+#endif
+#ifndef OTP_EFUSE_MAP_LOCKS_REG_ADDR
 #define OTP_EFUSE_MAP_LOCKS_REG_ADDR 0x00011000u
+#endif
+#ifndef OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR
 #define OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR 0x00011400u
+#endif
+#ifndef OTP_EFUSE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR
 #define OTP_EFUSE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR 0x00011400u
+#endif
+#ifndef OTP_EFUSE_CTRL_EFUSE_READ_CTRL_REG_ADDR
 #define OTP_EFUSE_CTRL_EFUSE_READ_CTRL_REG_ADDR 0x00011404u
+#endif
+#ifndef OTP_EFUSE_MMR_REG_MAP_BASE_ADDR
 #define OTP_EFUSE_MMR_REG_MAP_BASE_ADDR 0x00011500u
+#endif
+#ifndef OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR
 #define OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR 0x00011500u
+#endif
+#ifndef ROM_KM_OTP_BASE
 #define ROM_KM_OTP_BASE OTP_EFUSE_MAP_REG_MAP_BASE_ADDR
+#endif
 
 typedef union {
     struct __attribute__((__packed__)) {

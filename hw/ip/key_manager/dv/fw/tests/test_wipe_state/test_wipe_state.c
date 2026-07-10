@@ -16,7 +16,7 @@
 
 #include "test_common.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 #define KPV_KEY_WORD_ADDR(slot, word) \

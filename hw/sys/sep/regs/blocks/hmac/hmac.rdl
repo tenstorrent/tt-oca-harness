@@ -251,7 +251,7 @@ addrmap hmac {
             } V[31:0];
         } external MSG_LENGTH_UPPER @ 0xE8;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external MSG_FIFO[1024] @ 0x1000 += 0x1;
     } none @ 0x0;
 };

@@ -244,10 +244,10 @@ addrmap otbn {
             } CHECKSUM[31:0] = 0x0;
         } external LOAD_CHECKSUM @ 0x28;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external IMEM[4096] @ 0x4000 += 0x1;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external DMEM[4096] @ 0x8000 += 0x1;
     } none @ 0x0;
 };

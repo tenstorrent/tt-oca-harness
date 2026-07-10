@@ -11,8 +11,7 @@
  */
 
 #include "rom_drbg.h"
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /**
  * @brief Read the DRBG status register.

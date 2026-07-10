@@ -29,7 +29,7 @@
 #include "rom_kpv.h"
 #include "rom_keyreg.h"
 #include "rom_state.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 int rom_boot_wipe_enabled(void) {
