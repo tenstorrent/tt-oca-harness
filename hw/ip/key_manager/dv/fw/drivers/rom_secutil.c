@@ -11,8 +11,7 @@
 
 #include "rom_secutil.h"
 
-int rom_const_time_memcmp(const void *ptr1, const void *ptr2, size_t num)
-{
+int rom_const_time_memcmp(const void *ptr1, const void *ptr2, size_t num) {
     const uint8_t *a = (const uint8_t *)ptr1;
     const uint8_t *b = (const uint8_t *)ptr2;
 
@@ -44,8 +43,7 @@ int rom_const_time_memcmp(const void *ptr1, const void *ptr2, size_t num)
     return (int)((fail | ((size_t)0 - fail)) >> (sizeof(size_t) * 8u - 1u));
 }
 
-int rom_pointers_are_equal_ct(const void *ptr1, const void *ptr2)
-{
+int rom_pointers_are_equal_ct(const void *ptr1, const void *ptr2) {
     volatile size_t p1 = (size_t)ptr1;
     volatile size_t p2 = (size_t)ptr2;
     volatile size_t diff = p1 ^ p2;
@@ -54,8 +52,7 @@ int rom_pointers_are_equal_ct(const void *ptr1, const void *ptr2)
     return (int)((size_t)1 ^ ((diff | ((size_t)0 - diff)) >> (sizeof(size_t) * 8u - 1u)));
 }
 
-void rom_secure_memzero(void *ptr, size_t len)
-{
+void rom_secure_memzero(void *ptr, size_t len) {
     volatile uint8_t *p = (volatile uint8_t *)ptr;
 
     while (len-- != 0u) {
