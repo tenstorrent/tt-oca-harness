@@ -32,6 +32,7 @@ ocah_reg_adoc_block_dir = $(call ocah_reg_gen,$(1))/adoc/blocks
 ocah_reg_html_block_dir = $(call ocah_reg_gen,$(1))/html/blocks
 ocah_reg_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1)).h
 ocah_reg_svpkg_output = $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_addrmap_pkg.sv
+ocah_reg_svh_output = $(call ocah_reg_gen,$(1))/svh/$(call ocah_reg_name,$(1))_reg.svh
 ocah_reg_raw_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_addr.h
 ocah_reg_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_addr.py
 ocah_reg_md_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).md
@@ -55,6 +56,7 @@ ocah_reg_is_file_backed = $(OCAH_REG_GEN_OVERRIDE_$(call ocah_reg_key,$(1)))
 ocah_reg_file_clean_outputs = \
   $(if $(call ocah_reg_sv_skipped,$(1)),,$(call ocah_reg_sv_outputs,$(1))) \
   $(call ocah_reg_svpkg_output,$(1)) \
+  $(call ocah_reg_svh_output,$(1)) \
   $(call ocah_reg_c_output,$(1)) \
   $(call ocah_reg_raw_c_output,$(1)) \
   $(call ocah_reg_py_output,$(1)) \
@@ -71,7 +73,7 @@ ocah_reg_stamp   = $(call ocah_reg_build,$(1))/.generated
 OCAH_REGEN_REG_SV     := $(call ocah_reg_collect,ocah_reg_sv_target)
 OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
 OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output)
-OCAH_REGEN_REG_SVH     := $(OCAH_REGEN_REG_ADDRPKG)
+OCAH_REGEN_REG_SVH     := $(call ocah_reg_collect,ocah_reg_svh_output)
 OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
 OCAH_REGEN_REG_ADOC   := $(call ocah_reg_collect,ocah_reg_adoc_target)
 OCAH_REGEN_REG_HTML   := $(call ocah_reg_collect,ocah_reg_html_target)
@@ -81,4 +83,5 @@ OCAH_REGEN_ALL := \
   $(OCAH_REGEN_REG_SV) \
   $(OCAH_REGEN_REG_H) \
   $(OCAH_REGEN_REG_ADDRPKG) \
+  $(OCAH_REGEN_REG_SVH) \
   $(OCAH_REGEN_REG_PY)

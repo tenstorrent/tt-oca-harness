@@ -31,7 +31,7 @@ ocah-regen-regs-h: $(OCAH_REGEN_REG_H)
 .PHONY: ocah-regen-regs-addrpkg
 ocah-regen-regs-addrpkg: $(OCAH_REGEN_REG_ADDRPKG)
 
-## Compatibility alias for the old address-header target name.
+## Regenerate flattened SV headers for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-svh
 ocah-regen-regs-svh: $(OCAH_REGEN_REG_SVH)
