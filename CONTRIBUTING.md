@@ -89,8 +89,10 @@ artifacts; jobs report through `.github/actions/reviewdog-report`.
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
 
-Local slang/verible runs use the Docker EDA image; CI installs slang `v11.0` and verible
-`v0.0-4080-ga0a8d8eb` natively.
+Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
+`PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
+`./scripts/docker-run.sh eda-run make …` command. CI installs slang `v11.0` and verible
+`v0.0-4080-ga0a8d8eb` natively via `setup-tools`.
 
 ## Submitting Changes
 

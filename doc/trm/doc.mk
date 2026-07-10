@@ -41,14 +41,14 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 
 .PHONY: ocah-doc-trm-html
 ocah-doc-trm-html: ocah-doc-trm-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site; use the project Docker image or install Node.js"; exit 1; }
+	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) --attribute basedir="$(OCAH_TRM_DIR)" "$(OCAH_TRM_PLAYBOOK)"
 	@echo "Done: $(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/index.html"
 
 .PHONY: ocah-doc-trm-pdf
 ocah-doc-trm-pdf: ocah-doc-trm-setup
-	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF)); install it or set OCAH_ASCIIDOCTOR_PDF"; exit 1; }
+	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf trm"; exit 1; }
 	@echo "Building TRM PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_TRM_BUILD)/latex" "$(OCAH_TRM_DIST)"
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
