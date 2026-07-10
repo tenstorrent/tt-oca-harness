@@ -10,8 +10,8 @@
 #
 # Build firmware (from tt-oca/):
 #   docker run --rm -v "$PWD":/work:Z -w /work ocah-toolchain \
-#       make ocah-dv-fw TARGET=sep
-#   ./scripts/docker-run.sh run make ocah-dv-fw TARGET=sep
+#       make ocah-dv-fw-libs TARGET=sep
+#   ./scripts/docker-run.sh run make ocah-dv-fw-libs TARGET=sep
 #
 # Build docs with pulled public images (from tt-oca/):
 #   ./scripts/docker-run.sh doc-html trm

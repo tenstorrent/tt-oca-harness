@@ -40,7 +40,7 @@
  * CRITICAL: Must set i2c_controller_mode_en = 0
  */
 static void i2c_wrapper_enable_slave(uint32_t idx) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
 
     // Read current value

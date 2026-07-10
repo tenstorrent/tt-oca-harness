@@ -16,10 +16,10 @@ ocah_dv_fw = $(call ocah_dv_fw_run,$(1),,$(OCAH_DV_FW_MKS),$(OCAH_DV_FW_SUBSYSTE
 
 ## @section DV Firmware
 
-## Build DV firmware for one or all subsystems.
+## Build DV firmware libraries for one or all subsystems.
 ## @param TARGET=key_manager Optional subsystem to build (key_manager, sep, smc); omit to build all
-.PHONY: ocah-dv-fw
-ocah-dv-fw:
+.PHONY: ocah-dv-fw-libs
+ocah-dv-fw-libs:
 	$(call ocah_dv_fw,all)
 
 ## Build DV firmware C tests for one or all subsystems.
@@ -47,7 +47,7 @@ ocah-dv-fw-test-list:
 	$(call ocah_dv_fw,dv-fw-test-list)
 
 OCAH_PHONY += \
-  ocah-dv-fw \
+  ocah-dv-fw-libs \
   ocah-dv-fw-tests \
   ocah-dv-fw-clean \
   ocah-dv-fw-list \

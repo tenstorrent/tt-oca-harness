@@ -3,7 +3,7 @@
 
 # SMC DV firmware build.
 #
-# Built via the DV firmware dispatcher: make dv-fw TARGET=smc
+# Built via the DV firmware dispatcher: make dv-fw-libs TARGET=smc
 FW_NAME := smc
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk

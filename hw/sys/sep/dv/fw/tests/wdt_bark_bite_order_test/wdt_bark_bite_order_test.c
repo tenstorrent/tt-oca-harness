@@ -26,7 +26,7 @@ static volatile int bark_count = 0;
 
 void wdt_nmi_handler(void) {
     bark_count++;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
     printf("  BARK NMI #%d received\n", bark_count);
 }
 
@@ -49,21 +49,21 @@ int main(void) {
     uint32_t bark_thold = 3000;
     uint32_t bite_thold = 8000;
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_thold);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, bite_thold);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, bark_thold);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, bite_thold);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Wait for BARK NMI */
     while (bark_count == 0) {
         __asm__ volatile("wfi");
     }
 
-    uint32_t cnt_at_bark = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t cnt_at_bark = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
     printf("  BARK NMI fired at count ~0x%08x (thold=%u)\n", cnt_at_bark, bark_thold);
 
     /* Disable WDT to stop before BITE */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
 
     /* STEP 2: Verify bark fired at correct threshold */
     printf("\n// STEP 2: Verify BARK fired, BITE did not\n");
@@ -91,12 +91,12 @@ int main(void) {
 
     /* STEP 3: Let BITE fire - cocotb verifies reset request */
     printf("\n// STEP 3: Trigger BITE (cocotb will verify reset request)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR,
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR,
               0xFFFFFFFF); /* bark won't fire again */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 200);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 100);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 200);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 100);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Loop - BITE reset will fire */
     while (1) {

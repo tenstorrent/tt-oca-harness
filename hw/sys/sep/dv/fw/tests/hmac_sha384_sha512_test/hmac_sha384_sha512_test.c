@@ -28,9 +28,9 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_completion(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.hmac_done || sts.f.hmac_idle) {
+        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+        hmac__none__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) {
             break;
         }
     }
@@ -40,10 +40,10 @@ static int wait_for_completion(void) {
     }
 
     // Clear hmac_done if set
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (intr.f.hmac_done) {
-        hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+    if (intr.f.HMAC_DONE) {
+        hmac__none__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+        WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
     }
     return 0;
 }
@@ -60,7 +60,7 @@ static int feed_message(const char *msg, int len) {
         }
 
         // Write to MSG FIFO
-        WRITE_REG(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word);
+        WRITE_REG(OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0), word);
         printf("    Word %d: 0x%08x\n", i, word);
     }
 
@@ -71,16 +71,16 @@ static int test_sha384(void) {
     printf("\n--- Testing SHA-384 ---\n");
 
     // Configure for SHA-384
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x2; // SHA-384
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    hmac__none__CFG_t cfg = {.w = 0};
+    cfg.f.HMAC_EN = 0;       // SHA only
+    cfg.f.SHA_EN = 1;        // SHA enabled
+    cfg.f.DIGEST_SIZE = 0x2; // SHA-384
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-384, SHA mode)\n", cfg.w);
 
     // Start new hash
-    hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    hmac__none__CMD_t cmd = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, cmd.w);
     printf("  Started new hash\n");
 
     // Test message: "abc"
@@ -90,14 +90,15 @@ static int test_sha384(void) {
 
     // Set message length in bits
     uint64_t msg_len_bits = len * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_LOWER_BASE_ADDR,
+              (uint32_t)(msg_len_bits & 0xFFFFFFFF));
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
     printf("  Message length: %llu bits\n", msg_len_bits);
 
     // Trigger hash processing
     cmd.w = 0;
-    cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    cmd.f.HASH_PROCESS = 1;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
     // Wait for completion
@@ -107,7 +108,7 @@ static int test_sha384(void) {
     // Read digest (12 words for SHA-384)
     uint32_t digest[12];
     for (int i = 0; i < 12; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + i * 4);
+        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(i));
     }
 
     printf("  SHA-384 digest:\n");
@@ -144,16 +145,16 @@ static int test_sha512(void) {
     printf("\n--- Testing SHA-512 ---\n");
 
     // Configure for SHA-512
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x4; // SHA-512
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    hmac__none__CFG_t cfg = {.w = 0};
+    cfg.f.HMAC_EN = 0;       // SHA only
+    cfg.f.SHA_EN = 1;        // SHA enabled
+    cfg.f.DIGEST_SIZE = 0x4; // SHA-512
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-512, SHA mode)\n", cfg.w);
 
     // Start new hash
-    hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    hmac__none__CMD_t cmd = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, cmd.w);
     printf("  Started new hash\n");
 
     // Test message: "abc"
@@ -163,14 +164,15 @@ static int test_sha512(void) {
 
     // Set message length in bits
     uint64_t msg_len_bits = len * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_LOWER_BASE_ADDR,
+              (uint32_t)(msg_len_bits & 0xFFFFFFFF));
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
     printf("  Message length: %llu bits\n", msg_len_bits);
 
     // Trigger hash processing
     cmd.w = 0;
-    cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    cmd.f.HASH_PROCESS = 1;
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
     // Wait for completion
@@ -180,7 +182,7 @@ static int test_sha512(void) {
     // Read digest (16 words for SHA-512)
     uint32_t digest[16];
     for (int i = 0; i < 16; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + i * 4);
+        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(i));
     }
 
     printf("  SHA-512 digest:\n");
@@ -215,8 +217,8 @@ int main(void) {
     int pass = 1;
 
     // Enable hmac_done interrupt
-    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    hmac__none__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     // Test SHA-384
     if (test_sha384() != 0) {

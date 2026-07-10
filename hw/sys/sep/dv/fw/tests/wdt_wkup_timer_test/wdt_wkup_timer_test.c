@@ -52,22 +52,23 @@ int main(void) {
     int errors = 0;
 
     /* Clear any residual interrupts */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* INTR_STATE: W1C */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR, 0x0); /* WKUP_CAUSE: W0C */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3); /* INTR_STATE: W1C */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CAUSE_BASE_ADDR, 0x0); /* WKUP_CAUSE: W0C */
 
     /* STEP 1: Configure wakeup timer */
     printf("// STEP 1: Configure WKUP timer (prescaler=0, thold_lo=%u)\n", WKUP_THOLD_LO_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, WKUP_THOLD_HI_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WKUP_THOLD_LO_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_THOLD_HI_BASE_ADDR, WKUP_THOLD_HI_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_THOLD_LO_BASE_ADDR, WKUP_THOLD_LO_VAL);
 
     /* prescaler=0 and enable */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CTRL_BASE_ADDR,
+              WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
 
     /* STEP 2: Poll for wkup_timer_expired (INTR_STATE[0]) */
     printf("// STEP 2: Poll INTR_STATE[0] for wkup_timer_expired\n");
     int timeout = 5000000;
     while (timeout-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
         if (intr & INTR_STATE_WKUP_BIT) break;
         __asm__ volatile("nop");
     }
@@ -75,7 +76,7 @@ int main(void) {
         printf("  FAIL: Timeout waiting for INTR_STATE[0] (wkup_timer_expired)\n");
         errors++;
     } else {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
         printf("  PASS: INTR_STATE = 0x%08x (wkup_timer_expired set)\n", intr);
         if (intr & INTR_STATE_WDOG_BIT) {
             printf("  FAIL: Unexpected INTR_STATE[1] (wdog_bark) set\n");
@@ -84,11 +85,11 @@ int main(void) {
     }
 
     /* Disable wakeup timer to stop further counting */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CTRL_BASE_ADDR, 0x0);
 
     /* STEP 3: Verify WKUP_CAUSE is set (wakeup request path) */
     printf("\n// STEP 3: Verify WKUP_CAUSE register set\n");
-    uint32_t cause = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR);
+    uint32_t cause = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CAUSE_BASE_ADDR);
     if (!(cause & 0x1)) {
         printf("  FAIL: WKUP_CAUSE[0] not set (got 0x%08x)\n", cause);
         errors++;
@@ -98,15 +99,15 @@ int main(void) {
 
     /* STEP 4: Clear INTR_STATE[0] (W1C) and WKUP_CAUSE (W0C) */
     printf("\n// STEP 4: Clear INTR_STATE[0] (W1C) and WKUP_CAUSE (W0C)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_WKUP_BIT); /* W1C */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR, 0x0);                 /* W0C */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, INTR_STATE_WKUP_BIT); /* W1C */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CAUSE_BASE_ADDR, 0x0);                 /* W0C */
 
     /* Brief propagation delay */
     for (volatile int i = 0; i < 100; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t intr_after = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t intr_after = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
     if (intr_after & INTR_STATE_WKUP_BIT) {
         printf("  FAIL: INTR_STATE[0] not cleared by W1C (0x%08x)\n", intr_after);
         errors++;
@@ -114,7 +115,7 @@ int main(void) {
         printf("  PASS: INTR_STATE[0] cleared\n");
     }
 
-    uint32_t cause_after = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR);
+    uint32_t cause_after = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CAUSE_BASE_ADDR);
     if (cause_after & 0x1) {
         printf("  FAIL: WKUP_CAUSE not cleared (0x%08x)\n", cause_after);
         errors++;
@@ -124,20 +125,21 @@ int main(void) {
 
     /* STEP 5: Verify WKUP_COUNT increments */
     printf("\n// STEP 5: Verify WKUP_COUNT increments\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_THOLD_HI_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_THOLD_LO_BASE_ADDR, 0xFFFFFFFF);
     /* Reset count to 0 */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_LO_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_HI_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_COUNT_LO_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_COUNT_HI_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CTRL_BASE_ADDR,
+              WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
 
     for (volatile int i = 0; i < 10000; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t cnt_lo = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_LO_BASE_ADDR);
-    uint32_t cnt_hi = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_HI_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, 0x0);
+    uint32_t cnt_lo = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_COUNT_LO_BASE_ADDR);
+    uint32_t cnt_hi = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_COUNT_HI_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WKUP_CTRL_BASE_ADDR, 0x0);
 
     if (cnt_lo == 0 && cnt_hi == 0) {
         printf("  FAIL: WKUP_COUNT stuck at 0 after enable\n");
@@ -148,14 +150,15 @@ int main(void) {
 
     /* STEP 6: INTR_TEST[0] injection (wkup_timer_expired) */
     printf("\n// STEP 6: INTR_TEST[0] injection (wkup_timer_expired)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, INTR_STATE_WKUP_BIT); /* inject wkup */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_TEST_BASE_ADDR,
+              INTR_STATE_WKUP_BIT); /* inject wkup */
     for (volatile int i = 0; i < 200; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t intr_injected = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t intr_injected = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
     if (!(intr_injected & INTR_STATE_WKUP_BIT)) {
         printf("  FAIL: INTR_TEST[0] did not set INTR_STATE[0] (0x%08x)\n", intr_injected);
         errors++;
@@ -169,12 +172,12 @@ int main(void) {
 
     /* STEP 7: W1C clear after INTR_TEST injection */
     printf("\n// STEP 7: W1C clear INTR_STATE[0] after INTR_TEST\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_WKUP_BIT);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, INTR_STATE_WKUP_BIT);
     for (volatile int i = 0; i < 100; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t intr_clr = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t intr_clr = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
     if (intr_clr & INTR_STATE_WKUP_BIT) {
         printf("  FAIL: W1C did not clear INTR_STATE[0] (0x%08x)\n", intr_clr);
         errors++;

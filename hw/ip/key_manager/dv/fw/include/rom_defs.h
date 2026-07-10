@@ -104,8 +104,12 @@ extern const uint8_t __km_fw_load_limit[];
  *   OTP_EFUSE_MAP_REG_MAP_BASE_ADDR  (0x00011000) — MAP / OTP shadow
  *   OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR (0x00011400) — eFuse Interface CTRL
  *   OTP_EFUSE_MMR_REG_MAP_BASE_ADDR  (0x00011500) — eFuse MMR
+ *
+ * Prefer OTP_EFUSE_MAP_REG_MAP_BASE_ADDR from PeakRDL; define only if absent.
  */
+#ifndef ROM_KM_OTP_BASE
 #define ROM_KM_OTP_BASE 0x00011000
+#endif
 
 /*===========================================================================
  * Firmware Version

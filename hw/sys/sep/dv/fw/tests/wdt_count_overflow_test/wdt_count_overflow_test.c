@@ -40,8 +40,9 @@ static volatile int phase = 0; /* 0=wait first bark, 1=done */
 
 void wdt_nmi_handler(void) {
     nmi_count++;
-    uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2); /* W1C immediately (level NMI) */
+    uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR,
+              0x2); /* W1C immediately (level NMI) */
 
     if (!(state & 0x2)) {
         nmi_errors++;
@@ -51,7 +52,7 @@ void wdt_nmi_handler(void) {
 
     if (phase == 0) {
         /* First bark — pet immediately to prevent BITE and reset count */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
         printf("  NMI #%d: BARK at near-max count, petted (count → 0)\n", nmi_count);
         phase = 1;
     } else {
@@ -76,14 +77,14 @@ int main(void) {
     /* STEP 1: Write count near 0xFFFFFFFF, set thresholds */
     printf("// STEP 1: Write WDOG_COUNT=0xFFFFFFF0, BARK=0x%08x, BITE=0x%08x\n", BARK_THOLD_VAL,
            BITE_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFF0u);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0xFFFFFFF0u);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
 
     /* STEP 2: Enable and wait for BARK NMI */
     printf("// STEP 2: Enable WDT — BARK fires when count reaches 0x%08x\n", BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Wait for phase=1 (first BARK NMI + pet) */
     int timeout = 5000000;
@@ -94,7 +95,7 @@ int main(void) {
     if (timeout <= 0) {
         printf("  FAIL: Timeout waiting for BARK NMI at near-max count\n");
         errors++;
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
         goto finish;
     }
     printf("  PASS: BARK NMI fired near max count, count petted to 0\n");
@@ -104,7 +105,7 @@ int main(void) {
     for (volatile int i = 0; i < 500; i++) {
         __asm__ volatile("nop");
     }
-    uint32_t cnt_after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t cnt_after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT = 0x%08x (should be small, far below 0x%08x)\n", cnt_after_pet,
            BARK_THOLD_VAL);
     if (cnt_after_pet >= BARK_THOLD_VAL) {
@@ -128,32 +129,32 @@ int main(void) {
     }
 
     /* Disable WDT before overflow direct test */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
 
     /* STEP 5: Direct overflow verification */
     printf("\n// STEP 5: Direct overflow — write 0xFFFFFFFE, verify wrap to 0\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3);
     /* Set thresholds so BARK fires at 0xFFFFFFFF, pet in NMI before BITE */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFFEu);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0xFFFFFFFEu);
 
     /* Reset phase for re-use */
     phase = 0;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     timeout = 5000000;
     while (phase == 0 && timeout-- > 0) {
         __asm__ volatile("wfi");
     }
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
 
     if (timeout <= 0) {
         printf("  FAIL: Timeout waiting for BARK at count=0xFFFFFFFF\n");
         errors++;
     } else {
-        uint32_t cnt_wrap = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        uint32_t cnt_wrap = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
         printf("  PASS: BARK fired at count=0xFFFFFFFF, count after pet = 0x%08x\n", cnt_wrap);
         printf("  Count wrapped from 0xFFFFFFFF to 0x00000000 correctly\n");
     }

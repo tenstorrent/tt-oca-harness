@@ -39,10 +39,10 @@ void wdt_nmi_handler(void) {
     nmi_count++;
 
     /* Read INTR_STATE before W1C */
-    uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
 
     /* Always W1C first to prevent continuous NMI re-entry (level-triggered NMI) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
 
     printf("  NMI #%d (phase=%d)\n", nmi_count, phase);
 
@@ -55,7 +55,7 @@ void wdt_nmi_handler(void) {
 
     if (phase == 0) {
         /* First bark: verify W1C worked, signal main to pet and wait for re-trigger */
-        uint32_t after = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        uint32_t after = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
         if (after & 0x2) {
             printf("  FAIL: W1C did not clear INTR_STATE (0x%08x)\n", after);
             nmi_errors++;
@@ -67,7 +67,7 @@ void wdt_nmi_handler(void) {
 
     } else if (phase == 1) {
         /* Re-trigger from posedge after pet: disable WDT to stop further triggers */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
         printf("  PASS: Re-trigger fired correctly after pet, WDT disabled\n");
         phase = 2;
     }
@@ -88,10 +88,10 @@ int main(void) {
 
     /* STEP 1: Generate BARK */
     printf("// STEP 1: Generate BARK interrupt\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 2000);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 2000);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
 
     /* Wait for first bark */
     while (phase == 0) {
@@ -104,7 +104,7 @@ int main(void) {
     printf(
         "\n// STEP 2: Pet (count=0) → wait for re-trigger (count grows back above BARK_THOLD)\n");
     /* Pet: reset count to 0 so wdog_intr_o goes LOW → enables posedge re-trigger */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0x0);
     /* Wait for count to grow back above bark_thold (2000) and fire second NMI */
     while (phase == 1) {
         __asm__ volatile("wfi");
@@ -131,18 +131,18 @@ int main(void) {
 
     /* STEP 4: Manual INTR_STATE W1C with WDT disabled */
     printf("\n// STEP 4: Manual INTR_STATE W1C (via INTR_TEST)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear any residual */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);  /* inject */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x3); /* clear any residual */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_TEST_BASE_ADDR, 0x2);  /* inject */
     int prev = nmi_count;
     for (volatile int i = 0; i < 1000000 && nmi_count == prev; i++) {
         __asm__ volatile("nop");
     }
 
     /* Phase is 2 now, NMI won't be in our phase handler, but will at least read INTR_STATE */
-    uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
     /* Clear it */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
-    uint32_t st2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
+    uint32_t st2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
     if (st2 & 0x2) {
         printf("  FAIL: INTR_STATE[1] not cleared by W1C (0x%08x)\n", st2);
         errors++;

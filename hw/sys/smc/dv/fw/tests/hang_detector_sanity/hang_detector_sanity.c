@@ -33,7 +33,7 @@ static inline void sync_phase(uint32_t phase) {
 int main(void) {
     // CTRL value that forces a detector's irq high without a real bus stall:
     // enable + irq_en + irq_test.
-    cpu_ctrl__HANG_DET_CTRL_t fire;
+    smc_base_config__HANG_DET_CTRL_t fire;
     fire.w = 0;
     fire.f.enable = 0x1;
     fire.f.irq_en = 0x1;
@@ -45,61 +45,61 @@ int main(void) {
 
     // --- Per-detector propagation (others held off) ---
     // Phase 1: sys_axi fires -> expect axi_hang_irq_o == 1
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, fire.w);
     sync_phase(1);
     // Phase 2: clear -> expect 0
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, 0);
     sync_phase(2);
 
     // Phase 3: sep_axi fires -> expect 1
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, fire.w);
     sync_phase(3);
     // Phase 4: clear -> expect 0
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
     sync_phase(4);
 
     // Phase 5: data_accel fires -> expect 1
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, fire.w);
     sync_phase(5);
     // Phase 6: clear -> expect 0
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, 0);
     sync_phase(6);
 
     // --- OR behaviour ---
     // Phase 7: all three fire -> expect 1
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, fire.w);
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, fire.w);
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, fire.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, fire.w);
     sync_phase(7);
     // Phase 8: clear sys + sep, leave data_accel -> OR still 1
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, 0);
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
     sync_phase(8);
     // Phase 9: clear the last -> OR drops to 0
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR, 0);
     sync_phase(9);
 
     // --- Real bus stall (no irq_test) ---
     // Phase 10: arm the sep_axi detector with a real (small) threshold and let
     // cocotb create an actual outstanding-with-no-completion stall on sep_axi.
     // This proves the detector catches a genuine hang, not just the irq_test bit.
-    cpu_ctrl__HANG_DET_TIMEOUT_THRESHOLD_t thr;
+    smc_base_config__HANG_DET_TIMEOUT_THRESHOLD_t thr;
     thr.w = 0;
     thr.f.value = 0x80; // 128 cycles -> fires quickly under a real stall
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR, thr.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR, thr.w);
 
-    cpu_ctrl__HANG_DET_CTRL_t real_en;
+    smc_base_config__HANG_DET_CTRL_t real_en;
     real_en.w = 0;
     real_en.f.enable = 0x1;
     real_en.f.irq_en = 0x1; // note: irq_test stays 0 -> only a real hang fires
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, real_en.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, real_en.w);
     sync_phase(10);
 
     // Phase 11: same real-stall check on sys_axi. Disable sep_axi first so only
     // the sys_axi detector is armed when cocotb stalls the sys_axi (ext_in) bus.
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_BASE_ADDR, thr.w);
-    write_reg(SMC_TOP_SMC_CPU_CTRL_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, real_en.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_ADDR, 0);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_BASE_ADDR, thr.w);
+    write_reg(SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_CTRL_BASE_ADDR, real_en.w);
     sync_phase(11);
 
     // Pass the test.
