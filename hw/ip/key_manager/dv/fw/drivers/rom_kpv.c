@@ -17,8 +17,7 @@
 #include "rom_prng.h"
 #include "rom_shred.h"
 #include "rom_drbg.h"
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /** @brief KPV scrambler key register (volatile, write-only). */
 #define KPV_SCRAMBLER_KEY \

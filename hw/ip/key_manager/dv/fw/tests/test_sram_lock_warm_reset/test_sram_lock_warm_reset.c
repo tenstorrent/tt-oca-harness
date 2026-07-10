@@ -48,7 +48,7 @@
  */
 
 #include "test_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 #include "rom_kmcsr.h"
 

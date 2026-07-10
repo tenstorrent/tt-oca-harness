@@ -269,12 +269,12 @@ typedef union {
 
 // mem - otbn::none::IMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint4_t mem[1];
+    uint8_t mem[1];
 } otbn__none__IMEM_t;
 
 // mem - otbn::none::DMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint4_t mem[1];
+    uint8_t mem[1];
 } otbn__none__DMEM_t;
 
 // addrmap - otbn::none

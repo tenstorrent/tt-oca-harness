@@ -13,7 +13,7 @@
 #include "test_common.h"
 #include "rom_defs.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 int rom_boot_wipe_enabled(void) {

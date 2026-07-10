@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Thin SEP discoverable wrapper around the vendor OpenTitan spi_controller map
+// (single source of truth). PeakRDL / the SEP composite find this via regs/blocks/.
+`include "../../../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl"

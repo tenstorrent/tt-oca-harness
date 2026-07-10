@@ -34,7 +34,7 @@
  */
 
 #include "test_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h" /* OTP_EFUSE_*_REG_MAP_BASE_ADDR, per-register _REG_ADDR */
 #include "rom_defs.h"         /* ROM_KM_OTP_BASE */
 

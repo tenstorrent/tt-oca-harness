@@ -23,7 +23,7 @@
  */
 
 #include "test_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 /* Soft reset code: "SRST" = 0x53525354 */

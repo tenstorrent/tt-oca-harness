@@ -12,7 +12,7 @@
 
 #include "test_common.h"
 #include "rom_defs.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 #define SRAM_LOCK_REG (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)

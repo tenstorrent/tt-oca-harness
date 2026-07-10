@@ -205,7 +205,8 @@ void rom_msg_rx_process(void) {
     }
 
     /* Step 12: Dispatch to command handler. */
-    rom_km_cmd_result_t result = rom_cmd_dispatch(header.id, header.payload_len, payload);
+    rom_km_cmd_result_t result =
+        rom_cmd_dispatch(header.id, header.seq_num, header.payload_len, payload);
 
     /* Step 13: Drop the fully processed frame, then send RESP_CMD. */
     rx_consume_frame();

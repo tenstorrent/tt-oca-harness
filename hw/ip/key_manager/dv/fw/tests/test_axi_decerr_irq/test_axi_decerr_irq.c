@@ -20,7 +20,7 @@
 
 #include "test_common.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 /* Start of unmapped region per key_manager.rdl; accesses here return AXI DECERR */

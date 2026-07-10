@@ -21,7 +21,7 @@
 
 #include "test_common.h"
 #include "irq_common.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 /* DEBUG register is at offset 0x1FC (0xE1FC). Unmapped slot just before it: 0x1F8 (0xE1F8) */

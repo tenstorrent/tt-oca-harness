@@ -27,8 +27,7 @@
 
 #include <stdint.h>
 #include <stdarg.h>
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /* Register access macros using struct types */
 #define VUART_TX_REG (*(volatile km_csr__vuart_tx_reg_t *)KEY_MANAGER_KMCSR_VUART_TX_BASE_ADDR)

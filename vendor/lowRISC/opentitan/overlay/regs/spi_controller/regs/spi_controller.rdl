@@ -295,10 +295,10 @@ addrmap spi_controller {
             } LEN[24:5] = 0x0;
         } external COMMAND @ 0x20;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external RXDATA[1] @ 0x24 += 0x1;
         mem {
-            memwidth = 0x4;
+            memwidth = 0x8;
         } external TXDATA[1] @ 0x28 += 0x1;
         reg {
             field {

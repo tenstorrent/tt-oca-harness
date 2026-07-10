@@ -16,8 +16,7 @@
 
 #include <stdint.h>
 
-#include "key_manager.h"
-#include "key_manager_addr.h"
+#include "key_manager_fw.h"
 
 /** @brief KMCSR hardware version register (volatile, read-only). */
 #define ROM_KMCSR_VERSION_REG \

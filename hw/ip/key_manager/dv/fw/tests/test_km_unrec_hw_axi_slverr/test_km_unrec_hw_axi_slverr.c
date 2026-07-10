@@ -12,7 +12,7 @@
 
 #include "test_common.h"
 #include "rom_defs.h"
-#include "key_manager.h"
+#include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
 #define KMCSR_UNMAPPED_REG_ADDR (KEY_MANAGER_KMCSR_DEBUG_BASE_ADDR - 4u)
