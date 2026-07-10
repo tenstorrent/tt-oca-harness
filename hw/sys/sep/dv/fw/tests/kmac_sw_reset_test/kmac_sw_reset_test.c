@@ -40,7 +40,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -50,8 +50,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
             return 0;
         }
     }
@@ -61,43 +61,43 @@ static int wait_for_done(void) {
 
 static void setup_entropy(void) {
     for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static int run_sha3_hash(void) {
     if (wait_for_idle() != 0) return -1;
 
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 0;
     cfg.f.MODE = 0x0;      /* SHA3 */
     cfg.f.KSTRENGTH = 0x2; /* L256 */
     cfg.f.ENTROPY_MODE = 0x1;
     cfg.f.ENTROPY_READY = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     setup_entropy();
 
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.CMD = 29; /* START */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_MSG_FIFO_BASE_ADDR(0), 0x74736574); /* "test" */
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x74736574); /* "test" */
 
     cmd.f.CMD = 46; /* PROCESS */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(0)) ^
-                       READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(0) + 0x100);
+    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0)) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0) + 0x100);
 
     cmd.f.CMD = 22; /* DONE */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return (digest0 != 0) ? 0 : -1;
 }
@@ -133,8 +133,8 @@ static int test_sw_reset(void) {
         test_errors++;
         return -1;
     }
-    kmac__none__STATUS_t s;
-    s.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR);
+    kmac__STATUS_t s;
+    s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
     printf("  STATUS = 0x%08x (expect 0x4001: sha3_idle=1 fifo_empty=1)\n", s.w);
     if (s.f.SHA3_IDLE && s.f.FIFO_EMPTY) {
         printf("PASS: KMAC idle and fifo_empty after reset release\n");
@@ -144,7 +144,7 @@ static int test_sw_reset(void) {
     }
 
     printf("=== Step 5: Verify CFG_REGWEN default after reset ===\n");
-    kmac__none__CFG_REGWEN_t rw = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_REGWEN_BASE_ADDR)};
+    kmac__CFG_REGWEN_t rw = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
     printf("  CFG_REGWEN = %u (expect 1)\n", rw.f.EN);
     if (rw.f.EN) {
         printf("PASS: CFG_REGWEN=1 after reset\n");
@@ -170,7 +170,7 @@ static int test_sw_reset(void) {
         test_errors++;
         return -1;
     }
-    s.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR);
+    s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
     if (s.f.SHA3_IDLE && s.f.FIFO_EMPTY) {
         printf("PASS: KMAC idle after second reset cycle\n");
     } else {

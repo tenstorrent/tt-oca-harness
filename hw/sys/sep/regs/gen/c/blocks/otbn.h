@@ -10,54 +10,54 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - otbn::none::INTR_STATE
-#define OTBN__NONE__INTR_STATE__DONE_bm 0x1
-#define OTBN__NONE__INTR_STATE__DONE_bp 0
-#define OTBN__NONE__INTR_STATE__DONE_bw 1
-#define OTBN__NONE__INTR_STATE__DONE_reset 0x0
+// reg - otbn::INTR_STATE
+#define OTBN__INTR_STATE__DONE_bm 0x1
+#define OTBN__INTR_STATE__DONE_bp 0
+#define OTBN__INTR_STATE__DONE_bw 1
+#define OTBN__INTR_STATE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t DONE :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} otbn__none__INTR_STATE_t;
+} otbn__INTR_STATE_t;
 
-// reg - otbn::none::INTR_ENABLE
-#define OTBN__NONE__INTR_ENABLE__DONE_bm 0x1
-#define OTBN__NONE__INTR_ENABLE__DONE_bp 0
-#define OTBN__NONE__INTR_ENABLE__DONE_bw 1
-#define OTBN__NONE__INTR_ENABLE__DONE_reset 0x0
+// reg - otbn::INTR_ENABLE
+#define OTBN__INTR_ENABLE__DONE_bm 0x1
+#define OTBN__INTR_ENABLE__DONE_bp 0
+#define OTBN__INTR_ENABLE__DONE_bw 1
+#define OTBN__INTR_ENABLE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t DONE :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} otbn__none__INTR_ENABLE_t;
+} otbn__INTR_ENABLE_t;
 
-// reg - otbn::none::INTR_TEST
-#define OTBN__NONE__INTR_TEST__DONE_bm 0x1
-#define OTBN__NONE__INTR_TEST__DONE_bp 0
-#define OTBN__NONE__INTR_TEST__DONE_bw 1
-#define OTBN__NONE__INTR_TEST__DONE_reset 0x0
+// reg - otbn::INTR_TEST
+#define OTBN__INTR_TEST__DONE_bm 0x1
+#define OTBN__INTR_TEST__DONE_bp 0
+#define OTBN__INTR_TEST__DONE_bw 1
+#define OTBN__INTR_TEST__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t DONE :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} otbn__none__INTR_TEST_t;
+} otbn__INTR_TEST_t;
 
-// reg - otbn::none::ALERT_TEST
-#define OTBN__NONE__ALERT_TEST__FATAL_bm 0x1
-#define OTBN__NONE__ALERT_TEST__FATAL_bp 0
-#define OTBN__NONE__ALERT_TEST__FATAL_bw 1
-#define OTBN__NONE__ALERT_TEST__FATAL_reset 0x0
-#define OTBN__NONE__ALERT_TEST__RECOV_bm 0x2
-#define OTBN__NONE__ALERT_TEST__RECOV_bp 1
-#define OTBN__NONE__ALERT_TEST__RECOV_bw 1
-#define OTBN__NONE__ALERT_TEST__RECOV_reset 0x0
+// reg - otbn::ALERT_TEST
+#define OTBN__ALERT_TEST__FATAL_bm 0x1
+#define OTBN__ALERT_TEST__FATAL_bp 0
+#define OTBN__ALERT_TEST__FATAL_bw 1
+#define OTBN__ALERT_TEST__FATAL_reset 0x0
+#define OTBN__ALERT_TEST__RECOV_bm 0x2
+#define OTBN__ALERT_TEST__RECOV_bp 1
+#define OTBN__ALERT_TEST__RECOV_bw 1
+#define OTBN__ALERT_TEST__RECOV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t FATAL :1;
@@ -65,112 +65,112 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} otbn__none__ALERT_TEST_t;
+} otbn__ALERT_TEST_t;
 
-// reg - otbn::none::CMD
-#define OTBN__NONE__CMD__CMD_bm 0xff
-#define OTBN__NONE__CMD__CMD_bp 0
-#define OTBN__NONE__CMD__CMD_bw 8
-#define OTBN__NONE__CMD__CMD_reset 0x0
+// reg - otbn::CMD
+#define OTBN__CMD__CMD_bm 0xff
+#define OTBN__CMD__CMD_bp 0
+#define OTBN__CMD__CMD_bw 8
+#define OTBN__CMD__CMD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CMD :8;
         uint32_t :24;
     } f;
     uint32_t w;
-} otbn__none__CMD_t;
+} otbn__CMD_t;
 
-// reg - otbn::none::CTRL
-#define OTBN__NONE__CTRL__SOFTWARE_ERRS_FATAL_bm 0x1
-#define OTBN__NONE__CTRL__SOFTWARE_ERRS_FATAL_bp 0
-#define OTBN__NONE__CTRL__SOFTWARE_ERRS_FATAL_bw 1
-#define OTBN__NONE__CTRL__SOFTWARE_ERRS_FATAL_reset 0x0
+// reg - otbn::CTRL
+#define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bm 0x1
+#define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bp 0
+#define OTBN__CTRL__SOFTWARE_ERRS_FATAL_bw 1
+#define OTBN__CTRL__SOFTWARE_ERRS_FATAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SOFTWARE_ERRS_FATAL :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} otbn__none__CTRL_t;
+} otbn__CTRL_t;
 
-// reg - otbn::none::STATUS
-#define OTBN__NONE__STATUS__STATUS_bm 0xff
-#define OTBN__NONE__STATUS__STATUS_bp 0
-#define OTBN__NONE__STATUS__STATUS_bw 8
-#define OTBN__NONE__STATUS__STATUS_reset 0x4
+// reg - otbn::STATUS
+#define OTBN__STATUS__STATUS_bm 0xff
+#define OTBN__STATUS__STATUS_bp 0
+#define OTBN__STATUS__STATUS_bw 8
+#define OTBN__STATUS__STATUS_reset 0x4
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t STATUS :8;
         uint32_t :24;
     } f;
     uint32_t w;
-} otbn__none__STATUS_t;
+} otbn__STATUS_t;
 
-// reg - otbn::none::ERR_BITS
-#define OTBN__NONE__ERR_BITS__BAD_DATA_ADDR_bm 0x1
-#define OTBN__NONE__ERR_BITS__BAD_DATA_ADDR_bp 0
-#define OTBN__NONE__ERR_BITS__BAD_DATA_ADDR_bw 1
-#define OTBN__NONE__ERR_BITS__BAD_DATA_ADDR_reset 0x0
-#define OTBN__NONE__ERR_BITS__BAD_INSN_ADDR_bm 0x2
-#define OTBN__NONE__ERR_BITS__BAD_INSN_ADDR_bp 1
-#define OTBN__NONE__ERR_BITS__BAD_INSN_ADDR_bw 1
-#define OTBN__NONE__ERR_BITS__BAD_INSN_ADDR_reset 0x0
-#define OTBN__NONE__ERR_BITS__CALL_STACK_bm 0x4
-#define OTBN__NONE__ERR_BITS__CALL_STACK_bp 2
-#define OTBN__NONE__ERR_BITS__CALL_STACK_bw 1
-#define OTBN__NONE__ERR_BITS__CALL_STACK_reset 0x0
-#define OTBN__NONE__ERR_BITS__ILLEGAL_INSN_bm 0x8
-#define OTBN__NONE__ERR_BITS__ILLEGAL_INSN_bp 3
-#define OTBN__NONE__ERR_BITS__ILLEGAL_INSN_bw 1
-#define OTBN__NONE__ERR_BITS__ILLEGAL_INSN_reset 0x0
-#define OTBN__NONE__ERR_BITS__LOOP_bm 0x10
-#define OTBN__NONE__ERR_BITS__LOOP_bp 4
-#define OTBN__NONE__ERR_BITS__LOOP_bw 1
-#define OTBN__NONE__ERR_BITS__LOOP_reset 0x0
-#define OTBN__NONE__ERR_BITS__KEY_INVALID_bm 0x20
-#define OTBN__NONE__ERR_BITS__KEY_INVALID_bp 5
-#define OTBN__NONE__ERR_BITS__KEY_INVALID_bw 1
-#define OTBN__NONE__ERR_BITS__KEY_INVALID_reset 0x0
-#define OTBN__NONE__ERR_BITS__RND_REP_CHK_FAIL_bm 0x40
-#define OTBN__NONE__ERR_BITS__RND_REP_CHK_FAIL_bp 6
-#define OTBN__NONE__ERR_BITS__RND_REP_CHK_FAIL_bw 1
-#define OTBN__NONE__ERR_BITS__RND_REP_CHK_FAIL_reset 0x0
-#define OTBN__NONE__ERR_BITS__RND_FIPS_CHK_FAIL_bm 0x80
-#define OTBN__NONE__ERR_BITS__RND_FIPS_CHK_FAIL_bp 7
-#define OTBN__NONE__ERR_BITS__RND_FIPS_CHK_FAIL_bw 1
-#define OTBN__NONE__ERR_BITS__RND_FIPS_CHK_FAIL_reset 0x0
-#define OTBN__NONE__ERR_BITS__IMEM_INTG_VIOLATION_bm 0x10000
-#define OTBN__NONE__ERR_BITS__IMEM_INTG_VIOLATION_bp 16
-#define OTBN__NONE__ERR_BITS__IMEM_INTG_VIOLATION_bw 1
-#define OTBN__NONE__ERR_BITS__IMEM_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__ERR_BITS__DMEM_INTG_VIOLATION_bm 0x20000
-#define OTBN__NONE__ERR_BITS__DMEM_INTG_VIOLATION_bp 17
-#define OTBN__NONE__ERR_BITS__DMEM_INTG_VIOLATION_bw 1
-#define OTBN__NONE__ERR_BITS__DMEM_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__ERR_BITS__REG_INTG_VIOLATION_bm 0x40000
-#define OTBN__NONE__ERR_BITS__REG_INTG_VIOLATION_bp 18
-#define OTBN__NONE__ERR_BITS__REG_INTG_VIOLATION_bw 1
-#define OTBN__NONE__ERR_BITS__REG_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__ERR_BITS__BUS_INTG_VIOLATION_bm 0x80000
-#define OTBN__NONE__ERR_BITS__BUS_INTG_VIOLATION_bp 19
-#define OTBN__NONE__ERR_BITS__BUS_INTG_VIOLATION_bw 1
-#define OTBN__NONE__ERR_BITS__BUS_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__ERR_BITS__BAD_INTERNAL_STATE_bm 0x100000
-#define OTBN__NONE__ERR_BITS__BAD_INTERNAL_STATE_bp 20
-#define OTBN__NONE__ERR_BITS__BAD_INTERNAL_STATE_bw 1
-#define OTBN__NONE__ERR_BITS__BAD_INTERNAL_STATE_reset 0x0
-#define OTBN__NONE__ERR_BITS__ILLEGAL_BUS_ACCESS_bm 0x200000
-#define OTBN__NONE__ERR_BITS__ILLEGAL_BUS_ACCESS_bp 21
-#define OTBN__NONE__ERR_BITS__ILLEGAL_BUS_ACCESS_bw 1
-#define OTBN__NONE__ERR_BITS__ILLEGAL_BUS_ACCESS_reset 0x0
-#define OTBN__NONE__ERR_BITS__LIFECYCLE_ESCALATION_bm 0x400000
-#define OTBN__NONE__ERR_BITS__LIFECYCLE_ESCALATION_bp 22
-#define OTBN__NONE__ERR_BITS__LIFECYCLE_ESCALATION_bw 1
-#define OTBN__NONE__ERR_BITS__LIFECYCLE_ESCALATION_reset 0x0
-#define OTBN__NONE__ERR_BITS__FATAL_SOFTWARE_bm 0x800000
-#define OTBN__NONE__ERR_BITS__FATAL_SOFTWARE_bp 23
-#define OTBN__NONE__ERR_BITS__FATAL_SOFTWARE_bw 1
-#define OTBN__NONE__ERR_BITS__FATAL_SOFTWARE_reset 0x0
+// reg - otbn::ERR_BITS
+#define OTBN__ERR_BITS__BAD_DATA_ADDR_bm 0x1
+#define OTBN__ERR_BITS__BAD_DATA_ADDR_bp 0
+#define OTBN__ERR_BITS__BAD_DATA_ADDR_bw 1
+#define OTBN__ERR_BITS__BAD_DATA_ADDR_reset 0x0
+#define OTBN__ERR_BITS__BAD_INSN_ADDR_bm 0x2
+#define OTBN__ERR_BITS__BAD_INSN_ADDR_bp 1
+#define OTBN__ERR_BITS__BAD_INSN_ADDR_bw 1
+#define OTBN__ERR_BITS__BAD_INSN_ADDR_reset 0x0
+#define OTBN__ERR_BITS__CALL_STACK_bm 0x4
+#define OTBN__ERR_BITS__CALL_STACK_bp 2
+#define OTBN__ERR_BITS__CALL_STACK_bw 1
+#define OTBN__ERR_BITS__CALL_STACK_reset 0x0
+#define OTBN__ERR_BITS__ILLEGAL_INSN_bm 0x8
+#define OTBN__ERR_BITS__ILLEGAL_INSN_bp 3
+#define OTBN__ERR_BITS__ILLEGAL_INSN_bw 1
+#define OTBN__ERR_BITS__ILLEGAL_INSN_reset 0x0
+#define OTBN__ERR_BITS__LOOP_bm 0x10
+#define OTBN__ERR_BITS__LOOP_bp 4
+#define OTBN__ERR_BITS__LOOP_bw 1
+#define OTBN__ERR_BITS__LOOP_reset 0x0
+#define OTBN__ERR_BITS__KEY_INVALID_bm 0x20
+#define OTBN__ERR_BITS__KEY_INVALID_bp 5
+#define OTBN__ERR_BITS__KEY_INVALID_bw 1
+#define OTBN__ERR_BITS__KEY_INVALID_reset 0x0
+#define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bm 0x40
+#define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bp 6
+#define OTBN__ERR_BITS__RND_REP_CHK_FAIL_bw 1
+#define OTBN__ERR_BITS__RND_REP_CHK_FAIL_reset 0x0
+#define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bm 0x80
+#define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bp 7
+#define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_bw 1
+#define OTBN__ERR_BITS__RND_FIPS_CHK_FAIL_reset 0x0
+#define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bm 0x10000
+#define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bp 16
+#define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_bw 1
+#define OTBN__ERR_BITS__IMEM_INTG_VIOLATION_reset 0x0
+#define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bm 0x20000
+#define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bp 17
+#define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_bw 1
+#define OTBN__ERR_BITS__DMEM_INTG_VIOLATION_reset 0x0
+#define OTBN__ERR_BITS__REG_INTG_VIOLATION_bm 0x40000
+#define OTBN__ERR_BITS__REG_INTG_VIOLATION_bp 18
+#define OTBN__ERR_BITS__REG_INTG_VIOLATION_bw 1
+#define OTBN__ERR_BITS__REG_INTG_VIOLATION_reset 0x0
+#define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bm 0x80000
+#define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bp 19
+#define OTBN__ERR_BITS__BUS_INTG_VIOLATION_bw 1
+#define OTBN__ERR_BITS__BUS_INTG_VIOLATION_reset 0x0
+#define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bm 0x100000
+#define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bp 20
+#define OTBN__ERR_BITS__BAD_INTERNAL_STATE_bw 1
+#define OTBN__ERR_BITS__BAD_INTERNAL_STATE_reset 0x0
+#define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bm 0x200000
+#define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bp 21
+#define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_bw 1
+#define OTBN__ERR_BITS__ILLEGAL_BUS_ACCESS_reset 0x0
+#define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bm 0x400000
+#define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bp 22
+#define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_bw 1
+#define OTBN__ERR_BITS__LIFECYCLE_ESCALATION_reset 0x0
+#define OTBN__ERR_BITS__FATAL_SOFTWARE_bm 0x800000
+#define OTBN__ERR_BITS__FATAL_SOFTWARE_bp 23
+#define OTBN__ERR_BITS__FATAL_SOFTWARE_bw 1
+#define OTBN__ERR_BITS__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BAD_DATA_ADDR :1;
@@ -193,41 +193,41 @@ typedef union {
         uint32_t :8;
     } f;
     uint32_t w;
-} otbn__none__ERR_BITS_t;
+} otbn__ERR_BITS_t;
 
-// reg - otbn::none::FATAL_ALERT_CAUSE
-#define OTBN__NONE__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bm 0x1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bp 0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bm 0x2
-#define OTBN__NONE__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bp 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bm 0x4
-#define OTBN__NONE__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bp 2
-#define OTBN__NONE__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bm 0x8
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bp 3
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bm 0x10
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bp 4
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bm 0x20
-#define OTBN__NONE__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bp 5
-#define OTBN__NONE__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bm 0x40
-#define OTBN__NONE__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bp 6
-#define OTBN__NONE__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_reset 0x0
-#define OTBN__NONE__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bm 0x80
-#define OTBN__NONE__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bp 7
-#define OTBN__NONE__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bw 1
-#define OTBN__NONE__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_reset 0x0
+// reg - otbn::FATAL_ALERT_CAUSE
+#define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bm 0x1
+#define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bp 0
+#define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__IMEM_INTG_VIOLATION_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bm 0x2
+#define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bp 1
+#define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__DMEM_INTG_VIOLATION_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bm 0x4
+#define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bp 2
+#define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__REG_INTG_VIOLATION_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bm 0x8
+#define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bp 3
+#define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__BUS_INTG_VIOLATION_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bm 0x10
+#define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bp 4
+#define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__BAD_INTERNAL_STATE_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bm 0x20
+#define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bp 5
+#define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__ILLEGAL_BUS_ACCESS_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bm 0x40
+#define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bp 6
+#define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__LIFECYCLE_ESCALATION_reset 0x0
+#define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bm 0x80
+#define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bp 7
+#define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_bw 1
+#define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t IMEM_INTG_VIOLATION :1;
@@ -241,68 +241,62 @@ typedef union {
         uint32_t :24;
     } f;
     uint32_t w;
-} otbn__none__FATAL_ALERT_CAUSE_t;
+} otbn__FATAL_ALERT_CAUSE_t;
 
-// reg - otbn::none::INSN_CNT
-#define OTBN__NONE__INSN_CNT__INSN_CNT_bm 0xffffffff
-#define OTBN__NONE__INSN_CNT__INSN_CNT_bp 0
-#define OTBN__NONE__INSN_CNT__INSN_CNT_bw 32
-#define OTBN__NONE__INSN_CNT__INSN_CNT_reset 0x0
+// reg - otbn::INSN_CNT
+#define OTBN__INSN_CNT__INSN_CNT_bm 0xffffffff
+#define OTBN__INSN_CNT__INSN_CNT_bp 0
+#define OTBN__INSN_CNT__INSN_CNT_bw 32
+#define OTBN__INSN_CNT__INSN_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INSN_CNT :32;
     } f;
     uint32_t w;
-} otbn__none__INSN_CNT_t;
+} otbn__INSN_CNT_t;
 
-// reg - otbn::none::LOAD_CHECKSUM
-#define OTBN__NONE__LOAD_CHECKSUM__CHECKSUM_bm 0xffffffff
-#define OTBN__NONE__LOAD_CHECKSUM__CHECKSUM_bp 0
-#define OTBN__NONE__LOAD_CHECKSUM__CHECKSUM_bw 32
-#define OTBN__NONE__LOAD_CHECKSUM__CHECKSUM_reset 0x0
+// reg - otbn::LOAD_CHECKSUM
+#define OTBN__LOAD_CHECKSUM__CHECKSUM_bm 0xffffffff
+#define OTBN__LOAD_CHECKSUM__CHECKSUM_bp 0
+#define OTBN__LOAD_CHECKSUM__CHECKSUM_bw 32
+#define OTBN__LOAD_CHECKSUM__CHECKSUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CHECKSUM :32;
     } f;
     uint32_t w;
-} otbn__none__LOAD_CHECKSUM_t;
+} otbn__LOAD_CHECKSUM_t;
 
-// mem - otbn::none::IMEM
+// mem - otbn::IMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t mem[1];
-} otbn__none__IMEM_t;
+    uint32_t mem[1];
+} otbn__IMEM_t;
 
-// mem - otbn::none::DMEM
+// mem - otbn::DMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t mem[1];
-} otbn__none__DMEM_t;
-
-// addrmap - otbn::none
-typedef struct __attribute__ ((__packed__)) {
-    otbn__none__INTR_STATE_t INTR_STATE;
-    otbn__none__INTR_ENABLE_t INTR_ENABLE;
-    otbn__none__INTR_TEST_t INTR_TEST;
-    otbn__none__ALERT_TEST_t ALERT_TEST;
-    otbn__none__CMD_t CMD;
-    otbn__none__CTRL_t CTRL;
-    otbn__none__STATUS_t STATUS;
-    otbn__none__ERR_BITS_t ERR_BITS;
-    otbn__none__FATAL_ALERT_CAUSE_t FATAL_ALERT_CAUSE;
-    otbn__none__INSN_CNT_t INSN_CNT;
-    otbn__none__LOAD_CHECKSUM_t LOAD_CHECKSUM;
-    uint8_t RESERVED_2c_3fff[0x3fd4];
-    otbn__none__IMEM_t IMEM[4096];
-    uint8_t RESERVED_5000_7fff[0x3000];
-    otbn__none__DMEM_t DMEM[4096];
-} otbn__none_t;
+    uint32_t mem[1];
+} otbn__DMEM_t;
 
 // addrmap - otbn
 typedef struct __attribute__ ((__packed__)) {
-    otbn__none_t none;
+    otbn__INTR_STATE_t INTR_STATE;
+    otbn__INTR_ENABLE_t INTR_ENABLE;
+    otbn__INTR_TEST_t INTR_TEST;
+    otbn__ALERT_TEST_t ALERT_TEST;
+    otbn__CMD_t CMD;
+    otbn__CTRL_t CTRL;
+    otbn__STATUS_t STATUS;
+    otbn__ERR_BITS_t ERR_BITS;
+    otbn__FATAL_ALERT_CAUSE_t FATAL_ALERT_CAUSE;
+    otbn__INSN_CNT_t INSN_CNT;
+    otbn__LOAD_CHECKSUM_t LOAD_CHECKSUM;
+    uint8_t RESERVED_2c_3fff[0x3fd4];
+    otbn__IMEM_t IMEM[4096];
+    otbn__DMEM_t DMEM[4096];
 } otbn_t;
 
 
-static_assert(sizeof(otbn_t) == 0x9000, "Packing error");
+static_assert(sizeof(otbn_t) == 0xc000, "Packing error");
 
 #ifdef __cplusplus
 }

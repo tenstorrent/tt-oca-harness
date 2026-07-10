@@ -22,7 +22,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -30,12 +30,12 @@ static int wait_for_idle(void) {
 }
 
 static void clear_error(void) {
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.ERR_PROCESSED = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Clear any pending interrupts */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 }
 
 static int test_err_sw_pushed_msg_fifo(void) {
@@ -44,27 +44,27 @@ static int test_err_sw_pushed_msg_fifo(void) {
     if (wait_for_idle() != 0) return -1;
 
     /* Configure but do NOT issue START */
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 0;
     cfg.f.MODE = 0x0;
     cfg.f.KSTRENGTH = 0x2;
     cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     cfg.f.ENTROPY_READY = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     /* Provide entropy */
     for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     /* Write to MSG_FIFO without START - should trigger error */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_MSG_FIFO_BASE_ADDR(0), 0xDEADBEEF);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0xDEADBEEF);
     printf("  Wrote MSG_FIFO without START\n");
 
-    kmac__none__ERR_CODE_t err = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_ERR_CODE_BASE_ADDR)};
+    kmac__ERR_CODE_t err = {.w = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR)};
     printf("  ERR_CODE = 0x%08x\n", err.w);
 
     if (err.w != 0) {
@@ -95,28 +95,28 @@ static int test_err_sw_cmd_sequence(void) {
     if (wait_for_idle() != 0) return -1;
 
     /* Configure */
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 0;
     cfg.f.MODE = 0x0;
     cfg.f.KSTRENGTH = 0x2;
     cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     cfg.f.ENTROPY_READY = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     /* Issue PROCESS without START - should trigger error */
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.CMD = 46;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Issued PROCESS without START\n");
 
-    kmac__none__ERR_CODE_t err = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_ERR_CODE_BASE_ADDR)};
+    kmac__ERR_CODE_t err = {.w = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR)};
     printf("  ERR_CODE = 0x%08x\n", err.w);
 
     if (err.w != 0) {

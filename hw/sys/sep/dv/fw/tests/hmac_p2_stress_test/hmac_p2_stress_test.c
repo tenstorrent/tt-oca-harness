@@ -51,15 +51,15 @@ static void init_msg_96(void) {
 }
 
 static void clear_hmac_done(void) {
-    hmac__none__INTR_STATE_t clear = {.w = 0};
+    hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.HMAC_DONE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 }
 
 static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         if (intr.f.HMAC_DONE) {
             return 0;
         }
@@ -71,17 +71,17 @@ static int wait_for_hmac_done(void) {
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
     volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
+        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
 
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
-        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         while (status.f.FIFO_FULL) {
             if (spins++ > 10000) {
                 printf("  FIFO full timeout at byte %u\n", i);
                 return -1;
             }
-            status.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR);
+            status.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
         *fifo8 = data[i];
     }
@@ -93,7 +93,7 @@ static void read_digest_hex(char *hex_out) {
     static const char hex_chars[] = "0123456789abcdef";
 
     for (int word = 0; word < 8; word++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(word));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(word));
         uint32_t digest_word = bswap32(raw);
         for (int byte = 0; byte < 4; byte++) {
             uint8_t value = (uint8_t)(digest_word >> (byte * 8));
@@ -106,11 +106,11 @@ static void read_digest_hex(char *hex_out) {
 }
 
 static void cleanup_hmac(void) {
-    hmac__none__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.SHA_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
     clear_hmac_done();
 }
 
@@ -118,20 +118,20 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter) {
     printf("\n[Iteration %u] %s (%u bytes)\n", iter, test_case->name, test_case->len);
 
     clear_hmac_done();
-    hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.HMAC_DONE) {
         printf("  FAIL: hmac_done did not clear before iteration\n");
         return -1;
     }
 
-    hmac__none__CMD_t start = {.f.HASH_START = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
+    hmac__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
 
     if (feed_msg(test_case->data, test_case->len) != 0) {
         return -1;
     }
 
-    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_NONE_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     uint32_t expected_bits = test_case->len * 8u;
     printf("  MSG_LENGTH_LOWER=%u expected=%u\n", msg_len, expected_bits);
     if (msg_len != expected_bits) {
@@ -139,14 +139,14 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter) {
         return -1;
     }
 
-    hmac__none__CMD_t process = {.f.HASH_PROCESS = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, process.w);
+    hmac__CMD_t process = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
 
     if (wait_for_hmac_done() != 0) {
         return -1;
     }
 
-    hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+    hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.HMAC_IDLE,
            status.f.FIFO_EMPTY, status.f.FIFO_FULL, status.f.FIFO_DEPTH);
     if (!status.f.HMAC_IDLE) {
@@ -165,7 +165,7 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter) {
     }
 
     clear_hmac_done();
-    intr.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR);
+    intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
     if (intr.f.HMAC_DONE) {
         printf("  FAIL: hmac_done did not clear after iteration\n");
         return -1;
@@ -182,15 +182,15 @@ int main(void) {
     printf("HMAC P2 Stress Test\n");
     printf("========================================\n");
 
-    hmac__none__INTR_ENABLE_t intr_en = {.w = 0};
+    hmac__INTR_ENABLE_t intr_en = {.w = 0};
     intr_en.f.HMAC_DONE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
-    hmac__none__CFG_t cfg = {.w = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.SHA_EN = 1;
     cfg.f.HMAC_EN = 0;
     cfg.f.DIGEST_SIZE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     static const hmac_stress_case_t cases[] = {
         {

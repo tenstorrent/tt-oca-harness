@@ -29,9 +29,9 @@ int main(void) {
     printf("Fabric HMAC Sanity Test (TC_FABRIC_012)\n");
     printf("========================================\n\n");
 
-    hmac__none__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
-    hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
-    uint32_t err_code = READ_REG(OCH_SEP_TOP_HMAC_NONE_ERR_CODE_BASE_ADDR);
+    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    uint32_t err_code = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
 
     printf("HMAC_CFG    = 0x%08x\n", cfg.w);
     printf("HMAC_STATUS = 0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.HMAC_IDLE,
@@ -49,18 +49,18 @@ int main(void) {
         pass = 0;
     }
 
-    hmac__none__INTR_TEST_t intr_test = {.f.HMAC_DONE = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_TEST_BASE_ADDR, intr_test.w);
+    hmac__INTR_TEST_t intr_test = {.f.HMAC_DONE = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, intr_test.w);
 
-    hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (!check_bit("HMAC INTR_TEST hmac_done", intr.f.HMAC_DONE)) {
         pass = 0;
     }
 
-    hmac__none__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
+    hmac__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 
-    intr.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR);
+    intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
     if (intr.f.HMAC_DONE != 0) {
         printf("HMAC hmac_done interrupt did not clear\n");
         pass = 0;

@@ -10,19 +10,19 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - kmac::none::INTR_STATE
-#define KMAC__NONE__INTR_STATE__KMAC_DONE_bm 0x1
-#define KMAC__NONE__INTR_STATE__KMAC_DONE_bp 0
-#define KMAC__NONE__INTR_STATE__KMAC_DONE_bw 1
-#define KMAC__NONE__INTR_STATE__KMAC_DONE_reset 0x0
-#define KMAC__NONE__INTR_STATE__FIFO_EMPTY_bm 0x2
-#define KMAC__NONE__INTR_STATE__FIFO_EMPTY_bp 1
-#define KMAC__NONE__INTR_STATE__FIFO_EMPTY_bw 1
-#define KMAC__NONE__INTR_STATE__FIFO_EMPTY_reset 0x0
-#define KMAC__NONE__INTR_STATE__KMAC_ERR_bm 0x4
-#define KMAC__NONE__INTR_STATE__KMAC_ERR_bp 2
-#define KMAC__NONE__INTR_STATE__KMAC_ERR_bw 1
-#define KMAC__NONE__INTR_STATE__KMAC_ERR_reset 0x0
+// reg - kmac::INTR_STATE
+#define KMAC__INTR_STATE__KMAC_DONE_bm 0x1
+#define KMAC__INTR_STATE__KMAC_DONE_bp 0
+#define KMAC__INTR_STATE__KMAC_DONE_bw 1
+#define KMAC__INTR_STATE__KMAC_DONE_reset 0x0
+#define KMAC__INTR_STATE__FIFO_EMPTY_bm 0x2
+#define KMAC__INTR_STATE__FIFO_EMPTY_bp 1
+#define KMAC__INTR_STATE__FIFO_EMPTY_bw 1
+#define KMAC__INTR_STATE__FIFO_EMPTY_reset 0x0
+#define KMAC__INTR_STATE__KMAC_ERR_bm 0x4
+#define KMAC__INTR_STATE__KMAC_ERR_bp 2
+#define KMAC__INTR_STATE__KMAC_ERR_bw 1
+#define KMAC__INTR_STATE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KMAC_DONE :1;
@@ -31,21 +31,21 @@ typedef union {
         uint32_t :29;
     } f;
     uint32_t w;
-} kmac__none__INTR_STATE_t;
+} kmac__INTR_STATE_t;
 
-// reg - kmac::none::INTR_ENABLE
-#define KMAC__NONE__INTR_ENABLE__KMAC_DONE_bm 0x1
-#define KMAC__NONE__INTR_ENABLE__KMAC_DONE_bp 0
-#define KMAC__NONE__INTR_ENABLE__KMAC_DONE_bw 1
-#define KMAC__NONE__INTR_ENABLE__KMAC_DONE_reset 0x0
-#define KMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bm 0x2
-#define KMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bp 1
-#define KMAC__NONE__INTR_ENABLE__FIFO_EMPTY_bw 1
-#define KMAC__NONE__INTR_ENABLE__FIFO_EMPTY_reset 0x0
-#define KMAC__NONE__INTR_ENABLE__KMAC_ERR_bm 0x4
-#define KMAC__NONE__INTR_ENABLE__KMAC_ERR_bp 2
-#define KMAC__NONE__INTR_ENABLE__KMAC_ERR_bw 1
-#define KMAC__NONE__INTR_ENABLE__KMAC_ERR_reset 0x0
+// reg - kmac::INTR_ENABLE
+#define KMAC__INTR_ENABLE__KMAC_DONE_bm 0x1
+#define KMAC__INTR_ENABLE__KMAC_DONE_bp 0
+#define KMAC__INTR_ENABLE__KMAC_DONE_bw 1
+#define KMAC__INTR_ENABLE__KMAC_DONE_reset 0x0
+#define KMAC__INTR_ENABLE__FIFO_EMPTY_bm 0x2
+#define KMAC__INTR_ENABLE__FIFO_EMPTY_bp 1
+#define KMAC__INTR_ENABLE__FIFO_EMPTY_bw 1
+#define KMAC__INTR_ENABLE__FIFO_EMPTY_reset 0x0
+#define KMAC__INTR_ENABLE__KMAC_ERR_bm 0x4
+#define KMAC__INTR_ENABLE__KMAC_ERR_bp 2
+#define KMAC__INTR_ENABLE__KMAC_ERR_bw 1
+#define KMAC__INTR_ENABLE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KMAC_DONE :1;
@@ -54,21 +54,21 @@ typedef union {
         uint32_t :29;
     } f;
     uint32_t w;
-} kmac__none__INTR_ENABLE_t;
+} kmac__INTR_ENABLE_t;
 
-// reg - kmac::none::INTR_TEST
-#define KMAC__NONE__INTR_TEST__KMAC_DONE_bm 0x1
-#define KMAC__NONE__INTR_TEST__KMAC_DONE_bp 0
-#define KMAC__NONE__INTR_TEST__KMAC_DONE_bw 1
-#define KMAC__NONE__INTR_TEST__KMAC_DONE_reset 0x0
-#define KMAC__NONE__INTR_TEST__FIFO_EMPTY_bm 0x2
-#define KMAC__NONE__INTR_TEST__FIFO_EMPTY_bp 1
-#define KMAC__NONE__INTR_TEST__FIFO_EMPTY_bw 1
-#define KMAC__NONE__INTR_TEST__FIFO_EMPTY_reset 0x0
-#define KMAC__NONE__INTR_TEST__KMAC_ERR_bm 0x4
-#define KMAC__NONE__INTR_TEST__KMAC_ERR_bp 2
-#define KMAC__NONE__INTR_TEST__KMAC_ERR_bw 1
-#define KMAC__NONE__INTR_TEST__KMAC_ERR_reset 0x0
+// reg - kmac::INTR_TEST
+#define KMAC__INTR_TEST__KMAC_DONE_bm 0x1
+#define KMAC__INTR_TEST__KMAC_DONE_bp 0
+#define KMAC__INTR_TEST__KMAC_DONE_bw 1
+#define KMAC__INTR_TEST__KMAC_DONE_reset 0x0
+#define KMAC__INTR_TEST__FIFO_EMPTY_bm 0x2
+#define KMAC__INTR_TEST__FIFO_EMPTY_bp 1
+#define KMAC__INTR_TEST__FIFO_EMPTY_bw 1
+#define KMAC__INTR_TEST__FIFO_EMPTY_reset 0x0
+#define KMAC__INTR_TEST__KMAC_ERR_bm 0x4
+#define KMAC__INTR_TEST__KMAC_ERR_bp 2
+#define KMAC__INTR_TEST__KMAC_ERR_bw 1
+#define KMAC__INTR_TEST__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KMAC_DONE :1;
@@ -77,17 +77,17 @@ typedef union {
         uint32_t :29;
     } f;
     uint32_t w;
-} kmac__none__INTR_TEST_t;
+} kmac__INTR_TEST_t;
 
-// reg - kmac::none::ALERT_TEST
-#define KMAC__NONE__ALERT_TEST__RECOV_OPERATION_ERR_bm 0x1
-#define KMAC__NONE__ALERT_TEST__RECOV_OPERATION_ERR_bp 0
-#define KMAC__NONE__ALERT_TEST__RECOV_OPERATION_ERR_bw 1
-#define KMAC__NONE__ALERT_TEST__RECOV_OPERATION_ERR_reset 0x0
-#define KMAC__NONE__ALERT_TEST__FATAL_FAULT_ERR_bm 0x2
-#define KMAC__NONE__ALERT_TEST__FATAL_FAULT_ERR_bp 1
-#define KMAC__NONE__ALERT_TEST__FATAL_FAULT_ERR_bw 1
-#define KMAC__NONE__ALERT_TEST__FATAL_FAULT_ERR_reset 0x0
+// reg - kmac::ALERT_TEST
+#define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bm 0x1
+#define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bp 0
+#define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bw 1
+#define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_reset 0x0
+#define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bm 0x2
+#define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bp 1
+#define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bw 1
+#define KMAC__ALERT_TEST__FATAL_FAULT_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RECOV_OPERATION_ERR :1;
@@ -95,66 +95,66 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} kmac__none__ALERT_TEST_t;
+} kmac__ALERT_TEST_t;
 
-// reg - kmac::none::CFG_REGWEN
-#define KMAC__NONE__CFG_REGWEN__EN_bm 0x1
-#define KMAC__NONE__CFG_REGWEN__EN_bp 0
-#define KMAC__NONE__CFG_REGWEN__EN_bw 1
-#define KMAC__NONE__CFG_REGWEN__EN_reset 0x1
+// reg - kmac::CFG_REGWEN
+#define KMAC__CFG_REGWEN__EN_bm 0x1
+#define KMAC__CFG_REGWEN__EN_bp 0
+#define KMAC__CFG_REGWEN__EN_bw 1
+#define KMAC__CFG_REGWEN__EN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EN :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} kmac__none__CFG_REGWEN_t;
+} kmac__CFG_REGWEN_t;
 
-// reg - kmac::none::CFG_SHADOWED
-#define KMAC__NONE__CFG_SHADOWED__KMAC_EN_bm 0x1
-#define KMAC__NONE__CFG_SHADOWED__KMAC_EN_bp 0
-#define KMAC__NONE__CFG_SHADOWED__KMAC_EN_bw 1
-#define KMAC__NONE__CFG_SHADOWED__KMAC_EN_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__KSTRENGTH_bm 0xe
-#define KMAC__NONE__CFG_SHADOWED__KSTRENGTH_bp 1
-#define KMAC__NONE__CFG_SHADOWED__KSTRENGTH_bw 3
-#define KMAC__NONE__CFG_SHADOWED__KSTRENGTH_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__MODE_bm 0x30
-#define KMAC__NONE__CFG_SHADOWED__MODE_bp 4
-#define KMAC__NONE__CFG_SHADOWED__MODE_bw 2
-#define KMAC__NONE__CFG_SHADOWED__MODE_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__MSG_ENDIANNESS_bm 0x100
-#define KMAC__NONE__CFG_SHADOWED__MSG_ENDIANNESS_bp 8
-#define KMAC__NONE__CFG_SHADOWED__MSG_ENDIANNESS_bw 1
-#define KMAC__NONE__CFG_SHADOWED__MSG_ENDIANNESS_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__STATE_ENDIANNESS_bm 0x200
-#define KMAC__NONE__CFG_SHADOWED__STATE_ENDIANNESS_bp 9
-#define KMAC__NONE__CFG_SHADOWED__STATE_ENDIANNESS_bw 1
-#define KMAC__NONE__CFG_SHADOWED__STATE_ENDIANNESS_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__SIDELOAD_bm 0x1000
-#define KMAC__NONE__CFG_SHADOWED__SIDELOAD_bp 12
-#define KMAC__NONE__CFG_SHADOWED__SIDELOAD_bw 1
-#define KMAC__NONE__CFG_SHADOWED__SIDELOAD_reset 0x1
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_MODE_bm 0x30000
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_MODE_bp 16
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_MODE_bw 2
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_MODE_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bm 0x80000
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bp 19
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bw 1
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_FAST_PROCESS_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__MSG_MASK_bm 0x100000
-#define KMAC__NONE__CFG_SHADOWED__MSG_MASK_bp 20
-#define KMAC__NONE__CFG_SHADOWED__MSG_MASK_bw 1
-#define KMAC__NONE__CFG_SHADOWED__MSG_MASK_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_READY_bm 0x1000000
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_READY_bp 24
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_READY_bw 1
-#define KMAC__NONE__CFG_SHADOWED__ENTROPY_READY_reset 0x0
-#define KMAC__NONE__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bm 0x4000000
-#define KMAC__NONE__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bp 26
-#define KMAC__NONE__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bw 1
-#define KMAC__NONE__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_reset 0x0
+// reg - kmac::CFG_SHADOWED
+#define KMAC__CFG_SHADOWED__KMAC_EN_bm 0x1
+#define KMAC__CFG_SHADOWED__KMAC_EN_bp 0
+#define KMAC__CFG_SHADOWED__KMAC_EN_bw 1
+#define KMAC__CFG_SHADOWED__KMAC_EN_reset 0x0
+#define KMAC__CFG_SHADOWED__KSTRENGTH_bm 0xe
+#define KMAC__CFG_SHADOWED__KSTRENGTH_bp 1
+#define KMAC__CFG_SHADOWED__KSTRENGTH_bw 3
+#define KMAC__CFG_SHADOWED__KSTRENGTH_reset 0x0
+#define KMAC__CFG_SHADOWED__MODE_bm 0x30
+#define KMAC__CFG_SHADOWED__MODE_bp 4
+#define KMAC__CFG_SHADOWED__MODE_bw 2
+#define KMAC__CFG_SHADOWED__MODE_reset 0x0
+#define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bm 0x100
+#define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bp 8
+#define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bw 1
+#define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_reset 0x0
+#define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bm 0x200
+#define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bp 9
+#define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bw 1
+#define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_reset 0x0
+#define KMAC__CFG_SHADOWED__SIDELOAD_bm 0x1000
+#define KMAC__CFG_SHADOWED__SIDELOAD_bp 12
+#define KMAC__CFG_SHADOWED__SIDELOAD_bw 1
+#define KMAC__CFG_SHADOWED__SIDELOAD_reset 0x1
+#define KMAC__CFG_SHADOWED__ENTROPY_MODE_bm 0x30000
+#define KMAC__CFG_SHADOWED__ENTROPY_MODE_bp 16
+#define KMAC__CFG_SHADOWED__ENTROPY_MODE_bw 2
+#define KMAC__CFG_SHADOWED__ENTROPY_MODE_reset 0x0
+#define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bm 0x80000
+#define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bp 19
+#define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bw 1
+#define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_reset 0x0
+#define KMAC__CFG_SHADOWED__MSG_MASK_bm 0x100000
+#define KMAC__CFG_SHADOWED__MSG_MASK_bp 20
+#define KMAC__CFG_SHADOWED__MSG_MASK_bw 1
+#define KMAC__CFG_SHADOWED__MSG_MASK_reset 0x0
+#define KMAC__CFG_SHADOWED__ENTROPY_READY_bm 0x1000000
+#define KMAC__CFG_SHADOWED__ENTROPY_READY_bp 24
+#define KMAC__CFG_SHADOWED__ENTROPY_READY_bw 1
+#define KMAC__CFG_SHADOWED__ENTROPY_READY_reset 0x0
+#define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bm 0x4000000
+#define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bp 26
+#define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bw 1
+#define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KMAC_EN :1;
@@ -177,21 +177,21 @@ typedef union {
         uint32_t :5;
     } f;
     uint32_t w;
-} kmac__none__CFG_SHADOWED_t;
+} kmac__CFG_SHADOWED_t;
 
-// reg - kmac::none::CMD
-#define KMAC__NONE__CMD__CMD_bm 0x3f
-#define KMAC__NONE__CMD__CMD_bp 0
-#define KMAC__NONE__CMD__CMD_bw 6
-#define KMAC__NONE__CMD__ENTROPY_REQ_bm 0x100
-#define KMAC__NONE__CMD__ENTROPY_REQ_bp 8
-#define KMAC__NONE__CMD__ENTROPY_REQ_bw 1
-#define KMAC__NONE__CMD__HASH_CNT_CLR_bm 0x200
-#define KMAC__NONE__CMD__HASH_CNT_CLR_bp 9
-#define KMAC__NONE__CMD__HASH_CNT_CLR_bw 1
-#define KMAC__NONE__CMD__ERR_PROCESSED_bm 0x400
-#define KMAC__NONE__CMD__ERR_PROCESSED_bp 10
-#define KMAC__NONE__CMD__ERR_PROCESSED_bw 1
+// reg - kmac::CMD
+#define KMAC__CMD__CMD_bm 0x3f
+#define KMAC__CMD__CMD_bp 0
+#define KMAC__CMD__CMD_bw 6
+#define KMAC__CMD__ENTROPY_REQ_bm 0x100
+#define KMAC__CMD__ENTROPY_REQ_bp 8
+#define KMAC__CMD__ENTROPY_REQ_bw 1
+#define KMAC__CMD__HASH_CNT_CLR_bm 0x200
+#define KMAC__CMD__HASH_CNT_CLR_bp 9
+#define KMAC__CMD__HASH_CNT_CLR_bw 1
+#define KMAC__CMD__ERR_PROCESSED_bm 0x400
+#define KMAC__CMD__ERR_PROCESSED_bp 10
+#define KMAC__CMD__ERR_PROCESSED_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CMD :6;
@@ -202,37 +202,37 @@ typedef union {
         uint32_t :21;
     } f;
     uint32_t w;
-} kmac__none__CMD_t;
+} kmac__CMD_t;
 
-// reg - kmac::none::STATUS
-#define KMAC__NONE__STATUS__SHA3_IDLE_bm 0x1
-#define KMAC__NONE__STATUS__SHA3_IDLE_bp 0
-#define KMAC__NONE__STATUS__SHA3_IDLE_bw 1
-#define KMAC__NONE__STATUS__SHA3_IDLE_reset 0x1
-#define KMAC__NONE__STATUS__SHA3_ABSORB_bm 0x2
-#define KMAC__NONE__STATUS__SHA3_ABSORB_bp 1
-#define KMAC__NONE__STATUS__SHA3_ABSORB_bw 1
-#define KMAC__NONE__STATUS__SHA3_SQUEEZE_bm 0x4
-#define KMAC__NONE__STATUS__SHA3_SQUEEZE_bp 2
-#define KMAC__NONE__STATUS__SHA3_SQUEEZE_bw 1
-#define KMAC__NONE__STATUS__FIFO_DEPTH_bm 0x1f00
-#define KMAC__NONE__STATUS__FIFO_DEPTH_bp 8
-#define KMAC__NONE__STATUS__FIFO_DEPTH_bw 5
-#define KMAC__NONE__STATUS__FIFO_EMPTY_bm 0x4000
-#define KMAC__NONE__STATUS__FIFO_EMPTY_bp 14
-#define KMAC__NONE__STATUS__FIFO_EMPTY_bw 1
-#define KMAC__NONE__STATUS__FIFO_EMPTY_reset 0x1
-#define KMAC__NONE__STATUS__FIFO_FULL_bm 0x8000
-#define KMAC__NONE__STATUS__FIFO_FULL_bp 15
-#define KMAC__NONE__STATUS__FIFO_FULL_bw 1
-#define KMAC__NONE__STATUS__ALERT_FATAL_FAULT_bm 0x10000
-#define KMAC__NONE__STATUS__ALERT_FATAL_FAULT_bp 16
-#define KMAC__NONE__STATUS__ALERT_FATAL_FAULT_bw 1
-#define KMAC__NONE__STATUS__ALERT_FATAL_FAULT_reset 0x0
-#define KMAC__NONE__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bm 0x20000
-#define KMAC__NONE__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bp 17
-#define KMAC__NONE__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bw 1
-#define KMAC__NONE__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
+// reg - kmac::STATUS
+#define KMAC__STATUS__SHA3_IDLE_bm 0x1
+#define KMAC__STATUS__SHA3_IDLE_bp 0
+#define KMAC__STATUS__SHA3_IDLE_bw 1
+#define KMAC__STATUS__SHA3_IDLE_reset 0x1
+#define KMAC__STATUS__SHA3_ABSORB_bm 0x2
+#define KMAC__STATUS__SHA3_ABSORB_bp 1
+#define KMAC__STATUS__SHA3_ABSORB_bw 1
+#define KMAC__STATUS__SHA3_SQUEEZE_bm 0x4
+#define KMAC__STATUS__SHA3_SQUEEZE_bp 2
+#define KMAC__STATUS__SHA3_SQUEEZE_bw 1
+#define KMAC__STATUS__FIFO_DEPTH_bm 0x1f00
+#define KMAC__STATUS__FIFO_DEPTH_bp 8
+#define KMAC__STATUS__FIFO_DEPTH_bw 5
+#define KMAC__STATUS__FIFO_EMPTY_bm 0x4000
+#define KMAC__STATUS__FIFO_EMPTY_bp 14
+#define KMAC__STATUS__FIFO_EMPTY_bw 1
+#define KMAC__STATUS__FIFO_EMPTY_reset 0x1
+#define KMAC__STATUS__FIFO_FULL_bm 0x8000
+#define KMAC__STATUS__FIFO_FULL_bp 15
+#define KMAC__STATUS__FIFO_FULL_bw 1
+#define KMAC__STATUS__ALERT_FATAL_FAULT_bm 0x10000
+#define KMAC__STATUS__ALERT_FATAL_FAULT_bp 16
+#define KMAC__STATUS__ALERT_FATAL_FAULT_bw 1
+#define KMAC__STATUS__ALERT_FATAL_FAULT_reset 0x0
+#define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bm 0x20000
+#define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bp 17
+#define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bw 1
+#define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SHA3_IDLE :1;
@@ -248,17 +248,17 @@ typedef union {
         uint32_t :14;
     } f;
     uint32_t w;
-} kmac__none__STATUS_t;
+} kmac__STATUS_t;
 
-// reg - kmac::none::ENTROPY_PERIOD
-#define KMAC__NONE__ENTROPY_PERIOD__PRESCALER_bm 0x3ff
-#define KMAC__NONE__ENTROPY_PERIOD__PRESCALER_bp 0
-#define KMAC__NONE__ENTROPY_PERIOD__PRESCALER_bw 10
-#define KMAC__NONE__ENTROPY_PERIOD__PRESCALER_reset 0x0
-#define KMAC__NONE__ENTROPY_PERIOD__WAIT_TIMER_bm 0xffff0000
-#define KMAC__NONE__ENTROPY_PERIOD__WAIT_TIMER_bp 16
-#define KMAC__NONE__ENTROPY_PERIOD__WAIT_TIMER_bw 16
-#define KMAC__NONE__ENTROPY_PERIOD__WAIT_TIMER_reset 0x0
+// reg - kmac::ENTROPY_PERIOD
+#define KMAC__ENTROPY_PERIOD__PRESCALER_bm 0x3ff
+#define KMAC__ENTROPY_PERIOD__PRESCALER_bp 0
+#define KMAC__ENTROPY_PERIOD__PRESCALER_bw 10
+#define KMAC__ENTROPY_PERIOD__PRESCALER_reset 0x0
+#define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bm 0xffff0000
+#define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bp 16
+#define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bw 16
+#define KMAC__ENTROPY_PERIOD__WAIT_TIMER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t PRESCALER :10;
@@ -266,146 +266,141 @@ typedef union {
         uint32_t WAIT_TIMER :16;
     } f;
     uint32_t w;
-} kmac__none__ENTROPY_PERIOD_t;
+} kmac__ENTROPY_PERIOD_t;
 
-// reg - kmac::none::ENTROPY_REFRESH_HASH_CNT
-#define KMAC__NONE__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bm 0x3ff
-#define KMAC__NONE__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bp 0
-#define KMAC__NONE__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bw 10
-#define KMAC__NONE__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_reset 0x0
+// reg - kmac::ENTROPY_REFRESH_HASH_CNT
+#define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bm 0x3ff
+#define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bp 0
+#define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bw 10
+#define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HASH_CNT :10;
         uint32_t :22;
     } f;
     uint32_t w;
-} kmac__none__ENTROPY_REFRESH_HASH_CNT_t;
+} kmac__ENTROPY_REFRESH_HASH_CNT_t;
 
-// reg - kmac::none::ENTROPY_REFRESH_THRESHOLD_SHADOWED
-#define KMAC__NONE__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm 0x3ff
-#define KMAC__NONE__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bp 0
-#define KMAC__NONE__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bw 10
-#define KMAC__NONE__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_reset 0x0
+// reg - kmac::ENTROPY_REFRESH_THRESHOLD_SHADOWED
+#define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm 0x3ff
+#define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bp 0
+#define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bw 10
+#define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t THRESHOLD :10;
         uint32_t :22;
     } f;
     uint32_t w;
-} kmac__none__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t;
+} kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t;
 
-// reg - kmac::none::ENTROPY_SEED
-#define KMAC__NONE__ENTROPY_SEED__SEED_bm 0xffffffff
-#define KMAC__NONE__ENTROPY_SEED__SEED_bp 0
-#define KMAC__NONE__ENTROPY_SEED__SEED_bw 32
+// reg - kmac::ENTROPY_SEED
+#define KMAC__ENTROPY_SEED__SEED_bm 0xffffffff
+#define KMAC__ENTROPY_SEED__SEED_bp 0
+#define KMAC__ENTROPY_SEED__SEED_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SEED :32;
     } f;
     uint32_t w;
-} kmac__none__ENTROPY_SEED_t;
+} kmac__ENTROPY_SEED_t;
 
-// reg - kmac::none::KEY_SHARE0_0
-#define KMAC__NONE__KEY_SHARE0_0__KEY_0_bm 0xffffffff
-#define KMAC__NONE__KEY_SHARE0_0__KEY_0_bp 0
-#define KMAC__NONE__KEY_SHARE0_0__KEY_0_bw 32
+// reg - kmac::KEY_SHARE0_0
+#define KMAC__KEY_SHARE0_0__KEY_0_bm 0xffffffff
+#define KMAC__KEY_SHARE0_0__KEY_0_bp 0
+#define KMAC__KEY_SHARE0_0__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KEY_0 :32;
     } f;
     uint32_t w;
-} kmac__none__KEY_SHARE0_0_t;
+} kmac__KEY_SHARE0_0_t;
 
-// reg - kmac::none::KEY_SHARE1_0
-#define KMAC__NONE__KEY_SHARE1_0__KEY_0_bm 0xffffffff
-#define KMAC__NONE__KEY_SHARE1_0__KEY_0_bp 0
-#define KMAC__NONE__KEY_SHARE1_0__KEY_0_bw 32
+// reg - kmac::KEY_SHARE1_0
+#define KMAC__KEY_SHARE1_0__KEY_0_bm 0xffffffff
+#define KMAC__KEY_SHARE1_0__KEY_0_bp 0
+#define KMAC__KEY_SHARE1_0__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KEY_0 :32;
     } f;
     uint32_t w;
-} kmac__none__KEY_SHARE1_0_t;
+} kmac__KEY_SHARE1_0_t;
 
-// reg - kmac::none::KEY_LEN
-#define KMAC__NONE__KEY_LEN__LEN_bm 0x7
-#define KMAC__NONE__KEY_LEN__LEN_bp 0
-#define KMAC__NONE__KEY_LEN__LEN_bw 3
-#define KMAC__NONE__KEY_LEN__LEN_reset 0x0
+// reg - kmac::KEY_LEN
+#define KMAC__KEY_LEN__LEN_bm 0x7
+#define KMAC__KEY_LEN__LEN_bp 0
+#define KMAC__KEY_LEN__LEN_bw 3
+#define KMAC__KEY_LEN__LEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t LEN :3;
         uint32_t :29;
     } f;
     uint32_t w;
-} kmac__none__KEY_LEN_t;
+} kmac__KEY_LEN_t;
 
-// reg - kmac::none::PREFIX_0
-#define KMAC__NONE__PREFIX_0__PREFIX_0_bm 0xffffffff
-#define KMAC__NONE__PREFIX_0__PREFIX_0_bp 0
-#define KMAC__NONE__PREFIX_0__PREFIX_0_bw 32
-#define KMAC__NONE__PREFIX_0__PREFIX_0_reset 0x0
+// reg - kmac::PREFIX_0
+#define KMAC__PREFIX_0__PREFIX_0_bm 0xffffffff
+#define KMAC__PREFIX_0__PREFIX_0_bp 0
+#define KMAC__PREFIX_0__PREFIX_0_bw 32
+#define KMAC__PREFIX_0__PREFIX_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t PREFIX_0 :32;
     } f;
     uint32_t w;
-} kmac__none__PREFIX_0_t;
+} kmac__PREFIX_0_t;
 
-// reg - kmac::none::ERR_CODE
-#define KMAC__NONE__ERR_CODE__ERR_CODE_bm 0xffffffff
-#define KMAC__NONE__ERR_CODE__ERR_CODE_bp 0
-#define KMAC__NONE__ERR_CODE__ERR_CODE_bw 32
-#define KMAC__NONE__ERR_CODE__ERR_CODE_reset 0x0
+// reg - kmac::ERR_CODE
+#define KMAC__ERR_CODE__ERR_CODE_bm 0xffffffff
+#define KMAC__ERR_CODE__ERR_CODE_bp 0
+#define KMAC__ERR_CODE__ERR_CODE_bw 32
+#define KMAC__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ERR_CODE :32;
     } f;
     uint32_t w;
-} kmac__none__ERR_CODE_t;
+} kmac__ERR_CODE_t;
 
-// mem - kmac::none::STATE
+// mem - kmac::STATE
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t mem[1];
-} kmac__none__STATE_t;
+    uint32_t mem[1];
+} kmac__STATE_t;
 
-// mem - kmac::none::MSG_FIFO
+// mem - kmac::MSG_FIFO
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t mem[1];
-} kmac__none__MSG_FIFO_t;
-
-// addrmap - kmac::none
-typedef struct __attribute__ ((__packed__)) {
-    kmac__none__INTR_STATE_t INTR_STATE;
-    kmac__none__INTR_ENABLE_t INTR_ENABLE;
-    kmac__none__INTR_TEST_t INTR_TEST;
-    kmac__none__ALERT_TEST_t ALERT_TEST;
-    kmac__none__CFG_REGWEN_t CFG_REGWEN;
-    kmac__none__CFG_SHADOWED_t CFG_SHADOWED;
-    kmac__none__CMD_t CMD;
-    kmac__none__STATUS_t STATUS;
-    kmac__none__ENTROPY_PERIOD_t ENTROPY_PERIOD;
-    kmac__none__ENTROPY_REFRESH_HASH_CNT_t ENTROPY_REFRESH_HASH_CNT;
-    kmac__none__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t ENTROPY_REFRESH_THRESHOLD_SHADOWED;
-    kmac__none__ENTROPY_SEED_t ENTROPY_SEED;
-    kmac__none__KEY_SHARE0_0_t KEY_SHARE0_0[16];
-    kmac__none__KEY_SHARE1_0_t KEY_SHARE1_0[16];
-    kmac__none__KEY_LEN_t KEY_LEN;
-    kmac__none__PREFIX_0_t PREFIX_0[11];
-    kmac__none__ERR_CODE_t ERR_CODE;
-    uint8_t RESERVED_e4_3ff[0x31c];
-    kmac__none__STATE_t STATE[128];
-    uint8_t RESERVED_480_7ff[0x380];
-    kmac__none__MSG_FIFO_t MSG_FIFO[512];
-} kmac__none_t;
+    uint32_t mem[1];
+} kmac__MSG_FIFO_t;
 
 // addrmap - kmac
 typedef struct __attribute__ ((__packed__)) {
-    kmac__none_t none;
+    kmac__INTR_STATE_t INTR_STATE;
+    kmac__INTR_ENABLE_t INTR_ENABLE;
+    kmac__INTR_TEST_t INTR_TEST;
+    kmac__ALERT_TEST_t ALERT_TEST;
+    kmac__CFG_REGWEN_t CFG_REGWEN;
+    kmac__CFG_SHADOWED_t CFG_SHADOWED;
+    kmac__CMD_t CMD;
+    kmac__STATUS_t STATUS;
+    kmac__ENTROPY_PERIOD_t ENTROPY_PERIOD;
+    kmac__ENTROPY_REFRESH_HASH_CNT_t ENTROPY_REFRESH_HASH_CNT;
+    kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t ENTROPY_REFRESH_THRESHOLD_SHADOWED;
+    kmac__ENTROPY_SEED_t ENTROPY_SEED;
+    kmac__KEY_SHARE0_0_t KEY_SHARE0_0[16];
+    kmac__KEY_SHARE1_0_t KEY_SHARE1_0[16];
+    kmac__KEY_LEN_t KEY_LEN;
+    kmac__PREFIX_0_t PREFIX_0[11];
+    kmac__ERR_CODE_t ERR_CODE;
+    uint8_t RESERVED_e4_3ff[0x31c];
+    kmac__STATE_t STATE[128];
+    uint8_t RESERVED_600_7ff[0x200];
+    kmac__MSG_FIFO_t MSG_FIFO[512];
 } kmac_t;
 
 
-static_assert(sizeof(kmac_t) == 0xa00, "Packing error");
+static_assert(sizeof(kmac_t) == 0x1000, "Packing error");
 
 #ifdef __cplusplus
 }

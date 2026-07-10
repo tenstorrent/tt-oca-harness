@@ -52,7 +52,7 @@ static const uint32_t zero_mask[4] = {0, 0, 0, 0};
 static int wait_idle(void) {
     int t = 2000000;
     while (t-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("  ERROR: KMAC idle timeout\n");
@@ -62,9 +62,9 @@ static int wait_idle(void) {
 static int wait_done(void) {
     int t = 2000000;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x1); /* W1C */
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1); /* W1C */
             return 0;
         }
     }
@@ -77,66 +77,66 @@ static int wait_done(void) {
  * entropy_mode = 1 (EDN) avoids SW entropy hang in KMAC modes.
  */
 static int kmac_configure(int sideload) {
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 1;
     cfg.f.MODE = 0x2;         /* cSHAKE (required for KMAC) */
     cfg.f.KSTRENGTH = 0x0;    /* L128 */
     cfg.f.ENTROPY_MODE = 0x1; /* EDN */
     cfg.f.SIDELOAD = sideload ? 1 : 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w); /* shadowed: write twice */
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); /* shadowed: write twice */
 
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     return 0;
 }
 
 /* Write 128-bit SW key via KEY_SHARE0 (share1 = all zeros for masking) */
 static void write_sw_key(void) {
-    kmac__none__KEY_LEN_t kl = {.w = 0};
+    kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.LEN = 0x0; /* Key128 */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_KEY_LEN_BASE_ADDR, kl.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_KEY_SHARE0_0_BASE_ADDR(i), sw_key[i]);
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_KEY_SHARE1_0_BASE_ADDR(i), zero_mask[i]);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_0_BASE_ADDR(i), sw_key[i]);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_0_BASE_ADDR(i), zero_mask[i]);
     }
 }
 
 /* Set KMAC custom prefix = encode_string("KMAC") */
 static void write_kmac_prefix(void) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(0), 0x4D4B2001U);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(0) + 4, 0x00004341U);
-    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(i), 0);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0), 0x4D4B2001U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0) + 4, 0x00004341U);
+    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), 0);
 }
 
 /* Run one KMAC-128("test", 256) operation; store 8-word digest into out[] */
 static int run_kmac_op(uint32_t out[8]) {
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
 
     /* START */
     cmd.f.CMD = 29; /* CmdStart */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Write message "test" (4 bytes LE) */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_MSG_FIFO_BASE_ADDR(0), 0x74736574U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x74736574U);
     /* right_encode(256) = 0x01 0x00 0x02 */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_MSG_FIFO_BASE_ADDR(0), 0x00020001U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x00020001U);
 
     /* PROCESS */
     cmd.f.CMD = 46; /* CmdProcess */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_done() != 0) return -1;
 
     /* Read digest: XOR two masked shares */
     for (int i = 0; i < 8; i++)
-        out[i] = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(i * 4)) ^
-                 READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(0x100 + (i * 4)));
+        out[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(i * 4)) ^
+                 READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0x100 + (i * 4)));
 
     /* DONE */
     cmd.f.CMD = 22; /* CmdDone */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }
@@ -164,7 +164,7 @@ int main(void) {
     printf("=== Phase 1: CFG.sideload register control ===\n");
 
     /* Read default config; sideload bit is at bit 12 */
-    uint32_t cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
+    uint32_t cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     int default_sideload = (cfg_rd >> 12) & 0x1;
     printf("  Default CFG=0x%08x sideload=%d\n", cfg_rd, default_sideload);
     if (default_sideload == 1) {
@@ -175,11 +175,11 @@ int main(void) {
     }
 
     /* Write sideload=0, read back */
-    kmac__none__CFG_SHADOWED_t cfg_test = {.w = cfg_rd};
+    kmac__CFG_SHADOWED_t cfg_test = {.w = cfg_rd};
     cfg_test.f.SIDELOAD = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     int rb0 = (cfg_rd >> 12) & 0x1;
     printf("  After write 0: CFG=0x%08x sideload=%d\n", cfg_rd, rb0);
     if (rb0 == 0) {
@@ -191,9 +191,9 @@ int main(void) {
 
     /* Write sideload=1, read back */
     cfg_test.f.SIDELOAD = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    cfg_rd = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     int rb1 = (cfg_rd >> 12) & 0x1;
     printf("  After write 1: CFG=0x%08x sideload=%d\n", cfg_rd, rb1);
     if (rb1 == 1) {
@@ -257,17 +257,17 @@ int main(void) {
 
     /* Configure SHAKE-128: kmac_en=0, mode=0x2, sideload=1 */
     {
-        kmac__none__CFG_SHADOWED_t cfg_shake = {.w = 0};
+        kmac__CFG_SHADOWED_t cfg_shake = {.w = 0};
         cfg_shake.f.KMAC_EN = 0;
         cfg_shake.f.MODE = 0x2;         /* SHAKE mode */
         cfg_shake.f.KSTRENGTH = 0x0;    /* L128 */
         cfg_shake.f.ENTROPY_MODE = 0x1; /* EDN */
         cfg_shake.f.SIDELOAD = 1;       /* sideload=1 — not needed for SHAKE */
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
+        WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
+        WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
         cfg_shake.f.ENTROPY_READY = 1;
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
+        WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
+        WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_shake.w);
     }
     write_kmac_prefix();
 

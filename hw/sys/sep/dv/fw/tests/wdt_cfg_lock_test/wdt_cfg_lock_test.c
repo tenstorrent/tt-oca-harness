@@ -45,7 +45,7 @@ void wdt_nmi_handler(void) {
     printf("WDT bark interrupt received\n");
 
     /* Read back the INTR_STATE register */
-    uint32_t intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
+    uint32_t intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
     if (intr_state != 0x2) {
         printf("ERROR: INTR_STATE register is not set! Expected 0x2, got 0x%08x\n", intr_state);
         test_fail(1);
@@ -55,10 +55,10 @@ void wdt_nmi_handler(void) {
     printf("INTR_STATE register after interrupt: 0x%08x\n", intr_state);
 
     /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
 
     /* Read back INTR_STATE register and verify its cleared */
-    intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR);
+    intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
     if (intr_state != 0x0) {
         printf("ERROR: INTR_STATE register is not cleared! Expected 0x0, got 0x%08x\n", intr_state);
         test_fail(1);
@@ -109,12 +109,12 @@ int main(void) {
     printf("//////////////////////////////////////////////////\n\n");
 
     /* Set initial values with high thresholds */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, WDOG_BARK_THOLD_DEFAULT);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, WDOG_BITE_THOLD_DEFAULT);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDOG_BARK_THOLD_DEFAULT);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDOG_BITE_THOLD_DEFAULT);
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_DEFAULT);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_DEFAULT);
     printf("WDT enabled\n");
 
     ///////////////////////////////////////
@@ -126,7 +126,7 @@ int main(void) {
     printf("//////////////////////////////////////////////////\n\n");
 
     /* Write 0 to WDOG_REGWEN to lock the WDT config registers */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_REGWEN_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_REGWEN_BASE_ADDR, 0x0);
 
     //////////////////////////////////////////////////
     // STEP 4: Attempt to write to locked registers //
@@ -137,8 +137,8 @@ int main(void) {
     printf("//////////////////////////////////////////////////\n\n");
 
     /* Attempt to write to locked registers and verify that the write was ignored */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 0x1000);
-    uint32_t bark_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x1000);
+    uint32_t bark_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR);
     if (bark_thold != WDOG_BARK_THOLD_DEFAULT) {
         printf("ERROR: WDOG_BARK_THOLD register was written to! Expected 0xFFFF, got 0x%08x\n",
                bark_thold);
@@ -146,8 +146,8 @@ int main(void) {
         return -1;
     }
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 0x1000);
-    uint32_t bite_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x1000);
+    uint32_t bite_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
     if (bite_thold != WDOG_BITE_THOLD_DEFAULT) {
         printf("ERROR: WDOG_BITE_THOLD register was written to! Expected 0xFFFFFFFF, got 0x%08x\n",
                bite_thold);
@@ -155,8 +155,8 @@ int main(void) {
         return -1;
     }
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
-    uint32_t ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    uint32_t ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
     if (ctrl != WDOG_CTRL_DEFAULT) {
         printf("ERROR: WDOG_CTRL register was written to! Expected 0x1, got 0x%08x\n", ctrl);
         test_fail(1);
@@ -173,7 +173,7 @@ int main(void) {
     printf("// STEP 5: Pet the watchdog (write 0 to WDOG_COUNT)\n");
     printf("//////////////////////////////////////////////////\n\n");
 
-    uint32_t original_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
+    uint32_t original_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("WDOG_COUNT register before pet: 0x%08x\n", original_count);
     if (original_count == 0) {
         printf("ERROR: WDOG_COUNT register is 0! Expected non-zero\n");
@@ -181,8 +181,8 @@ int main(void) {
         return -1;
     }
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0);
-    uint32_t count = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+    uint32_t count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     uint32_t variance = 0x100; // Allow for some variance in the count
     if (count > variance) {
         printf("ERROR: WDOG_COUNT register was written to! Expected 0 (+- %d), got 0x%08x\n",
@@ -208,7 +208,7 @@ int main(void) {
 
     /* Wait for BARK interrupt */
     while (1) {
-        uint32_t count = READ_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR);
+        uint32_t count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (count % 0x100 == 0) {
             printf("WDT count: 0x%08x\n", count);
         }

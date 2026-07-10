@@ -30,7 +30,7 @@ void wdt_nmi_handler(void) {
     interrupt_count++;
 
     /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
 
     printf("SUCCESS: WDT bark interrupt received\n");
 }
@@ -69,19 +69,19 @@ int main(void) {
     printf("//////////////////////////////////////////////////\n\n");
 
     /* Set initial values with high thresholds */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 50);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 1000);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 50);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 1000);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
 
     printf("Set count=50, bark=1000, bite=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
     printf("WDT enabled\n");
 
     /* Lower bark threshold to trigger interrupt */
     printf("Lowering bark threshold to 20...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 20);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 20);
 
     /* Wait for NMI */
     while (interrupt_count == 0) {
@@ -89,7 +89,7 @@ int main(void) {
     }
 
     /* Disable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
     printf("WDT disabled\n");
 
     /* Verify interrupt fired */
@@ -115,19 +115,19 @@ int main(void) {
     test_pass(0);
 
     /* Set initial values with high thresholds */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 100);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 1000);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 100);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 1000);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
 
     printf("Set count=100, bite=1000, bark=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
     printf("WDT enabled\n");
 
     /* Lower bite threshold to trigger reset */
     printf("Lowering bite threshold to 20...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, 20);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 20);
 
     /* Loop forever - reset should fire and cocotb will verify */
     printf("Waiting for reset (cocotb will verify)...\n");

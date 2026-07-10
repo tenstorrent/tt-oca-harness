@@ -21,7 +21,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -31,7 +31,7 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1) {
             return 0;
         }
@@ -42,17 +42,17 @@ static int wait_for_done(void) {
 
 static void setup_entropy(void) {
     for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static void test_intr_bit(const char *name, uint32_t bit) {
     /* Clear any pending state */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 
     /* Use INTR_TEST to set the bit */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_TEST_BASE_ADDR, bit);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, bit);
 
-    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & bit) {
         printf("PASS: INTR_TEST %s set INTR_STATE (0x%08x)\n", name, state);
     } else {
@@ -61,8 +61,8 @@ static void test_intr_bit(const char *name, uint32_t bit) {
     }
 
     /* W1C clear */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, bit);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, bit);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & bit)) {
         printf("PASS: INTR_STATE %s cleared by W1C\n", name);
     } else {
@@ -85,41 +85,41 @@ static int test_real_kmac_done(void) {
     if (wait_for_idle() != 0) return -1;
 
     /* Enable all interrupts */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x7);
 
     /* Clear pending */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 
     /* Configure SHA3-256 */
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 0;
     cfg.f.MODE = 0x0;
     cfg.f.KSTRENGTH = 0x2;
     cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     cfg.f.ENTROPY_READY = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     setup_entropy();
 
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     printf("  entropy_ready set\n");
 
     /* START then PROCESS (empty message hash) */
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.CMD = 29;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  START issued\n");
 
     cmd.f.CMD = 46;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  PROCESS issued\n");
 
     if (wait_for_done() != 0) return -1;
 
-    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x1) {
         printf("PASS: Real kmac_done interrupt fired (INTR_STATE=0x%08x)\n", state);
     } else {
@@ -128,11 +128,11 @@ static int test_real_kmac_done(void) {
     }
 
     /* Clear and finish */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     cmd.f.CMD = 22;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }
@@ -142,7 +142,7 @@ static void test_intr_masking(void) {
 
     /* INTR_ENABLE should already be 0 after test_real_kmac_done cleared it.
      * INTR_TEST can still set INTR_STATE bits regardless of INTR_ENABLE. */
-    uint32_t enable = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR);
+    uint32_t enable = READ_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR);
     if (enable == 0x0) {
         printf("PASS: INTR_ENABLE=0 (masked)\n");
     } else {
@@ -150,10 +150,10 @@ static void test_intr_masking(void) {
         test_errors++;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_TEST_BASE_ADDR, 0x4);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0x4);
 
-    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x4) {
         printf("PASS: INTR_STATE set by INTR_TEST with INTR_ENABLE=0\n");
     } else {
@@ -161,9 +161,9 @@ static void test_intr_masking(void) {
         test_errors++;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 
-    enable = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR);
+    enable = READ_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR);
     if (enable == 0x0) {
         printf("PASS: INTR_ENABLE unchanged after INTR_TEST\n");
     } else {
@@ -180,14 +180,14 @@ int main(void) {
     printf("========================================\n");
 
     /* Enable all interrupts for test */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x7);
 
     printf("\n=== INTR_TEST Bit Tests ===\n");
     test_intr_bit("kmac_done", 0x1);
     test_intr_bit("fifo_empty", 0x2);
     test_intr_bit("kmac_err", 0x4);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     /* NOTE: masking test (test_intr_masking) runs AFTER real hash to avoid
      * INTR_TEST write interfering with entropy state for subsequent hash */

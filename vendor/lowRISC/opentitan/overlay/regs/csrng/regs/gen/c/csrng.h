@@ -10,23 +10,23 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - csrng::none::INTR_STATE
-#define CSRNG__NONE__INTR_STATE__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__NONE__INTR_STATE__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__NONE__INTR_STATE__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__NONE__INTR_STATE__CS_CMD_REQ_DONE_reset 0x0
-#define CSRNG__NONE__INTR_STATE__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__NONE__INTR_STATE__CS_ENTROPY_REQ_bp 1
-#define CSRNG__NONE__INTR_STATE__CS_ENTROPY_REQ_bw 1
-#define CSRNG__NONE__INTR_STATE__CS_ENTROPY_REQ_reset 0x0
-#define CSRNG__NONE__INTR_STATE__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__NONE__INTR_STATE__CS_HW_INST_EXC_bp 2
-#define CSRNG__NONE__INTR_STATE__CS_HW_INST_EXC_bw 1
-#define CSRNG__NONE__INTR_STATE__CS_HW_INST_EXC_reset 0x0
-#define CSRNG__NONE__INTR_STATE__CS_FATAL_ERR_bm 0x8
-#define CSRNG__NONE__INTR_STATE__CS_FATAL_ERR_bp 3
-#define CSRNG__NONE__INTR_STATE__CS_FATAL_ERR_bw 1
-#define CSRNG__NONE__INTR_STATE__CS_FATAL_ERR_reset 0x0
+// reg - csrng::INTR_STATE
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_reset 0x0
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_reset 0x0
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_reset 0x0
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -36,25 +36,25 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__none__INTR_STATE_t;
+} csrng__INTR_STATE_t;
 
-// reg - csrng::none::INTR_ENABLE
-#define CSRNG__NONE__INTR_ENABLE__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__NONE__INTR_ENABLE__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__NONE__INTR_ENABLE__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__NONE__INTR_ENABLE__CS_CMD_REQ_DONE_reset 0x0
-#define CSRNG__NONE__INTR_ENABLE__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__NONE__INTR_ENABLE__CS_ENTROPY_REQ_bp 1
-#define CSRNG__NONE__INTR_ENABLE__CS_ENTROPY_REQ_bw 1
-#define CSRNG__NONE__INTR_ENABLE__CS_ENTROPY_REQ_reset 0x0
-#define CSRNG__NONE__INTR_ENABLE__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__NONE__INTR_ENABLE__CS_HW_INST_EXC_bp 2
-#define CSRNG__NONE__INTR_ENABLE__CS_HW_INST_EXC_bw 1
-#define CSRNG__NONE__INTR_ENABLE__CS_HW_INST_EXC_reset 0x0
-#define CSRNG__NONE__INTR_ENABLE__CS_FATAL_ERR_bm 0x8
-#define CSRNG__NONE__INTR_ENABLE__CS_FATAL_ERR_bp 3
-#define CSRNG__NONE__INTR_ENABLE__CS_FATAL_ERR_bw 1
-#define CSRNG__NONE__INTR_ENABLE__CS_FATAL_ERR_reset 0x0
+// reg - csrng::INTR_ENABLE
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_reset 0x0
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_reset 0x0
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_reset 0x0
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -64,25 +64,25 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__none__INTR_ENABLE_t;
+} csrng__INTR_ENABLE_t;
 
-// reg - csrng::none::INTR_TEST
-#define CSRNG__NONE__INTR_TEST__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__NONE__INTR_TEST__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__NONE__INTR_TEST__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__NONE__INTR_TEST__CS_CMD_REQ_DONE_reset 0x0
-#define CSRNG__NONE__INTR_TEST__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__NONE__INTR_TEST__CS_ENTROPY_REQ_bp 1
-#define CSRNG__NONE__INTR_TEST__CS_ENTROPY_REQ_bw 1
-#define CSRNG__NONE__INTR_TEST__CS_ENTROPY_REQ_reset 0x0
-#define CSRNG__NONE__INTR_TEST__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__NONE__INTR_TEST__CS_HW_INST_EXC_bp 2
-#define CSRNG__NONE__INTR_TEST__CS_HW_INST_EXC_bw 1
-#define CSRNG__NONE__INTR_TEST__CS_HW_INST_EXC_reset 0x0
-#define CSRNG__NONE__INTR_TEST__CS_FATAL_ERR_bm 0x8
-#define CSRNG__NONE__INTR_TEST__CS_FATAL_ERR_bp 3
-#define CSRNG__NONE__INTR_TEST__CS_FATAL_ERR_bw 1
-#define CSRNG__NONE__INTR_TEST__CS_FATAL_ERR_reset 0x0
+// reg - csrng::INTR_TEST
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_reset 0x0
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_reset 0x0
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_reset 0x0
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bw 1
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -92,17 +92,17 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__none__INTR_TEST_t;
+} csrng__INTR_TEST_t;
 
-// reg - csrng::none::ALERT_TEST
-#define CSRNG__NONE__ALERT_TEST__RECOV_ALERT_bm 0x1
-#define CSRNG__NONE__ALERT_TEST__RECOV_ALERT_bp 0
-#define CSRNG__NONE__ALERT_TEST__RECOV_ALERT_bw 1
-#define CSRNG__NONE__ALERT_TEST__RECOV_ALERT_reset 0x0
-#define CSRNG__NONE__ALERT_TEST__FATAL_ALERT_bm 0x2
-#define CSRNG__NONE__ALERT_TEST__FATAL_ALERT_bp 1
-#define CSRNG__NONE__ALERT_TEST__FATAL_ALERT_bw 1
-#define CSRNG__NONE__ALERT_TEST__FATAL_ALERT_reset 0x0
+// reg - csrng::ALERT_TEST
+#define CSRNG__ALERT_TEST__RECOV_ALERT_bm 0x1
+#define CSRNG__ALERT_TEST__RECOV_ALERT_bp 0
+#define CSRNG__ALERT_TEST__RECOV_ALERT_bw 1
+#define CSRNG__ALERT_TEST__RECOV_ALERT_reset 0x0
+#define CSRNG__ALERT_TEST__FATAL_ALERT_bm 0x2
+#define CSRNG__ALERT_TEST__FATAL_ALERT_bp 1
+#define CSRNG__ALERT_TEST__FATAL_ALERT_bw 1
+#define CSRNG__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RECOV_ALERT :1;
@@ -110,38 +110,38 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} csrng__none__ALERT_TEST_t;
+} csrng__ALERT_TEST_t;
 
-// reg - csrng::none::REGWEN
-#define CSRNG__NONE__REGWEN__REGWEN_bm 0x1
-#define CSRNG__NONE__REGWEN__REGWEN_bp 0
-#define CSRNG__NONE__REGWEN__REGWEN_bw 1
-#define CSRNG__NONE__REGWEN__REGWEN_reset 0x1
+// reg - csrng::REGWEN
+#define CSRNG__REGWEN__REGWEN_bm 0x1
+#define CSRNG__REGWEN__REGWEN_bp 0
+#define CSRNG__REGWEN__REGWEN_bw 1
+#define CSRNG__REGWEN__REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t REGWEN :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} csrng__none__REGWEN_t;
+} csrng__REGWEN_t;
 
-// reg - csrng::none::CTRL
-#define CSRNG__NONE__CTRL__ENABLE_bm 0xf
-#define CSRNG__NONE__CTRL__ENABLE_bp 0
-#define CSRNG__NONE__CTRL__ENABLE_bw 4
-#define CSRNG__NONE__CTRL__ENABLE_reset 0x9
-#define CSRNG__NONE__CTRL__SW_APP_ENABLE_bm 0xf0
-#define CSRNG__NONE__CTRL__SW_APP_ENABLE_bp 4
-#define CSRNG__NONE__CTRL__SW_APP_ENABLE_bw 4
-#define CSRNG__NONE__CTRL__SW_APP_ENABLE_reset 0x9
-#define CSRNG__NONE__CTRL__READ_INT_STATE_bm 0xf00
-#define CSRNG__NONE__CTRL__READ_INT_STATE_bp 8
-#define CSRNG__NONE__CTRL__READ_INT_STATE_bw 4
-#define CSRNG__NONE__CTRL__READ_INT_STATE_reset 0x9
-#define CSRNG__NONE__CTRL__FIPS_FORCE_ENABLE_bm 0xf000
-#define CSRNG__NONE__CTRL__FIPS_FORCE_ENABLE_bp 12
-#define CSRNG__NONE__CTRL__FIPS_FORCE_ENABLE_bw 4
-#define CSRNG__NONE__CTRL__FIPS_FORCE_ENABLE_reset 0x9
+// reg - csrng::CTRL
+#define CSRNG__CTRL__ENABLE_bm 0xf
+#define CSRNG__CTRL__ENABLE_bp 0
+#define CSRNG__CTRL__ENABLE_bw 4
+#define CSRNG__CTRL__ENABLE_reset 0x9
+#define CSRNG__CTRL__SW_APP_ENABLE_bm 0xf0
+#define CSRNG__CTRL__SW_APP_ENABLE_bp 4
+#define CSRNG__CTRL__SW_APP_ENABLE_bw 4
+#define CSRNG__CTRL__SW_APP_ENABLE_reset 0x9
+#define CSRNG__CTRL__READ_INT_STATE_bm 0xf00
+#define CSRNG__CTRL__READ_INT_STATE_bp 8
+#define CSRNG__CTRL__READ_INT_STATE_bw 4
+#define CSRNG__CTRL__READ_INT_STATE_reset 0x9
+#define CSRNG__CTRL__FIPS_FORCE_ENABLE_bm 0xf000
+#define CSRNG__CTRL__FIPS_FORCE_ENABLE_bp 12
+#define CSRNG__CTRL__FIPS_FORCE_ENABLE_bw 4
+#define CSRNG__CTRL__FIPS_FORCE_ENABLE_reset 0x9
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ENABLE :4;
@@ -151,57 +151,57 @@ typedef union {
         uint32_t :16;
     } f;
     uint32_t w;
-} csrng__none__CTRL_t;
+} csrng__CTRL_t;
 
-// reg - csrng::none::CMD_REQ
-#define CSRNG__NONE__CMD_REQ__CMD_REQ_bm 0xffffffff
-#define CSRNG__NONE__CMD_REQ__CMD_REQ_bp 0
-#define CSRNG__NONE__CMD_REQ__CMD_REQ_bw 32
-#define CSRNG__NONE__CMD_REQ__CMD_REQ_reset 0x0
+// reg - csrng::CMD_REQ
+#define CSRNG__CMD_REQ__CMD_REQ_bm 0xffffffff
+#define CSRNG__CMD_REQ__CMD_REQ_bp 0
+#define CSRNG__CMD_REQ__CMD_REQ_bw 32
+#define CSRNG__CMD_REQ__CMD_REQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CMD_REQ :32;
     } f;
     uint32_t w;
-} csrng__none__CMD_REQ_t;
+} csrng__CMD_REQ_t;
 
-// reg - csrng::none::RESEED_INTERVAL
-#define CSRNG__NONE__RESEED_INTERVAL__RESEED_INTERVAL_bm 0xffffffff
-#define CSRNG__NONE__RESEED_INTERVAL__RESEED_INTERVAL_bp 0
-#define CSRNG__NONE__RESEED_INTERVAL__RESEED_INTERVAL_bw 32
-#define CSRNG__NONE__RESEED_INTERVAL__RESEED_INTERVAL_reset 0xffffffff
+// reg - csrng::RESEED_INTERVAL
+#define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bm 0xffffffff
+#define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bp 0
+#define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bw 32
+#define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_reset 0xffffffff
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RESEED_INTERVAL :32;
     } f;
     uint32_t w;
-} csrng__none__RESEED_INTERVAL_t;
+} csrng__RESEED_INTERVAL_t;
 
-// reg - csrng::none::RESEED_COUNTER_0
-#define CSRNG__NONE__RESEED_COUNTER_0__RESEED_COUNTER_0_bm 0xffffffff
-#define CSRNG__NONE__RESEED_COUNTER_0__RESEED_COUNTER_0_bp 0
-#define CSRNG__NONE__RESEED_COUNTER_0__RESEED_COUNTER_0_bw 32
-#define CSRNG__NONE__RESEED_COUNTER_0__RESEED_COUNTER_0_reset 0x0
+// reg - csrng::RESEED_COUNTER_0
+#define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bm 0xffffffff
+#define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bp 0
+#define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bw 32
+#define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RESEED_COUNTER_0 :32;
     } f;
     uint32_t w;
-} csrng__none__RESEED_COUNTER_0_t;
+} csrng__RESEED_COUNTER_0_t;
 
-// reg - csrng::none::SW_CMD_STS
-#define CSRNG__NONE__SW_CMD_STS__CMD_RDY_bm 0x2
-#define CSRNG__NONE__SW_CMD_STS__CMD_RDY_bp 1
-#define CSRNG__NONE__SW_CMD_STS__CMD_RDY_bw 1
-#define CSRNG__NONE__SW_CMD_STS__CMD_RDY_reset 0x0
-#define CSRNG__NONE__SW_CMD_STS__CMD_ACK_bm 0x4
-#define CSRNG__NONE__SW_CMD_STS__CMD_ACK_bp 2
-#define CSRNG__NONE__SW_CMD_STS__CMD_ACK_bw 1
-#define CSRNG__NONE__SW_CMD_STS__CMD_ACK_reset 0x0
-#define CSRNG__NONE__SW_CMD_STS__CMD_STS_bm 0x38
-#define CSRNG__NONE__SW_CMD_STS__CMD_STS_bp 3
-#define CSRNG__NONE__SW_CMD_STS__CMD_STS_bw 3
-#define CSRNG__NONE__SW_CMD_STS__CMD_STS_reset 0x0
+// reg - csrng::SW_CMD_STS
+#define CSRNG__SW_CMD_STS__CMD_RDY_bm 0x2
+#define CSRNG__SW_CMD_STS__CMD_RDY_bp 1
+#define CSRNG__SW_CMD_STS__CMD_RDY_bw 1
+#define CSRNG__SW_CMD_STS__CMD_RDY_reset 0x0
+#define CSRNG__SW_CMD_STS__CMD_ACK_bm 0x4
+#define CSRNG__SW_CMD_STS__CMD_ACK_bp 2
+#define CSRNG__SW_CMD_STS__CMD_ACK_bw 1
+#define CSRNG__SW_CMD_STS__CMD_ACK_reset 0x0
+#define CSRNG__SW_CMD_STS__CMD_STS_bm 0x38
+#define CSRNG__SW_CMD_STS__CMD_STS_bp 3
+#define CSRNG__SW_CMD_STS__CMD_STS_bw 3
+#define CSRNG__SW_CMD_STS__CMD_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :1;
@@ -211,15 +211,15 @@ typedef union {
         uint32_t :26;
     } f;
     uint32_t w;
-} csrng__none__SW_CMD_STS_t;
+} csrng__SW_CMD_STS_t;
 
-// reg - csrng::none::GENBITS_VLD
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_VLD_bm 0x1
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_VLD_bp 0
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_VLD_bw 1
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_FIPS_bm 0x2
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_FIPS_bp 1
-#define CSRNG__NONE__GENBITS_VLD__GENBITS_FIPS_bw 1
+// reg - csrng::GENBITS_VLD
+#define CSRNG__GENBITS_VLD__GENBITS_VLD_bm 0x1
+#define CSRNG__GENBITS_VLD__GENBITS_VLD_bp 0
+#define CSRNG__GENBITS_VLD__GENBITS_VLD_bw 1
+#define CSRNG__GENBITS_VLD__GENBITS_FIPS_bm 0x2
+#define CSRNG__GENBITS_VLD__GENBITS_FIPS_bp 1
+#define CSRNG__GENBITS_VLD__GENBITS_FIPS_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS_VLD :1;
@@ -227,132 +227,132 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} csrng__none__GENBITS_VLD_t;
+} csrng__GENBITS_VLD_t;
 
-// reg - csrng::none::GENBITS
-#define CSRNG__NONE__GENBITS__GENBITS_bm 0xffffffff
-#define CSRNG__NONE__GENBITS__GENBITS_bp 0
-#define CSRNG__NONE__GENBITS__GENBITS_bw 32
+// reg - csrng::GENBITS
+#define CSRNG__GENBITS__GENBITS_bm 0xffffffff
+#define CSRNG__GENBITS__GENBITS_bp 0
+#define CSRNG__GENBITS__GENBITS_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS :32;
     } f;
     uint32_t w;
-} csrng__none__GENBITS_t;
+} csrng__GENBITS_t;
 
-// reg - csrng::none::INT_STATE_READ_ENABLE
-#define CSRNG__NONE__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bm 0x7
-#define CSRNG__NONE__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bp 0
-#define CSRNG__NONE__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bw 3
-#define CSRNG__NONE__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_reset 0x7
+// reg - csrng::INT_STATE_READ_ENABLE
+#define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bm 0x7
+#define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bp 0
+#define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bw 3
+#define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_READ_ENABLE :3;
         uint32_t :29;
     } f;
     uint32_t w;
-} csrng__none__INT_STATE_READ_ENABLE_t;
+} csrng__INT_STATE_READ_ENABLE_t;
 
-// reg - csrng::none::INT_STATE_READ_ENABLE_REGWEN
-#define CSRNG__NONE__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bm 0x1
-#define CSRNG__NONE__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bp 0
-#define CSRNG__NONE__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bw 1
-#define CSRNG__NONE__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_reset 0x1
+// reg - csrng::INT_STATE_READ_ENABLE_REGWEN
+#define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bm 0x1
+#define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bp 0
+#define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bw 1
+#define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_READ_ENABLE_REGWEN :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} csrng__none__INT_STATE_READ_ENABLE_REGWEN_t;
+} csrng__INT_STATE_READ_ENABLE_REGWEN_t;
 
-// reg - csrng::none::INT_STATE_NUM
-#define CSRNG__NONE__INT_STATE_NUM__INT_STATE_NUM_bm 0xf
-#define CSRNG__NONE__INT_STATE_NUM__INT_STATE_NUM_bp 0
-#define CSRNG__NONE__INT_STATE_NUM__INT_STATE_NUM_bw 4
-#define CSRNG__NONE__INT_STATE_NUM__INT_STATE_NUM_reset 0x0
+// reg - csrng::INT_STATE_NUM
+#define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bm 0xf
+#define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bp 0
+#define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bw 4
+#define CSRNG__INT_STATE_NUM__INT_STATE_NUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_NUM :4;
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__none__INT_STATE_NUM_t;
+} csrng__INT_STATE_NUM_t;
 
-// reg - csrng::none::INT_STATE_VAL
-#define CSRNG__NONE__INT_STATE_VAL__INT_STATE_VAL_bm 0xffffffff
-#define CSRNG__NONE__INT_STATE_VAL__INT_STATE_VAL_bp 0
-#define CSRNG__NONE__INT_STATE_VAL__INT_STATE_VAL_bw 32
+// reg - csrng::INT_STATE_VAL
+#define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bm 0xffffffff
+#define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bp 0
+#define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_VAL :32;
     } f;
     uint32_t w;
-} csrng__none__INT_STATE_VAL_t;
+} csrng__INT_STATE_VAL_t;
 
-// reg - csrng::none::FIPS_FORCE
-#define CSRNG__NONE__FIPS_FORCE__FIPS_FORCE_bm 0x7
-#define CSRNG__NONE__FIPS_FORCE__FIPS_FORCE_bp 0
-#define CSRNG__NONE__FIPS_FORCE__FIPS_FORCE_bw 3
-#define CSRNG__NONE__FIPS_FORCE__FIPS_FORCE_reset 0x0
+// reg - csrng::FIPS_FORCE
+#define CSRNG__FIPS_FORCE__FIPS_FORCE_bm 0x7
+#define CSRNG__FIPS_FORCE__FIPS_FORCE_bp 0
+#define CSRNG__FIPS_FORCE__FIPS_FORCE_bw 3
+#define CSRNG__FIPS_FORCE__FIPS_FORCE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t FIPS_FORCE :3;
         uint32_t :29;
     } f;
     uint32_t w;
-} csrng__none__FIPS_FORCE_t;
+} csrng__FIPS_FORCE_t;
 
-// reg - csrng::none::HW_EXC_STS
-#define CSRNG__NONE__HW_EXC_STS__HW_EXC_STS_bm 0xffff
-#define CSRNG__NONE__HW_EXC_STS__HW_EXC_STS_bp 0
-#define CSRNG__NONE__HW_EXC_STS__HW_EXC_STS_bw 16
-#define CSRNG__NONE__HW_EXC_STS__HW_EXC_STS_reset 0x0
+// reg - csrng::HW_EXC_STS
+#define CSRNG__HW_EXC_STS__HW_EXC_STS_bm 0xffff
+#define CSRNG__HW_EXC_STS__HW_EXC_STS_bp 0
+#define CSRNG__HW_EXC_STS__HW_EXC_STS_bw 16
+#define CSRNG__HW_EXC_STS__HW_EXC_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HW_EXC_STS :16;
         uint32_t :16;
     } f;
     uint32_t w;
-} csrng__none__HW_EXC_STS_t;
+} csrng__HW_EXC_STS_t;
 
-// reg - csrng::none::RECOV_ALERT_STS
-#define CSRNG__NONE__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bm 0x1
-#define CSRNG__NONE__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bp 0
-#define CSRNG__NONE__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bm 0x2
-#define CSRNG__NONE__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bp 1
-#define CSRNG__NONE__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bm 0x4
-#define CSRNG__NONE__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bp 2
-#define CSRNG__NONE__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bm 0x8
-#define CSRNG__NONE__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bp 3
-#define CSRNG__NONE__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bm 0x10
-#define CSRNG__NONE__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bp 4
-#define CSRNG__NONE__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bm 0x1000
-#define CSRNG__NONE__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bp 12
-#define CSRNG__NONE__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bm 0x2000
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bp 13
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bm 0x4000
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bp 14
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_reset 0x0
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bm 0x8000
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bp 15
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bw 1
-#define CSRNG__NONE__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_reset 0x0
+// reg - csrng::RECOV_ALERT_STS
+#define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bm 0x1
+#define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bp 0
+#define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bm 0x2
+#define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bp 1
+#define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bm 0x4
+#define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bp 2
+#define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bm 0x8
+#define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bp 3
+#define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bm 0x10
+#define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bp 4
+#define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bm 0x1000
+#define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bp 12
+#define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bm 0x2000
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bp 13
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bm 0x4000
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bp 14
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_reset 0x0
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bm 0x8000
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bp 15
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bw 1
+#define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ENABLE_FIELD_ALERT :1;
@@ -368,49 +368,49 @@ typedef union {
         uint32_t :16;
     } f;
     uint32_t w;
-} csrng__none__RECOV_ALERT_STS_t;
+} csrng__RECOV_ALERT_STS_t;
 
-// reg - csrng::none::ERR_CODE
-#define CSRNG__NONE__ERR_CODE__SFIFO_CMD_ERR_bm 0x1
-#define CSRNG__NONE__ERR_CODE__SFIFO_CMD_ERR_bp 0
-#define CSRNG__NONE__ERR_CODE__SFIFO_CMD_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__SFIFO_CMD_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__SFIFO_GENBITS_ERR_bm 0x2
-#define CSRNG__NONE__ERR_CODE__SFIFO_GENBITS_ERR_bp 1
-#define CSRNG__NONE__ERR_CODE__SFIFO_GENBITS_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__SFIFO_GENBITS_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__CMD_STAGE_SM_ERR_bm 0x100000
-#define CSRNG__NONE__ERR_CODE__CMD_STAGE_SM_ERR_bp 20
-#define CSRNG__NONE__ERR_CODE__CMD_STAGE_SM_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__CMD_STAGE_SM_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__MAIN_SM_ERR_bm 0x200000
-#define CSRNG__NONE__ERR_CODE__MAIN_SM_ERR_bp 21
-#define CSRNG__NONE__ERR_CODE__MAIN_SM_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__MAIN_SM_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__CTR_DRBG_SM_ERR_bm 0x400000
-#define CSRNG__NONE__ERR_CODE__CTR_DRBG_SM_ERR_bp 22
-#define CSRNG__NONE__ERR_CODE__CTR_DRBG_SM_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__CTR_DRBG_SM_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__AES_CIPHER_SM_ERR_bm 0x2000000
-#define CSRNG__NONE__ERR_CODE__AES_CIPHER_SM_ERR_bp 25
-#define CSRNG__NONE__ERR_CODE__AES_CIPHER_SM_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__AES_CIPHER_SM_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__CTR_ERR_bm 0x4000000
-#define CSRNG__NONE__ERR_CODE__CTR_ERR_bp 26
-#define CSRNG__NONE__ERR_CODE__CTR_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__CTR_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
-#define CSRNG__NONE__ERR_CODE__FIFO_WRITE_ERR_bp 28
-#define CSRNG__NONE__ERR_CODE__FIFO_WRITE_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
-#define CSRNG__NONE__ERR_CODE__FIFO_READ_ERR_bp 29
-#define CSRNG__NONE__ERR_CODE__FIFO_READ_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__FIFO_READ_ERR_reset 0x0
-#define CSRNG__NONE__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
-#define CSRNG__NONE__ERR_CODE__FIFO_STATE_ERR_bp 30
-#define CSRNG__NONE__ERR_CODE__FIFO_STATE_ERR_bw 1
-#define CSRNG__NONE__ERR_CODE__FIFO_STATE_ERR_reset 0x0
+// reg - csrng::ERR_CODE
+#define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bm 0x1
+#define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bp 0
+#define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bw 1
+#define CSRNG__ERR_CODE__SFIFO_CMD_ERR_reset 0x0
+#define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bm 0x2
+#define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bp 1
+#define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bw 1
+#define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_reset 0x0
+#define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bm 0x100000
+#define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bp 20
+#define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__MAIN_SM_ERR_bm 0x200000
+#define CSRNG__ERR_CODE__MAIN_SM_ERR_bp 21
+#define CSRNG__ERR_CODE__MAIN_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__MAIN_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bm 0x400000
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bp 22
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bm 0x2000000
+#define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bp 25
+#define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bw 1
+#define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_reset 0x0
+#define CSRNG__ERR_CODE__CTR_ERR_bm 0x4000000
+#define CSRNG__ERR_CODE__CTR_ERR_bp 26
+#define CSRNG__ERR_CODE__CTR_ERR_bw 1
+#define CSRNG__ERR_CODE__CTR_ERR_reset 0x0
+#define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
+#define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bp 28
+#define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
+#define CSRNG__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
+#define CSRNG__ERR_CODE__FIFO_READ_ERR_bp 29
+#define CSRNG__ERR_CODE__FIFO_READ_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_READ_ERR_reset 0x0
+#define CSRNG__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
+#define CSRNG__ERR_CODE__FIFO_STATE_ERR_bp 30
+#define CSRNG__ERR_CODE__FIFO_STATE_ERR_bw 1
+#define CSRNG__ERR_CODE__FIFO_STATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SFIFO_CMD_ERR :1;
@@ -429,63 +429,58 @@ typedef union {
         uint32_t :1;
     } f;
     uint32_t w;
-} csrng__none__ERR_CODE_t;
+} csrng__ERR_CODE_t;
 
-// reg - csrng::none::ERR_CODE_TEST
-#define CSRNG__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
-#define CSRNG__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
-#define CSRNG__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
-#define CSRNG__NONE__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
+// reg - csrng::ERR_CODE_TEST
+#define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
+#define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
+#define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
+#define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ERR_CODE_TEST :5;
         uint32_t :27;
     } f;
     uint32_t w;
-} csrng__none__ERR_CODE_TEST_t;
+} csrng__ERR_CODE_TEST_t;
 
-// reg - csrng::none::MAIN_SM_STATE
-#define CSRNG__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x3f
-#define CSRNG__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
-#define CSRNG__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bw 6
-#define CSRNG__NONE__MAIN_SM_STATE__MAIN_SM_STATE_reset 0x37
+// reg - csrng::MAIN_SM_STATE
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x3f
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bw 6
+#define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_reset 0x37
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t MAIN_SM_STATE :6;
         uint32_t :26;
     } f;
     uint32_t w;
-} csrng__none__MAIN_SM_STATE_t;
-
-// addrmap - csrng::none
-typedef struct __attribute__ ((__packed__)) {
-    csrng__none__INTR_STATE_t INTR_STATE;
-    csrng__none__INTR_ENABLE_t INTR_ENABLE;
-    csrng__none__INTR_TEST_t INTR_TEST;
-    csrng__none__ALERT_TEST_t ALERT_TEST;
-    csrng__none__REGWEN_t REGWEN;
-    csrng__none__CTRL_t CTRL;
-    csrng__none__CMD_REQ_t CMD_REQ;
-    csrng__none__RESEED_INTERVAL_t RESEED_INTERVAL;
-    csrng__none__RESEED_COUNTER_0_t RESEED_COUNTER_0[3];
-    csrng__none__SW_CMD_STS_t SW_CMD_STS;
-    csrng__none__GENBITS_VLD_t GENBITS_VLD;
-    csrng__none__GENBITS_t GENBITS;
-    csrng__none__INT_STATE_READ_ENABLE_t INT_STATE_READ_ENABLE;
-    csrng__none__INT_STATE_READ_ENABLE_REGWEN_t INT_STATE_READ_ENABLE_REGWEN;
-    csrng__none__INT_STATE_NUM_t INT_STATE_NUM;
-    csrng__none__INT_STATE_VAL_t INT_STATE_VAL;
-    csrng__none__FIPS_FORCE_t FIPS_FORCE;
-    csrng__none__HW_EXC_STS_t HW_EXC_STS;
-    csrng__none__RECOV_ALERT_STS_t RECOV_ALERT_STS;
-    csrng__none__ERR_CODE_t ERR_CODE;
-    csrng__none__ERR_CODE_TEST_t ERR_CODE_TEST;
-    csrng__none__MAIN_SM_STATE_t MAIN_SM_STATE;
-} csrng__none_t;
+} csrng__MAIN_SM_STATE_t;
 
 // addrmap - csrng
 typedef struct __attribute__ ((__packed__)) {
-    csrng__none_t none;
+    csrng__INTR_STATE_t INTR_STATE;
+    csrng__INTR_ENABLE_t INTR_ENABLE;
+    csrng__INTR_TEST_t INTR_TEST;
+    csrng__ALERT_TEST_t ALERT_TEST;
+    csrng__REGWEN_t REGWEN;
+    csrng__CTRL_t CTRL;
+    csrng__CMD_REQ_t CMD_REQ;
+    csrng__RESEED_INTERVAL_t RESEED_INTERVAL;
+    csrng__RESEED_COUNTER_0_t RESEED_COUNTER_0[3];
+    csrng__SW_CMD_STS_t SW_CMD_STS;
+    csrng__GENBITS_VLD_t GENBITS_VLD;
+    csrng__GENBITS_t GENBITS;
+    csrng__INT_STATE_READ_ENABLE_t INT_STATE_READ_ENABLE;
+    csrng__INT_STATE_READ_ENABLE_REGWEN_t INT_STATE_READ_ENABLE_REGWEN;
+    csrng__INT_STATE_NUM_t INT_STATE_NUM;
+    csrng__INT_STATE_VAL_t INT_STATE_VAL;
+    csrng__FIPS_FORCE_t FIPS_FORCE;
+    csrng__HW_EXC_STS_t HW_EXC_STS;
+    csrng__RECOV_ALERT_STS_t RECOV_ALERT_STS;
+    csrng__ERR_CODE_t ERR_CODE;
+    csrng__ERR_CODE_TEST_t ERR_CODE_TEST;
+    csrng__MAIN_SM_STATE_t MAIN_SM_STATE;
 } csrng_t;
 
 

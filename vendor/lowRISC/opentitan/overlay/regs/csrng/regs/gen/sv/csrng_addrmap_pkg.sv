@@ -5,34 +5,31 @@ package csrng_addrmap_pkg;
 localparam longint unsigned CSRNG_BASE_ADDR = 64'h0;
 localparam longint unsigned CSRNG_SIZE = 64'h60;
 
-localparam longint unsigned CSRNG_NONE_BASE_ADDR = 64'h0;
-localparam longint unsigned CSRNG_NONE_SIZE = 64'h60;
-
-localparam longint unsigned CSRNG_NONE_INTR_STATE_BASE_ADDR = 64'h0;
-localparam longint unsigned CSRNG_NONE_INTR_ENABLE_BASE_ADDR = 64'h4;
-localparam longint unsigned CSRNG_NONE_INTR_TEST_BASE_ADDR = 64'h8;
-localparam longint unsigned CSRNG_NONE_ALERT_TEST_BASE_ADDR = 64'hC;
-localparam longint unsigned CSRNG_NONE_REGWEN_BASE_ADDR = 64'h10;
-localparam longint unsigned CSRNG_NONE_CTRL_BASE_ADDR = 64'h14;
-localparam longint unsigned CSRNG_NONE_CMD_REQ_BASE_ADDR = 64'h18;
-localparam longint unsigned CSRNG_NONE_RESEED_INTERVAL_BASE_ADDR = 64'h1C;
-function automatic longint unsigned CSRNG_NONE_RESEED_COUNTER_0_BASE_ADDR(input int unsigned RESEED_COUNTER_0_idx);
+localparam longint unsigned CSRNG_INTR_STATE_BASE_ADDR = 64'h0;
+localparam longint unsigned CSRNG_INTR_ENABLE_BASE_ADDR = 64'h4;
+localparam longint unsigned CSRNG_INTR_TEST_BASE_ADDR = 64'h8;
+localparam longint unsigned CSRNG_ALERT_TEST_BASE_ADDR = 64'hC;
+localparam longint unsigned CSRNG_REGWEN_BASE_ADDR = 64'h10;
+localparam longint unsigned CSRNG_CTRL_BASE_ADDR = 64'h14;
+localparam longint unsigned CSRNG_CMD_REQ_BASE_ADDR = 64'h18;
+localparam longint unsigned CSRNG_RESEED_INTERVAL_BASE_ADDR = 64'h1C;
+function automatic longint unsigned CSRNG_RESEED_COUNTER_0_BASE_ADDR(input int unsigned RESEED_COUNTER_0_idx);
     return 64'h20 + (RESEED_COUNTER_0_idx * 64'h4);
 endfunction
-localparam longint unsigned CSRNG_NONE_RESEED_COUNTER_0_NUM = 64'h3;
-localparam longint unsigned CSRNG_NONE_SW_CMD_STS_BASE_ADDR = 64'h2C;
-localparam longint unsigned CSRNG_NONE_GENBITS_VLD_BASE_ADDR = 64'h30;
-localparam longint unsigned CSRNG_NONE_GENBITS_BASE_ADDR = 64'h34;
-localparam longint unsigned CSRNG_NONE_INT_STATE_READ_ENABLE_BASE_ADDR = 64'h38;
-localparam longint unsigned CSRNG_NONE_INT_STATE_READ_ENABLE_REGWEN_BASE_ADDR = 64'h3C;
-localparam longint unsigned CSRNG_NONE_INT_STATE_NUM_BASE_ADDR = 64'h40;
-localparam longint unsigned CSRNG_NONE_INT_STATE_VAL_BASE_ADDR = 64'h44;
-localparam longint unsigned CSRNG_NONE_FIPS_FORCE_BASE_ADDR = 64'h48;
-localparam longint unsigned CSRNG_NONE_HW_EXC_STS_BASE_ADDR = 64'h4C;
-localparam longint unsigned CSRNG_NONE_RECOV_ALERT_STS_BASE_ADDR = 64'h50;
-localparam longint unsigned CSRNG_NONE_ERR_CODE_BASE_ADDR = 64'h54;
-localparam longint unsigned CSRNG_NONE_ERR_CODE_TEST_BASE_ADDR = 64'h58;
-localparam longint unsigned CSRNG_NONE_MAIN_SM_STATE_BASE_ADDR = 64'h5C;
+localparam longint unsigned CSRNG_RESEED_COUNTER_0_NUM = 64'h3;
+localparam longint unsigned CSRNG_SW_CMD_STS_BASE_ADDR = 64'h2C;
+localparam longint unsigned CSRNG_GENBITS_VLD_BASE_ADDR = 64'h30;
+localparam longint unsigned CSRNG_GENBITS_BASE_ADDR = 64'h34;
+localparam longint unsigned CSRNG_INT_STATE_READ_ENABLE_BASE_ADDR = 64'h38;
+localparam longint unsigned CSRNG_INT_STATE_READ_ENABLE_REGWEN_BASE_ADDR = 64'h3C;
+localparam longint unsigned CSRNG_INT_STATE_NUM_BASE_ADDR = 64'h40;
+localparam longint unsigned CSRNG_INT_STATE_VAL_BASE_ADDR = 64'h44;
+localparam longint unsigned CSRNG_FIPS_FORCE_BASE_ADDR = 64'h48;
+localparam longint unsigned CSRNG_HW_EXC_STS_BASE_ADDR = 64'h4C;
+localparam longint unsigned CSRNG_RECOV_ALERT_STS_BASE_ADDR = 64'h50;
+localparam longint unsigned CSRNG_ERR_CODE_BASE_ADDR = 64'h54;
+localparam longint unsigned CSRNG_ERR_CODE_TEST_BASE_ADDR = 64'h58;
+localparam longint unsigned CSRNG_MAIN_SM_STATE_BASE_ADDR = 64'h5C;
 
 
 typedef enum logic [0:0] {

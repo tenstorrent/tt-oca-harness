@@ -34,17 +34,17 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_done_or_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
-        hmac__none__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) break;
     }
     if (timeout <= 0) {
         printf("Timeout waiting for HMAC completion\n");
         return -1;
     }
-    hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.HMAC_DONE) {
-        WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, intr.w);
+        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
 }
@@ -60,16 +60,16 @@ static void to_hex(const uint8_t *in, char *out, int len) {
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
     volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
+        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
-        hmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         while (s.f.FIFO_FULL) {
             if (spins++ > 10000) {
                 printf("FIFO full timeout\n");
                 return -1;
             }
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR);
+            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
         *fifo8 = data[i];
     }
@@ -87,26 +87,26 @@ int main(void) {
 
     /* Write key to KEY_0..KEY_7 */
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_HMAC_NONE_KEY_0_BASE_ADDR(i), key[i]);
+        WRITE_REG(OCH_SEP_TOP_HMAC_KEY_0_BASE_ADDR(i), key[i]);
     }
 
     /* Enable hmac_done interrupt */
-    hmac__none__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    hmac__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     /* Configure: HMAC mode, SHA-256, key_length=256b (0x02) */
-    hmac__none__CFG_t cfg = {.w = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.HMAC_EN = 1;
     cfg.f.SHA_EN = 1;
     cfg.f.ENDIAN_SWAP = 0;
     cfg.f.DIGEST_SWAP = 0;
     cfg.f.DIGEST_SIZE = 1;   /* SHA2_256 */
     cfg.f.KEY_LENGTH = 0x02; /* 256-bit key */
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     /* Start hash */
-    hmac__none__CMD_t cmd = {.f.HASH_START = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Feed message: "what do ya want for nothing?" */
     const uint8_t msg[] = "what do ya want for nothing?";
@@ -120,8 +120,8 @@ int main(void) {
     }
 
     /* Process */
-    hmac__none__CMD_t proc = {.f.HASH_PROCESS = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, proc.w);
+    hmac__CMD_t proc = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, proc.w);
 
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Timeout\n");
@@ -134,7 +134,7 @@ int main(void) {
     /* Read digest and byte-swap */
     uint8_t digest[32];
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_NONE_DIGEST_0_BASE_ADDR(i));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 
@@ -146,12 +146,12 @@ int main(void) {
     printf("Expected: %s\n", expected);
 
     /* Cleanup: disable and wipe */
-    hmac__none__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg_off.f.SHA_EN = 0;
     cfg_off.f.HMAC_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg_off.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg_off.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     if (strcmp(got, expected) == 0) {
         printf("=== TC_HMAC_007 PASSED ===\n");
