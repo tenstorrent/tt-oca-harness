@@ -20,7 +20,7 @@
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
-/* DRBG Sampler registers (struct-based access from key_manager_regs.h) */
+/* DRBG Sampler registers (struct-based access from km_drbg_sampler.h) */
 #define DRBG_DATA_REG \
     (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
 #define DRBG_CFG_REG \

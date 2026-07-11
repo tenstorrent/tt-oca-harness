@@ -16,7 +16,7 @@
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
-/* KPV (KM port) register struct access (from key_manager_regs.h) */
+/* KPV (KM port) register struct access (from km_kpv.h) */
 #define KPV_KEY_WORD_ADDR(slot, word) \
     (KEY_MANAGER_KPV_BASE_ADDR + (uint32_t)(slot)*KEY_MANAGER_KPV_KEY_ENTRY_SIZE + \
      (uint32_t)(word)*4u)

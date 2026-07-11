@@ -170,10 +170,10 @@ The eFuse controller is typically instantiated at a different absolute address f
 | `+0x400` | eFuse Interface Controller (CTRL) | 28 B |
 | `+0x500` | eFuse MMR | 112 B |
 
-C header constants (from `key_manager_regs.h`):
-- `OTP_EFUSE_MAP_REG_MAP_BASE_ADDR` = `0x00011000`
-- `OTP_EFUSE_CTRL_REG_MAP_BASE_ADDR` = `0x00011400`
-- `OTP_EFUSE_MMR_REG_MAP_BASE_ADDR` = `0x00011500`
+C header constants (from `key_manager_addr.h`):
+- `KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR` = `0x00011000`
+- `KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR` = `0x00011400`
+- `KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR` = `0x00011500`
 
 ## Building and Integration
 

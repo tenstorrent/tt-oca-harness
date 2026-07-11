@@ -47,7 +47,7 @@
  */
 
 #include "rom_xoshiro_asm.h"
-#include "key_manager_regs.h"
+#include "key_manager_addr.h"
 #include "rom_defs.h"
 
     .section .text, "ax"
@@ -98,7 +98,7 @@ rom_handover_jump:
 
     /* Enable SRAM execution mode immediately before the jump (triple write).
      *
-     * x1 = KMCSR_SRAM_EXEC_MODE_REG_ADDR (from key_manager_regs.h)
+     * x1 = KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR (from key_manager_addr.h)
      * x2 = write value (enable bit = 1)
      *
      * The bit is write-1-only (woset) so writing 1 is idempotent.
@@ -108,7 +108,7 @@ rom_handover_jump:
      * After the three stores x1 and x2 are zeroed before the jump so the
      * mutable firmware starts with a clean register file.
      */
-    li   x1,  KMCSR_SRAM_EXEC_MODE_REG_ADDR
+    li   x1,  KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR
     li   x2,  1                /* enable = 1 */
     sw   x2,  0(x1)
     sw   x2,  0(x1)

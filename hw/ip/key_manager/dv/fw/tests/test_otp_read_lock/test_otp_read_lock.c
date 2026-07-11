@@ -50,7 +50,7 @@ int main(void) {
 
     /* 2. Lock chiplet_uid */
     TEST_SUBTEST_START("Lock chiplet_uid");
-    rom_otp_set_read_lock(KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK);
+    rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm);
 
     /*
      * After lock: hardware returns zero for all value and complement words.
@@ -69,7 +69,7 @@ int main(void) {
 
     /* 3. Lock class_key */
     TEST_SUBTEST_START("Lock class_key");
-    rom_otp_set_read_lock(KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK);
+    rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm);
     rc = rom_otp_read_class_key(buf);
     for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
         if (buf[i] != 0) {

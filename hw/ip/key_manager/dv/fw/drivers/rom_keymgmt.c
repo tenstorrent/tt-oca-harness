@@ -20,7 +20,7 @@
 #include "rom_sideload.h"
 #include "rom_secutil.h"
 #include "rom_isr.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 
 /*===========================================================================
  * Internal helpers

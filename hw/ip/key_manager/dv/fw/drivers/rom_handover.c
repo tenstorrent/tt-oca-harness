@@ -26,7 +26,7 @@
 #include "rom_keyreg.h"
 #include "rom_picorv32.h"
 #include "irq_common.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 
 /*===========================================================================
  * Internal helpers

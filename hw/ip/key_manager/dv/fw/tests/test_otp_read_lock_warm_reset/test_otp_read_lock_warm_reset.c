@@ -82,9 +82,9 @@ int main(void) {
 
         /* 2. Lock chiplet_uid and verify it reads zero + lock bit set */
         TEST_SUBTEST_START("Phase 0: lock chiplet_uid");
-        rom_otp_set_read_lock(KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK);
+        rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm);
 
-        if ((ROM_OTP_READ_LOCK_REG.w & KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK) == 0u) {
+        if ((ROM_OTP_READ_LOCK_REG.w & KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm) == 0u) {
             TEST_FAIL("OTP_READ_LOCK.chiplet_uid not set after lock");
         }
         (void)rom_otp_read_chiplet_uid(buf);
