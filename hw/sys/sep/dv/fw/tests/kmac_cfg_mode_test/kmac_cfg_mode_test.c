@@ -20,7 +20,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -30,7 +30,7 @@ static int wait_for_idle(void) {
 static void write_cfg_and_verify(const char *label, uint32_t kmac_en, uint32_t mode,
                                  uint32_t kstrength, uint32_t entropy_mode, uint32_t msg_endian,
                                  uint32_t state_endian) {
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = kmac_en;
     cfg.f.MODE = mode;
     cfg.f.KSTRENGTH = kstrength;
@@ -39,10 +39,10 @@ static void write_cfg_and_verify(const char *label, uint32_t kmac_en, uint32_t m
     cfg.f.STATE_ENDIANNESS = state_endian;
     cfg.f.ENTROPY_READY = 0;
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    kmac__none__CFG_SHADOWED_t rb = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR)};
+    kmac__CFG_SHADOWED_t rb = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
 
     int pass = 1;
     if (rb.f.KMAC_EN != kmac_en) pass = 0;
@@ -107,8 +107,8 @@ int main(void) {
     write_cfg_and_verify("entropy_mode=EDN", 0, 0x0, 0x2, 0x1, 0, 0);
 
     /* Restore default */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
 
     printf("\n========================================\n");
     if (test_errors == 0) {

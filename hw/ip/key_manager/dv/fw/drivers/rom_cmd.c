@@ -23,7 +23,7 @@
 #include "rom_persist.h"
 #include "rom_handover.h"
 #include "rom_secutil.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 
 /**
  * @brief When set, all three handover commands (0x10-0x12) return FAILURE.

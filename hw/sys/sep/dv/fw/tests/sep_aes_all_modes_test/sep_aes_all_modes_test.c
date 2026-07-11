@@ -266,9 +266,9 @@ static int run_ctr_manual_mode(void) {
 
     /* In manual mode, writing DATA_IN does NOT auto-start.
      * Must trigger START explicitly. */
-    aes__none__TRIGGER_t trigger = {.w = 0};
+    aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.START = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
 
     if (wait_for_output_valid() != 0) return -1;
     read_data_out(out);

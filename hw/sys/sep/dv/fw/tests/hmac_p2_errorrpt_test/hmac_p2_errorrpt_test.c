@@ -32,7 +32,7 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (status.f.HMAC_IDLE) {
             return 0;
         }
@@ -45,8 +45,8 @@ static int wait_for_idle(void) {
 static int wait_for_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
-        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.HMAC_DONE || status.f.HMAC_IDLE) {
             break;
         }
@@ -56,58 +56,58 @@ static int wait_for_hmac_done(void) {
         return -1;
     }
 
-    hmac__none__INTR_STATE_t clear = {.w = 0};
+    hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.HMAC_DONE = 1;
     clear.f.FIFO_EMPTY = 1;
     clear.f.HMAC_ERR = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 
     return 0;
 }
 
 static int recover_hmac_state(void) {
-    hmac__none__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.SHA_EN = 0;
     cfg.f.HMAC_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     cfg.w = 0;
     cfg.f.SHA_EN = 1;
     cfg.f.HMAC_EN = 0;
     cfg.f.DIGEST_SIZE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__none__CMD_t start = {.f.HASH_START = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
-    hmac__none__CMD_t process = {.f.HASH_PROCESS = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, process.w);
+    hmac__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
+    hmac__CMD_t process = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
 
     if (wait_for_hmac_done() != 0) {
         return -1;
     }
 
-    cfg.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR);
+    cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
     cfg.f.SHA_EN = 0;
     cfg.f.HMAC_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
 
-    hmac__none__INTR_STATE_t clear = {.w = 0};
+    hmac__INTR_STATE_t clear = {.w = 0};
     clear.f.HMAC_DONE = 1;
     clear.f.FIFO_EMPTY = 1;
     clear.f.HMAC_ERR = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 
     printf("  Recovery: ERR_CODE=0x%08x STATUS=0x%08x\n",
-           READ_REG(OCH_SEP_TOP_HMAC_NONE_ERR_CODE_BASE_ADDR),
-           READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR));
+           READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR),
+           READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR));
 
     return wait_for_idle();
 }
 
 static int expect_hmac_error(const char *name, uint32_t expected_err) {
-    uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_NONE_ERR_CODE_BASE_ADDR);
-    hmac__none__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_INTR_STATE_BASE_ADDR)};
+    uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
+    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
 
     int pass = 1;
     if (!check_reg(name, err, expected_err)) {
@@ -126,12 +126,11 @@ static int expect_hmac_error(const char *name, uint32_t expected_err) {
 static int test_push_when_sha_disabled(void) {
     printf("\nStep 1: MSG_FIFO push while sha_en=0\n");
 
-    hmac__none__CFG_t cfg = {.w = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.SHA_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     *fifo8 = 0xa5;
 
     if (expect_hmac_error("ERR_CODE push while sha_en=0", 0x5) != 0) {
@@ -144,15 +143,15 @@ static int test_push_when_sha_disabled(void) {
 static int test_hash_start_when_busy(void) {
     printf("\nStep 2: hash_start while engine is active\n");
 
-    hmac__none__CFG_t cfg = {.w = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.SHA_EN = 1;
     cfg.f.HMAC_EN = 0;
     cfg.f.DIGEST_SIZE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__none__CMD_t start = {.f.HASH_START = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
+    hmac__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
 
     if (expect_hmac_error("ERR_CODE hash_start while active", 0x4) != 0) {
         return -1;
@@ -164,23 +163,23 @@ static int test_hash_start_when_busy(void) {
 static int test_fifo_saturation_and_reset_recovery(void) {
     printf("\nStep 3: Fill MSG_FIFO to fifo_full and recover by process/drain\n");
 
-    hmac__none__CFG_t cfg = {.w = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.SHA_EN = 1;
     cfg.f.HMAC_EN = 0;
     cfg.f.DIGEST_SIZE = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__none__CMD_t start = {.f.HASH_START = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, start.w);
+    hmac__CMD_t start = {.f.HASH_START = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
 
     volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_NONE_MSG_FIFO_BASE_ADDR(0);
+        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     uint32_t words_written = 0;
     int full_seen = 0;
     uint32_t max_depth = 0;
 
     for (uint32_t i = 0; i < 128; i++) {
-        hmac__none__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (status.f.FIFO_DEPTH > max_depth) {
             max_depth = status.f.FIFO_DEPTH;
         }
@@ -194,7 +193,7 @@ static int test_fifo_saturation_and_reset_recovery(void) {
         words_written++;
     }
 
-    hmac__none__STATUS_t final_status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+    hmac__STATUS_t final_status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     if (final_status.f.FIFO_DEPTH > max_depth) {
         max_depth = final_status.f.FIFO_DEPTH;
     }
@@ -211,18 +210,18 @@ static int test_fifo_saturation_and_reset_recovery(void) {
         printf("  INFO: Extra write beyond fifo_full is skipped to avoid CPU MMIO deadlock\n");
     }
 
-    hmac__none__CMD_t process = {.f.HASH_PROCESS = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CMD_BASE_ADDR, process.w);
+    hmac__CMD_t process = {.f.HASH_PROCESS = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
     if (wait_for_hmac_done() != 0) {
         return -1;
     }
 
-    hmac__none__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg_off.f.SHA_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_CFG_BASE_ADDR, cfg_off.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg_off.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
 
-    hmac__none__STATUS_t reset_status = {.w = READ_REG(OCH_SEP_TOP_HMAC_NONE_STATUS_BASE_ADDR)};
+    hmac__STATUS_t reset_status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     int pass = 1;
     if (!check_reg("STATUS.hmac_idle after drain", reset_status.f.HMAC_IDLE, 1)) {
         pass = 0;
@@ -231,7 +230,7 @@ static int test_fifo_saturation_and_reset_recovery(void) {
         pass = 0;
     }
     printf("  ERR_CODE after drain: 0x%08x (sticky error code is allowed)\n",
-           READ_REG(OCH_SEP_TOP_HMAC_NONE_ERR_CODE_BASE_ADDR));
+           READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR));
 
     return pass ? 0 : -1;
 }
@@ -245,11 +244,11 @@ int main(void) {
 
     int pass = 1;
 
-    hmac__none__INTR_ENABLE_t intr_en = {.w = 0};
+    hmac__INTR_ENABLE_t intr_en = {.w = 0};
     intr_en.f.HMAC_DONE = 1;
     intr_en.f.FIFO_EMPTY = 1;
     intr_en.f.HMAC_ERR = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_NONE_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     if (test_push_when_sha_disabled() != 0) {
         pass = 0;

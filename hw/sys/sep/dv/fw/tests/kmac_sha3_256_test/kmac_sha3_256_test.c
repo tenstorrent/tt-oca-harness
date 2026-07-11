@@ -20,7 +20,7 @@
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.SHA3_IDLE) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -30,9 +30,9 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x1);
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
             return 0;
         }
     }
@@ -41,8 +41,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static uint32_t byte_swap(uint32_t x) {
@@ -55,7 +54,7 @@ static int sha3_256_abc_test(void) {
 
     if (wait_for_idle() != 0) return -1;
 
-    kmac__none__CFG_SHADOWED_t cfg = {.w = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.KMAC_EN = 0;
     cfg.f.MODE = 0x0;
     cfg.f.KSTRENGTH = 0x2;
@@ -63,24 +62,24 @@ static int sha3_256_abc_test(void) {
     cfg.f.MSG_ENDIANNESS = 0;
     cfg.f.STATE_ENDIANNESS = 0;
     cfg.f.ENTROPY_READY = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     printf("  CFG: SHA3-256 entropy_mode=SW\n");
 
     /* In SW mode: set entropy_ready=1 FIRST to enter StSwSeedWait,
      * THEN write ENTROPY_SEED registers. The FSM handshakes each 32-bit
      * seed write via seed_req/seed_ack (seed_update_i pulse per write). */
     cfg.f.ENTROPY_READY = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     printf("  entropy_ready set\n");
 
     setup_entropy();
     printf("  Entropy seed written\n");
 
-    kmac__none__CMD_t cmd = {.w = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.CMD = 29;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  START issued\n");
 
     /* Write exactly 3 bytes "abc" using byte stores to the SAME word-aligned
@@ -98,7 +97,7 @@ static int sha3_256_abc_test(void) {
      */
     {
         volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_NONE_MSG_FIFO_BASE_ADDR(0));
+            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0));
         fifo8[0] = 'a'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=0  → pos_q=8  */
         fifo8[0] = 'b'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=8  → pos_q=16 */
         fifo8[0] = 'c'; /* sb[0] → wmask=4'b0001, absorbed at pos_q=16 → pos_q=24 */
@@ -106,7 +105,7 @@ static int sha3_256_abc_test(void) {
     printf("  Message abc written (3 bytes via sb[0] x3 to word-aligned base)\n");
 
     cmd.f.CMD = 46;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  PROCESS issued\n");
 
     if (wait_for_done() != 0) return -1;
@@ -114,9 +113,9 @@ static int sha3_256_abc_test(void) {
 
     /* Read words 0-11 (SHA-3-256 output + A[3][0] + A[4][0]) */
     uint32_t share0[12], share1[12], digest[8];
-    for (int i = 0; i < 12; i++) share0[i] = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(i * 4));
+    for (int i = 0; i < 12; i++) share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(i * 4));
     for (int i = 0; i < 12; i++)
-        share1[i] = READ_REG(OCH_SEP_TOP_KMAC_NONE_STATE_BASE_ADDR(0x100 + (i * 4)));
+        share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0x100 + (i * 4)));
     for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 
     printf("  Share0[0:11]:");
@@ -133,7 +132,7 @@ static int sha3_256_abc_test(void) {
     printf("\n");
 
     cmd.f.CMD = 22;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* KMAC with state_endianness=0 returns little-endian data.
      * NIST reference is big-endian, so we must byte-swap each word before comparing.

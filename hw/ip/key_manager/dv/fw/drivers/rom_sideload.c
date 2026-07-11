@@ -19,7 +19,7 @@
 #include "rom_drbg.h"
 #include "rom_shuffle.h"
 #include "rom_secutil.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 
 /*===========================================================================
  * Key valid bit accessors
@@ -172,9 +172,9 @@ static int sideload_write_dual_share(volatile uint32_t *share0, volatile uint32_
  */
 void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_hmac_key_valid_clear();
-    rom_shred_region(
-        (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_HMAC_SHRED_WORD_LEN, prng, allow_reseed);
+    rom_shred_region((volatile uint32_t *)(KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR +
+                                           ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+                     ROM_HMAC_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -186,10 +186,10 @@ void rom_hmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_hmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
-    volatile uint32_t *s0 =
-        (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s0 = (volatile uint32_t *)(KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR +
+                                                  ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(HMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+        (volatile uint32_t *)(KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR +
                               ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_HMAC_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_HMAC_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
@@ -212,9 +212,9 @@ int rom_hmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
  */
 void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_kmac_key_valid_clear();
-    rom_shred_region(
-        (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_KMAC_SHRED_WORD_LEN, prng, allow_reseed);
+    rom_shred_region((volatile uint32_t *)(KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR +
+                                           ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+                     ROM_KMAC_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -226,10 +226,10 @@ void rom_kmac_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_kmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
-    volatile uint32_t *s0 =
-        (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s0 = (volatile uint32_t *)(KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR +
+                                                  ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(KMAC_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+        (volatile uint32_t *)(KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR +
                               ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_KMAC_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_KMAC_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
@@ -252,9 +252,9 @@ int rom_kmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
  */
 void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_aes_key_valid_clear();
-    rom_shred_region(
-        (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_AES_SHRED_WORD_LEN, prng, allow_reseed);
+    rom_shred_region((volatile uint32_t *)(KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR +
+                                           ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+                     ROM_AES_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -266,10 +266,10 @@ void rom_aes_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_aes_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
-    volatile uint32_t *s0 =
-        (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s0 = (volatile uint32_t *)(KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR +
+                                                  ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(AES_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+        (volatile uint32_t *)(KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR +
                               ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_AES_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_AES_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
@@ -292,9 +292,9 @@ int rom_aes_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t 
  */
 void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_otbn_key_valid_clear();
-    rom_shred_region(
-        (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-        ROM_OTBN_SHRED_WORD_LEN, prng, allow_reseed);
+    rom_shred_region((volatile uint32_t *)(KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR +
+                                           ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+                     ROM_OTBN_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -306,10 +306,10 @@ void rom_otbn_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
  * @return 0 on success; -1 if the share write fails (key_valid left clear).
  */
 int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
-    volatile uint32_t *s0 =
-        (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR + ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
+    volatile uint32_t *s0 = (volatile uint32_t *)(KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR +
+                                                  ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR +
+        (volatile uint32_t *)(KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR +
                               ROM_KM_ENGINE_KEY_SHARE1_OFFSET(ROM_KM_OTBN_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_OTBN_WORDS_PER_SHARE, key, key_len, prng) < 0)
         return -1;
@@ -333,7 +333,7 @@ int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
 void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mldsa_seed_key_valid_clear();
     rom_shred_region(
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
         ROM_ABR_MLDSA_SEED_SHRED_WORD_LEN, prng, allow_reseed);
 }
@@ -348,10 +348,10 @@ void rom_abr_mldsa_seed_shred_key(rom_km_prng_state_t *prng, uint8_t allow_resee
  */
 int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
     volatile uint32_t *s0 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLDSA_SEED_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
                                              ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
@@ -376,7 +376,7 @@ int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_pr
 void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_seed_d_key_valid_clear();
     rom_shred_region(
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
         ROM_ABR_MLKEM_SEED_D_SHRED_WORD_LEN, prng, allow_reseed);
 }
@@ -392,10 +392,10 @@ void rom_abr_mlkem_seed_d_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
 int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
                                    rom_km_prng_state_t *prng) {
     volatile uint32_t *s0 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_D_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
                                              ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
@@ -420,7 +420,7 @@ int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len,
 void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_seed_z_key_valid_clear();
     rom_shred_region(
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
         ROM_ABR_MLKEM_SEED_Z_SHRED_WORD_LEN, prng, allow_reseed);
 }
@@ -436,10 +436,10 @@ void rom_abr_mlkem_seed_z_shred_key(rom_km_prng_state_t *prng, uint8_t allow_res
 int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
                                    rom_km_prng_state_t *prng) {
     volatile uint32_t *s0 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_SEED_Z_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
                                              ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
@@ -463,9 +463,10 @@ int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len,
  */
 void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed) {
     rom_abr_mlkem_msg_key_valid_clear();
-    rom_shred_region((volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
-                                                      ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
-                     ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN, prng, allow_reseed);
+    rom_shred_region(
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_BASE_ADDR +
+                                         ROM_KM_ENGINE_KEY_SHARE0_OFFSET),
+        ROM_ABR_MLKEM_MSG_SHRED_WORD_LEN, prng, allow_reseed);
 }
 
 /**
@@ -478,10 +479,10 @@ void rom_abr_mlkem_msg_shred_key(rom_km_prng_state_t *prng, uint8_t allow_reseed
  */
 int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t *prng) {
     volatile uint32_t *s0 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE0_OFFSET);
     volatile uint32_t *s1 =
-        (volatile uint32_t *)(uintptr_t)(ABR_WRAPPER_KEY_MLKEM_MSG_REG_FILE_BASE_ADDR +
+        (volatile uint32_t *)(uintptr_t)(KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_BASE_ADDR +
                                          ROM_KM_ENGINE_KEY_SHARE1_OFFSET(
                                              ROM_KM_ABR_WORDS_PER_SHARE));
     if (sideload_write_dual_share(s0, s1, ROM_KM_ABR_WORDS_PER_SHARE, key, key_len, prng) < 0)
@@ -506,9 +507,9 @@ void rom_abr_mlkem_sharedkey_irq_disable(void) {
 
 /** @brief Acknowledge the ML-KEM shared-key interrupt (clear sticky status, W1C). */
 void rom_abr_mlkem_sharedkey_irq_status_clear(void) {
-    ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u w = {.val = 0};
+    abr_wrapper_key__sk_irq_status_reg_t w = {.w = 0};
     w.f.key_valid = 1; /* write 1 to clear the sticky status bit */
-    ROM_ABR_MLKEM_SK_IRQ_STATUS_REG.val = w.val;
+    ROM_ABR_MLKEM_SK_IRQ_STATUS_REG.w = w.w;
 }
 
 /**
@@ -521,11 +522,11 @@ void rom_abr_mlkem_sharedkey_irq_status_clear(void) {
  */
 void rom_abr_mlkem_sharedkey_read(uint32_t out_key[ROM_KM_ABR_WORDS_PER_SHARE]) {
     volatile uint32_t *key_regs =
-        (volatile uint32_t *)(uintptr_t)ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_REG_FILE_BASE_ADDR;
+        (volatile uint32_t *)(uintptr_t)KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_BASE_ADDR;
 
     for (uint8_t i = 0; i < ROM_KM_ABR_WORDS_PER_SHARE; i++) out_key[i] = key_regs[i];
 
-    ROM_ABR_MLKEM_SK_CTRL_REG.val = 0;
+    ROM_ABR_MLKEM_SK_CTRL_REG.w = 0;
 }
 
 /**
@@ -535,5 +536,5 @@ void rom_abr_mlkem_sharedkey_read(uint32_t out_key[ROM_KM_ABR_WORDS_PER_SHARE]) 
  * KEY[*] (hwclr), discarding any key delivered but not yet consumed.
  */
 void rom_abr_mlkem_sharedkey_zeroize(void) {
-    ROM_ABR_MLKEM_SK_CTRL_REG.val = 0;
+    ROM_ABR_MLKEM_SK_CTRL_REG.w = 0;
 }

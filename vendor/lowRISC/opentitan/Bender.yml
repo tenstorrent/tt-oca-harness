@@ -60,7 +60,7 @@ sources:
       - upstream/hw/ip/spi_host/rtl/spi_host_reg_pkg.sv
       - upstream/hw/ip/spi_host/rtl/spi_host_cmd_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn_reg_pkg.sv
-      - overlay/regs/spi_controller/regs/gen/sv/spi_controller_reg_pkg.sv
+      - overlay/spi_controller/rtl/spi_controller_reg_pkg.sv
       - overlay/spi_controller/rtl/spi_controller_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn_pkg.sv
       - upstream/hw/ip/aon_timer/rtl/aon_timer_reg_pkg.sv
@@ -268,5 +268,5 @@ sources:
       - upstream/hw/ip/otbn/rtl/otbn.sv
 
       # TT-owned OpenTitan overlay.
-      - overlay/regs/spi_controller/regs/gen/sv/spi_controller_reg.sv
+      - overlay/spi_controller/rtl/spi_controller_reg.sv
       - overlay/spi_controller/rtl/spi_controller.sv

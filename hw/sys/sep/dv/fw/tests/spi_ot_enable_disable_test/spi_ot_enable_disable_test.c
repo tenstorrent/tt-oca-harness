@@ -44,22 +44,22 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__none__CONTROL_t ctrl;
-    spi_controller__none__STATUS_t status;
+    spi_controller__CONTROL_t ctrl;
+    spi_controller__STATUS_t status;
 
     configure_spi_mux_ot();
     printf("SPI mux configured for OpenTitan\n\n");
 
     /* Step 1: Read CTRL default */
     printf("Step 1: CTRL default check\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("CTRL default", ctrl.w, 0u)) pass = 0;
     if (!check_reg("SPIEN default", ctrl.f.SPIEN, 0)) pass = 0;
     if (!check_reg("OUTPUT_EN default", ctrl.f.OUTPUT_EN, 0)) pass = 0;
 
     /* Step 2: Read STATUS when disabled */
     printf("\nStep 2: STATUS when SPIEN=0\n");
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS=0x%08x (READY=%u, ACTIVE=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
            status.f.ACTIVE, status.f.TXEMPTY);
 
@@ -68,41 +68,41 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SPIEN after enable", ctrl.f.SPIEN, 1)) pass = 0;
     if (!check_reg("OUTPUT_EN after set", ctrl.f.OUTPUT_EN, 1)) pass = 0;
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS after enable: 0x%08x (READY=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
            status.f.TXEMPTY);
 
     /* Step 4: Software reset */
     printf("\nStep 4: Software reset (SW_RST)\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     volatile int delay;
     for (delay = 0; delay < 1000; delay++) {
     }
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS after SW_RST: TXEMPTY=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.TXEMPTY,
            status.f.RXEMPTY, status.f.ACTIVE);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SW_RST reads 0 (singlepulse)", ctrl.f.SW_RST, 0)) pass = 0;
 
     /* Step 5: Disable controller */
     printf("\nStep 5: Disable SPI controller (SPIEN=0)\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SPIEN = 0;
     ctrl.f.OUTPUT_EN = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SPIEN after disable", ctrl.f.SPIEN, 0)) pass = 0;
     if (!check_reg("OUTPUT_EN after clear", ctrl.f.OUTPUT_EN, 0)) pass = 0;
 

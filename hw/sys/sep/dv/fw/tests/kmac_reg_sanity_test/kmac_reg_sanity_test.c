@@ -42,13 +42,13 @@ static void check_rw(const char *name, uint32_t addr, uint32_t write_val, uint32
 static int test_register_defaults(void) {
     printf("\n=== Test 1: Register Default Values ===\n");
 
-    check_reg("STATUS", OCH_SEP_TOP_KMAC_NONE_STATUS_BASE_ADDR, 0x00004001);
-    check_reg("CFG_REGWEN", OCH_SEP_TOP_KMAC_NONE_CFG_REGWEN_BASE_ADDR, 0x00000001);
-    check_reg("CFG_SHADOWED", OCH_SEP_TOP_KMAC_NONE_CFG_SHADOWED_BASE_ADDR, 0x00001000);
-    check_reg("ERR_CODE", OCH_SEP_TOP_KMAC_NONE_ERR_CODE_BASE_ADDR, 0x00000000);
-    check_reg("INTR_ENABLE", OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x00000000);
-    check_reg("INTR_STATE", OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x00000000);
-    check_reg("ENTROPY_PERIOD", OCH_SEP_TOP_KMAC_NONE_ENTROPY_PERIOD_BASE_ADDR, 0x00000000);
+    check_reg("STATUS", OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR, 0x00004001);
+    check_reg("CFG_REGWEN", OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, 0x00000001);
+    check_reg("CFG_SHADOWED", OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0x00001000);
+    check_reg("ERR_CODE", OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR, 0x00000000);
+    check_reg("INTR_ENABLE", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000000);
+    check_reg("INTR_STATE", OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x00000000);
+    check_reg("ENTROPY_PERIOD", OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x00000000);
 
     return 0;
 }
@@ -56,8 +56,8 @@ static int test_register_defaults(void) {
 static int test_intr_enable_rw(void) {
     printf("\n=== Test 2: INTR_ENABLE Read/Write ===\n");
 
-    check_rw("INTR_ENABLE all", OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x7, 0x7);
-    check_rw("INTR_ENABLE clear", OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x0, 0x0);
+    check_rw("INTR_ENABLE all", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x7, 0x7);
+    check_rw("INTR_ENABLE clear", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0, 0x0);
 
     return 0;
 }
@@ -65,20 +65,20 @@ static int test_intr_enable_rw(void) {
 static int test_intr_test_w1s(void) {
     printf("\n=== Test 3: INTR_TEST -> INTR_STATE W1C (all 3 bits) ===\n");
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_ENABLE_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     /* --- bit 0: kmac_done --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7); /* clear all */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_TEST_BASE_ADDR, 0x1);
-    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7); /* clear all */
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0x1);
+    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x1) {
         printf("PASS: INTR_TEST.kmac_done set INTR_STATE.kmac_done\n");
     } else {
         printf("FAIL: INTR_TEST.kmac_done did not set INTR_STATE state=0x%08x\n", state);
         test_errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x1);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & 0x1)) {
         printf("PASS: INTR_STATE.kmac_done cleared by W1C\n");
     } else {
@@ -87,17 +87,17 @@ static int test_intr_test_w1s(void) {
     }
 
     /* --- bit 1: fifo_empty (level-triggered, may re-assert) --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_TEST_BASE_ADDR, 0x2);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0x2);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x2) {
         printf("PASS: INTR_TEST.fifo_empty set INTR_STATE.fifo_empty\n");
     } else {
         printf("FAIL: INTR_TEST.fifo_empty did not set INTR_STATE state=0x%08x\n", state);
         test_errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x2);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x2);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & 0x2)) {
         printf("PASS: INTR_STATE.fifo_empty cleared by W1C\n");
     } else {
@@ -106,17 +106,17 @@ static int test_intr_test_w1s(void) {
     }
 
     /* --- bit 2: kmac_err --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_TEST_BASE_ADDR, 0x4);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0x4);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & 0x4) {
         printf("PASS: INTR_TEST.kmac_err set INTR_STATE.kmac_err\n");
     } else {
         printf("FAIL: INTR_TEST.kmac_err did not set INTR_STATE state=0x%08x\n", state);
         test_errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x4);
-    state = READ_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x4);
+    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & 0x4)) {
         printf("PASS: INTR_STATE.kmac_err cleared by W1C\n");
     } else {
@@ -125,7 +125,7 @@ static int test_intr_test_w1s(void) {
     }
 
     /* Clear all remaining */
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 
     return 0;
 }
@@ -134,10 +134,10 @@ static int test_prefix_rw(void) {
     printf("\n=== Test 4: PREFIX Register Read/Write ===\n");
 
     uint32_t test_val = 0x12345678;
-    check_rw("PREFIX_0", OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(0), test_val, test_val);
+    check_rw("PREFIX_0", OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0), test_val, test_val);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(0), 0x0);
-    uint32_t readback = READ_REG(OCH_SEP_TOP_KMAC_NONE_PREFIX_0_BASE_ADDR(0));
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0), 0x0);
+    uint32_t readback = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0));
     if (readback == 0x0) {
         printf("PASS: PREFIX_0 restored to 0\n");
     } else {
@@ -152,9 +152,8 @@ static int test_entropy_period_rw(void) {
     printf("\n=== Test 5: ENTROPY_PERIOD Read/Write ===\n");
 
     uint32_t test_val = 0xFFFF03FF;
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_PERIOD_BASE_ADDR, test_val);
-    kmac__none__ENTROPY_PERIOD_t ep = {
-        .w = READ_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_PERIOD_BASE_ADDR)};
+    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
+    kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
     printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.PRESCALER,
            ep.f.WAIT_TIMER);
 
@@ -165,7 +164,7 @@ static int test_entropy_period_rw(void) {
         test_errors++;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_NONE_ENTROPY_PERIOD_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x0);
 
     return 0;
 }

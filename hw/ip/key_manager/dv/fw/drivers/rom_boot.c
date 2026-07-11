@@ -26,7 +26,7 @@
 #include "rom_keyreg.h"
 #include "irq_common.h"
 #include "rom_picorv32.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -62,7 +62,7 @@ void rom_boot_init(void) {
 
     /* ----- Enable KMCSR fault IRQs ----- */
 
-    KM_CSR_IRQ_ENABLE_REG_reg_u irq_en = {0};
+    km_csr__irq_enable_reg_t irq_en = {0};
     irq_en.f.rom_parity_en = 1;
     irq_en.f.sram_parity_en = 1;
     irq_en.f.rom_write_en = 1;
@@ -74,7 +74,7 @@ void rom_boot_init(void) {
     irq_en.f.otp_sigint_en = 1;
     irq_en.f.exec_violation_en = 1;
     rom_kmcsr_irq_status_clear(0xFFFFFFFF);
-    rom_kmcsr_irq_enable_write(irq_en.val);
+    rom_kmcsr_irq_enable_write(irq_en.w);
 
     /* Defense-in-depth: re-assert the ROM IRQ vector before any IRQ can fire.
      * IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK are warm-reset-domain, so every reset that
@@ -148,12 +148,12 @@ void rom_boot_init(void) {
     rom_mailbox_irq_status_clear(0xFFFFFFFF);
 
     /* Enable inbound data + error sources; keep outbound data IRQ off */
-    KM_MAILBOX_KM_IRQ_ENABLE_REG_reg_u mbox_en = {0};
+    km_mailbox_km__irq_enable_reg_t mbox_en = {0};
     mbox_en.f.inbound_read_data_avail_en = 1;
     mbox_en.f.outbound_overflow_en = 1;
     mbox_en.f.inbound_underflow_en = 1;
     mbox_en.f.flushed_by_sep_en = 1;
-    rom_mailbox_irq_enable_write(mbox_en.val);
+    rom_mailbox_irq_enable_write(mbox_en.w);
 
     /* ----- Arm ABR ML-KEM shared-key IRQ ----- */
 

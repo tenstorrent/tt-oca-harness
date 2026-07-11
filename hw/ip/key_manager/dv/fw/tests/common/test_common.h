@@ -51,15 +51,14 @@
 #include <stddef.h>
 #include "vuart.h"
 #include "key_manager_fw.h"
-#include "key_manager_regs.h"
 #include "rom_boot.h"
 #include "rom_picorv32.h"
 #include "rom_kmcsr.h"
 #include "irq_common.h"
 
-/* OTP/eFuse window addresses come from key_manager_regs.h (PeakRDL). */
+/* OTP/eFuse window addresses come from key_manager_addr.h (PeakRDL). */
 #ifndef ROM_KM_OTP_BASE
-#define ROM_KM_OTP_BASE OTP_EFUSE_MAP_REG_MAP_BASE_ADDR
+#define ROM_KM_OTP_BASE KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR
 #endif
 
 typedef union {

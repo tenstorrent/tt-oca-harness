@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include "rom_defs.h"
 #include "rom_prng.h"
-#include "key_manager_regs.h"
+#include "key_manager_fw.h"
 
 /* ============================================================================
  * HMAC (PeakRDL KEY_CTRL)
@@ -24,7 +24,7 @@
 
 /** @brief HMAC key control register (volatile). */
 #define ROM_HMAC_KEY_CTRL_REG \
-    (*(volatile HMAC_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)HMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile hmac_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_HMAC_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the HMAC key valid bit. */
 void rom_hmac_key_valid_clear(void);
@@ -56,7 +56,7 @@ int rom_hmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
 
 /** @brief KMAC key control register (volatile). */
 #define ROM_KMAC_KEY_CTRL_REG \
-    (*(volatile KMAC_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)KMAC_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile kmac_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_KMAC_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the KMAC key valid bit. */
 void rom_kmac_key_valid_clear(void);
@@ -88,7 +88,7 @@ int rom_kmac_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
 
 /** @brief AES key control register (volatile). */
 #define ROM_AES_KEY_CTRL_REG \
-    (*(volatile AES_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)AES_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile aes_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_AES_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the AES key valid bit. */
 void rom_aes_key_valid_clear(void);
@@ -120,7 +120,7 @@ int rom_aes_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t 
 
 /** @brief OTBN key control register (volatile). */
 #define ROM_OTBN_KEY_CTRL_REG \
-    (*(volatile OTBN_WRAPPER_KEY_KEY_CTRL_REG_reg_u *)OTBN_WRAPPER_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile otbn_wrapper_key__key_ctrl_reg_t *)KEY_MANAGER_OTBN_WRAPPER_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the OTBN key valid bit. */
 void rom_otbn_key_valid_clear(void);
@@ -152,7 +152,8 @@ int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
 
 /** @brief ABR MLDSA_SEED key control register (volatile). */
 #define ROM_ABR_MLDSA_SEED_KEY_CTRL_REG \
-    (*(volatile ABR_SEED_RF_SEED_CTRL_REG_reg_u *)ABR_WRAPPER_KEY_MLDSA_SEED_KEY_CTRL_REG_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLDSA_SEED key valid bit. */
 void rom_abr_mldsa_seed_key_valid_clear(void);
@@ -184,7 +185,8 @@ int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_pr
 
 /** @brief ABR MLKEM_SEED_D key control register (volatile). */
 #define ROM_ABR_MLKEM_SEED_D_KEY_CTRL_REG \
-    (*(volatile ABR_SEED_RF_SEED_CTRL_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_SEED_D_KEY_CTRL_REG_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_SEED_D key valid bit. */
 void rom_abr_mlkem_seed_d_key_valid_clear(void);
@@ -216,7 +218,8 @@ int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len, rom_km_
 
 /** @brief ABR MLKEM_SEED_Z key control register (volatile). */
 #define ROM_ABR_MLKEM_SEED_Z_KEY_CTRL_REG \
-    (*(volatile ABR_SEED_RF_SEED_CTRL_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_SEED_Z_KEY_CTRL_REG_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_SEED_Z key valid bit. */
 void rom_abr_mlkem_seed_z_key_valid_clear(void);
@@ -248,7 +251,8 @@ int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len, rom_km_
 
 /** @brief ABR MLKEM_MSG key control register (volatile). */
 #define ROM_ABR_MLKEM_MSG_KEY_CTRL_REG \
-    (*(volatile ABR_SEED_RF_SEED_CTRL_REG_reg_u *)ABR_WRAPPER_KEY_MLKEM_MSG_KEY_CTRL_REG_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_MSG key valid bit. */
 void rom_abr_mlkem_msg_key_valid_clear(void);
@@ -284,18 +288,18 @@ int rom_abr_mlkem_msg_write_key(const uint32_t *key, uint8_t key_len, rom_km_prn
 
 /** @brief ABR MLKEM_SHARED_KEY control register (volatile). */
 #define ROM_ABR_MLKEM_SK_CTRL_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_CTRL_REG_reg_u *) \
-         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_KEY_CTRL_REG_ADDR)
+    (*(volatile abr_wrapper_key__sk_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_KEY_CTRL_BASE_ADDR)
 
 /** @brief ABR MLKEM_SHARED_KEY IRQ enable register (volatile). */
 #define ROM_ABR_MLKEM_SK_IRQ_ENABLE_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_ENABLE_REG_reg_u *) \
-         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_REG_ADDR)
+    (*(volatile abr_wrapper_key__sk_irq_enable_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR)
 
 /** @brief ABR MLKEM_SHARED_KEY IRQ status register (volatile). */
 #define ROM_ABR_MLKEM_SK_IRQ_STATUS_REG \
-    (*(volatile ABR_SHAREDKEY_RF_SK_IRQ_STATUS_REG_reg_u *) \
-         ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_REG_ADDR)
+    (*(volatile abr_wrapper_key__sk_irq_status_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_BASE_ADDR)
 
 /**
  * @brief Read the ML-KEM shared key and consume it (clear valid + zeroize).

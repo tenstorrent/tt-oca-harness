@@ -45,9 +45,9 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
 }
 
 static int wait_for_ready(int timeout) {
-    spi_controller__none__STATUS_t status;
+    spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
         timeout--;
     }
@@ -56,9 +56,9 @@ static int wait_for_ready(int timeout) {
 }
 
 static int wait_for_idle(int timeout) {
-    spi_controller__none__STATUS_t status;
+    spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
         timeout--;
     }
@@ -74,11 +74,11 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__none__CONTROL_t ctrl;
-    spi_controller__none__CONFIGOPTS_t cfg;
-    spi_controller__none__COMMAND_t cmd;
-    spi_controller__none__STATUS_t status;
-    spi_controller__none__ERROR_STATUS_t err_status;
+    spi_controller__CONTROL_t ctrl;
+    spi_controller__CONFIGOPTS_t cfg;
+    spi_controller__COMMAND_t cmd;
+    spi_controller__STATUS_t status;
+    spi_controller__ERROR_STATUS_t err_status;
     volatile int delay;
 
     configure_spi_mux_ot();
@@ -88,7 +88,7 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: CLKDIV=9 (~5MHz from 100MHz), SPI Mode 0, standard CS timing */
     cfg.w = 0;
@@ -98,9 +98,9 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 1: Dual TX (SPEED=1, DIRECTION=2)                              */
@@ -112,21 +112,21 @@ int main(void) {
     }
 
     /* Load TX FIFO: dual fast-read command pattern */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x3B000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x3B000000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;       /* 4 bytes (LEN+1 bytes total) */
     cmd.f.CSAAT = 1;     /* keep CS# low for next segment */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
            err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
@@ -135,7 +135,7 @@ int main(void) {
     } else {
         printf("  PASS: Dual TX accepted (no CMDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 2: Dual Dummy cycles (SPEED=1, DIRECTION=0)                    */
@@ -151,14 +151,14 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 0; /* Dummy */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u)\n", err_status.w, err_status.f.CMDINVAL);
     if (err_status.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL for valid Dual Dummy command\n");
@@ -166,7 +166,7 @@ int main(void) {
     } else {
         printf("  PASS: Dual Dummy accepted (no CMDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 3: Dual RX (SPEED=1, DIRECTION=1)                              */
@@ -182,12 +182,12 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     wait_for_idle(TIMEOUT_LIMIT);
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  STATUS: RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.RXQD, status.f.RXEMPTY,
            status.f.ACTIVE);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
@@ -198,12 +198,12 @@ int main(void) {
     } else {
         printf("  PASS: Dual RX accepted (no CMDINVAL/CSIDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* SW_RST to drain RX FIFO */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
     for (delay = 0; delay < 200; delay++) {
     }
 
@@ -211,36 +211,36 @@ int main(void) {
     /* Step 4: CMDINVAL — DIRECTION=3 (bidirectional) at Dual speed        */
     /* ------------------------------------------------------------------ */
     printf("\nStep 4: CMDINVAL test (SPEED=Dual + DIRECTION=Bidirectional)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x12345678);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Dual speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     for (delay = 0; delay < 200; delay++) {
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("CMDINVAL for Bidirectional+Dual", err_status.f.CMDINVAL, 1))
         pass = 0;
     else
         printf("  PASS: CMDINVAL detected for Bidirectional+Dual (expected)\n");
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* SW_RST to recover */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
     for (delay = 0; delay < 200; delay++) {
     }
 
@@ -248,27 +248,27 @@ int main(void) {
     /* Step 5: Bidirectional accepted at Standard speed (SPEED=0)          */
     /* ------------------------------------------------------------------ */
     printf("\nStep 5: Bidirectional valid at Standard speed (SPEED=0, DIR=3)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0xABCD1234);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xABCD1234);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;     /* Standard */
     cmd.f.DIRECTION = 3; /* Bidirectional — valid at Standard speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u)\n", err_status.w, err_status.f.CMDINVAL);
     if (err_status.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL for valid Standard Bidirectional command\n");

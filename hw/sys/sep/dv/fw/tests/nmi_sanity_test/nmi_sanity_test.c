@@ -45,10 +45,10 @@ void nmi_handler(void) {
     printf("NMI fired successfully!\n");
 
     /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
 
     /* Disable watchdog */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
 
     test_pass(0);
 
@@ -158,21 +158,21 @@ int main(void) {
     printf("Setting up WDT to trigger NMI...\n");
 
     /* Clear WDT count */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_COUNT_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
 
     /* Set bark threshold low for quick trigger, bite high to prevent reset */
     uint32_t bark_threshold = 100;
     uint32_t bite_threshold = 10000;
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_BITE_THOLD_BASE_ADDR, bite_threshold);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, bite_threshold);
 
     printf("WDOG_BARK_THOLD = %u\n", bark_threshold);
     printf("WDOG_BITE_THOLD = %u\n", bite_threshold);
 
     /* Enable watchdog */
     printf("Enabling watchdog to trigger NMI...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_NONE_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
 
     ////////////////////////////////////////////////
     // STEP 9: Wait for NMI

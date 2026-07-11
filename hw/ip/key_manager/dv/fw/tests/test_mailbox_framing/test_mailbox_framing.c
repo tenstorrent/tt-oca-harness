@@ -16,7 +16,7 @@
  * - Part B: KM sends two messages (msg1: 2 words, msg2: 2 words); SEP reads
  *   all 4 words and checks OUTBOUND_SEPARATOR after each read (0,1, 0,1).
  *
- * KM-side register constants come from key_manager_regs.h (PeakRDL-generated
+ * KM-side register constants come from key_manager_fw.h (PeakRDL-generated
  * from key_manager.rdl). SEP-side operations (tb_sep_mbox_write_separator_write,
  * tb_sep_mbox_status_read) use macros from km_mailbox_sep_regs.h.
  *
@@ -29,7 +29,7 @@
 #include "key_manager_addr.h"
 #include "km_mailbox_sep_regs.h"
 
-/* KM-side mailbox register access (addresses and types from key_manager_regs.h) */
+/* KM-side mailbox register access (addresses and types from key_manager_fw.h) */
 #define MBOX_WRITE_DATA_REG \
     (*(volatile km_mailbox_km__write_data_reg_t *)KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR)
 #define MBOX_WRITE_SEPARATOR_REG \

@@ -88,7 +88,7 @@ static void spin_delay(int cycles) {
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR)};
+        aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (s.f.IDLE) return 0;
     }
     printf("ERROR: Timeout waiting for AES idle\n");
@@ -98,7 +98,7 @@ static int wait_for_idle(void) {
 static int wait_for_input_ready(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR)};
+        aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (s.f.INPUT_READY) return 0;
     }
     printf("ERROR: Timeout waiting for AES input ready\n");
@@ -108,7 +108,7 @@ static int wait_for_input_ready(void) {
 static int wait_for_output_valid(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR)};
+        aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (s.f.OUTPUT_VALID) return 0;
     }
     printf("ERROR: Timeout waiting for AES output valid\n");
@@ -118,7 +118,7 @@ static int wait_for_output_valid(void) {
 static int wait_for_output_cleared(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__none__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR)};
+        aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (!s.f.OUTPUT_VALID) return 0;
     }
     printf("ERROR: Timeout waiting for AES output_valid=0\n");
@@ -126,22 +126,22 @@ static int wait_for_output_cleared(void) {
 }
 
 static void print_status(const char *tag) {
-    uint32_t val = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR);
+    uint32_t val = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
     printf("%s: STATUS=0x%08x (idle=%u stall=%u output_lost=%u output_valid=%u input_ready=%u)\n",
            tag, val, (val >> 0) & 1, (val >> 1) & 1, (val >> 2) & 1, (val >> 3) & 1,
            (val >> 4) & 1);
 }
 
 static void write_ctrl_shadowed(uint32_t operation, uint32_t mode, uint32_t manual_operation) {
-    aes__none__CTRL_SHADOWED_t ctrl = {.w = 0};
+    aes__CTRL_SHADOWED_t ctrl = {.w = 0};
     ctrl.f.OPERATION = operation;
     ctrl.f.MODE = mode;
     ctrl.f.KEY_LEN = 0x1; /* AES-128 */
     ctrl.f.SIDELOAD = 0x0;
     ctrl.f.MANUAL_OPERATION = manual_operation;
 
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
 }
 
 static int configure_aes_ecb_enc_auto(const uint32_t iv[4]) {
@@ -149,49 +149,49 @@ static int configure_aes_ecb_enc_auto(const uint32_t iv[4]) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
     }
     for (int i = 4; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
     }
 
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_IV_0_BASE_ADDR(i), iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), iv[i]);
     }
 
     return 0;
 }
 
 static void cleanup_aes(void) {
-    aes__none__TRIGGER_t trigger = {.w = 0};
+    aes__TRIGGER_t trigger = {.w = 0};
 
     write_ctrl_shadowed(0x1, 0x1, 0x1);
 
     trigger.f.KEY_IV_DATA_IN_CLEAR = 1;
     trigger.f.DATA_OUT_CLEAR = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
 }
 
 static void write_data_in(const uint32_t in[4]) {
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_DATA_IN_0_BASE_ADDR(i), in[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_0_BASE_ADDR(i), in[i]);
     }
 }
 
 static void read_data_out(uint32_t out[4]) {
     for (int i = 0; i < 4; i++) {
-        out[i] = READ_REG(OCH_SEP_TOP_AES_NONE_DATA_OUT_0_BASE_ADDR(i));
+        out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_0_BASE_ADDR(i));
     }
 }
 
 static void read_iv(uint32_t iv_out[4]) {
     for (int i = 0; i < 4; i++) {
-        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_NONE_IV_0_BASE_ADDR(i));
+        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i));
     }
 }
 
@@ -207,7 +207,7 @@ static int compare_block(const uint32_t got[4], const uint32_t exp[4], const cha
 }
 
 static int check_alert_status(const char *tag) {
-    uint32_t val = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR);
+    uint32_t val = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
     if (val & (1u << 5)) {
         printf("ERROR: %s: ALERT_RECOV (STATUS=0x%08x)\n", tag, val);
         return -1;
@@ -299,9 +299,9 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     printf("  IV before clear: 0x%08x 0x%08x 0x%08x 0x%08x\n", iv_before[0], iv_before[1],
            iv_before[2], iv_before[3]);
 
-    aes__none__TRIGGER_t trigger = {.w = 0};
+    aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.KEY_IV_DATA_IN_CLEAR = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
     if (wait_for_idle() != 0) return -1;
 
     read_iv(iv_after);
@@ -322,10 +322,10 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
     }
 
     if (wait_for_input_ready() != 0) return -1;
@@ -359,9 +359,9 @@ static int test_data_out_clear(void) {
     if (wait_for_output_valid() != 0) return -1;
     print_status("  Before DATA_OUT_CLEAR");
 
-    aes__none__TRIGGER_t trigger = {.w = 0};
+    aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.DATA_OUT_CLEAR = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
 
     if (wait_for_output_cleared() != 0) return -1;
     read_data_out(out_after_clear);
@@ -403,10 +403,10 @@ static int test_aes_sw_reset_probe(void) {
            baseline_ct[2], baseline_ct[3]);
 
     /* Lock CTRL_AUX_REGWEN so we can verify reset restores it */
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_CTRL_AUX_SHADOWED_BASE_ADDR, 0x00000001);
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_CTRL_AUX_SHADOWED_BASE_ADDR, 0x00000001);
-    WRITE_REG(OCH_SEP_TOP_AES_NONE_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000);
-    regwen_before = READ_REG(OCH_SEP_TOP_AES_NONE_CTRL_AUX_REGWEN_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_AES_CTRL_AUX_SHADOWED_BASE_ADDR, 0x00000001);
+    WRITE_REG(OCH_SEP_TOP_AES_CTRL_AUX_SHADOWED_BASE_ADDR, 0x00000001);
+    WRITE_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000);
+    regwen_before = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
     if ((regwen_before & 0x1) != 0) {
         printf("ERROR: could not lock CTRL_AUX_REGWEN before reset probe\n");
         return -1;
@@ -415,7 +415,7 @@ static int test_aes_sw_reset_probe(void) {
 
     /* Write known IV so we can check it is cleared */
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_IV_0_BASE_ADDR(i), probe_iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), probe_iv[i]);
     }
 
     /* ---- Step 2: Apply software reset ---- */
@@ -429,14 +429,14 @@ static int test_aes_sw_reset_probe(void) {
     /* ---- Step 3: Verify registers return to reset values ---- */
     printf("  Step 3: Verify reset values\n");
 
-    status_after = READ_REG(OCH_SEP_TOP_AES_NONE_STATUS_BASE_ADDR);
+    status_after = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
     printf("  STATUS after reset: 0x%08x (idle=%u)\n", status_after, (status_after >> 0) & 1);
     if (((status_after >> 0) & 1) != 1) {
         printf("ERROR: AES not idle after sw reset\n");
         return -1;
     }
 
-    regwen_after = READ_REG(OCH_SEP_TOP_AES_NONE_CTRL_AUX_REGWEN_BASE_ADDR);
+    regwen_after = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
     printf("  CTRL_AUX_REGWEN after reset: 0x%08x\n", regwen_after);
     if ((regwen_after & 0x1) != 0x1) {
         printf("ERROR: CTRL_AUX_REGWEN not restored after sw reset (got=0x%08x)\n", regwen_after);
@@ -463,10 +463,10 @@ static int test_aes_sw_reset_probe(void) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_NONE_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
     }
 
     if (wait_for_input_ready() != 0) return -1;

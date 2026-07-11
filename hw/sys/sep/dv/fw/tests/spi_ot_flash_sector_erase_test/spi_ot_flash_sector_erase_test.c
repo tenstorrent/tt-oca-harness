@@ -62,13 +62,13 @@ static void configure_spi_mux_ot(void) {
 }
 
 static void init_spi_controller(void) {
-    spi_controller__none__CONTROL_t ctrl;
+    spi_controller__CONTROL_t ctrl;
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    spi_controller__none__CONFIGOPTS_t cfg;
+    spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -76,16 +76,16 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 }
 
 static int wait_for_ready(int timeout) {
-    spi_controller__none__STATUS_t s;
+    spi_controller__STATUS_t s;
     while (timeout-- > 0) {
-        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (s.f.READY) return 0;
     }
     printf("  TIMEOUT waiting for READY\n");
@@ -93,9 +93,9 @@ static int wait_for_ready(int timeout) {
 }
 
 static int wait_for_idle(int timeout) {
-    spi_controller__none__STATUS_t s;
+    spi_controller__STATUS_t s;
     while (timeout-- > 0) {
-        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!s.f.ACTIVE) return 0;
     }
     printf("  TIMEOUT waiting for ACTIVE=0\n");
@@ -104,17 +104,17 @@ static int wait_for_idle(int timeout) {
 
 /* Read Status Register-1 (0x05); returns 0xFF on error/no model */
 static uint8_t flash_read_status(void) {
-    spi_controller__none__COMMAND_t cmd;
+    spi_controller__COMMAND_t cmd;
 
     if (wait_for_ready(TIMEOUT_LIMIT)) return 0xFF;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x00000005);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00000005);
 
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) return 0xFF;
 
@@ -123,28 +123,28 @@ static uint8_t flash_read_status(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) return 0xFF;
 
-    spi_controller__none__STATUS_t s;
-    s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+    spi_controller__STATUS_t s;
+    s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     if (s.f.RXQD >= 1)
-        return (uint8_t)(READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_RXDATA_BASE_ADDR(0)) & 0xFF);
+        return (uint8_t)(READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
     return 0xFF;
 }
 
 /* Issue Write Enable (0x06) */
 static int flash_wren(void) {
-    spi_controller__none__COMMAND_t cmd;
+    spi_controller__COMMAND_t cmd;
     if (wait_for_ready(TIMEOUT_LIMIT)) return -1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), 0x00000006);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00000006);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     return wait_for_idle(TIMEOUT_LIMIT);
 }
 
@@ -186,7 +186,7 @@ int main(void) {
 
     int pass = 1;
     uint32_t i;
-    spi_controller__none__COMMAND_t cmd;
+    spi_controller__COMMAND_t cmd;
 
     configure_spi_mux_ot();
     init_spi_controller();
@@ -209,14 +209,14 @@ int main(void) {
     }
 
     uint32_t pp_hdr = pack_cmd_addr(FLASH_CMD_PP, FLASH_TARGET_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), pp_hdr);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pp_hdr);
 
     cmd.w = 0;
     cmd.f.LEN = 3;
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -226,7 +226,7 @@ int main(void) {
     uint32_t tx_data[WRITE_LEN_BYTES / 4];
     for (i = 0; i < WRITE_LEN_BYTES / 4; i++) {
         tx_data[i] = 0xBE000000 | ((i & 0xFF) << 16);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0), tx_data[i]);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), tx_data[i]);
     }
 
     cmd.w = 0;
@@ -234,7 +234,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -256,7 +256,7 @@ int main(void) {
         pass = 0;
         goto done;
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0),
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
               pack_cmd_addr(FLASH_CMD_READ, FLASH_TARGET_ADDR));
 
     cmd.w = 0;
@@ -264,7 +264,7 @@ int main(void) {
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -276,7 +276,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -285,13 +285,13 @@ int main(void) {
 
     uint32_t pre_erase_fail = 0;
     for (i = 0; i < WRITE_LEN_BYTES / 4; i++) {
-        spi_controller__none__STATUS_t s;
-        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        spi_controller__STATUS_t s;
+        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (s.f.RXEMPTY) {
             pre_erase_fail++;
             continue;
         }
-        uint32_t rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_RXDATA_BASE_ADDR(0));
+        uint32_t rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         int match = (rx == tx_data[i]);
         int nomodel = (rx == 0xFFFFFFFF);
         printf("  [%u] exp=0x%08x got=0x%08x %s\n", i, tx_data[i], rx,
@@ -328,7 +328,7 @@ int main(void) {
         pass = 0;
         goto done;
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0),
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
               pack_cmd_addr(FLASH_CMD_SE, FLASH_TARGET_ADDR));
 
     cmd.w = 0;
@@ -336,7 +336,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -358,7 +358,7 @@ int main(void) {
         pass = 0;
         goto done;
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(0),
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
               pack_cmd_addr(FLASH_CMD_READ, FLASH_TARGET_ADDR));
 
     cmd.w = 0;
@@ -366,7 +366,7 @@ int main(void) {
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -378,7 +378,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -387,14 +387,14 @@ int main(void) {
 
     uint32_t erase_fail = 0;
     for (i = 0; i < WRITE_LEN_BYTES / 4; i++) {
-        spi_controller__none__STATUS_t s;
-        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_STATUS_BASE_ADDR);
+        spi_controller__STATUS_t s;
+        s.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (s.f.RXEMPTY) {
             printf("  [%u] RX FIFO empty (underrun)\n", i);
             erase_fail++;
             continue;
         }
-        uint32_t rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_RXDATA_BASE_ADDR(0));
+        uint32_t rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         int erased = (rx == 0xFFFFFFFF);
         printf("  [%u] got=0x%08x %s\n", i, rx, erased ? "OK(erased)" : "FAIL(not erased)");
         if (!erased) erase_fail++;
@@ -407,8 +407,8 @@ int main(void) {
     }
 
     /* Check controller errors */
-    spi_controller__none__ERROR_STATUS_t err;
-    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR);
+    spi_controller__ERROR_STATUS_t err;
+    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err.f.CMDINVAL || err.f.CSIDINVAL) {
         printf("  FAIL: SPI controller error (cmdinval=%u, csidinval=%u)\n", err.f.CMDINVAL,
                err.f.CSIDINVAL);

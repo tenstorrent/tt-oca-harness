@@ -5,37 +5,34 @@ package spi_controller_addrmap_pkg;
 localparam longint unsigned SPI_CONTROLLER_BASE_ADDR = 64'h0;
 localparam longint unsigned SPI_CONTROLLER_SIZE = 64'h38;
 
-localparam longint unsigned SPI_CONTROLLER_NONE_BASE_ADDR = 64'h0;
-localparam longint unsigned SPI_CONTROLLER_NONE_SIZE = 64'h38;
-
-function automatic longint unsigned SPI_CONTROLLER_NONE_RXDATA_BASE_ADDR(input int unsigned RXDATA_idx);
-    return 64'h24 + (RXDATA_idx * 64'h1);
+function automatic longint unsigned SPI_CONTROLLER_RXDATA_BASE_ADDR(input int unsigned RXDATA_idx);
+    return 64'h24 + (RXDATA_idx * 64'h4);
 endfunction
-localparam longint unsigned SPI_CONTROLLER_NONE_RXDATA_NUM = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_RXDATA_SIZE = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_RXDATA_STRIDE = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_RXDATA_TOTAL_SIZE = 64'h1;
+localparam longint unsigned SPI_CONTROLLER_RXDATA_NUM = 64'h1;
+localparam longint unsigned SPI_CONTROLLER_RXDATA_SIZE = 64'h4;
+localparam longint unsigned SPI_CONTROLLER_RXDATA_STRIDE = 64'h4;
+localparam longint unsigned SPI_CONTROLLER_RXDATA_TOTAL_SIZE = 64'h4;
 
-function automatic longint unsigned SPI_CONTROLLER_NONE_TXDATA_BASE_ADDR(input int unsigned TXDATA_idx);
-    return 64'h28 + (TXDATA_idx * 64'h1);
+function automatic longint unsigned SPI_CONTROLLER_TXDATA_BASE_ADDR(input int unsigned TXDATA_idx);
+    return 64'h28 + (TXDATA_idx * 64'h4);
 endfunction
-localparam longint unsigned SPI_CONTROLLER_NONE_TXDATA_NUM = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_TXDATA_SIZE = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_TXDATA_STRIDE = 64'h1;
-localparam longint unsigned SPI_CONTROLLER_NONE_TXDATA_TOTAL_SIZE = 64'h1;
+localparam longint unsigned SPI_CONTROLLER_TXDATA_NUM = 64'h1;
+localparam longint unsigned SPI_CONTROLLER_TXDATA_SIZE = 64'h4;
+localparam longint unsigned SPI_CONTROLLER_TXDATA_STRIDE = 64'h4;
+localparam longint unsigned SPI_CONTROLLER_TXDATA_TOTAL_SIZE = 64'h4;
 
-localparam longint unsigned SPI_CONTROLLER_NONE_INTR_STATE_BASE_ADDR = 64'h0;
-localparam longint unsigned SPI_CONTROLLER_NONE_INTR_ENABLE_BASE_ADDR = 64'h4;
-localparam longint unsigned SPI_CONTROLLER_NONE_INTR_TEST_BASE_ADDR = 64'h8;
-localparam longint unsigned SPI_CONTROLLER_NONE_ALERT_TEST_BASE_ADDR = 64'hC;
-localparam longint unsigned SPI_CONTROLLER_NONE_CONTROL_BASE_ADDR = 64'h10;
-localparam longint unsigned SPI_CONTROLLER_NONE_STATUS_BASE_ADDR = 64'h14;
-localparam longint unsigned SPI_CONTROLLER_NONE_CONFIGOPTS_BASE_ADDR = 64'h18;
-localparam longint unsigned SPI_CONTROLLER_NONE_CSID_BASE_ADDR = 64'h1C;
-localparam longint unsigned SPI_CONTROLLER_NONE_COMMAND_BASE_ADDR = 64'h20;
-localparam longint unsigned SPI_CONTROLLER_NONE_ERROR_ENABLE_BASE_ADDR = 64'h2C;
-localparam longint unsigned SPI_CONTROLLER_NONE_ERROR_STATUS_BASE_ADDR = 64'h30;
-localparam longint unsigned SPI_CONTROLLER_NONE_EVENT_ENABLE_BASE_ADDR = 64'h34;
+localparam longint unsigned SPI_CONTROLLER_INTR_STATE_BASE_ADDR = 64'h0;
+localparam longint unsigned SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR = 64'h4;
+localparam longint unsigned SPI_CONTROLLER_INTR_TEST_BASE_ADDR = 64'h8;
+localparam longint unsigned SPI_CONTROLLER_ALERT_TEST_BASE_ADDR = 64'hC;
+localparam longint unsigned SPI_CONTROLLER_CONTROL_BASE_ADDR = 64'h10;
+localparam longint unsigned SPI_CONTROLLER_STATUS_BASE_ADDR = 64'h14;
+localparam longint unsigned SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR = 64'h18;
+localparam longint unsigned SPI_CONTROLLER_CSID_BASE_ADDR = 64'h1C;
+localparam longint unsigned SPI_CONTROLLER_COMMAND_BASE_ADDR = 64'h20;
+localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR = 64'h2C;
+localparam longint unsigned SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR = 64'h30;
+localparam longint unsigned SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR = 64'h34;
 
 
 endpackage;

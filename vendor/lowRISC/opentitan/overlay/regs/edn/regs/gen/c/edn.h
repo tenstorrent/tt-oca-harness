@@ -10,15 +10,15 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - edn::none::INTR_STATE
-#define EDN__NONE__INTR_STATE__EDN_CMD_REQ_DONE_bm 0x1
-#define EDN__NONE__INTR_STATE__EDN_CMD_REQ_DONE_bp 0
-#define EDN__NONE__INTR_STATE__EDN_CMD_REQ_DONE_bw 1
-#define EDN__NONE__INTR_STATE__EDN_CMD_REQ_DONE_reset 0x0
-#define EDN__NONE__INTR_STATE__EDN_FATAL_ERR_bm 0x2
-#define EDN__NONE__INTR_STATE__EDN_FATAL_ERR_bp 1
-#define EDN__NONE__INTR_STATE__EDN_FATAL_ERR_bw 1
-#define EDN__NONE__INTR_STATE__EDN_FATAL_ERR_reset 0x0
+// reg - edn::INTR_STATE
+#define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bm 0x1
+#define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bp 0
+#define EDN__INTR_STATE__EDN_CMD_REQ_DONE_bw 1
+#define EDN__INTR_STATE__EDN_CMD_REQ_DONE_reset 0x0
+#define EDN__INTR_STATE__EDN_FATAL_ERR_bm 0x2
+#define EDN__INTR_STATE__EDN_FATAL_ERR_bp 1
+#define EDN__INTR_STATE__EDN_FATAL_ERR_bw 1
+#define EDN__INTR_STATE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EDN_CMD_REQ_DONE :1;
@@ -26,17 +26,17 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} edn__none__INTR_STATE_t;
+} edn__INTR_STATE_t;
 
-// reg - edn::none::INTR_ENABLE
-#define EDN__NONE__INTR_ENABLE__EDN_CMD_REQ_DONE_bm 0x1
-#define EDN__NONE__INTR_ENABLE__EDN_CMD_REQ_DONE_bp 0
-#define EDN__NONE__INTR_ENABLE__EDN_CMD_REQ_DONE_bw 1
-#define EDN__NONE__INTR_ENABLE__EDN_CMD_REQ_DONE_reset 0x0
-#define EDN__NONE__INTR_ENABLE__EDN_FATAL_ERR_bm 0x2
-#define EDN__NONE__INTR_ENABLE__EDN_FATAL_ERR_bp 1
-#define EDN__NONE__INTR_ENABLE__EDN_FATAL_ERR_bw 1
-#define EDN__NONE__INTR_ENABLE__EDN_FATAL_ERR_reset 0x0
+// reg - edn::INTR_ENABLE
+#define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bm 0x1
+#define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bp 0
+#define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_bw 1
+#define EDN__INTR_ENABLE__EDN_CMD_REQ_DONE_reset 0x0
+#define EDN__INTR_ENABLE__EDN_FATAL_ERR_bm 0x2
+#define EDN__INTR_ENABLE__EDN_FATAL_ERR_bp 1
+#define EDN__INTR_ENABLE__EDN_FATAL_ERR_bw 1
+#define EDN__INTR_ENABLE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EDN_CMD_REQ_DONE :1;
@@ -44,17 +44,17 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} edn__none__INTR_ENABLE_t;
+} edn__INTR_ENABLE_t;
 
-// reg - edn::none::INTR_TEST
-#define EDN__NONE__INTR_TEST__EDN_CMD_REQ_DONE_bm 0x1
-#define EDN__NONE__INTR_TEST__EDN_CMD_REQ_DONE_bp 0
-#define EDN__NONE__INTR_TEST__EDN_CMD_REQ_DONE_bw 1
-#define EDN__NONE__INTR_TEST__EDN_CMD_REQ_DONE_reset 0x0
-#define EDN__NONE__INTR_TEST__EDN_FATAL_ERR_bm 0x2
-#define EDN__NONE__INTR_TEST__EDN_FATAL_ERR_bp 1
-#define EDN__NONE__INTR_TEST__EDN_FATAL_ERR_bw 1
-#define EDN__NONE__INTR_TEST__EDN_FATAL_ERR_reset 0x0
+// reg - edn::INTR_TEST
+#define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bm 0x1
+#define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bp 0
+#define EDN__INTR_TEST__EDN_CMD_REQ_DONE_bw 1
+#define EDN__INTR_TEST__EDN_CMD_REQ_DONE_reset 0x0
+#define EDN__INTR_TEST__EDN_FATAL_ERR_bm 0x2
+#define EDN__INTR_TEST__EDN_FATAL_ERR_bp 1
+#define EDN__INTR_TEST__EDN_FATAL_ERR_bw 1
+#define EDN__INTR_TEST__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EDN_CMD_REQ_DONE :1;
@@ -62,17 +62,17 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} edn__none__INTR_TEST_t;
+} edn__INTR_TEST_t;
 
-// reg - edn::none::ALERT_TEST
-#define EDN__NONE__ALERT_TEST__RECOV_ALERT_bm 0x1
-#define EDN__NONE__ALERT_TEST__RECOV_ALERT_bp 0
-#define EDN__NONE__ALERT_TEST__RECOV_ALERT_bw 1
-#define EDN__NONE__ALERT_TEST__RECOV_ALERT_reset 0x0
-#define EDN__NONE__ALERT_TEST__FATAL_ALERT_bm 0x2
-#define EDN__NONE__ALERT_TEST__FATAL_ALERT_bp 1
-#define EDN__NONE__ALERT_TEST__FATAL_ALERT_bw 1
-#define EDN__NONE__ALERT_TEST__FATAL_ALERT_reset 0x0
+// reg - edn::ALERT_TEST
+#define EDN__ALERT_TEST__RECOV_ALERT_bm 0x1
+#define EDN__ALERT_TEST__RECOV_ALERT_bp 0
+#define EDN__ALERT_TEST__RECOV_ALERT_bw 1
+#define EDN__ALERT_TEST__RECOV_ALERT_reset 0x0
+#define EDN__ALERT_TEST__FATAL_ALERT_bm 0x2
+#define EDN__ALERT_TEST__FATAL_ALERT_bp 1
+#define EDN__ALERT_TEST__FATAL_ALERT_bw 1
+#define EDN__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RECOV_ALERT :1;
@@ -80,38 +80,38 @@ typedef union {
         uint32_t :30;
     } f;
     uint32_t w;
-} edn__none__ALERT_TEST_t;
+} edn__ALERT_TEST_t;
 
-// reg - edn::none::REGWEN
-#define EDN__NONE__REGWEN__REGWEN_bm 0x1
-#define EDN__NONE__REGWEN__REGWEN_bp 0
-#define EDN__NONE__REGWEN__REGWEN_bw 1
-#define EDN__NONE__REGWEN__REGWEN_reset 0x1
+// reg - edn::REGWEN
+#define EDN__REGWEN__REGWEN_bm 0x1
+#define EDN__REGWEN__REGWEN_bp 0
+#define EDN__REGWEN__REGWEN_bw 1
+#define EDN__REGWEN__REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t REGWEN :1;
         uint32_t :31;
     } f;
     uint32_t w;
-} edn__none__REGWEN_t;
+} edn__REGWEN_t;
 
-// reg - edn::none::CTRL
-#define EDN__NONE__CTRL__EDN_ENABLE_bm 0xf
-#define EDN__NONE__CTRL__EDN_ENABLE_bp 0
-#define EDN__NONE__CTRL__EDN_ENABLE_bw 4
-#define EDN__NONE__CTRL__EDN_ENABLE_reset 0x9
-#define EDN__NONE__CTRL__BOOT_REQ_MODE_bm 0xf0
-#define EDN__NONE__CTRL__BOOT_REQ_MODE_bp 4
-#define EDN__NONE__CTRL__BOOT_REQ_MODE_bw 4
-#define EDN__NONE__CTRL__BOOT_REQ_MODE_reset 0x9
-#define EDN__NONE__CTRL__AUTO_REQ_MODE_bm 0xf00
-#define EDN__NONE__CTRL__AUTO_REQ_MODE_bp 8
-#define EDN__NONE__CTRL__AUTO_REQ_MODE_bw 4
-#define EDN__NONE__CTRL__AUTO_REQ_MODE_reset 0x9
-#define EDN__NONE__CTRL__CMD_FIFO_RST_bm 0xf000
-#define EDN__NONE__CTRL__CMD_FIFO_RST_bp 12
-#define EDN__NONE__CTRL__CMD_FIFO_RST_bw 4
-#define EDN__NONE__CTRL__CMD_FIFO_RST_reset 0x9
+// reg - edn::CTRL
+#define EDN__CTRL__EDN_ENABLE_bm 0xf
+#define EDN__CTRL__EDN_ENABLE_bp 0
+#define EDN__CTRL__EDN_ENABLE_bw 4
+#define EDN__CTRL__EDN_ENABLE_reset 0x9
+#define EDN__CTRL__BOOT_REQ_MODE_bm 0xf0
+#define EDN__CTRL__BOOT_REQ_MODE_bp 4
+#define EDN__CTRL__BOOT_REQ_MODE_bw 4
+#define EDN__CTRL__BOOT_REQ_MODE_reset 0x9
+#define EDN__CTRL__AUTO_REQ_MODE_bm 0xf00
+#define EDN__CTRL__AUTO_REQ_MODE_bp 8
+#define EDN__CTRL__AUTO_REQ_MODE_bw 4
+#define EDN__CTRL__AUTO_REQ_MODE_reset 0x9
+#define EDN__CTRL__CMD_FIFO_RST_bm 0xf000
+#define EDN__CTRL__CMD_FIFO_RST_bp 12
+#define EDN__CTRL__CMD_FIFO_RST_bw 4
+#define EDN__CTRL__CMD_FIFO_RST_reset 0x9
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EDN_ENABLE :4;
@@ -121,60 +121,60 @@ typedef union {
         uint32_t :16;
     } f;
     uint32_t w;
-} edn__none__CTRL_t;
+} edn__CTRL_t;
 
-// reg - edn::none::BOOT_INS_CMD
-#define EDN__NONE__BOOT_INS_CMD__BOOT_INS_CMD_bm 0xffffffff
-#define EDN__NONE__BOOT_INS_CMD__BOOT_INS_CMD_bp 0
-#define EDN__NONE__BOOT_INS_CMD__BOOT_INS_CMD_bw 32
-#define EDN__NONE__BOOT_INS_CMD__BOOT_INS_CMD_reset 0x901
+// reg - edn::BOOT_INS_CMD
+#define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bm 0xffffffff
+#define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bp 0
+#define EDN__BOOT_INS_CMD__BOOT_INS_CMD_bw 32
+#define EDN__BOOT_INS_CMD__BOOT_INS_CMD_reset 0x901
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BOOT_INS_CMD :32;
     } f;
     uint32_t w;
-} edn__none__BOOT_INS_CMD_t;
+} edn__BOOT_INS_CMD_t;
 
-// reg - edn::none::BOOT_GEN_CMD
-#define EDN__NONE__BOOT_GEN_CMD__BOOT_GEN_CMD_bm 0xffffffff
-#define EDN__NONE__BOOT_GEN_CMD__BOOT_GEN_CMD_bp 0
-#define EDN__NONE__BOOT_GEN_CMD__BOOT_GEN_CMD_bw 32
-#define EDN__NONE__BOOT_GEN_CMD__BOOT_GEN_CMD_reset 0xfff003
+// reg - edn::BOOT_GEN_CMD
+#define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bm 0xffffffff
+#define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bp 0
+#define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_bw 32
+#define EDN__BOOT_GEN_CMD__BOOT_GEN_CMD_reset 0xfff003
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BOOT_GEN_CMD :32;
     } f;
     uint32_t w;
-} edn__none__BOOT_GEN_CMD_t;
+} edn__BOOT_GEN_CMD_t;
 
-// reg - edn::none::SW_CMD_REQ
-#define EDN__NONE__SW_CMD_REQ__SW_CMD_REQ_bm 0xffffffff
-#define EDN__NONE__SW_CMD_REQ__SW_CMD_REQ_bp 0
-#define EDN__NONE__SW_CMD_REQ__SW_CMD_REQ_bw 32
+// reg - edn::SW_CMD_REQ
+#define EDN__SW_CMD_REQ__SW_CMD_REQ_bm 0xffffffff
+#define EDN__SW_CMD_REQ__SW_CMD_REQ_bp 0
+#define EDN__SW_CMD_REQ__SW_CMD_REQ_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SW_CMD_REQ :32;
     } f;
     uint32_t w;
-} edn__none__SW_CMD_REQ_t;
+} edn__SW_CMD_REQ_t;
 
-// reg - edn::none::SW_CMD_STS
-#define EDN__NONE__SW_CMD_STS__CMD_REG_RDY_bm 0x1
-#define EDN__NONE__SW_CMD_STS__CMD_REG_RDY_bp 0
-#define EDN__NONE__SW_CMD_STS__CMD_REG_RDY_bw 1
-#define EDN__NONE__SW_CMD_STS__CMD_REG_RDY_reset 0x0
-#define EDN__NONE__SW_CMD_STS__CMD_RDY_bm 0x2
-#define EDN__NONE__SW_CMD_STS__CMD_RDY_bp 1
-#define EDN__NONE__SW_CMD_STS__CMD_RDY_bw 1
-#define EDN__NONE__SW_CMD_STS__CMD_RDY_reset 0x0
-#define EDN__NONE__SW_CMD_STS__CMD_ACK_bm 0x4
-#define EDN__NONE__SW_CMD_STS__CMD_ACK_bp 2
-#define EDN__NONE__SW_CMD_STS__CMD_ACK_bw 1
-#define EDN__NONE__SW_CMD_STS__CMD_ACK_reset 0x0
-#define EDN__NONE__SW_CMD_STS__CMD_STS_bm 0x38
-#define EDN__NONE__SW_CMD_STS__CMD_STS_bp 3
-#define EDN__NONE__SW_CMD_STS__CMD_STS_bw 3
-#define EDN__NONE__SW_CMD_STS__CMD_STS_reset 0x0
+// reg - edn::SW_CMD_STS
+#define EDN__SW_CMD_STS__CMD_REG_RDY_bm 0x1
+#define EDN__SW_CMD_STS__CMD_REG_RDY_bp 0
+#define EDN__SW_CMD_STS__CMD_REG_RDY_bw 1
+#define EDN__SW_CMD_STS__CMD_REG_RDY_reset 0x0
+#define EDN__SW_CMD_STS__CMD_RDY_bm 0x2
+#define EDN__SW_CMD_STS__CMD_RDY_bp 1
+#define EDN__SW_CMD_STS__CMD_RDY_bw 1
+#define EDN__SW_CMD_STS__CMD_RDY_reset 0x0
+#define EDN__SW_CMD_STS__CMD_ACK_bm 0x4
+#define EDN__SW_CMD_STS__CMD_ACK_bp 2
+#define EDN__SW_CMD_STS__CMD_ACK_bw 1
+#define EDN__SW_CMD_STS__CMD_ACK_reset 0x0
+#define EDN__SW_CMD_STS__CMD_STS_bm 0x38
+#define EDN__SW_CMD_STS__CMD_STS_bp 3
+#define EDN__SW_CMD_STS__CMD_STS_bw 3
+#define EDN__SW_CMD_STS__CMD_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CMD_REG_RDY :1;
@@ -184,29 +184,29 @@ typedef union {
         uint32_t :26;
     } f;
     uint32_t w;
-} edn__none__SW_CMD_STS_t;
+} edn__SW_CMD_STS_t;
 
-// reg - edn::none::HW_CMD_STS
-#define EDN__NONE__HW_CMD_STS__BOOT_MODE_bm 0x1
-#define EDN__NONE__HW_CMD_STS__BOOT_MODE_bp 0
-#define EDN__NONE__HW_CMD_STS__BOOT_MODE_bw 1
-#define EDN__NONE__HW_CMD_STS__BOOT_MODE_reset 0x0
-#define EDN__NONE__HW_CMD_STS__AUTO_MODE_bm 0x2
-#define EDN__NONE__HW_CMD_STS__AUTO_MODE_bp 1
-#define EDN__NONE__HW_CMD_STS__AUTO_MODE_bw 1
-#define EDN__NONE__HW_CMD_STS__AUTO_MODE_reset 0x0
-#define EDN__NONE__HW_CMD_STS__CMD_TYPE_bm 0x3c
-#define EDN__NONE__HW_CMD_STS__CMD_TYPE_bp 2
-#define EDN__NONE__HW_CMD_STS__CMD_TYPE_bw 4
-#define EDN__NONE__HW_CMD_STS__CMD_TYPE_reset 0x0
-#define EDN__NONE__HW_CMD_STS__CMD_ACK_bm 0x40
-#define EDN__NONE__HW_CMD_STS__CMD_ACK_bp 6
-#define EDN__NONE__HW_CMD_STS__CMD_ACK_bw 1
-#define EDN__NONE__HW_CMD_STS__CMD_ACK_reset 0x0
-#define EDN__NONE__HW_CMD_STS__CMD_STS_bm 0x380
-#define EDN__NONE__HW_CMD_STS__CMD_STS_bp 7
-#define EDN__NONE__HW_CMD_STS__CMD_STS_bw 3
-#define EDN__NONE__HW_CMD_STS__CMD_STS_reset 0x0
+// reg - edn::HW_CMD_STS
+#define EDN__HW_CMD_STS__BOOT_MODE_bm 0x1
+#define EDN__HW_CMD_STS__BOOT_MODE_bp 0
+#define EDN__HW_CMD_STS__BOOT_MODE_bw 1
+#define EDN__HW_CMD_STS__BOOT_MODE_reset 0x0
+#define EDN__HW_CMD_STS__AUTO_MODE_bm 0x2
+#define EDN__HW_CMD_STS__AUTO_MODE_bp 1
+#define EDN__HW_CMD_STS__AUTO_MODE_bw 1
+#define EDN__HW_CMD_STS__AUTO_MODE_reset 0x0
+#define EDN__HW_CMD_STS__CMD_TYPE_bm 0x3c
+#define EDN__HW_CMD_STS__CMD_TYPE_bp 2
+#define EDN__HW_CMD_STS__CMD_TYPE_bw 4
+#define EDN__HW_CMD_STS__CMD_TYPE_reset 0x0
+#define EDN__HW_CMD_STS__CMD_ACK_bm 0x40
+#define EDN__HW_CMD_STS__CMD_ACK_bp 6
+#define EDN__HW_CMD_STS__CMD_ACK_bw 1
+#define EDN__HW_CMD_STS__CMD_ACK_reset 0x0
+#define EDN__HW_CMD_STS__CMD_STS_bm 0x380
+#define EDN__HW_CMD_STS__CMD_STS_bp 7
+#define EDN__HW_CMD_STS__CMD_STS_bw 3
+#define EDN__HW_CMD_STS__CMD_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BOOT_MODE :1;
@@ -217,67 +217,67 @@ typedef union {
         uint32_t :22;
     } f;
     uint32_t w;
-} edn__none__HW_CMD_STS_t;
+} edn__HW_CMD_STS_t;
 
-// reg - edn::none::RESEED_CMD
-#define EDN__NONE__RESEED_CMD__RESEED_CMD_bm 0xffffffff
-#define EDN__NONE__RESEED_CMD__RESEED_CMD_bp 0
-#define EDN__NONE__RESEED_CMD__RESEED_CMD_bw 32
+// reg - edn::RESEED_CMD
+#define EDN__RESEED_CMD__RESEED_CMD_bm 0xffffffff
+#define EDN__RESEED_CMD__RESEED_CMD_bp 0
+#define EDN__RESEED_CMD__RESEED_CMD_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RESEED_CMD :32;
     } f;
     uint32_t w;
-} edn__none__RESEED_CMD_t;
+} edn__RESEED_CMD_t;
 
-// reg - edn::none::GENERATE_CMD
-#define EDN__NONE__GENERATE_CMD__GENERATE_CMD_bm 0xffffffff
-#define EDN__NONE__GENERATE_CMD__GENERATE_CMD_bp 0
-#define EDN__NONE__GENERATE_CMD__GENERATE_CMD_bw 32
+// reg - edn::GENERATE_CMD
+#define EDN__GENERATE_CMD__GENERATE_CMD_bm 0xffffffff
+#define EDN__GENERATE_CMD__GENERATE_CMD_bp 0
+#define EDN__GENERATE_CMD__GENERATE_CMD_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENERATE_CMD :32;
     } f;
     uint32_t w;
-} edn__none__GENERATE_CMD_t;
+} edn__GENERATE_CMD_t;
 
-// reg - edn::none::MAX_NUM_REQS_BETWEEN_RESEEDS
-#define EDN__NONE__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bm 0xffffffff
-#define EDN__NONE__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bp 0
-#define EDN__NONE__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bw 32
-#define EDN__NONE__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_reset 0x0
+// reg - edn::MAX_NUM_REQS_BETWEEN_RESEEDS
+#define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bm 0xffffffff
+#define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bp 0
+#define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_bw 32
+#define EDN__MAX_NUM_REQS_BETWEEN_RESEEDS__MAX_NUM_REQS_BETWEEN_RESEEDS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t MAX_NUM_REQS_BETWEEN_RESEEDS :32;
     } f;
     uint32_t w;
-} edn__none__MAX_NUM_REQS_BETWEEN_RESEEDS_t;
+} edn__MAX_NUM_REQS_BETWEEN_RESEEDS_t;
 
-// reg - edn::none::RECOV_ALERT_STS
-#define EDN__NONE__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bm 0x1
-#define EDN__NONE__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bp 0
-#define EDN__NONE__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_reset 0x0
-#define EDN__NONE__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bm 0x2
-#define EDN__NONE__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bp 1
-#define EDN__NONE__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_reset 0x0
-#define EDN__NONE__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bm 0x4
-#define EDN__NONE__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bp 2
-#define EDN__NONE__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_reset 0x0
-#define EDN__NONE__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bm 0x8
-#define EDN__NONE__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bp 3
-#define EDN__NONE__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_reset 0x0
-#define EDN__NONE__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bm 0x1000
-#define EDN__NONE__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bp 12
-#define EDN__NONE__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_reset 0x0
-#define EDN__NONE__RECOV_ALERT_STS__CSRNG_ACK_ERR_bm 0x2000
-#define EDN__NONE__RECOV_ALERT_STS__CSRNG_ACK_ERR_bp 13
-#define EDN__NONE__RECOV_ALERT_STS__CSRNG_ACK_ERR_bw 1
-#define EDN__NONE__RECOV_ALERT_STS__CSRNG_ACK_ERR_reset 0x0
+// reg - edn::RECOV_ALERT_STS
+#define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bm 0x1
+#define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bp 0
+#define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_bw 1
+#define EDN__RECOV_ALERT_STS__EDN_ENABLE_FIELD_ALERT_reset 0x0
+#define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bm 0x2
+#define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bp 1
+#define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_bw 1
+#define EDN__RECOV_ALERT_STS__BOOT_REQ_MODE_FIELD_ALERT_reset 0x0
+#define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bm 0x4
+#define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bp 2
+#define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_bw 1
+#define EDN__RECOV_ALERT_STS__AUTO_REQ_MODE_FIELD_ALERT_reset 0x0
+#define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bm 0x8
+#define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bp 3
+#define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_bw 1
+#define EDN__RECOV_ALERT_STS__CMD_FIFO_RST_FIELD_ALERT_reset 0x0
+#define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bm 0x1000
+#define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bp 12
+#define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_bw 1
+#define EDN__RECOV_ALERT_STS__EDN_BUS_CMP_ALERT_reset 0x0
+#define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bm 0x2000
+#define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bp 13
+#define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_bw 1
+#define EDN__RECOV_ALERT_STS__CSRNG_ACK_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t EDN_ENABLE_FIELD_ALERT :1;
@@ -290,41 +290,41 @@ typedef union {
         uint32_t :18;
     } f;
     uint32_t w;
-} edn__none__RECOV_ALERT_STS_t;
+} edn__RECOV_ALERT_STS_t;
 
-// reg - edn::none::ERR_CODE
-#define EDN__NONE__ERR_CODE__SFIFO_RESCMD_ERR_bm 0x1
-#define EDN__NONE__ERR_CODE__SFIFO_RESCMD_ERR_bp 0
-#define EDN__NONE__ERR_CODE__SFIFO_RESCMD_ERR_bw 1
-#define EDN__NONE__ERR_CODE__SFIFO_RESCMD_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__SFIFO_GENCMD_ERR_bm 0x2
-#define EDN__NONE__ERR_CODE__SFIFO_GENCMD_ERR_bp 1
-#define EDN__NONE__ERR_CODE__SFIFO_GENCMD_ERR_bw 1
-#define EDN__NONE__ERR_CODE__SFIFO_GENCMD_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__EDN_ACK_SM_ERR_bm 0x100000
-#define EDN__NONE__ERR_CODE__EDN_ACK_SM_ERR_bp 20
-#define EDN__NONE__ERR_CODE__EDN_ACK_SM_ERR_bw 1
-#define EDN__NONE__ERR_CODE__EDN_ACK_SM_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__EDN_MAIN_SM_ERR_bm 0x200000
-#define EDN__NONE__ERR_CODE__EDN_MAIN_SM_ERR_bp 21
-#define EDN__NONE__ERR_CODE__EDN_MAIN_SM_ERR_bw 1
-#define EDN__NONE__ERR_CODE__EDN_MAIN_SM_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__EDN_CNTR_ERR_bm 0x400000
-#define EDN__NONE__ERR_CODE__EDN_CNTR_ERR_bp 22
-#define EDN__NONE__ERR_CODE__EDN_CNTR_ERR_bw 1
-#define EDN__NONE__ERR_CODE__EDN_CNTR_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
-#define EDN__NONE__ERR_CODE__FIFO_WRITE_ERR_bp 28
-#define EDN__NONE__ERR_CODE__FIFO_WRITE_ERR_bw 1
-#define EDN__NONE__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
-#define EDN__NONE__ERR_CODE__FIFO_READ_ERR_bp 29
-#define EDN__NONE__ERR_CODE__FIFO_READ_ERR_bw 1
-#define EDN__NONE__ERR_CODE__FIFO_READ_ERR_reset 0x0
-#define EDN__NONE__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
-#define EDN__NONE__ERR_CODE__FIFO_STATE_ERR_bp 30
-#define EDN__NONE__ERR_CODE__FIFO_STATE_ERR_bw 1
-#define EDN__NONE__ERR_CODE__FIFO_STATE_ERR_reset 0x0
+// reg - edn::ERR_CODE
+#define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bm 0x1
+#define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bp 0
+#define EDN__ERR_CODE__SFIFO_RESCMD_ERR_bw 1
+#define EDN__ERR_CODE__SFIFO_RESCMD_ERR_reset 0x0
+#define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bm 0x2
+#define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bp 1
+#define EDN__ERR_CODE__SFIFO_GENCMD_ERR_bw 1
+#define EDN__ERR_CODE__SFIFO_GENCMD_ERR_reset 0x0
+#define EDN__ERR_CODE__EDN_ACK_SM_ERR_bm 0x100000
+#define EDN__ERR_CODE__EDN_ACK_SM_ERR_bp 20
+#define EDN__ERR_CODE__EDN_ACK_SM_ERR_bw 1
+#define EDN__ERR_CODE__EDN_ACK_SM_ERR_reset 0x0
+#define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bm 0x200000
+#define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bp 21
+#define EDN__ERR_CODE__EDN_MAIN_SM_ERR_bw 1
+#define EDN__ERR_CODE__EDN_MAIN_SM_ERR_reset 0x0
+#define EDN__ERR_CODE__EDN_CNTR_ERR_bm 0x400000
+#define EDN__ERR_CODE__EDN_CNTR_ERR_bp 22
+#define EDN__ERR_CODE__EDN_CNTR_ERR_bw 1
+#define EDN__ERR_CODE__EDN_CNTR_ERR_reset 0x0
+#define EDN__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
+#define EDN__ERR_CODE__FIFO_WRITE_ERR_bp 28
+#define EDN__ERR_CODE__FIFO_WRITE_ERR_bw 1
+#define EDN__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
+#define EDN__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
+#define EDN__ERR_CODE__FIFO_READ_ERR_bp 29
+#define EDN__ERR_CODE__FIFO_READ_ERR_bw 1
+#define EDN__ERR_CODE__FIFO_READ_ERR_reset 0x0
+#define EDN__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
+#define EDN__ERR_CODE__FIFO_STATE_ERR_bp 30
+#define EDN__ERR_CODE__FIFO_STATE_ERR_bw 1
+#define EDN__ERR_CODE__FIFO_STATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t SFIFO_RESCMD_ERR :1;
@@ -340,59 +340,54 @@ typedef union {
         uint32_t :1;
     } f;
     uint32_t w;
-} edn__none__ERR_CODE_t;
+} edn__ERR_CODE_t;
 
-// reg - edn::none::ERR_CODE_TEST
-#define EDN__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
-#define EDN__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
-#define EDN__NONE__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
-#define EDN__NONE__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
+// reg - edn::ERR_CODE_TEST
+#define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
+#define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
+#define EDN__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
+#define EDN__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t ERR_CODE_TEST :5;
         uint32_t :27;
     } f;
     uint32_t w;
-} edn__none__ERR_CODE_TEST_t;
+} edn__ERR_CODE_TEST_t;
 
-// reg - edn::none::MAIN_SM_STATE
-#define EDN__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x1ff
-#define EDN__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
-#define EDN__NONE__MAIN_SM_STATE__MAIN_SM_STATE_bw 9
-#define EDN__NONE__MAIN_SM_STATE__MAIN_SM_STATE_reset 0xc1
+// reg - edn::MAIN_SM_STATE
+#define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x1ff
+#define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
+#define EDN__MAIN_SM_STATE__MAIN_SM_STATE_bw 9
+#define EDN__MAIN_SM_STATE__MAIN_SM_STATE_reset 0xc1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t MAIN_SM_STATE :9;
         uint32_t :23;
     } f;
     uint32_t w;
-} edn__none__MAIN_SM_STATE_t;
-
-// addrmap - edn::none
-typedef struct __attribute__ ((__packed__)) {
-    edn__none__INTR_STATE_t INTR_STATE;
-    edn__none__INTR_ENABLE_t INTR_ENABLE;
-    edn__none__INTR_TEST_t INTR_TEST;
-    edn__none__ALERT_TEST_t ALERT_TEST;
-    edn__none__REGWEN_t REGWEN;
-    edn__none__CTRL_t CTRL;
-    edn__none__BOOT_INS_CMD_t BOOT_INS_CMD;
-    edn__none__BOOT_GEN_CMD_t BOOT_GEN_CMD;
-    edn__none__SW_CMD_REQ_t SW_CMD_REQ;
-    edn__none__SW_CMD_STS_t SW_CMD_STS;
-    edn__none__HW_CMD_STS_t HW_CMD_STS;
-    edn__none__RESEED_CMD_t RESEED_CMD;
-    edn__none__GENERATE_CMD_t GENERATE_CMD;
-    edn__none__MAX_NUM_REQS_BETWEEN_RESEEDS_t MAX_NUM_REQS_BETWEEN_RESEEDS;
-    edn__none__RECOV_ALERT_STS_t RECOV_ALERT_STS;
-    edn__none__ERR_CODE_t ERR_CODE;
-    edn__none__ERR_CODE_TEST_t ERR_CODE_TEST;
-    edn__none__MAIN_SM_STATE_t MAIN_SM_STATE;
-} edn__none_t;
+} edn__MAIN_SM_STATE_t;
 
 // addrmap - edn
 typedef struct __attribute__ ((__packed__)) {
-    edn__none_t none;
+    edn__INTR_STATE_t INTR_STATE;
+    edn__INTR_ENABLE_t INTR_ENABLE;
+    edn__INTR_TEST_t INTR_TEST;
+    edn__ALERT_TEST_t ALERT_TEST;
+    edn__REGWEN_t REGWEN;
+    edn__CTRL_t CTRL;
+    edn__BOOT_INS_CMD_t BOOT_INS_CMD;
+    edn__BOOT_GEN_CMD_t BOOT_GEN_CMD;
+    edn__SW_CMD_REQ_t SW_CMD_REQ;
+    edn__SW_CMD_STS_t SW_CMD_STS;
+    edn__HW_CMD_STS_t HW_CMD_STS;
+    edn__RESEED_CMD_t RESEED_CMD;
+    edn__GENERATE_CMD_t GENERATE_CMD;
+    edn__MAX_NUM_REQS_BETWEEN_RESEEDS_t MAX_NUM_REQS_BETWEEN_RESEEDS;
+    edn__RECOV_ALERT_STS_t RECOV_ALERT_STS;
+    edn__ERR_CODE_t ERR_CODE;
+    edn__ERR_CODE_TEST_t ERR_CODE_TEST;
+    edn__MAIN_SM_STATE_t MAIN_SM_STATE;
 } edn_t;
 
 
