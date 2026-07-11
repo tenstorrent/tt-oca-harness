@@ -38,8 +38,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static const uint32_t test_key[4] = {0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC};
@@ -107,8 +106,7 @@ static int test_prefix(void) {
                                            0xDEADBEEF, 0xCAFEBABE, 0x01020304, 0x05060708,
                                            0x090A0B0C, 0x0D0E0F10, 0x11121314};
 
-    for (int i = 0; i < 11; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), test_vals[i]);
+    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), test_vals[i]);
 
     for (int i = 0; i < 11; i++) {
         val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i));

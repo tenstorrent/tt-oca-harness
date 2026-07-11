@@ -59,8 +59,7 @@ static void to_hex(const uint8_t *in, char *out, int len) {
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
-    volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};

@@ -50,8 +50,7 @@ static void fail_and_halt(int code, const char *msg) {
 }
 
 static int otbn_wait_for_idle(void) {
-    printf("[DBG] wait_for_idle: reading STATUS @ 0x%08x\n",
-           OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+    printf("[DBG] wait_for_idle: reading STATUS @ 0x%08x\n", OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
     for (int timeout = OTBN_IDLE_TIMEOUT; timeout > 0; --timeout) {
         uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
         if (timeout == OTBN_IDLE_TIMEOUT) {

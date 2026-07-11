@@ -85,8 +85,7 @@ static int step2_load_imem(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_smoke_imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), (uint32_t)i,
-                       otbn_otbn_smoke_imem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), (uint32_t)i, otbn_otbn_smoke_imem[i]);
     }
     printf("[STEP 2/8] IMEM loaded\n");
     return 0;
@@ -99,8 +98,7 @@ static int step3_load_dmem(void) {
     printf("[STEP 3/8] Loading OTBN DMEM (%zu words + inputs)...\n", otbn_otbn_smoke_dmem_words);
 
     for (size_t i = 0; i < otbn_otbn_smoke_dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), (uint32_t)i,
-                       otbn_otbn_smoke_dmem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), (uint32_t)i, otbn_otbn_smoke_dmem[i]);
     }
 
     /* Verify checksum */

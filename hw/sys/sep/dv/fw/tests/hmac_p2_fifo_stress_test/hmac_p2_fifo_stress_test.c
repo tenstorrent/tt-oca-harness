@@ -69,8 +69,7 @@ static void read_digest_hex(char *hex_out) {
 }
 
 static int stream_message(void) {
-    volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     uint32_t pos = 0;
     uint32_t chunks = 0;
     uint32_t full_waits = 0;

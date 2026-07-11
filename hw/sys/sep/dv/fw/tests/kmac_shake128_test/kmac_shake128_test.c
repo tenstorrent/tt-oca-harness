@@ -48,8 +48,7 @@ static int wait_for_squeeze(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static void read_state(uint32_t *out, int words) {

@@ -62,8 +62,7 @@ static uint32_t swap_bytes_uint32(uint32_t val) {
 static void print_registers() {
     uint32_t regval;
     printf("AES CSRs @ 0x%08x -------------------------------\n", OCH_SEP_TOP_AES_BASE_ADDR);
-    printf("AES_STATUS_REG:                 0x%08x\n",
-           READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR));
+    printf("AES_STATUS_REG:                 0x%08x\n", READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR));
     printf("OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR:     0x%08x\n",
            READ_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR));
     printf("OCH_SEP_TOP_AES_CTRL_AUX_SHADOWED_BASE_ADDR: 0x%08x\n",

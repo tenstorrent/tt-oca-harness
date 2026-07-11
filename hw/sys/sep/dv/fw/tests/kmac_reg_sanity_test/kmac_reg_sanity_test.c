@@ -153,8 +153,7 @@ static int test_entropy_period_rw(void) {
 
     uint32_t test_val = 0xFFFF03FF;
     WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
-    kmac__ENTROPY_PERIOD_t ep = {
-        .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
+    kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
     printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.PRESCALER,
            ep.f.WAIT_TIMER);
 

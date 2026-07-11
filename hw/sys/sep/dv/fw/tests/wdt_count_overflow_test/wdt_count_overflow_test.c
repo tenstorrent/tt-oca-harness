@@ -41,8 +41,7 @@ static volatile int phase = 0; /* 0=wait first bark, 1=done */
 void wdt_nmi_handler(void) {
     nmi_count++;
     uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              0x2); /* W1C immediately (level NMI) */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2); /* W1C immediately (level NMI) */
 
     if (!(state & 0x2)) {
         nmi_errors++;

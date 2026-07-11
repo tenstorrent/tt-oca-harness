@@ -118,8 +118,7 @@ int main(void) {
     /* Step 3.5: INTR_STATUS.error functional verification via UNDERFLOW */
     printf("\nStep 3.5: INTR_STATUS.error via UNDERFLOW\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF); /* clear */
-    dummy_rx =
-        READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
+    dummy_rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
     (void)dummy_rx;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("UNDERFLOW triggered", err_status.f.UNDERFLOW, 1)) pass = 0;

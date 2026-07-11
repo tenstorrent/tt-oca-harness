@@ -61,8 +61,7 @@ static int test_entropy_config(void) {
     }
 
     printf("=== Step 3: Seed entropy ===\n");
-    for (int i = 0; i < 6; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 
     printf("=== Step 4: Configure SHA3-256 with entropy ===\n");
     if (wait_for_idle() != 0) return -1;

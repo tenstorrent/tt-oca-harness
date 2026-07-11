@@ -149,8 +149,7 @@ static inline int configure_aes_full(uint32_t operation, uint32_t mode, uint32_t
 
     for (int i = 0; i < key_words; i++)
         WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), key_share0[i]);
-    for (int i = key_words; i < 8; i++)
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+    for (int i = key_words; i < 8; i++) WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
 
     if (key_share1 != NULL) {
         for (int i = 0; i < 8; i++)

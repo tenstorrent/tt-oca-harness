@@ -43,10 +43,8 @@ int main(void) {
     if (!check_reg("STATUS", READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR), 0x3)) pass = 0;
     if (!check_reg("CFG", READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR), 0u)) pass = 0;
     if (!check_reg("ERR_CODE", READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR), 0x0)) pass = 0;
-    if (!check_reg("INTR_ENABLE", READ_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR), 0x0))
-        pass = 0;
-    if (!check_reg("INTR_STATE", READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR), 0x0))
-        pass = 0;
+    if (!check_reg("INTR_ENABLE", READ_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR), 0x0)) pass = 0;
+    if (!check_reg("INTR_STATE", READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR), 0x0)) pass = 0;
 
     printf("\nStep 2: INTR_ENABLE RW\n");
     if (!check_rw("INTR_ENABLE=0x7", OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x7)) pass = 0;
@@ -77,8 +75,7 @@ int main(void) {
     /* DIGEST registers are HW-driven (hw2reg path always active). SW writes are
      * valid only for context restore before hash_continue, not for simple RW test.
      * Verify the reset default (0x0) is readable. */
-    if (!check_reg("DIGEST_0 default=0", READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(0)),
-                   0x0))
+    if (!check_reg("DIGEST_0 default=0", READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(0)), 0x0))
         pass = 0;
 
     printf("\n========================================\n");

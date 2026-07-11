@@ -157,8 +157,7 @@ int main(void) {
 
     // Set the source address
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR,
-              OCH_SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
 
 // Set the destination address (use high DCCM to avoid BSS overlap)
 // BSS is at low DCCM (~0x80000-0x80FFF), so use 0x82000+
@@ -198,18 +197,13 @@ int main(void) {
 
     // Dump all configuration registers before starting transfer
     printf("\nDMA Configuration before GO:\n");
-    printf("  SRC_ADDR    = 0x%08x%08x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR),
+    printf("  SRC_ADDR    = 0x%08x%08x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR),
            READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR));
-    printf("  DST_ADDR    = 0x%08x%08x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR),
+    printf("  DST_ADDR    = 0x%08x%08x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR),
            READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR));
-    printf("  TOTAL_SIZE  = 0x%x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR));
-    printf("  CHUNK_SIZE  = 0x%x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR));
-    printf("  XFER_WIDTH  = 0x%x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR));
+    printf("  TOTAL_SIZE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR));
+    printf("  CHUNK_SIZE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR));
+    printf("  XFER_WIDTH  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR));
     printf("  ADDR_SPACE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
     printf("  SRC_CONFIG  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
     printf("  DST_CONFIG  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));

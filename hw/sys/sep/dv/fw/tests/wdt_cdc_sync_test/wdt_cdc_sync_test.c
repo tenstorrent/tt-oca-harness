@@ -52,16 +52,16 @@ int main(void) {
     uint32_t test_vals[] = {0x00000001, 0x0000FFFF, 0x12345678, 0xFFFFFFFF, 0x00001000};
     for (int i = 0; i < 5; i++) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i]);
-        errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i],
-                            "BARK_THOLD");
+        errors +=
+            check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, test_vals[i], "BARK_THOLD");
     }
 
     /* STEP 2: WDOG_BITE_THOLD write/readback */
     printf("\n// STEP 2: WDOG_BITE_THOLD R/W consistency\n");
     for (int i = 0; i < 5; i++) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i]);
-        errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i],
-                            "BITE_THOLD");
+        errors +=
+            check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, test_vals[i], "BITE_THOLD");
     }
 
     /* STEP 3: WDOG_CTRL write/readback */

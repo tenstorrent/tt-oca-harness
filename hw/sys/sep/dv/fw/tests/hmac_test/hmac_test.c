@@ -103,8 +103,7 @@ static int stage_config(void) {
 static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
     printf("[Stage 3] Feed %u bytes into MSG FIFO\n", len);
 
-    volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
 
     for (uint32_t i = 0; i < len; i++) {
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};

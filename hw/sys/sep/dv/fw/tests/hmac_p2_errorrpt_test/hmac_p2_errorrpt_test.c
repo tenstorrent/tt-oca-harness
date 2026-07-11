@@ -130,8 +130,7 @@ static int test_push_when_sha_disabled(void) {
     cfg.f.SHA_EN = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    volatile uint8_t *fifo8 =
-        (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
     *fifo8 = 0xa5;
 
     if (expect_hmac_error("ERR_CODE push while sha_en=0", 0x5) != 0) {

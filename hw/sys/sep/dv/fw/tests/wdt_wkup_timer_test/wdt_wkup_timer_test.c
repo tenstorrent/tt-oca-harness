@@ -61,8 +61,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WKUP_THOLD_LO_VAL);
 
     /* prescaler=0 and enable */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR,
-              WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
 
     /* STEP 2: Poll for wkup_timer_expired (INTR_STATE[0]) */
     printf("// STEP 2: Poll INTR_STATE[0] for wkup_timer_expired\n");
@@ -130,8 +129,7 @@ int main(void) {
     /* Reset count to 0 */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_LO_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_COUNT_HI_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR,
-              WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WKUP_CTRL_ENABLE | WKUP_CTRL_PRESCALER(0));
 
     for (volatile int i = 0; i < 10000; i++) {
         __asm__ volatile("nop");
@@ -152,8 +150,7 @@ int main(void) {
     printf("\n// STEP 6: INTR_TEST[0] injection (wkup_timer_expired)\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear residual */
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              INTR_STATE_WKUP_BIT); /* inject wkup */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, INTR_STATE_WKUP_BIT); /* inject wkup */
     for (volatile int i = 0; i < 200; i++) {
         __asm__ volatile("nop");
     }

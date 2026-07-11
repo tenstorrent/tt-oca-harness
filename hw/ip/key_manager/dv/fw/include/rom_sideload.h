@@ -152,7 +152,8 @@ int rom_otbn_write_key(const uint32_t *key, uint8_t key_len, rom_km_prng_state_t
 
 /** @brief ABR MLDSA_SEED key control register (volatile). */
 #define ROM_ABR_MLDSA_SEED_KEY_CTRL_REG \
-    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *)KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_KEY_CTRL_BASE_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLDSA_SEED_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLDSA_SEED key valid bit. */
 void rom_abr_mldsa_seed_key_valid_clear(void);
@@ -184,7 +185,8 @@ int rom_abr_mldsa_seed_write_key(const uint32_t *key, uint8_t key_len, rom_km_pr
 
 /** @brief ABR MLKEM_SEED_D key control register (volatile). */
 #define ROM_ABR_MLKEM_SEED_D_KEY_CTRL_REG \
-    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *)KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_KEY_CTRL_BASE_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_D_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_SEED_D key valid bit. */
 void rom_abr_mlkem_seed_d_key_valid_clear(void);
@@ -216,7 +218,8 @@ int rom_abr_mlkem_seed_d_write_key(const uint32_t *key, uint8_t key_len, rom_km_
 
 /** @brief ABR MLKEM_SEED_Z key control register (volatile). */
 #define ROM_ABR_MLKEM_SEED_Z_KEY_CTRL_REG \
-    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *)KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_KEY_CTRL_BASE_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_SEED_Z_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_SEED_Z key valid bit. */
 void rom_abr_mlkem_seed_z_key_valid_clear(void);
@@ -248,7 +251,8 @@ int rom_abr_mlkem_seed_z_write_key(const uint32_t *key, uint8_t key_len, rom_km_
 
 /** @brief ABR MLKEM_MSG key control register (volatile). */
 #define ROM_ABR_MLKEM_MSG_KEY_CTRL_REG \
-    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *)KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_KEY_CTRL_BASE_ADDR)
+    (*(volatile abr_wrapper_key__seed_ctrl_reg_t *) \
+         KEY_MANAGER_ABR_WRAPPER_KEY_MLKEM_MSG_KEY_CTRL_BASE_ADDR)
 
 /** @brief Clear the MLKEM_MSG key valid bit. */
 void rom_abr_mlkem_msg_key_valid_clear(void);

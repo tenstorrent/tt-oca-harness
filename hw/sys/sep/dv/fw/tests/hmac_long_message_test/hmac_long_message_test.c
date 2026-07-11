@@ -125,8 +125,7 @@ static int test_long_message_sha256(void) {
 
     // Set message length in bits
     uint64_t msg_len_bits = total_bytes * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR,
-              (uint32_t)(msg_len_bits & 0xFFFFFFFF));
+    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
     WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
     printf("  Message length: %llu bits\n", msg_len_bits);
 
@@ -188,8 +187,7 @@ static int test_very_long_message(void) {
 
     // Set message length in bits
     uint64_t msg_len_bits = total_bytes * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR,
-              (uint32_t)(msg_len_bits & 0xFFFFFFFF));
+    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
     WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
     printf("  Message length: %llu bits\n", msg_len_bits);
 
