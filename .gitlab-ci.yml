@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+stages:
+  - init
+  - nonfree
+
+init:
+  stage: init
+  script:
+    - make ocah-nonfree-init
+      OCAH_NONFREE_REMOTE="https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
+  artifacts:
+    paths:
+      - nonfree/ci.yml
+
+# TODO: re-enable once nonfree CI is enabled
+# nonfree:
+#   stage: nonfree
+#   needs: [ init ]
+#   trigger:
+#     include:
+#       - artifact: nonfree/ci.yml
+#         job: init
+#     strategy: depend
