@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rdlview import compile_root, first_addrmap_name, write_html  # noqa: E402
+from common.rdlview import compile_root, first_addrmap_name, write_html  # noqa: E402
 
 
 def main():
