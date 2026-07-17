@@ -36,7 +36,7 @@ ocah-regen-regs-addrpkg: $(OCAH_REGEN_REG_ADDRPKG)
 .PHONY: ocah-regen-regs-svh
 ocah-regen-regs-svh: $(OCAH_REGEN_REG_SVH)
 
-## Regenerate flat Python address constants for OCAH register blocks.
+## Regenerate Python register headers for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-py
 ocah-regen-regs-py: $(OCAH_REGEN_REG_PY)

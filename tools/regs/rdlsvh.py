@@ -13,44 +13,31 @@ typedefs.
 import argparse
 import os
 import sys
+from pathlib import Path
 
-from systemrdl import RDLCompiler, RDLCompileError, RDLListener, RDLWalker
-from systemrdl.node import AddressableNode, MemNode, SignalNode
+from systemrdl import RDLCompiler, RDLCompileError, RDLWalker
+from systemrdl.node import AddressableNode, MemNode
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common.regcollect import FieldCollector, build_struct_fields, compute_default  # noqa: E402
 
 SCRIPT_VERSION = "r2025-06-03"
 BAR = "//=============================================================================="
 
 
-class SvhListener(RDLListener):
+class SvhListener(FieldCollector):
     def __init__(self, root, args):
-        self.root = root
-        self.target_addr_map = args.addrmap
-        self.shorten_names = args.shorten_names
+        super().__init__(root, args.addrmap, args.shorten_names)
         self.add_total_struct = args.add_total_struct
         self.addr_width = int(args.addr_width)
         self.input_file = args.input_rdl_file
 
-        self.under_target = False
         self.header_text = ""
         self.addr_text = ""
         self.struct_text = ""
         self.bitfield_text = ""
         self.default_text = ""
         self.footer_text = ""
-        # reg type name -> (raw_absolute_address, regwidth, [field tuples])
-        self.regs = {}
-        # reg instance name -> [array_dimensions, regwidth, type name, address]
-        self.reg_inst_count = {}
-        self.curr_reg_fields = []
-
-    def path_minus_root(self, node):
-        elems = node.get_path(array_suffix="_{index:d}_").split(".")[1:]
-        return "_".join(elems)
-
-    def def_name(self, node):
-        if self.shorten_names:
-            return node.get_path_segment(array_suffix="_{index:d}_").upper()
-        return self.path_minus_root(node).upper()
 
     def localparam(self, name, value):
         decl = f"localparam {'long' if self.addr_width > 32 else ''}int unsigned {name}"
@@ -61,6 +48,7 @@ class SvhListener(RDLListener):
         return f"\n\n{BAR}\n// {title}\n{BAR}\n\n"
 
     def enter_Addrmap(self, node):
+        super().enter_Addrmap(node)
         name = node.get_path_segment()
         if self.shorten_names or node.parent == self.root:
             def_name = node.get_path_segment(array_suffix="_{index:d}_").upper() \
@@ -69,8 +57,6 @@ class SvhListener(RDLListener):
             def_name = self.def_name(node)
 
         if node.parent == self.root:
-            if self.target_addr_map is None:
-                self.target_addr_map = name
             header_def = self.target_addr_map.upper()
             self.header_text += f"""\
 /*******************************************************************************
@@ -96,15 +82,11 @@ class SvhListener(RDLListener):
             )
             self.footer_text += "\n`endif\n"
 
-        if name == self.target_addr_map:
-            self.under_target = True
-
         if not self.under_target:
             return
 
         if node.parent == self.root:
-            # The SystemRDL spec gives a top-level addrmap base address zero;
-            # use the lowest child address instead, which is more useful.
+            # Top-level addrmap base is 0 in the spec; use the lowest child address.
             base = min(
                 (c.absolute_address for c in node.children(unroll=True)
                  if isinstance(c, AddressableNode)),
@@ -120,14 +102,6 @@ class SvhListener(RDLListener):
         self.addr_text += self.localparam(def_name + "_REG_MAP_SIZE", size) + "\n\n"
         self.struct_text += "\n\n\n"
 
-    def exit_Addrmap(self, node):
-        if node.get_path_segment() == self.target_addr_map:
-            self.under_target = False
-            # Sort by address in preparation for the total struct.
-            self.reg_inst_count = dict(
-                sorted(self.reg_inst_count.items(), key=lambda item: item[1][3])
-            )
-
     def enter_Regfile(self, node):
         if self.under_target:
             self.addr_text += self.section(f"Register File: {node.get_path_segment()}")
@@ -141,6 +115,7 @@ class SvhListener(RDLListener):
             self.addr_text += self.localparam(self.def_name(node) + "_MEM_SIZE", node.size) + "\n"
 
     def enter_Reg(self, node):
+        super().enter_Reg(node)
         if not self.under_target:
             return
         if self.shorten_names:
@@ -152,77 +127,17 @@ class SvhListener(RDLListener):
         else:
             fullname = self.path_minus_root(node).upper()
 
-        self.curr_reg_fields = []
-
         # No address constants for registers inside a memory array.
         if not (node.is_array and isinstance(node.parent, MemNode)):
             self.addr_text += self.localparam(fullname + "_REG_OFFSET", node.address_offset)
             self.addr_text += self.localparam(fullname + "_REG_ADDR", node.absolute_address)
 
-    def exit_Reg(self, node):
-        if not self.under_target:
-            return
-        parent = node.parent
-
-        # Strip systemrdl's "_ispresent_t" decoration; prefer orig_type_name
-        # because type_name grows a hash suffix when fields have
-        # dynamically-assigned properties.
-        fullname = parent.type_name.removesuffix("_ispresent_t").upper()
-        if node.orig_type_name is None:
-            fullname += "_" + node.type_name
-        else:
-            fullname += "_" + node.orig_type_name.upper()
-
-        # Registers below the target addrmap get the parent name prepended to
-        # avoid instance-name collisions. Arrays drop the index suffix here.
-        if parent.get_path_segment().lower() == self.target_addr_map.lower():
-            inst_name = node.get_path_segment(array_suffix="").upper()
-        else:
-            inst_name = (
-                parent.get_path_segment(array_suffix="_{index:d}_").upper()
-                + "_"
-                + node.get_path_segment(array_suffix="").upper()
-            )
-
-        first_in_array = node.is_array and all(i == 0 for i in node.current_idx)
-        if not node.is_array or first_in_array:
-            self.reg_inst_count[inst_name] = [
-                node.array_dimensions if node.is_array else None,
-                node.get_property("regwidth"),
-                fullname,
-                node.absolute_address,
-            ]
-
-        self.curr_reg_fields = sorted(self.curr_reg_fields, key=lambda f: f[2])
-
-        # A register type seen twice must have identical fields (reset values
-        # may differ).
-        if fullname in self.regs and self.regs[fullname][2] != self.curr_reg_fields:
-            for i, field in enumerate(self.regs[fullname][2]):
-                if any(field[k] != self.curr_reg_fields[i][k] for k in (0, 1, 2, 4)):
-                    raise ValueError(f"ERROR: register '{fullname}' already exists")
-
-        self.regs[fullname] = (
-            node.raw_absolute_address,
-            node.get_property("regwidth"),
-            self.curr_reg_fields,
-        )
-
-    def enter_Field(self, node):
-        if self.under_target:
-            reset = node.get_property("reset")
-            self.curr_reg_fields.append((
-                node.get_path_segment(array_suffix="_{index:d}_"),
-                node.high,
-                node.low,
-                0 if reset is None else reset,
-                node.get_property("sw").name,
-            ))
-
     def process_fields(self):
         self.struct_text += "\n"
 
-        for reg_name, (_, reg_width, fields) in self.regs.items():
+        for reg_name, reg in self.regs.items():
+            reg_width = reg.regwidth
+            fields = reg.fields
             mask_type = {
                 8: "byte unsigned",
                 16: "shortint unsigned",
@@ -231,23 +146,17 @@ class SvhListener(RDLListener):
             }.get(reg_width, f"bit [{reg_width - 1}:0]")
             type_width = max(len(mask_type), len("int unsigned"))
 
-            struct_fields = []
-            bit_idx = 0
-            rsvd_count = 0
-            for name, high, low, _reset, _sw in fields:
-                if bit_idx < low:
-                    struct_fields.append(f"    logic [{low - bit_idx - 1}:0]   rsvd_{rsvd_count} ;\n")
-                    bit_idx += low - bit_idx
-                    rsvd_count += 1
-                struct_fields.append(f"    logic [{high - low}:0]   {name.lower()} ;\n")
-                bit_idx += high - low + 1
-
+            for f in fields:
                 max_mask = 2**reg_width - 1
-                mask = (max_mask << low) & ~(max_mask << (high + 1))
-                mask_decl = f"localparam {mask_type:>{type_width}} {reg_name}_{name.upper()}_MASK"
-                shift_decl = f"localparam {'int unsigned':>{type_width}} {reg_name}_{name.upper()}_SHIFT"
+                mask = (max_mask << f.low) & ~(max_mask << (f.high + 1))
+                mask_decl = f"localparam {mask_type:>{type_width}} {reg_name}_{f.name.upper()}_MASK"
+                shift_decl = f"localparam {'int unsigned':>{type_width}} {reg_name}_{f.name.upper()}_SHIFT"
                 self.bitfield_text += f"{mask_decl:110}    = {reg_width}'h{mask:X};\n"
-                self.bitfield_text += f"{shift_decl:110}    = {low};\n\n"
+                self.bitfield_text += f"{shift_decl:110}    = {f.low};\n\n"
+
+            struct_fields = [
+                f"    logic [{width - 1}:0]   {name} ;\n" for name, width in build_struct_fields(fields)
+            ]
 
             self.struct_text += "typedef struct packed {\n"
             self.struct_text += "".join(reversed(struct_fields))
@@ -255,12 +164,12 @@ class SvhListener(RDLListener):
 
         if self.add_total_struct:
             rows = []
-            for inst, (dims, _width, reg_type, _addr) in self.reg_inst_count.items():
-                if dims:
-                    vec = "".join(f"[{d - 1}:0]" for d in dims)
-                    rows.append(f"    {reg_type.lower()}_reg_t {vec} {inst.lower()};\n")
+            for inst, reginst in self.reg_inst_count.items():
+                if reginst.dims:
+                    vec = "".join(f"[{d - 1}:0]" for d in reginst.dims)
+                    rows.append(f"    {reginst.type_name.lower()}_reg_t {vec} {inst.lower()};\n")
                 else:
-                    rows.append(f"    {reg_type.lower()}_reg_t {inst.lower()};\n")
+                    rows.append(f"    {reginst.type_name.lower()}_reg_t {inst.lower()};\n")
             self.struct_text += "typedef struct packed {\n"
             self.struct_text += "".join(reversed(rows))
             self.struct_text += f"}} {self.target_addr_map}_regmap_t;\n"
@@ -268,18 +177,13 @@ class SvhListener(RDLListener):
     def process_defaults(self):
         self.default_text += self.section("Default values for registers")
 
-        for reg_name, (_, reg_width, fields) in self.regs.items():
-            # Registers wider than 64 bits have no standard SV integral type.
-            if reg_width > 64:
+        for reg_name, reg in self.regs.items():
+            if reg.regwidth > 64:
                 continue
-            reg_reset = 0
-            for _name, _high, low, reset, _sw in fields:
-                if isinstance(reset, SignalNode):
-                    reset = 0
-                reg_reset |= reset << low
+            reg_reset = compute_default(reg.fields)
             decl = f"localparam longint unsigned {reg_name}_REG_DEFAULT"
-            width_str = "32" if reg_width <= 32 else "64"
-            digits = -(reg_width // -4)
+            width_str = "32" if reg.regwidth <= 32 else "64"
+            digits = -(reg.regwidth // -4)
             self.default_text += f"{decl:110}    = {width_str}'h{reg_reset:0{digits}X};\n"
 
 
