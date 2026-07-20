@@ -4,7 +4,9 @@
 ifndef ocah_mk
 ocah_mk := 1
 
-OCAH_ROOT ?= $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+ifndef OCAH_ROOT
+OCAH_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+endif
 UV ?= uv
 
 OCAH_PHONY ?=

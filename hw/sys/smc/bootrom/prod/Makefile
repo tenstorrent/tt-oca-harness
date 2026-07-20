@@ -1,0 +1,361 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC Production ROM - Standalone Makefile
+# Self-contained build; does not include the shared compile.mk engine.
+#
+# Usage:
+#   make                         # release build (default)
+#   make BUILD_TYPE=debug        # debug build
+#   make RISCV_TOOLCHAIN=/path/to/bin   # explicit toolchain override
+#
+# Requires: riscv64-unknown-elf-gcc (and friends) on PATH, or RISCV_TOOLCHAIN set.
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+PROJECT_NAME := smc_prod_rom
+VERSION      := 1.0.0
+
+BUILD_TYPE ?= release
+TARGET     ?= prod_rom
+CHIP_ARCH  ?= smc
+# Set to 1 to enable simputs() debug prints in a release build
+ENABLE_RELEASE_PRINTS ?= 0
+
+EXEMEM := ROM
+CONFIG := smc
+
+# =============================================================================
+# TOOLCHAIN CONFIGURATION
+# =============================================================================
+
+# RISCV_TOOLCHAIN may be set externally (env var or make argument) to the
+# *directory* containing the toolchain binaries.  When empty the tools are
+# resolved from PATH, matching the convention used by hw/common/dv/fw/compile.mk
+# and hw/common/dv/fw/toolchain.mk.
+RISCV_TOOLCHAIN ?=
+
+ifneq ($(RISCV_TOOLCHAIN),)
+  _TC_PREFIX := $(RISCV_TOOLCHAIN)/
+else
+  _TC_PREFIX :=
+endif
+
+GCC  := $(_TC_PREFIX)riscv64-unknown-elf-gcc
+CXX  := $(_TC_PREFIX)riscv64-unknown-elf-g++
+OC   := $(_TC_PREFIX)riscv64-unknown-elf-objcopy
+OD   := $(_TC_PREFIX)riscv64-unknown-elf-objdump
+SIZE := $(_TC_PREFIX)riscv64-unknown-elf-size
+NM   := $(_TC_PREFIX)riscv64-unknown-elf-nm
+
+# Architecture / ABI – same as hw/sys/smc/dv/fw/toolchain.mk
+ARCH      := rv64imafdczicsr_zba_zbb_zbc_zbs_zifencei_zihpm
+ABI       := lp64d
+ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
+
+# =============================================================================
+# DIRECTORY STRUCTURE
+# =============================================================================
+
+SRC_DIR    := src
+INCLUDE_DIR := include
+DRIVERS_DIR := drivers
+LIB_DIR    := lib
+BOOT_DIR   := boot
+LINKER_DIR := linker
+REG_DIR    := registers
+SCRIPTS_DIR := scripts
+
+BUILD_DIR  := build
+OUT_DIR    := $(BUILD_DIR)/$(BUILD_TYPE)
+OBJ_DIR    := $(OUT_DIR)/obj
+BIN_DIR    := $(OUT_DIR)/bin
+HEX_DIR    := $(OUT_DIR)/hex
+DISASM_DIR := $(OUT_DIR)/disasm
+
+# =============================================================================
+# COMPILER FLAGS
+# =============================================================================
+
+ifeq ($(BUILD_TYPE),debug)
+    OPTIMIZE    := -O0 -g3 -DDEBUG=1
+    DEBUG_FLAGS := -ggdb3 -gdwarf-4
+else ifeq ($(BUILD_TYPE),release)
+    OPTIMIZE    := -Os -flto -fno-plt -fno-jump-tables -mtune=rocket \
+                   -fno-math-errno -mstrict-align
+    DEBUG_FLAGS := -g1
+    ifeq ($(ENABLE_RELEASE_PRINTS),1)
+        OPTIMIZE += -DDEBUG=1
+    else
+        OPTIMIZE += -DNDEBUG=1
+    endif
+else
+    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
+endif
+
+WARNINGS := -Wall -Wextra -Werror \
+            -Wstrict-prototypes \
+            -Wno-address-of-packed-member \
+            -Wno-missing-braces \
+            -Wno-unused-parameter \
+            -Wno-unused-variable
+
+PICOLIBC_SPECS ?= picolibc.specs
+
+CFLAGS := \
+    -std=gnu17 \
+    $(OPTIMIZE) \
+    $(DEBUG_FLAGS) \
+    $(WARNINGS) \
+    $(ARCHFLAGS) \
+    -ffunction-sections \
+    -fdata-sections \
+    -fno-common \
+    -fmerge-all-constants \
+    -fno-builtin \
+    -mcmodel=medany \
+    -mstrict-align \
+    --specs=$(PICOLIBC_SPECS)
+
+CXXFLAGS := \
+    $(CFLAGS) \
+    -std=gnu++17 \
+    -fno-rtti \
+    -fno-exceptions \
+    -fno-unwind-tables \
+    -fno-threadsafe-statics \
+    -fno-use-cxa-atexit \
+    -fno-weak
+
+LINKER_SCRIPT := $(LINKER_DIR)/$(CHIP_ARCH)/smc_rom.ld
+
+LDFLAGS := \
+    $(OPTIMIZE) \
+    $(ARCHFLAGS) \
+    -Wl,--gc-sections \
+    -Wl,-Map=$(OUT_DIR)/$(TARGET).map \
+    -Wl,--print-memory-usage \
+    -Wl,--as-needed \
+    -Wl,--defsym=__stack_size=4K \
+    -Wl,--defsym=__heap_size=2K \
+    -Wl,--no-relax \
+    -nostartfiles \
+    --specs=$(PICOLIBC_SPECS) \
+    -T $(LINKER_SCRIPT)
+
+LIBFLAGS := \
+    -lgcc \
+    -Wl,--start-group \
+    -Wl,--end-group
+
+INCLUDES := \
+    -I$(SRC_DIR) \
+    -I$(INCLUDE_DIR) \
+    -I$(DRIVERS_DIR)/include \
+    -I$(LIB_DIR)/include \
+    -I$(LINKER_DIR) \
+    -I$(LINKER_DIR)/$(CHIP_ARCH) \
+    -I$(REG_DIR)
+
+EXTRA_DEFINES ?=
+
+DEFINES := \
+    -DPROJECT_NAME=\"$(PROJECT_NAME)\" \
+    -DVERSION=\"$(VERSION)\" \
+    -DTARGET_$(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]') \
+    -DCHIP_$(shell echo $(CHIP_ARCH) | tr '[:lower:]' '[:upper:]') \
+    -DEXEMEM_ROM \
+    -DCFG_$(shell echo $(CONFIG) | tr '[:lower:]' '[:upper:]') \
+    $(EXTRA_DEFINES)
+
+ifeq ($(BUILD_TYPE),debug)
+    DEFINES += -DDEBUG=1 -DCFP_DBG_MSG=1
+else ifeq ($(BUILD_TYPE),release)
+    ifeq ($(ENABLE_RELEASE_PRINTS),1)
+        DEFINES += -DDEBUG=1
+    endif
+endif
+
+# =============================================================================
+# SOURCE FILES
+# =============================================================================
+
+MAIN_SOURCES   := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.cpp)
+MAIN_ASM       := $(wildcard $(SRC_DIR)/*.S)
+LIB_SOURCES    := $(wildcard $(LIB_DIR)/src/*.c)
+BOOT_ASM       := $(wildcard $(BOOT_DIR)/*.S)
+DRIVER_SOURCES := $(wildcard $(DRIVERS_DIR)/src/*.c)
+
+ALL_C_SOURCES   := $(MAIN_SOURCES) $(LIB_SOURCES) $(DRIVER_SOURCES)
+ALL_ASM_SOURCES := $(MAIN_ASM) $(BOOT_ASM)
+
+MAIN_OBJS      := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/src/%.o,$(filter %.c,$(MAIN_SOURCES)))
+MAIN_OBJS      += $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/src/%.o,$(filter %.cpp,$(MAIN_SOURCES)))
+MAIN_ASM_OBJS  := $(patsubst $(SRC_DIR)/%.S,$(OBJ_DIR)/src/%.o,$(MAIN_ASM))
+LIB_OBJS       := $(patsubst $(LIB_DIR)/src/%.c,$(OBJ_DIR)/lib/%.o,$(LIB_SOURCES))
+BOOT_ASM_OBJS  := $(patsubst $(BOOT_DIR)/%.S,$(OBJ_DIR)/boot/%.o,$(BOOT_ASM))
+DRIVER_OBJS    := $(patsubst $(DRIVERS_DIR)/src/%.c,$(OBJ_DIR)/drivers/%.o,$(DRIVER_SOURCES))
+
+ALL_OBJS := $(MAIN_OBJS) $(MAIN_ASM_OBJS) $(LIB_OBJS) $(BOOT_ASM_OBJS) $(DRIVER_OBJS)
+
+# Nonfree driver sources hook.
+NONFREE_DRIVER_SOURCES ?=
+NONFREE_DRIVER_OBJS   := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
+                            $(notdir $(NONFREE_DRIVER_SOURCES)))
+ALL_OBJS += $(NONFREE_DRIVER_OBJS)
+
+ELF_FILE         := $(BIN_DIR)/$(TARGET).elf
+BIN_FILE         := $(BIN_DIR)/$(TARGET).bin
+HEX_FILE         := $(HEX_DIR)/$(TARGET).hex
+PRELOAD_HEX_FILE := $(HEX_DIR)/$(TARGET).preload.hex
+ECC_HEX_FILE     := $(HEX_DIR)/$(TARGET).ecc.hex
+BIN64_FILE       := $(HEX_DIR)/$(TARGET).bin64
+MAP_FILE         := $(OUT_DIR)/$(TARGET).map
+DISASM_FILE      := $(DISASM_DIR)/$(TARGET).dis
+
+# =============================================================================
+# BUILD RULES
+# =============================================================================
+
+.PHONY: all
+all: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) $(PRELOAD_HEX_FILE) \
+     $(ECC_HEX_FILE) $(BIN64_FILE) $(DISASM_FILE) size
+
+.PHONY: info
+info:
+	@echo "=========================================="
+	@echo "SMC Production ROM Build"
+	@echo "=========================================="
+	@echo "Project:    $(PROJECT_NAME) v$(VERSION)"
+	@echo "Target:     $(TARGET)"
+	@echo "Chip:       $(CHIP_ARCH)"
+	@echo "Build Type: $(BUILD_TYPE)"
+	@echo "Toolchain:  $(if $(RISCV_TOOLCHAIN),$(RISCV_TOOLCHAIN),(from PATH))"
+	@echo "Output:     $(OUT_DIR)"
+	@echo "=========================================="
+
+$(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
+	@mkdir -p $@
+
+$(BIN_DIR) $(HEX_DIR) $(DISASM_DIR):
+	@mkdir -p $@
+
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)/src
+	@echo "CC  $<"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)/src
+	@echo "CXX $<"
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.S | $(OBJ_DIR)/src
+	@echo "AS  $<"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+$(OBJ_DIR)/lib/%.o: $(LIB_DIR)/src/%.c | $(OBJ_DIR)/lib
+	@echo "CC  $<"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+$(OBJ_DIR)/boot/%.o: $(BOOT_DIR)/%.S | $(OBJ_DIR)/boot
+	@echo "AS  $<"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+$(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c | $(OBJ_DIR)/drivers
+	@echo "CC  $<"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+
+# Compile rule for NONFREE_DRIVER_SOURCES.  Uses a static pattern rule so Make
+# knows the prerequisite source path for each extra object without a VPATH.
+$(NONFREE_DRIVER_OBJS): $(OBJ_DIR)/drivers/%.o: | $(OBJ_DIR)/drivers
+	@echo "CC (extra) $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES))"
+	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) \
+	    -c $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES)) -o $@
+
+$(ELF_FILE): $(ALL_OBJS) $(LINKER_SCRIPT) | $(BIN_DIR)
+	@echo "LD  $@"
+	@$(GCC) $(LDFLAGS) $(ALL_OBJS) $(LIBFLAGS) -o $@
+
+$(BIN_FILE): $(ELF_FILE) | $(BIN_DIR)
+	@echo "BIN $@"
+	@$(OC) -O binary $< $@
+
+$(HEX_FILE): $(ELF_FILE) | $(HEX_DIR)
+	@echo "HEX $@"
+	@$(OC) -O verilog --verilog-data-width 8 $< $@
+
+# Post-processing scripts live in scripts/ next to this Makefile.
+$(PRELOAD_HEX_FILE): $(HEX_FILE) | $(HEX_DIR)
+	@echo "PRELOAD $@"
+	@python3 $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py $< --out_file $@
+
+$(ECC_HEX_FILE): $(BIN_FILE) | $(HEX_DIR)
+	@echo "ECC $@"
+	@python3 $(SCRIPTS_DIR)/gen_64b_ecc.py $< $@
+
+$(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
+	@echo "BIN64 $@"
+	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
+
+$(DISASM_FILE): $(ELF_FILE) | $(DISASM_DIR)
+	@echo "DIS $@"
+	@$(OD) -DCSsx --visualize-jumps $< > $@
+
+# =============================================================================
+# UTILITY TARGETS
+# =============================================================================
+
+.PHONY: size
+size: $(ELF_FILE)
+	@echo "=========================================="
+	@echo "Size Information:"
+	@echo "=========================================="
+	@$(SIZE) --format=berkeley $<
+	@$(SIZE) --format=sysv $< | grep -E "(\.text|\.data|\.bss|\.rodata|Total)"
+
+.PHONY: memory
+memory: $(ELF_FILE)
+	@echo "=========================================="
+	@echo "Memory Layout:"
+	@echo "=========================================="
+	@$(NM) --size-sort --print-size $< | tail -20
+
+.PHONY: debug
+debug:
+	@$(MAKE) BUILD_TYPE=debug all
+
+.PHONY: release
+release:
+	@$(MAKE) BUILD_TYPE=release all
+
+.PHONY: clean
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+
+.PHONY: distclean
+distclean: clean
+
+.PHONY: check-toolchain
+check-toolchain:
+	@echo "Checking RISC-V toolchain..."
+	@$(GCC) --version | head -n1
+	@$(OC) --version | head -n1
+
+.PHONY: check
+check: check-toolchain
+	@echo "✓ Toolchain OK"
+	@test -f "$(LINKER_SCRIPT)" && echo "✓ Linker script found" || (echo "✗ Linker script missing: $(LINKER_SCRIPT)"; exit 1)
+
+.PHONY: help
+help:
+	@echo "SMC Production ROM Build System"
+	@echo "Usage:"
+	@echo "  make                         - release build"
+	@echo "  make BUILD_TYPE=debug        - debug build"
+	@echo "  make RISCV_TOOLCHAIN=/path   - explicit toolchain directory"
+	@echo "  make clean                   - remove build/"
+	@echo "  make check                   - validate build environment"
+
+.PHONY: all info clean distclean debug release size memory check check-toolchain help

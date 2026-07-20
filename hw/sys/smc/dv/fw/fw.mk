@@ -18,6 +18,26 @@ FW_INCLUDES := \
   -I$(FW_DIR)/include/metal/drivers \
   -I$(FW_DIR)/include/metal/smc
 
+# OCCP master BFM library sources.  Compiled into libsmc.a so that
+# occp_sanity and occp_master (rom-mode) tests link without a real I3C
+# driver.  Sram tests link against the archive too but never call these
+# functions; --gc-sections removes them from sram ELFs at link time.
+FW_C_SRCS += \
+  $(FW_DIR)/common/occp/occp_commands.c \
+  $(FW_DIR)/common/occp/occp_interfaces.c \
+  $(FW_DIR)/common/occp/status_decode.c \
+  $(FW_DIR)/common/occp/sep_ring_buffer_model.c \
+  $(FW_DIR)/common/occp/i2c_controller_driver.c \
+  $(FW_DIR)/common/occp/i3c_controller_driver_stub.c
+
+# exit_stub.c provides _exit() for rom-mode tests (crt0 → exit() → _exit();
+# ROM tests never return so it just spins in WFI).
+FW_C_SRCS += $(FW_DIR)/startup/exit_stub.c
+
+FW_INCLUDES += \
+  -I$(FW_DIR)/common/occp \
+  -I$(OCAH_ROOT)/hw/sys/smc/bootrom/prod/include
+
 # Register headers via the shared engine helper (umbrella smc.h under
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := smc
@@ -42,6 +62,16 @@ FW_TEST_LDFLAGS = \
   -Wl,--no-relax -Wl,-e,main -nostartfiles \
   -march=$(FW_ARCH) -mabi=$(FW_ABI) --specs=$(FW_PICOLIBC_SPECS) -lgcc
 FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
+
+# rom: crt0/_enter entry point; use FW_LDFLAGS (no -e,main override).
+# --whole-archive ensures crt0/entry startup code is always pulled from the
+# archive even before picolibc's exit() is resolved.
+FW_TEST_LDFLAGS_rom = $(FW_LDFLAGS)
+FW_TEST_ARCHIVE_LINK_rom = -Wl,--whole-archive "$(FW_ARCHIVE)" -Wl,--no-whole-archive
+
+# OCCP tests run as rom-mode images (crt0 + _enter, text at ROM address).
+FW_TEST_MODE_occp_sanity := rom
+FW_TEST_MODE_occp_master := rom
 
 # Shared with hw/sys/smc/bootrom/dummy/Makefile.
 include $(FW_DIR)/postprocess.mk

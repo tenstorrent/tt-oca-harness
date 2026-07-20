@@ -81,6 +81,13 @@ default mode unless it overrides `FW_TEST_MODE_<test>`; see
 [`hw/common/dv/fw/compile.mk`](hw/common/dv/fw/compile.mk) for the full
 mechanism.
 
+Most SMC tests default to `sram` mode. The OCCP master BFM tests
+(`occp_sanity`, `occp_master`) are declared `rom`-mode in
+[`hw/sys/smc/dv/fw/fw.mk`](hw/sys/smc/dv/fw/fw.mk) because they exercise the
+I3C master path and must run from the ROM address space. They link against the
+open-source weak `I3C_GetDriverInstance` stub (returns `NULL`) so the build is
+self-contained.
+
 ### SMC boot ROM
 
 `hw/sys/smc/bootrom/` holds two independent ROM firmware trees:
@@ -91,9 +98,10 @@ mechanism.
   real firmware into SRAM. It builds as one `rom`-mode "test" (`rom.c`) on top
   of the same generalized firmware engine as the SMC DV tests above, reusing
   `hw/sys/smc/dv/fw/`'s drivers, toolchain settings, and link scripts.
-- [`prod/`](hw/sys/smc/bootrom/prod/) — reserved placeholder for a future
-  self-contained production boot ROM (its own includes/drivers, not shared
-  with `dv/fw/`); not populated yet.
+- [`prod/`](hw/sys/smc/bootrom/prod/) — self-contained production boot ROM with
+  its own includes and drivers (not shared with `dv/fw/`). It implements the
+  OCCP target-side protocol and uses a weak stubs so the open tree links cleanly; 
+  the nonfree drivers override it at link time via `NONFREE_DRIVER_SOURCES`.
 
 Build the dummy ROM with its standalone Makefile:
 
