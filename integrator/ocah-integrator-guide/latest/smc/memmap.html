@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/smc/pages/memmap.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="smc-memory-map"><a class="anchor" href="#smc-memory-map"></a><a class="link" href="#smc-memory-map">1. Memory Map</a></h3>
+<div class="paragraph">
+<p>This section provides a comprehensive overview of the SMC memory map.
+The SMC address space is organized to provide access to various
+functional units including CPU control, peripheral interfaces, system
+management functions, and fabric control mechanisms.</p>
+</div>
+<div class="paragraph">
+<p>All addresses below are expressed as <code>BASE + offset</code>, where <code>BASE</code> can
+be either the local alias (<code>LOCAL_BASE</code>, fixed read-only at
+<code>0xC000_0000</code>) or the global system address (<code>GLOBAL_BASE</code>,
+programmable by firmware). The fabric routes transactions to SMC
+resources identically regardless of which base is used, as long as the
+access falls inside the relevant local or global aperture. The current
+SMC <code>REGION_SIZE</code> CSR reset is 16 MiB for the chiplet-global aperture;
+the input fabric&#8217;s internal local-alias window is controlled by the RTL
+<code>LOCAL_ALIAS_REGION_SIZE</code> parameter, currently fixed at 16 MiB.
+Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
+conventions. For details on how <code>LOCAL_BASE</code> and <code>GLOBAL_BASE</code> relate
+and how an adopter maps this aperture into the system address space,
+refer to the
+SMC Address Map Integration
+section of the Integration Guide.</p>
+</div>
+<div class="sect3">
+<h4 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">1.1. Address Space Organization</a></h4>
+<div class="paragraph">
+<p>The SMC address space is divided into several major functional regions:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC Address Space Layout</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 - BASE + 0x000_0FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core watchdog
+timer interfaces (4 cores, 1KB each)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V Debug Module
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and
+miscellaneous system control registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 - BASE + 0x000_4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose I/O
+control and configuration (68 GPIO instances)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT, AVSBus,
+I2C, and UART interfaces</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security, Timing &amp; DFT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse,
+telemetry, system timer, DTP control, and DFT status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU control, address
+remapping, and filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
+communication mailbox (32 channels: 16 inbound + 16 outbound)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_83FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Processing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA controller and
+memory zeroer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x007_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM and scratchpad
+memory spaces</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA) module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_17FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Interface (Reserved)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller
+instances (6 planned) - NOT YET IMPLEMENTED</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x080_0000 - BASE + 0x1FF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Remapping</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode and Xvisor
+remapped address regions</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V PLIC
+(Platform-Level Interrupt Controller)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x801_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer &amp; Bus Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT and per-core
+Bus Error Units</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="detailed-address-map"><a class="anchor" href="#detailed-address-map"></a><a class="link" href="#detailed-address-map">1.2. Detailed Address Map</a></h4>
+<div class="paragraph">
+<p>The following table provides specific address assignments for all SMC
+components:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC Component Address Map</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT Core 0-3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 + (N×0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timers for
+each CPU core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Module</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V debug
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_27FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Miscellaneous Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2800 - BASE + 0x000_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System
+configuration registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 - BASE + 0x000_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock generation
+and management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 + (N×0x10)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4440 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad
+configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Refclk Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4CC0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock GPIO
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO PoC/PBias Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4DE0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on and pad bias
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Process, Voltage,
+Temperature monitoring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_8000 - BASE + 0x000_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive
+voltage scaling control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_9FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C/SMBus
+communication interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_A000 - BASE + 0x000_AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART communication
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_BFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse memory mapping
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C000 - BASE + 0x000_C0FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse interface
+controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C100 - BASE + 0x000_C1FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse hardware
+abstraction layer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D000 - BASE + 0x000_DFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry
+data processing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_E000 - BASE + 0x000_EFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Multi-chiplet
+time synchronization</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Control Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_F000 - BASE + 0x000_F7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 entries</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP
+control register block</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Control/Status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_F800 - BASE + 0x000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT control
+and status for ROM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster
+management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alias Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_2000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address alias
+remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_3000 + (N×0x8)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode
+address remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_4000 + (N×0x8)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor address
+remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Filters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_5000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound traffic
+filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Filters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_6000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound traffic
+filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 channels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
+communication (16 inbound + 16 outbound)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_81FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct memory
+access controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8200 - BASE + 0x003_83FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory
+initialization unit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPM ROM Memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x005_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPM Memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x006_0000 - BASE + 0x007_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad memory space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA)
+module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Wraps (Reserved)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 + (N×0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6 planned</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller
+interfaces - NOT YET IMPLEMENTED</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x100_0000 - BASE + 0x17F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode remapped
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x180_0000 - BASE + 0x1FF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor remapped
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt
+Controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x800_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core Local Interruptor</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Units</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x801_0000 + (N×0x1000)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core bus
+error handling</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.3. Register Interface Standards</a></h4>
+<div class="paragraph">
+<p>All SMC components use standard AMBA interfaces. We summarize the
+interfaces in the following table:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Register Interface Standards</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Address Width</th>
+<th class="tableblock halign-left valign-top">Data Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High-performance components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Address Alignment:</strong> 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Endianness:</strong> Little-endian byte ordering throughout</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Protection:</strong> AXI protection bits used for secure/non-secure access control</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.4. Access Control and Security</a></h4>
+<div class="paragraph">
+<p>The SMC implements the following access control mechanisms:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Access Control Mechanisms</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mechanism</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Filtering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable inbound and outbound address filters</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protection Levels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI protection attribute enforcement</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure Regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse and security-critical registers require elevated
+privileges</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error Handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus error units provide comprehensive error logging and
+reporting</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.5. Component-Specific Register Documentation</a></h4>
+<div class="paragraph">
+<p>For detailed register-level documentation of each SMC component, refer
+to the individual component documentation:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC Component Documentation</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 50%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Category</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU and System Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control, PLIC, CLINT, Watchdog Timers, and
+Bus Error Units</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cpu</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller (PLIC)
+details</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">interrupts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller detailed register interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dma</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">zeroer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address remapping, inbound/outbound filters, and fabric
+control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">fabric</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripherals and I/O</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
+Timer registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">periphs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Management</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and system control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_rst</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper and clock generation registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

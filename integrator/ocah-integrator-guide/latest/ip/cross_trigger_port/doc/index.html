@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/ip/pages/cross_trigger_port/doc/index.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="cross-trigger-port"><a class="anchor" href="#cross-trigger-port"></a><a class="link" href="#cross-trigger-port">1. Cross Trigger Port</a></h3>
+<div class="sect3">
+<h4 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1.1. Overview</a></h4>
+<div class="paragraph">
+<p>The Cross Trigger Port (CTP) module serves as the signaling interface between the chiplet core logic and the I/O pads for cross-trigger communication as specified in the Open Chiplet Cross Triggering (OCCT) specification.</p>
+</div>
+<div class="paragraph">
+<p>Each CTP connects to four separate I/O pads:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>CT_Req_out</strong> - The cross trigger request output signal</p>
+</li>
+<li>
+<p><strong>CT_Ack_in</strong> - The cross trigger acknowledge input signal (point-to-point only)</p>
+</li>
+<li>
+<p><strong>CT_Req_in</strong> - The cross trigger request input signal (point-to-point only)</p>
+</li>
+<li>
+<p><strong>CT_Ack_out</strong> - The cross trigger acknowledge output signal (point-to-point only)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The CTPs support two different inter-chiplet cross trigger signalling schemes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Wire-OR</strong>: Supports a wider range of existing chiplet implementations and is very resource efficient</p>
+</li>
+<li>
+<p><strong>Point-to-Point</strong>: Faster, more reliable, and simpler to configure</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">1.2. Configuration</a></h4>
+<div class="paragraph">
+<p>The Cross Trigger Port has no build-time configuration parameters. All operational settings are configured at runtime via CSR registers accessed through the AXI-Lite interface:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>MODE</strong> - Wire-OR (0) or Point-to-Point (1) mode selection</p>
+</li>
+<li>
+<p><strong>STRETCH_MULT</strong> - 16-bit pulse stretch multiplier for Wire-OR mode</p>
+</li>
+<li>
+<p><strong>INVERT</strong> - Signal polarity inversion for GPIO adaptation</p>
+</li>
+<li>
+<p><strong>RESET</strong> - Handshake state machine reset control</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Refer to the register documentation for detailed CSR field descriptions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="ctp-architecture"><a class="anchor" href="#ctp-architecture"></a><a class="link" href="#ctp-architecture">1.3. Architecture</a></h4>
+<div class="paragraph">
+<p>The Cross Trigger Port architecture separates the register interface from core logic to enable reuse. The full <code>cross_trigger_port</code> module includes CSRs for runtime configuration, while the <code>cross_trigger_port_core</code> module provides the core functionality without registers, allowing instantiation for internal cross-trigger connections without AXI-Lite overhead.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
+</div>
+</div>
+<div class="sect4">
+<h5 id="submodule-hierarchy"><a class="anchor" href="#submodule-hierarchy"></a><a class="link" href="#submodule-hierarchy">Submodule Hierarchy</a></h5>
+<div class="paragraph">
+<p>The CTP core instantiates four specialized submodules for different aspects of cross-trigger operation:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Module</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_synchronizer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implements 2-FF synchronizers for asynchronous GPIO inputs (ct_req_out_din, ct_req_in_din, ct_ack_in_din) from remote chiplets</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_pulse_stretcher</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extends source pulse duration for Wire-OR mode transmission, with configurable stretch multiplier (0-65535 cycles)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_edge_detector</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Detects positive edges on synchronized ct_req_in signal for Point-to-Point mode receiver operation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_handshake_ctrl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">Wire-OR Mode</a></h5>
+<div class="paragraph">
+<p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many existing cross triggering implementations. This scheme is very resource efficient, as it only requires a single pin per chiplet connected to the network. However, the performance of the network decreases as the number of connected chiplets increase. Also, the duration of the cross trigger pulse must be pre-arranged across all connected chiplets.</p>
+</div>
+<div class="sect5">
+<h6 id="pulse-stretcher-operation"><a class="anchor" href="#pulse-stretcher-operation"></a><a class="link" href="#pulse-stretcher-operation">Pulse Stretcher Operation</a></h6>
+<div class="paragraph">
+<p>The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO assertions lasting <code>stretch_mult + 1</code> clock cycles. The module implements a 16-bit countdown counter that loads the stretch multiplier value when a new pulse arrives and decrements to zero. If a new pulse arrives before the counter reaches zero, the counter restarts from the stretch multiplier value, ensuring that rapid successive pulses merge into an extended assertion.</p>
+</div>
+<div class="paragraph">
+<p>The output <code>stretched_pulse</code> remains asserted as long as the counter is non-zero. This stretched pulse drives the output enable control for the open-drain CT_Req_out GPIO pad, effectively pulling the shared wire low for the configured duration.</p>
+</div>
+<div class="paragraph">
+<p>Each chiplet has an open-drain I/O connected to a single shared wire. Any connected chiplet may pull this signal low to assert a cross trigger. Depending on the electrical requirements, one or more internal pad pull-ups or external keepers ensure the cross trigger request signal remains high when no cross trigger is asserted. To ensure no connected chiplet misses a cross trigger pulse, all chiplets transmitting a trigger pulse must stretch the pulse a mutually agreed upon length of time.</p>
+</div>
+<div class="paragraph">
+<p>Note that in wire-OR mode the <em>CT_Req_out</em> signal is connected to an open-drain configured I/O pad. For I/O pads that do have explicit open-drain control, the request data signal should connect to the output-enable control pin of the I/O pad, and the output data signal of the I/O pin should be driven statically low.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/ctp_wireor_diagram.png" alt="CTP Wire-OR Mode Diagram">
+</div>
+</div>
+<div class="paragraph">
+<p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown in the following example diagram:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/sip_wireor_diagram.png" alt="SiP Wire-OR Cross Trigger Diagram">
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">Point-to-Point Mode</a></h5>
+<div class="paragraph">
+<p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a cross trigger quickly and reliably between two chiplets without pulse stretching. While this scheme is simple and fast, it requires a dedicated CTP for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads for bi-directional communication, or two pads for unidirectional communication. All output pads are configured for push-pull operation.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/ctp_p2p_diagram.png" alt="CTP Point-to-Point Mode Diagram">
+</div>
+</div>
+<div class="paragraph">
+<p>Any two chiplets may have their four cross trigger pads cross-coupled as shown in the following example diagram:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/sip_p2p_diagram.png" alt="SiP Point-to-Point Cross Trigger Diagram">
+</div>
+</div>
+<div class="paragraph">
+<p>On the sender side, the receiver&#8217;s <em>CT_Ack_out</em> is connected to the sender&#8217;s <em>CT_Ack_in</em> pad. <em>CT_Req_out</em> asserts whenever <em>CT_Src</em> asserts. <em>CT_Req_out</em> will then remain asserted until <em>CT_Ack_in</em> asserts.</p>
+</div>
+<div class="paragraph">
+<p>On the receiver side, the sender&#8217;s <em>CT_Req_out</em> is connected to the receiver&#8217;s <em>CT_Req_in</em> pad. On any positive edge of <em>CT_Req_in</em>, the receiver generates a pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds in exactly the same sequence.</p>
+</div>
+<div class="paragraph">
+<p>The timing of the request/acknowledge handshake is shown in the diagram below:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/p2p_timing_diagram.svg" alt="Point-to-Point Request/Acknowledge Timing">
+</div>
+</div>
+<div class="sect5">
+<h6 id="synchronization-and-cdc-handling"><a class="anchor" href="#synchronization-and-cdc-handling"></a><a class="link" href="#synchronization-and-cdc-handling">Synchronization and CDC Handling</a></h6>
+<div class="paragraph">
+<p>All GPIO input signals are asynchronous with respect to the CTP system clock and require synchronization to prevent metastability. The <code>ctp_synchronizer</code> module implements three independent 2-FF synchronizer chains using the <code>prim_flop_2sync</code> primitive:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 30%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Used In Mode</th>
+<th class="tableblock halign-left valign-top">Synchronization Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_out_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wire-OR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronizes open-drain wire state from remote chiplets before edge detection</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Point-to-Point</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronizes request signal from remote sender before receiver FSM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_ack_in_din</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Point-to-Point</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronizes acknowledge signal from remote receiver before sender FSM</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>After synchronization, an optional inversion is applied if the <code>INVERT</code> configuration bit is set. This allows adaptation to GPIO pads with different polarity requirements. Edge detection and state machine processing occur only on synchronized (and optionally inverted) signals, ensuring all CTP core logic operates on glitch-free inputs.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="handshake-state-machines"><a class="anchor" href="#handshake-state-machines"></a><a class="link" href="#handshake-state-machines">Handshake State Machines</a></h6>
+<div class="paragraph">
+<p>Point-to-point mode implements two independent state machines within the <code>ctp_handshake_ctrl</code> module, enabling full-duplex cross-triggering. The sender state machine controls outgoing cross-trigger requests, while the receiver state machine handles incoming requests. Both state machines operate synchronously in the system clock domain on synchronized GPIO inputs.</p>
+</div>
+<div class="paragraph">
+<p><strong>Sender State Machine:</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Current State</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Next State</th>
+<th class="tableblock halign-left valign-top">Output Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_src_i</code> asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_REQ_ASSERTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assert <code>ct_req_out=1</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_REQ_ASSERTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_ack_in_sync</code> asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_WAIT_ACK_DEASSERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">De-assert <code>ct_req_out=0</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_WAIT_ACK_DEASSERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_ack_in_sync</code> de-asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None (remain idle)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Any state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>reset_i</code> asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Force <code>ct_req_out=0</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Receiver State Machine:</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Current State</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Next State</th>
+<th class="tableblock halign-left valign-top">Output Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_sync</code> asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_ACK_ASSERTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assert <code>ct_ack_out=1</code>, generate <code>ct_dst</code> pulse</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_ACK_ASSERTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_sync</code> de-asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_WAIT_REQ_DEASSERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">De-assert <code>ct_ack_out=0</code>, clear <code>ct_dst</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_WAIT_REQ_DEASSERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_sync</code> remains low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RECEIVER_WAIT_REQ_DEASSERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_in_sync</code> goes high</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remain in state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Continue waiting</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>ct_dst</code> output pulse is generated for a single clock cycle when the receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is asserted whenever either state machine is not in its IDLE state, indicating an active cross-trigger transfer.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="ctp-interface"><a class="anchor" href="#ctp-interface"></a><a class="link" href="#ctp-interface">1.4. Interface</a></h4>
+<div class="sect4">
+<h5 id="signal-interface"><a class="anchor" href="#signal-interface"></a><a class="link" href="#signal-interface">Signal Interface</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 34%;">
+<col style="width: 33%;">
+<col style="width: 33%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">mode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Indicates the operational mode of the CTP. 0 for wire-OR and 1 for peer-to-peer. The value at reset should be 0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_src</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger input pulse.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_dst</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger output pulse.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">busy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional signal indicating that an outgoing cross trigger pulse transfer is in progress.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resets the outgoing peer-to-peer handshake logic.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">stretch_mult[N-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the pulse duration of the pulse stretcher module for wire-OR mode.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the <em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled by a cross trigger pulse from the pulse stretcher. In peer-to-peer mode it is always enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled and in peer-to-peer mode it is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Req_out</em> pad. In peer-to-peer mode the pulse capture latch controls this signal. In wire-OR mode it is held static-low.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Req_out</em> pad. In wire-OR mode this signal triggers a pulse on <em>ct_dst</em> after synchronization. In peer-to-peer mode it is unused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Req_in</em> pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Req_in</em> pad. In peer-to-peer mode this signal triggers a pulse on <em>ct_dst</em> after synchronization. In wire-OR mode it is unused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Ack_in</em> pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Ack_in</em> pad. This signal clears the cross trigger request output in peer-to-peer mode. In wire-OR mode it is unused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout_en</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the <em>CT_Ack_out</em> pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Ack_out</em> pad. In peer-to-peer mode the <em>ct_req_in</em> pulse synchronizer controls this signal. In wire-OR mode it is unused.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">Dependencies</a></h5>
+<div class="paragraph">
+<p>The CTP depends on the following components:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>hw/common/prim</code> - Primitive cells (synchronizers, pulse stretcher)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/ip/pages/system_timer_octs/doc/index.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="system-timer-octs"><a class="anchor" href="#system-timer-octs"></a><a class="link" href="#system-timer-octs">1. System Timer OCTS</a></h4>
+<div class="sect4">
+<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<div class="paragraph">
+<p>The System Timer OCTS (Open Chiplet Time Synchronization) IP is a
+sophisticated 64-bit timer designed specifically for multi-chiplet
+systems requiring precise time synchronization across different clock
+domains. It implements OCA&#8217;s OCTS protocol as defined in the OCA
+specification, version .</p>
+</div>
+<div class="paragraph">
+<p>This hardware IP provides a robust solution for coordinated timing
+operations between multiple timer instances, enabling accurate
+timestamping and synchronized operations in distributed chiplet
+architectures.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+<div class="paragraph">
+<p>The System Timer OCTS offers both PRIMARY and SECONDARY modes to serve
+as either a timing master or follower within a synchronized network of
+chiplets. It features a 64-bit high-precision counter for
+nanosecond-level accuracy, supports both APB4 and AXI4-Lite interfaces
+for flexible integration, and incorporates reliable clock domain
+crossing with a 2FF synchronizer.</p>
+</div>
+<div class="paragraph">
+<p>Periodic resynchronization is achieved through a programmable
+credit-based mechanism, while the width of synchronization pulses can be
+easily adjusted. Real-time status and timer values are always available
+through readable registers.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="system-timer-octs-architecture"><a class="anchor" href="#system-timer-octs-architecture"></a><a class="link" href="#system-timer-octs-architecture">Architecture</a></h5>
+<div class="paragraph">
+<p>The System Timer OCTS (Open Chiplet Time Synchronization) IP provides
+precise time coordination across distributed multi-chiplet systems. The
+design implements a hierarchical PRIMARY/SECONDARY architecture for
+nanosecond-level timing precision across chiplets that may operate with
+different clock domains, processing loads, and environmental conditions.</p>
+</div>
+<div class="paragraph">
+<p>The PRIMARY/SECONDARY architecture separates centralized time authority
+from distributed time management. PRIMARY timers generate master
+timelines while SECONDARY timers maintain local temporal alignment using
+credit-based counting. This approach maintains system-wide
+synchronization under varying operational conditions, network latencies,
+and component performance variations.</p>
+</div>
+<div class="paragraph">
+<p>The implementation follows Open Chiplet Architecture (OCA)
+specifications, version , using credit-based synchronization for
+continuous maintenance that adapts to varying system loads and
+communication delays.</p>
+</div>
+<div class="sect5">
+<h6 id="timer-core-processing"><a class="anchor" href="#timer-core-processing"></a><a class="link" href="#timer-core-processing">Timer Core Processing</a></h6>
+<div class="paragraph">
+<p>The timer core implements 64-bit counter management supporting both
+PRIMARY and SECONDARY operational modes.</p>
+</div>
+<div class="paragraph">
+<p>In <strong>PRIMARY</strong> mode, the timer acts as the central timekeeper for the
+system. It maintains a continuously incrementing 64-bit counter,
+advancing with each clock cycle to provide an accurate global timeline.</p>
+</div>
+<div class="paragraph">
+<p>As the system authority, the PRIMARY timer generates synchronization
+pulses, including both sync_load and credit signals, which are
+distributed to SECONDARY timers to ensure coordinated operation across
+chiplets. During initialization, the timer supports preset loading,
+enabling simultaneous start and consistent alignment throughout the
+system.</p>
+</div>
+<div class="paragraph">
+<p>By combining precise counting and periodic synchronization outputs, the
+PRIMARY timer anchors time coordination for multi-chiplet environments.</p>
+</div>
+<div class="paragraph">
+<p><strong>SECONDARY</strong> timers sustain local time alignment across chiplets using a
+credit-based scheme. The timer maintains an internal credit accumulator
+(cur_credits) that increments by the step input value (<code>timer_cnt_step_i</code>)
+each clock cycle when credits are available. When cur_credits reaches or
+exceeds the programmed credit value (CREDIT_VAL), the timer halts
+counting until new credit pulses arrive from the PRIMARY timer.</p>
+</div>
+<div class="paragraph">
+<p>The step input (<code>timer_cnt_step_i</code>) is an 8-bit external signal that
+controls the increment rate per clock cycle, typically set to 1 for
+standard per-cycle increment but can be tuned for different clock ratios
+or calibration needs. The system continuously tracks an expected counter
+value that gets updated on sync_load or credit pulse events, validating
+alignment with the overall timeline. Credit expiration is monitored via a
+32-bit counter that increments when cur_credits exceeds CREDIT_VAL,
+providing diagnostics for synchronization health.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="clock-domain-crossing"><a class="anchor" href="#clock-domain-crossing"></a><a class="link" href="#clock-domain-crossing">Clock Domain Crossing</a></h6>
+<div class="paragraph">
+<p>The CDC architecture maintains signal integrity and timing precision
+across clock domains with different frequencies, phase relationships,
+and jitter characteristics.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="edge-detection"><a class="anchor" href="#edge-detection"></a><a class="link" href="#edge-detection">Edge Detection</a></h6>
+<div class="paragraph">
+<p>To ensure robust metastability protection during clock domain crossing,
+the design employs prim_edge_detector modules. These modules reliably
+convert level-based synchronization signals into single-cycle pulses,
+minimizing hold time constraints and simplifying timing requirements. As
+a result, they enable precise temporal coordination across clock domains
+and maintain stable operation despite potential variations in signal
+arrival times or delays.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="synchronization-protocol"><a class="anchor" href="#synchronization-protocol"></a><a class="link" href="#synchronization-protocol">Synchronization Protocol</a></h6>
+<div class="paragraph">
+<p>The synchronization protocol relies on a two-level mechanism to
+establish and maintain timer alignment across chiplets. During
+initialization, a global <strong>sync_load</strong> pulse resets all timers
+simultaneously, ensuring they start in a coordinated state.</p>
+</div>
+<div class="paragraph">
+<p>For ongoing operation, periodic <strong>credit pulses</strong> are issued to secondary
+timers, enabling them to resynchronize and compensate for any
+accumulated clock drift or environmental variations such as temperature
+changes. Edge-triggered signaling is used throughout, removing tight
+timing dependencies and promoting robust synchronization regardless of
+clock differences.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="credit-based-synchronization"><a class="anchor" href="#credit-based-synchronization"></a><a class="link" href="#credit-based-synchronization">Credit-Based Synchronization</a></h6>
+<div class="paragraph">
+<p>Credit-based synchronization balances autonomous operation with
+centralized coordination, allowing SECONDARY timers to maintain temporal
+progression during communication interruptions while ensuring long-term
+accuracy through periodic resynchronization.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="credit-management"><a class="anchor" href="#credit-management"></a><a class="link" href="#credit-management">Credit Management</a></h6>
+<div class="paragraph">
+<p>The credit management system operates differently in PRIMARY and SECONDARY modes:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Feature</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PRIMARY Credit Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-bit counter (0 to CREDIT_VAL-1) that increments each cycle when enabled. When it reaches CREDIT_VAL-1, it resets to 0 and generates a credit pulse output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SECONDARY Credit Accumulator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-bit accumulator (cur_credits) that increments by step input value each cycle when cur_credits &lt; CREDIT_VAL. Resets to 0 on sync_load or credit pulse events.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Credit Value</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-programmable via CTRL.CREDIT_VAL register (8-bit, range 1-255)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Step Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-bit external signal (timer_cnt_step_i) controlling increment rate in SECONDARY mode</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expiration Tracking</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit counter that increments when cur_credits &gt;= CREDIT_VAL in SECONDARY mode, providing diagnostics</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="synchronization-logic"><a class="anchor" href="#synchronization-logic"></a><a class="link" href="#synchronization-logic">Synchronization Logic</a></h6>
+<div class="paragraph">
+<p>In SECONDARY mode, the timer advances when credits are available. The
+credit accumulator (cur_credits) increments by the step input value
+(<code>timer_cnt_step_i</code>) each clock cycle as long as cur_credits &lt; CREDIT_VAL.
+When cur_credits reaches or exceeds CREDIT_VAL, the timer halts counting
+and the credit_expired counter increments, indicating that synchronization
+credits have been exhausted.</p>
+</div>
+<div class="paragraph">
+<p>Credits are replenished when a credit pulse arrives from the PRIMARY timer
+or when a sync_load pulse is received, both of which reset cur_credits to 0
+and reset the credit_expired counter. The expected counter value is
+updated on these synchronization events: on sync_load, it&#8217;s set to the
+preset value; on credit pulse, it&#8217;s incremented by CREDIT_VAL using a
+carry-select adder. This expected value provides a basis for
+synchronization validation and helps detect drift between the actual timer
+count and the expected timeline.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="pulse-generation"><a class="anchor" href="#pulse-generation"></a><a class="link" href="#pulse-generation">Pulse Generation</a></h6>
+<div class="paragraph">
+<p>PRIMARY timers generate synchronization signals for SECONDARY timer
+coordination.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="pulse-state-machine"><a class="anchor" href="#pulse-state-machine"></a><a class="link" href="#pulse-state-machine">Pulse State Machine</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">State</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULSE_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Normal operation, monitors for synchronization events</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULSE_SYNC_LOAD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Generates sync_load pulses for coordinated timer
+initialization</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULSE_CREDIT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Generates credit pulses for ongoing synchronization
+maintenance</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="pulse-width-control"><a class="anchor" href="#pulse-width-control"></a><a class="link" href="#pulse-width-control">Pulse Width Control</a></h6>
+<div class="paragraph">
+<p>The pulse width for synchronization can be configured between 1 and 255
+cycles using the CTRL.PULSE_WIDTH register. If PULSE_WIDTH is set to 0, it
+defaults to 1 cycle. A pulse counter tracks the active pulse duration,
+incrementing from 0 to (PULSE_WIDTH - 1) before returning to idle state.
+This flexibility ensures that synchronization pulses are long enough for
+reliable clock domain crossing (CDC), while minimizing any overhead to
+system performance. By allowing adjustment of the pulse duration, the
+design supports robust operation across different clock ratios and
+propagation delays.</p>
+</div>
+<div class="paragraph">
+<p>The credit value (CREDIT_VAL) must be greater than the pulse width
+(PULSE_WIDTH) to ensure credit pulses are not missed during pulse
+generation.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h6>
+<div class="paragraph">
+<p>In PRIMARY mode, the timer core begins with software issuing a preset
+value and asserting the START register. This action loads the counter
+with the specified preset (from \{reg_preset_hi, reg_preset_lo}),
+establishing a consistent starting point across the system.</p>
+</div>
+<div class="paragraph">
+<p>Once enabled, the timer increments the counter by one each clock cycle
+using a 64-bit carry-select adder, maintaining precise progression.
+Throughout operation, the timer autonomously generates synchronization
+pulses: periodic credit pulses are issued when the credit counter reaches
+CREDIT_VAL-1, and sync_load pulses are produced whenever START is
+asserted. The width of these pulses is tunable via the PULSE_WIDTH setting,
+allowing adaptation to varying system requirements and ensuring reliable
+communication between chiplets.</p>
+</div>
+<div class="paragraph">
+<p>In SECONDARY mode, the timer remains idle until it detects a sync_load
+pulse from the PRIMARY timer. Upon receiving this pulse, it loads its
+counter with the preset value to achieve initial alignment. Thereafter,
+the timer advances based on a credit-based mechanism: it increments the
+counter by the step input value (<code>timer_cnt_step_i</code>) each cycle when
+cur_credits &lt; CREDIT_VAL, using a 64-bit carry-select adder for the
+addition. The credit accumulator (cur_credits) increments by the step
+value each cycle as long as credits are available.</p>
+</div>
+<div class="paragraph">
+<p>Credits are replenished automatically when a credit pulse arrives from the
+PRIMARY or when a sync_load pulse is received, both of which reset
+cur_credits to 0. Throughout operation, the timer continuously tracks its
+expected count using a separate 64-bit counter that gets updated on
+synchronization events, providing a basis for synchronization validation.
+The expected count is incremented by CREDIT_VAL on credit pulse events
+using a carry-select adder.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="control-path-overview"><a class="anchor" href="#control-path-overview"></a><a class="link" href="#control-path-overview">Control Path Overview</a></h6>
+<div class="paragraph">
+<p>The control path of the System Timer OCTS integrates subsystems for
+enabling, mode selection, and credit tracking. The global enable signal
+is managed through software (via the START register), by detecting
+sync_load pulses in SECONDARY mode, or by retaining its previous enabled
+state for sticky operation.</p>
+</div>
+<div class="paragraph">
+<p>The timer&#8217;s behavior is determined at runtime by the <code>is_primary_i</code> input
+signal, which defines whether the timer operates as PRIMARY or SECONDARY.
+In PRIMARY mode, the timer increments its counter by 1 each cycle and
+generates synchronization pulses. In SECONDARY mode, the timer increments
+by the step input value and receives synchronization pulses. This runtime
+mode selection allows flexible system configuration and dynamic mode
+switching if needed.</p>
+</div>
+<div class="paragraph">
+<p>Credit management operates at the heart of ongoing time alignment. In
+PRIMARY mode, an 8-bit credit counter increments from 0 to CREDIT_VAL-1
+each cycle when enabled, generating a credit pulse when it reaches
+CREDIT_VAL-1 and then resetting to 0. In SECONDARY mode, an 8-bit credit
+accumulator (cur_credits) increments by the step input value each cycle
+when cur_credits &lt; CREDIT_VAL, and resets to 0 on sync_load or credit
+pulse events. The system ensures reliable, edge-triggered credit
+reception using prim_edge_detector modules, updates expected timer values
+with each credit using carry-select adders, and provides a real-time
+32-bit counter (credit_expired_o) that increments when cur_credits &gt;=
+CREDIT_VAL—essential for synchronization health diagnostics.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="pulse-generation-in-primary-mode"><a class="anchor" href="#pulse-generation-in-primary-mode"></a><a class="link" href="#pulse-generation-in-primary-mode">Pulse Generation in PRIMARY Mode</a></h6>
+<div class="paragraph">
+<p>In PRIMARY mode, the timer autonomously produces two kinds of
+synchronization pulses: sync_load, which resets all timers system-wide
+(e.g., after START assertion), and periodic credit pulses distributed to
+SECONDARY timers. Both pulses feature a programmable width (1–255 cycles
+via the PULSE_WIDTH register, defaulting to 1 if set to 0), ensuring
+timing integrity across clock domains.</p>
+</div>
+<div class="paragraph">
+<p>Pulse emission is governed by a dedicated state machine with three
+states: PULSE_IDLE, PULSE_SYNC_LOAD, and PULSE_CREDIT. A pulse counter
+tracks the active pulse duration, incrementing from 0 to (PULSE_WIDTH - 1)
+before the state machine returns to PULSE_IDLE. Sync_load pulses are
+triggered when START is asserted and the state machine is idle. Credit
+pulses are triggered when the credit counter reaches CREDIT_VAL-1, the
+timer is enabled, and the state machine is idle. This mechanism
+guarantees reliable and flexible pulse delivery, supporting seamless
+multi-chiplet synchronization even in complex environments.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="system-timer-octs-interface"><a class="anchor" href="#system-timer-octs-interface"></a><a class="link" href="#system-timer-octs-interface">Interface</a></h5>
+<div class="paragraph">
+<p>The System Timer OCTS IP provides interfaces supporting both PRIMARY and
+SECONDARY timer modes, with flexible support for either AXI4-Lite or
+APB4 bus protocols. All interface signals operate synchronously to the
+system clock.</p>
+</div>
+<div class="sect5">
+<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BUS_PROTOCOL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface protocol (AXI4-Lite or
+APB4)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ADDR_WIDTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address bus width (8-bit effective)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data bus width</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
+via the <code>is_primary_i</code> input signal, not through a compile-time parameter.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect5">
+<h6 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">Global Interface</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Global Interface Signals</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Active</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rising</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock. All logic operates
+synchronously to this clock. Frequency determines timer resolution and
+synchronization timing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset. Asynchronous assertion and
+synchronous deassertion. Resets all counters, state machines, and
+registers to initial values.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_primary_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runtime mode selection: 1=PRIMARY
+(master timer that generates synchronization pulses), 0=SECONDARY (slave
+timer that receives synchronization pulses). This signal determines timer
+behavior, register visibility, and synchronization signal direction.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">Test Interface</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Test Interface Signals</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Active</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable signal for manufacturing test
+mode and debug access.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset for manufacturing test.
+Provides independent reset control for scan chain operation and ATPG
+support.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">OCTS Synchronization Interface</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. OCTS Synchronization Interface Signals</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Active</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_sync_load_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization load pulse input.
+Triggers coordinated timer initialization from the preset value.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_credit_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Credit pulse input. Provides
+periodic credit replenishment for SECONDARY timer synchronization.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_sync_load_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization load pulse
+output. Generated by the PRIMARY timer for system-wide initialization.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_credit_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Credit pulse output. Generated
+by the PRIMARY timer for maintaining synchronization of SECONDARY
+timers.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>When operating in PRIMARY mode, the timer generates synchronization
+pulses: <code>timer_sync_load_o</code> is asserted when the START register is
+written, and <code>timer_cnt_credit_o</code> is asserted periodically according to
+internal credit generation logic. Any synchronization input signals are
+ignored in PRIMARY mode. In contrast, SECONDARY mode relies on input
+from the PRIMARY: <code>timer_sync_load_i</code> directs the timer to initialize
+using a preset value, and <code>timer_cnt_credit_i</code> delivers credit pulses
+that allow continuous synchronization. In this mode, the outputs remain
+inactive.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">Timer Counter Interface</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Timer Counter Interface Signals</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_step_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer count step value (used in SECONDARY
+mode) determines the increment per clock cycle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_count_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Real-time 64-bit timer value available to
+the system.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>For SECONDARY timers, the step input (<code>timer_cnt_step_i</code>) enables
+granular control over the increment rate. Typically set to 1 for a
+standard per-cycle increment, this parameter can be tuned to adjust for
+differing clock ratios or calibration needs, but is only effective when
+credits are available (i.e., when the credit counter permits counting).</p>
+</div>
+<div class="paragraph">
+<p>The timer&#8217;s count output (<code>timer_count_o</code>) provides direct and
+continuous access to the current counter value, updating every clock
+cycle while the timer is running. This value is useful for timestamping,
+monitoring, or debugging, and can also be read from the COUNT_LO and
+COUNT_HI registers.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">Timing Specifications</a></h6>
+<div class="paragraph">
+<p>All input signals are required to meet setup and hold times with respect
+to the rising edge of clk_i.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Timing Requirements</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Group</th>
+<th class="tableblock halign-left valign-top">Setup Time</th>
+<th class="tableblock halign-left valign-top">Hold Time</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.0 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite/APB4 protocol signals</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization Inputs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edge detection provides internal
+synchronization</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control Inputs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.0 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">test_en_i, scan_rst_ni,
+timer_cnt_step_i</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer Count Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output signal with 3.0 ns clock-to-output
+delay</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The interface ensures that register outputs are valid within 3.0 ns of a
+rising clock edge, while the timer count output also updates within 3.0
+ns of the clock. Synchronization outputs are generated as pulses with
+programmable widths.</p>
+</div>
+<div class="paragraph">
+<p>Regarding clock domain crossing, the synchronization protocol relies on
+pulses wide enough to be reliably detected: each pulse should last for
+at least two destination clock cycles, and the maximum supported
+frequency ratio between domains is 10:1.</p>
+</div>
+<div class="paragraph">
+<p>Pulse events must be separated by at least 10 destination clock cycles.
+Edge detection logic ensures synchronization latency of 2–3 destination
+clock cycles and provides robust protection against metastability (using
+a 2FF synchronizer with closure on all relevant timing), with internal
+logic maintaining the width of each transmitted pulse.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">Reset Behavior and Initialization</a></h6>
+<div class="paragraph">
+<p>When reset is asserted asynchronously (<code>rst_ni</code>), all outputs
+immediately transition to safe, inactive states. The timer count is
+forced to zero, synchronization outputs are driven low, and register
+interface outputs indicate the reset condition. Deasserting reset
+synchronously causes all internal state machines to return to their
+initial states, resets all registers to their defaults, disables the
+timer until the START register is accessed, and prepares the
+synchronization inputs for edge detection.</p>
+</div>
+<div class="paragraph">
+<p>A recommended reset sequence is to assert <code>rst_ni</code> for at least 5 clock
+cycles, ensure a glitch-free deassertion, allow 3 cycles for the reset
+to propagate internally, and only then begin register configuration.</p>
+</div>
+<div class="paragraph">
+<p>Initialization occurs in a defined startup sequence: First, during the
+reset phase, all timers are held in reset. Next, software configures
+timer parameters. Synchronization follows, as the PRIMARY timer asserts
+START and generates a sync_load pulse, which launches synchronized
+operation across all timers.</p>
+</div>
+<div class="paragraph">
+<p>It&#8217;s important to ensure the sync_load pulse is delivered to all
+SECONDARY timers within the synchronization window, and credit pulses
+must continue to arrive at intervals to guarantee ongoing
+synchronization. Clock domain crossing will add 2–3 cycles of latency to
+these signals.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="integration-guidelines"><a class="anchor" href="#integration-guidelines"></a><a class="link" href="#integration-guidelines">Integration Guidelines</a></h6>
+<div class="paragraph">
+<p>For multi-chiplet integration, the PRIMARY timer should be placed
+centrally to achieve the most efficient signal distribution and minimize
+routing distances to all SECONDARY timers, with inter-chiplet signal
+integrity always taken into account. The synchronization inputs of
+SECONDARY timers should be connected directly to the PRIMARY outputs,
+with proper termination provided for long routes and buffering added as
+needed for greater fan-out.</p>
+</div>
+<div class="paragraph">
+<p>The synchronization protocol is supported across clock domains operating
+at a variety of frequencies; edge detection circuits must be properly
+timed, and the effects of jitter and phase noise should be factored in
+when synchronization accuracy is ensured.</p>
+</div>
+<div class="paragraph">
+<p>At the system level, the timer’s register interface is connected to the
+system control bus with appropriate address mapping for each instance.
+Interrupt connections can be implemented as required. Reset integration
+should guarantee that all timer instances receive reset signals
+simultaneously and reliably, with careful attention given to reset
+sequencing. For power management, clock gating is used for unused
+timers, power domain isolation is implemented where appropriate, and
+low-power operating modes are planned such that timer state is preserved
+across power events.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="system-timer-octs-memory-map"><a class="anchor" href="#system-timer-octs-memory-map"></a><a class="link" href="#system-timer-octs-memory-map">Memory Map</a></h5>
+<div class="paragraph">
+<p>The System Timer OCTS IP provides a concise and efficient register
+interface through a 32-byte address space (0x00-0x1F) accessible via
+AXI4-Lite or APB4 protocols. All registers are 32-bit aligned and
+optimized for both PRIMARY and SECONDARY timer modes.</p>
+</div>
+<div class="sect5">
+<h6 id="programming-sequences"><a class="anchor" href="#programming-sequences"></a><a class="link" href="#programming-sequences">Programming Sequences</a></h6>
+<div class="paragraph">
+<p>Complete system initialization for multi-timer synchronization:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Reset and Configuration</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Ensure all timers are in reset
+// Release reset to all timers simultaneously
+
+// Configure PRIMARY timer
+write32(primary_base + 0x04, 0x0A05); // CTRL: CREDIT_VAL=10, PULSE_WIDTH=5
+write32(primary_base + 0x0C, preset_lo); // TIMER_PRESET_LO
+write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Configure SECONDARY Timers</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">for (int i = 0; i &lt; num_secondary; i++) {
+    write32(secondary_base[i] + 0x04, 0x0A05); // Same CTRL settings
+    write32(secondary_base[i] + 0x0C, preset_lo); // Same preset
+    write32(secondary_base[i] + 0x10, preset_hi); // Same preset
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Start Synchronized Operation</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Start PRIMARY timer (generates sync_load to all SECONDARY)
+write32(primary_base + 0x00, 0x01); // TIMER_START.START = 1</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Verify Synchronization</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Check all timers are running
+for (int i = 0; i &lt; total_timers; i++) {
+    uint32_t status = read32(timer_base[i] + 0x08);
+    assert(status &amp; 0x10); // RUNNING bit should be set
+}</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="primary-timer-operation"><a class="anchor" href="#primary-timer-operation"></a><a class="link" href="#primary-timer-operation">Primary Timer Operation</a></h6>
+<div class="paragraph">
+<p>PRIMARY timer management and monitoring:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Credit Generation Monitoring</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Monitor credit pulse generation (implementation dependent)
+// Check synchronization signal integrity at system level</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Runtime Configuration Changes</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Pause timer if needed (implementation dependent)
+// Modify CTRL register for different credit parameters
+write32(primary_base + 0x04, new_ctrl_value);
+// Resume operation</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Performance Monitoring</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Read current count for performance measurements
+uint32_t count_hi = read32(primary_base + 0x18);
+uint32_t count_lo = read32(primary_base + 0x14);
+uint64_t current_time = ((uint64_t)count_hi &lt;&lt; 32) | count_lo;</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="secondary-timer-operation"><a class="anchor" href="#secondary-timer-operation"></a><a class="link" href="#secondary-timer-operation">Secondary Timer Operation</a></h6>
+<div class="paragraph">
+<p>SECONDARY timer synchronization monitoring and maintenance:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Synchronization Health Check</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">uint32_t credit_expired = read32(secondary_base + 0x1C);
+
+if (credit_expired &gt; SYNC_THRESHOLD) {
+    printf("Warning: Synchronization degraded, expired=%u\n", credit_expired);
+
+    // Reset credit expired counter
+    write32(secondary_base + 0x1C, 0);
+
+    // Check signal connectivity and PRIMARY timer operation
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Periodic Synchronization Validation</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void validate_synchronization() {
+    // Read all timer values simultaneously
+    uint64_t primary_count = read_timer_64(primary_base);
+    uint64_t secondary_count = read_timer_64(secondary_base);
+
+    int64_t delta = (int64_t)(primary_count - secondary_count);
+
+    if (abs(delta) &gt; MAX_SYNC_ERROR) {
+        printf("Synchronization error: delta=%ld cycles\n", delta);
+        // Implement recovery procedure
+    }
+}</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="error-handling-and-recovery"><a class="anchor" href="#error-handling-and-recovery"></a><a class="link" href="#error-handling-and-recovery">Error Handling and Recovery</a></h6>
+<div class="paragraph">
+<p>The OCTS timer provides comprehensive error detection and recovery
+procedures:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Synchronization Failure Recovery</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void recover_synchronization() {
+    // Stop all timers (implementation dependent)
+
+    // Reset synchronization
+    for (int i = 0; i &lt; num_secondary; i++) {
+        write32(secondary_base[i] + 0x1C, 0); // Reset CREDIT_EXPIRED
+    }
+
+    // Restart synchronized operation
+    write32(primary_base + 0x00, 0x01); // Restart PRIMARY
+
+    // Verify recovery
+    sleep_ms(100);
+    validate_synchronization();
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>Clock Domain Issues</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Adjust pulse width for clock domain crossing issues
+uint32_t ctrl = read32(primary_base + 0x04);
+ctrl = (ctrl &amp; 0x00FF) | (10 &lt;&lt; 8); // Increase PULSE_WIDTH to 10
+write32(primary_base + 0x04, ctrl);</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>System Health Monitoring</strong>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void monitor_timer_health() {
+    // Check all timers are running
+    for (int i = 0; i &lt; total_timers; i++) {
+        uint32_t status = read32(timer_base[i] + 0x08);
+        if (!(status &amp; 0x10)) {
+            printf("Timer %d not running\n", i);
+            // Implement recovery
+        }
+    }
+
+    // Check synchronization health
+    for (int i = 0; i &lt; num_secondary; i++) {
+        uint32_t expired = read32(secondary_base[i] + 0x1C);
+        if (expired &gt; WARNING_THRESHOLD) {
+            printf("Secondary %d sync warning: %u cycles\n", i, expired);
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="address-alignment-and-access-requirements"><a class="anchor" href="#address-alignment-and-access-requirements"></a><a class="link" href="#address-alignment-and-access-requirements">Address Alignment and Access Requirements</a></h6>
+<div class="paragraph">
+<p>The System Timer OCTS uses a 36-byte (0x00–0x23) register space, with
+each register 32-bit aligned for easy mapping on AXI4-Lite or APB4
+buses.</p>
+</div>
+<div class="paragraph">
+<p>Only 32-bit accesses are supported; byte or halfword accesses are not
+allowed and may cause errors. All writes must use full-word strobes
+(4&#8217;b1111).</p>
+</div>
+<div class="paragraph">
+<p>64-bit values (e.g., timer preset/count) are split into adjacent 32-bit
+low and high registers. To read atomically, check high, read low, then
+confirm high is unchanged. Always write the low word first, then the
+high word, to ensure correct latching.</p>
+</div>
+<div class="paragraph">
+<p>An example of this access pattern in C is shown below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Reading a 64-bit value atomically
+uint32_t hi1, lo, hi2;
+do {
+    hi1 = read32(base + high_reg_addr);
+    lo  = read32(base + low_reg_addr);
+    hi2 = read32(base + high_reg_addr);
+} while (hi1 != hi2);
+uint64_t value = ((uint64_t)hi1 &lt;&lt; 32) | lo;
+
+// Writing a 64-bit value
+write32(base + low_reg_addr, (uint32_t)(value &amp; 0xFFFFFFFF));
+write32(base + high_reg_addr, (uint32_t)(value &gt;&gt; 32));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Following these guidelines ensures robust, predictable access to all
+timer registers—crucial for correct operation in high-reliability
+multi-chiplet systems.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="reset-values-and-power-on-behavior"><a class="anchor" href="#reset-values-and-power-on-behavior"></a><a class="link" href="#reset-values-and-power-on-behavior">Reset Values and Power-On Behavior</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. <strong>Register Reset Values and Power-On Behavior</strong></caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Reset Value</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_START</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No automatic start, requires software
+initiation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001020A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default: CREDIT_VAL=10, PULSE_WIDTH=2, STEP=1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000000X</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RUNNING=0 on reset; MODE reflects the runtime
+<code>is_primary_i</code> input signal (0=PRIMARY, 1=SECONDARY)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_PRESET_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zero preset; must be configured by
+software before use</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_COUNT_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer starts at zero count on reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CREDIT_EXPIRED</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No credit expiration on startup</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: system_timer_octs</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#TIMER_START">TIMER_START</a></td><td>RW</td><td>System Timer Start Register</td></tr>
+<tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>System Timer Control Register</td></tr>
+<tr><td>0x8</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>System Timer Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#TIMER_PRESET_LO">TIMER_PRESET_LO</a></td><td>RW</td><td>System Timer Preset Value [31:0]</td></tr>
+<tr><td>0x10</td><td><a href="#TIMER_PRESET_HI">TIMER_PRESET_HI</a></td><td>RW</td><td>System Timer Preset Value [63:32]</td></tr>
+<tr><td>0x14</td><td><a href="#TIMER_COUNT_LO">TIMER_COUNT_LO</a></td><td>R</td><td>Current System Timer Count [31:0]</td></tr>
+<tr><td>0x18</td><td><a href="#TIMER_COUNT_HI">TIMER_COUNT_HI</a></td><td>R</td><td>Current System Timer Count [63:32]</td></tr>
+<tr><td>0x1C</td><td><a href="#CREDIT_EXPIRED">CREDIT_EXPIRED</a></td><td>RW</td><td>Credit Expired Register</td></tr>
+<tr><td>0x20</td><td><a href="#TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</a></td><td>RW</td><td>System Timer GPIO Enable Register</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="TIMER_START">TIMER_START</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>START</td><td>RW</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>STEP</td><td>RW</td><td>0x1</td><td>Step amount for secondary timer</td></tr>
+<tr><td>15:8</td><td>PULSE_WIDTH</td><td>RW</td><td>0x2</td><td>Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL</td></tr>
+<tr><td>7:0</td><td>CREDIT_VAL</td><td>RW</td><td>0xA</td><td>Credit value factor. WARNING: This value must be greater than PULSE_WIDTH</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is currently enabled and running</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</td></tr>
+</table>
+<h3 id="TIMER_PRESET_LO">TIMER_PRESET_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of preset value</td></tr>
+</table>
+<h3 id="TIMER_PRESET_HI">TIMER_PRESET_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PRESET_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of preset value</td></tr>
+</table>
+<h3 id="TIMER_COUNT_LO">TIMER_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_LO</td><td>R</td><td>0x0</td><td>Lower 32 bits of current timer count</td></tr>
+</table>
+<h3 id="TIMER_COUNT_HI">TIMER_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_HI</td><td>R</td><td>0x0</td><td>Upper 32 bits of current timer count</td></tr>
+</table>
+<h3 id="CREDIT_EXPIRED">CREDIT_EXPIRED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
+</table>
+<h3 id="TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>GPIO_ENABLE</td><td>RW</td><td>0x0</td><td>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="system-timer-octs-programming"><a class="anchor" href="#system-timer-octs-programming"></a><a class="link" href="#system-timer-octs-programming">Programming</a></h5>
+<div class="sect5">
+<h6 id="multi-chiplet-deployment-example"><a class="anchor" href="#multi-chiplet-deployment-example"></a><a class="link" href="#multi-chiplet-deployment-example">Multi-Chiplet Deployment Example</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// System with 1 PRIMARY + 3 SECONDARY timers
+#define PRIMARY_TIMER_BASE   0x40000000
+#define SECONDARY_0_BASE     0x50000000
+#define SECONDARY_1_BASE     0x60000000
+#define SECONDARY_2_BASE     0x70000000
+
+void initialize_multi_chiplet_timing() {
+    uint32_t timer_bases[] = {
+        PRIMARY_TIMER_BASE,
+        SECONDARY_0_BASE,
+        SECONDARY_1_BASE,
+        SECONDARY_2_BASE
+    };
+
+    // Configure all timers with same parameters
+    for (int i = 0; i &lt; 4; i++) {
+        write32(timer_bases[i] + 0x04, 0x0805); // Credit=8, Pulse=5
+        write32(timer_bases[i] + 0x0C, 0x00000000); // Preset_LO=0
+        write32(timer_bases[i] + 0x10, 0x00000000); // Preset_HI=0
+    }
+
+    // Start PRIMARY (automatically synchronizes SECONDARY timers)
+    write32(PRIMARY_TIMER_BASE + 0x00, 0x01);
+
+    // Verify all timers started
+    for (int i = 0; i &lt; 4; i++) {
+        uint32_t status = read32(timer_bases[i] + 0x08);
+        assert(status &amp; 0x10); // RUNNING bit
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="high-precision-timestamping"><a class="anchor" href="#high-precision-timestamping"></a><a class="link" href="#high-precision-timestamping">High-Precision Timestamping</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Get high-precision timestamp from any timer
+uint64_t get_timestamp(uint32_t timer_base) {
+    uint32_t hi1, lo, hi2;
+
+    // Double-read method for consistency
+    do {
+        hi1 = read32(timer_base + 0x18); // COUNT_HI
+        lo = read32(timer_base + 0x14);  // COUNT_LO
+        hi2 = read32(timer_base + 0x18); // COUNT_HI again
+    } while (hi1 != hi2);
+
+    return ((uint64_t)hi1 &lt;&lt; 32) | lo;
+}
+
+// Performance measurement example
+void performance_measurement() {
+    uint64_t start_time = get_timestamp(PRIMARY_TIMER_BASE);
+
+    // Execute operation being measured
+    critical_operation();
+
+    uint64_t end_time = get_timestamp(PRIMARY_TIMER_BASE);
+    uint64_t duration = end_time - start_time;
+
+    printf("Operation took %llu cycles\n", duration);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="synchronization-health-monitoring"><a class="anchor" href="#synchronization-health-monitoring"></a><a class="link" href="#synchronization-health-monitoring">Synchronization Health Monitoring</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void monitor_synchronization_health() {
+    uint32_t secondary_bases[] = {
+        SECONDARY_0_BASE,
+        SECONDARY_1_BASE,
+        SECONDARY_2_BASE
+    };
+
+    for (int i = 0; i &lt; 3; i++) {
+        uint32_t credit_expired = read32(secondary_bases[i] + 0x1C);
+
+        if (credit_expired == 0) {
+            printf("Secondary %d: Excellent sync\n", i);
+        } else if (credit_expired &lt; 100) {
+            printf("Secondary %d: Good sync (expired=%u)\n", i, credit_expired);
+        } else if (credit_expired &lt; 1000) {
+            printf("Secondary %d: WARNING - sync degraded (expired=%u)\n",
+                   i, credit_expired);
+            // Reset counter
+            write32(secondary_bases[i] + 0x1C, 0);
+        } else {
+            printf("Secondary %d: CRITICAL - sync failed (expired=%u)\n",
+                   i, credit_expired);
+            // Implement recovery procedure
+            recover_synchronization();
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="dynamic-reconfiguration"><a class="anchor" href="#dynamic-reconfiguration"></a><a class="link" href="#dynamic-reconfiguration">Dynamic Reconfiguration</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void adjust_synchronization_parameters() {
+    // Read current configuration
+    uint32_t ctrl = read32(PRIMARY_TIMER_BASE + 0x04);
+    uint8_t current_credit = ctrl &amp; 0xFF;
+    uint8_t current_pulse = (ctrl &gt;&gt; 8) &amp; 0xFF;
+
+    printf("Current: Credit=%u, Pulse=%u\n", current_credit, current_pulse);
+
+    // Adjust for tighter synchronization
+    uint8_t new_credit = 5;  // Reduce credit value
+    uint8_t new_pulse = 10;  // Increase pulse width
+
+    uint32_t new_ctrl = (new_pulse &lt;&lt; 8) | new_credit;
+    write32(PRIMARY_TIMER_BASE + 0x04, new_ctrl);
+
+    printf("Updated: Credit=%u, Pulse=%u\n", new_credit, new_pulse);
+
+    // Monitor effect on synchronization quality
+    sleep_ms(1000);
+    monitor_synchronization_health();
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

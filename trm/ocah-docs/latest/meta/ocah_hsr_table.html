@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../about-ocah.html">About OCAH</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#motivation">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#use-cases">Use Cases</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../getting-started.html">Getting Started</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#dependencies">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#tools">Tools</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#methodology">Methodology</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html#ocah-architecture">OCAH Architecture</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-high-level-features">High-Level Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-top-block-diagram">Top Block Diagram</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-power-domains">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-clock-domains">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-reset">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../architecture.html#ocah-memory-map">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../sep/index.html">SEP Architecture</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/memmap.html">Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/cpu.html">CPU &amp; Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/dma.html">DMA Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc/zeroer.html">Memory Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">EFuse</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross Trigger Network</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#system-management-network">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/trm/modules/ROOT/pages/meta/ocah_hsr_table.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. High-Level Safety Requirements</caption>
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 57.1428%;">
+<col style="width: 28.5715%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Requirement ID</th>
+<th class="tableblock halign-left valign-top">Requirement Description</th>
+<th class="tableblock halign-left valign-top">Comments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-GENERAL-001</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH shall retain a functional control core during a systematic or random fault</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-GENERAL-002</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH shall have the capability to hold the chiplet in reset to maintain a safe state after a fault event</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-GENERAL-003</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH shall provide a mechanism for configuring and managing safety relevant configuration</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-GENERAL-004</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When a systematic or random fault event happens, OCAH shall provide a mechanism for signalling critical errors and status outside of its boundaries</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error signals will be routed to SMO which is nominally utside of OCAH</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-GENERAL-005</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When a systematic or random fault event happens, OCAH shall provide a reliable mechanism for storing critical errors, error statistics, and error status.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-001</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall always provide a stable clock and reset for its resources</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-002</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall always allow a stable sensing from external sensors (PVT and telemetry)</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-003</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When a temperature sensor reports a value exceeding the critical temperature limit, OCAH SMC shall autonomously engage thermal capping to reduce thermal output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Note: bad dynamic power and thermal management (DPTM) in the long term leads to: component’s lifetime shortening, electromigration, dielectric breakdown due to thermal hot spots and sharp thermal gradients, and degraded operating speed due to leakage current exponentially increasing with temperature.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-004</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When a voltage sensor reports a value exceeding the application power budget, OCAH SMC shall autonomously engage power capping to reduce the total power envelope</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-005</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall prevent operation outside of pre-defined thermal and electrical power boundaries</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-006</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall verify integrity of payload transferred between chiplets</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-007</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall provide memory error detection and correction mechanisms against random faults to ensure data integrity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SECDED</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall provide fabric error detection mechanisms against random faults to ensure data integrity</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-009</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall block unexpected transactions through its fabric</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-010</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall have the capability to block fabric transactions violating the fabric access policy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">odd parity</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-011</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall detect hangs of OCAH SMC CPU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-012</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall detect hangs of OCAH SMC fabric and devices connected to the fabric</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-013</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When PLL and/or VRM actuation is issued from firmware, OCAH SMC shall always guarantee the actuation commands complete as expected</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-014</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall be capable of detecting, reporting, and correcting errors happening during actuation control of PLL and/or VRMs from firmware</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-015</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall ensure all HW sequencers transition within allowed states</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-016</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall ensure transitions to illegal states in HW sequencers are detected and error signals propagated outside of OCAH</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SMC-017</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SMC shall detect unexpected interrupt trigger, priority assignment, and routing</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-001</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall provide memory error detection and correction mechanisms against random faults to ensure data integrity</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-002</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall verify the integrity and authenticity of firmware images before allowing execution</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-003</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall prevent execution of firmware versions older than the minimum version recorded in the anti-rollback counter</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-004</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall physically isolate secret key material from the software-accessible data bus to prevent unauthorized key exfiltration</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-005</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall provide an emergency wipe mechanism capable of clearing all secret state (keys, vaults, scrambler state) upon detection of a security-critical fault</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-006</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall ensure that the entropy source and DRBG meet NIST statistical quality requirements and detect degradation via online health monitoring</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-007</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall ensure life cycle state transitions occur only through authenticated token matching with triple-redundant comparison logic</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall detect inconsistencies in differentially encoded life cycle state and feature control signals</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-009</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall block unexpected or unauthorized inbound and outbound fabric transactions through programmable traffic filtering</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-010</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall ensure all HW sequencers and FSMs transition within allowed states</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-011</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall ensure transitions to illegal states in HW sequencers are detected and error signals propagated outside of OCAH</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-012</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall detect hangs of the OCAH SEP CPU through the Watchdog Timer</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-013</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall detect and report errors in cryptographic operations including bus faults, memory parity errors, and CPU trap events from the Key Manager</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-014</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall prevent unauthorized debug, test, and scan dump access according to the current life cycle state and feature control vectors</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-015</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall ensure that fuse sensing completes successfully before releasing downstream logic and CPU execution</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-016</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall protect OTP shadow registers, token values, and cryptographic keys from exposure through scan chains in all life cycle states</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-017</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall detect unexpected interrupt trigger, priority assignment, and routing</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-HSR-SEP-018</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH SEP shall detect hangs of OCAH SEP fabric and devices connected to the fabric</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

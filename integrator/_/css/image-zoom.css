@@ -1,0 +1,19 @@
+/* Image zoom cursor hint */
+.doc img {
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+
+.doc img:hover {
+  opacity: 0.95;
+}
+
+/* Medium-zoom overlay styling */
+.medium-zoom-overlay {
+  z-index: 999;
+}
+
+.medium-zoom-image--opened {
+  z-index: 1000;
+}
+

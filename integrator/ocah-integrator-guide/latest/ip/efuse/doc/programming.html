@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/ip/pages/efuse/doc/programming.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect4">
+<h5 id="efuse-programming"><a class="anchor" href="#efuse-programming"></a><a class="link" href="#efuse-programming">Programming</a></h5>
+<div class="sect5">
+<h6 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h6>
+
+</div>
+<div class="sect5">
+<h6 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable programming
+EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 28) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+
+// Trigger program
+EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
+
+// Wait for completion
+while (EFUSE_PROGRAM_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
+
+// Check status
+if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
+    // Handle error
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Setup read operation
+EFUSE_READ_CTRL = (1 &lt;&lt; 28) | (num_words &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+
+// Trigger read
+EFUSE_READ_CTRL |= (1 &lt;&lt; 17);
+
+// Wait for completion
+while (EFUSE_READ_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
+
+// Read data
+uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">Program Operation Sequence</a></h6>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Setup Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>program_enable</code> = 1 in <code>EFUSE_PROGRAM_CTRL</code></p>
+</li>
+<li>
+<p>Configure <code>efuse_addr</code> with target bit address</p>
+</li>
+<li>
+<p>Set <code>efuse_data</code> = 1 (only 1s can be programmed)</p>
+</li>
+<li>
+<p>Optionally set <code>efuse_program_read_back</code> = 1 for verification</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Execute Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>efuse_program_go</code> = 1 to trigger operation</p>
+</li>
+<li>
+<p>Monitor <code>program_busy</code> until it goes low</p>
+</li>
+<li>
+<p>Check <code>program_done</code> = 1 for completion</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Status Check</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Read <code>program_status</code> field:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>0: Success</p>
+</li>
+<li>
+<p>1: Bad data (data was not 1)</p>
+</li>
+<li>
+<p>2: Bad enables (program_enable not set or lock active)</p>
+</li>
+<li>
+<p>3: Programming failure (verification failed)</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">Read Operation Sequence</a></h6>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Setup Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>read_enable</code> = 1 in <code>EFUSE_READ_CTRL</code></p>
+</li>
+<li>
+<p>Configure <code>efuse_addr</code> with target bit address</p>
+</li>
+<li>
+<p>Set <code>efuse_read_length_words</code> for multi-word reads</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Execute Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>efuse_read_go</code> = 1 to trigger operation</p>
+</li>
+<li>
+<p>Monitor <code>read_busy</code> until it goes low</p>
+</li>
+<li>
+<p>Check <code>read_done</code> = 1 for completion</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Data Retrieval</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Read data from <code>EFUSE_READ_INTERFACE_READ_DATA</code></p>
+</li>
+<li>
+<p>Check <code>read_status</code> for any errors</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

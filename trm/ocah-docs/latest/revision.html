@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Revision History :: Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="about-ocah.html">About OCAH</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#motivation">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#use-cases">Use Cases</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#dependencies">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#tools">Tools</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#methodology">Methodology</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html#ocah-architecture">OCAH Architecture</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-high-level-features">High-Level Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-top-block-diagram">Top Block Diagram</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-power-domains">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-clock-domains">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-reset">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="architecture.html#ocah-memory-map">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html#security-processor-sep">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="sep/index.html">SEP Architecture</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html#system-management-controller">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/cpu.html">CPU &amp; Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/dma.html">DMA Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/zeroer.html">Memory Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/efuse/doc/index.html">EFuse</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross Trigger Network</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#system-management-network">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></li>
+    <li><a href="revision.html">Revision History</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/trm/modules/ROOT/pages/revision.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Revision History</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This document tracks major revisions and updates to the OCAH
+documentation.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Revision History</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Version</th>
+<th class="tableblock halign-left valign-top">Date</th>
+<th class="tableblock halign-left valign-top">Author</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.0.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2025-10-23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Initial documentation
+structure setup. Added methodology, microarchitecture, dependencies,
+tools, and history sections. Reorganized documentation system with
+distributed IP documentation approach. Added SMC documentation draft.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.0.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-01-08</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added SMC Integration guideline.
+Added SMC eFuse shadow register address mapping. Fixed eFuse
+memory map to include detailed register field mappings (I2C/I3C_ID, CHIPLET_ID,
+etc.).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.0.3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-01-28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clarified OCTS timer architecture:
+runtime primary/secondary distinction via strap.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.1.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-01-29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added DTP architecture and
+microarchitecture specs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.2.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-02-12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added OCAH SMC FuSa specs. Clarified
+SMC fabric protocols in CPU cluster and memory system size.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-02-20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added OCAH SEP specs. Added OCAH top-level
+figure and brief description.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-03-10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed SMC memory map doc (memmap.adoc) to
+match RDL: corrected ECAM, M-mode, Xvisor, PLIC, CLINT, BEU addresses/sizes;
+added missing components (DTP, DFT, CLA, I3C, Mailbox).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-03-18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added FuSa requirement mapping to FuSa specs;
+Added SMC peripheral clock specs; updated SMC top figure with highlighted clock domains;
+updated SEP specs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-03-24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clarified bus and register parity generation and checking;
+Clarified strobe gating for masked (partial) writes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-03-24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Add detailed breakdown of register types for register parity checking.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.3.5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-03-31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added parity handling for protocol converters (ID remap, burst splitter, ID prepend, address fixer).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.4.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-04-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expanded DTP and SEP documentation with
+microarchitecture details. Expanded Scrambler, Key Manager, Entropy Source, and DRBG
+DTP architecture specs with RTL-derived parameter tables, algorithm details, and integration
+descriptions. Enriched SEP crypto accelerator sections (OTBN, AES, KMAC, HMAC) and peripheral
+sections (SPI, WDT, eFuse) with wrapper integration details and OpenTitan cross-references.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.4.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-04-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Refactored OCAH Architecture chapter
+with Power Domains, Clock Domains, Reset, and Address Map sections.
+Added RTL-backed port tables for SMU, SMC, SEP, and DTP. Renamed and
+streamlined Integration Guide. Replaced placeholder files with proper
+content (Motivation, OCA Compliance, Use Cases). Added cover page
+version and date.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-04-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Open to internal review.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-04-22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Refreshed SEP crypto entropy routing
+description: AES, KMAC, and OTBN EDN ports now fed from post-CSRNG DRBG bits; generic external-entropy-stream option documented.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-05-12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Corrected SIB acronym expansion in DTP/JTAG
+architecture docs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-05-25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Updated SEP Lifecycle Controller chapter with feedback from F2F meeting.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-05-29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removed legacy-design
+references from OCAH AsciiDoc documentation and rewrote provenance-only
+third-party references as OCAH-owned requirements and behavior.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-06</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added Key Manager key-management architecture:
+per-UID software/hardware root keys, deterministic UID-derived key hierarchy,
+requester-selected chip configuration, configuration-tied key revocation, ECC
+key metadata in signatures, and user input keys.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-06</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Refined the SEP Lifecycle Controller
+feature-control section per review: reordered it to define the disable vector
+(SIP_DIS / SYS_DIS) before the per-LC-state feature-control result, added an
+Overrides and Final Gates description (SEC_DIS override and the SECURE_TM final
+gate on the test group), and removed the obsolete screening/diagnostic test
+definitions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager: moved UID and hardware-root-key
+read-locks to the warm reset domain (re-applied by ROM on every boot), matching
+the warm-reset KM CPU.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Updated Key Manager spec per review feedback:
+clarified OTP inputs (UIDs and life-cycle hardwired; demotion from LCC), the
+eFuse access path, KDF concatenation notation, 512-bit user_input, and
+mailbox-only user-input-key injection.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Lifecycle Controller per review: corrected
+DEMOTE feature-control scope (TEST_DEV honours SIP_DIS/SYS_DIS; RMA_CHIPLET
+already opens debug), unified the T/F convention (T = feature enabled), and
+reframed scan protection (removed the secure_tm shadow-register disconnect;
+Class 1 non-scannable, Class 2 scandump-gated).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Documented PLIC and <code>mie</code> CSR
+software initialization requirements before enabling external interrupts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed contradictory descriptions across the
+SEP spec following the Lifecycle Controller update.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aligned SEP scan / scan-dump asset
+protection in the Lifecycle Controller and Key Manager chapters: crypto / KM
+secret-bearing storage (including the KPV key vault) is scannable but never
+scan-dumpable (secure_tm-gated), and reconciled the Attack Countermeasures
+chapter to match.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

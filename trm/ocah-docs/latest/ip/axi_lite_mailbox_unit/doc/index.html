@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../revision.html">Revision History</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../about-ocah.html">About OCAH</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../about-ocah.html#motivation">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../about-ocah.html#use-cases">Use Cases</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../getting-started.html">Getting Started</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../getting-started.html#dependencies">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../getting-started.html#tools">Tools</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../getting-started.html#methodology">Methodology</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html#ocah-architecture">OCAH Architecture</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-high-level-features">High-Level Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-top-block-diagram">Top Block Diagram</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-power-domains">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-clock-domains">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-reset">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../architecture.html#ocah-memory-map">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../sep/index.html">SEP Architecture</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/memmap.html">Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/cpu.html">CPU &amp; Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/dma.html">DMA Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../smc/zeroer.html">Memory Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../efuse/doc/index.html">EFuse</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../dtp/jtag.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../cross_trigger_network/doc/index.html">Cross Trigger Network</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../architecture.html#system-management-network">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></li>
+    <li><a href="../../../architecture.html">OCAH Architecture &amp; Design</a></li>
+    <li><a href="../../../architecture.html#system-management-controller">System Management Controller (SMC)</a></li>
+    <li><a href="../../../smc/periphs.html">Peripherals</a></li>
+    <li><a href="index.html">Mailbox</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/trm/modules/ip/pages/axi_lite_mailbox_unit/doc/index.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="mailbox-unit"><a class="anchor" href="#mailbox-unit"></a><a class="link" href="#mailbox-unit">1. Mailbox Unit</a></h4>
+<div class="sect4">
+<h5 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h5>
+<div class="paragraph">
+<p>This document specifies the Mailbox Unit hardware IP functionality. The
+Mailbox Unit provides FIFO-based bidirectional communication channels
+for inter-processor or inter-chiplet communication using AXI4-Lite
+interfaces. It enables efficient data exchange between processing
+elements through dedicated hardware channels with minimal software
+overhead.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+<div class="paragraph">
+<p>The Mailbox Unit enables secure, FIFO-based, bidirectional communication
+between processing elements or chiplets in multicore systems. Each
+configurable mailbox instance consists of paired inbound and outbound
+channels, allowing simultaneous data transfer with a 64-bit data path.
+Multiple independent mailbox pairs are supported, each equipped with
+dedicated control registers, status monitoring, and programmable
+interrupt thresholds.</p>
+</div>
+<div class="paragraph">
+<p>The architecture uses standard AXI4-Lite interfaces for integration and
+provides robust error detection, reporting, and software-controllable
+FIFO flushing. Channel depth is adjustable per instance to suit system
+needs, while hardware minimizes software overhead for efficient,
+low-latency data exchange.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="mailbox-unit-architecture"><a class="anchor" href="#mailbox-unit-architecture"></a><a class="link" href="#mailbox-unit-architecture">Architecture</a></h5>
+<div class="paragraph">
+<p>The SMC Mailbox IP provides inter-processor and inter-chiplet
+communication through a register-based interface. The design separates
+protocol handling from storage implementation, allowing system
+integrators to choose appropriate FIFO implementations while maintaining
+consistent software interfaces.</p>
+</div>
+<div class="sect5">
+<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 15%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_MAILBOXES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 (max: 32)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scales from point-to-point to
+multi-processor coordination</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 entries</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External FIFO depth for buffering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding AXI4-Lite transactions</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x800 (2KB)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register space per mailbox for control and
+status</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="address-space"><a class="anchor" href="#address-space"></a><a class="link" href="#address-space">Address Space</a></h6>
+<div class="paragraph">
+<p>The architecture supports up to 64 mailbox instances (32 bidirectional
+pairs):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Address Width</strong>: 18 bits (0x20008 bytes total)</p>
+</li>
+<li>
+<p><strong>Data Width</strong>: 64 bits</p>
+</li>
+<li>
+<p><strong>Per-Mailbox Space</strong>: 0x800 bytes (2KB)</p>
+</li>
+<li>
+<p><strong>Decoding</strong>: Efficient address decode logic for up to 32 pairs</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The 64-bit data width optimizes handling of addresses, data payloads,
+and status information without multi-word transfers. The 2KB allocation
+per mailbox enables threshold configuration, priority handling, and
+diagnostic features.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="hardware-interface"><a class="anchor" href="#hardware-interface"></a><a class="link" href="#hardware-interface">Hardware Interface</a></h6>
+<div class="paragraph">
+<p>The SystemRDL-generated register block provides hardware interfaces to
+external FIFO implementations through two signal structures:</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="hardware-input-interface-mailbox_wrap__in_t"><a class="anchor" href="#hardware-input-interface-mailbox_wrap__in_t"></a><a class="link" href="#hardware-input-interface-mailbox_wrap__in_t">Hardware Input Interface (mailbox_wrap__in_t)</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rd_ack</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read acknowledge for handshake protocol</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_ack</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write acknowledge for handshake protocol</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rd_data[63:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit read data from external FIFO</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The acknowledge signals implement handshake protocol for reliable data
+transfer regardless of external FIFO timing. The 64-bit read data
+interface eliminates width conversion overhead.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="hardware-output-interface-mailbox_wrap__out_t"><a class="anchor" href="#hardware-output-interface-mailbox_wrap__out_t"></a><a class="link" href="#hardware-output-interface-mailbox_wrap__out_t">Hardware Output Interface (mailbox_wrap__out_t)</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction request to external FIFO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr[6:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local address within mailbox space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>req_is_wr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction type (1=write, 0=read)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_data[63:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit write data to external FIFO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_biten[63:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte enable for write data</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The 7-bit local address enables multiple registers per mailbox. Byte
+enables provide granular write control for external FIFO optimization.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="transaction-processing"><a class="anchor" href="#transaction-processing"></a><a class="link" href="#transaction-processing">Transaction Processing</a></h6>
+<div class="paragraph">
+<p>AXI4-Lite transactions follow this flow:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Address Decode</strong>: Register block decodes mailbox instance and
+operation type</p>
+</li>
+<li>
+<p><strong>Hardware Interface</strong>: Generates <code>req</code>, <code>addr</code>, <code>req_is_wr</code> signals
+to external FIFO</p>
+</li>
+<li>
+<p><strong>FIFO Processing</strong>: External logic processes request according to
+timing characteristics</p>
+</li>
+<li>
+<p><strong>Acknowledge</strong>: External FIFO asserts <code>rd_ack</code>/<code>wr_ack</code> when complete</p>
+</li>
+<li>
+<p><strong>AXI Response</strong>: Register block completes AXI4-Lite protocol</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This coordination mechanism maintains consistent AXI4-Lite timing while
+allowing external FIFOs to optimize internal operations for specific
+performance or resource requirements.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="bidirectional-communication"><a class="anchor" href="#bidirectional-communication"></a><a class="link" href="#bidirectional-communication">Bidirectional Communication</a></h6>
+<div class="paragraph">
+<p>Each mailbox pair provides separate inbound and outbound register
+spaces:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Inbound Space</strong>: Optimized for low-latency command processing</p>
+</li>
+<li>
+<p><strong>Outbound Space</strong>: Optimized for high-throughput status/telemetry
+transfer</p>
+</li>
+<li>
+<p><strong>Independence</strong>: No mutual interference or resource contention</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Separate register spaces enable different optimization strategies per
+direction. Interrupt generation integrates with external FIFO status
+reporting for event notification.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">Clock and Reset</a></h6>
+<div class="paragraph">
+<p>The mailbox uses a single clock domain for integration reliability:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 30%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unifies functional logic and AXI4-Lite interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous, active-low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset, initializes all
+mailbox state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT support</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>No internal clock domain crossings eliminates CDC complexity. Single
+clock domain simplifies timing analysis and integration verification.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="interrupt-architecture"><a class="anchor" href="#interrupt-architecture"></a><a class="link" href="#interrupt-architecture">Interrupt Architecture</a></h6>
+<div class="paragraph">
+<p>The mailbox provides independent interrupt outputs for each mailbox
+instance:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>inbound_interrupt_o[NUM_MAILBOXES-1:0]</code>: Inbound communication events</p>
+</li>
+<li>
+<p><code>outbound_interrupt_o[NUM_MAILBOXES-1:0]</code>: Outbound communication
+events</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Separate inbound/outbound interrupts reflect different processing
+requirements. Inbound interrupts indicate incoming commands requiring
+immediate processing; outbound interrupts indicate successful
+transmission or buffer availability.</p>
+</div>
+<div class="paragraph">
+<p>The following table reports the interrupt sources.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write Threshold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO fill level exceeds configured threshold
+(proactive buffer management)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read Threshold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO data available for efficient retrieval scheduling</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overflow Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO (fault detection)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Underflow Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read from empty FIFO (fault detection)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Each interrupt output aggregates these sources. Threshold-based
+interrupts reduce polling overhead. Error interrupts enable fault
+recovery and diagnostic analysis.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="mailbox-unit-interface"><a class="anchor" href="#mailbox-unit-interface"></a><a class="link" href="#mailbox-unit-interface">Interface</a></h5>
+<div class="paragraph">
+<p>The Mailbox Unit provides both struct-based and flattened AXI4-Lite
+interfaces (selectable via generation template).</p>
+</div>
+<div class="sect5">
+<h6 id="axi4-lite-interface"><a class="anchor" href="#axi4-lite-interface"></a><a class="link" href="#axi4-lite-interface">AXI4-Lite Interface</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input  mailbox_axil_req_t  mailbox_axi_req_i,
+output mailbox_axil_resp_t mailbox_axi_resp_o</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="flattened-interface"><a class="anchor" href="#flattened-interface"></a><a class="link" href="#flattened-interface">Flattened Interface</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Write Address Channel
+input  logic            awvalid_i,
+output logic            awready_o,
+input  addr_t           awaddr_i,
+input  axi_pkg::prot_t  awprot_i,
+
+// Write Data Channel
+input  logic            wvalid_i,
+output logic            wready_o,
+input  data_t           wdata_i,
+input  strb_t           wstrb_i,
+
+// Write Response Channel
+output logic            bvalid_o,
+input  logic            bready_i,
+output axi_pkg::resp_t  bresp_o,
+
+// Read Address Channel
+input  logic            arvalid_i,
+output logic            arready_o,
+input  addr_t           araddr_i,
+input  axi_pkg::prot_t  arprot_i,
+
+// Read Data Channel
+output logic            rvalid_o,
+input  logic            rready_i,
+output data_t           rdata_o,
+output axi_pkg::resp_t  rresp_o</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Interface Characteristics</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18 bits (s_axil_araddr[17:0])</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strobe Width</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total Address Space</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20008 bytes (up to 32 mailbox pairs)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Standard AXI4-Lite with separate read/write channels</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="interrupt-outputs"><a class="anchor" href="#interrupt-outputs"></a><a class="link" href="#interrupt-outputs">Interrupt Outputs</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
+output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Interrupt Characteristics</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable (default: level-triggered)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Polarity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active high</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write threshold, read threshold, overflow, underflow</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="control-signals"><a class="anchor" href="#control-signals"></a><a class="link" href="#control-signals">Control Signals</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input logic clk_i,       // System clock
+input logic rst_ni,      // Active-low asynchronous reset
+input logic test_en_i    // Test enable for DFT</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Control Signal Descriptions</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary system clock for all mailbox logic and AXI interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous reset (active low), resets all mailbox state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable for design-for-test (DFT) functionality</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="timing-characteristics"><a class="anchor" href="#timing-characteristics"></a><a class="link" href="#timing-characteristics">Timing Characteristics</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latency</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single-cycle FIFO access (when not full/empty)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Throughput</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One 64-bit transfer per clock cycle</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pipeline Depth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable via MAX_TRANS (default: 32)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="error-handling"><a class="anchor" href="#error-handling"></a><a class="link" href="#error-handling">Error Handling</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Error Condition</th>
+<th class="tableblock halign-left valign-top">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read from empty FIFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>read_error</code> flag, returns previous data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>write_error</code> flag, discards new data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Triggered if enabled via IRQEN register</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="integration-requirements"><a class="anchor" href="#integration-requirements"></a><a class="link" href="#integration-requirements">Integration Requirements</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Requirement</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Address Space</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB per mailbox pair; Total = 4KB × NUM_MAILBOXES × 2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Software</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Poll STATUS or use interrupts for data availability;
+configure WIRQT/RIRQT thresholds; check ERROR register</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Hardware</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connect interrupts to system controller; proper reset
+sequencing; single clock domain (no CDC required)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="mailbox-unit-memory-map"><a class="anchor" href="#mailbox-unit-memory-map"></a><a class="link" href="#mailbox-unit-memory-map">Memory Map</a></h5>
+<div class="sect5">
+<h6 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">Address Space Organization</a></h6>
+<div class="paragraph">
+<p>Each mailbox instance occupies a dedicated 2KB (0x800) address space.
+The total address space is 0x20008 bytes supporting up to 64 mailbox
+instances (32 pairs):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">Base + 0x00000 - 0x007FF: Outbound Mailbox 0
+Base + 0x00800 - 0x00FFF: Inbound Mailbox 0
+Base + 0x01000 - 0x017FF: Outbound Mailbox 1
+Base + 0x01800 - 0x01FFF: Inbound Mailbox 1
+Base + 0x02000 - 0x027FF: Outbound Mailbox 2
+Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
+...
+Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
+Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31
+Base + 0x20000 - 0x20007: MAILBOX_RSVD (Reserved space)</code></pre>
+</div>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong>Address Space Characteristics:</strong></dt>
+<dd>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Per-Mailbox Size</strong>: 2KB (0x800)</p>
+</li>
+<li>
+<p><strong>Total Address Space</strong>: 0x20008 bytes</p>
+</li>
+<li>
+<p><strong>Address Width</strong>: 18 bits</p>
+</li>
+<li>
+<p><strong>Maximum Mailboxes</strong>: 32 pairs (64 instances)</p>
+</li>
+</ul>
+</div>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect5">
+<h6 id="per-mailbox-register-map"><a class="anchor" href="#per-mailbox-register-map"></a><a class="link" href="#per-mailbox-register-map">Per-Mailbox Register Map</a></h6>
+<div class="paragraph">
+<p>Within each 4KB mailbox address space, registers are organized as
+follows:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Register Address Map</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 15%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Register Name</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x00</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write data to mailbox FIFO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x08</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read data from mailbox FIFO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO status (empty, full, threshold)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error flags (write/read errors)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WIRQT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write interrupt threshold</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RIRQT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read interrupt threshold</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IRQS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt status (write-1-to-clear)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IRQEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt enable control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IRQP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt pending status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x48</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control register (FIFO flush)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="address-examples"><a class="anchor" href="#address-examples"></a><a class="link" href="#address-examples">Address Examples</a></h6>
+<div class="paragraph">
+<p>For a system with 2 mailbox pairs (NUM_MAILBOXES = 2) at base address
+0x10000000:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Address Map Example (2 Mailbox Pairs)</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 30%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mailbox Pair</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000 - 0x100007FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Mailbox 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000800 - 0x10000FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Mailbox 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10001000 - 0x100017FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Mailbox 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10001800 - 0x10001FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Mailbox 1</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="specific-register-examples"><a class="anchor" href="#specific-register-examples"></a><a class="link" href="#specific-register-examples">Specific Register Examples:</a></h6>
+<table class="tableblock frame-all grid-all" style="width: 60%;">
+<caption class="title">Table 6. Register Address Example (Mailbox Pair 0)</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Register Name</th>
+<th class="tableblock halign-left valign-top">Mailbox Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000010</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000018</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000800</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000808</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">READ_DATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000810</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10000818</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h6>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: axil_mailbox</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#WRITE_DATA">WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#READ_DATA">READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#ERROR_FLAGS">ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#WIRQT">WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#RIRQT">RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#IRQS">IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x38</td><td><a href="#IRQEN">IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x40</td><td><a href="#IRQP">IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x48</td><td><a href="#CTRL">CTRL</a></td><td>W</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="WRITE_DATA">WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="READ_DATA">READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>0x0</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshhold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshhold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x0</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="ERROR_FLAGS">ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="WIRQT">WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="RIRQT">RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="IRQS">IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="IRQEN">IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="IRQP">IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

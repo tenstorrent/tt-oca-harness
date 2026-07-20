@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/sep/pages/periphs.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1. Fuse Controller (OTP)</a></h4>
+<div class="imageblock">
+<div class="content">
+<img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
+</div>
+</div>
+<div class="paragraph">
+<p>On reset release of SEP (chiplet_cold_reset), the sensing FSM
+automatically copies each fuse field to its dedicated memory mapped fuse
+shadow register.</p>
+</div>
+<div class="paragraph">
+<p>The LC_STATE’s shadow register’s <em>output</em> shall be 4’b1111 until fuse
+sensing is done. Only after fuse sensing is done, can the LC_STATE’s
+real value from fuses be sent out to downstream logic, like the
+lifecycle controller. Table xxx defines whether software can read/write
+the fuse shadow registers for each fuse field. Software invisible shadow
+registers send out fuse values to downstream hardware blocks directly.
+All fuses except for LOCKS and LC_STATE, as defined in Table xxx shall
+be made available to the downstream logic at once when ready.</p>
+</div>
+<div class="paragraph">
+<p>After fuses are read out to their shadow registers, a sense completion
+indicator is generated. This will trigger the DFT based memory repair
+machine for the SEP SRAMs. Once memory repair is done or bypassed, the
+SEP CPU is enabled and it will fetch its first instruction from the SEP
+ROM.</p>
+</div>
+<div class="paragraph">
+<p>Every fuse field has 2 lock bits in the LOCKS field. One bit for write
+lock and one bit for read lock. When the write lock bit is set to 1, the
+corresponding fuse field cannot be programmed anymore. Its shadow
+register is not writable anymore either. When the read lock bit is set
+to 1, the shadow register for the corresponding fuse field is not
+readable by software nor by JTAG. The read lock effectively only applies
+to the fuse fields that are software visible.</p>
+</div>
+<div class="paragraph">
+<p>The fuse block’s internal space, including the fuse programming config
+space, can be accessed by a JTAG interface as well as an AXI interface,
+as shown in the figure. Both interfaces have their own access control.
+Besides the access control to the shadow registers defined by Table xxx,
+additional control shall be applied to the JTAG port, such that, in PROD
+and RMA_SIP states, it can only read/write RMA_SIP_TOKEN_I and
+RMA_CHIPLET_TOKEN_I.</p>
+</div>
+<div class="paragraph">
+<p>The fuse programming protection shall only enable the fuse programming
+function after the LOCKS field has been sensed. It shall also honor the
+write-lock fuse value for each field. Programming LC_STATE is handled
+with additional restrictions. 2nd and 3rd bits (LC_STATE[1] and
+LC_STATE[2]) indicate whether the chiplet is in RMA mode (Table 14). The
+SEP fuse controller implements two 256-bit registers, RMA_SIP_TOKEN_I
+and RMA_CHIPLET_TOKEN_I.</p>
+</div>
+<div class="paragraph">
+<p>These two registers can be populated by both SEP software and JTAG. Each input
+is hashed (SHA-256) and compared with the stored RMA_SIP_TOKEN_DIGEST and
+RMA_CHIPLET_TOKEN_DIGEST, respectively. Only when they match can programming of
+LC_STATE[1] and LC_STATE[2] be enabled. This is described in more detail in the
+next section below.</p>
+</div>
+<div class="paragraph">
+<p>The fuse programming protection shall only enable the fuse programming
+function after the LOCKS field has been sensed. It shall also honor the
+write-lock fuse value for each field.</p>
+</div>
+<div class="paragraph">
+<p>The fuse bank shall support unlimited lifetime for the programming
+voltage rail to be active. This is supported by only employing the
+internal charge pump generated programming voltage rather than using the
+external programming voltage.</p>
+</div>
+<div class="paragraph">
+<p>The charge pump is calibrated in the early phases of wafer-test and its
+calibration values are burned into the corresponding fuse bits. This is
+the only time the external fuse programming voltage is used.
+Consequently, SEP software based fuse programming does not need to be
+concerned about configuring the required programming voltage when
+writing further bits.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Programming the fuse doesn’t update the shadow registers until the
+next fuse sensing occurs.</p>
+</li>
+<li>
+<p>Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
+non-scannable registers. Any register in the path from these registers
+to the test enablement signals for TAP or fuse write enablement signals
+is non-scannable either.</p>
+</li>
+<li>
+<p>When SECURE_TM is 1 (Section 6.3), shadow registers of LOCKS,
+LC_STATE, SIP_DIS, and SYS_DIS are disabled from getting any updates. It’s
+optional for other fuse fields to follow the same rule.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To prevent test patterns accidentally/maliciously change and read out
+the fuse values:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When SECURE_TM is 1 the fuse write enable input to the fuse IP block
+are tied to inactive; outputs of the fuse banks are disconnected from
+the downstream logic. If needed, dedicated test registers can be added
+to drive the downstream logic for testing purposes.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">Fuse Fields</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Field index</th>
+<th class="tableblock halign-left valign-top">Size (bits)</th>
+<th class="tableblock halign-left valign-top">SW writable</th>
+<th class="tableblock halign-left valign-top">SW readable</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LOCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock control for each fuse field. There are
+two lock bits for each of the 32 fields. When write locked the
+corresponding shadow register is not writable. When read locked, SW and
+JTAG cannot read the corresponding shadow register or fuse field. The
+fuse sensing FSM is <em>always</em> able to read the fuses in order to populate
+the shadow registers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 4 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life cycle state of
+chiplet. <strong><em>LC_STATE shall never be write-locked or read-locked by the
+corresponding LOCKS bits</em></strong>. LC_STATE[3] and LC_STATE[0] are set-only.
+LC_STATE[2:1] shall be set-only when the corresponding *_TOKEN has a
+match. Otherwise, LC_STATE[2:1] cannot be updated.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 1 bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disable secure boot when
+bit is set to 1.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRANS_RMA_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (use only 1 bit)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When TRANS_RMA_EN == 1,
+we can perform token matching operations. If the token matches, put the
+chip automatically into the corresponding RMA state by setting the
+corresponding LC_STATE shadow register’s bits, without reset of the chip
+needed. Match of RMA_CHIPLET_TOKEN takes priority. The user needs to
+decide if they demand reset before entering RMA state or not. When
+TRANSIENT_RMA_EN == 0, match on *_TOKENs will not automatically change
+the LC_STATE shadow register.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP owner’s feature control vector,
+provisioned by chiplet owner. When set, the corresponding feature is
+disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_DIS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System owner’s feature control vector,
+provisioned by SIP owner. When set, the corresponding feature is
+disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SIP_TOKEN_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the secret
+RMA_SIP_TOKEN, that enables entering RMA_SIP Life Cycle state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET_TOKEN_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of the secret
+RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLASS_KEY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can be used for firmware encryption and decryption.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_REVOKE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Revoke public keys used to
+verify BL1. SEP ROM embeds a set of public key hash digests as well as
+access to additional keys via fuses. Each hash digest entry is mapped to
+a bit in this CHIPLET_PUBK_REVOKE field. Once set, the SEP ROM shall
+reject the corresponding public key. The first two public keys in the
+SEP ROM are used for development. Before the chiplet owner transfers a
+part to the customer, the corresponding bit in CHIPLET_PUBK_REVOKE shall
+be set i.e. revoked.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Anti-Rollback Counter (ARBC) for BL1.
+Minimum BL1 version that can be loaded by SEPROM. The version is encoded
+as the population count of 1 bits in this field. Maximum version is 240
+(TBD) which provides redundancy for any fuses that fail to blow.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL2_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Anti-Rollback Counter (ARBC) for BL2.
+Minimum BL1 version that can be loaded by SEPROM. The version is encoded
+as the population count of 1 bits in this field. Maximum version is 240
+(TBD) which provides redundancy for any fuses that fail to blow.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Silicon creator’s <em>secret</em> device unique
+ID. (It may also be referred to as UDS - Unique Device Secret). The
+chiplet creator is responsible for CHIPLET_UID provisioning and public
+identity enrollment. <em>FUTURE IMPROVEMENT: HW enforced key provisioning
+measurement recording. When locked, both writability and software
+visibility are disabled.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_PUBK_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of SiP owner’s root
+public key for secure boot. Note: The chiplet creator’s actual root
+public key is embedded in the SEPROM. The digest is used to validate
+that public key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SIP_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP owner’s <em>secret</em> device unique ID. The
+SiP owner is responsible for SIP_UID provisioning and public identity
+enrollment. When locked, both writability and software visibility are
+disabled. <em>FUTURE IMPROVEMENT: HW enforced key provisioning measurement
+recording; keep previous owners’ PUBK and UID pair(s) still valid but
+reflected in the key derivation hierarchy.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_PUBK_DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash digest of system owner’s root
+public key for secure boot.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS_UID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System owner’s <em>secret</em> device unique ID. The
+system owner is responsible for SYS_UID provisioning and public identity
+enrollment. When locked, both writability and software visibility are
+disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STATUS_RPT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (2 used)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When STATUS_RPT[1:0] = 2&#8217;b00,
+BootROM looks at a SMC GPIO, STATUS_RPT, to determine whether to report
+status. When STATUS_RPT == 2&#8217;b01, BootROM reports status; otherwise,
+BootROM doesn&#8217;t report status.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM_CTL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM_CTL[0]: 0: little endian, 1: big endian
+ROM_CTL[5:1]: row swap control, swaps ROM slices when set ROM_CTL[31:6]:
+reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI_CONFIG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">288</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI discovery has 8 configuration values
+as well as 1 enable bitfield. Each word is 32-bits in length: [0]
+SPI_CONFIG_EN Enable for each of the following 8 SPI_CONFIG field words.
+SPI_CONFIG_EN[7:0] corresponds to registers 1-8 below. When bit N is set
+in this field, then configuration register N+1 is valid in fuses and
+that value will be read from fuses and written into the specified SPI
+configuration register during the SPI controller initialization.
+SPI_CONFIG_EN[31:8] are reserved. [1] SPI_CTRL_DISCOVERY_CTRL_REG [2]
+SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR phy_dq_timing_reg [3]
+SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR phy_dqs_timing_reg [4]
+SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR phy_gate_lpbk_ctrl_reg [5]
+SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
+SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
+SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PUBK_HASH0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner authentication key 0, fused.
+These chiplet owner fused key hashes can be used in addition to the
+hashes in the ROM itself to authenticate manifests.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PUBK_HASH1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet owner authentication key 1, fused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved_last_256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved_last_64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bit field with lock bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved_last_32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bit field with lock bit</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The JTAG_ID field has been removed from the fuse map and will be implemented as a top level port.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Anti-Rollback Counter (ARBC)</a></h5>
+<div class="paragraph">
+<p>The counter is implemented as a ``population count'' in fuses instead of
+a binary counter. For a counter capacity of 256 states, we allocate 240
+fuse bits with 26 spares. Every counter increment results in an
+additional fuse bit being blown. Counter state equals the fuse
+population count i.e. the number of fuses (out of 256) which have been
+blown.</p>
+</div>
+<div class="paragraph">
+<p>A new device has an initial ARBC state of zero fuse bits blown.
+Everytime we want to increment the required production firmware version,
+we blow a fuse bit as described above. Firmware signature verification
+includes the state of ARBC along with the firmware version and ensures
+that older firmware versions do not pass the signature verification
+process and cannot be loaded.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="rtl-integration"><a class="anchor" href="#rtl-integration"></a><a class="link" href="#rtl-integration">RTL Integration</a></h5>
+<div class="paragraph">
+<p>The eFuse subsystem in the SEP is implemented by <code>sep_efuse_wrapper</code>, which is instantiated inside <code>sep_crypto</code>. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an <code>axi_dw_converter</code> and <code>axi_to_axi_lite</code> bridge, and then connects to the shared <code>efuse_interface_controller</code> IP from <code>hw/periph/efuse/</code>. A separate JTAG AXI-Lite port provides debug and manufacturing access.</p>
+</div>
+<div class="paragraph">
+<p>The <code>efuse_interface_controller</code> is instantiated with the <code>HAS_LC_STATE</code> parameter set to <code>1&#8217;b1</code>. When this parameter is asserted, the controller implements special handling for the <code>LC_STATE</code> fuse field: the shadow register output for <code>LC_STATE</code> is driven to <code>4&#8217;b1111</code> (invalid) until fuse sensing completes, preventing downstream logic from acting on an incorrect life-cycle state during the boot sequence. The life-cycle state width is 4 bits (<code>sep_pkg::LC_STATE_BIT_WIDTH</code>), starting at bit position 64 in the shadow register map (<code>sep_pkg::LC_STATE_BIT_POSITION</code>).</p>
+</div>
+<div class="paragraph">
+<p>After sensing, the shadow register map (<code>sep_efuse_pkg::efuse_map_t</code>) is exposed to the <code>sep_lifecycle_ctrl</code> module. The lifecycle controller decodes the differentially-encoded <code>LC_STATE</code> field using <code>prim_diff_decode_multi</code> and derives feature control vectors from the <code>SIP_DIS</code> and <code>SYS_DIS</code> fields. It also generates two demotion state outputs (<code>lcc_demote_state_1_o</code>, <code>lcc_demote_state_2_o</code>) through differential encoders.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager receives a subset of the OTP data through the <code>km_otp_data_t</code> structure, which is assembled in <code>sep_crypto.sv</code>. The <code>life_cycle</code> field comes from the differentially-encoded <code>LC_STATE</code> shadow register, the <code>demotion_state_*</code> fields come from the lifecycle controller outputs (not directly from fuses), and the <code>chiplet_uid</code> field comes from the <code>CHIPLET_UID</code> shadow register. The ARBC fields (<code>BL1_VERSION</code>, <code>BL2_VERSION</code>), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.</p>
+</div>
+<div class="paragraph">
+<p>For simulation, adopters may provide an external eFuse macro model through an
+overlay-specific shim. The open tree keeps only the generic controller and shim
+interfaces.</p>
+</div>
+<div class="paragraph">
+<p>For the canonical eFuse IP documentation covering the <code>efuse_interface_controller</code> internals, sensing FSM, and programming protocol, see <code>hw/periph/efuse/doc/index.adoc</code> (included in the SMC documentation via <code>hw/smc/doc/periphs.adoc</code>).</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">2. Peripheral Subsystem</a></h3>
+<div class="paragraph">
+<p>SEP will primarily rely on external serial IO peripherals resident in
+the SMC complex. SEP has an AXI4 extension port which has unfettered
+access to the SMC. Any peripherals in SMC will thus also be available
+for use by SEP.</p>
+</div>
+<div class="paragraph">
+<p>The exception to this will be the SPI host controller which is required
+for SEP booting. It will for now be the only peripheral unit which is
+locally instantiated.</p>
+</div>
+<div class="paragraph">
+<p>_The requirement for SEP accessible GPIO straps was stated earlier in
+the Boot BL0 section of this document. We must ensure we have the
+minimum set of straps available on the SMC GPIO port which are dedicated
+to the SEP BL0 functionality.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/SEP_Peri_Ext_Port.png" alt="SEP_Peri_Ext_Port">
+</div>
+</div>
+<div class="sect3">
+<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">2.1. Serial Peripheral Interface (SPI)</a></h4>
+<div class="paragraph">
+<p>SEP will have one SPI host to support access to external NOR flash
+devices which are the primary BL1 image source. Modern devices are MT35
+type and have octal x8 DDR interfaces. We will also support the older
+MT25 category devices using x4 and x1 channels SPI as these are less
+expensive.</p>
+</div>
+<div class="sect4">
+<h5 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">Use Cases</a></h5>
+<div class="ulist">
+<ul>
+<li>
+<p>BL1 boot image access from external flash device</p>
+</li>
+<li>
+<p>Sensor interfaces (automotive primarily)</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">Features</a></h5>
+<div class="paragraph">
+<p>The component will be based on the
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host</a>
+design and support the following features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>All channel types are supported:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Single channel (x1) mode, clock frequency up to 80 MHz</p>
+</li>
+<li>
+<p>QSPI (x4), quad channel mode, clock frequency up to 166 MHz</p>
+</li>
+<li>
+<p>Octal (x8) in DDR mode, clock frequency up to 200 MHz</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>DQS read data strobe input</p>
+</li>
+<li>
+<p>Separate FIFOs for transmit and receive. Each can be parameterized for
+distinct depth.</p>
+</li>
+<li>
+<p>AXI4-lite slave port for system interconnect</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The SPI pass-through mode supported by OpenTitan is used on discrete
+secure element designs as a security bridge to filter, modify or
+otherwise modify traffic coming from a separate SPI slave device. We do
+<em>not support</em> this feature and will leave this interface on the
+component unconnected or terminated. Furthermore, there is no SPI Slave
+device present in the SEP peripheral subsystem.</p>
+</div>
+<div class="paragraph">
+<p>The open SEP SPI path is <code>sep_ot_spi_wrap</code>, which wraps the modified
+OpenTitan-derived <code>spi_controller</code> with a native AXI4-Lite slave interface (no
+TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS,
+4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA
+trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of
+chip-select outputs. High-performance flash-controller integrations are supplied
+through adopter overlays rather than the open RTL tree.</p>
+</div>
+<div class="paragraph">
+<p>For the OpenTitan SPI host theory of operation and register map, refer to the <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host documentation</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">2.2. Watchdog Timer (WDT)</a></h4>
+<div class="paragraph">
+<p>The Watchdog timer is a component used to enhance reliability and ensure
+that the system is notified if the SEP subsystem is ``hanging''. The SEP
+CPU must periodically visit the WDT and reset its counter, proving that
+the CPU is still alive and well i.e. not hanging. If the WDT timer
+reaches zero in its countdown, it fires an external interrupt indicating
+that its timeout has expired and there is a problem within the SEP.</p>
+</div>
+<div class="paragraph">
+<p>The <code>sep_wdt_wrap</code> module integrates the OpenTitan <code>aon_timer</code> IP as the watchdog timer. The 64-bit AXI slave port from the system crossbar is narrowed to 32-bit AXI through an <code>axi_dw_converter</code>. The address path subtracts the WDT base address so that the internal TL-UL decoder sees zero-based offsets. After <code>axi_to_axi_lite</code> and <code>axi_lite_to_tlul</code> conversion, the TL-UL bus drives the standard <code>aon_timer</code> register block.</p>
+</div>
+<div class="paragraph">
+<p>The wrapper provides a dedicated watchdog clock input (<code>clk_wdt_i</code>) that is synchronized through a <code>prim_sync_reset</code> to produce the <code>rst_aon_ni</code> reset for the always-on timer domain. The <code>wdt_debug_sleep_mode_i</code> input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.</p>
+</div>
+<div class="paragraph">
+<p>The wrapper exports two signals: <code>intr_wdog_timer_bark_o</code>, the watchdog bark interrupt that fires when the first timeout stage expires, and <code>wdt_timer_rst_req_o</code>, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.</p>
+</div>
+<div class="paragraph">
+<p>For the full <code>aon_timer</code> theory of operation, watchdog configuration, and register map, refer to the <a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer documentation</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">2.3. SEP Reset Controller</a></h4>
+<div class="paragraph">
+<p>The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address <code>0x10A5_0000</code> within the System Peripherals crossbar.</p>
+</div>
+<div class="paragraph">
+<p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">km_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">otbn_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">aes_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">hmac_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">kmac_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC reset (0=assert, 1=release)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x1E</code>: KM is held in reset, while OTBN,
+AES, HMAC, and KMAC are released. The SEP host firmware writes <code>1</code> to release an
+IP from reset and writes <code>0</code> to assert its software reset.</p>
+</div>
+<div class="paragraph">
+<p>Each bit is ANDed with the system reset (<code>sep_reset_n</code>) and passed through a 2-FF reset synchronizer to produce a glitch-free, synchronized active-low reset output per IP. Hardware reset always takes precedence&#8201;&#8212;&#8201;even if the software bit is <code>1</code>, asserting the system reset will reset the IP.</p>
+</div>
+<div class="paragraph">
+<p>The <code>_N</code> suffix convention matches the SMC reset controller: <code>0</code> = assert reset, <code>1</code> = release.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

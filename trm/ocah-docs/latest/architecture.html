@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OCAH Architecture &amp; Design :: Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="about-ocah.html">About OCAH</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#motivation">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="about-ocah.html#use-cases">Use Cases</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="getting-started.html">Getting Started</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#dependencies">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#tools">Tools</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="getting-started.html#methodology">Methodology</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="#ocah-architecture">OCAH Architecture</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-high-level-features">High-Level Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-top-block-diagram">Top Block Diagram</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-power-domains">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-clock-domains">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-reset">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-memory-map">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="#security-processor-sep">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="sep/index.html">SEP Architecture</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="#system-management-controller">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/cpu.html">CPU &amp; Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/dma.html">DMA Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smc/zeroer.html">Memory Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/efuse/doc/index.html">EFuse</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross Trigger Network</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#system-management-network">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></li>
+    <li><a href="architecture.html">OCAH Architecture &amp; Design</a></li>
+  </ul>
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/trm/modules/ROOT/pages/architecture.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">OCAH Architecture &amp; Design</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section provides an overview of the OCAH architecture including its
+subsystem composition, power and clock domains, reset hierarchy, and memory
+map. Navigate through the sidebar for detailed information on each subsystem.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ocah-architecture"><a class="anchor" href="#ocah-architecture"></a><a class="link" href="#ocah-architecture">1. OCAH Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This chapter describes the OCAH subsystem composition, power and clock
+domains, reset hierarchy, and memory map. Subsequent chapters provide
+detailed microarchitectural documentation for each subsystem.</p>
+</div>
+<div class="sect2">
+<h3 id="ocah-high-level-features"><a class="anchor" href="#ocah-high-level-features"></a><a class="link" href="#ocah-high-level-features">1.1. OCAH High-Level Features</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Security Enclave Processor (SEP)</strong>&#8201;&#8212;&#8201;Root of Trust (RoT) with the highest
+security privilege. Provides a physically isolated RISC-V execution
+environment for secure boot, lifecycle control, device attestation, and
+hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
+TRNG, DRBG, Key Manager). A security hierarchy across chiplets enables
+SiP-wide security management.</p>
+</li>
+<li>
+<p><strong>System Management Controller (SMC)</strong>&#8201;&#8212;&#8201;Firmware-driven orchestration engine
+responsible for clock, voltage, and reset management, platform
+bootstrapping, system initialisation, and power/thermal management. Built
+around a RISC-V micro-controller with hardware accelerators (DMA, memory
+zeroer) where firmware alone cannot meet timing requirements. Inter-chiplet
+management hierarchy via I2C/I3C and OCMI channels.</p>
+</li>
+<li>
+<p><strong>Debug &amp; Test Ports (DTP)</strong>&#8201;&#8212;&#8201;Standardised debug and test access across
+heterogeneous, multi-vendor chiplet systems. Layered architecture separating
+physical transport from logical access, with cross-chiplet event triggering,
+synchronised clock control for trace, and coordinated resets.</p>
+</li>
+<li>
+<p><strong>System Management Unit (SMU)</strong>&#8201;&#8212;&#8201;The composite module combining SEP, SMC,
+and DTP into a single instantiable subsystem.</p>
+</li>
+<li>
+<p><strong>System Management Network (SMN)</strong>&#8201;&#8212;&#8201;Internal communication fabric
+(point-to-point or packetised) providing the management backbone for
+configuration, status reporting, and firmware-driven coordination between
+SMU, user logic, and D2D interfaces.</p>
+</li>
+<li>
+<p><strong>AXI-over-UCIe Bridge (AoU)</strong>&#8201;&#8212;&#8201;Protocol bridge between the AXI-based
+internal fabric and the UCIe die-to-die physical interface, enabling
+inter-chiplet system management traffic and application-level transaction
+forwarding.</p>
+</li>
+<li>
+<p><strong>Application-Specific Logic</strong>&#8201;&#8212;&#8201;OCAH treats the application layer as a black
+box: the harness services are agnostic to whether the application is a CPU
+complex, NoC, DSA, memory controller, or high-speed IO. The application
+logic is outside the scope of OCAH.</p>
+</li>
+<li>
+<p><strong>Safety Monitor (SMO)</strong>&#8201;&#8212;&#8201;External entity that collects error signals and
+diagnostic logging from OCAH subsystems to implement fault reaction
+policies. The SMO is outside the scope of OCAH; its interface requirements
+are specified in the functional safety chapter.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ocah-top-block-diagram"><a class="anchor" href="#ocah-top-block-diagram"></a><a class="link" href="#ocah-top-block-diagram">1.2. Top Block Diagram</a></h3>
+<div class="paragraph">
+<p>The figure below presents the OCAH top-level block diagram showing the
+relationship between the subsystems described above.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/ocah_top.png" alt="OCAH Top-Level Block Diagram">
+</div>
+<div class="title">Figure 1. OCAH Top-Level Block Diagram</div>
+</div>
+<div class="sect3">
+<h4 id="smu-axi-crossbar"><a class="anchor" href="#smu-axi-crossbar"></a><a class="link" href="#smu-axi-crossbar">1.2.1. SMU AXI Crossbar</a></h4>
+<div class="paragraph">
+<p>Inside the SMU, the <code>smu_axi_xbar</code> module is the system-level
+arbitration fabric between SEP, SMC, and the rest of the chiplet
+(reached through the <code>smu_axi_in</code> / <code>smu_axi_out</code> boundary pair). It is
+a 3x3 AXI4 crossbar with non-reflexive connectivity: each master can
+reach the other two subordinates but never its own inbound port.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMU AXI crossbar ports</caption>
+<colgroup>
+<col style="width: 22%;">
+<col style="width: 22%;">
+<col style="width: 56%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Master (from)</th>
+<th class="tableblock halign-left valign-top">Subordinate (to)</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-initiated transactions into SMC resources</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-initiated transactions leaving the SMU</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-initiated transactions into SEP resources</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-initiated transactions leaving the SMU</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External transactions targeting SEP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External transactions targeting SMC</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Routing decisions use a runtime address map with two programmable
+rules (SEP and SMC apertures) and one static catch-all (<code>ext_out</code>).
+See <a href="#ocah-memory-map">OCAH Memory Map</a> for the fixed-vs-programmable
+split and the reference envelope convention, and see the SMU AXI Crossbar
+Address Map section in the Integrator Guide for firmware programming order.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ocah-memory-map"><a class="anchor" href="#ocah-memory-map"></a><a class="link" href="#ocah-memory-map">1.3. OCAH Memory Map</a></h3>
+<div class="paragraph">
+<p>OCAH separates the chiplet-visible SMU aperture from the internal address
+maps used by SEP and SMC firmware. The chiplet integrator decides which
+system address range reaches the SMU external AXI input. Firmware then
+programs the SEP and SMC global base/size CSRs so the SMU crossbar can
+route incoming traffic to the correct inbound port.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 24%;">
+<col style="width: 24%;">
+<col style="width: 32%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Concept</th>
+<th class="tableblock halign-left valign-top">Configured by</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+<th class="tableblock halign-left valign-top">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet NoC envelope</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Integrator / chiplet address map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Controls which external-master addresses reach SMU <code>ext_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Example only: 64 MiB total SMU aperture</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP global aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware via <code>SEP_GLOBAL_BASE_ADDR</code> / <code>SEP_REGION_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Controls SMU <code>ext_in</code> to <code>sep_in</code> routing and SEP inbound global-to-local remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Example only: 32 MiB SEP slot in a 32 MiB + 32 MiB SEP/SMC partition</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC global aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware via <code>GLOBAL_BASE</code> / <code>REGION_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Controls SMU <code>ext_in</code> to <code>smc_in</code> routing and SEP-to-SMC decode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Example only: 32 MiB SMC slot in a 32 MiB + 32 MiB SEP/SMC partition</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>External masters use chiplet-global addresses and are bounded first by the
+chiplet NoC decode. The SMU crossbar applies the firmware-programmed SEP and
+SMC global apertures to route those transactions to <code>sep_in</code> or <code>smc_in</code>.
+Subsystem-internal CPU maps and local aliases are described in the SEP and SMC
+chapters.</p>
+</div>
+<div class="paragraph">
+<p>The current reset defaults are conservative boot values:
+<code>SEP_REGION_SIZE</code> resets to <code>0x0100_0000</code> (16 MiB) and SMC <code>REGION_SIZE</code>
+resets to <code>0x0100_0000</code> (16 MiB). Firmware may reprogram these values during
+early boot to match the chiplet address assignment. If the reset values are
+changed to a 32 MiB SEP/SMC split, this section should be updated
+accordingly.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ocah-power-domains"><a class="anchor" href="#ocah-power-domains"></a><a class="link" href="#ocah-power-domains">1.4. Power Domains</a></h3>
+<div class="paragraph">
+<p>The SMU, SMN, and AXI-over-UCIe bridge (AoU) reside in the same always-on
+power domain. This domain remains powered whenever the chiplet has supply,
+ensuring that platform management, inter-chiplet communication, and security
+services are available even when application logic is powered down.</p>
+</div>
+<div class="paragraph">
+<p>Vendor-specific macros and subsystems that are outside the scope of OCAH&#8201;&#8212;&#8201;such as OTP/eFuse controllers, PLLs, die-to-die PHYs (e.g. UCIe PHY),
+analogue sensors, and application-specific tiles&#8201;&#8212;&#8201;typically reside in their
+own dedicated power and voltage domains defined by the adopter&#8217;s power
+architecture. OCAH provides the isolation and sequencing infrastructure
+(<code>isolate_req_o[31:0]</code>, <code>ss_reset_ctrl_o[31:0]</code>) that the SMC firmware uses
+to coordinate power transitions for these external domains, but their supply
+rail definitions, power gating decisions, and leakage budgets are
+adopter-specific.</p>
+</div>
+<div class="paragraph">
+<p>The SMC provides runtime power management services for the application logic,
+including dynamic voltage and frequency scaling (DVFS) through AVSBus-based
+voltage regulator control and firmware-driven Performance State (P-State)
+management. At the RTL level, the SMU accepts a <code>powergood_i</code> input that
+indicates supply stability and exposes <code>isolate_req_o[31:0]</code> to request
+isolation of individual subsystem domains before power transitions.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The figure below will be provided as an annotated version of the
+top-level block diagram highlighting the power domains.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ocah-clock-domains"><a class="anchor" href="#ocah-clock-domains"></a><a class="link" href="#ocah-clock-domains">1.5. Clock Domains</a></h3>
+<div class="paragraph">
+<p>OCAH distinguishes low-level management timing from functional application
+clocks. The SMC receives an always-on reference clock (<code>clk_ref_i</code>) that is
+available from power-on, before any PLL is locked. Using this reference clock,
+the SMC controls the PLLs during early bring-up and generates the primary
+system clock (<code>clk_smu_i</code>) that is then distributed to the SMC itself, the
+SEP, and the DTP.</p>
+</div>
+<div class="paragraph">
+<p>The SMN lives in its own clock domain with respect to the SMU --- as highlighted
+by the clock domain crossing in the top level diagram --- and with respect
+to the application logic.</p>
+</div>
+<div class="paragraph">
+<p>The following table summarises the clock domains present in OCAH.</p>
+</div>
+<table id="ocah-clock-domain-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. OCAH Clock Domains</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Clock</th>
+<th class="tableblock halign-left valign-top">Subsystem</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smu_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU (SMC, SEP, DTP)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary system clock, generated by the PLL under SMC control. Distributed
+internally to the SMC, SEP, and DTP subsystems. Drives the CPU cluster,
+fabric interconnect, peripheral controllers, and DTP cross-trigger / AXI
+bridges.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smn_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Management Network clock. Independent of <code>clk_smu_i</code>; clock-domain
+crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
+fabric timing from the SMU subsystem clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always-on reference clock, available before PLL lock. Used by the SMC for
+early bring-up, PLL control, reset synchronisation, and peripherals requiring
+a stable, lower-frequency source.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_periph_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral clock domain. Drives SMC peripheral subsystems. The reset unit
+generates a dedicated synchronised reset (<code>rst_primary_periph_clk</code>) in this
+domain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_telemetry_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry clock domain. Separate clock for Advanced Trace Bus data
+collection, with its own reset (<code>rst_telemetry_ni</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_sep_wdt_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low-frequency watchdog timer clock. Must be independent of the system clock
+so the WDT can detect system clock failures.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tck</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP / SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Test Clock. Drives PTAP, STAP state machines, and all JTAG-domain scan
+logic inside the DTP/SMC/SEP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>entropy_rosc_sample_clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ring-oscillator sample clock for the entropy source (TRNG). Must be
+asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The figure below will be provided as an annotated version of the
+top-level block diagram highlighting the clock domains.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="ocah-reset"><a class="anchor" href="#ocah-reset"></a><a class="link" href="#ocah-reset">1.6. Reset</a></h3>
+<div class="paragraph">
+<p>Reset is handled hierarchically so that the management infrastructure comes
+out of reset first and then releases dependent domains in a controlled order.
+A global power-on reset (<code>rst_cold_ni</code>) establishes a known state for the
+entire chiplet, but the always-on domain is intended to be released first so
+that early control logic is live immediately. From there, the SMC sequences
+reset deassertion for the SMN and for downstream managed blocks according to
+platform dependencies, boot policy, and fault conditions. This staged reset
+model also supports partial and warm-reset behaviours in which application
+domains can be reset or recovered without fully tearing down the always-on
+management infrastructure.</p>
+</div>
+<div class="paragraph">
+<p>The reset hierarchy within the SMU proceeds as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Power-on / cold reset.</strong> The external <code>rst_cold_ni</code> is asserted during
+power-up and deasserted synchronously after supply voltages stabilise. The
+<code>powergood_i</code> input indicates that supplies are stable.</p>
+</li>
+<li>
+<p><strong>SMC reset synchronisation.</strong> The SMC reset unit (<code>smc_reset_unit</code>)
+generates domain-specific synchronised resets from the single cold reset
+input:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rst_primary_smc_clk_no</code>&#8201;&#8212;&#8201;synchronised to the primary SMC clock domain</p>
+</li>
+<li>
+<p><code>rst_primary_ref_clk_no</code>&#8201;&#8212;&#8201;synchronised to the reference clock domain</p>
+</li>
+<li>
+<p><code>rst_primary_periph_clk_no</code>&#8201;&#8212;&#8201;synchronised to the peripheral clock
+domain</p>
+</li>
+<li>
+<p><code>rst_cold_stable_ref_clk_no</code>&#8201;&#8212;&#8201;stable cold reset in the reference domain</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>DTP reset.</strong> The DTP is held in reset by the SMC&#8217;s primary synchronised
+reset (<code>rst_primary_smc_clk_no</code>). In addition, the JTAG state machine
+requires a power-on reset that remains asserted until supplies are stable;
+at the SMU level this is the <code>powergood_stable</code> signal generated by the
+SMC.</p>
+</li>
+<li>
+<p><strong>SEP reset.</strong> The SEP is held in reset by the same SMC primary reset
+(<code>rst_primary_smc_clk_no</code>). A separate watchdog reset path
+(<code>rst_wdt_n</code> at the SMU level, generated by the SMC reset unit) allows
+the SEP to be independently reset by its watchdog timer.</p>
+</li>
+<li>
+<p><strong>Downstream subsystem sequencing.</strong> The SMC sequences reset deassertion for
+up to 32 managed subsystems through <code>ss_reset_ctrl_o[31:0]</code> and isolation
+through <code>isolate_req_o[31:0]</code>. Subsystems report completion via
+<code>ss_reset_complete_i[31:0]</code>.</p>
+</li>
+<li>
+<p><strong>Function Level Reset (FLR).</strong> Asserting <code>cfg_flr_pf_active_i</code> triggers a
+warm reset sequence that isolates subsystems through <code>isolate_req_o</code> and
+performs controlled reset propagation without tearing down the always-on
+infrastructure.</p>
+</li>
+<li>
+<p><strong>Debug reset overrides.</strong> The DTP provides JTAG IC_RESET controls that can
+override cold, cool, and core reset domains independently for debug
+scenarios. These are wired through the SMU to the SMC&#8217;s
+<code>rst_{cold,cool,core}_override_ni</code> / <code>rst_{cold,cool,core}_override_en_i</code>
+ports.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>For the detailed reset controller design, sequencing FSM, reset register
+interface, and clock-reset interaction, refer to the
+<a href="#clock-and-reset-management">[clock-and-reset-management]</a> chapter. For integration-level reset
+procedures, refer to the Integrator Guide.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="security-processor-sep"><a class="anchor" href="#security-processor-sep"></a><a class="link" href="#security-processor-sep">2. Security Processor (SEP)</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Security Processor (SEP) is the Root of Trust (RoT) of the chiplet with the
+highest security privilege. SEP provides a physically isolated execution
+environment for highly sensitive security services including secure boot, secure
+lifecycle control, device attestation, and cryptography services.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-management-controller"><a class="anchor" href="#system-management-controller"></a><a class="link" href="#system-management-controller">3. System Management Controller (SMC)</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The System Management Controller (SMC) is a subsystem in a chiplet that handles
+system management tasks including clock/voltage/reset management, hardware
+platform bootstrapping, system initialization, and power and thermal management.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="debug-test-ports"><a class="anchor" href="#debug-test-ports"></a><a class="link" href="#debug-test-ports">4. Debug &amp; Test Ports (DTP)</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DTP subsystem enables debug and test access to a chiplet, facilitates
+forwarding of JTAG and scan signals, and serves as a routing matrix for cross
+trigger pulses.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="system-management-network"><a class="anchor" href="#system-management-network"></a><a class="link" href="#system-management-network">5. System Management Network</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMN components are described in this document.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This section is currently under development. More content will be added
+as the project matures.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="axi-over-ucie-bridge"><a class="anchor" href="#axi-over-ucie-bridge"></a><a class="link" href="#axi-over-ucie-bridge">6. AXI-Over-UCIe Bridge</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The AoU components are described in this document.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This section is currently under development. More content will be added
+as the project matures.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

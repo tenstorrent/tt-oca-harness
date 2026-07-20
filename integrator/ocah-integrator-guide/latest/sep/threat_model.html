@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/sep/pages/threat_model.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="threat-model"><a class="anchor" href="#threat-model"></a><a class="link" href="#threat-model">1. Threat Model</a></h4>
+<div class="paragraph">
+<p>The threat model covers remote software attacks, physical attacks and
+supply chain attacks. Software attacks are universal and the primary
+vector against data center implementations while physical attacks are
+localized and require close proximity. They are relevant for automotive
+and robotics applications. Supply chain attacks involve modification of
+chips in production and provisioning.</p>
+</div>
+<div class="paragraph">
+<p>Software attacks include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Malicious firmware modification in boot, overlay or application
+loading or updating</p>
+</li>
+<li>
+<p>Modifying or exfiltrating private data e.g. ML model weights,
+cryptographic keys</p>
+</li>
+<li>
+<p>Providing forged attestation to mimic legal device behavior</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Physical attacks include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Fault injection to bypass security checks and differential
+cryptoanalysis for key recovery. This can include clock and voltage
+glitching, laser and EM energy injection, and thermal gradients.
+Logically induced faults such as Row Hammer DRAM attacks are also
+included in this category.</p>
+</li>
+<li>
+<p>Side channel for key and other secret data extraction</p>
+<div class="ulist">
+<ul>
+<li>
+<p>We assume that the attacker has full view of SRAM and OTP data
+state</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Hardware probing to observe or control data within a chiplet or
+communication between chiplets</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Supply chain attacks include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Insider modification of design to disable or weaken security features
+and insert backdoors. Theft of hardware secrets such as security
+tokens</p>
+</li>
+<li>
+<p>Modification of IC design masks to modify behavior and insert trojans.
+For example the BL0 boot ROM contents may be modified to disable secure
+boot.</p>
+</li>
+<li>
+<p>Corruption of fuse provisioning to enable or disable features
+illegally and leak device unique secrets</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>We however limit the scope of physical attacks we defend against and do
+not explicitly protect against the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Package internal inter-chiplet communications secure from hardware
+probing</p>
+</li>
+<li>
+<p>Package internal chiplet hardware probing and certain physical attacks
+such as bias fault injection</p>
+</li>
+<li>
+<p>Thermal gradients to influence entropy source and induce timing
+faults</p>
+</li>
+<li>
+<p>Supply chain attacks</p>
+</li>
+</ul>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

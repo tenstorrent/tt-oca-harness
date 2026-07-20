@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/ip/pages/entropy_source/doc/architecture.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="entropy-source"><a class="anchor" href="#entropy-source"></a><a class="link" href="#entropy-source">1. Entropy Source</a></h4>
+<div class="paragraph">
+<p>The detailed specification for the
+<a href="https://docs.google.com/document/d/18rMTZXuhGDrg3-JJvgf-i9arpEkRFo-ENc_KDa9HEmc/edit?tab=t.0#heading=h.64mahktte8qv">entropy
+source</a> is linked here. The summary is included here for convenience.</p>
+</div>
+<div class="paragraph">
+<p>The entropy source component is a random number generator which is based
+on multiple asynchronous ring oscillators sampled in such a way to
+generate random bits from the jitter noise and metastable latching
+behavior. It forms the basis of a True Random Number Generator (TRNG).</p>
+</div>
+<div class="paragraph">
+<p>The generated stream is ``raw'' noise in the sense that there may still
+be some statistical biases present which need to be filtered out by an
+optional entropy conditioner post processing unit which would consume
+the output noise bits. NIST specifies a set of acceptable conditioners.
+Common conditioners are based on standard hash functions such as SHA256
+and ASCON as well as standard keyed hash functions such as AES-CMAC and
+HMAC.</p>
+</div>
+<div class="paragraph">
+<p>The goal of this test component is to assess the statistical properties
+of the raw entropy source, so we will not add a conditioner here.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../_images/SEP_Entropy_Source.png" alt="SEP_Entropy_Source">
+</div>
+</div>
+<div class="paragraph">
+<p>The diagram below shows the entropy source component which implements
+the above concept. The client controls the component via the APB bus
+interface which provides access to a set of memory mapped configuration
+and status registers (CSRs) described later in this document. The raw
+entropy stream is connected to the (optional) downstream conditioning
+unit mentioned above as well as the health statistics tester, debug
+monitor and entropy bits storage.</p>
+</div>
+<div class="paragraph">
+<p>The entropy source is designed according to guidelines set forth in the
+NIST SP800-90B specification and is planned to be ready for FIPS 140-2
+and 140-3 certification. It will also be compliant with AIS31
+statistical requirements specified by the BSI agency.</p>
+</div>
+<div class="sect4">
+<h5 id="noise-generation"><a class="anchor" href="#noise-generation"></a><a class="link" href="#noise-generation">Noise Generation</a></h5>
+<div class="paragraph">
+<p>The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from manually instantiated generic logic cells (<code>gnand2</code>, <code>gbuff</code>, <code>gmux2</code>) to prevent synthesis optimization from disrupting the asynchronous feedback loop. Each oscillator has two configurable lengths: a <code>TOTAL_LENGTH</code> and a <code>TAPPED_LENGTH</code>, where a multiplexer selects between the short and long feedback paths. The <code>entropy_rosc_tune_fsm</code> toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.</p>
+</div>
+<div class="paragraph">
+<p>The oscillator output is sampled by a metastable D flip-flop (<code>gdff</code>) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (<code>rosc_sample_clk_i</code>) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="decorrelation-and-biw-mixing"><a class="anchor" href="#decorrelation-and-biw-mixing"></a><a class="link" href="#decorrelation-and-biw-mixing">Decorrelation and BIW Mixing</a></h5>
+<div class="paragraph">
+<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the <code>sample_clk_div</code> CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.</p>
+</div>
+<div class="paragraph">
+<p>The 12 decorrelated byte streams are combined by the Balanced Iterative Whirlpool (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="health-testing"><a class="anchor" href="#health-testing"></a><a class="link" href="#health-testing">Health Testing</a></h5>
+<div class="paragraph">
+<p>Health tests operate at two levels. Each of the 12 <code>entropy_generator</code> instances runs an 8-bit <code>entropy_health_test</code> on its individual decorrelated output. At the top level, a second 32-bit <code>entropy_health_test</code> instance monitors the post-BIW (or post-bypass) stream.</p>
+</div>
+<div class="paragraph">
+<p>The health test wrapper instantiates three OpenTitan-derived test modules. The repetition count test (<code>entropy_src_repcnt_ht</code>) tracks consecutive identical values per bit lane and flags when a threshold is exceeded. The adaptive proportion test (<code>entropy_src_adaptp_ht</code>) accumulates per-bit ones counts within a configurable window and compares against high thresholds. The Markov test (<code>entropy_src_markov_ht</code>) counts bit-pair transitions and compares to high and low thresholds at window boundaries. Window synchronization is driven by a <code>prim_count</code> counter in the <code>entropy_generator_complex</code>.</p>
+</div>
+<div class="paragraph">
+<p>Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sha-256-whitening"><a class="anchor" href="#sha-256-whitening"></a><a class="link" href="#sha-256-whitening">SHA-256 Whitening</a></h5>
+<div class="paragraph">
+<p>When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream feeds into the <code>entropy_sha256_whitener</code> module. This module accumulates 16 consecutive 32-bit words (one SHA-256 block of 512 bits), computes the SHA-256 digest using the OpenTitan <code>prim_sha2_32</code> primitive, and emits the 8-word (256-bit) digest. The compression ratio is 2:1 (16 input words produce 8 output words). When the whitener is disabled, the BIW output passes through to the FIFO without modification.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="output-fifo"><a class="anchor" href="#output-fifo"></a><a class="link" href="#output-fifo">Output FIFO</a></h5>
+<div class="paragraph">
+<p>The conditioned entropy stream is stored in a 64-entry FIFO (<code>entropy_fifo</code>). Each entry is 36 bits wide: 32 data bits plus 4 byte-wise odd parity bits. The FIFO includes pointer integrity checking (normal and inverted pointer pairs with mismatch detection) and parity verification on reads. An optional churn mode XORs the incoming data with a word read from the diametrically opposite FIFO position, improving entropy distribution. Overflow, underflow, parity error, and pointer error conditions are all reported to the CSR block and can trigger interrupts.</p>
+</div>
+<div class="paragraph">
+<p>The FIFO output drives the <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports. These connect to the DRBG ingress path and to the distribution network for entropy consumers such as cryptographic accelerators.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

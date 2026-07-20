@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Integrator Guide</title>
+    <meta name="generator" content="Antora 3.1.10">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product A</a>
+            <a class="navbar-item" href="#">Product B</a>
+            <a class="navbar-item" href="#">Product C</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Service A</a>
+            <a class="navbar-item" href="#">Service B</a>
+            <a class="navbar-item" href="#">Service C</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="#">Download</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+<div class="edit-this-page"><a href="file:///work/doc/integrator/modules/smc/pages/fusa.adoc">Edit this Page</a></div>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="fusa-system-management-controller"><a class="anchor" href="#fusa-system-management-controller"></a><a class="link" href="#fusa-system-management-controller">1. System Management Controller (SMC)</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section describes the functional safety architecture of the System Management Controller (SMC) subsystem.
+The SMC is the primary management microcontroller within OCAH, responsible for power sequencing, clock management, thermal monitoring, and chiplet-level orchestration.
+For a complete description of the SMC functional architecture, including its CPU and memory system, fabric, DMA engine, peripherals, and clock/reset infrastructure, refer to <a href="#system-management-controller">[system-management-controller]</a>.
+The present section builds on that architectural baseline and focuses exclusively on the safety mechanisms applied to each SMC resource.</p>
+</div>
+<div class="paragraph">
+<p>The SMC safety architecture employs a defense-in-depth strategy that matches each resource type to the most appropriate diagnostic mechanism:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Dual-Core Lockstep protects the CPU execution pipeline</p>
+</li>
+<li>
+<p>ECC SECDED protects all SRAM macros</p>
+</li>
+<li>
+<p>Odd parity protects configuration registers and fabric payloads</p>
+</li>
+<li>
+<p>Lockstep replication protects interrupt arbitration and timer counting logic</p>
+</li>
+<li>
+<p>CRC verification protects boot ROM and eFuse contents</p>
+</li>
+<li>
+<p>Timeout monitors protect clock liveness</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Every diagnostic mechanism is paired with a hardware self-test interface for latent fault testing, following the architecture principles described in <a href="#fusa-error-injection">[fusa-error-injection]</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-fault-detected-states"><a class="anchor" href="#smc-fusa-fault-detected-states"></a><a class="link" href="#smc-fusa-fault-detected-states">1.1. Fault Detected States</a></h3>
+<div class="paragraph">
+<p>Upon detection of a fault, the SMC transitions the affected component into a fault-detected state that isolates its outputs and prevents the fault from propagating.
+The SMC defines four categories of fault-detected states, selected based on the role of the faulty component in the system.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC Fault Detected States</caption>
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ID</th>
+<th class="tableblock halign-left valign-top">Title</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manager isolation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A hardware mechanism (e.g., clock gating and bus clamping) prevents a manager — such as a CPU, DMA engine, or accelerator — from injecting further corrupted data into the subsystem.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subordinate isolation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A hardware mechanism prevents corrupted data from reaching a subordinate device such as a peripheral.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory system isolation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A hardware mechanism prevents corrupted storage from being propagated in or out of the memory system, terminating corrupted read or write transactions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Signal clamping</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A hardware mechanism de-asserts and disables a wired signal upon fault detection. Examples include clamping an active-high interrupt line or a quasi-static reset line.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock fallback</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A hardware mechanism switches the affected clock domain from the failed system clock to the always-on reference clock, preserving basic operation at a reduced frequency while the fault is reported and a recovery sequence is initiated.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-fault-reactions"><a class="anchor" href="#smc-fusa-fault-reactions"></a><a class="link" href="#smc-fusa-fault-reactions">1.2. Fault Reactions</a></h3>
+<div class="paragraph">
+<p>The fault reaction restores the element to a known-good state (called a <strong>safe state</strong>) after a fault-detected state has been entered.
+The SMC supports the following fault reaction levels, ordered by scope.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC Fault Reactions</caption>
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ID</th>
+<th class="tableblock halign-left valign-top">Components Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resets a specific CPU core. Applicable only when the fault is localized within core boundaries.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resets the entire CPU cluster including all cores, caches, PLIC, and CLINT.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whole SMC Subsystem</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resets everything within the SMC: CPU, fabric, DMA, Zeroer, all peripherals, and all registers. This is the only option for faults originating outside the CPU cluster.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-summary"><a class="anchor" href="#smc-fusa-summary"></a><a class="link" href="#smc-fusa-summary">1.3. Fault Management Summary</a></h3>
+<div class="paragraph">
+<p>The following table summarizes the fault management techniques applied to each SMC resource.
+Each row identifies the runtime diagnostic mechanism, the corresponding test for diagnostic (latent fault detection), the fault-detected state, the fault reaction, and the error severity.
+Subsequent sections describe each mechanism in detail.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC Fault Management Summary</caption>
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 22.2222%;">
+<col style="width: 22.2222%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1111%;">
+<col style="width: 11.1112%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Runtime Diagnostic</th>
+<th class="tableblock halign-left valign-top">Test for Diagnostic</th>
+<th class="tableblock halign-left valign-top">FDS</th>
+<th class="tableblock halign-left valign-top">FR</th>
+<th class="tableblock halign-left valign-top">Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU pipeline</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dual-Core Lockstep (DCLS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SW self-test (error injection into comparator)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test (force timeout / early feed)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU I$/D$ controller logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dual-Core Lockstep (DCLS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SW self-test (error injection into comparator)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU I-Cache SRAM (data)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC SECDED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single/multi-bit error injection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correctable / Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU I-Cache SRAM (tag)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC SECDED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single/multi-bit error injection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correctable / Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU D-Cache SRAM (data)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC SECDED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single/multi-bit error injection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correctable / Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU D-Cache SRAM (tag)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC SECDED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single/multi-bit error injection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correctable / Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC SECDED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single/multi-bit error injection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correctable / Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC (arbitration)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep arbitration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep comparator check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC (generation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep comparator check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT (generation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep comparator check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-01a</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA (address generation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address generation lockstep</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address generation lockstep check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA (registers/FIFOs)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA (address range)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer (address range)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Engine (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Engine (address range)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address range legalizer test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox Unit (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox Unit (generation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep interrupt generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep comparator check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-mapped registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit (generation)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep reset signal generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep comparator check (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock control (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock control (monitor)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Handshake monitor (timeout)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop simulation test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric (payloads)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Odd parity per AXI5 A16 (byte-granularity on data/address, single-bit on controls)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity self-test (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric (address filtering)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address filtering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot integrity CRC check</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM integrity logic verification (read path injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO (straps)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Redundant latch compare</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strap logic mismatch test (bit-flip injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse (shadow registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse (integrity)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC integrity check (SW, golden CRC in eFuse)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC integrity logic test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer (registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity storage (checked at network boundary)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network element parity self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer (counter)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep counter logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lockstep counter self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C (registers/FIFOs/FSM)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity self-test (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C (protocol)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol CRC/parity (SW)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A (standard protocol checks)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus (CRC)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol CRC (HW)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A (standard protocol checks)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus (registers/FIFOs/FSM)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity self-test (error injection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uncorrectable / Fatal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry (liveness)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windowed WDT (dual-stage)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT self-test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FDS-01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FR-02</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fatal</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-crosscutting"><a class="anchor" href="#smc-fusa-crosscutting"></a><a class="link" href="#smc-fusa-crosscutting">1.4. Cross-Cutting Fault Management Techniques</a></h3>
+<div class="paragraph">
+<p>Several fault management techniques appear in more than one SMC component (e.g., register parity is instantiated independently in every module that has configuration registers).
+To avoid redundancy, this section describes each technique once; subsequent per-module sections reference these descriptions rather than repeating the architectural details.</p>
+</div>
+<div class="sect3">
+<h4 id="smc-fusa-register-parity"><a class="anchor" href="#smc-fusa-register-parity"></a><a class="link" href="#smc-fusa-register-parity">1.4.1. Register Parity Storage</a></h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-162</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC implements register parity protection following the OCAH-wide scheme described in <a href="#fusa-register-parity">[fusa-register-parity]</a>.</p>
+</div>
+<div class="paragraph">
+<p>Control and status registers in the SMC use the following patterns from the generic architecture:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SW-writable, SW-readable</strong>: Status registers, error logs — parity from WUSER, checked by network element on bus read</p>
+</li>
+<li>
+<p><strong>SW-writable, HW-readable</strong>: Clock gate enables, reset controls — parity from WUSER, checked by local checker (continuous)</p>
+</li>
+<li>
+<p><strong>SW-writable, SW &amp; HW readable</strong>: Threshold values, enable bits — dual coverage (network element + local checker)</p>
+</li>
+<li>
+<p><strong>HW-writable, SW &amp; HW readable</strong>: eFuse shadow registers — local parity generation at fuse sensing FSM, dual coverage on reads</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For complete details on register accessibility patterns, parity generation/checking strategies, partial write handling, and test approaches, refer to <a href="#fusa-register-parity">[fusa-register-parity]</a>.</p>
+</div>
+<div class="paragraph">
+<p>When a parity error is detected in an SMC register, the fault-detected state and fault reaction are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>FDS-01</strong> (manager isolation): For registers that control manager-side logic</p>
+</li>
+<li>
+<p><strong>FDS-02</strong> (subordinate isolation): For registers in subordinate devices</p>
+</li>
+<li>
+<p><strong>Fault reaction</strong>: CPU cluster registers trigger FR-01a (cluster reset); all other registers trigger FR-02 (subsystem reset)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The module asserts an uncorrectable error interrupt to the SMO.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-fusa-fsm-parity"><a class="anchor" href="#smc-fusa-fsm-parity"></a><a class="link" href="#smc-fusa-fsm-parity">1.4.2. FSM State Parity Protection</a></h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-145, OCAH-HWSR-SMC-146, OCAH-HWSR-SMC-147, OCAH-HWSR-SMC-164, OCAH-HWSR-SMC-177, OCAH-HWSR-SMC-178</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>All safety-critical finite state machines in the SMC encode their state registers with an odd parity bit computed over all state bits.
+On each clock cycle, the FSM verifies the parity of the current state register against the stored parity bit.
+If a mismatch is detected — indicating a single-bit upset that has driven the FSM into an unintended state — the FSM transitions to a known safe state and asserts an error signal.</p>
+</div>
+<div class="paragraph">
+<p>In addition to parity protection, all FSMs implement a default catch-all case in their state transition logic.
+If the FSM reaches an undefined state (whether from a multi-bit upset or a logic fault), the catch-all case forces a transition to the safe state and asserts an error signal.
+This provides a second layer of defense against state corruption beyond what parity alone can detect.</p>
+</div>
+<div class="paragraph">
+<p>Latent faults in the FSM parity checker are detected using the error injection interface.
+The self-test injects invalid state patterns and verifies that the FSM correctly detects them and transitions to the safe state.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-fusa-lockstep"><a class="anchor" href="#smc-fusa-lockstep"></a><a class="link" href="#smc-fusa-lockstep">1.4.3. Lockstep Replication and Comparison</a></h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-163</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>Lockstep protection is applied to combinational logic paths where the complexity or criticality of the function warrants redundancy rather than parity.
+The protected logic is replicated into two identical copies that receive the same inputs.
+A comparator checks the outputs of both copies on every clock cycle.
+If the outputs diverge, the comparator asserts an error signal and the module enters the fault-detected state.</p>
+</div>
+<div class="paragraph">
+<p>The comparator itself is a potential single point of failure for latent faults: if the comparator becomes stuck in the "match" state, it will not detect a divergence between the two copies.
+To detect this, the error injection interface injects a known mismatch into one copy and verifies that the comparator asserts an error.</p>
+</div>
+<div class="paragraph">
+<p>Lockstep protection is used for CPU pipeline execution (DCLS), PLIC interrupt arbitration, PLIC and CLINT interrupt generation, Mailbox interrupt generation, DMA address generation, System Timer counter logic, and Reset Unit signal generation.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-fusa-error-signaling"><a class="anchor" href="#smc-fusa-error-signaling"></a><a class="link" href="#smc-fusa-error-signaling">1.4.4. Error Signal Propagation</a></h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-GENERAL-000, OCAH-HWSR-SMC-148</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC uses point-to-point, active-high, level-sensitive wired interrupt lines for hierarchical error signal propagation.
+Each safety-critical module within the SMC asserts a dedicated error output when a fault is detected.
+These per-module error signals are collected and routed to the SMC&#8217;s top-level error output port, which connects to the chiplet-level Safety Monitor (SMO).
+The error signal remains asserted until the SMO acknowledges the fault and initiates the fault reaction (typically a reset).</p>
+</div>
+<div class="paragraph">
+<p>The SMC provides memory-mapped registers for configuring safety mechanisms, enabling test-for-diagnostic routines, and reading error status and statistics.
+These registers are accessible via the safety bus.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-fusa-wdt"><a class="anchor" href="#smc-fusa-wdt"></a><a class="link" href="#smc-fusa-wdt">1.4.5. Windowed Watchdog Timer</a></h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-005, OCAH-HWSR-SMC-006, OCAH-HWSR-SMC-007, OCAH-HWSR-SMC-008, OCAH-HWSR-SMC-160, OCAH-HWSR-SMC-187, OCAH-HWSR-SMC-188, OCAH-HWSR-SMC-189, OCAH-HWSR-SMC-190, OCAH-HWSR-SMC-191</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC integrates a dual-stage windowed watchdog timer (WDT) for each CPU core.
+The same WDT architecture is reused as a system-level liveness monitor for other components — DMA, Zeroer, Fabric, I2C, AVSBus, eFuse, and Telemetry — by routing the WDT timeout through the CPU&#8217;s interrupt and reset paths.
+The WDT combines a dual-stage escalation model (bark interrupt followed by bite reset) with a windowed service mechanism that prevents runaway software from inadvertently keeping the timer alive.</p>
+</div>
+<div class="sect4">
+<h5 id="counter-and-clock-domain"><a class="anchor" href="#counter-and-clock-domain"></a><a class="link" href="#counter-and-clock-domain">Counter and Clock Domain</a></h5>
+<div class="paragraph">
+<p>The WDT is built around a 32-bit up-counter that increments on every tick of an always-on (AON) clock.
+The AON clock is independent of the main system clock: it continues to run when the main clock is gated or during low-power sleep, guaranteeing that the WDT remains active even if the CPU or its clock infrastructure fails.</p>
+</div>
+<div class="paragraph">
+<p>The counter resets to zero on power-on reset.
+During normal operation, firmware periodically <strong>services</strong> (also called <strong>pets</strong> or <strong>feeds</strong>) the watchdog by writing zero to the count register, resetting the counter back to zero.
+If the firmware fails to service the watchdog before the counter reaches the configured threshold, the WDT triggers a fault response.</p>
+</div>
+<div class="paragraph">
+<p>The counter does not increment when any of the following conditions is true:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The WDT enable bit is cleared.</p>
+</li>
+<li>
+<p>The system is in sleep mode and the <code>pause_in_sleep</code> configuration bit is set. This prevents the watchdog from firing spuriously during intentional low-power periods where the CPU is not executing.</p>
+</li>
+<li>
+<p>A lifecycle escalation signal is asserted, indicating that the system is in an escalated (killed) state and the watchdog must not interfere with the escalation sequence.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="dual-stage-operation-bark-and-bite"><a class="anchor" href="#dual-stage-operation-bark-and-bite"></a><a class="link" href="#dual-stage-operation-bark-and-bite">Dual-Stage Operation (Bark and Bite)</a></h5>
+<div class="paragraph">
+<p>The WDT provides two independently configurable 32-bit threshold registers that define two escalation stages:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Stage 1 — Bark (interrupt):</strong> When the counter value reaches or exceeds the <strong>bark threshold</strong>, the WDT asserts a level interrupt to the PLIC.
+This interrupt is also routable to a non-maskable interrupt (NMI) pin, allowing bark notification even when maskable interrupts are disabled.
+In addition, if the system is in a low-power state, the WDT asserts a wakeup request to the power manager so the CPU can wake and service the bark.
+The bark gives firmware a <strong>grace period</strong> to take corrective action (log the event, attempt recovery, or prepare for reset).
+The bark interrupt remains asserted as long as the counter is at or above the bark threshold; firmware clears it by writing to the interrupt status register <strong>and</strong> servicing the watchdog (resetting the counter to zero).</p>
+</li>
+<li>
+<p><strong>Stage 2 — Bite (reset):</strong> If the counter continues to increment past the bark threshold and reaches or exceeds the <strong>bite threshold</strong>, the WDT asserts a reset request to the reset manager.
+The bite is the terminal escalation: it triggers the fault reaction — FR-01 (CPU core reset) for CPU-local WDTs, or FR-02 (full SMC subsystem reset) for system-level WDTs.
+The reset also resets the WDT itself, so no software acknowledgement is required after a bite.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The bite threshold must be programmed strictly greater than the bark threshold (<code>bite_threshold &gt; bark_threshold</code>) to ensure a valid grace period between bark and bite.
+The designer shall enforce this invariant either in hardware (rejecting writes that violate the ordering) or through a software convention documented in the programming guide.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="windowed-service-mechanism"><a class="anchor" href="#windowed-service-mechanism"></a><a class="link" href="#windowed-service-mechanism">Windowed Service Mechanism</a></h5>
+<div class="paragraph">
+<p>A simple watchdog that accepts a service at any time can be defeated by a runaway firmware loop that happens to pet the watchdog in every iteration, preventing the timeout even though the system is not executing its intended function.
+The <strong>windowed</strong> watchdog addresses this by dividing the count range into four regions, illustrated in the figure below.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/ocah_wdt_window.png" alt="Windowed WDT Counter Regions">
+</div>
+<div class="title">Figure 1. Windowed Watchdog Timer — Counter Regions</div>
+</div>
+<div class="paragraph">
+<p>The following table summarizes the four regions and the behavior in each.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Windowed WDT Counter Regions</caption>
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 33.3333%;">
+<col style="width: 44.4445%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Region</th>
+<th class="tableblock halign-left valign-top">Counter Range</th>
+<th class="tableblock halign-left valign-top">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Closed window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0</code> → <code>open_window_threshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Service is <strong>forbidden</strong>. Writing the count register here triggers an early feed violation: the WDT asserts a bark interrupt and, optionally, immediately advances to the bite stage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Open window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>open_window_threshold</code> → <code>bark_threshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Service is <strong>required</strong>. Firmware must write zero to the count register in this interval. A valid service resets the counter to 0 and the cycle restarts from the closed window.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Grace period</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bark_threshold</code> → <code>bite_threshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The bark interrupt is active (routed to PLIC and NMI). Firmware has this interval to log the fault and attempt recovery before the bite fires.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>≥ bite_threshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal escalation. The WDT asserts a hardware reset request (FR-01 or FR-02).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The WDT enforces the window as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>After reset or a valid service, the counter starts at zero and increments. The closed window is active.</p>
+</li>
+<li>
+<p>If firmware writes the count register while the counter is below the open-window threshold, the WDT treats this as an early feed violation: it asserts a bark interrupt (identical to a timeout bark) and, optionally, immediately advances to the bite stage.</p>
+</li>
+<li>
+<p>Once the counter reaches the open-window threshold, the open window begins. Firmware should service the watchdog in this region.</p>
+</li>
+<li>
+<p>If the counter reaches the bark threshold without being serviced, a timeout bark fires and the grace period begins.</p>
+</li>
+<li>
+<p>If the counter reaches the bite threshold, the bite fires and a reset is requested.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The open-window threshold is a separate configurable register.
+Setting it to zero disables the windowed behavior and reverts to a standard (non-windowed) watchdog, which is useful during boot or debug when strict timing cannot be guaranteed.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="configuration-lock"><a class="anchor" href="#configuration-lock"></a><a class="link" href="#configuration-lock">Configuration Lock</a></h5>
+<div class="paragraph">
+<p>The WDT provides a write-once-clear lock register (<code>WDOG_REGWEN</code>).
+Once firmware clears this register, the watchdog configuration — enable, pause-in-sleep, bark threshold, bite threshold, and open-window threshold — becomes read-only and cannot be modified until the next reset.
+This prevents accidental or malicious reconfiguration of the watchdog after the system has entered its safety-critical operating phase.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="fault-management"><a class="anchor" href="#fault-management"></a><a class="link" href="#fault-management">Fault Management</a></h5>
+<div class="paragraph">
+<p>The fault-detected state for a WDT violation (timeout or early feed) is FDS-01 (manager isolation), preventing the hung component from issuing further transactions.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Bark:</strong> Asserts an uncorrectable error interrupt routable to PLIC and NMI (the latter if applicable). Software has the grace period between bark and bite to log the fault and attempt recovery.</p>
+</li>
+<li>
+<p><strong>Bite:</strong> Asserts a hardware reset request — FR-01 for CPU-local WDTs, FR-02 for system-level WDTs.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="test-for-diagnostic"><a class="anchor" href="#test-for-diagnostic"></a><a class="link" href="#test-for-diagnostic">Test for Diagnostic</a></h5>
+<div class="paragraph">
+<p>Latent faults in the WDT are detected by a software-driven self-test that exercises all three detection paths:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Timeout test:</strong> Software configures the bark and bite thresholds to minimum values and allows the counter to expire, verifying that the bark interrupt and the bite reset request are correctly asserted.</p>
+</li>
+<li>
+<p><strong>Early feed test:</strong> Software configures a non-zero open-window threshold, immediately writes the count register (before the counter reaches the open-window threshold), and verifies that the early feed violation triggers a bark interrupt.</p>
+</li>
+<li>
+<p><strong>NMI routing test (if applicable):</strong> Software triggers a bark with maskable interrupts disabled and verifies that the NMI output asserts.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-cpu-pipeline"><a class="anchor" href="#smc-fusa-cpu-pipeline"></a><a class="link" href="#smc-fusa-cpu-pipeline">1.5. CPU Pipeline — Dual-Core Lockstep</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-000, OCAH-HWSR-SMC-001, OCAH-HWSR-SMC-002, OCAH-HWSR-SMC-003, OCAH-HWSR-SMC-004, OCAH-HWSR-SMC-159, OCAH-HWSR-SMC-183, OCAH-HWSR-SMC-184, OCAH-HWSR-SMC-185, OCAH-HWSR-SMC-186</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC CPU cluster implements Dual-Core Lockstep (DCLS) to detect random transient faults in the CPU execution path.
+For each logical CPU core, two identical tile instances — a <strong>master</strong> and a <strong>checker</strong> — execute the same instruction stream in lock-step.
+A comparator continuously monitors the outputs of both instances and asserts an error when they diverge.</p>
+</div>
+<div class="sect3">
+<h4 id="replication-boundary"><a class="anchor" href="#replication-boundary"></a><a class="link" href="#replication-boundary">1.5.1. Replication Boundary</a></h4>
+<div class="paragraph">
+<p>The lockstep replication boundary is the <strong>tile boundary</strong>.
+Each tile instance contains the full Rocket pipeline and all surrounding control logic.
+The following elements are replicated (i.e., independently instantiated in both master and checker):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Rocket 5-stage pipeline</strong> — fetch, decode, execute, memory, and writeback stages, including the ALU, multiplier/divider, CSR file, and register file.</p>
+</li>
+<li>
+<p><strong>I-Cache controller logic</strong> — tag lookup, hit/miss detection, refill FSM, and TLB (ITLB).</p>
+</li>
+<li>
+<p><strong>D-Cache controller logic</strong> — tag lookup, hit/miss detection, refill/writeback FSM, Miss Status Holding Registers (MSHR), and TLB (DTLB).</p>
+</li>
+<li>
+<p><strong>Page Table Walker (PTW)</strong> — hardware page table walk logic and PMP checkers.</p>
+</li>
+<li>
+<p><strong>Branch predictor</strong> — Branch Target Buffer (BTB) and Branch History Table (BHT).</p>
+</li>
+<li>
+<p><strong>Bus Error Unit (BEU)</strong> — per-tile error capture logic.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following elements are <strong>not</strong> replicated but shared between master and checker:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SRAM macros</strong> — I-Cache data arrays, I-Cache tag array, D-Cache data arrays, D-Cache tag array. These are shared and protected by ECC SECDED (see <a href="#smc-fusa-cache-ecc">Cache and Scratchpad SRAM — ECC SECDED</a>). Both tile instances receive the same SRAM read-back data; both issue SRAM requests that are checked by the comparator before being forwarded to the physical arrays.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>This partitioning concentrates lockstep coverage on the logic most susceptible to transient faults (combinational and sequential logic in the pipeline and cache controllers), while avoiding the area cost of duplicating large SRAM macros, which are instead covered by ECC.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="comparator-architecture"><a class="anchor" href="#comparator-architecture"></a><a class="link" href="#comparator-architecture">1.5.2. Comparator Architecture</a></h4>
+<div class="paragraph">
+<p>The comparator sits between the tile boundary and the shared resources (SRAM macros, TileLink fabric).
+On every clock cycle, it compares all output signals from the master tile against the corresponding outputs from the checker tile.
+The comparison covers:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Bus interface outputs</strong> — all TileLink channel signals (A-channel requests, C-channel writebacks, E-channel acknowledgements), including opcode, address, data, size, and source fields.</p>
+</li>
+<li>
+<p><strong>SRAM request interfaces</strong> — address, data, write-enable, and chip-select for each I-Cache and D-Cache array (tag and data), ensuring both tiles agree on every memory access before it reaches the shared SRAM.</p>
+</li>
+<li>
+<p><strong>Control and status outputs</strong> — halt, cease, wait-for-interrupt (WFI), and outward interrupt signals.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The master tile&#8217;s outputs drive the actual system (fabric, SRAMs).
+The checker tile&#8217;s outputs are consumed only by the comparator and are not connected to the rest of the system.
+Both tiles receive identical inputs: same clock, same reset, same interrupt lines, same SRAM read-back data, and same bus responses.</p>
+</div>
+<div class="paragraph">
+<p>If the comparator detects a mismatch on any compared signal, it asserts a corruption-detected error signal (<code>haltNodeOut</code>).
+This signal drives the following fault management sequence:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Fault-detected state (FDS-01)</strong>: A manager isolation mechanism activates to block the faulty tile from issuing further transactions on the fabric. The error signal remains asserted until the tile is reset.</p>
+</li>
+<li>
+<p><strong>Error reporting</strong>: An uncorrectable error interrupt is signalled to the SMO. The SMC records the writeback-stage program counter from both master and checker for diagnostic purposes.</p>
+</li>
+<li>
+<p><strong>Fault reaction (FR-01)</strong>: The specific CPU core is reset to restore safe operation.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="test-for-diagnostic-2"><a class="anchor" href="#test-for-diagnostic-2"></a><a class="link" href="#test-for-diagnostic-2">1.5.3. Test for Diagnostic</a></h4>
+<div class="paragraph">
+<p>A latent fault in the DCLS comparator would cause it to remain in the "match" state even when the two tile instances diverge, making the entire lockstep mechanism ineffective.
+To detect this, a software-based self-test uses the error injection interface to inject a known mismatch into the comparator path and verifies that the comparator correctly asserts the error signal.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-cache-ecc"><a class="anchor" href="#smc-fusa-cache-ecc"></a><a class="link" href="#smc-fusa-cache-ecc">1.6. Cache and Scratchpad SRAM — ECC SECDED</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-009, OCAH-HWSR-SMC-010, OCAH-HWSR-SMC-011, OCAH-HWSR-SMC-012, OCAH-HWSR-SMC-013, OCAH-HWSR-SMC-014, OCAH-HWSR-SMC-015, OCAH-HWSR-SMC-016, OCAH-HWSR-SMC-017, OCAH-HWSR-SMC-018, OCAH-HWSR-SMC-019, OCAH-HWSR-SMC-020, OCAH-HWSR-SMC-021, OCAH-HWSR-SMC-022, OCAH-HWSR-SMC-023, OCAH-HWSR-SMC-024, OCAH-HWSR-SMC-025, OCAH-HWSR-SMC-026, OCAH-HWSR-SMC-027, OCAH-HWSR-SMC-028, OCAH-HWSR-SMC-029, OCAH-HWSR-SMC-030, OCAH-HWSR-SMC-161, OCAH-HWSR-SMC-218, OCAH-HWSR-SMC-219, OCAH-HWSR-SMC-220</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>All SRAM macros in the SMC — Instruction Cache data and tag, Data Cache data and tag, and Scratchpad — are protected with ECC SECDED (Single Error Correction, Double Error Detection).</p>
+</div>
+<div class="paragraph">
+<p>The ECC encoder generates check bits for each data word written to the SRAM and stores the check bits alongside the data.
+On each read, the ECC decoder reads the data word and check bits, computes syndrome bits, and determines the error status:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>No error</strong>: The data is passed through unmodified.</p>
+</li>
+<li>
+<p><strong>Single-bit error (correctable)</strong>: The decoder corrects the faulty bit using the syndrome, outputs the corrected data, and asserts a correctable error signal. The system continues normal operation.</p>
+</li>
+<li>
+<p><strong>Double-bit error (uncorrectable)</strong>: The decoder asserts an uncorrectable error signal. The module enters the memory system isolation state (FDS-03) to prevent corrupted data from propagating.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For uncorrectable errors, the SMC signals an uncorrectable error interrupt to the SMO.
+The fault reaction for cache SRAM errors is FR-01 (CPU core reset); for Scratchpad errors, the fault reaction is FR-02 (whole SMC subsystem reset), because the Scratchpad is shared and a localized core reset would not be sufficient.</p>
+</div>
+<div class="paragraph">
+<p><strong>Error logging.</strong> When a single-bit or double-bit error is detected, the SMC records the faulty address and increments the corresponding error counter.
+When the count of single-bit errors exceeds a programmable threshold, the SMC triggers an additional interrupt to alert the SMO to a potential degradation trend.
+The SMC provides memory-mapped registers for reading ECC error counts, last corrected address, and last uncorrectable address for each protected SRAM.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Latent faults in the ECC encoder and decoder logic are detected using the standard error injection interface.
+The self-test sequencer injects single-bit errors at every bit position and verifies that the decoder reports a correctable error with the correct bit-position indication.
+For SECDED structures, the sequencer proceeds to a second phase that injects all two-bit error combinations and verifies that the decoder reports an uncorrectable error at each step.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-beu"><a class="anchor" href="#smc-fusa-beu"></a><a class="link" href="#smc-fusa-beu">1.7. Bus Error Unit</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-096, OCAH-HWSR-SMC-097, OCAH-HWSR-SMC-098, OCAH-HWSR-SMC-192, OCAH-HWSR-SMC-193, OCAH-HWSR-SMC-194, OCAH-HWSR-SMC-195, OCAH-HWSR-SMC-196, OCAH-HWSR-SMC-197</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC integrates a Bus Error Unit (BEU) per CPU core to capture and report bus-level error responses.
+The BEU is a non-intrusive monitor: it observes bus transactions without modifying them and records errors in an internal FIFO, shown in the figure below.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/bus_err_unit.png" alt="Bus Error Unit">
+</div>
+<div class="title">Figure 2. Bus Error Unit</div>
+</div>
+<div class="paragraph">
+<p>When a bus error response is received (e.g., AXI4 <code>SLVERR</code> or <code>DECERR</code>), the BEU stores both the error source address and the error code in its FIFO.
+For burstive protocols such as AXI, the recorded address is always the address of the original request.
+The BEU asserts an interrupt signal that remains high while errors are stored in the FIFO.
+Reading the error code register pops the FIFO; if only a single error was present, this clears the interrupt.
+To obtain the address associated with an error, software should read the address register before reading the error code.</p>
+</div>
+<div class="paragraph">
+<p>The BEU FIFO depth is configurable to match the maximum number of outstanding transactions.
+If the outstanding transaction bound is exceeded, the address information will no longer update until the unit is reset.</p>
+</div>
+<div class="paragraph">
+<p>The BEU is also the error recording endpoint for address-filtered transactions on the fabric (see <a href="#smc-fusa-fabric">Fabric</a>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-plic"><a class="anchor" href="#smc-fusa-plic"></a><a class="link" href="#smc-fusa-plic">1.8. Platform-Level Interrupt Controller (PLIC)</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-031, OCAH-HWSR-SMC-032, OCAH-HWSR-SMC-033, OCAH-HWSR-SMC-034, OCAH-HWSR-SMC-035, OCAH-HWSR-SMC-036, OCAH-HWSR-SMC-037, OCAH-HWSR-SMC-038, OCAH-HWSR-SMC-039, OCAH-HWSR-SMC-040, OCAH-HWSR-SMC-041, OCAH-HWSR-SMC-042, OCAH-HWSR-SMC-171, OCAH-HWSR-SMC-203, OCAH-HWSR-SMC-204, OCAH-HWSR-SMC-205, OCAH-HWSR-SMC-206</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The PLIC is protected by three complementary safety mechanisms: register parity, lockstep arbitration, and lockstep interrupt generation.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity.</strong> The PLIC implements odd parity protection on its priority, enable, and threshold configuration registers, following the common register parity scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Lockstep arbitration.</strong> The interrupt arbitration logic — which evaluates priority, enable, and pending status to select the highest-priority interrupt for each CPU context — is replicated into two identical copies.
+A comparator checks the outputs of the two arbiters on every clock cycle, following the lockstep scheme described in <a href="#smc-fusa-lockstep">Lockstep Replication and Comparison</a>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Lockstep interrupt generation.</strong> The logic that asserts the final interrupt signal to the CPU is similarly replicated and compared.</p>
+</div>
+<div class="paragraph">
+<p>When any of these mechanisms detects a fault — parity mismatch, arbitration divergence, or generation divergence — the PLIC enters the signal clamping state (FDS-04): the affected interrupt line is clamped to a safe (de-asserted) state.
+The SMC asserts an uncorrectable error interrupt to the SMO, and the fault reaction is FR-01a (cluster reset, including all cores, caches, and interrupt controllers).</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Parity self-test uses the standard error injection interface.
+Lockstep self-test injects a mismatch into one of the redundant copies and verifies that the comparator detects the divergence.
+Interrupt controller functional self-test allows software to trigger test interrupt events and verify prioritization and clearing.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-clint"><a class="anchor" href="#smc-fusa-clint"></a><a class="link" href="#smc-fusa-clint">1.9. Core-Local Interruptor (CLINT)</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-043, OCAH-HWSR-SMC-044, OCAH-HWSR-SMC-045, OCAH-HWSR-SMC-046, OCAH-HWSR-SMC-047, OCAH-HWSR-SMC-048, OCAH-HWSR-SMC-049, OCAH-HWSR-SMC-050, OCAH-HWSR-SMC-207, OCAH-HWSR-SMC-208, OCAH-HWSR-SMC-209</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The CLINT implements parity protection on timer compare registers and software interrupt registers, and lockstep interrupt generation logic.
+These mechanisms are identical in principle to those described for the PLIC in <a href="#smc-fusa-plic">Platform-Level Interrupt Controller (PLIC)</a>; the key difference is that the CLINT does not perform priority arbitration, so the lockstep applies only to the interrupt generation path.</p>
+</div>
+<div class="paragraph">
+<p>When a parity or lockstep error is detected, the CLINT enters the signal clamping state (FDS-04) and the affected interrupt line is clamped to a safe state.
+The fault reaction is FR-01a (cluster reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Identical to the PLIC: parity self-test via error injection and lockstep self-test via mismatch injection.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-dma"><a class="anchor" href="#smc-fusa-dma"></a><a class="link" href="#smc-fusa-dma">1.10. DMA Engine</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-051, OCAH-HWSR-SMC-052, OCAH-HWSR-SMC-053, OCAH-HWSR-SMC-054, OCAH-HWSR-SMC-055, OCAH-HWSR-SMC-056, OCAH-HWSR-SMC-057, OCAH-HWSR-SMC-058, OCAH-HWSR-SMC-059, OCAH-HWSR-SMC-060, OCAH-HWSR-SMC-061, OCAH-HWSR-SMC-062, OCAH-HWSR-SMC-063, OCAH-HWSR-SMC-170, OCAH-HWSR-SMC-198, OCAH-HWSR-SMC-199, OCAH-HWSR-SMC-200, OCAH-HWSR-SMC-201, OCAH-HWSR-SMC-202</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The DMA engine is protected by four mechanisms: address generation lockstep, address range legalization, register and FIFO buffer parity, and a windowed watchdog timer for liveness.</p>
+</div>
+<div class="paragraph">
+<p><strong>Address generation lockstep.</strong> The address generation logic — which computes source and destination addresses for each beat of a transfer — is replicated using Dual Modular Redundancy (DMR).
+A comparator checks the outputs of both copies on every cycle, following the lockstep scheme described in <a href="#smc-fusa-lockstep">Lockstep Replication and Comparison</a>.
+When a mismatch is detected, the DMA enters FDS-01 (manager isolation), the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+The SMC records the invalid address and error cause for diagnostic purposes.</p>
+</div>
+<div class="paragraph">
+<p><strong>Address range legalizer.</strong> The DMA implements a legalizer module that validates generated addresses against configured allowed ranges and splits transfers at 4 KB page boundaries as required by the AXI protocol.
+When an address falls outside the configured legal range, the DMA enters FDS-01, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register and FIFO parity.</strong> Configuration registers and internal FIFO buffers are protected with odd parity following the common scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error triggers FDS-01, an uncorrectable error interrupt, and FR-02.</p>
+</div>
+<div class="paragraph">
+<p><strong>Error handling.</strong> The DMA error handler supports CONTINUE and ABORT actions in response to bus errors.
+When ABORT is selected, the error handler flushes the legalizer and terminates the active transfer.
+The error handler tracks outstanding transfers in the datapath using a credit counter.</p>
+</div>
+<div class="paragraph">
+<p><strong>Windowed WDT.</strong> The DMA is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>.
+A DMA hang manifests as a CPU hang (the CPU is waiting for the DMA to complete) and is therefore caught by the WDT.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Address generation lockstep is tested via mismatch injection.
+Address range legalizer is tested by configuring boundaries and attempting out-of-range accesses.
+Register and FIFO parity are tested via the standard error injection interface.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-zeroer"><a class="anchor" href="#smc-fusa-zeroer"></a><a class="link" href="#smc-fusa-zeroer">1.11. Zeroer</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-064, OCAH-HWSR-SMC-065, OCAH-HWSR-SMC-066, OCAH-HWSR-SMC-067, OCAH-HWSR-SMC-068, OCAH-HWSR-SMC-069, OCAH-HWSR-SMC-070, OCAH-HWSR-SMC-071</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The Zeroer performs bulk memory zeroing operations and is protected by register parity, address range legalization, and the windowed watchdog timer.
+All three mechanisms are identical to those described for the DMA in <a href="#smc-fusa-dma">DMA Engine</a>.</p>
+</div>
+<div class="paragraph">
+<p>A parity error on configuration registers triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+An address outside the configured legal range triggers the same sequence.
+Liveness is monitored by the CPU&#8217;s WDT as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Parity self-test via error injection, address range test via boundary configuration, WDT self-test via forced timeout.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-log-engine"><a class="anchor" href="#smc-fusa-log-engine"></a><a class="link" href="#smc-fusa-log-engine">1.12. Log Engine</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-072, OCAH-HWSR-SMC-073, OCAH-HWSR-SMC-074, OCAH-HWSR-SMC-075, OCAH-HWSR-SMC-076, OCAH-HWSR-SMC-077, OCAH-HWSR-SMC-078, OCAH-HWSR-SMC-079</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The Log Engine implements parity protection on configuration registers and address range checking to validate memory access ranges.
+These mechanisms follow the common schemes described in <a href="#smc-fusa-register-parity">Register Parity Storage</a> and the address range legalizer approach described for the DMA in <a href="#smc-fusa-dma">DMA Engine</a>.</p>
+</div>
+<div class="paragraph">
+<p>A parity error on configuration registers triggers FDS-02 (subordinate isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).
+An address outside the configured legal range triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.
+The out-of-bound address is recorded for diagnostic purposes.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Parity self-test via error injection, address range test via boundary configuration.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-mailbox"><a class="anchor" href="#smc-fusa-mailbox"></a><a class="link" href="#smc-fusa-mailbox">1.13. Mailbox Unit</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-080, OCAH-HWSR-SMC-081, OCAH-HWSR-SMC-082, OCAH-HWSR-SMC-083, OCAH-HWSR-SMC-084, OCAH-HWSR-SMC-085, OCAH-HWSR-SMC-086, OCAH-HWSR-SMC-087</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The Mailbox Unit implements register parity storage and lockstep interrupt generation.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity storage.</strong> Configuration registers store parity bits from WUSER alongside data, following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error detected by the network element checker on read triggers FDS-02 (subordinate isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Lockstep interrupt generation.</strong> The interrupt generation logic — which asserts doorbell interrupt signals from control register writes — is replicated and compared following the lockstep scheme described in <a href="#smc-fusa-lockstep">Lockstep Replication and Comparison</a>.
+When a mismatch is detected, the Mailbox enters FDS-04 (signal clamping), the affected interrupt line is clamped, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register storage faults are covered by network element parity self-test; lockstep self-test via mismatch injection.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-fabric"><a class="anchor" href="#smc-fusa-fabric"></a><a class="link" href="#smc-fusa-fabric">1.14. Fabric</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-088, OCAH-HWSR-SMC-089, OCAH-HWSR-SMC-090, OCAH-HWSR-SMC-091, OCAH-HWSR-SMC-092, OCAH-HWSR-SMC-093, OCAH-HWSR-SMC-094, OCAH-HWSR-SMC-095, OCAH-HWSR-SMC-169, OCAH-HWSR-SMC-213, OCAH-HWSR-SMC-214, OCAH-HWSR-SMC-215</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC fabric is protected by point-to-point parity on all AXI channel signals, parity on configuration registers, address filtering, and a windowed watchdog timer for liveness.</p>
+</div>
+<div class="sect3">
+<h4 id="point-to-point-parity-protection"><a class="anchor" href="#point-to-point-parity-protection"></a><a class="link" href="#point-to-point-parity-protection">1.14.1. Point-to-Point Parity Protection</a></h4>
+<div class="paragraph">
+<p>The fabric implements odd parity protection on all AXI interface signals following the <code>Odd_Parity_Byte_All</code> scheme defined in AXI5 A16.2.1 (<a href="https://developer.arm.com/documentation/ihi0022/latest/" target="_blank" rel="noopener">AMBA AXI and ACE Protocol Specification</a>).
+All interface signals — data, address, control, and strobe — are covered on every channel.
+Parity is generated at every manager output port and checked at the corresponding subordinate input port on the request path (AW, W, AR), and vice-versa on the response path (R, B), providing end-to-end single-bit error detection on the wires between any two connected components.</p>
+</div>
+<div class="paragraph">
+<p>The general parity self-test architecture, per-channel target selection, OR&#8217;d error collection, and programming model are described in <a href="#fusa-network-parity">[fusa-network-parity]</a>.
+For one-to-many topologies (crossbar, demux), a parity checker is instantiated on each subordinate branch and on each AXI channel within that branch.
+Each channel checker is a separate self-test target.
+During normal operation, all per-branch error signals are aggregated via a logical OR into a single interrupt, with per-branch status bits readable via a register.</p>
+</div>
+<div class="paragraph">
+<p>Rather than adding dedicated check wires (the <code>xCHK</code> signals defined in AXI5), the SMC fabric transports parity bits inside the AXI USER sideband field (<code>AWUSER</code>, <code>WUSER</code>, <code>ARUSER</code>, <code>RUSER</code>, <code>BUSER</code>).
+This repurposes the existing user-defined signal fields already present on every AXI channel, avoiding extra wires while preserving the same protection semantics.
+The USER field width on each channel is sized to accommodate the required number of parity bits for that channel&#8217;s payload.
+When the USER field carries functional sideband information (e.g., security attributes such as source ID or group ID), these bits shall also be protected with parity, and the corresponding parity bits are stored in the USER field alongside the other parity bits.</p>
+</div>
+<div class="paragraph">
+<p>The parity computation rules are as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Odd parity</strong> is used throughout: parity bits are driven such that there is always an odd number of asserted bits in each parity group.</p>
+</li>
+<li>
+<p><strong>Data signals</strong> (<code>WDATA</code>, <code>RDATA</code>) are covered at byte granularity — each parity bit protects up to 8 data bits. For a 64-bit data bus, this yields 8 parity bits. If the data width is not a multiple of 8, the most significant parity bit covers fewer than 8 bits.</p>
+</li>
+<li>
+<p><strong>Address signals</strong> (<code>AWADDR</code>, <code>ARADDR</code>) are covered at byte granularity, yielding ceil(ADDR_WIDTH/8) parity bits.</p>
+</li>
+<li>
+<p><strong>Strobe signals</strong> (<code>WSTRB</code>) are covered at byte granularity — each parity bit protects up to 8 strobe bits. For a 64-bit data bus with 8 strobe bits, this yields ceil(DATA_WIDTH/64) = 1 parity bit.</p>
+</li>
+<li>
+<p><strong>Control signals</strong> (<code>AWVALID</code>, <code>ARVALID</code>, <code>WVALID</code>, <code>RVALID</code>, <code>BVALID</code>, <code>xREADY</code>, etc.) are each covered by a single odd parity bit, which is the inversion of the original signal.</p>
+</li>
+<li>
+<p><strong>Grouped control fields</strong> (e.g., size, burst, lock, prot, and NSE concatenated into a single group; or region, cache, and QoS) are protected by a single parity bit covering the concatenated group.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="worked-example-user-field-sizing-for-the-smc-fabric"><a class="anchor" href="#worked-example-user-field-sizing-for-the-smc-fabric"></a><a class="link" href="#worked-example-user-field-sizing-for-the-smc-fabric">Worked Example — USER Field Sizing for the SMC Fabric</a></h5>
+<div class="paragraph">
+<p>This section derives the parity bit budget for each AXI channel using the default SMC fabric configuration.
+Refer to <a href="#fabric">[fabric]</a> for the complete fabric specification, including interface widths and ID width assignments at each fabric stage.</p>
+</div>
+<div class="paragraph">
+<p>The SMC fabric uses AXI4+ATOP interfaces with the following default signal widths:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Default SMC AXI Signal Widths</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 11.1111%;">
+<col style="width: 55.5556%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Width (bits)</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address (system-facing)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External ports (sys_axi_in, output_axi, etc.)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address (local)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-internal interfaces (local fabric to peripherals)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All AXI4 interfaces</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strobe</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH / 8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All AXI4 channels</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2, 4, 6, or 8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Varies by fabric stage (see <a href="#fabric-axi-id-widths">[fabric-axi-id-widths]</a>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The ID width varies across the fabric due to crossbar ID expansion: 2 bits at the JTAG input, 4 bits at the input fabric slave side, 6 bits at the system/SEP inputs and local/output fabric slave side, and 8 bits at the local fabric crossbar master side, output fabric master side, and system output.</p>
+</div>
+<div class="paragraph">
+<p>The parity budget below is computed for the widest configuration (ADDR_WIDTH = 56, ID_WIDTH = 8), which yields the maximum USER field requirement.</p>
+</div>
+<div class="paragraph">
+<p>Check signals follow Table A16.4 of the AXI5 specification.
+A check signal is included only when at least one of its covered signals is present on the interface.
+The following AXI5-only check groups are therefore omitted from the AXI4+ATOP interface: <code>AWCTLCHK2</code> (domain, snoop), <code>ARCTLCHK2</code> (domain, snoop), <code>ARCTLCHK3</code> (chunken, tagop), <code>xPENDINGCHK</code>, <code>xCRDTCHK</code>, <code>xRPCHK</code>, <code>xSHAREDCRDCHK</code>, <code>WTAGCHK</code>, <code>WPOISONCHK</code>, <code>RTAGCHK</code>, <code>RPOISONCHK</code>, <code>RCHUNKCHK</code>, and all loop, MMU, MPAM, trace, PAS, MECID, NSAID, subsysid, and act check signals.
+Where a check group covers a mix of present and absent signals, the absent signals are assumed at their protocol-defined default value per A16.2.3.</p>
+</div>
+<div class="paragraph">
+<p>Handshake signal parity (<code>xVALIDCHK</code>, <code>xREADYCHK</code>) is also transported via USER.
+Each channel&#8217;s <code>xVALIDCHK</code> travels in that channel&#8217;s USER (same direction as the data).
+Each channel&#8217;s <code>xREADYCHK</code> travels in a USER signal flowing the opposite direction: request-channel READY parity (<code>AWREADYCHK</code>, <code>WREADYCHK</code>, <code>ARREADYCHK</code>) travels in a response-channel USER, and response-channel READY parity (<code>RREADYCHK</code>, <code>BREADYCHK</code>) travels in a request-channel USER.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. Parity Bit Budget per AXI Channel</caption>
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 22.2222%;">
+<col style="width: 44.4444%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Channel</th>
+<th class="tableblock halign-left valign-top">Check Signal</th>
+<th class="tableblock halign-left valign-top">Covered Signals</th>
+<th class="tableblock halign-left valign-top">Width</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ID_WIDTH/8) = 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWADDRCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ADDR_WIDTH/8) = 7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWLENCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWLEN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWCTLCHK0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">{<code>AWSIZE</code>, <code>AWBURST</code>, <code>AWLOCK</code>, <code>AWPROT</code>}</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWCTLCHK1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">{<code>AWREGION</code>, <code>AWCACHE</code>, <code>AWQOS</code>}</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWCTLCHK3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWATOP</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWVALIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWVALID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BREADYCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BREADY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>AWUSER parity total: 14 bits</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WDATACHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WDATA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH/8 = 8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WSTRBCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WSTRB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(DATA_WIDTH/64) = 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WLASTCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WLAST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WVALIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WVALID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>WUSER parity total: 11 bits</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ID_WIDTH/8) = 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARADDRCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ADDR_WIDTH/8) = 7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARLENCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARLEN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARCTLCHK0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">{<code>ARSIZE</code>, <code>ARBURST</code>, <code>ARLOCK</code>, <code>ARPROT</code>}</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARCTLCHK1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">{<code>ARREGION</code>, <code>ARCACHE</code>, <code>ARQOS</code>}</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARVALIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARVALID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RREADYCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RREADY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>ARUSER parity total: 13 bits</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ID_WIDTH/8) = 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RDATACHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RDATA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH/8 = 8</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RRESPCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RRESP</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RLASTCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RLAST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RVALIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RVALID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARREADYCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARREADY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>RUSER parity total: 13 bits</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ceil(ID_WIDTH/8) = 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BRESPCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BRESP</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BVALIDCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BVALID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWREADYCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AWREADY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WREADYCHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WREADY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>BUSER parity total: 5 bits</strong></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The maximum parity requirement across all channels is <strong>14 bits</strong> (AW channel, due to the <code>AWATOP</code> field and handshake parity).
+The SMC fabric USER_WIDTH of 14 bits exactly accommodates the required parity bits.
+The AR and R channels require 13 bits each, the W channel requires 11 bits, and the B channel requires 5 bits; all fit within the same 14-bit USER field.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>In the AXI5 specification, <code>BRESPCHK</code> is a single 1-bit parity signal covering the concatenation of {<code>BRESP</code>, <code>BCOMP</code>, <code>BPERSIST</code>, <code>BTAGMATCH</code>, <code>BBUSY</code>}, and <code>RRESPCHK</code> is a single 1-bit parity signal covering {<code>RRESP</code>, <code>RBUSY</code>}.
+On the AXI4+ATOP interface used by SMC only <code>BRESP</code> (2 bits) and <code>RRESP</code> (2 bits) are present; the parity is therefore computed over <code>BRESP</code> and <code>RRESP</code> alone.
+For strict AXI5 interoperability, the absent signals would be included at their protocol-defined defaults (notably <code>BCOMP</code> = 1), but in a closed fabric where both endpoints omit the same signals the defaults cancel out and have no effect on the check.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The ID width varies across fabric stages (2, 4, 6, or 8 bits depending on the port).
+Because ID parity is computed at byte granularity (⌈ID_WIDTH / 8⌉), any ID width ≤ 8 requires only 1 parity bit, so the per-channel totals remain unchanged across all SMC fabric stages.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Parity is synchronous to <code>ACLK</code>.
+Control signal parity must be driven correctly in every cycle that the interface is out of reset (<code>ARESETn</code> asserted).
+Payload signal parity must be driven correctly in every cycle that the corresponding <code>xVALID</code> is asserted, regardless of whether all byte lanes are actively used in the transfer.</p>
+</div>
+<div class="paragraph">
+<p>When a parity error is detected at the receiving end, the fabric enters FDS-02 (subordinate isolation), the SMC signals an uncorrectable error interrupt to the SMO, and the fault reaction is FR-02 (subsystem reset).</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="end-to-end-parity-and-register-storage"><a class="anchor" href="#end-to-end-parity-and-register-storage"></a><a class="link" href="#end-to-end-parity-and-register-storage">1.14.2. End-to-End Parity and Register Storage</a></h4>
+<div class="paragraph">
+<p>The parity scheme provides end-to-end protection that covers both wire faults and storage faults in a unified architecture.
+The following figure illustrates the data flow for a write followed by a read to a configuration register.</p>
+</div>
+<div class="listingblock">
+<div class="title">End-to-End Parity Flow for Register Access</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">WRITE PATH:
+  Manager → [gen parity] → WDATA + WUSER(parity) → Network Element
+         → [check parity] → WDATA + WUSER(parity) → Register Block
+         → [store data + parity]
+
+READ PATH:
+  Register Block → [return stored data + parity] → RDATA + RUSER(parity)
+                → Network Element → [check parity] → RDATA + RUSER(parity)
+                → Manager</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On the write path, parity is generated at the manager, checked at the network element input, and then the data and parity are stored in the register block.
+On the read path, the stored data and parity are returned; the network element&#8217;s parity checker validates integrity before forwarding to the manager.</p>
+</div>
+<div class="paragraph">
+<p>A storage fault (bit flip in a register flip-flop) corrupts either the data bits or the stored parity bits.
+Either corruption causes a parity mismatch when the register is read, which the network element checker detects.
+This unified approach eliminates redundant parity computation and checking at the register level while maintaining full coverage of both transient wire faults and persistent storage faults.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="register-parity-storage"><a class="anchor" href="#register-parity-storage"></a><a class="link" href="#register-parity-storage">1.14.3. Register Parity Storage</a></h4>
+<div class="paragraph">
+<p>Fabric configuration registers store parity bits from WUSER alongside data, following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="address-filtering"><a class="anchor" href="#address-filtering"></a><a class="link" href="#address-filtering">1.14.4. Address Filtering</a></h4>
+<div class="paragraph">
+<p>The fabric implements address filtering at its input to block transactions targeting unmapped regions or performing illegal access types based on programmable regions and attributes.
+When an inbound transaction is blocked by the address filter, the fabric routes the transaction to an error slave.
+The error slave generates an AXI error response (<code>DECERR</code>), which is captured by the Bus Error Unit (see <a href="#smc-fusa-beu">Bus Error Unit</a>) for error recording and interrupt generation.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="liveness"><a class="anchor" href="#liveness"></a><a class="link" href="#liveness">1.14.5. Liveness</a></h4>
+<div class="paragraph">
+<p>Fabric liveness is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>.
+A fabric hang manifests as a CPU hang and is caught by the WDT.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="test-for-diagnostic-3"><a class="anchor" href="#test-for-diagnostic-3"></a><a class="link" href="#test-for-diagnostic-3">1.14.6. Test for Diagnostic</a></h4>
+<div class="paragraph">
+<p>Payload parity is tested via the shared parity self-test interface described in <a href="#fusa-network-parity">[fusa-network-parity]</a>, using OR&#8217;d error collection with per-channel target selection.
+Each AXI channel checker at each network element port is an individual target; software iterates over all targets and, for each one, the sequencer walks all bit positions of that channel&#8217;s payload to verify the checker detects every single-bit error.
+Register storage faults are covered by the same network element parity checker self-test — when a register is read back, any storage fault manifests as a parity error at the network element.
+The WDT is tested via forced timeout.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-rom"><a class="anchor" href="#smc-fusa-rom"></a><a class="link" href="#smc-fusa-rom">1.15. Boot ROM</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-107, OCAH-HWSR-SMC-108, OCAH-HWSR-SMC-109, OCAH-HWSR-SMC-110, OCAH-HWSR-SMC-165, OCAH-HWSR-SMC-216, OCAH-HWSR-SMC-217</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The SMC calculates a CRC checksum over the entire ROM address range at startup and compares it against a golden CRC stored in eFuse.
+A mismatch indicates that the ROM contents have been corrupted, whether by a manufacturing defect, a storage fault, or a read-path error.</p>
+</div>
+<div class="paragraph">
+<p>When a CRC mismatch is detected, the SMC enters FDS-03 (memory system isolation) to prevent execution of corrupted instructions, signals a fatal error interrupt to the SMO, halts the boot process, and triggers FR-02 (subsystem reset).
+The SMC provides a memory-mapped status register indicating the ROM integrity error state.</p>
+</div>
+<div class="sect3">
+<h4 id="boot-time-crc-verification-order"><a class="anchor" href="#boot-time-crc-verification-order"></a><a class="link" href="#boot-time-crc-verification-order">1.15.1. Boot-Time CRC Verification Order</a></h4>
+<div class="paragraph">
+<p>The ROM and eFuse CRC checks are ordered to establish a linear trust chain with no external dependencies.
+Both golden CRC values are stored in eFuse, which is available immediately after the hardware fuse-sensing FSM completes and before the CPU begins execution.
+The verification order is as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>eFuse CRC first:</strong> ROM firmware computes a CRC over the eFuse shadow register contents (excluding the CRC word itself) and compares it against the golden eFuse CRC stored in eFuse.
+This is the first integrity check the ROM performs after CPU reset release, before reading any eFuse configuration fields (lifecycle state, I2C/I3C addresses, PLL settings, etc.).
+A mismatch halts the boot process immediately.</p>
+</li>
+<li>
+<p><strong>ROM CRC second:</strong> ROM firmware computes a CRC over the entire ROM address range and compares it against the golden ROM CRC stored in the now-verified eFuse.
+A mismatch halts the boot process.</p>
+</li>
+<li>
+<p><strong>Proceed:</strong> Only after both checks pass does the ROM begin using eFuse configuration data and proceed with the normal boot sequence.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This ordering avoids a chicken-and-egg problem that would arise if the golden eFuse CRC were stored in an external bootloader manifest: loading the manifest requires communication interfaces whose addresses come from eFuse, and authenticating the manifest requires keys from eFuse — making it impossible to verify eFuse integrity before depending on it.
+Storing both golden CRCs in eFuse (32 bits each, negligible relative to the 24576-bit eFuse capacity) ensures that the earliest software-visible integrity checks require only on-chip resources that are already populated by hardware.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Hardware-consumed eFuse fields — BIRA memory repair data and CGM PLL init codes — are applied by the fuse-sensing and DFT hardware before the CPU is released from reset.
+These fields are therefore consumed before any software CRC check can run.
+Detecting corruption in those fields at the earliest software-possible point and halting before further damage is the best mitigation short of adding a hardware CRC checker in the fuse-sensing FSM.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> The ROM integrity verification logic is tested by injecting errors into the read path and verifying that the CRC checker reports a mismatch.
+Additionally, software can corrupt the golden CRC reference value and trigger the integrity check to verify that the comparison logic itself detects the discrepancy.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-gpio"><a class="anchor" href="#smc-fusa-gpio"></a><a class="link" href="#smc-fusa-gpio">1.16. GPIO</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-111, OCAH-HWSR-SMC-112, OCAH-HWSR-SMC-113, OCAH-HWSR-SMC-114, OCAH-HWSR-SMC-115, OCAH-HWSR-SMC-116, OCAH-HWSR-SMC-117, OCAH-HWSR-SMC-166</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The GPIO module implements two safety mechanisms: redundant strap latch comparison and register parity storage.</p>
+</div>
+<div class="paragraph">
+<p><strong>Redundant strap latch.</strong> Upon Power-on-Reset, the GPIO module captures strap values into two redundant copies.
+A comparator continuously checks the two copies against each other.
+If a mismatch is detected — indicating a fault in one of the latch circuits — the GPIO enters FDS-02 (subordinate isolation) to prevent corrupted strap values from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity storage.</strong> Configuration registers store parity bits from WUSER alongside data, following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> The strap logic mismatch test injects bit flips into one of the redundant latch copies and verifies that the comparator detects the mismatch.
+Register storage faults are covered by network element parity self-test.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-efuse"><a class="anchor" href="#smc-fusa-efuse"></a><a class="link" href="#smc-fusa-efuse">1.17. eFuse Controller</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-118, OCAH-HWSR-SMC-119, OCAH-HWSR-SMC-120, OCAH-HWSR-SMC-121, OCAH-HWSR-SMC-122, OCAH-HWSR-SMC-167</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The eFuse controller implements parity storage on shadow registers and a CRC integrity check on the eFuse bank contents.</p>
+</div>
+<div class="paragraph">
+<p><strong>Shadow register parity storage.</strong> After the fuse sensing FSM loads the eFuse bank contents into shadow registers, the shadow registers store parity bits alongside data following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error detected by the network element checker on read triggers FDS-02 (subordinate isolation) to prevent corrupted fuse data from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+The faulty address is recorded for diagnostic purposes.</p>
+</div>
+<div class="paragraph">
+<p><strong>CRC integrity check.</strong> At startup, ROM firmware calculates a CRC over the eFuse shadow register contents (excluding the CRC word) and compares it against a golden CRC stored in a dedicated eFuse field.
+This is the first integrity check the ROM performs after CPU reset release (see <a href="#smc-fusa-rom">Boot ROM</a> for the full verification order).
+A mismatch triggers FDS-02, a fatal error interrupt, and FR-02.</p>
+</div>
+<div class="paragraph">
+<p>Storing the golden eFuse CRC in eFuse rather than in an external bootloader manifest eliminates a circular dependency: loading and authenticating a manifest requires eFuse-sourced configuration (communication interface addresses, cryptographic keys), so eFuse integrity cannot be verified through the manifest without first trusting the very data under test.
+The 32-bit CRC field consumes 0.13% of the 24576-bit eFuse capacity.
+CRC-32 detects all single-bit, double-bit, and odd-number-of-bit errors, as well as all burst errors up to 32 bits, providing adequate coverage for the random bit-upset threat model addressed by functional safety.</p>
+</div>
+<div class="paragraph">
+<p><strong>Windowed WDT.</strong> The eFuse fuse-sensing FSM is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>, protecting against a hung sensing sequence.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Shadow register storage faults are covered by network element parity self-test.
+The CRC integrity logic is tested by injecting data and verifying that the CRC checker reports a mismatch.
+The eFuse FSM timeout is tested by allowing software to manipulate the timeout threshold.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-system-timer"><a class="anchor" href="#smc-fusa-system-timer"></a><a class="link" href="#smc-fusa-system-timer">1.18. System Timer</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-123, OCAH-HWSR-SMC-124, OCAH-HWSR-SMC-125, OCAH-HWSR-SMC-126, OCAH-HWSR-SMC-127, OCAH-HWSR-SMC-128, OCAH-HWSR-SMC-129, OCAH-HWSR-SMC-130, OCAH-HWSR-SMC-210, OCAH-HWSR-SMC-211, OCAH-HWSR-SMC-212</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The System Timer implements register parity storage and lockstep counter logic.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity storage.</strong> Configuration registers store parity bits from WUSER alongside data, following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error detected by the network element checker on read triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Lockstep counter.</strong> The timer counter is implemented using dual replicated counters that increment simultaneously from the same clock source.
+A comparator checks the two counter values on each clock cycle, following the lockstep scheme described in <a href="#smc-fusa-lockstep">Lockstep Replication and Comparison</a>.
+When a mismatch is detected, the timer enters FDS-01, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register storage faults are covered by network element parity self-test.
+The lockstep counter is tested by injecting a mismatch into one of the replicated counters and verifying that the comparator detects the divergence.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-i2c"><a class="anchor" href="#smc-fusa-i2c"></a><a class="link" href="#smc-fusa-i2c">1.19. I2C Controller</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-131, OCAH-HWSR-SMC-132, OCAH-HWSR-SMC-133, OCAH-HWSR-SMC-134, OCAH-HWSR-SMC-135</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The I2C controller implements parity protection on registers, FIFO buffers, and FSM state encoding, as well as protocol-level integrity checking and watchdog monitoring.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register, FIFO, and FSM parity.</strong> Configuration registers, internal FIFO buffers, and the FSM state register are all protected with odd parity.
+Register and FIFO parity follow the common scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+FSM state parity follows the scheme described in <a href="#smc-fusa-fsm-parity">FSM State Parity Protection</a>.
+When any parity error is detected, the I2C controller enters FDS-01 (manager isolation), the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).
+If the FSM enters an illegal state, it transitions to a known safe state and signals an uncorrectable error.</p>
+</div>
+<div class="paragraph">
+<p><strong>Protocol integrity.</strong> I2C protocol-level integrity (CRC or parity on the wire) is handled in software.
+The hardware provides the raw received data; software is responsible for computing and verifying the CRC over the payload.</p>
+</div>
+<div class="paragraph">
+<p><strong>Windowed WDT.</strong> The I2C controller is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>, protecting against bus hangs or protocol stalls.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register, FIFO, and FSM parity are tested via the error injection interface.
+The FSM state parity test injects invalid state patterns and verifies that the FSM correctly detects them and transitions to the safe state.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-avsbus"><a class="anchor" href="#smc-fusa-avsbus"></a><a class="link" href="#smc-fusa-avsbus">1.20. AVSBus Controller</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-136, OCAH-HWSR-SMC-137, OCAH-HWSR-SMC-138, OCAH-HWSR-SMC-139, OCAH-HWSR-SMC-140, OCAH-HWSR-SMC-141, OCAH-HWSR-SMC-142, OCAH-HWSR-SMC-143, OCAH-HWSR-SMC-144</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The AVSBus controller implements hardware CRC checking on received frames, parity protection on registers, FIFO buffers, and FSM state encoding, and watchdog monitoring.</p>
+</div>
+<div class="paragraph">
+<p><strong>Hardware CRC.</strong> The AVSBus controller computes a CRC-3 checksum on every received frame and compares it against the CRC field in the frame.
+When a CRC mismatch is detected, the controller enters FDS-02 (subordinate isolation) to prevent corrupted data from being used, the SMC signals an uncorrectable error interrupt, and the fault reaction is FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Register, FIFO, and FSM parity.</strong> These protections are identical in principle to those described for the I2C controller in <a href="#smc-fusa-i2c">I2C Controller</a>.
+A parity error triggers FDS-01, an uncorrectable error interrupt, and FR-02.
+If the FSM enters an illegal state, it transitions to a known safe state and signals an uncorrectable error.</p>
+</div>
+<div class="paragraph">
+<p><strong>Windowed WDT.</strong> The AVSBus controller is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register, FIFO, and FSM parity are tested via the error injection interface.
+FSM state parity test injects invalid state patterns.
+The hardware CRC checker is exercised during normal protocol operation; no additional latent fault test is required because the CRC is computed on every frame.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-telemetry"><a class="anchor" href="#smc-fusa-telemetry"></a><a class="link" href="#smc-fusa-telemetry">1.21. Telemetry Interface</a></h3>
+<div class="paragraph">
+<p>The Telemetry interface is monitored by the CPU&#8217;s windowed watchdog timer as described in <a href="#smc-fusa-wdt">Windowed Watchdog Timer</a>.
+A telemetry interface hang manifests as a CPU hang (the CPU is polling or waiting for sensor data) and is caught by the WDT.
+The fault reaction is FR-02 (subsystem reset).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-pvt"><a class="anchor" href="#smc-fusa-pvt"></a><a class="link" href="#smc-fusa-pvt">1.22. PVT and Power Management</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-152, OCAH-HWSR-SMC-153, OCAH-HWSR-SMC-154</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>PVT monitoring and power management safety functions are primarily software-driven.
+When an over-voltage, under-voltage, or over-current condition occurs on a main power rail, the SMC firmware overrides actuation commands and initiates a safe state transition.
+The SMC periodically monitors voltage sensors on high-current rails via AVSBus and autonomously triggers power capping if a defined safety threshold is exceeded.
+The SMC also monitors, detects, and reports sensor faults such as values stuck at minimum or maximum or rapid unrealistic toggling.</p>
+</div>
+<div class="paragraph">
+<p>These functions rely on the integrity of the underlying hardware (AVSBus controller, CPU, fabric, registers) which is protected by the mechanisms described in the preceding sections.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-d2d"><a class="anchor" href="#smc-fusa-d2d"></a><a class="link" href="#smc-fusa-d2d">1.23. Die-to-Die Communication (I3C / I2C)</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-155, OCAH-HWSR-SMC-156, OCAH-HWSR-SMC-157</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>When data is transmitted between chiplets via I3C or I2C, the SMC enforces a software-computed CRC check to ensure reliable error detection.
+When payload data is transmitted to or received from a remote chiplet, the SMC verifies the integrity of the payload using the CRC.
+These integrity checks are performed in software and do not require dedicated hardware diagnostics or latent fault testing.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-reset-unit"><a class="anchor" href="#smc-fusa-reset-unit"></a><a class="link" href="#smc-fusa-reset-unit">1.24. Reset Unit</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-099, OCAH-HWSR-SMC-100, OCAH-HWSR-SMC-101, OCAH-HWSR-SMC-150, OCAH-HWSR-SMC-151</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The Reset Unit implements register parity protection and lockstep reset signal generation.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity.</strong> Configuration registers are protected with odd parity following the common scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error on the Reset Unit is classified as fatal: it triggers FDS-01 (manager isolation), a fatal error interrupt to the SMO, and FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Lockstep reset signal generation.</strong> The logic that generates reset signals for each component is replicated and compared following the lockstep scheme described in <a href="#smc-fusa-lockstep">Lockstep Replication and Comparison</a>.
+A mismatch triggers FDS-04 (reset signal clamping), a fatal error interrupt, and FR-02.</p>
+</div>
+<div class="paragraph">
+<p>The Reset Unit coordinates hierarchical reset sequencing to ensure all chiplet resources achieve a safe, known initial state.
+When any clock or reset signal is asserted or de-asserted, the SMC guarantees the signal is glitch-free.</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register parity is tested via the standard error injection interface.
+Lockstep reset signal generation is tested by injecting a mismatch into one of the replicated copies and verifying that the comparator detects the divergence.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-clock-control"><a class="anchor" href="#smc-fusa-clock-control"></a><a class="link" href="#smc-fusa-clock-control">1.25. Clock Control</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-102, OCAH-HWSR-SMC-103, OCAH-HWSR-SMC-104, OCAH-HWSR-SMC-105, OCAH-HWSR-SMC-106, OCAH-HWSR-SMC-168, OCAH-HWSR-SMC-179, OCAH-HWSR-SMC-180, OCAH-HWSR-SMC-181, OCAH-HWSR-SMC-182</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>The Clock Control logic implements register parity protection and a clock handshake monitor with a timeout counter.</p>
+</div>
+<div class="paragraph">
+<p><strong>Register parity.</strong> Configuration registers are protected with odd parity following the common scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.
+A parity error on Clock Control registers is classified as fatal: it triggers FDS-01 (manager isolation), a fatal error interrupt, and FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p><strong>Clock handshake monitor.</strong> The SMC implements a clock handshake monitor that detects stopped or non-responsive clocks.
+The monitor uses a reference clock to measure whether a target clock is still ticking.
+A synchronous request-acknowledge handshake protocol is used: the monitor sends a request on the reference clock domain and expects an acknowledge on the target clock domain.
+A configurable timeout counter increments while the target clock is not responding.
+When the timeout threshold is exceeded, the monitor enters the reference clock fallback state (FDS-05): a glitch-free clock multiplexer switches the affected clock domain from the failed system clock to the always-on reference clock, so that the SMC retains basic operation at a reduced frequency.
+The monitor simultaneously asserts a fatal error interrupt to the SMO, and the fault reaction is FR-02.
+When the target clock resumes, the timeout counter resets to zero and the clock multiplexer may be switched back to the system clock under firmware control.
+The following figure shows the block diagram of the clock handshake timeout monitor, including the request-acknowledge synchronization logic and the configurable timeout counter.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/ocah-clock-timeout.png" alt="Clock Handshake Timeout Monitor">
+</div>
+<div class="title">Figure 3. Clock Handshake Timeout Monitor</div>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> Register storage faults are covered by network element parity self-test.
+The clock handshake monitor is tested by simulating a stopped subsystem clock (e.g., via clock gating) and verifying that the monitor correctly asserts a timeout.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-fusa-mmr"><a class="anchor" href="#smc-fusa-mmr"></a><a class="link" href="#smc-fusa-mmr">1.26. Memory-Mapped Registers</a></h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Traced Requirements</div>
+<div class="paragraph">
+<p>OCAH-HWSR-SMC-149</p>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>System-level memory-mapped registers that are not within the boundary of a specific IP — such as clock gate control registers — store parity bits from WUSER alongside data, following the scheme described in <a href="#smc-fusa-register-parity">Register Parity Storage</a>.</p>
+</div>
+<div class="paragraph">
+<p>Clock gate control registers are HW-readable (consumed directly by clock gating logic) and therefore implement a local parity checker at the register output that continuously validates the stored data against stored parity on every clock cycle.
+A parity error detected by the local checker triggers FDS-01 (manager isolation), an uncorrectable error interrupt, and FR-02 (subsystem reset).</p>
+</div>
+<div class="paragraph">
+<p>For memory-mapped registers that are also SW-readable, parity errors may be detected by either the local checker (when HW consumes the data) or the network element checker (when SW reads the register via the bus).</p>
+</div>
+<div class="paragraph">
+<p><strong>Test for diagnostic.</strong> The local parity checker is tested via error injection (software injects bit flips into stored data or parity and verifies the checker detects the fault).
+For SW-readable memory-mapped registers, network element parity self-test also provides coverage of the bus read path.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p>This page was built using the Antora default UI.</p>
+  <p>The source code for this UI is licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>
