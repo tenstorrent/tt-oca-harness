@@ -326,7 +326,11 @@ data movement patterns.
 
 ==== Detailed Register Map
 
+ifdef::backend-html5[]
+++++
 include::partial$smc/regs/gen/html/blocks/dma_ctrl.html[]
+++++
+endif::backend-html5[]
 
 ifdef::backend-pdf[]
 include::../regs/gen/adoc/blocks/dma_ctrl.adoc[]

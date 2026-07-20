@@ -45,3 +45,6 @@ doc/*/modules/sep/
 doc/*/modules/dtp/
 doc/*/modules/ip/
 
+
+# Local Antora install for doc builds
+.antora-tools/

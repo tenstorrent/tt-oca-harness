@@ -24,11 +24,6 @@ RTL, register descriptions, generated collateral, and documentation.
 
 ## Documentation
 
-Published docs (after enabling GitHub Pages on the `gh-pages` branch):
-[https://tenstorrent.github.io/tt-oca/](https://tenstorrent.github.io/tt-oca/)
-— landing page with links to the TRM and Integrator Guide. CI builds and
-deploys on pushes to `main` (see `.github/workflows/doc.yml`). In repository
-Settings → Pages, set source to **Deploy from a branch** → `gh-pages` → `/ (root)`.
 
 Documentation is authored in AsciiDoc and built with Antora (HTML site) and
 asciidoctor-pdf (PDF). The toolchain ships as container images, so no local Node or

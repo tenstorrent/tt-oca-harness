@@ -21,7 +21,10 @@ OCAH_DOC_REGEN_REGS ?= 1
 # Optional Antora --url override (used by GitHub Pages deploy for nested products).
 OCAH_DOC_SITE_URL ?=
 OCAH_GHPAGES_DIR ?= $(OCAH_DOC_DIR)/_build/gh-pages
-OCAH_GHPAGES_BASE_URL ?= https://tenstorrent.github.io/tt-oca
+# Root-relative Antora site URLs so links work for both public
+# (org.github.io/repo/...) and private (*.pages.github.io) GitHub Pages hosts.
+OCAH_GHPAGES_TRM_URL ?= /trm
+OCAH_GHPAGES_INTEGRATOR_URL ?= /integrator
 OCAH_GHPAGES_INDEX ?= $(OCAH_DOC_DIR)/gh-pages-index.html
 
 # Reuse the reg flow's per-block adoc accessor over every block (regs.mk filters
@@ -65,12 +68,12 @@ ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean
 ocah-doc-stage-ghpages:
 	@test -d "$(OCAH_TRM_BUILD)/html_antora" || { \
 		echo "error: missing TRM HTML at $(OCAH_TRM_BUILD)/html_antora"; \
-		echo "run: make ocah-doc-trm-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_BASE_URL)/trm"; \
+		echo "run: make ocah-doc-trm-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_TRM_URL)"; \
 		exit 1; \
 	}
 	@test -d "$(OCAH_INTEGRATOR_BUILD)/html_antora" || { \
 		echo "error: missing Integrator HTML at $(OCAH_INTEGRATOR_BUILD)/html_antora"; \
-		echo "run: make ocah-doc-integrator-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_BASE_URL)/integrator"; \
+		echo "run: make ocah-doc-integrator-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_INTEGRATOR_URL)"; \
 		exit 1; \
 	}
 	@test -f "$(OCAH_GHPAGES_INDEX)" || { echo "error: missing $(OCAH_GHPAGES_INDEX)"; exit 1; }
@@ -91,12 +94,12 @@ ocah-doc-deploy-ghpages:
 		exit 1; \
 	}
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" \
-		ocah-doc-trm-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_BASE_URL)/trm"
+		ocah-doc-trm-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_TRM_URL)"
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" \
-		ocah-doc-integrator-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_BASE_URL)/integrator"
+		ocah-doc-integrator-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_INTEGRATOR_URL)"
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-stage-ghpages
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
-	@echo "Deployed to GitHub Pages ($(OCAH_GHPAGES_BASE_URL)/)."
+	@echo "Deployed to GitHub Pages (gh-pages branch)."
 
 ## Push an already-staged gh-pages tree (used by CI after HTML builds).
 .PHONY: ocah-doc-push-ghpages
@@ -107,7 +110,7 @@ ocah-doc-push-ghpages: ocah-doc-stage-ghpages
 		exit 1; \
 	}
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
-	@echo "Deployed to GitHub Pages ($(OCAH_GHPAGES_BASE_URL)/)."
+	@echo "Deployed to GitHub Pages (gh-pages branch)."
 
 OCAH_PHONY += \
   ocah-doc-reg-setup \

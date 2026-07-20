@@ -72,8 +72,8 @@ jobs:
 
       - name: Build HTML documentation
         run: |
-          make ocah-doc-trm-html OCAH_DOC_SITE_URL=https://tenstorrent.github.io/tt-oca/trm
-          make ocah-doc-integrator-html OCAH_DOC_SITE_URL=https://tenstorrent.github.io/tt-oca/integrator
+          make ocah-doc-trm-html OCAH_DOC_SITE_URL=/trm
+          make ocah-doc-integrator-html OCAH_DOC_SITE_URL=/integrator
 
       - name: Build PDF documentation
         run: |
