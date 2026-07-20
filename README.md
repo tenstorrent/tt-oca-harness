@@ -56,7 +56,7 @@ make ocah-doc-integrator-pdf
 ```
 
 To build both HTML products and push them to the `gh-pages` branch (requires `uv`
-and push rights):
+and push rights; temporary until custom hosting — see `doc/gh-pages.mk`):
 
 ```bash
 make ocah-doc-deploy-ghpages
