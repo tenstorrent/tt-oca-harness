@@ -24,6 +24,12 @@ RTL, register descriptions, generated collateral, and documentation.
 
 ## Documentation
 
+Published docs: [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
+(landing page: TRM at `/trm/`, Integrator Guide at `/integrator/`). While Pages
+visibility is private, that URL redirects to the repo’s private Pages host;
+readers need GitHub access to this repository. CI deploys on pushes to `main`
+(see `.github/workflows/doc.yml`). In Settings → Pages, use **Deploy from a
+branch** → `gh-pages` → `/ (root)`.
 
 Documentation is authored in AsciiDoc and built with Antora (HTML site) and
 asciidoctor-pdf (PDF). The toolchain ships as container images, so no local Node or
