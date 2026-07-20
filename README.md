@@ -24,6 +24,12 @@ RTL, register descriptions, generated collateral, and documentation.
 
 ## Documentation
 
+Published docs (after enabling GitHub Pages on the `gh-pages` branch):
+[https://tenstorrent.github.io/tt-oca/](https://tenstorrent.github.io/tt-oca/)
+— landing page with links to the TRM and Integrator Guide. CI builds and
+deploys on pushes to `main` (see `.github/workflows/doc.yml`). In repository
+Settings → Pages, set source to **Deploy from a branch** → `gh-pages` → `/ (root)`.
+
 Documentation is authored in AsciiDoc and built with Antora (HTML site) and
 asciidoctor-pdf (PDF). The toolchain ships as container images, so no local Node or
 Ruby install is required — the recommended entry point is the container wrapper:
@@ -44,6 +50,15 @@ container), you can invoke the make targets directly instead:
 ```bash
 make ocah-doc-trm-html
 make ocah-doc-trm-pdf
+make ocah-doc-integrator-html
+make ocah-doc-integrator-pdf
+```
+
+To build both HTML products and push them to the `gh-pages` branch (requires `uv`
+and push rights):
+
+```bash
+make ocah-doc-deploy-ghpages
 ```
 
 ## Register generation

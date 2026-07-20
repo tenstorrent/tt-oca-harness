@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OCAH Documentation</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --fg: #1b1f24;
+      --muted: #5b6570;
+      --accent: #0b6bcb;
+      --card: #ffffff;
+      --border: #d8dee6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--fg);
+      background:
+        radial-gradient(circle at top left, #e8f1fb 0%, transparent 45%),
+        radial-gradient(circle at bottom right, #eef2f7 0%, transparent 40%),
+        var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    main {
+      width: min(40rem, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 2.25rem;
+      box-shadow: 0 10px 30px rgba(27, 31, 36, 0.06);
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+    p {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+    a {
+      display: block;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    a:hover, a:focus-visible {
+      border-color: var(--accent);
+      background: #f0f7ff;
+      outline: none;
+    }
+    a span {
+      display: block;
+      margin-top: 0.25rem;
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OCAH Documentation</h1>
+    <p>Open Chiplet Atlas Harness documentation products hosted on GitHub Pages.</p>
+    <ul>
+      <li>
+        <a href="trm/">Technical Reference Manual
+          <span>Architecture, registers, and block-level reference</span>
+        </a>
+      </li>
+      <li>
+        <a href="integrator/">Integrator Guide
+          <span>Integration requirements and bring-up guidance</span>
+        </a>
+      </li>
+    </ul>
+  </main>
+</body>
+</html>

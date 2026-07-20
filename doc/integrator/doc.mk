@@ -36,7 +36,9 @@ ocah-doc-integrator-setup: ocah-doc-integrator-meta ocah-doc-reg-setup
 ocah-doc-integrator-html: ocah-doc-integrator-setup
 	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html integrator"; exit 1; }
 	@echo "Building Integrator Guide HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
-	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) --attribute basedir="$(OCAH_INTEGRATOR_DIR)" "$(OCAH_INTEGRATOR_PLAYBOOK)"
+	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
+		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
+		--attribute basedir="$(OCAH_INTEGRATOR_DIR)" "$(OCAH_INTEGRATOR_PLAYBOOK)"
 	@echo "Done: $(OCAH_INTEGRATOR_BUILD)/html_antora/ocah-integrator-guide/latest/index.html"
 
 .PHONY: ocah-doc-integrator-pdf
