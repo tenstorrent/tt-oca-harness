@@ -28,6 +28,7 @@ nonfree/
 # Documentation builds: staged Antora module sources and rendered output. Product
 # builds stage pages/partials/images from product src/meta trees and the hw tree
 # (see doc/stage-docs.sh); source of truth stays outside staged module output.
+doc/_build/
 doc/*/_build/
 doc/*/dist/
 doc/*/assets/*
