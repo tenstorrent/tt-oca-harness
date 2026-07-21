@@ -300,7 +300,7 @@ $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 
 $(DISASM_FILE): $(ELF_FILE) | $(DISASM_DIR)
 	@echo "DIS $@"
-	@$(OD) -DCSsx --visualize-jumps $< > $@
+	@$(OD) -DCSsx $< > $@
 
 # =============================================================================
 # UTILITY TARGETS
