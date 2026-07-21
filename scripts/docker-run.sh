@@ -4,14 +4,19 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-# Usage: docker-run.sh <build|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator]|doc-pdf [trm|integrator]|eda-run CMD...|eda-shell>
-#   build     build firmware image        verify    gcc version + multilibs
-#   run CMD   run in firmware image       shell     interactive firmware shell
+# Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator]|doc-pdf [trm|integrator]|eda-run CMD...|eda-shell>
+#   build     (re)build firmware image + publish to shared tarball cache
+#   ensure    make firmware image available (local -> cache -> build); auto-run
+#             by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   verify    gcc version + multilibs      shell     interactive firmware shell
+#   run CMD   run in firmware image
 #   run-here  like run, but mount the repo at its host path (for CMDs that use
 #             absolute host paths, e.g. the TTEM `make -C $OCH_ROOT ...` cgen flow)
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
 # Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
+#      OCAH_DOCKER_CACHE_DIR   shared tarball cache dir for the firmware image
+#                               (default: /proj_soc_scratch_ps/socinfra/ocah-docker-cache)
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
@@ -25,6 +30,15 @@ DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
 DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
 EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 
+# Firmware image provisioning. The ocah-toolchain image is built locally and
+# published to no registry, so bare `run` on a fresh host would try (and fail)
+# to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
+# registry/internet access at job time - a built image is cached as a tarball on
+# shared storage, keyed by the Dockerfile hash. Hosts reuse a matching local
+# image, else load the tarball, else build once and publish it for the rest.
+DOCKER_CTX="${ROOT}/tools/docker"
+DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-/proj_soc_scratch_ps/socinfra/ocah-docker-cache}"
+
 if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
@@ -34,6 +48,49 @@ else echo "error: podman or docker is required" >&2; exit 1; fi
 UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"
 USER_FLAGS=(); [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
+# Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
+image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
+image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
+
+# Build the firmware image (labeled with the Dockerfile hash) and publish it to
+# the shared tarball cache when that storage is writable. A publish failure is
+# a warning, not a build failure.
+build_image() {
+    local hash; hash="$(image_hash)"
+    "$ENGINE" build --label "ocah.dockerfile.sha=${hash}" -t "$IMAGE" "$DOCKER_CTX"
+    local tar; tar="$(image_cache_tar)"
+    if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
+        local tmp="${tar}.$$.tmp"
+        if "$ENGINE" save -o "$tmp" "$IMAGE" 2>/dev/null && mv -f "$tmp" "$tar" 2>/dev/null; then
+            echo "docker-run: published image cache $tar" >&2
+        else
+            rm -f "$tmp" 2>/dev/null || true
+            echo "docker-run: warning: could not publish image cache to $tar" >&2
+        fi
+    else
+        echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
+    fi
+}
+
+# Ensure $IMAGE is available locally: reuse a matching local image (verified by
+# the Dockerfile-hash label), else load the shared tarball cache, else build and
+# publish. Use `build` to force a rebuild regardless of what is already present.
+ensure_image() {
+    local hash tar
+    hash="$(image_hash)"
+    if [ "$("$ENGINE" image inspect --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
+        return 0
+    fi
+    tar="$(image_cache_tar)"
+    if [ -r "$tar" ]; then
+        echo "docker-run: loading $IMAGE from cache $tar" >&2
+        "$ENGINE" load -i "$tar"
+        return 0
+    fi
+    echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
+    build_image
+}
+
 # run_image IMAGE [-it] CMD... : engine flags before the image, command after it
 run_image() {
     local image="$1"; shift
@@ -42,6 +99,7 @@ run_image() {
 }
 
 run() {
+    ensure_image
     run_image "$IMAGE" "$@"
 }
 
@@ -50,6 +108,7 @@ run() {
 # TTEM cgen flow's `make -C $OCH_ROOT -f ocah.mk ...` - resolve inside the
 # container. Uses the firmware image.
 run_here() {
+    ensure_image
     run_image_1to1 "$IMAGE" "$@"
 }
 
@@ -98,7 +157,8 @@ doc_pdf() {
 }
 
 case "${1:-}" in
-    build)  "$ENGINE" build -t "$IMAGE" "${ROOT}/tools/docker" ;;
+    build)  build_image ;;
+    ensure) ensure_image ;;
     verify) run riscv64-unknown-elf-gcc --version; echo ---; run riscv64-unknown-elf-gcc -print-multi-lib ;;
     run)    shift; [[ $# -gt 0 ]] || { echo "error: run requires a command" >&2; exit 1; }; run "$@" ;;
     run-here) shift; [[ $# -gt 0 ]] || { echo "error: run-here requires a command" >&2; exit 1; }; run_here "$@" ;;
@@ -107,6 +167,6 @@ case "${1:-}" in
     doc-pdf)  shift; doc_pdf "${1:-trm}" ;;
     eda-run)  shift; [[ $# -gt 0 ]] || { echo "error: eda-run requires a command" >&2; exit 1; }; eda_run "$@" ;;
     eda-shell) eda_run -it bash ;;
-    ""|-h|--help|help) sed -n '7,19p' "$0" ;;
+    ""|-h|--help|help) sed -n '7,24p' "$0" ;;
     *)      echo "error: unknown command '$1'" >&2; exit 1 ;;
 esac
