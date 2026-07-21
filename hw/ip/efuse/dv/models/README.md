@@ -1,10 +1,11 @@
 # eFuse Model
 
-Simulation-only behavioral OTP bank, driven through `efuse_interface_shim.sv`
-(one level up, in `hw/ip/efuse/rtl/`) which translates the generic
-`fuse_command_*` controller interface into the APB sequence this model
-expects. It is a single, technology-neutral bank model shared by both the
-SEP and SMC eFuse macro instances.
+Simulation-only behavioral OTP bank, driven through
+[`efuse_interface_shim.sv`](../../rtl/efuse_interface_shim.sv) (in
+`hw/ip/efuse/rtl/`) which translates the generic `fuse_command_*` controller
+interface into the APB sequence this model expects. It is a single,
+technology-neutral bank model shared by both the SEP and SMC eFuse macro
+instances.
 
 ## `efuse_bank_model.sv`
 

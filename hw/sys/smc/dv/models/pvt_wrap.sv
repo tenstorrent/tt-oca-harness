@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
-// PVT Shim -- behavioral placeholder for the adopter PVT sensor block.
+// PVT Model -- behavioral placeholder for the adopter PVT sensor block.
 //
 // Terminates the axil_pvt_req_o/resp_i register interface reserved by
-// ../regs/pvt_wrap.rdl. Every access completes with an OKAY response and
+// regs/pvt_wrap.rdl. Every access completes with an OKAY response and
 // all-zero read data, via prim_axi_lite_err_slv configured for RESP_OKAY
 // (e.g. a temperature/voltage-status poll reads back as "no alarm"). A real
 // integration replaces this with the adopter's PVT sensor control/status

@@ -5,8 +5,8 @@
 // SMC IP Integration -- 3rd party IP, macros, and shims
 //
 // Open-source reference models for the technology-specific IP SMC exposes
-// at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1),
-// behavioral PLL/PVT AXI-Lite stubs (pll_wrap.sv / pvt_wrap.sv), and one
+// at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1), the
+// PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv), and one
 // prim_pad_shim.sv instance per GPIO pin standing in for the physical
 // padring. The GPIO-shim per-pin CSR and adopter peripheral extension
 // AXI-Lite buses are terminated with prim_axi_lite_err_slv (DECERR).

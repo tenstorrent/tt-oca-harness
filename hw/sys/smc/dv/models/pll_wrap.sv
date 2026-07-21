@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
-// PLL Shim -- behavioral placeholder for the adopter PLL control/status
+// PLL Model -- behavioral placeholder for the adopter PLL control/status
 // block.
 //
 // smc.sv's PLL clocks (clk_smc_i/clk_ref_i/clk_periph_i) arrive
-// pre-generated at the OCAH boundary; this shim terminates the
-// axil_pll_req_o/resp_i register interface reserved by ../regs/pll_wrap.rdl.
+// pre-generated at the OCAH boundary; this model terminates the
+// axil_pll_req_o/resp_i register interface reserved by regs/pll_wrap.rdl.
 // Every access completes with an OKAY response and all-zero read data, via
 // prim_axi_lite_err_slv configured for RESP_OKAY. A real integration
 // replaces this with the adopter's PLL control/status register block.

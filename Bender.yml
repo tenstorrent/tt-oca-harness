@@ -235,7 +235,7 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv
       - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
-      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
@@ -270,11 +270,11 @@ sources:
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
       - hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
-      - hw/sys/sep/dv/shims/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
       # sep_addrmap_pkg.sv omitted: compiled earlier by the opentitan package.
-      - hw/sys/smc/dv/shims/regs/gen/sv/pll_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/shims/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/shims/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
       - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
       - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
@@ -315,7 +315,7 @@ sources:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
-      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
       - hw/ip/efuse/rtl/efuse_pkg.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
       - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
@@ -588,11 +588,11 @@ sources:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
-      - hw/ip/efuse/dv/shims/regs/gen/sv/efuse_shim_ctrl_reg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
       - hw/ip/efuse/rtl/efuse_guard.sv
       - hw/ip/efuse/rtl/efuse_interface_controller.sv
       - hw/ip/efuse/rtl/efuse_interface_shim.sv
-      - hw/ip/efuse/rtl/efuse_model/efuse_bank_model.sv
+      - hw/ip/efuse/dv/models/efuse_bank_model.sv
       - hw/ip/efuse/rtl/efuse_program_interface.sv
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_security_tokens.sv
@@ -622,7 +622,7 @@ sources:
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
       - hw/ip/gpio/rtl/gpio.sv
       - hw/ip/gpio/rtl/gpio_filter.sv
-      - hw/ip/gpio/rtl/gpio_model/gpio_model.sv
+      - hw/ip/gpio/dv/models/gpio_model.sv
       - hw/ip/gpio/rtl/gpio_shim.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg.sv
       - hw/ip/i2c/rtl/i2c.sv
@@ -1084,8 +1084,8 @@ sources:
       - vendor/pulp-platform/common_cells/upstream/src/counter.sv
       - vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
-      - hw/sys/smc/dv/shims/rtl/pll_wrap.sv
-      - hw/sys/smc/dv/shims/rtl/pvt_wrap.sv
+      - hw/sys/smc/dv/models/pll_wrap.sv
+      - hw/sys/smc/dv/models/pvt_wrap.sv
       - hw/top/sep_ip_integration.sv
       - hw/top/sep_wrapper.sv
       - hw/top/smc_ip_integration.sv

@@ -11,7 +11,8 @@
  *   - smc_addr.h, the local sub-block headers: hw/sys/smc/regs/gen/c[/blocks]
  *   - hw/ip block headers: each hw/ip/<block>/regs/gen/c
  *   - common AXI fabric headers: each hw/common/axi/<block>/regs/gen/c
- *   - DV shim headers under hw/sys/smc/dv/shims/regs/gen/c and hw/ip/.../dv/shims
+ *   - reference model headers under hw/sys/smc/dv/models/regs/gen/c and
+ *     hw/ip/.../dv/models
  * Add a line here when a sub-block is added to smc.rdl.
  */
 #ifndef SMC_H

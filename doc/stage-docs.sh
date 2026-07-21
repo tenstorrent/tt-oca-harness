@@ -99,8 +99,8 @@ for s in $SUBSYSTEMS; do
   stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$s/pages"
   stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$s/partials/$s/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$s/partials/$s/regs/gen/html"
-  stage_gen_adoc "$ROOT/hw/sys/$s/dv/shims/regs/gen/adoc" "$MOD/$s/partials/$s/dv/shims/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/dv/shims/regs/gen/html" "$MOD/$s/partials/$s/dv/shims/regs/gen/html"
+  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
 done
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
@@ -117,8 +117,8 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
   [ -d "$ipdir/doc" ] && stage_adoc_tree "$ipdir/doc" "$MOD/ip/pages/$ip/doc"
   stage_gen_adoc "$ipdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"
   stage_gen_html "$ipdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
-  stage_gen_adoc "$ipdir/dv/shims/regs/gen/adoc" "$MOD/ip/partials/$ip/dv/shims/regs/gen/adoc"
-  stage_gen_html "$ipdir/dv/shims/regs/gen/html" "$MOD/ip/partials/$ip/dv/shims/regs/gen/html"
+  stage_gen_adoc "$ipdir/dv/models/regs/gen/adoc" "$MOD/ip/partials/$ip/dv/models/regs/gen/adoc"
+  stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
 # --- images: aggregate hw doc images into doc/assets (PDF) and module images
