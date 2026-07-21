@@ -3,16 +3,9 @@
 
 /*
  * Abstract I3C controller driver interface.
- *
- * This header defines the transport-agnostic I3C driver vtable and supporting
- * types.  It contains no Cadence-specific register access macros or includes;
- * the Cadence I3C implementation (tt_i3c.c in nonfree) provides the strong
- * I3C_GetDriverInstance() symbol at link time, while an open weak stub
- * (i3c_controller_driver_stub.c) returns NULL when no real driver is present.
+ * This header defines the transport-agnostic I3C driver vtable and supporting types.
  *
  * occp_test_common.h and occp_interfaces.c include this header directly.
- * The nonfree tt_i3c.h includes this header and extends it with the Cadence
- * register-level declarations used internally by tt_i3c.c.
  */
 
 #ifndef I3C_CONTROLLER_DRIVER_H_
@@ -213,8 +206,7 @@ struct I3C_Driver
 /*
  * Obtain a driver instance for the given controller.
  *
- * Weak default (i3c_controller_driver_stub.c) returns NULL; the Cadence
- * strong override (nonfree tt_i3c.c) returns a fully initialised instance.
+ * Weak default (i3c_controller_driver_stub.c) returns NULL.
  * An open I3C master driver may override this symbol in the future.
  */
 I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id);
