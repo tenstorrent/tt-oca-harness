@@ -158,9 +158,7 @@ It implements these with dedicated read and program FSMs that sequence the
 macro-side transactions and return a `fuse_command_resp_t` to the controller.
 Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
-`fuse_bank_ctrl` AXI4-Lite interface. A `debug_bus_o` output exposes the read
-and write FSM states plus the init-cycle counters' error flags for
-waveform/backdoor debug.
+`fuse_bank_ctrl` AXI4-Lite interface.
 
 ====== eFuse Bank Model
 
@@ -170,27 +168,6 @@ fronted by a standard APB interface, and it emulates the set-once behavior of
 real OTP so the controller and SHIM can be exercised end-to-end without
 silicon. In a production integration it is replaced by the actual foundry
 macro driven by the SHIM.
-
-The model also provides two simulation-only conveniences layered on top of the
-same bank storage:
-
-* *OTP image preload* — at time 0, the bank is deposited (not reset-gated,
-  so it survives warm reset) from an Intel-hex image via `$readmemh`,
-  selected by `+sep_efuse_hex=<path>` / `+smc_efuse_hex=<path>` (SEP falls
-  back to `out/sep_efuse.hex` if no plusarg is given; SMC preloads nothing by
-  default).
-* *Program-fail injection* — for negative testing of firmware's
-  `PROGRAM_READ_BACK` error handling, writes can be silently dropped (the
-  bank reports no APB error, matching real OTP) via
-  `+{sep,smc}_efuse_prog_fail_count=<N>` (fail the first N writes after each
-  reset) or `+{sep,smc}_efuse_prog_fail_percent=<N>` (fail ~N% of writes at
-  random, seeded by `+{sep,smc}_efuse_prog_fail_seed`, default
-  `0x1badf00d`).
-
-A single model instance serves either a SEP or an SMC eFuse macro instance
-via the `IsSmcInstance` parameter, which only selects the plusarg prefix
-(`sep_`/`smc_`) and log tag used above — the bank storage and command
-handling are otherwise identical.
 
 ====== Access Permissions and Security
 
