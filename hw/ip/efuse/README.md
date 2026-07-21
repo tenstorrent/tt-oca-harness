@@ -11,7 +11,11 @@ Foundry or macro-specific shims belong in adopter overlays.
 The committed open model uses `efuse_interface_shim.sv` and
 `efuse_bank_model.sv` for fast simulation with a register-backed behavioral OTP
 bank. This path is technology-neutral and is intended for open RTL bring-up,
-software development, and register validation.
+software development, and register validation. The bank model additionally
+supports sim-only OTP image preload and program-fail injection (see
+[`rtl/efuse_model/README.md`](rtl/efuse_model/README.md)), and a single model
+serves either the SEP or SMC eFuse macro instance via its `IsSmcInstance`
+parameter.
 
 ## Interfaces
 
