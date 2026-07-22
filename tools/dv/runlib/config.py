@@ -1,0 +1,1196 @@
+"""TOML config loading and validation for the native DV runner."""
+
+from __future__ import annotations
+
+import ast
+import copy
+import re
+from pathlib import Path
+from typing import Any
+
+from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
+from .paths import configs_root
+
+try:
+    import tomllib as _tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    try:
+        import tomli as _tomllib  # type: ignore[import-not-found]
+    except ModuleNotFoundError:
+        _tomllib = None  # type: ignore[assignment]
+
+
+CANONICAL_STAGES = {
+    "flist",
+    "hdl_compile",
+    "c_compile",
+    "elaborate",
+    "sim",
+    "regress",
+    "cov_merge",
+    "cov_report",
+    "formal",
+    "clean",
+}
+
+PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+SANDBOX_PREFIX = "dv/oss/"
+
+IMPLEMENTED_STAGE_KINDS = {
+    "noop",
+    "clean",
+    "bender_filelist",
+    "verilator_filelist",
+    "verilator_compile",
+    "c_compile",
+    "cocotb_build",
+    "cocotb_sim",
+    "cocotb_verilator",
+    "coverage_merge",
+    "coverage_report",
+    "formal_run",
+    "vcs_filelist",
+    "vcs_analyze",
+    "vcs_compile",
+    "vcs_elaborate",
+    "vcs_sim",
+    "xrun_filelist",
+    "xrun_analyze",
+    "xrun_compile",
+    "xrun_elaborate",
+    "xrun_sim",
+}
+
+STAGE_KIND_COMPATIBILITY = {
+    "flist": {"bender_filelist", "verilator_filelist", "vcs_filelist", "xrun_filelist", "noop"},
+    "hdl_compile": {
+        "cocotb_build",
+        "verilator_compile",
+        "vcs_analyze",
+        "vcs_compile",
+        "xrun_analyze",
+        "xrun_compile",
+        "noop",
+    },
+    "c_compile": {"c_compile", "noop"},
+    "elaborate": {"vcs_elaborate", "xrun_elaborate", "cocotb_build", "noop"},
+    "sim": {"cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
+    "regress": {"cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
+    "cov_merge": {"coverage_merge", "noop"},
+    "cov_report": {"coverage_report", "noop"},
+    "formal": {"formal_run", "noop"},
+    "clean": {"clean", "noop"},
+}
+
+COMMON_PLACEHOLDERS = {
+    "flow",
+    "kind",
+    "framework",
+    "tool",
+    "executor",
+    "target",
+    "item",
+    "seed",
+    "jobs",
+    "sim_jobs",
+    "run_dir",
+    "repo_root",
+    "waves",
+}
+ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
+    "fw_target",
+    "build_dir",
+    "build_cov_dir",
+    "cov_dir",
+    "design_db",
+    "merged",
+    "report",
+    "inputs",
+    "queue",
+    "cores",
+    "mem_mb",
+    "walltime",
+    "joblog",
+    "jobname",
+    "image",
+}
+
+TOP_LEVEL_KEYS = {
+    "schema_version",
+    "name",
+    "profile",
+    "kind",
+    "framework",
+    "visibility",
+    "runnability",
+    "license",
+    "default_tool",
+    "tools",
+    "description",
+    "scheduler",
+    "defaults",
+    "target_defaults",
+    "native",
+    "testlist",
+    "build",
+    "cocotb",
+    "c_build",
+    "run_modes",
+    "targets",
+    "coverage",
+    "pass_fail",
+    "sim",
+    "formal",
+    "dut",
+    "tb",
+}
+
+BUILD_KEYS = {
+    "top_module",
+    "top_file",
+    "filelist",
+    "bender_filelist",
+    "work_dir",
+    "common_bender_targets",
+    "bender_targets",
+    "incdirs",
+    "stubs",
+    "sources",
+    "exclude_files",
+    "options",
+    "verilator",
+    "xcelium",
+    "vcs",
+}
+
+BUILD_OPTIONS_KEYS = {
+    "build_jobs",
+    "cflags",
+    "cache_enabled",
+    "rebuild",
+    "cache_key_extra",
+}
+
+COCOTB_KEYS = {
+    "python_root",
+    "test_dir",
+    "python_paths",
+    "results_dir",
+    "cocotb_log",
+}
+
+TARGET_KEYS = {
+    "description",
+    "build_dir",
+    "work_dir",
+    "filelist",
+    "bender_filelist",
+    "bender_targets",
+    "defines",
+    "flags",
+    "sources",
+    "stubs",
+    "exclude_files",
+    "tools",
+}
+
+TARGET_TOOL_KEYS = {"flags"}
+RUN_MODE_KEYS = {"description", "timeout_sec", "args", "plusargs"}
+TESTLIST_KEYS = {"schema_version", "includes", "tests", "groups"}
+TEST_KEYS = {
+    "name",
+    "module",
+    "target",
+    "seed",
+    "reseed",
+    "timeout_sec",
+    "tags",
+    "run_modes",
+    "firmware",
+    "args",
+}
+GROUP_KEYS = {"name", "tests"}
+
+COVERAGE_TOOL_KEYS = {
+    "artifact",
+    "backend",
+    "build_args",
+    "compile_args",
+    "design_artifact",
+    "design_db",
+    "exclude_files",
+    "fail_under",
+    "input_glob",
+    "merge_cmd",
+    "merged_name",
+    "parser",
+    "policy_file",
+    "report_cmd",
+    "sim_args",
+    "test_args",
+    "waiver_files",
+}
+COVERAGE_LIST_KEYS = {
+    "build_args",
+    "compile_args",
+    "exclude_files",
+    "merge_cmd",
+    "report_cmd",
+    "sim_args",
+    "test_args",
+    "waiver_files",
+}
+COVERAGE_PARSERS = {"verilator", "urg", "imc"}
+
+
+def _strip_toml_comment(line: str) -> str:
+    in_string = ""
+    escaped = False
+    for idx, char in enumerate(line):
+        if in_string:
+            if in_string == '"' and escaped:
+                escaped = False
+                continue
+            if in_string == '"' and char == "\\":
+                escaped = True
+                continue
+            if char == in_string:
+                in_string = ""
+            continue
+        if char in {'"', "'"}:
+            in_string = char
+        elif char == "#":
+            return line[:idx]
+    return line
+
+
+def _toml_value_complete(value: str) -> bool:
+    depth = 0
+    in_string = ""
+    escaped = False
+    for char in value:
+        if in_string:
+            if in_string == '"' and escaped:
+                escaped = False
+                continue
+            if in_string == '"' and char == "\\":
+                escaped = True
+                continue
+            if char == in_string:
+                in_string = ""
+            continue
+        if char in {'"', "'"}:
+            in_string = char
+        elif char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+    return depth == 0 and not in_string
+
+
+def _split_toml_array(inner: str) -> list[str]:
+    items: list[str] = []
+    start = 0
+    depth = 0
+    in_string = ""
+    escaped = False
+    for idx, char in enumerate(inner):
+        if in_string:
+            if in_string == '"' and escaped:
+                escaped = False
+                continue
+            if in_string == '"' and char == "\\":
+                escaped = True
+                continue
+            if char == in_string:
+                in_string = ""
+            continue
+        if char in {'"', "'"}:
+            in_string = char
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+        elif char == "," and depth == 0:
+            item = inner[start:idx].strip()
+            if item:
+                items.append(item)
+            start = idx + 1
+    item = inner[start:].strip()
+    if item:
+        items.append(item)
+    return items
+
+
+def _parse_toml_value(value: str, path: Path, line_no: int) -> Any:
+    value = value.strip()
+    if value.startswith("[") and value.endswith("]"):
+        inner = value[1:-1].strip()
+        if not inner:
+            return []
+        return [_parse_toml_value(item, path, line_no) for item in _split_toml_array(inner)]
+    if value in {"true", "false"}:
+        return value == "true"
+    if value.startswith(('"', "'")) and value.endswith(('"', "'")):
+        try:
+            return ast.literal_eval(value)
+        except (SyntaxError, ValueError) as exc:
+            raise ConfigError(f"{path}:{line_no}: invalid TOML string") from exc
+    if re.fullmatch(r"[-+]?(0|[1-9][0-9_]*|0x[0-9A-Fa-f_]+|0o[0-7_]+|0b[01_]+)", value):
+        return int(value.replace("_", ""), 0)
+    if re.fullmatch(r"[-+]?(?:[0-9][0-9_]*)?\.[0-9][0-9_]*", value):
+        return float(value.replace("_", ""))
+    raise ConfigError(f"{path}:{line_no}: unsupported TOML value `{value}`")
+
+
+def _ensure_toml_table(data: dict[str, Any], parts: list[str], path: Path, line_no: int) -> dict[str, Any]:
+    table = data
+    for part in parts:
+        next_table = table.setdefault(part, {})
+        if not isinstance(next_table, dict):
+            raise ConfigError(f"{path}:{line_no}: `{'.'.join(parts)}` conflicts with a scalar")
+        table = next_table
+    return table
+
+
+def _assign_toml_value(table: dict[str, Any], key: str, value: Any, path: Path, line_no: int) -> None:
+    parts = [part.strip() for part in key.split(".")]
+    if not all(parts):
+        raise ConfigError(f"{path}:{line_no}: invalid TOML key `{key}`")
+    target = _ensure_toml_table(table, parts[:-1], path, line_no)
+    if parts[-1] in target:
+        raise ConfigError(f"{path}:{line_no}: duplicate TOML key `{key}`")
+    target[parts[-1]] = value
+
+
+def _load_toml_subset(path: Path) -> dict[str, Any]:
+    """Small TOML reader for the repo's DV configs when Python lacks tomllib/tomli.
+
+    It intentionally covers only the constructs used by these configs: tables, arrays of tables,
+    strings, booleans, integers, floats, and arrays.
+    """
+    data: dict[str, Any] = {}
+    current = data
+    lines = path.read_text(encoding="utf-8").splitlines()
+    idx = 0
+    while idx < len(lines):
+        idx += 1
+        line_no = idx
+        line = _strip_toml_comment(lines[idx - 1]).strip()
+        if not line:
+            continue
+        if line.startswith("[[") and line.endswith("]]"):
+            parts = [part.strip() for part in line[2:-2].strip().split(".")]
+            if not all(parts):
+                raise ConfigError(f"{path}:{line_no}: invalid TOML array table `{line}`")
+            parent = _ensure_toml_table(data, parts[:-1], path, line_no)
+            entries = parent.setdefault(parts[-1], [])
+            if not isinstance(entries, list):
+                raise ConfigError(f"{path}:{line_no}: `{'.'.join(parts)}` conflicts with a scalar")
+            current = {}
+            entries.append(current)
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            parts = [part.strip() for part in line[1:-1].strip().split(".")]
+            if not all(parts):
+                raise ConfigError(f"{path}:{line_no}: invalid TOML table `{line}`")
+            current = _ensure_toml_table(data, parts, path, line_no)
+            continue
+        if "=" not in line:
+            raise ConfigError(f"{path}:{line_no}: expected TOML key/value")
+
+        key, value = line.split("=", 1)
+        value = value.strip()
+        while not _toml_value_complete(value):
+            idx += 1
+            if idx > len(lines):
+                raise ConfigError(f"{path}:{line_no}: unterminated TOML value")
+            value += " " + _strip_toml_comment(lines[idx - 1]).strip()
+        _assign_toml_value(current, key.strip(), _parse_toml_value(value, path, line_no), path, line_no)
+    return data
+
+
+def load_toml(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ConfigError(f"missing TOML file: {path}")
+    if _tomllib is not None:
+        with path.open("rb") as handle:
+            return _tomllib.load(handle)
+    return _load_toml_subset(path)
+
+
+def as_str_list(value: Any, key: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ConfigError(f"`{key}` must be a list of strings")
+    return list(value)
+
+
+def as_int(value: Any, key: str) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"`{key}` must be an integer") from exc
+
+
+def validate_allowed_keys(section: dict[str, Any], allowed: set[str], where: str) -> None:
+    unknown = sorted(set(section) - allowed)
+    if unknown:
+        raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
+
+
+def validate_placeholders_in_value(value: Any, where: str, allowed: set[str] = ALL_PLACEHOLDERS) -> None:
+    if isinstance(value, str):
+        unknown = sorted({name for name in PLACEHOLDER_RE.findall(value) if name not in allowed})
+        if unknown:
+            raise ConfigError(f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}")
+    elif isinstance(value, list):
+        for idx, item in enumerate(value):
+            validate_placeholders_in_value(item, f"{where}[{idx}]", allowed)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            validate_placeholders_in_value(item, f"{where}.{key}", allowed)
+
+
+def validate_coverage_tool_table(
+    table: dict[str, Any],
+    where: str,
+    *,
+    require_complete: bool = False,
+) -> None:
+    """Validate one config-driven coverage backend table."""
+
+    validate_allowed_keys(table, COVERAGE_TOOL_KEYS, where)
+    for key in COVERAGE_LIST_KEYS:
+        if key in table:
+            as_str_list(table.get(key), f"{where}.{key}")
+    for key in (
+        "artifact",
+        "backend",
+        "design_artifact",
+        "design_db",
+        "input_glob",
+        "merged_name",
+        "parser",
+        "policy_file",
+    ):
+        if key in table and (
+            not isinstance(table.get(key), str) or not str(table.get(key)).strip()
+        ):
+            raise ConfigError(f"{where}.{key} must be a non-empty string")
+    if "parser" in table and table.get("parser") not in COVERAGE_PARSERS:
+        raise ConfigError(
+            f"{where}.parser must be one of: {', '.join(sorted(COVERAGE_PARSERS))}"
+        )
+    if "fail_under" in table:
+        try:
+            threshold = float(table["fail_under"])
+        except (TypeError, ValueError) as exc:
+            raise ConfigError(f"{where}.fail_under must be a number") from exc
+        if threshold < 0.0 or threshold > 100.0:
+            raise ConfigError(f"{where}.fail_under must be between 0 and 100")
+    if require_complete:
+        missing = [
+            key
+            for key in (
+                "artifact",
+                "backend",
+                "input_glob",
+                "merged_name",
+                "merge_cmd",
+                "report_cmd",
+                "parser",
+            )
+            if key not in table
+        ]
+        if missing:
+            raise ConfigError(
+                f"{where} missing required coverage key(s): {', '.join(missing)}"
+            )
+    validate_placeholders_in_value(table, where)
+
+
+def validate_stage_table(stage_name: str, stage: dict[str, Any], where: str) -> None:
+    kind = stage.get("kind")
+    if not isinstance(kind, str):
+        raise ConfigError(f"{where}: native stage `{stage_name}` missing string `kind`")
+    if kind not in IMPLEMENTED_STAGE_KINDS:
+        raise ConfigError(f"{where}: unsupported native stage kind `{kind}`")
+    compatible = STAGE_KIND_COMPATIBILITY.get(stage_name, set())
+    if kind not in compatible:
+        raise ConfigError(f"{where}: stage `{stage_name}` cannot use kind `{kind}`")
+
+    allowed = {"kind", "note", "paths", "verilator", "xcelium", "vcs", "default_executor", "resources"}
+    validate_allowed_keys(stage, allowed, f"{where} [native.stages.{stage_name}]")
+    validate_placeholders_in_value(stage, f"{where} [native.stages.{stage_name}]")
+
+
+def validate_testlist_pointer(flow: Dut, root: Path) -> None:
+    testlist = flow.raw.get("testlist", {})
+    if not isinstance(testlist, dict):
+        raise ConfigError(f"{flow.path}: [testlist] must be a table")
+    validate_allowed_keys(testlist, {"path", "format"}, f"{flow.path} [testlist]")
+    if str(testlist.get("format", "toml_list")) != "toml_list":
+        raise ConfigError(f"{flow.path}: [testlist].format must be `toml_list`")
+    path_text = testlist.get("path")
+    if path_text is None:
+        return
+    if not isinstance(path_text, str) or not path_text:
+        raise ConfigError(f"{flow.path}: [testlist].path must be a non-empty string")
+    raw_path = Path(path_text).expanduser()
+    if raw_path.is_absolute():
+        raise ConfigError(f"{flow.path}: [testlist].path must be relative to the DUT DV root")
+    if path_text.startswith(SANDBOX_PREFIX):
+        raise ConfigError(
+            f"{flow.path}: [testlist].path must be DUT-local, not sandbox-prefixed: {path_text}"
+        )
+    resolved = (flow.path.parent / raw_path).resolve()
+    dut_root = flow.path.parent.resolve()
+    try:
+        resolved.relative_to(dut_root)
+    except ValueError as exc:
+        raise ConfigError(f"{flow.path}: [testlist].path resolves outside the DUT DV root") from exc
+    if not resolved.is_file():
+        raise ConfigError(f"{flow.path}: missing testlist: {resolved}")
+
+
+def validate_native_config_shape(flow: Dut, root: Path) -> None:
+    data = flow.raw
+    validate_allowed_keys(data, TOP_LEVEL_KEYS, str(flow.path))
+
+    scheduler = data.get("scheduler", {})
+    if isinstance(scheduler, dict):
+        validate_allowed_keys(scheduler, {"default_executor", "allowed"}, f"{flow.path} [scheduler]")
+
+    native = data.get("native", {})
+    if native:
+        if not isinstance(native, dict):
+            raise ConfigError(f"{flow.path}: [native] must be a table")
+        validate_allowed_keys(native, {"enabled", "status", "stages"}, f"{flow.path} [native]")
+
+    stages = flow_stages(flow)
+    for stage_name, stage in stages.items():
+        if stage_name not in CANONICAL_STAGES:
+            raise ConfigError(f"{flow.path}: unsupported native stage `{stage_name}`")
+        if not isinstance(stage, dict):
+            raise ConfigError(f"{flow.path}: [native.stages.{stage_name}] must be a table")
+        validate_stage_table(stage_name, stage, str(flow.path))
+
+    validate_testlist_pointer(flow, root)
+
+    build = data.get("build", {})
+    if isinstance(build, dict):
+        if "manifest" in build:
+            raise ConfigError(f"{flow.path}: [build].manifest is external-only; native flow must not reference .core")
+        validate_allowed_keys(build, BUILD_KEYS, f"{flow.path} [build]")
+        options = build.get("options", {})
+        if isinstance(options, dict):
+            validate_allowed_keys(options, BUILD_OPTIONS_KEYS, f"{flow.path} [build.options]")
+        for tool in ("verilator", "xcelium", "vcs"):
+            tool_cfg = build.get(tool, {})
+            if isinstance(tool_cfg, dict):
+                validate_placeholders_in_value(tool_cfg, f"{flow.path} [build.{tool}]")
+        validate_placeholders_in_value(build, f"{flow.path} [build]")
+
+    cocotb = data.get("cocotb", {})
+    if isinstance(cocotb, dict):
+        validate_allowed_keys(cocotb, COCOTB_KEYS, f"{flow.path} [cocotb]")
+        validate_placeholders_in_value(cocotb, f"{flow.path} [cocotb]")
+
+    run_modes = data.get("run_modes", {})
+    if isinstance(run_modes, dict):
+        for name, run_mode in run_modes.items():
+            if not isinstance(run_mode, dict):
+                raise ConfigError(f"{flow.path}: [run_modes.{name}] must be a table")
+            validate_allowed_keys(run_mode, RUN_MODE_KEYS, f"{flow.path} [run_modes.{name}]")
+            validate_placeholders_in_value(run_mode, f"{flow.path} [run_modes.{name}]")
+
+    for section_name in ("target_defaults", "targets"):
+        targets = data.get(section_name, {})
+        if isinstance(targets, dict):
+            for name, target in targets.items():
+                if not isinstance(target, dict):
+                    raise ConfigError(f"{flow.path}: [{section_name}.{name}] must be a table")
+                validate_allowed_keys(target, TARGET_KEYS, f"{flow.path} [{section_name}.{name}]")
+                validate_placeholders_in_value(target, f"{flow.path} [{section_name}.{name}]")
+                tools = target.get("tools", {})
+                if isinstance(tools, dict):
+                    for tool, tool_cfg in tools.items():
+                        if not isinstance(tool_cfg, dict):
+                            raise ConfigError(f"{flow.path}: [{section_name}.{name}.tools.{tool}] must be a table")
+                        validate_allowed_keys(tool_cfg, TARGET_TOOL_KEYS, f"{flow.path} [{section_name}.{name}.tools.{tool}]")
+
+    for section_name in ("coverage", "c_build", "formal", "sim"):
+        section = data.get(section_name, {})
+        if isinstance(section, dict):
+            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]")
+    coverage = data.get("coverage", {})
+    if isinstance(coverage, dict):
+        for tool, table in coverage.items():
+            if not isinstance(table, dict):
+                raise ConfigError(f"{flow.path}: [coverage.{tool}] must be a table")
+            validate_coverage_tool_table(
+                table,
+                f"{flow.path} [coverage.{tool}]",
+            )
+
+
+def config_section(data: dict[str, Any], key: str) -> dict[str, Any]:
+    value = data.get(key, {})
+    if not isinstance(value, dict):
+        raise ConfigError(f"`{key}` must be a table")
+    return value
+
+
+def config_list(data: dict[str, Any], key: str) -> list[str]:
+    return as_str_list(data.get(key), key)
+
+
+def sim_global_args(sim_cfg: dict[str, Any]) -> list[str]:
+    """DUT-global run-stage args from ``[sim].args`` (the lowest-precedence run-arg layer).
+
+    Run args append across layers with no dedup/override:
+    ``[sim].args`` (profile + DUT, joined) < ``[run_modes.<name>].args`` < ``[[tests]].args`` < CLI.
+    """
+    return as_str_list(config_section(sim_cfg, "sim").get("args"), "sim.args")
+
+
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge `overlay` onto `base`: tables merge per-key, everything else overlay wins."""
+    merged = dict(base)
+    for key, value in overlay.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def merge_simulator_defaults(
+    sim_cfg: dict[str, Any],
+    simulators: dict[str, Any],
+    tools: list[str],
+) -> dict[str, Any]:
+    """Apply simulator common defaults below the already profile-merged DUT config.
+
+    Effective order for these tool adapter tables is:
+    simulator ``[<tool>.build_defaults]`` / ``[<tool>.coverage_defaults]``
+    < profile ``[build.<tool>]`` / ``[coverage.<tool>]``
+    < DUT ``[build.<tool>]`` / ``[coverage.<tool>]``
+    < CLI.
+    """
+    merged = deep_merge({}, sim_cfg)
+    for tool in tools:
+        sim_tool = simulators.get(tool, {})
+        if not isinstance(sim_tool, dict):
+            continue
+        for section, default_key in (
+            ("build", "build_defaults"),
+            ("coverage", "coverage_defaults"),
+        ):
+            defaults = sim_tool.get(default_key, {})
+            if defaults in ({}, None):
+                continue
+            if not isinstance(defaults, dict):
+                raise ConfigError(f"simulators.toml: [{tool}.{default_key}] must be a table")
+
+            section_cfg = config_section(merged, section) if section in merged else {}
+            tool_cfg = section_cfg.get(tool, {})
+            if tool_cfg in ({}, None):
+                tool_cfg = {}
+            if not isinstance(tool_cfg, dict):
+                raise ConfigError(f"`{section}.{tool}` must be a table")
+
+            new_section = dict(section_cfg)
+            new_section[tool] = deep_merge(defaults, tool_cfg)
+            merged[section] = new_section
+    return merged
+
+
+def load_profile(cfg_dir: Path, profile: str, flow_path: Path) -> dict[str, Any]:
+    """Load a shared profile from the configs `profiles/<profile>.toml`.
+
+    Profiles hold the settings common to a family of DUTs (stage tables, tool list, scheduler);
+    a DUT's sim_cfg opts in via `profile = "<name>"` and its own keys override the profile's.
+    """
+    if not PROFILE_NAME_RE.match(profile):
+        raise ConfigError(f"{flow_path}: invalid profile name `{profile}`")
+    path = cfg_dir / "profiles" / f"{profile}.toml"
+    if not path.is_file():
+        raise ConfigError(f"{flow_path}: profile `{profile}` not found at {path}")
+    data = load_toml(path)
+    for key in ("name", "profile"):
+        if key in data:
+            raise ConfigError(f"{path}: a profile may not set `{key}`")
+    return data
+
+
+def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str) -> Dut:
+    """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
+
+    The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
+    overrides) plus the build/cocotb/coverage/targets tables, and opts into a shared stage graph
+    with ``profile = "<name>"``. ``name`` is the bare DUT name and ``root_rel`` the repo-relative
+    DUT DV root, both supplied by the resolver.
+    """
+    data = load_toml(path)
+
+    profile = data.get("profile")
+    if profile is not None:
+        if not isinstance(profile, str) or not profile:
+            raise ConfigError(f"{path}: `profile` must be a non-empty string")
+        profile_cfg = load_profile(cfg_dir, profile, path)
+        # `[sim].args` appends across profile->DUT inheritance (every other inherited array
+        # replaces). Capture both lists before deep_merge clobbers the DUT's, then re-join.
+        dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
+        profile_sim_args = as_str_list(config_section(profile_cfg, "sim").get("args"), "sim.args")
+        data = deep_merge(profile_cfg, data)
+        combined_sim_args = profile_sim_args + dut_sim_args
+        if combined_sim_args:
+            data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    file_name = data.get("name")
+    kind = data.get("kind")
+    default_tool = data.get("default_tool", "")
+    tools = as_str_list(data.get("tools"), "tools")
+
+    if not isinstance(file_name, str) or not file_name:
+        raise ConfigError(f"{path}: missing required string `name`")
+    if file_name != name:
+        raise ConfigError(
+            f"{path}: `name` is `{file_name}` but the resolved DUT is `{name}` — "
+            "the sim_cfg `name` must match the DUT directory/registry entry"
+        )
+    if kind not in {"dv", "fv", "acceptance"}:
+        raise ConfigError(f"{path}: `kind` must be dv, fv, or acceptance")
+    if default_tool and default_tool not in tools:
+        raise ConfigError(f"{path}: `default_tool` must be listed in `tools`")
+
+    return Dut(
+        name=name,
+        kind=str(kind),
+        description=str(data.get("description", "")),
+        framework=str(data.get("framework", "")),
+        visibility=str(data.get("visibility", "public")),
+        runnability=str(data.get("runnability", "contributor")),
+        license=str(data.get("license", "none")),
+        root=root_rel,
+        default_tool=str(default_tool),
+        tools=tools,
+        path=path,
+        raw=data,
+    )
+
+
+def load_simulators(root: Path) -> dict[str, Any]:
+    path = configs_root(root) / "simulators.toml"
+    if not path.is_file():
+        raise ConfigError(f"missing simulator registry: {path}")
+    data = load_toml(path)
+    simulators = {key: value for key, value in data.items() if key != "schema_version"}
+    for tool, table in simulators.items():
+        if not isinstance(table, dict):
+            raise ConfigError(f"{path}: [{tool}] must be a table")
+        coverage_defaults = table.get("coverage_defaults")
+        if coverage_defaults is None:
+            continue
+        if not isinstance(coverage_defaults, dict):
+            raise ConfigError(f"{path}: [{tool}.coverage_defaults] must be a table")
+        validate_coverage_tool_table(
+            coverage_defaults,
+            f"{path} [{tool}.coverage_defaults]",
+            require_complete=True,
+        )
+        supported = as_str_list(table.get("supports_cov"), f"{path} [{tool}].supports_cov")
+        if not any(
+            metric in {"line", "toggle", "branch", "fsm", "functional"}
+            for metric in supported
+        ):
+            raise ConfigError(
+                f"{path}: [{tool}] declares coverage defaults but no normalized coverage metric"
+            )
+    return simulators
+
+
+def load_executors(root: Path) -> dict[str, Any]:
+    path = configs_root(root) / "executors.toml"
+    if not path.is_file():
+        raise ConfigError(f"missing executor registry: {path}")
+    data = load_toml(path)
+    executors = {key: value for key, value in data.items() if key != "schema_version"}
+    if "local" not in executors:
+        raise ConfigError(f"{path}: missing required [local] executor")
+    for name, cfg in executors.items():
+        if not isinstance(cfg, dict):
+            raise ConfigError(f"{path}: [{name}] must be a table")
+        kind = cfg.get("kind")
+        if kind == "local":
+            validate_allowed_keys(cfg, {"kind", "submit_argv", "wait_mode"}, f"{path} [{name}]")
+            if cfg.get("submit_argv") not in ([], None):
+                raise ConfigError(f"{path}: [local].submit_argv must be []")
+            if cfg.get("wait_mode") != "inline":
+                raise ConfigError(f"{path}: [local].wait_mode must be `inline`")
+        elif kind == "cluster":
+            validate_allowed_keys(
+                cfg,
+                {"kind", "binary", "submit_argv", "wait_mode", "env_passthrough", "defaults"},
+                f"{path} [{name}]",
+            )
+            if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
+                raise ConfigError(f"{path}: [{name}].binary must be a non-empty string")
+            as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
+            as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
+            validate_placeholders_in_value(cfg.get("submit_argv", []), f"{path} [{name}].submit_argv")
+        else:
+            raise ConfigError(f"{path}: [{name}].kind must be `local` or `cluster`")
+    return executors
+
+
+def load_sim_cfg(flow: Dut, root: Path) -> dict[str, Any]:
+    # The flow and sim_cfg are now one merged file; the loaded DUT already holds it.
+    return flow.raw
+
+
+def build_cfg(flow: Flow, sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "build") if "build" in sim_cfg else config_section(flow.raw, "build")
+
+
+def cocotb_cfg(flow: Flow, sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "cocotb") if "cocotb" in sim_cfg else config_section(flow.raw, "cocotb")
+
+
+def defaults_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "defaults") if "defaults" in sim_cfg else {}
+
+
+def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "coverage") if "coverage" in sim_cfg else {}
+
+
+def c_build_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return config_section(sim_cfg, "c_build") if "c_build" in sim_cfg else {}
+
+
+def tool_coverage_cfg(sim_cfg: dict[str, Any], tool: str) -> dict[str, Any]:
+    """The per-tool `[coverage.<tool>]` subtable (build/sim coverage args for that backend)."""
+    cov = coverage_cfg(sim_cfg)
+    value = cov.get(tool, {})
+    return value if isinstance(value, dict) else {}
+
+
+def default_target_name(sim_cfg: dict[str, Any]) -> str:
+    return str(defaults_cfg(sim_cfg).get("target", "default"))
+
+
+def target_names(sim_cfg: dict[str, Any]) -> set[str]:
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    return {name for name, value in targets.items() if isinstance(name, str) and isinstance(value, dict)}
+
+
+def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str:
+    return test.target if test and test.target else default_target_name(sim_cfg)
+
+
+def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:
+    """The active `[targets.<name>]` table (defines + per-tool flags + build_dir).
+
+    OD-19 merged the former `[compile_targets]`/`[run_targets]` split into one `[targets]` table
+    keyed by `[defaults].target`.
+    """
+    name = name or default_target_name(sim_cfg)
+    target_defaults = config_section(sim_cfg, "target_defaults") if "target_defaults" in sim_cfg else {}
+    target_default = target_defaults.get(name, target_defaults.get("default", {})) if isinstance(target_defaults, dict) else {}
+    if target_default and not isinstance(target_default, dict):
+        raise ConfigError(f"`target_defaults.{name}` must be a table")
+    targets = config_section(sim_cfg, "targets") if "targets" in sim_cfg else {}
+    target = targets.get(name, {}) if isinstance(targets, dict) else {}
+    if target and not isinstance(target, dict):
+        raise ConfigError(f"`targets.{name}` must be a table")
+    if not target_default:
+        return target if isinstance(target, dict) else {}
+    merged = deep_merge(target_default, target if isinstance(target, dict) else {})
+    for key in ("defines", "flags"):
+        default_values = target_default.get(key)
+        target_values = target.get(key) if isinstance(target, dict) else None
+        if isinstance(default_values, list) and isinstance(target_values, list):
+            combined: list[Any] = []
+            for value in [*default_values, *target_values]:
+                if value not in combined:
+                    combined.append(value)
+            merged[key] = combined
+
+    default_tools = target_default.get("tools", {}) if isinstance(target_default, dict) else {}
+    target_tools = target.get("tools", {}) if isinstance(target, dict) else {}
+    if isinstance(default_tools, dict) and isinstance(target_tools, dict):
+        merged_tools = merged.setdefault("tools", {})
+        if isinstance(merged_tools, dict):
+            for tool, default_tool_cfg in default_tools.items():
+                if not isinstance(default_tool_cfg, dict):
+                    continue
+                target_tool_cfg = target_tools.get(tool, {})
+                if not isinstance(target_tool_cfg, dict):
+                    continue
+                default_flags = default_tool_cfg.get("flags")
+                target_flags = target_tool_cfg.get("flags")
+                if isinstance(default_flags, list) and isinstance(target_flags, list):
+                    tool_cfg = dict(merged_tools.get(tool, {}))
+                    combined: list[Any] = []
+                    for value in [*default_flags, *target_flags]:
+                        if value not in combined:
+                            combined.append(value)
+                    tool_cfg["flags"] = combined
+                    merged_tools[tool] = tool_cfg
+    return merged
+
+
+def _merge_unique_strings(base: list[str], overlay: list[str]) -> list[str]:
+    merged: list[str] = []
+    for value in [*base, *overlay]:
+        if value not in merged:
+            merged.append(value)
+    return merged
+
+
+def targeted_sim_cfg(
+    sim_cfg: dict[str, Any],
+    target_name: str,
+    *,
+    force_target_filelist: bool = False,
+) -> dict[str, Any]:
+    """Return a cloned config resolved for one target.
+
+    Stage implementations consume source-selection fields from `[build]`, while target policy lives
+    under `[targets.<name>]`. Keep the existing stage API by copying target-owned source selectors
+    into the cloned `[build]` table and overriding `[defaults].target`.
+    """
+    cfg = copy.deepcopy(sim_cfg)
+    cfg.setdefault("defaults", {})["target"] = target_name
+
+    target = selected_target(cfg, target_name)
+    build = cfg.setdefault("build", {})
+    if not isinstance(build, dict):
+        raise ConfigError("[build] must be a table")
+    source_selectors = ("bender_targets", "stubs", "sources", "exclude_files")
+    target_changes_sources = any(key in target for key in source_selectors)
+
+    # Bender target sets are target-specific compile views, so a target table overrides the generic
+    # build target list. Common bender targets stay in `[build].common_bender_targets`.
+    if "bender_targets" in target:
+        build["bender_targets"] = as_str_list(target.get("bender_targets"), f"targets.{target_name}.bender_targets")
+
+    # These source lists are additive: DUT-wide sources from `[build]` plus target-owned shims/stubs.
+    # `exclude_files` is likewise additive: DUT-wide drops from `[build]` plus target-owned drops
+    # (e.g. the lsu_stub target excludes the real hw/sep/sep_cpu.sv so its appended stub is the
+    # only definition, with all DUT packages already declared ahead of it).
+    for key in ("stubs", "sources", "exclude_files"):
+        if key in target:
+            build[key] = _merge_unique_strings(
+                as_str_list(build.get(key), f"build.{key}"),
+                as_str_list(target.get(key), f"targets.{target_name}.{key}"),
+            )
+
+    # Target-specific filelist paths win. Otherwise, derive generated filelists under the target
+    # build root whenever a target changes source selection, or when a caller forces target scoping.
+    # This keeps even a single non-default target from overwriting the shared DUT filelist with a
+    # different source set that a later run-only/build-only invocation could accidentally consume.
+    for key in ("filelist", "bender_filelist"):
+        if key in target:
+            value = target.get(key)
+            if not isinstance(value, str) or not value:
+                raise ConfigError(f"`targets.{target_name}.{key}` must be a non-empty string")
+            build[key] = value
+
+    if force_target_filelist or target_changes_sources:
+        build_dir = target.get("build_dir")
+        if not isinstance(build_dir, str) or not build_dir:
+            raise ConfigError(f"`targets.{target_name}.build_dir` must be a non-empty string")
+        # Per-target subdir so targets that share one build_dir do not clobber each other's
+        # generated filelist (last-writer-wins): without the target_name key, every target derived
+        # the SAME filelists/{bender,files}.f and a later target's flist overwrote an earlier one,
+        # so a multi-target regression compiled the wrong source set (e.g. lsu_stub built with the
+        # real sep_cpu instead of the stub). Keying on target_name gives each its own filelist.
+        filelist_root = Path(build_dir) / "filelists" / target_name
+        work_dir = target.get("work_dir", build_dir)
+        if not isinstance(work_dir, str) or not work_dir:
+            raise ConfigError(f"`targets.{target_name}.work_dir` must be a non-empty string when provided")
+        build["work_dir"] = work_dir
+        if "bender_filelist" not in target:
+            build["bender_filelist"] = str(filelist_root / "bender.f")
+        if "filelist" not in target:
+            build["filelist"] = str(filelist_root / "files.f")
+
+    return cfg
+
+
+def target_tool_cfg(target: dict[str, Any], tool: str) -> dict[str, Any]:
+    tools = target.get("tools", {})
+    if not isinstance(tools, dict):
+        raise ConfigError("target.tools must be a table")
+    value = tools.get(tool, {})
+    if not isinstance(value, dict):
+        raise ConfigError(f"target.tools.{tool} must be a table")
+    return value
+
+
+def target_flags(target: dict[str, Any], tool: str) -> list[str]:
+    return [
+        *config_list(target, "flags"),
+        *as_str_list(target_tool_cfg(target, tool).get("flags"), f"target.tools.{tool}.flags"),
+    ]
+
+
+# The compile/run target split is gone; both accessors now resolve the one merged target table so
+# the existing stage code (which still distinguishes compile vs run locally) keeps working.
+def selected_compile_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return selected_target(sim_cfg)
+
+
+def selected_run_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    return selected_target(sim_cfg)
+
+
+def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any) -> dict[str, Any]:
+    requested = args.run_mode
+    if not requested and test and test.run_modes:
+        requested = test.run_modes[0]
+    if not requested:
+        requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
+    modes = config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
+    mode = modes.get(str(requested), {}) if isinstance(modes, dict) else {}
+    return mode if isinstance(mode, dict) else {}
+
+
+def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
+    name = entry.get("name")
+    if not isinstance(name, str) or not name:
+        where = f"{source}: " if source else ""
+        raise ConfigError(f"{where}test entry missing required string `name`")
+    firmware = entry.get("firmware")
+    if firmware is not None and not isinstance(firmware, (str, dict)):
+        where = f"{source}: " if source else ""
+        raise ConfigError(f"{where}{name}.firmware must be a string or table")
+    target = entry.get("target")
+    if target is not None and (not isinstance(target, str) or not target):
+        where = f"{source}: " if source else ""
+        raise ConfigError(f"{where}{name}.target must be a non-empty string")
+    return TestEntry(
+        name=name,
+        module=str(entry.get("module", name)),
+        target=target,
+        seed=as_int(entry.get("seed"), f"{name}.seed"),
+        reseed=as_int(entry.get("reseed"), f"{name}.reseed"),
+        timeout_sec=as_int(entry.get("timeout_sec"), f"{name}.timeout_sec"),
+        tags=as_str_list(entry.get("tags"), f"{name}.tags"),
+        run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
+        args=as_str_list(entry.get("args"), f"{name}.args"),
+        firmware=firmware,
+    )
+
+
+def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
+    testlist = flow.raw.get("testlist", {})
+    if isinstance(testlist, dict) and testlist.get("path"):
+        raw_path = Path(str(testlist["path"])).expanduser()
+        path = raw_path if raw_path.is_absolute() else root / raw_path
+        if not path.is_file() and not raw_path.is_absolute():
+            # The clean contract says testlist paths are DUT-local. The sandbox configs still use
+            # repo-relative paths, so accept both while preferring the existing repo-relative form.
+            path = flow.path.parent / raw_path
+        tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
+        return TestCatalog(path=path, tests=tests, groups=groups)
+    # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
+    tests, groups = _merge_testlist_data(
+        flow.raw,
+        flow.path,
+        flow.path.parent,
+        root,
+        [flow.path],
+        validate_testlist_keys=False,
+    )
+    return TestCatalog(path=None, tests=tests, groups=groups)
+
+
+def _expand_testlist(path: Path, root: Path, stack: list[Path]) -> tuple[dict, dict]:
+    """Load one testlist file and recursively expand its includes, detecting cycles."""
+    resolved = path.resolve()
+    for seen in stack:
+        if seen.resolve() == resolved:
+            cycle = " -> ".join(p.name for p in stack + [path])
+            raise ConfigError(f"testlist include cycle: {cycle}")
+    if not path.is_file():
+        chain = " -> ".join(p.name for p in stack + [path])
+        raise ConfigError(f"missing testlist include: {path} (include chain: {chain})")
+    return _merge_testlist_data(load_toml(path), path, path.parent, root, stack + [path])
+
+
+def _merge_testlist_data(
+    data: dict[str, Any],
+    source: Path,
+    base_dir: Path,
+    root: Path,
+    stack: list[Path],
+    *,
+    validate_testlist_keys: bool = True,
+) -> tuple[dict, dict]:
+    """Merge included testlists first, then this file's own tests/groups.
+
+    Include paths are resolved relative to the including file (``base_dir``); duplicate test or
+    group names after expansion are validation errors.
+    """
+    tests: dict[str, TestEntry] = {}
+    groups: dict[str, list[str]] = {}
+    if validate_testlist_keys:
+        validate_allowed_keys(data, TESTLIST_KEYS, str(source))
+
+    for include in as_str_list(data.get("includes"), f"{source}: includes"):
+        inc = Path(include).expanduser()
+        inc_path = inc if inc.is_absolute() else base_dir / inc
+        try:
+            inc_path.resolve().relative_to(root.resolve())
+        except ValueError:
+            raise ConfigError(
+                f"{source}: include `{include}` resolves outside the repository root"
+            )
+        inc_tests, inc_groups = _expand_testlist(inc_path, root, stack)
+        for name, test in inc_tests.items():
+            if name in tests:
+                raise ConfigError(f"{source}: duplicate test `{name}` after include expansion")
+            tests[name] = test
+        for name, members in inc_groups.items():
+            if name in groups:
+                raise ConfigError(f"{source}: duplicate group `{name}` after include expansion")
+            groups[name] = members
+
+    for entry in data.get("tests", []):
+        if not isinstance(entry, dict):
+            raise ConfigError(f"{source}: each [[tests]] entry must be a table")
+        validate_allowed_keys(entry, TEST_KEYS, f"{source} [[tests]]")
+        validate_placeholders_in_value(entry, f"{source} [[tests]]")
+        test = _test_from_dict(entry, source)
+        if test.name in tests:
+            raise ConfigError(f"{source}: duplicate test `{test.name}`")
+        tests[test.name] = test
+
+    for entry in data.get("groups", []):
+        if not isinstance(entry, dict):
+            raise ConfigError(f"{source}: each [[groups]] entry must be a table")
+        validate_allowed_keys(entry, GROUP_KEYS, f"{source} [[groups]]")
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            raise ConfigError(f"{source}: group entry missing required string `name`")
+        if name in groups:
+            raise ConfigError(f"{source}: duplicate group `{name}`")
+        groups[name] = as_str_list(entry.get("tests"), f"{name}.tests")
+
+    return tests, groups
+
+
+def flow_stages(flow: Flow) -> dict[str, Any]:
+    stages = flow.raw.get("native", {}).get("stages", {})
+    if not isinstance(stages, dict):
+        raise ConfigError(f"{flow.path}: [native.stages] must be a table")
+    return stages
