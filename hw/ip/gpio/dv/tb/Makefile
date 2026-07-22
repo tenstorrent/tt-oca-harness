@@ -57,7 +57,7 @@ VERILOG_SOURCES += ../data/registers/rtl/gpio_intf_reg.sv
 VERILOG_SOURCES += ../data/registers/rtl/gpio_ctrl_reg.sv
 VERILOG_SOURCES += ../rtl/gpio_filter.sv
 VERILOG_SOURCES += ../rtl/gpio_shim.sv
-VERILOG_SOURCES += ../rtl/gpio_model/gpio_model.sv
+VERILOG_SOURCES += ../models/gpio_model.sv
 VERILOG_SOURCES += ../rtl/gpio.sv
 VERILOG_SOURCES += $(PWD)/tb_gpio.sv
 

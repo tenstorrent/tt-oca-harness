@@ -69,9 +69,9 @@ FW_PICOLIBC_SPECS ?= picolibc.specs
 ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   -I$(OCAH_ROOT)/hw/common/dv/fw \
   -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/sys/$(1)/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/sys/$(1)/dv/models/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c))

@@ -40,7 +40,10 @@ module efuse_interface_shim
     // Fuse Bank Interface - interface with Macro
     // This example bank uses an APB interface, this will be foundry specific
     output efuse_apb_req_t           efuse_model_otp_req_o,
-    input  efuse_apb_resp_t          efuse_model_otp_resp_i
+    input  efuse_apb_resp_t          efuse_model_otp_resp_i,
+
+    // Debug bus
+    output logic [15:0]              debug_bus_o
 );
 
     localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
@@ -102,6 +105,7 @@ logic fuse_bank_init_cycles_count_set_en_r;
 logic fuse_bank_init_cycles_count_commit_en_r;
 logic [31:0] fuse_bank_init_cycles_count_r;
 logic fuse_bank_init_cycles_counter_is_zero_r;
+logic fuse_bank_init_cycles_counter_err_r;
 
   // Counter for fuse bank init cycles
   prim_count #(
@@ -120,7 +124,7 @@ logic fuse_bank_init_cycles_counter_is_zero_r;
       .commit_i             (fuse_bank_init_cycles_count_commit_en_r),  // Counter changes only take effect when `commit_i` is set
       .cnt_o                (fuse_bank_init_cycles_count_r),
       .cnt_after_commit_o   (),
-      .err_o                ()
+      .err_o                (fuse_bank_init_cycles_counter_err_r)
   );
 
   assign fuse_bank_init_cycles_counter_is_zero_r = ~|fuse_bank_init_cycles_count_r;
@@ -267,6 +271,7 @@ logic fuse_bank_init_cycles_count_set_en_w;
 logic fuse_bank_init_cycles_count_commit_en_w;
 logic [COUNTER_WIDTH-1:0] fuse_bank_init_cycles_count_w;
 logic fuse_bank_init_cycles_counter_is_zero_w;
+logic fuse_bank_init_cycles_counter_err_w;
 
   // Counter for fuse bank init cycles
   prim_count #(
@@ -285,7 +290,7 @@ logic fuse_bank_init_cycles_counter_is_zero_w;
       .commit_i             (fuse_bank_init_cycles_count_commit_en_w), // Counter changes only take effect when `commit_i` is set
       .cnt_o                (fuse_bank_init_cycles_count_w),
       .cnt_after_commit_o   (),
-      .err_o                ()
+      .err_o                (fuse_bank_init_cycles_counter_err_w)
   );
 
 assign fuse_bank_init_cycles_counter_is_zero_w = ~|fuse_bank_init_cycles_count_w;
@@ -451,6 +456,10 @@ logic write_readback_phase_en, write_readback_phase_en_flopped; // 1'b1 when we 
             // End of write readback sequence
 
             StWriteFinish: begin
+                // Clear the write-readback phase set by StWriteWait's
+                // PROGRAM_READ_BACK, so the demux routes the next program's
+                // write request to the write path.
+                write_readback_phase_en = 1'b0;
                 efuse_write_state_d = StWriteIdle;
             end
 
@@ -537,5 +546,10 @@ logic write_readback_phase_en, write_readback_phase_en_flopped; // 1'b1 when we 
         byte_in_word = fuse_command_req_i.address / 8;
         efuse_write_strob = 4'b0001 << byte_in_word;
     end
+
+    // Debug bus, same layout as the internal shim:
+    // {3'b0, write counter err, write FSM state, 3'b0, read counter err, read FSM state}
+    assign debug_bus_o = {3'b0, fuse_bank_init_cycles_counter_err_w, 4'(efuse_write_state_q),
+                          3'b0, fuse_bank_init_cycles_counter_err_r, 4'(efuse_read_state_q)};
 
 endmodule
