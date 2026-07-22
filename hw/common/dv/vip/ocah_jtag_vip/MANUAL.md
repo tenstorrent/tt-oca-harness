@@ -151,14 +151,14 @@ transaction objects; advanced users may inspect `backend_bus` or call
 Run in a Python 3.11-3.13 OSS DV environment:
 
 ```bash
-python3 dv/oss/tools/dv/run_dv.py --doctor --dut dtp
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
+python3 tools/dv/run_dv.py --doctor --dut dtp
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
 ```
 
 If time allows, run:
 
 ```bash
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator
 ```

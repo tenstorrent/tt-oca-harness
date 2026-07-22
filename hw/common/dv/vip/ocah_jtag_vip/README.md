@@ -134,10 +134,10 @@ Callbacks receive `OcahJtagScanItem` objects. The item also supports
 GH #3289 acceptance should use DTP as the proof point:
 
 ```bash
-python3 dv/oss/tools/dv/run_dv.py --doctor --dut dtp
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
+python3 tools/dv/run_dv.py --doctor --dut dtp
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
 ```
 
 ## Scope

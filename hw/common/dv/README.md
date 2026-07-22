@@ -1,13 +1,12 @@
 # OCAH OSS shared DV (hw/common/dv)
 
-Shared DV collateral for the OSS sandbox: protocol VIP (`vip/ocah_<proto>_vip/`), shared
-configs (`configs/`), `sva/`, `shims/`, and shared firmware (`fw/`). This mirrors the target
-greenfield `hw/common/dv` shared-DV location while staying contained under the `dv/oss` sandbox.
+Shared DV collateral for the OCAH tree: protocol VIP (`vip/ocah_<proto>_vip/`), shared
+configs (`configs/`), `sva/`, `shims/`, and shared firmware (`fw/`).
 
 Install the VIP packages from the repository root with:
 
 ```bash
-python3 -m pip install -e dv/oss/hw/common/dv
+python3 -m pip install -e hw/common/dv
 ```
 
 Use Python 3.11, 3.12, or 3.13 for this package. Python 3.14 is not part of
@@ -23,13 +22,13 @@ For example:
 from ocah_axi_vip import OcahAxiLiteMaster
 ```
 
-DUT-local packages are exposed by the sandbox namespace bridge. In a clean shell,
+DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
 install the shared package and source the OSS DV environment before running tests:
 
 ```bash
-python3 -m pip install -e dv/oss/hw/common/dv
-source dv/oss/bin/setup_env.sh
-python3 dv/oss/tools/dv/run_dv.py --doctor --dut dtp
+python3 -m pip install -e hw/common/dv
+source bin/setup_env.sh
+python3 tools/dv/run_dv.py --doctor --dut dtp
 ```
 
 `--doctor --dut <name>` checks the shared package, required Python packages, the
@@ -45,14 +44,14 @@ notes:
 - SEP/SMC AXI agents and Lite masters now use `ocah_axi_vip`
   (`OcahAxiMaster` / `OcahAxiLiteMaster`). Prefer `from_prefix` +
   `init_read`/`init_write` (or `*_result`) over direct `cocotbext.axi` imports.
-- `dv/oss/hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
+- `hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
   initialization before SEP AXI masters are constructed.
 - SMC I2C/I3C split-port adapters live in `ocah_i2c_vip` /
   `ocah_i3c_vip` (`Ocah*SplitPort*`); DUT wrappers only bind TB pads.
 - SMC CPU JTAG uses `ocah_jtag_vip` for bus/device bind; active-high
   `tb_cpu_jtag_reset` stays DUT-local (not mapped to bus `trst`) because
   `cocotbext-jtag` assumes IEEE active-low TRST.
-- `dv/oss/hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` remains a
+- `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` remains a
   DUT-local observability test (probe sampling, no bus BFM).
 - `ocah_axi_vip.OcahAxiMonitor`, `OcahAxiLiteMonitor`, and
   `ocah_apb_vip.OcahApbMonitor` are OCAH-owned passive samplers that emit plain

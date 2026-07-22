@@ -57,7 +57,7 @@ def ensure_cocotbext_i3c() -> tuple[bool, str]:
         roots.append(os.path.join(och, "deps", "i3c-core", "third_party", "cocotbext-i3c", "src"))
     # Fallbacks used by various checkout layouts.
     here = os.path.abspath(__file__)
-    # .../dv/oss/hw/common/dv/vip/ocah_i3c_vip/ocah_i3c_split_port.py -> repo root ~8 up
+    # .../hw/common/dv/vip/ocah_i3c_vip/ocah_i3c_split_port.py -> repo root ~6 up
     repo = here
     for _ in range(10):
         repo = os.path.dirname(repo)

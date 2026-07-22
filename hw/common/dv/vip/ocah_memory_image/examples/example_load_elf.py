@@ -221,7 +221,7 @@ def example_custom_layout():
 
     # Load a custom layout — see examples/example_layout.yaml for the format.
     layout = SepMemoryLayout.from_yaml(
-        "dv/oss/hw/common/dv/vip/ocah_memory_image/examples/example_layout.yaml"
+        "hw/common/dv/vip/ocah_memory_image/examples/example_layout.yaml"
     )
 
     img = OcahMemoryImage(layout=layout, run_dir=run_dir)
