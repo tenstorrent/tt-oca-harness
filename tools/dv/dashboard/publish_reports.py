@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -27,13 +28,20 @@ def _join_remote(root: str, *parts: str) -> str:
     return "/".join([root.rstrip("/"), *(part.strip("/") for part in parts)])
 
 
+# Publish destinations are limited to gs:// or s3:// bucket/key paths built from
+# characters this flow actually produces; anything else (flag-like tokens,
+# whitespace, shell metacharacters, dot-only segments) is rejected before
+# reaching gsutil/aws.
+_REMOTE_DESTINATION_RE = re.compile(r"^(?:gs|s3)://[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+
+
 def _sync_remote(source: Path, destination: str) -> None:
+    if not _REMOTE_DESTINATION_RE.fullmatch(destination) or {".", ".."} & set(destination.split("/")):
+        raise ValueError(f"unsupported or unsafe remote publish path: {destination}")
     if destination.startswith("gs://"):
         cmd = ["gsutil", "-m", "rsync", "-r", "-d", str(source), destination]
-    elif destination.startswith("s3://"):
-        cmd = ["aws", "s3", "sync", "--delete", str(source), destination]
     else:
-        raise ValueError(f"unsupported remote publish path: {destination}")
+        cmd = ["aws", "s3", "sync", "--delete", str(source), destination]
     subprocess.run(cmd, check=True)
 
 
