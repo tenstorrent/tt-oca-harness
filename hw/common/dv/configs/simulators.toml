@@ -1,0 +1,148 @@
+schema_version = 1
+
+[verilator]
+kind = "simulation"
+binary = "verilator"
+license_env = []
+supports_waves = ["fst", "vcd"]
+supports_cov = ["line", "toggle", "branch"]
+default_waves = "fst"
+
+[verilator.build_defaults]
+compile_args = ["--timing", "-sv", "--language", "1800-2023"]
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = ""
+output_split = 0
+ccache = false
+
+[verilator.coverage_defaults]
+backend = "verilator_coverage"
+parser = "verilator"
+build_args = ["--coverage"]
+compile_args = []
+sim_args = []
+test_args = ["+verilator+coverage+file+{cov_dir}/coverage.dat"]
+artifact = "{cov_dir}/coverage.dat"
+input_glob = "**/coverage/coverage.dat"
+merged_name = "merged.dat"
+merge_cmd = ["verilator_coverage", "--write", "{merged}", "{inputs}"]
+report_cmd = [
+  "verilator_coverage",
+  "--annotate",
+  "{report}",
+  "--annotate-min",
+  "1",
+  "--write-info",
+  "{report}/coverage.info",
+  "{merged}",
+]
+
+[verilator.parser_extensions]
+extra_hard_fail_patterns = [
+  "^%Error.*?:",
+]
+
+[vcs]
+kind = "simulation"
+binary = "vcs"
+license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
+supports_waves = ["vpd", "fsdb"]
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
+default_waves = "vpd"
+
+[vcs.build_defaults]
+compile_args = []
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = "1ns/1ps"
+partition_compile = false
+opt_level = ""
+
+[vcs.coverage_defaults]
+backend = "urg"
+parser = "urg"
+build_args = []
+compile_args = ["-cm", "line+cond+tgl+fsm+branch+assert", "-cm_dir", "{build_cov_dir}"]
+sim_args = ["-cm", "line+cond+tgl+fsm+branch+assert", "-cm_dir", "{cov_dir}/simv.vdb"]
+test_args = []
+artifact = "{cov_dir}/simv.vdb"
+design_artifact = "{build_cov_dir}"
+input_glob = "**/coverage/simv.vdb"
+merged_name = "merged.vdb"
+merge_cmd = ["urg", "-full64", "-dir", "{design_db}", "-dir", "{inputs}", "-dbname", "{merged}"]
+report_cmd = ["urg", "-full64", "-dir", "{merged}", "-report", "{report}", "-format", "both"]
+
+[vcs.parser_extensions]
+# VCS analysis/elaboration errors and runtime fatals (UVM_ERROR/UVM_FATAL come from the uvm-log policy).
+extra_hard_fail_patterns = [
+  "^Error-\\[",
+  "^\\s*Fatal:",
+]
+extra_fail_patterns = [
+  "^\\s*Error:",
+]
+
+[xcelium]
+kind = "simulation"
+binary = "xrun"
+license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
+supports_waves = ["shm", "fsdb", "vcd"]
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
+default_waves = "shm"
+
+[xcelium.build_defaults]
+compile_args = []
+elab_args = []
+sim_args = []
+extra_args = []
+timescale = "1ns/1ps"
+mce = false
+opt_level = ""
+
+[xcelium.coverage_defaults]
+backend = "imc"
+parser = "imc"
+build_args = ["-coverage", "all"]
+compile_args = []
+sim_args = []
+test_args = ["-covworkdir", "{cov_dir}"]
+artifact = "{cov_dir}"
+input_glob = "**/coverage"
+merged_name = "merged_cov"
+merge_cmd = ["imc", "-batch", "-execcmd", "merge {inputs} -out {merged} -overwrite"]
+report_cmd = [
+  "imc",
+  "-batch",
+  "-execcmd",
+  "load -run {merged}; report -summary -metrics all -out {report}/summary.txt; report -detail -metrics all -out {report}/details.txt",
+]
+
+[xcelium.parser_extensions]
+# Cadence xmvlog/xmelab/xmsim error markers (UVM_ERROR/UVM_FATAL come from the uvm-log policy).
+extra_hard_fail_patterns = [
+  "^xm(vlog|elab|sim): \\*F",
+  "\\*F,",
+]
+extra_fail_patterns = [
+  "^xm(vlog|elab|sim): \\*E",
+  "\\*E,",
+]
+
+[jasper]
+kind = "formal"
+binary = "jg"
+license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+
+[vcf]
+kind = "formal"
+binary = "vcf"
+license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""

@@ -1,0 +1,6 @@
+schema_version = 1
+
+[local]
+kind = "local"
+submit_argv = []
+wait_mode = "inline"

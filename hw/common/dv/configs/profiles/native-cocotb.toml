@@ -1,0 +1,92 @@
+# Shared profile for DUTs that use the native runner with cocotb tests.
+#
+# Profile naming uses <runner>-<framework>: this file is the native runner's cocotb profile. A DUT
+# opts in with `profile = "native-cocotb"` and carries only its local launch content.
+
+kind = "dv"
+framework = "cocotb"
+visibility = "public"
+runnability = "contributor"
+license = "none"
+
+# Same cocotb tests run on Verilator (default, fast functional), Xcelium (commercial runner
+# backend), or VCS (classic cocotb Makefile/VPI backend). No SV-UVM flow is defined in the OSS
+# sandbox.
+default_tool = "verilator"
+tools = ["verilator", "xcelium", "vcs"]
+
+[scheduler]
+default_executor = "local"
+allowed = ["local"]
+
+[defaults]
+seed = 1
+timeout_sec = 1800
+run_mode = "smoke"
+target = "default"
+
+# Shared cold-build/cache policy. Tool-specific acceleration knobs live in
+# simulators.toml [<tool>.build_defaults] or DUT [build.<tool>] overrides.
+[build.options]
+build_jobs = 0
+cflags = ""
+cache_enabled = false
+rebuild = false
+cache_key_extra = []
+
+# Target fields common to native cocotb DUTs. Tool-specific fields use nested tool tables so every
+# simulator follows the same naming rule: target.tools.<tool>.flags.
+[target_defaults.default]
+defines = [
+  "SIM",
+  "NO_LIBCELL",
+  "DISABLE_ASSERT",
+  "COMMON_CELLS_ASSERTS_OFF",
+  "INITIALIZE_MEMORY",
+  "RANDOM=0",
+  "RANDOMIZE_MEM_INIT",
+  "RANDOMIZE_REG_INIT",
+  "RANDOMIZE_GARBAGE_ASSIGN",
+  "RANDOMIZE_INVALID_ASSIGN",
+  "RANDOMIZE_DELAY=0.02",
+]
+
+[target_defaults.default.tools.verilator]
+flags = [
+  "-Wno-fatal",
+  "-Wno-UNOPTFLAT",
+  "-Wno-WIDTHEXPAND",
+  "-Wno-MULTIDRIVEN",
+  "-Wno-UNSIGNED",
+  "-Wno-REDEFMACRO",
+  "-Wno-MODDUP",
+]
+
+[target_defaults.default.tools.xcelium]
+flags = ["-assert", "-ALLOWREDEFINITION"]
+
+[target_defaults.default.tools.vcs]
+flags = ["-sverilog"]
+
+[native]
+enabled = true
+status = "active"
+
+[native.stages.flist]
+kind = "bender_filelist"
+
+[native.stages.c_compile]
+kind = "c_compile"
+
+[native.stages.hdl_compile]
+kind = "cocotb_build"
+
+[native.stages.sim]
+kind = "cocotb_sim"
+
+# Coverage aggregation (run automatically with --cov, or via --stage cov_merge --stage cov_report).
+[native.stages.cov_merge]
+kind = "coverage_merge"
+
+[native.stages.cov_report]
+kind = "coverage_report"

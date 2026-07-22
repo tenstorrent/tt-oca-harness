@@ -1,0 +1,71 @@
+schema_version = 1
+
+[policy.cocotb-default]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = ["results.xml"]
+structured_format = "xunit"
+summary_patterns = [
+  "TESTS=(?P<tests>\\d+)\\s+PASS=(?P<pass>\\d+)\\s+FAIL=(?P<fail>\\d+)\\s+SKIP=(?P<skip>\\d+)",
+]
+pass_patterns = ["TEST PASSED"]
+fail_patterns = ["TEST FAILED"]
+ignore_patterns = []
+required_patterns = []
+hard_fail_patterns = [
+  "Traceback \\(most recent call last\\):",
+  "\\bModuleNotFoundError\\b",
+  "\\bImportError\\b",
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context and was causing false-positive ERRORs.
+  "\\*F[,:].*\\$fatal\\b",
+  "%Error[:\\-]",
+  "make(?:\\[\\d+\\])?: \\*\\*\\*",
+]
+
+[policy.uvm-log]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = []
+structured_format = "none"
+summary_patterns = [
+  "UVM_ERROR\\s*:\\s*(?P<uvm_error>\\d+)",
+  "UVM_FATAL\\s*:\\s*(?P<uvm_fatal>\\d+)",
+]
+pass_patterns = ["UVM TEST PASSED"]
+fail_patterns = [
+  "^UVM_ERROR\\s[^:].*$",
+  "^UVM_FATAL\\s[^:].*$",
+  "UVM TEST FAILED",
+]
+ignore_patterns = []
+required_patterns = ["UVM Report Summary"]
+hard_fail_patterns = [
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context and was causing false-positive ERRORs.
+  "\\*F[,:].*\\$fatal\\b",
+  "Error-\\[",
+  "%Error[:\\-]",
+]
+
+[policy.generic-regex]
+require_positive_evidence = true
+strip_ansi = true
+structured_results = []
+structured_format = "none"
+summary_patterns = []
+pass_patterns = []
+fail_patterns = []
+ignore_patterns = []
+required_patterns = []
+hard_fail_patterns = [
+  # Match $fatal only when it appears alongside a runtime fatal marker; the
+  # bare token also appears in RTL source echoed by Xcelium under -showcfg /
+  # *W,STRINT warning context and was causing false-positive ERRORs.
+  "\\*F[,:].*\\$fatal\\b",
+  "%Error[:\\-]",
+  "Error-\\[",
+  "make(?:\\[\\d+\\])?: \\*\\*\\*",
+]
