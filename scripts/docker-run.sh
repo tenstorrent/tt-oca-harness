@@ -20,8 +20,12 @@
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
-#      OCAH_DOCKER_UIDGID      container --user (default: caller's uid:gid; set
-#                               empty to run as each image's own default user)
+#      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
+#                               podman, caller's uid:gid for docker; set empty to
+#                               run as each image's own default user)
+#      OCAH_PODMAN_DIR         base for podman runtime+storage when the default
+#                               /run/user/<uid> is unwritable (default:
+#                               /tmp/ocah-podman-<uid>); used by CI accounts
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -43,9 +47,35 @@ if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 
-# Run as the caller's uid:gid so bind-mounted output stays owned by the
-# caller. Override with OCAH_DOCKER_UIDGID (empty runs as the image default).
-UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"
+# Rootless podman keeps its runtime state under $XDG_RUNTIME_DIR (default
+# /run/user/<uid>), which is created by pam_systemd on interactive login.
+# Non-login accounts - notably the CI service account under the shell runner -
+# have no such dir and can't create it ("mkdir /run/user/<uid>: permission
+# denied"), so podman won't even start. When that runtime dir is missing or
+# unwritable, redirect podman's runtime (XDG_RUNTIME_DIR) and image storage
+# (XDG_DATA_HOME) to a node-local, per-uid dir under /tmp: world-writable, fast
+# local disk, and - keyed by uid - stable so a loaded image persists across jobs
+# on the same runner. Hosts with a proper session (writable /run/user/<uid>) are
+# left untouched. Override the base dir with OCAH_PODMAN_DIR.
+if [[ "$ENGINE" == podman ]]; then
+    _rt="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    if [[ ! -w "$_rt" ]]; then
+        _base="${OCAH_PODMAN_DIR:-${TMPDIR:-/tmp}/ocah-podman-$(id -u)}"
+        export XDG_RUNTIME_DIR="${_base}/run" XDG_DATA_HOME="${_base}/share"
+        mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME"
+        chmod 700 "$XDG_RUNTIME_DIR"
+        echo "docker-run: default podman runtime dir '$_rt' unwritable; using $_base" >&2
+    fi
+fi
+
+# Container --user. Rootless podman already maps the container's root to the
+# caller's uid (so bind-mounted output comes out caller-owned without --user),
+# and passing --user on these RHEL8 hosts trips a runc "setgroups: invalid
+# argument" failure - so podman defaults to no --user. Rootful docker needs
+# --user to avoid root-owned output. Override either default with
+# OCAH_DOCKER_UIDGID (empty = the image's own default user).
+if [[ "$ENGINE" == podman ]]; then UIDGID="${OCAH_DOCKER_UIDGID-}"
+else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=(); [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
 # Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
@@ -167,6 +197,6 @@ case "${1:-}" in
     doc-pdf)  shift; doc_pdf "${1:-trm}" ;;
     eda-run)  shift; [[ $# -gt 0 ]] || { echo "error: eda-run requires a command" >&2; exit 1; }; eda_run "$@" ;;
     eda-shell) eda_run -it bash ;;
-    ""|-h|--help|help) sed -n '7,24p' "$0" ;;
+    ""|-h|--help|help) sed -n '7,28p' "$0" ;;
     *)      echo "error: unknown command '$1'" >&2; exit 1 ;;
 esac
