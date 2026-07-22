@@ -10,7 +10,7 @@ internal trigger routing.
 This OCAH open-source verification plan follows the working reference plan in
 `dv/dtp/doc/DTP_SPEC.md`, but scopes implementation to the public `tt-oca`
 repository using the PyUVM, cocotb, and Verilator environment in
-`dv/oss/hw/sys/dtp/dv/`. Standard protocol interfaces use the unified OCAH BFM
+`hw/sys/dtp/dv/`. Standard protocol interfaces use the unified OCAH BFM
 packages; custom OCH protocols are modeled by OCAH-local BFMs when no shared
 wrapper exists.
 
@@ -20,7 +20,7 @@ wrapper exists.
 | RTL top module | `dtp` |
 | Package | `dtp_pkg` (`hw/dtp/rtl/dtp_pkg.sv`) |
 | Repository | `tt-oca` |
-| Open-source DV location | `dv/oss/hw/sys/dtp/dv/` |
+| Open-source DV location | `hw/sys/dtp/dv/` |
 | Reference plan | `dv/dtp/doc/` |
 | Standards | IEEE 1149.1-2013 (JTAG), IEEE 1687-2014 (iJTAG), IEEE 1838-2019 (3DIC); OCH Cross Trigger v1.0 (OCCT) |
 

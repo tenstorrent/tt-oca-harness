@@ -13,13 +13,13 @@
 | Reference TB | `dv/dtp/` working DTP environment and docs |
 
 The OCAH open-source DTP testbench follows the canonical `hw/sys/<system>/dv/` layout under
-`dv/oss/hw/sys/dtp/dv/`. It ports the working reference plan from `dv/dtp/` into
+`hw/sys/dtp/dv/`. It ports the working reference plan from `dv/dtp/` into
 a public PyUVM environment using the unified OCAH BFM packages for standard
 interfaces.
 
 ## VIP Selection Policy
 
-1. Import unified OCAH BFM wrappers from `dv/oss/hw/common/dv/vip` for standard
+1. Import unified OCAH BFM wrappers from `hw/common/dv/vip` for standard
    protocol access.
 2. Wrap those BFMs in PyUVM agents so tests remain sequence-based and reusable.
 3. Use OCAH-local BFMs/models for custom OCH protocols and standards without a
@@ -66,7 +66,7 @@ DtpEnv
 ## Directory Structure
 
 ```text
-dv/oss/hw/sys/dtp/dv/
+hw/sys/dtp/dv/
   docs/
     DTP_SPEC.md
     DTP_CSR.md
@@ -239,14 +239,14 @@ implementation.
 ## Build and Run
 
 ```bash
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items basic_jtag
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items debug_tdr
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items functional
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items all --dry-run
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
+python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
+python3 tools/dv/run_dv.py --dut dtp --items debug_tdr
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+python3 tools/dv/run_dv.py --dut dtp --items functional
+python3 tools/dv/run_dv.py --dut dtp --items all --dry-run
 ```
 
 The `smoke` group remains a fast two-test TAP/IDCODE gate. The `basic_jtag`

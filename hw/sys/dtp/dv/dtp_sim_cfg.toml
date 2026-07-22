@@ -13,15 +13,15 @@ format = "toml_list"
 
 [native.stages.clean]
 kind = "clean"
-paths = ["{run_dir}", "dv/oss/hw/sys/dtp/dv/build"]
+paths = ["{run_dir}", "hw/sys/dtp/dv/build"]
 
 [build]
 # Native build is driven by the Bender/filelist keys below; .core files are external-only.
 top_module = "dtp_uvm_top"
-top_file = "dv/oss/hw/sys/dtp/dv/tb/tb_top.sv"
-filelist = "dv/oss/hw/sys/dtp/dv/build/dtp_dut_compile.f"
-bender_filelist = "dv/oss/hw/sys/dtp/dv/build/dtp_bender.f"
-work_dir = "dv/oss/hw/sys/dtp/dv/build"
+top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
+filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
+bender_filelist = "hw/sys/dtp/dv/build/dtp_bender.f"
+work_dir = "hw/sys/dtp/dv/build"
 # Bender targets pruned to what the DTP DUT needs. Refine against `bender script`
 # output during flist bring-up if elaboration is missing/duplicating sources.
 common_bender_targets = [
@@ -32,22 +32,22 @@ common_bender_targets = [
   "register_interface_l1",
 ]
 bender_targets = ["dtp", "simulation"]
-incdirs = ["dv/oss/hw/sys/dtp/dv/tb"]
+incdirs = ["hw/sys/dtp/dv/tb"]
 # Verilator-friendly behavioral stubs. Listed ahead of the bender filelist so
 # the -Wno-MODDUP "first definition wins" rule selects them over the real RTL.
 # The cross_trigger_*_reg stubs replace PeakRDL CSR blocks whose dynamically
 # indexed struct-array NBA hits Verilator BLKLOOPINIT under --public-flat-rw;
 # the cross-trigger CSR path is tied off in tb_top, so JTAG/JTAG2AXI are unaffected.
 stubs = [
-  "dv/oss/hw/sys/dtp/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/dtp/dv/tb/verilator_stubs/prim_sync2.sv",
 ]
 
 [cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
-python_root = "dv/oss/hw/sys/dtp/dv/cocotb"
-test_dir = "dv/oss/hw/sys/dtp/dv/cocotb/tests"
+python_root = "hw/sys/dtp/dv/cocotb"
+test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
-  "dv/oss/hw/common/dv/vip",
+  "hw/common/dv/vip",
   "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
@@ -77,7 +77,7 @@ args = []
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
 description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
-build_dir = "dv/oss/hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
+build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 
 [targets.default.tools.verilator]
 flags = [

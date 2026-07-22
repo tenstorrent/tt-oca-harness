@@ -22,7 +22,7 @@ and used by the public verification plan.
 | CTP SystemRDL | `hw/ip/cross_trigger_port/data/registers/rdl/cross_trigger_port.rdl` |
 | CTM SystemRDL | `hw/ip/cross_trigger_matrix/data/registers/rdl/cross_trigger_matrix.rdl` |
 | CTN SystemRDL | `hw/comp/cross_trigger_network/data/registers/rdl/cross_trigger_network.rdl` |
-| Open-source encoders | `dv/oss/hw/sys/dtp/dv/env/dtp_types.py` |
+| Open-source encoders | `hw/sys/dtp/dv/cocotb/env/dtp_types.py` |
 
 ## Part A: JTAG Instruction Data Registers
 

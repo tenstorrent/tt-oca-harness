@@ -33,7 +33,7 @@ its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
 ## BFM Policy
 
-The DTP TB imports the unified OCAH BFM packages from `dv/oss/hw/common/dv/vip`.
+The DTP TB imports the unified OCAH BFM packages from `hw/common/dv/vip`.
 Those wrappers keep protocol details out of tests and use the project-local
 protocol BFMs behind a stable API:
 
@@ -47,33 +47,33 @@ protocol BFMs behind a stable API:
 | CTP (custom OCH wire-OR / P2P) | OCAH-local BFM (later) | Custom cross-trigger protocol. |
 | CTM (custom OCH matrix) | OCAH-local model/BFM (later) | Custom cross-trigger routing. |
 
-The cocotb runner adds both `dv/oss/hw/common/dv` and `dv/vip/cocotb` to
+The cocotb runner adds both `hw/common/dv` and `dv/vip/cocotb` to
 `PYTHONPATH` so tests can import the unified wrappers and their local backends.
 
 ## Running
 
 ```bash
 # Filelist + Verilator build only
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --build-only
+python3 tools/dv/run_dv.py --dut dtp --build-only
 
 # Smoke: TAP FSM sanity (dtp_sanity_test)
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
 
 # Smoke: IDCODE field verification
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
 
 # Basic JTAG: all Smoke and Basic JTAG VPLAN scenarios
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items basic_jtag
+python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
 # JTAG2AXI SMC fabric write / read
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
 
 # Smoke + functional group
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items functional
+python3 tools/dv/run_dv.py --dut dtp --items functional
 
 # Commercial backends for coverage (same PyUVM tests)
-python3 dv/oss/tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov
 ```
 
 The cocotb tests use deterministic random scenarios derived from `RANDOM_SEED`.
@@ -81,18 +81,18 @@ Loop and transaction counts can be increased without changing test code:
 
 ```bash
 # Apply to any looped test without a more specific override
-DTP_TEST_LOOPS=8 python3 dv/oss/tools/dv/run_dv.py --dut dtp --items smoke
+DTP_TEST_LOOPS=8 python3 tools/dv/run_dv.py --dut dtp --items smoke
 
 # Apply to the Basic JTAG group, with more random scan patterns per loop
 DTP_BASIC_JTAG_TEST_LOOPS=8 DTP_RANDOM_COUNT=10 \
-  python3 dv/oss/tools/dv/run_dv.py --dut dtp --items basic_jtag
+  python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
 # Apply to JTAG2AXI read/write tests
-DTP_JTAG2AXI_TEST_LOOPS=16 python3 dv/oss/tools/dv/run_dv.py --dut dtp --items functional
+DTP_JTAG2AXI_TEST_LOOPS=16 python3 tools/dv/run_dv.py --dut dtp --items functional
 ```
 
 PASS/FAIL is classified by the global parser registry in
-`dv/oss/hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
+`hw/common/dv/configs/parsers.toml`; the cocotb flow requires positive evidence from
 `results.xml`, so a clean simulator exit alone is not enough.
 
 ## Scope
