@@ -18,11 +18,7 @@ from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_resu
 from runlib.config import load_test_catalog
 from runlib.duts import resolve_dut
 from runlib.models import ConfigError, Flow, TestCatalog, TestEntry
-from runlib.paths import dut_runs_root, repo_path, repo_root
-
-
-def oss_root(root: Path) -> Path:
-    return root / "dv" / "oss"
+from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
 
 
 def _repo_rel(repo_root: Path, path: Path) -> str:
@@ -555,7 +551,7 @@ def main(argv: list[str] | None = None) -> int:
         flow = resolve_dut(repo_root_path, args.dut)
         run_dir = Path(args.run_dir).resolve() if args.run_dir else None
         result = collect_flow_result(repo_root_path, flow, run_dir)
-        output = Path(args.output).resolve() if args.output else oss_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
+        output = Path(args.output).resolve() if args.output else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
         stage_coverage_artifacts(repo_root_path, result, output)
         write_json(result, output)
         print(f"Wrote result: {output}")

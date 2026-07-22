@@ -2,7 +2,7 @@
 #
 # check_no_vendor_paths.yaml
 #
-# Configuration for dv/oss/tools/dv/check_no_vendor_paths.py.
+# Configuration for tools/dv/check_no_vendor_paths.py.
 #
 # forbidden_prefixes: path substrings that must NOT appear in any file
 #   referenced by the public OSS filelist.  These match against the full

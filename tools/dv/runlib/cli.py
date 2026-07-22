@@ -76,14 +76,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         epilog=textwrap.dedent(
             """\
             Examples:
-              python3 dv/oss/tools/dv/run_dv.py --list
-              python3 dv/oss/tools/dv/run_dv.py --validate-configs
-              python3 dv/oss/tools/dv/run_dv.py --doctor --dut dtp
-              python3 dv/oss/tools/dv/run_dv.py --dut smc --list
-              python3 dv/oss/tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
-              python3 dv/oss/tools/dv/run_dv.py --dut smc --build-only --dry-run
-              python3 dv/oss/tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
-              python3 dv/oss/tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+              python3 tools/dv/run_dv.py --list
+              python3 tools/dv/run_dv.py --validate-configs
+              python3 tools/dv/run_dv.py --doctor --dut dtp
+              python3 tools/dv/run_dv.py --dut smc --list
+              python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
+              python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
+              python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+              python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
             """
         ),
     )
@@ -696,12 +696,12 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
                 "FAIL",
                 "missing distribution "
                 f"`{dist_name}`; use Python 3.11-3.13, then run "
-                "`python3 -m pip install -e dv/oss/hw/common/dv`",
+                "`python3 -m pip install -e hw/common/dv`",
             )
         else:
             _print_doctor_row(label, "OK", version)
 
-    namespace_root = root / "dv/oss/build/dv/python"
+    namespace_root = root / "build/dv/python"
     if namespace_root.is_dir():
         _print_doctor_row("namespace bridge", "OK", str(namespace_root))
     else:
@@ -709,7 +709,7 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         _print_doctor_row(
             "namespace bridge",
             "FAIL",
-            "missing; run `source dv/oss/bin/setup_env.sh`",
+            "missing; run `source bin/setup_env.sh`",
         )
 
     if _path_in_sys_path(namespace_root) or _path_in_pythonpath(namespace_root):
@@ -719,7 +719,7 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         _print_doctor_row(
             "namespace PYTHONPATH",
             "FAIL",
-            "bridge root is not on PYTHONPATH; run `source dv/oss/bin/setup_env.sh`",
+            "bridge root is not on PYTHONPATH; run `source bin/setup_env.sh`",
         )
 
     ok, detail = _try_import("ocah_axi_vip")

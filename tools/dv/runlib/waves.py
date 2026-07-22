@@ -243,7 +243,7 @@ def same_seed_replay_command(
 ) -> str:
     command = [
         "python3",
-        "dv/oss/tools/dv/run_dv.py",
+        "tools/dv/run_dv.py",
         "--dut",
         flow_name,
         "--items",

@@ -321,7 +321,7 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
     if stage == "regress":
         stage = "sim"
 
-    command = ["python3", "dv/oss/tools/dv/run_dv.py", "--dut", flow.name]
+    command = ["python3", "tools/dv/run_dv.py", "--dut", flow.name]
     mode = str(getattr(args, "mode", "sim")) if args is not None else "sim"
     if mode != "sim":
         command.extend(["--mode", mode])

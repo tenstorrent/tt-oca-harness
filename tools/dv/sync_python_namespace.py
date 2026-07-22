@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create the generated sandbox DV Python namespace bridge.
+"""Create the generated DV Python namespace bridge.
 
-The bridge lives under ``dv/oss/build/dv/python`` and maps stable import names
-to sandbox-local DV roots, for example ``smc`` -> ``dv/oss/hw/sys/smc/dv``. The
+The bridge lives under ``build/dv/python`` and maps stable import names
+to DUT-local DV roots, for example ``smc`` -> ``hw/sys/smc/dv``. The
 generated tree is intentionally kept out of source control.
 """
 
@@ -15,8 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-SANDBOX_ROOT = Path("dv/oss")
-NAMESPACE_ROOT = SANDBOX_ROOT / "build/dv/python"
+NAMESPACE_ROOT = Path("build/dv/python")
 DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 NESTED_HW_ROOTS = ("sys", "ip", "comp", "periph")
 
@@ -63,12 +62,11 @@ def _add_target(
 
 
 def discover_targets(repo_root: Path) -> dict[str, NamespaceTarget]:
-    """Discover sandbox DV directories exposed as import roots."""
+    """Discover DV directories exposed as import roots."""
 
     targets: dict[str, NamespaceTarget] = {}
 
-    sandbox_root = repo_root / SANDBOX_ROOT
-    hw_root = sandbox_root / "hw"
+    hw_root = repo_root / "hw"
     if not hw_root.is_dir():
         return targets
 
@@ -78,7 +76,7 @@ def discover_targets(repo_root: Path) -> dict[str, NamespaceTarget]:
 
         dv_root = child / "dv"
         if dv_root.is_dir():
-            _add_target(targets, child.name, dv_root, f"{SANDBOX_ROOT}/hw/{child.name}/dv")
+            _add_target(targets, child.name, dv_root, f"hw/{child.name}/dv")
 
     for group in NESTED_HW_ROOTS:
         group_root = hw_root / group
@@ -91,7 +89,7 @@ def discover_targets(repo_root: Path) -> dict[str, NamespaceTarget]:
 
             dv_root = child / "dv"
             if dv_root.is_dir():
-                _add_target(targets, child.name, dv_root, f"{SANDBOX_ROOT}/hw/{group}/{child.name}/dv")
+                _add_target(targets, child.name, dv_root, f"hw/{group}/{child.name}/dv")
 
     prim_root = hw_root / "common" / "prim"
     if prim_root.is_dir():
@@ -101,7 +99,7 @@ def discover_targets(repo_root: Path) -> dict[str, NamespaceTarget]:
 
             dv_root = child / "dv"
             if dv_root.is_dir():
-                _add_target(targets, child.name, dv_root, f"{SANDBOX_ROOT}/hw/common/prim/{child.name}/dv")
+                _add_target(targets, child.name, dv_root, f"hw/common/prim/{child.name}/dv")
 
     return targets
 
@@ -187,7 +185,7 @@ def sync_bridge(repo_root: Path, targets: dict[str, NamespaceTarget]) -> None:
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Create or validate dv/oss/build/dv/python symlinks.",
+        description="Create or validate build/dv/python symlinks.",
     )
     parser.add_argument(
         "--repo-root",

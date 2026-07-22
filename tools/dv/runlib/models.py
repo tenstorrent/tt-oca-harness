@@ -22,7 +22,7 @@ class Dut:
     Built from the per-DUT ``<dut>_sim_cfg.toml`` (merged with its shared ``profile``) and
     selected by ``--dut`` via ``hw/common/dv/configs/duts.toml`` or the directory convention.
     ``name`` is the bare DUT name (e.g. ``smc``); ``root`` is the repo-relative DUT DV root
-    (e.g. ``dv/oss/hw/sys/smc/dv``); ``path`` points at the merged sim_cfg file; ``raw`` holds
+    (e.g. ``hw/sys/smc/dv``); ``path`` points at the merged sim_cfg file; ``raw`` holds
     the merged config dict.
     """
 
