@@ -298,9 +298,11 @@ $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "BIN64 $@"
 	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
 
+# -d (code sections) not -D (all sections): binutils 2.44 objdump aborts on -D
+# for this image's NOBITS/.stack layout, and disassembling data is noise anyway.
 $(DISASM_FILE): $(ELF_FILE) | $(DISASM_DIR)
 	@echo "DIS $@"
-	@$(OD) -DCSsx $< > $@
+	@$(OD) -dCSsx $< > $@
 
 # =============================================================================
 # UTILITY TARGETS
