@@ -1,0 +1,25 @@
+# DUT registry for the native DV runner.
+#
+# `--dut <name>` resolves here first; an unregistered name falls back to the directory convention
+# (hw/<name>/dv, hw/{sys,ip,comp,periph}/<name>/dv, or hw/common/prim/<name>/dv under the active DV root).
+# Either way the resolved DUT DV root must contain `<name>_sim_cfg.toml`. `root` is the only
+# required key; `sim_cfg` may override the default `<root>/<name>_sim_cfg.toml` location.
+
+schema_version = 1
+
+[duts.smc]
+root = "hw/sys/smc/dv"
+
+[duts.dtp]
+root = "hw/sys/dtp/dv"
+
+[duts.sep]
+root = "hw/sys/sep/dv"
+
+[duts.smu]
+root = "hw/sys/smu/dv"
+
+# Production-wrapper baseline flow (issue #3357): same DV root as `smu`, but a
+# separate sim config that builds hw/oss-example/wrapper/smu/smu_wrapper.sv.
+[duts.smu_wrapper]
+root = "hw/sys/smu/dv"

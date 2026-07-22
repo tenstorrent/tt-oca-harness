@@ -1,0 +1,764 @@
+# SPDX-License-Identifier: Apache-2.0
+"""JTAG2AXI helper base sequence for DTP tests."""
+
+from __future__ import annotations
+
+import cocotb
+from cocotb.triggers import ClockCycles, ReadOnly
+
+from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
+from env.dtp_types import (
+    SMC_DBG_AXSIZE_8B,
+    DtpJtag2AxiOp,
+    DtpJtag2AxiStatus,
+    DtpJtagInstr,
+    get_jtag2axi_target,
+    pack_single_op,
+    pack_series_ctrl,
+    pack_series_data,
+    unpack_single_op,
+    unpack_series_ctrl,
+    unpack_series_data,
+)
+
+from .dtp_base_test_seq import dtp_base_test_seq
+
+AXI_MEM_SIZE = 2**16
+AXI_BEAT_BYTES = 8
+
+
+class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
+    """Helpers for DTP JTAG2AXI single-operation and series-operation tests."""
+
+    async def jtag2axi_write(
+        self,
+        addr: int,
+        data: int,
+        wstrb: int = 0xFF,
+        size: int = 3,
+    ) -> DtpJtagItem:
+        """Issue a JTAG2AXI SMC fabric single write; returns item with status."""
+        return await self._send(
+            op=DtpJtagOp.J2A_WRITE,
+            axi_addr=addr,
+            axi_data=data,
+            axi_wstrb=wstrb,
+            axi_size=size,
+        )
+
+    async def jtag2axi_read(self, addr: int, size: int = 3) -> DtpJtagItem:
+        """Issue a JTAG2AXI SMC fabric single read; returns item with status+rdata."""
+        return await self._send(op=DtpJtagOp.J2A_READ, axi_addr=addr, axi_size=size)
+
+    # --- common data/address helpers -----------------------------------------
+    @staticmethod
+    def size_bytes(size: int) -> int:
+        return 1 << size
+
+    @staticmethod
+    def data_mask(size: int) -> int:
+        return (1 << (8 * (1 << size))) - 1
+
+    @staticmethod
+    def full_wstrb(size: int) -> int:
+        return (1 << (1 << size)) - 1
+
+    def aligned_addr(self, addr: int, size: int) -> int:
+        """Align an address to the active transfer size."""
+        align = self.size_bytes(size)
+        return addr - (addr % align)
+
+    def random_aligned_addr(self, rng, size: int) -> int:
+        """Pick a bridge-beat-aligned address inside the OSS AXI RAM window.
+
+        The SMC fabric bridge exposes 64-bit data beats. Keeping randomized
+        sub-beat transfers on the same beat boundary avoids ambiguous WSTRB
+        placement and makes each random choice directly replayable from logs.
+        """
+        max_addr = AXI_MEM_SIZE - AXI_BEAT_BYTES
+        return rng.randrange(0, (max_addr // AXI_BEAT_BYTES) + 1) * AXI_BEAT_BYTES
+
+    def read_mem_int(self, addr: int, size: int) -> int:
+        """Read the backdoor AXI RAM for the transfer size."""
+        return int.from_bytes(self.cfg.axi_ram.read(addr, self.size_bytes(size)), "little")
+
+    def write_mem_int(self, addr: int, value: int, size: int) -> None:
+        """Backdoor-preload the AXI RAM for read-side scenarios."""
+        payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
+        self.cfg.axi_ram.write(addr, payload)
+
+    @staticmethod
+    def target_cfg(target: str):
+        return get_jtag2axi_target(target)
+
+    def target_data_mask(self, target: str, size: int | None = None) -> int:
+        cfg = self.target_cfg(target)
+        bits = cfg.data_width if size is None else 8 * self.size_bytes(size)
+        return (1 << bits) - 1
+
+    def target_full_wstrb(self, target: str, size: int | None = None) -> int:
+        cfg = self.target_cfg(target)
+        strobe_bits = cfg.wstrb_bits if size is None else self.size_bytes(size)
+        return (1 << strobe_bits) - 1
+
+    def target_memory(self, target: str):
+        cfg = self.target_cfg(target)
+        memory = getattr(self.cfg, cfg.memory_attr)
+        assert memory is not None, f"{cfg.memory_attr} is not ready"
+        return memory
+
+    def target_responder(self, target: str):
+        responder = self.cfg.jtag2axi_responders.get(target)
+        assert responder is not None, f"JTAG2AXI responder for {target} is not ready"
+        return responder
+
+    @staticmethod
+    def axi_resp_to_jtag_status(resp: int) -> DtpJtag2AxiStatus:
+        """Map AXI BRESP/RRESP encoding into the JTAG2AXI status field."""
+        if int(resp) == 0:
+            return DtpJtag2AxiStatus.SUCCESS
+        if int(resp) == 2:
+            return DtpJtag2AxiStatus.SLVERR
+        if int(resp) == 3:
+            return DtpJtag2AxiStatus.DECERR
+        raise ValueError(f"unsupported AXI response for JTAG2AXI status: {resp}")
+
+    def configure_target_error(
+        self,
+        target: str,
+        addr: int,
+        resp: int,
+        *,
+        read: bool = True,
+        write: bool = True,
+    ) -> DtpJtag2AxiStatus:
+        """Configure a one-shot target response error and return expected status."""
+        cfg = self.target_cfg(target)
+        aligned = addr - (addr % cfg.beat_bytes)
+        self.log.info(
+            "Configure %s error addr=0x%08x aligned=0x%08x resp=%d read=%d write=%d",
+            target,
+            addr,
+            aligned,
+            resp,
+            read,
+            write,
+        )
+        self.target_responder(target).inject_error(aligned, resp, read=read, write=write)
+        return self.axi_resp_to_jtag_status(resp)
+
+    def clear_target_errors(self, target: str) -> None:
+        self.target_responder(target).clear_errors()
+
+    def configure_target_backpressure(
+        self,
+        target: str,
+        *,
+        channels: tuple[str, ...],
+        stall_cycles: int,
+    ) -> None:
+        self.log.info(
+            "Configure %s backpressure channels=%s stall_cycles=%d",
+            target,
+            channels,
+            stall_cycles,
+        )
+        self.target_responder(target).enable_backpressure(
+            channels=channels,
+            stall_cycles=stall_cycles,
+        )
+
+    def clear_target_backpressure(self, target: str) -> None:
+        self.target_responder(target).disable_backpressure()
+
+    def random_target_aligned_addr(self, target: str, rng, size: int | None = None) -> int:
+        cfg = self.target_cfg(target)
+        align = cfg.beat_bytes if size is None else max(cfg.beat_bytes, self.size_bytes(size))
+        mem_size = self.cfg.axi_mem_size if target == "smc_axi" else self.cfg.otp_axil_mem_size
+        max_addr = mem_size - align
+        return rng.randrange(0, (max_addr // align) + 1) * align
+
+    def read_target_mem_int(self, target: str, addr: int, size: int) -> int:
+        return int.from_bytes(self.target_memory(target).read(addr, self.size_bytes(size)), "little")
+
+    def write_target_mem_int(self, target: str, addr: int, value: int, size: int) -> None:
+        payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
+        self.target_memory(target).write(addr, payload)
+
+    def log_jtag2axi_op(
+        self,
+        context: str,
+        *,
+        addr: int,
+        data: int = 0,
+        size: int = SMC_DBG_AXSIZE_8B,
+        wstrb: int = 0,
+        status: int | None = None,
+    ) -> None:
+        """Log raw and decoded JTAG2AXI fields for failure replay."""
+        status_text = "" if status is None else f" status={DtpJtag2AxiStatus(status).name}"
+        self.log.info(
+            "%s addr=0x%08x size=%d bytes=%d wstrb=0x%02x data=0x%x%s",
+            context,
+            addr,
+            size,
+            self.size_bytes(size),
+            wstrb,
+            data & self.data_mask(size),
+            status_text,
+        )
+
+    def log_target_jtag2axi_op(
+        self,
+        target: str,
+        context: str,
+        *,
+        addr: int,
+        data: int = 0,
+        size: int | None = None,
+        wstrb: int = 0,
+        status: int | None = None,
+    ) -> None:
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        status_text = "" if status is None else f" status={DtpJtag2AxiStatus(status).name}"
+        self.log.info(
+            "%s target=%s addr=0x%08x size=%d bytes=%d wstrb=0x%02x data=0x%x%s",
+            context,
+            target,
+            addr,
+            size,
+            self.size_bytes(size),
+            wstrb,
+            data & self.target_data_mask(target, size),
+            status_text,
+        )
+
+    # --- checked single operations -------------------------------------------
+    async def write_single_and_check(
+        self,
+        addr: int,
+        data: int,
+        *,
+        size: int = SMC_DBG_AXSIZE_8B,
+        wstrb: int | None = None,
+        context: str = "single_write",
+    ) -> DtpJtagItem:
+        """Issue one single-op write and verify status plus enabled byte lanes."""
+        wstrb = self.full_wstrb(size) if wstrb is None else wstrb
+        data &= self.data_mask(size)
+        self.log_jtag2axi_op(context, addr=addr, data=data, size=size, wstrb=wstrb)
+        item = await self.jtag2axi_write(addr, data, wstrb=wstrb, size=size)
+        self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
+        observed = self.read_mem_int(addr, size)
+        for byte_idx in range(self.size_bytes(size)):
+            if (wstrb >> byte_idx) & 0x1:
+                exp = (data >> (8 * byte_idx)) & 0xFF
+                obs = (observed >> (8 * byte_idx)) & 0xFF
+                self.assert_equal(
+                    f"{context}.byte{byte_idx}",
+                    obs,
+                    exp,
+                    f"addr=0x{addr + byte_idx:x} wstrb=0x{wstrb:02x}",
+                )
+        return item
+
+    async def read_single_and_check(
+        self,
+        addr: int,
+        expected: int,
+        *,
+        size: int = SMC_DBG_AXSIZE_8B,
+        context: str = "single_read",
+    ) -> DtpJtagItem:
+        """Issue one single-op read and verify status plus returned data."""
+        expected &= self.data_mask(size)
+        self.log_jtag2axi_op(context, addr=addr, size=size)
+        item = await self.jtag2axi_read(addr, size=size)
+        self.assert_equal(f"{context}.status", item.status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal(
+            f"{context}.rdata",
+            item.rdata & self.data_mask(size),
+            expected,
+            f"addr=0x{addr:x} size={size}",
+        )
+        return item
+
+    async def write_target_single_raw(
+        self,
+        target: str,
+        op: DtpJtag2AxiOp,
+        addr: int,
+        *,
+        data: int = 0,
+        wstrb: int = 0,
+        size: int | None = None,
+    ) -> None:
+        """Issue a target-specific SINGLE_OP without waiting for completion."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        value = pack_single_op(op, addr, data, wstrb=wstrb, size=size, target=cfg)
+        await self.write_tdr(cfg.single_op_reg, value)
+
+    async def poll_target_single_status(self, target: str) -> tuple[int, int]:
+        """Poll a target SINGLE_OP TDR until the bridge reports not-busy."""
+        cfg = self.target_cfg(target)
+        status, rdata = DtpJtag2AxiStatus.BUSY_OR_FULL, 0
+        for _ in range(16):
+            raw = await self.read_tdr(cfg.single_op_reg)
+            status, rdata = unpack_single_op(raw, target=cfg)
+            if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
+                break
+        self.log.info(
+            "%s SINGLE_OP status=%s rdata=0x%x",
+            target,
+            DtpJtag2AxiStatus(status).name,
+            rdata,
+        )
+        return status, rdata
+
+    async def write_target_single_and_check(
+        self,
+        target: str,
+        addr: int,
+        data: int,
+        *,
+        size: int | None = None,
+        wstrb: int | None = None,
+        context: str = "single_write",
+    ) -> tuple[int, int]:
+        """Issue one target write and verify status plus enabled byte lanes."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        wstrb = self.target_full_wstrb(target, size) if wstrb is None else wstrb
+        data &= self.target_data_mask(target, size)
+        self.log_target_jtag2axi_op(
+            target,
+            context,
+            addr=addr,
+            data=data,
+            size=size,
+            wstrb=wstrb,
+        )
+        await self.write_target_single_raw(
+            target,
+            DtpJtag2AxiOp.WRITE,
+            addr,
+            data=data,
+            wstrb=wstrb,
+            size=size,
+        )
+        status, rdata = await self.poll_target_single_status(target)
+        self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
+        observed = self.read_target_mem_int(target, addr, size)
+        for byte_idx in range(self.size_bytes(size)):
+            if (wstrb >> byte_idx) & 0x1:
+                exp = (data >> (8 * byte_idx)) & 0xFF
+                obs = (observed >> (8 * byte_idx)) & 0xFF
+                self.assert_equal(
+                    f"{context}.byte{byte_idx}",
+                    obs,
+                    exp,
+                    f"target={cfg.name} addr=0x{addr + byte_idx:x}",
+                )
+        return status, rdata
+
+    async def read_target_single_and_check(
+        self,
+        target: str,
+        addr: int,
+        expected: int,
+        *,
+        size: int | None = None,
+        context: str = "single_read",
+    ) -> tuple[int, int]:
+        """Issue one target read and verify status plus returned data."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        expected &= self.target_data_mask(target, size)
+        self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
+        await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        status, rdata = await self.poll_target_single_status(target)
+        self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal(
+            f"{context}.rdata",
+            rdata & self.target_data_mask(target, size),
+            expected,
+            f"target={cfg.name} addr=0x{addr:x} size={size}",
+        )
+        return status, rdata
+
+    async def write_target_single_expect_status(
+        self,
+        target: str,
+        addr: int,
+        data: int,
+        expected_status: DtpJtag2AxiStatus,
+        *,
+        size: int | None = None,
+        wstrb: int | None = None,
+        context: str = "single_write_error",
+    ) -> tuple[int, int]:
+        """Issue one target write and verify the requested non-OKAY/OKAY status."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        wstrb = self.target_full_wstrb(target, size) if wstrb is None else wstrb
+        self.log_target_jtag2axi_op(
+            target,
+            context,
+            addr=addr,
+            data=data,
+            size=size,
+            wstrb=wstrb,
+        )
+        await self.write_target_single_raw(
+            target,
+            DtpJtag2AxiOp.WRITE,
+            addr,
+            data=data,
+            wstrb=wstrb,
+            size=size,
+        )
+        status, rdata = await self.poll_target_single_status(target)
+        self.assert_equal(f"{context}.status", status, expected_status)
+        return status, rdata
+
+    async def read_target_single_expect_status(
+        self,
+        target: str,
+        addr: int,
+        expected_status: DtpJtag2AxiStatus,
+        *,
+        size: int | None = None,
+        context: str = "single_read_error",
+    ) -> tuple[int, int]:
+        """Issue one target read and verify the requested non-OKAY/OKAY status."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
+        await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        status, rdata = await self.poll_target_single_status(target)
+        self.assert_equal(f"{context}.status", status, expected_status)
+        return status, rdata
+
+    async def verify_target_recovery(
+        self,
+        target: str,
+        *,
+        addr: int,
+        data: int,
+        read: bool,
+        context: str,
+    ) -> None:
+        """Verify an OKAY access after an error/reset path to catch stuck state."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        if read:
+            self.write_target_mem_int(target, addr, data, size)
+            status, _ = await self.read_target_single_and_check(
+                target,
+                addr,
+                data,
+                size=size,
+                context=f"{context}.recover_read",
+            )
+        else:
+            status, _ = await self.write_target_single_and_check(
+                target,
+                addr,
+                data,
+                size=size,
+                context=f"{context}.recover_write",
+            )
+        self.assert_equal(f"{context}.recovery_status", status, DtpJtag2AxiStatus.SUCCESS)
+
+    async def verify_not_stuck_busy(
+        self,
+        target: str,
+        *,
+        context: str,
+        max_polls: int = 8,
+    ) -> int:
+        """Re-read SINGLE_OP and prove the bridge eventually leaves BUSY_OR_FULL."""
+        status = DtpJtag2AxiStatus.BUSY_OR_FULL
+        rdata = 0
+        for poll_idx in range(1, max_polls + 1):
+            status, rdata = await self.poll_target_single_status(target)
+            self.log.info("%s poll %d status=%s", context, poll_idx, DtpJtag2AxiStatus(status).name)
+            if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
+                return status
+        raise AssertionError(f"{context}: target {target} remained BUSY_OR_FULL")
+
+    # --- raw series TDR helpers ----------------------------------------------
+    async def jtag2axi_series_ctrl(
+        self,
+        op: DtpJtag2AxiOp,
+        addr: int,
+        *,
+        pipeline_depth: int = 0,
+        size: int = SMC_DBG_AXSIZE_8B,
+        reset: int = 0,
+        target: str = "smc_axi",
+        back_to_rti: bool = False,
+    ) -> int:
+        """Program or read a target SERIES_CTRL through the primary TAP."""
+        cfg = self.target_cfg(target)
+        value = pack_series_ctrl(
+            op,
+            addr,
+            pipeline_depth=pipeline_depth,
+            size=size,
+            reset=reset,
+            target=cfg,
+        )
+        if op != DtpJtag2AxiOp.NOP or reset:
+            await self.write_tdr(cfg.series_ctrl_reg, value)
+            return 0
+        return await self.read_tdr(cfg.series_ctrl_reg, shift_value=value)
+
+    async def read_series_ctrl(
+        self,
+        *,
+        size: int = SMC_DBG_AXSIZE_8B,
+        target: str = "smc_axi",
+    ) -> tuple[int, int, int, int, int]:
+        """Capture and decode a target SERIES_CTRL."""
+        raw = await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, size=size, target=target)
+        decoded = unpack_series_ctrl(raw, target=target)
+        self.log.info(
+            "%s SERIES_CTRL reset=%d addr=0x%x pl_depth=%d size=%d status=%s",
+            target,
+            decoded[0],
+            decoded[1],
+            decoded[2],
+            decoded[3],
+            DtpJtag2AxiStatus(decoded[4]).name,
+        )
+        return decoded
+
+    async def _series_data_shift(
+        self,
+        instr: DtpJtagInstr,
+        data: int,
+        *,
+        size: int,
+        increment: int | None = None,
+        back_to_rti: bool = False,
+    ) -> tuple[int, int]:
+        value, width = pack_series_data(data, size, increment=increment)
+        await self.load_ir(instr, back_to_rti=True)
+        item = await self.shift_dr(value, width, back_to_rti=back_to_rti)
+        for _ in range(5):
+            await self.tms_step(0)
+        return item.result, width
+
+    async def series_data_incr(
+        self,
+        data: int,
+        *,
+        size: int,
+        target: str = "smc_axi",
+        back_to_rti: bool = False,
+    ) -> int:
+        cfg = self.target_cfg(target)
+        result, _ = await self._series_data_shift(
+            cfg.series_data_incr_instr,
+            data,
+            size=size,
+            back_to_rti=back_to_rti,
+        )
+        return result
+
+    async def series_data_no_incr(
+        self,
+        data: int,
+        *,
+        size: int,
+        target: str = "smc_axi",
+        back_to_rti: bool = False,
+    ) -> int:
+        cfg = self.target_cfg(target)
+        result, _ = await self._series_data_shift(
+            cfg.series_data_no_incr_instr,
+            data,
+            size=size,
+            back_to_rti=back_to_rti,
+        )
+        return result
+
+    async def series_data_with_status(
+        self,
+        data: int,
+        *,
+        size: int,
+        increment: int,
+        target: str = "smc_axi",
+        back_to_rti: bool = False,
+    ) -> tuple[int, int]:
+        cfg = self.target_cfg(target)
+        result, _ = await self._series_data_shift(
+            cfg.series_data_with_status_instr,
+            data,
+            size=size,
+            increment=increment,
+            back_to_rti=back_to_rti,
+        )
+        return unpack_series_data(result, size, with_status=True)
+
+    # --- lifecycle and AXI activity helpers ----------------------------------
+    async def set_lifecycle(self, **bits: int) -> None:
+        """Drive TB lifecycle enable bits; 1 means the feature is enabled."""
+        dut = cocotb.top
+        for name, value in bits.items():
+            signal = f"feat_ctrl_{name}"
+            if not hasattr(dut, signal):
+                raise AttributeError(f"{signal} is not exposed by tb_top")
+            getattr(dut, signal).value = value & 0x1
+            self.log.info("Lifecycle enable %s=%d", signal, value & 0x1)
+        await self.wait_sys_cycles(4)
+
+    async def enable_all_lifecycle(self) -> None:
+        await self.set_lifecycle(
+            sip_debug=1,
+            soc_debug=1,
+            ap_debug=1,
+            sep_debug=1,
+            fuse_test=1,
+        )
+
+    async def clear_lifecycle(self) -> None:
+        """Legacy restore helper: all protected lifecycle features enabled."""
+        await self.enable_all_lifecycle()
+
+    async def gate_lifecycle_bits(self, **bits: bool) -> None:
+        values = {
+            "sip_debug": 1,
+            "soc_debug": 1,
+            "ap_debug": 1,
+            "sep_debug": 1,
+            "fuse_test": 1,
+        }
+        for name, gated in bits.items():
+            if name not in values:
+                raise ValueError(f"unknown lifecycle feature {name!r}")
+            if gated:
+                values[name] = 0
+        await self.set_lifecycle(**values)
+
+    async def axi_activity_counts(self) -> dict[str, int]:
+        """Sample SMC AXI request activity counters exposed by tb_top."""
+        await ReadOnly()
+        dut = cocotb.top
+        counts = {
+            "aw": int(dut.smc_axi_awvalid_count.value),
+            "w": int(dut.smc_axi_wvalid_count.value),
+            "ar": int(dut.smc_axi_arvalid_count.value),
+        }
+        await ClockCycles(dut.clk_i, 1)
+        return counts
+
+    async def target_activity_counts(self, target: str) -> dict[str, int]:
+        """Sample request activity counters for one JTAG2AXI target."""
+        cfg = self.target_cfg(target)
+        await ReadOnly()
+        dut = cocotb.top
+        counts = {
+            "aw": int(getattr(dut, f"{cfg.activity_prefix}_awvalid_count").value),
+            "w": int(getattr(dut, f"{cfg.activity_prefix}_wvalid_count").value),
+            "ar": int(getattr(dut, f"{cfg.activity_prefix}_arvalid_count").value),
+        }
+        await ClockCycles(dut.clk_i, 1)
+        return counts
+
+    async def expect_no_smc_axi_activity(self, cycles: int, *, context: str) -> None:
+        """Verify no SMC AXI request-valid pulse occurs across a bounded window."""
+        before = await self.axi_activity_counts()
+        await self.wait_sys_cycles(cycles)
+        after = await self.axi_activity_counts()
+        self.log.info("%s AXI activity before=%s after=%s", context, before, after)
+        self.assert_equal(f"{context}.aw_count", after["aw"], before["aw"])
+        self.assert_equal(f"{context}.w_count", after["w"], before["w"])
+        self.assert_equal(f"{context}.ar_count", after["ar"], before["ar"])
+
+    async def expect_no_target_activity(self, target: str, cycles: int, *, context: str) -> None:
+        """Verify no target request-valid pulse occurs across a bounded window."""
+        before = await self.target_activity_counts(target)
+        await self.wait_sys_cycles(cycles)
+        after = await self.target_activity_counts(target)
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        self.assert_equal(f"{context}.aw_count", after["aw"], before["aw"])
+        self.assert_equal(f"{context}.w_count", after["w"], before["w"])
+        self.assert_equal(f"{context}.ar_count", after["ar"], before["ar"])
+
+    async def expect_smc_axi_activity(
+        self,
+        *,
+        before: dict[str, int],
+        read: bool,
+        context: str,
+    ) -> None:
+        """Verify a read or write produced SMC AXI request activity."""
+        after = await self.axi_activity_counts()
+        self.log.info("%s AXI activity before=%s after=%s", context, before, after)
+        key = "ar" if read else "aw"
+        assert after[key] > before[key], f"{context}: expected {key.upper()} activity"
+
+    async def expect_target_activity(
+        self,
+        target: str,
+        *,
+        before: dict[str, int],
+        read: bool,
+        context: str,
+    ) -> None:
+        """Verify a target read or write produced request activity."""
+        after = await self.target_activity_counts(target)
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        key = "ar" if read else "aw"
+        assert after[key] > before[key], f"{context}: expected {target} {key.upper()} activity"
+
+    async def wait_for_smc_axi_activity(
+        self,
+        *,
+        before: dict[str, int],
+        read: bool,
+        context: str,
+        timeout_cycles: int = 100,
+    ) -> dict[str, int]:
+        """Wait until a series operation has reached the SMC AXI request channel."""
+        key = "ar" if read else "aw"
+        for _ in range(timeout_cycles):
+            after = await self.axi_activity_counts()
+            if after[key] > before[key]:
+                self.log.info("%s AXI activity before=%s after=%s", context, before, after)
+                return after
+            await self.wait_sys_cycles(1)
+        after = await self.axi_activity_counts()
+        raise AssertionError(
+            f"{context}: expected {key.upper()} activity within {timeout_cycles} "
+            f"cycles, before={before}, after={after}"
+        )
+
+    async def wait_for_target_activity(
+        self,
+        target: str,
+        *,
+        before: dict[str, int],
+        read: bool,
+        context: str,
+        timeout_cycles: int = 100,
+    ) -> dict[str, int]:
+        """Wait until a series operation has reached the target request channel."""
+        key = "ar" if read else "aw"
+        for _ in range(timeout_cycles):
+            after = await self.target_activity_counts(target)
+            if after[key] > before[key]:
+                self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+                return after
+            await self.wait_sys_cycles(1)
+        after = await self.target_activity_counts(target)
+        raise AssertionError(
+            f"{context}: expected {target} {key.upper()} activity within {timeout_cycles} "
+            f"cycles, before={before}, after={after}"
+        )
+

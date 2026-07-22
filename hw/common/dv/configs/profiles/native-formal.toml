@@ -1,0 +1,21 @@
+# Shared profile for formal tasks launched by the native runner.
+
+kind = "fv"
+framework = "formal"
+visibility = "maintainer"
+runnability = "maintainer"
+license = "required-commercial"
+
+default_tool = "jasper"
+tools = ["jasper", "vcf"]
+
+[scheduler]
+default_executor = "local"
+allowed = ["local"]
+
+[native]
+enabled = true
+status = "active"
+
+[native.stages.formal]
+kind = "formal_run"

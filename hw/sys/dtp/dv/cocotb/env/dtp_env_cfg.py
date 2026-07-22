@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+"""DTP UVM environment configuration object."""
+
+from __future__ import annotations
+
+import random
+
+from cocotb.triggers import Event
+from pyuvm import uvm_object
+
+
+class DtpEnvCfg(uvm_object):
+    """Shared environment configuration / handshakes for the DTP UVM TB."""
+
+    def __init__(self, name: str = "DtpEnvCfg") -> None:
+        super().__init__(name)
+        # Timing (defaults; randomize_timing() may override per run).
+        self.jtag_period_ns = 100
+        self.sys_clk_period_ns = 10
+        self.idle_tck = 64
+        # OCAH AXI RAM memory size (bytes)
+        self.axi_mem_size = 2**16
+        self.otp_axil_mem_size = 2**16
+        # Set by the base test once clocks are running and resets released, so
+        # the JTAG/AXI agents start their BFMs at the right time.
+        self.reset_done = Event("dtp_reset_done")
+        # Published by the AXI agent once the OCAH AXI RAM exists, so
+        # sequences/scoreboard can backdoor-check the SMC fabric memory.
+        self.axi_ram = None
+        self.smc_otp_axil_ram = None
+        self.sep_otp_axil_ram = None
+        self.jtag2axi_responders = {}
+        self.xtrig_axil = None
+        self.xtrig_bfm = None
+        self.xtrig_num_ctp = 16
+        self.xtrig_num_int_ct = 10
+
+    def randomize_timing(self, seed: int | None = None) -> None:
+        """Randomize the JTAG TCK and system-clock periods for timing variety.
+
+        Mirrors the legacy sanity test, which randomized the JTAG TCK period
+        (100-1000 ns) and the core clock period (10-100 ns) to exercise the
+        TCK-vs-core-clock ratio. Uses a dedicated RNG seeded from the runner's
+        ``RANDOM_SEED`` so ``run_dv.py --seed`` reproduces the chosen periods
+        without disturbing global ``random`` state used elsewhere.
+        """
+        rng = random.Random(seed)
+        self.jtag_period_ns = rng.randint(100, 1000)
+        self.sys_clk_period_ns = rng.randint(10, 100)
