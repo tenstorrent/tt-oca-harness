@@ -18,16 +18,7 @@ def repo_root(start: Path) -> Path:
 
 
 def dv_root(root: Path) -> Path:
-    """Return the logical DV infrastructure root for sandbox or greenfield layouts.
-
-    During the sandbox phase, the clean OSS DV tree lives below ``dv/oss``. Greenfield configs should
-    still use paths relative to the future repo root (for example ``hw/sys/smc/dv``), so this helper
-    supplies the temporary physical prefix in one place. Once the tree moves to greenfield, this
-    becomes just ``root``.
-    """
-    sandbox = root / "dv" / "oss"
-    if (sandbox / "hw" / "common" / "dv" / "configs").is_dir() and (sandbox / "tools" / "dv").is_dir():
-        return sandbox
+    """Return the DV infrastructure root: the repository root in the greenfield layout."""
     return root
 
 

@@ -35,7 +35,6 @@ CANONICAL_STAGES = {
 
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
-SANDBOX_PREFIX = "dv/oss/"
 
 IMPLEMENTED_STAGE_KINDS = {
     "noop",
@@ -544,10 +543,6 @@ def validate_testlist_pointer(flow: Dut, root: Path) -> None:
     raw_path = Path(path_text).expanduser()
     if raw_path.is_absolute():
         raise ConfigError(f"{flow.path}: [testlist].path must be relative to the DUT DV root")
-    if path_text.startswith(SANDBOX_PREFIX):
-        raise ConfigError(
-            f"{flow.path}: [testlist].path must be DUT-local, not sandbox-prefixed: {path_text}"
-        )
     resolved = (flow.path.parent / raw_path).resolve()
     dut_root = flow.path.parent.resolve()
     try:

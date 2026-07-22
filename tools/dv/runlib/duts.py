@@ -23,7 +23,6 @@ _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 # Grouping dirs whose children may carry a dv/ root.
 _NESTED_HW_GROUPS = ("sys", "ip", "comp", "periph")
 _REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg"}
-_SANDBOX_PREFIX = "dv/oss/"
 
 
 def registry_path(root: Path) -> Path:
@@ -46,13 +45,6 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
         unknown = sorted(set(entry) - _REGISTRY_KEYS)
         if unknown:
             raise ConfigError(f"{path}: [duts.{name}] unsupported key(s): {', '.join(unknown)}")
-        for key in ("root", "sim_cfg", "formal_cfg"):
-            value = entry.get(key)
-            if isinstance(value, str) and value.startswith(_SANDBOX_PREFIX):
-                raise ConfigError(
-                    f"{path}: [duts.{name}].{key} must be relative to the DV root, "
-                    f"not sandbox-prefixed: {value}"
-                )
         out[name] = entry
     return out
 
