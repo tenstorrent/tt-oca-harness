@@ -39,7 +39,7 @@ def find_repo_root(start: Path) -> Path:
         current = current.parent
 
     for candidate in (current, *current.parents):
-        if (candidate / "Bender.yml").is_file() and (candidate / "bin/setup_env.sh").is_file():
+        if (candidate / "Bender.yml").is_file() and (candidate / "pyproject.toml").is_file():
             return candidate
 
     raise NamespaceError(f"could not find repository root from {start}")

@@ -12,7 +12,7 @@ def repo_root(start: Path) -> Path:
     if cursor.is_file():
         cursor = cursor.parent
     for candidate in (cursor, *cursor.parents):
-        if (candidate / "Bender.yml").is_file() and (candidate / "bin/setup_env.sh").is_file():
+        if (candidate / "Bender.yml").is_file() and (candidate / "pyproject.toml").is_file():
             return candidate
     raise ConfigError(f"could not find repository root from {start}")
 

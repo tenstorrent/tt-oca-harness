@@ -31,6 +31,8 @@ common_bender_targets = [
   "common_cell_sync_shim",
   "register_interface_l1",
 ]
+# `dtp` selects the DUT-scoped source group in the root Bender.yml (the DTP
+# elaboration closure only, independent of unrelated subsystems' parse health).
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/sys/dtp/dv/tb"]
 # Verilator-friendly behavioral stubs. Listed ahead of the bender filelist so
