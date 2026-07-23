@@ -681,11 +681,12 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         )
 
     distributions = [
-        ("shared dv package", "ocah-oss-dv"),
+        ("shared dv package", "ocah-dv"),
         ("cocotb", "cocotb"),
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
         ("cocotbext-jtag", "cocotbext-jtag"),
+        ("cocotbext-i2c", "cocotbext-i2c"),
     ]
     for label, dist_name in distributions:
         version = _dist_version(dist_name)
@@ -695,8 +696,8 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
                 label,
                 "FAIL",
                 "missing distribution "
-                f"`{dist_name}`; use Python 3.11-3.13, then run "
-                "`python3 -m pip install -e hw/common/dv`",
+                f"`{dist_name}`; launch via `python3 tools/dv/run_dv.py` (uv-managed) "
+                "or run `uv sync --locked --group dv` at the repository root",
             )
         else:
             _print_doctor_row(label, "OK", version)
@@ -709,7 +710,8 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         _print_doctor_row(
             "namespace bridge",
             "FAIL",
-            "missing; run `source bin/setup_env.sh`",
+            "missing; launch via `python3 tools/dv/run_dv.py` (its bootstrap syncs the "
+            "bridge) or run `python3 tools/dv/sync_python_namespace.py`",
         )
 
     if _path_in_sys_path(namespace_root) or _path_in_pythonpath(namespace_root):
@@ -719,7 +721,8 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         _print_doctor_row(
             "namespace PYTHONPATH",
             "FAIL",
-            "bridge root is not on PYTHONPATH; run `source bin/setup_env.sh`",
+            "bridge root is not on PYTHONPATH; launch via `python3 tools/dv/run_dv.py` "
+            "so its bootstrap exports it",
         )
 
     ok, detail = _try_import("ocah_axi_vip")

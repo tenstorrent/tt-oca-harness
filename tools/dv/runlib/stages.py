@@ -618,7 +618,8 @@ def get_cocotb_runner():
     except ImportError as exc:
         raise ConfigError(
             "cocotb runner support is required for cocotb_verilator stages. "
-            f"Install cocotb for this Python interpreter: {sys.executable}"
+            "Launch via `python3 tools/dv/run_dv.py` so the uv-managed DV environment "
+            f"provides cocotb (current interpreter: {sys.executable})"
         ) from exc
 
 
@@ -1198,6 +1199,9 @@ def _cocotb_python_paths(root: Path, cocotb_data: dict[str, Any]) -> list[Path]:
             repo_path(root, path)
             for path in as_str_list(cocotb_data.get("python_paths"), "cocotb.python_paths")
         ],
+        # Simulator children get a rebuilt PYTHONPATH from this list (not the launcher's
+        # ambient one), so the generated namespace bridge must be carried explicitly.
+        root / "build" / "dv" / "python",
     ]
 
 
