@@ -1,0 +1,30 @@
+schema_version = 1
+
+# OSS-example smc_wrapper catalog, run via `run_dv.py --dut smc_wrapper`.
+# Independent of the bare-smc all.toml catalog.
+
+[[tests]]
+name = "smc_wrapper_elaboration_test"
+module = "smc_wrapper_elaboration_test"
+target = "default"
+seed = 1
+timeout_sec = 600
+tags = ["build", "smoke", "wrapper"]
+run_modes = ["smoke"]
+args = [
+  "+rom_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/smc_rom_default.hex",
+  "+smc_efuse_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+  "+smc_shadow_reg_preload=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
+[[groups]]
+name = "smoke"
+tests = [
+  "smc_wrapper_elaboration_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+  "smc_wrapper_elaboration_test",
+]

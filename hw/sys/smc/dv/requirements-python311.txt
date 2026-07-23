@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Extra pins for /usr/bin/python3.11 when running SMC OSS DV outside repo venv.
+# Root tools/requirements.txt already covers the project venv (python3.9).
+#
+#   /usr/bin/python3.11 -m pip install --user -r dv/oss/hw/sys/smc/dv/requirements-python311.txt
+#
+cocotbext-uart==0.1.4

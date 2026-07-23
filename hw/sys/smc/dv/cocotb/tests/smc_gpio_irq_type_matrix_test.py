@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+"""SMC OSS GPIO interrupt-type (active-high / active-low level) matrix test."""
+
+from __future__ import annotations
+
+import pyuvm
+from smc_base_test import smc_base_test
+
+from seq_lib.smc_gpio_irq_type_matrix_test_seq import (
+    smc_gpio_irq_type_matrix_test_seq,
+)
+
+
+@pyuvm.test()
+class smc_gpio_irq_type_matrix_test(smc_base_test):
+    """Drive GPIO0 for both level polarities and check the IRQ aggregate."""
+
+    auto_protocol_vip = False
+
+    async def run_scenario(self) -> None:
+        seq = smc_gpio_irq_type_matrix_test_seq("gpio_irq_type_matrix_seq")
+        await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_i2c_cg_sanity_test"
+module = "smc_i2c_cg_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "i2c", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_multi_sample_test"
+module = "smc_i2c_multi_sample_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "i2c"
+tests = [
+    "smc_i2c_cg_sanity_test",
+    "smc_i2c_multi_sample_test",
+    "smc_i2c_master_target_test",
+]
