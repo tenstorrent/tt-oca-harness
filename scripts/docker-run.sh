@@ -26,6 +26,8 @@
 #      OCAH_PODMAN_DIR         base for podman runtime+storage when the default
 #                               /run/user/<uid> is unwritable (default:
 #                               /tmp/ocah-podman-<uid>); used by CI accounts
+#      OCAH_SKIP_GID_FIXUP     set to 1 to skip re-running under the passwd
+#                               primary group for rootless podman (see below)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,6 +48,28 @@ DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-/proj_soc_scratch_ps/socinfra/ocah-do
 if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
+
+# Rootless podman's newuidmap/newgidmap helpers refuse to set up the user
+# namespace unless the process's primary GID matches the account's registered
+# primary GID in /etc/passwd ("newuidmap: Target process ... is owned by a
+# different user"). Some CI/LSF nodes launch the job under a different primary
+# group (e.g. inherited from an SGID scratch dir), which trips this check. If so,
+# re-exec this script under the passwd primary group so the GIDs line up. Only
+# attempted when we are actually a member of that group (else `sg` would prompt);
+# a one-shot guard var prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
+if [[ "$ENGINE" == podman && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
+    _pw_gid="$(getent passwd "$(id -u)" | cut -d: -f4)"
+    if [[ -n "$_pw_gid" && "$_pw_gid" != "$(id -g)" ]]; then
+        _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"
+        if [[ -n "$_pw_grp" ]] && id -G | tr ' ' '\n' | grep -qx "$_pw_gid"; then
+            export _OCAH_GID_FIXED=1
+            echo "docker-run: primary GID $(id -g) != passwd GID $_pw_gid; re-running under group '$_pw_grp' for rootless podman" >&2
+            exec sg "$_pw_grp" -c "$(printf '%q ' "$0" "$@")"
+        else
+            echo "docker-run: warning: primary GID $(id -g) != passwd GID $_pw_gid but not a member of that group; rootless podman may fail" >&2
+        fi
+    fi
+fi
 
 # Rootless podman keeps its runtime state under $XDG_RUNTIME_DIR (default
 # /run/user/<uid>), which is created by pam_systemd on interactive login.
