@@ -54,19 +54,25 @@ else echo "error: podman or docker is required" >&2; exit 1; fi
 # primary GID in /etc/passwd ("newuidmap: Target process ... is owned by a
 # different user"). Some CI/LSF nodes launch the job under a different primary
 # group (e.g. inherited from an SGID scratch dir), which trips this check. If so,
-# re-exec this script under the passwd primary group so the GIDs line up. Only
-# attempted when we are actually a member of that group (else `sg` would prompt);
-# a one-shot guard var prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
+# re-exec this script under the passwd primary group so the GIDs line up.
+#
+# Switching to the account's passwd *login* group is permitted by newgrp/sg
+# without a password even when that group is not in the supplementary set
+# (id -G) - which is exactly the case on these nodes (a user-private group).
+# So don't gate on id -G membership; instead probe whether `sg` is allowed,
+# reading stdin from /dev/null so an unexpected password prompt fails fast
+# instead of hanging CI, and only re-exec on success. A one-shot guard var
+# prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
 if [[ "$ENGINE" == podman && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
     _pw_gid="$(getent passwd "$(id -u)" | cut -d: -f4)"
     if [[ -n "$_pw_gid" && "$_pw_gid" != "$(id -g)" ]]; then
-        _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"
-        if [[ -n "$_pw_grp" ]] && id -G | tr ' ' '\n' | grep -qx "$_pw_gid"; then
+        _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"; _pw_grp="${_pw_grp:-$_pw_gid}"
+        if sg "$_pw_grp" -c 'true' </dev/null >/dev/null 2>&1; then
             export _OCAH_GID_FIXED=1
             echo "docker-run: primary GID $(id -g) != passwd GID $_pw_gid; re-running under group '$_pw_grp' for rootless podman" >&2
-            exec sg "$_pw_grp" -c "$(printf '%q ' "$0" "$@")"
+            exec sg "$_pw_grp" -c "$(printf '%q ' "$0" "$@")" </dev/null
         else
-            echo "docker-run: warning: primary GID $(id -g) != passwd GID $_pw_gid but not a member of that group; rootless podman may fail" >&2
+            echo "docker-run: warning: primary GID $(id -g) != passwd GID $_pw_gid and 'sg $_pw_grp' is not permitted; rootless podman may fail" >&2
         fi
     fi
 fi
