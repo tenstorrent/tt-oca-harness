@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: Apache-2.0
+"""SEP WDT reset-input path test (PyUVM).
+
+OSS port of the OCAH ``sep_clock_uvm_wdt_rst_input_reset_path_test`` (subsystem
+, interconnect edge E9, SEP side). Verifies the SEP WDT reset-INPUT path:
+
+    wdt_rst_ni -> sep_reset_ctrl -> CPU reset
+
+RTL contract (hw/sep/sep_reset_ctrl.sv): ``sep_cpu_reset_no = sep_reset_n &
+wdt_rst_ni``. The test drives the SEP primary input ``wdt_rst_ni`` and confirms
+the CPU warm reset ``sep_cpu_reset_n`` follows, while the main SEP reset
+``sep_reset_n`` stays released (the gating is CPU-reset-only). Frontdoor: the tb
+drives the real ``wdt_rst_ni`` DUT input and observes ``sep_cpu_reset_n`` (an
+internal net surfaced as the ``sep_cpu_reset_n_o`` tb_top probe) and the real
+``sep_reset_n_o`` output (``dbg_sep_reset_n_o``).
+
+Checks (each asserts a specific value, so a stuck/X reset net fails):
+  [A]     baseline wdt_rst_ni=1 -> sep_cpu_reset_n == 1 (CPU out of reset) and
+          sep_reset_n == 1 (fabric released);
+  [B]     wdt_rst_ni=0 -> sep_cpu_reset_n == 0 (CPU held in reset);
+  [B-iso] wdt_rst_ni=0 -> sep_reset_n still == 1 (main SEP reset unaffected --
+          the gate is CPU-reset-only);
+  [C]     wdt_rst_ni=1 -> sep_cpu_reset_n == 1 (CPU reset released again).
+
+The A->B->C toggle is non-vacuous: a tied/stuck sep_cpu_reset_n cannot satisfy
+both the ==1 and ==0 checks. Scope is SEP-internal reset-input behavior only; the
+WDT-bite -> SMC -> wdt_rst_ni closure is SMC DV scope (per the OCAH header).
+
+Reg-only / no AXI traffic, so this is a no_cpu run with ``+skip_fuse_sense``.
+"""
+
+from __future__ import annotations
+
+import cocotb
+from cocotb.triggers import ClockCycles
+
+import pyuvm
+
+from sep_base_test import sep_base_test
+
+# Cycles to let the combinational reset path settle after a wdt_rst_ni edge.
+_SETTLE = 5
+
+
+@pyuvm.test()
+class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
+    """Drive wdt_rst_ni and verify the sep_cpu_reset_n path + isolation."""
+
+    build_env = False
+
+    async def _check_reset(self, sig, name: str, expected: int) -> None:
+        """Assert a reset observable equals an exact value (X resolves to 0)."""
+        val = self.rd(sig)
+        if val != expected:
+            raise AssertionError(f"{name}: expected {expected}, got {val}")
+        self.logger.info("PASS: %s == %d", name, expected)
+
+    async def run_scenario(self) -> None:
+        dut = cocotb.top
+
+        # Baseline bring-up: wdt_rst_ni defaults to 1 (deasserted), fabric
+        # released after fuse-sense-done.
+        await self.bring_up_no_cpu()
+
+        # [A] baseline: CPU out of reset, main SEP reset released.
+        await self._check_reset(
+            dut.sep_cpu_reset_n_o, "A baseline wdt_rst_ni=1 -> sep_cpu_reset_n", 1)
+        await self._check_reset(
+            dut.dbg_sep_reset_n_o, "A baseline sep_reset_n released", 1)
+
+        # [B] assert the WDT reset input -> CPU held in reset.
+        dut.wdt_rst_ni_i.value = 0
+        await ClockCycles(dut.clk_i, _SETTLE)
+        await self._check_reset(
+            dut.sep_cpu_reset_n_o, "B wdt_rst_ni=0 -> sep_cpu_reset_n asserted", 0)
+        # [B-iso] isolation: the main SEP reset must be unaffected.
+        await self._check_reset(
+            dut.dbg_sep_reset_n_o, "B-iso wdt_rst_ni=0 -> sep_reset_n unaffected", 1)
+
+        # [C] release -> CPU reset deasserts again.
+        dut.wdt_rst_ni_i.value = 1
+        await ClockCycles(dut.clk_i, _SETTLE)
+        await self._check_reset(
+            dut.sep_cpu_reset_n_o, "C wdt_rst_ni=1 -> sep_cpu_reset_n released", 1)
+
+        self.logger.info(
+            " PASS: wdt_rst_ni -> sep_cpu_reset_n path verified "
+            "(A baseline / B assert / B-iso isolation / C release)")

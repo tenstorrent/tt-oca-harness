@@ -1,0 +1,821 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
+================================================================================
+SEP OSS VPLAN — PHASE 1 (smoke + TOP-20) — DETAILED TEST CARDS
+================================================================================
+Phase 1 (density-first compression) is COMPLETE; Phase-2 breadth-first basic-
+feature planning lives in SEP_OSS_VPLAN_PHASE2_DETAIL.txt (rules in
+VPLAN_CREATION_RULES.md).
+
+Per-test detail for the 20 cherry-picked OCAH SEP tests (see SEP_OSS_VPLAN_PHASE1.md
+for the selection rationale + coverage matrix). Every card is refactored from the real
+OCAH source (test .sv / firmware .c / sequence) and the OCAH testplan — no invented
+behavior. Tiers are cumulative: TOP-5 (#1-5) < TOP-10 (#1-10) < TOP-20 (#1-20).
+
+Card fields:
+  SUMMARY   - what scenario it runs and why.
+  DATA-PATH - the cross-module datapath the stimulus flows through.
+  STEPS     - ordered stimulus (firmware actions / UVM sequence).
+  CHECKERS  - what proves pass/fail (scoreboard / asserts / golden / magic).
+  COVERAGE  - interconnect edges (E#) + blocks/covergroups closed.
+  DV-INFRA  - TB responders/models needed.  [BUILT] = present, [TODO] = not yet.
+  OCAH-REF  - source of truth.
+
+DV-INFRA legend (bare `sep` externalized ports backed by OSS responders):
+  TCM [BUILT] · SRAM [BUILT] · boot-ROM [BUILT] · eFuse/OTP [BUILT]
+  KM ROM/SRAM + smoke firmware [BUILT] · OTBN IMEM/DMEM [BUILT] · SPI device [BUILT]
+  Real KM keygen firmware / OTBN KAT programs [TODO]
+
+Additional OSS regression smoke (tracked outside the 20-test TOP selection):
+  sep_address_map_test — sep_cpu_ctrl reset/RW sweep + SEP-local fabric walk;
+  strengthened with REFERENCE_COUNTER 64-bit readability and SEP base/size CSR
+  write/read/restore proof.
+  sep_esrc_e2e_smoke_test — ESRC->CSRNG->EDN->KM entropy alive + strict CHK1..CHK5.
+
+
+================================================================================
+OCAH SEP SOURCE REFERENCE  (golden suite paths are repo-root-relative)
+================================================================================
+Runnable-name registry : dv/sep/tb/tb_uvm/yaml/testlist_sep.yaml
+FW root                : fw/sep/tests/<dir>/<dir>.c
+UVM root               : dv/sep/tb/tb_uvm/uvm_tests/<area>/  (+ uvm_sequences/<area>/<name>_seq.sv)
+Testplan root          : dv/sep/tb/doc/testplan/<area>/
+
+#1  FW   fw/sep/tests/sep_km_efuse_coexist_test/sep_km_efuse_coexist_test.c
+         tp  doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md
+#2  FW   fw/sep/tests/dma_hash_test/dma_hash_test.c
+         tp  doc/testplan/dma/DMA_TEST_PLAN.md
+#3  FW   fw/sep/tests/spi_ot_dma_rx_test/spi_ot_dma_rx_test.c
+         tp  doc/testplan/spi_ot/spi_ot_testplan.md
+#4  UVM  uvm_tests/subsystem/sep_km_otbn_sideload_kat_test.sv
+         seq uvm_sequences/subsystem/sep_km_otbn_sideload_kat_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#5  UVM  uvm_tests/subsystem/sep_efuse_lcc_lc_state_stitch_test.sv
+         seq uvm_sequences/subsystem/sep_efuse_lcc_lc_state_stitch_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#6  FW   fw/sep/tests/dma_cpu_contention_test/dma_cpu_contention_test.c
+         tp  doc/testplan/dma/DMA_TEST_PLAN.md
+#7  UVM  uvm_tests/subsystem/sep_clock_uvm_wdt_rst_input_reset_path_test.sv
+         seq uvm_sequences/subsystem/sep_clock_uvm_wdt_rst_input_reset_path_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#8  FW   fw/sep/tests/sep_mailbox_plic_test/sep_mailbox_plic_test.c
+#9  FW   fw/sep/tests/hmac_test/hmac_test.c  +  fw/sep/tests/kmac_test/kmac_test.c
+#10 FW   fw/sep/tests/rom_sanity_test/rom_sanity_test.c
+         tp  doc/testplan/rom/ROM_TEST_PLAN.md
+#11 UVM  uvm_tests/subsystem/sep_km_aes_sideload_kat_test.sv
+         seq uvm_sequences/subsystem/sep_km_aes_sideload_kat_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#12 UVM  uvm_tests/subsystem/sep_km_hmac_sideload_kat_test.sv
+         seq uvm_sequences/subsystem/sep_km_hmac_sideload_kat_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#13 UVM  uvm_tests/subsystem/sep_km_kmac_sideload_kat_test.sv
+         seq uvm_sequences/subsystem/sep_km_kmac_sideload_kat_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#14 UVM  uvm_tests/subsystem/sep_irq_ip_to_aggregator_test.sv
+         seq uvm_sequences/subsystem/sep_irq_ip_to_aggregator_test_seq.sv
+         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
+#15 UVM  uvm_tests/drbg/sep_drbg_real_sink_multi_km_aes_test.sv
+         seq uvm_sequences/drbg/sep_drbg_real_sink_multi_km_aes_test_seq.sv
+             (+ base: uvm_sequences/drbg/sep_drbg_real_sink_multi_base_test_seq.sv)
+         tp  doc/testplan/drbg/DRBG_VPLAN.txt
+#16 FW   OSS port is CPU-firmware (no_cpu bypasses the post-remap splice); OCAH ref is UVM:
+         uvm_tests/fabric/sep_fabric_gap_matrix_tests.sv  (macro-defined, not a standalone file)
+         seq uvm_sequences/fabric/sep_fabric_gap_matrix_sequences.sv  (run_ifu_lsu_alias body)
+         tp  doc/testplan/fabric/fabric_testplan.md
+#17 FW   fw/sep/tests/sep_efuse_jtag_el2_cpu_mux_test/sep_efuse_jtag_el2_cpu_mux_test.c
+         tp  doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md
+#18 FW   fw/sep/tests/nmi_sanity_test/nmi_sanity_test.c
+         tp  doc/testplan/wdt/
+#19 FW   fw/sep/tests/sep_reset_ctrl_csr_test/sep_reset_ctrl_csr_test.c
+         +   fw/sep/tests/wdt_sanity_test/wdt_sanity_test.c
+         tp  doc/testplan/wdt/wdt_testplan.md
+#20 UVM  uvm_tests/lcc/sep_lcc_uvm_inbound_filter_gating_test.sv
+         seq uvm_sequences/lcc/sep_lcc_uvm_inbound_filter_gating_test_seq.sv
+         tp  doc/testplan/lcc/LCC_VPLAN.txt
+
+(All 20 paths verified to exist. `doc/testplan/` = `dv/sep/tb/doc/testplan/`.)
+
+
+################################################################################
+#  ADDITIONAL OSS REGRESSION SMOKE
+################################################################################
+
+--------------------------------------------------------------------------------
+#X  sep_esrc_e2e_smoke_test                                      EXTRA · no_cpu
+--------------------------------------------------------------------------------
+SUMMARY   : Proves the real OpenTitan entropy stack is alive on bare `sep` and
+            reaches a real KM consumer. The test uses the permitted raw ESRC-noise
+            force only to make the ring-oscillator source toggle under Verilator;
+            DRBG/CSRNG/EDN/KM datapath logic remains RTL and is scorechecked.
+DATA-PATH : esrc_noise_ext_i -> entropy_source decorrelator -> BIW/SHA whitening
+            -> CSRNG CTR_DRBG seed/genbits -> EDN -> KM entropy sampler ->
+            KM PicoRV32 ROM DATA read -> KM SRAM word0.
+STEPS     : 1) no_cpu bring-up with +skip_fuse_sense.
+            2) Release the KM PicoRV32; load km_rom_entropy.parhex via +km_rom_hex.
+            3) Configure ESRC/CSRNG/EDN in OCAH order and enable generators/EDN.
+            4) Start strict CHK1..CHK5 scoreboard; drain ESRC FIFO_RDATA via AXI
+               frontdoor so CHK2 observes FIFO output, not a wire tap.
+            5) Wait for CTR_DRBG genbits, KM post-mux tvalid&&tready, and the KM
+               ROM's consumed word landing in KM SRAM.
+            6) Check CSRNG/EDN error/status alerts are zero, then report scoreboard.
+CHECKERS  : +esrc_noise_force took (actual DUT noise_i tracks driven noise) ;
+            seed accumulation and CTR_DRBG genbits observed ; KM consumes one
+            entropy word and stores it to SRAM ; CSRNG/EDN errors and alerts zero ;
+            strict CHK1_decor, CHK2_compress, CHK3_seed, CHK4_genbits, CHK5_km
+            all have match>0 and mismatch==0.
+COVERAGE  : Explicit E2 entropy-stack alive path (ESRC/CSRNG/EDN -> KM consumer),
+            complementing the KM/OTBN sideload KAT's firmware-driven entropy use.
+DV-INFRA  : ESRC raw-noise force [APPROVED] · entropy probes [BUILT] ·
+            sep_entropy_golden + sep_drbg_scoreboard [BUILT] · KM ROM/SRAM
+            responder [BUILT] · km_rom_entropy.parhex [BUILT].
+OCAH-REF  : drbg_noise/decor/compress/sha256_cond_dpi.c ;
+            drbg_ctr_drbg_pkg.sv ; sep_drbg_scoreboard.sv.
+
+
+################################################################################
+#  TIER 1 — TOP-5
+################################################################################
+
+--------------------------------------------------------------------------------
+#1  sep_efuse_km_axil_cpu_mux_coexist_test                       TOP-5 · FW
+    (C-dir: sep_km_efuse_coexist_test)
+--------------------------------------------------------------------------------
+SUMMARY   : EL2 CPU continuously reads the eFuse MAP (CHIPLET_UID) while the KM
+            PicoRV32 concurrently writes eFuse MMRs through the shared AXI-Lite
+            mux. Proves arbitration keeps MAP reads stable and KM ownership tags
+            intact under two-CPU contention — the widest single superset.
+DATA-PATH : KM-CPU eFuse MMR writes -> eFuse interface-controller AXIL mux
+            <- EL2 eFuse MAP reads ; KM<->SEP mailbox ; reset_ctrl -> KM.
+STEPS     : 1) efuse_wait_sense_done().
+            2) release KM from SW reset (SEP_RESET_CTRL_SW_RESET_N bit0).
+            3) mailbox handshake: rx KM_READY(0xA11FE5EE), tx EL2_GO(0x60600060).
+            4) loop >=256: read CHIPLET_UID, sample KM MMR0/MMR1 payload+tag,
+               bump counter to cold-scratch, until UVM_DONE(0xE90500D0).
+CHECKERS  : CHIPLET_UID==0xDEADBEEF every iter; MMR tags==0xA5/0x5A; MMR payload
+            never moves backward; mmr_changes>0; 0 bad_uid / backward / bad_tag.
+COVERAGE  : E1 (eFuse<->KM) ; eFuse dual-master mux arbitration ; KM mailbox ;
+            reset_ctrl->KM release.
+DV-INFRA  : TCM [BUILT] · eFuse/OTP [BUILT] · KM ROM/SRAM [BUILT] ·
+            KM keygen firmware [TODO].
+OCAH-REF  : fw/sep/tests/sep_km_efuse_coexist_test/*.c ;
+            doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md.
+
+--------------------------------------------------------------------------------
+#2  sep_dma_hash_test                                            TOP-5 · FW
+    (C-dir: dma_hash_test)
+--------------------------------------------------------------------------------
+SUMMARY   : Secure DMA copies SRAM->DCCM with inline SHA-256 enabled; the HW
+            digest is compared to a SW SHA-256 over the same data. Exercises the
+            full CPU->DMA->memory datapath plus completion interrupt to the ISR.
+DATA-PATH : SRAM(0x10000000) -> Secure DMA (OPCODE_SHA256) -> DCCM + SHA2_DIGEST
+            regs ; DMA done/err IRQ -> PIC -> CPU mip.MEIP -> ISR.
+STEPS     : 1) filter init; register DMA done(9)/err(12) ISRs via PIC.
+            2) program enabled-range, SRC=SRAM, DST=DCCM, width=4B, incr.
+            3) fill SRAM with random data.
+            4) start DMA CONTROL: opcode=SHA256, digest_swap, go.
+            5) wfi until dma_interrupt_fired (ISR clears STATUS).
+CHECKERS  : ISR fired before timeout; ERROR_CODE==0; HW SHA2_DIGEST[0..7] ==
+            SW sha256(SRAM); SRAM==DCCM copy word-for-word.
+COVERAGE  : E7 (DMA->mem + inline SHA) ; E10 (DMA IRQ->PIC->CPU ISR).
+DV-INFRA  : TCM [BUILT] · SRAM [BUILT].
+OCAH-REF  : fw/sep/tests/dma_hash_test/*.c ; doc/testplan/dma/DMA_TEST_PLAN.md.
+
+--------------------------------------------------------------------------------
+#3  sep_spi_ot_dma_rx_test                                       TOP-5 · FW
+    (C-dir: spi_ot_dma_rx_test)
+--------------------------------------------------------------------------------
+SUMMARY   : Secure DMA drains the OpenTitan SPI host RX FIFO into SRAM using the
+            HW lsio_trigger handshake (fires when RX FIFO crosses watermark).
+            OSS-clean SPI+DMA path (OT host, not Cadence xSPI).
+DATA-PATH : OT SPI RXDATA(0x10B0_0024, wrap) -> Secure DMA (lsio_trigger[0]
+            HW handshake) -> SRAM(0x10006000, incr).
+STEPS     : 1) filter init; use the OSS OpenTitan-SPI path exposed by `tb_top.sv`.
+            2) Preload the OSS SPI flash BFM with byte pattern 0xA5.
+            3) SPI ctrl: rx_watermark=4, spien=1, clkdiv=9, EVENT_ENABLE.rxwm=1.
+            4) SPI flash READ(0x03) command/address, then RX len=63.
+            5) DMA: SRC=RXDATA(wrap), DST=SRAM(incr), width=4B, chunk=16,
+               HANDSHAKE_INTR_ENABLE=1, CONTROL: copy + hw_handshake + go.
+            6) poll DMA STATUS until done/error; W1C-clear RW1C status bits.
+CHECKERS  : DMA STATUS.done set, STATUS.error clear, ERROR_CODE==0 ; DMA RW1C
+            status bits clear after write-1-clear ; SPI reaches idle and
+            ERROR_STATUS==0 ; every DMA-written SRAM word == 0xA5A5A5A5, proving
+            the SPI BFM -> RX FIFO -> lsio_trigger -> DMA -> SRAM data path.
+COVERAGE  : E7 variant (SPI RX-FIFO -> DMA via lsio_trigger) ; OT SPI host + DMA.
+DV-INFRA  : TCM [BUILT] · SRAM [BUILT] · SPI device model [BUILT] (RX data source).
+OCAH-REF  : fw/sep/tests/spi_ot_dma_rx_test/*.c ;
+            doc/testplan/spi_ot/spi_ot_testplan.md.
+
+--------------------------------------------------------------------------------
+#4  sep_km_otbn_sideload_kat_test                                TOP-5 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : OSS known-key/frontdoor variant of . Real DRBG entropy boots
+            real KM firmware (rom_main). The host loads a known 384-bit key through
+            CMD_KEY_LOAD, transfers it to OTBN, and a real OTBN keydump program
+            reconstructs key=share0^share1 plus raw shares to DMEM. Host proves
+            DMEM == exact known key and the dumped shares are non-degenerate.
+DATA-PATH : ESRC->CSRNG->EDN->KM entropy path -> rom_main -> KM mailbox
+            CMD_KEY_LOAD/CMD_KEY_TRANSFER -> OTBN sideload WSRs -> OTBN IMEM
+            keydump -> OTBN DMEM result/share dump.
+STEPS     : 1) stage valid PROD eFuse image; run real fuse-sense.
+            2) park OTBN/AES/HMAC/KMAC; bring up real entropy and strict CHK1..CHK4.
+            3) release KM; wait RESP_KM_READY.
+            4) CMD_KEY_LOAD known 384b key for OTBN; get nonzero handle.
+            5) release OTBN; wait post-reset secure-wipe -> IDLE.
+            6) CMD_KEY_TRANSFER(handle,dest=OTBN); require rc=0.
+            7) load keydump.s into IMEM; CMD=EXECUTE; poll IDLE; check ERR_BITS.
+            8) read DMEM result/share dump; assert exact key, padding, mask proof.
+CHECKERS  : CHK0 KM boot -> RESP_KM_READY ; CHK-A CMD_KEY_LOAD handle != 0 ;
+            CHK-B CMD_KEY_TRANSFER rc=0, dest=OTBN while AES/HMAC/KMAC parked ;
+            CHK-C OTBN program loads/executes, STATUS->IDLE, ERR_BITS==0 ;
+            CHK-D/E DMEM == exact known 384b key and result_hi padding == 0 ;
+            CHK-F raw shares are non-trivial/distinct, neither share equals key,
+            share0^share1==known key ; strict CHK1..CHK4 golden ; CHK5_km
+            alive/observed via real post-mux KM tvalid&&tready beats ; entropy
+            alerts zero ; kept VCS log PASS + AXI monitor 0 errors.
+COVERAGE  : E3 (KM->OTBN sideload consume) ; E2 (entropy->KM, functional rom_main
+            consumption) ; 2-share masking non-degeneracy ; OTBN program
+            load+execute+DMEM readback ; mailbox command/response framing.
+DV-INFRA  : KM ROM/SRAM [BUILT] · real KM rom_main firmware [BUILT from tracked
+            source to gitignored parhex] · OTBN IMEM/DMEM [BUILT] · keydump prog
+            [EMBEDDED] · entropy/ESRC (RTL in bare sep) · AXI VIP (OTBN reg/mem).
+OSS-DELTA : Known-key CMD_KEY_LOAD replaces OCAH CMD_KEY_GENERATE+share-backdoor
+            and is stronger for consume-proof because no wrapper backdoor is used.
+            CHK5_km bit-exact golden-match is intentionally skipped: rom_main
+            entropy-pull order is firmware-driven, but CHK5_km remains alive via
+            observed real post-mux KM tvalid&&tready beats.
+            Key-bus isolation is construction-based (dest=OTBN + other engines
+            parked) plus exact OTBN consumption proof. These deltas are explicit.
+OCAH-REF  : uvm_tests/subsystem/sep_km_otbn_sideload_kat_test.sv (+ _seq.sv) ;
+            doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#5  sep_efuse_lcc_lc_state_stitch_test                           TOP-5 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : Programs valid lifecycle states into OTP via the real eFuse token-gated
+            W1S path, cold-resenses, and proves the eFuse-sourced lc_state reaches
+            the LCC and drives the correct feat_ctrl/demote decode. The only entry
+            that brings LCC + lifecycle decode into the set.
+DATA-PATH : eFuse (token-gated W1S) -> OTP shadow (cold-reset resense) -> LCC
+            lc_state input -> feat_ctrl / demote CSR outputs.
+STEPS     : 1) start at TEST_DEV(0x0); verify LCC decode == golden.
+            2) W1S program PROD(0x1) into OTP; the testlist enables seeded 30%
+               physical program-failure injection, so the sequence must observe
+               program_status=error when injected, clear, retry, then complete;
+               cold reset + resense.
+            3) randomize SIP_DIS/SYS_DIS override; verify lc_state reaches LCC and
+               feat_ctrl/demote == golden.
+            4) repeat for RMA_SIP_1(0x3) and RMA_CHIP_1(0x7).
+CHECKERS  : verify_lc_state_input(expected) (eFuse-sourced value reaches LCC) ;
+            verify_golden() (feat_ctrl/demote == compute_expected) ; non-vacuous
+            (random override breaks all-1 symmetry) ; no backdoor lc_state force ;
+            CHK-OTP-RETRY (injected physical program failure is retried to success).
+COVERAGE  : E4 (eFuse raw lc_state->OTP, W1S bits[2:1]) ; E11 (OTP lc_state->LCC
+            decode) over 4 states covering SIP+CHIPLET token gates.
+DV-INFRA  : eFuse/OTP responder [BUILT] (supports W1S + programmable lc_state +
+            opt-in program-failure injection) · reset/clock · LCC CSR backdoor read.
+OCAH-REF  : uvm_tests/subsystem/sep_efuse_lcc_lc_state_stitch_test.sv (+ _seq) ;
+            VPLAN.txt.
+EVIDENCE  : VCS strengthen run 20260625_015445__vcs PASS with
+            +sep_efuse_prog_fail_percent=30 and +sep_efuse_prog_fail_seed=3:
+            responder injected two physical program failures at OTP bit 66; the
+            sequence cleared program_status, retried twice, logged
+            CHK-OTP-RETRY PASS, then completed the LC-state walk with scoreboard
+            70 checks (12 value-verified), 0 errors.
+
+
+################################################################################
+#  TIER 2 — TOP-10  (adds #6-10)
+################################################################################
+
+--------------------------------------------------------------------------------
+#6  sep_dma_cpu_contention_test                                  TOP-10 · FW
+--------------------------------------------------------------------------------
+SUMMARY   : CPU and Secure DMA run as competing masters on SRAM simultaneously
+            (CPU does NOT block on DMA DONE) — the only true CPU/DMA contention.
+            Oracle proves overlap + both masters' traffic intact, no DMA error.
+DATA-PATH : DMA SRC(0x10000000) -> [SRAM arbiter] <- DMA DST(0x10004000) ;
+            CPU stores -> CONT region(0x10008000)  (concurrent).
+STEPS     : 1) mark SRAM region side-effect (MPMC) so CPU stores stream + STATUS
+               polling is coherent.
+            2) seed SRC pattern; clear DST/CONT.
+            3) kick 16 KB DMA copy non-blocking (CONTROL go, no wait).
+            4) immediately run CPU store loop to CONT.
+            5) sample DMA STATUS mid-loop; then poll to DONE.
+CHECKERS  : [concurrency] STATUS BUSY set & !DONE mid-loop (proves overlap) ;
+            [no_error] DONE & !ERROR ; STATUS DONE/CHUNK_DONE RW1C clear ;
+            [dma_integ] DST==SRC+i ; [cpu_integ] CONT==CPU_SEED+i.
+COVERAGE  : E8 (CPU vs DMA concurrent at one target — arbiter oracle).
+DV-INFRA  : TCM [BUILT] · SRAM [BUILT] (dual-master arbiter).
+OCAH-REF  : fw/sep/tests/dma_cpu_contention_test/*.c ; DMA_TEST_PLAN.md.
+
+--------------------------------------------------------------------------------
+#7  sep_clock_uvm_wdt_rst_input_reset_path_test                  TOP-10 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : Drives the WDT reset input (wdt_rst_ni) and proves it asserts the CPU
+            reset (sep_cpu_reset_n) while leaving the main SEP reset unaffected —
+            the WDT->reset_ctrl->CPU edge with isolation.
+DATA-PATH : wdt_rst_ni (primary input) -> sep_reset_ctrl -> sep_cpu_reset_n ;
+            main sep_reset_n unaffected.
+STEPS     : 1) release wdt_rst_ni; wait out of reset; check sep_cpu_reset_n==1.
+            2) assert wdt_rst_ni=0; +5 clk; check sep_cpu_reset_n==0.
+            3) check sep_reset_n==1 (isolation).
+            4) release wdt_rst_ni=1; +5 clk; check sep_cpu_reset_n==1.
+CHECKERS  : both transitions observed (1->0, 0->1) ; isolation:
+            sep_cpu_reset_n == sep_reset_n & wdt_rst_ni ; HDL-path guards present.
+COVERAGE  : E9 (WDT reset input -> CPU reset feedback) both edges.
+DV-INFRA  : reset/clock · tb_top wdt_rst_ni_i primary-input drive ·
+            user-approved sep_cpu_reset_n_o XMR probe.
+OCAH-REF  : uvm_tests/subsystem/sep_clock_uvm_wdt_rst_input_reset_path_test.sv ;
+            VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#8  sep_mailbox_plic_test                                        TOP-10 · FW
+--------------------------------------------------------------------------------
+SUMMARY   : Drives the FULL outbound-mailbox interrupt to the CPU: AXIL mailbox
+            FIFO write -> sep_interrupts -> VeeR PIC -> mip.MEIP -> CPU trap ->
+            ISR. FW-driven and REQUIRES the ISR to fire (reaches CPU PIC regs that
+            UVM connectivity tests physically cannot).
+DATA-PATH : AXIL_MAILBOX outbound write -> outbound_interrupt_o[0] -> SEP PIC
+            source -> CPU mip.MEIP -> ISR (meihap claim).
+STEPS     : 1) filter init; enable mailbox clock-gate (CLOCK_GATE_CTRL bit2).
+            2) register ISR on PIC source 1; enable.
+            3) arm mailbox0: clear IRQS, WIRQT=0 (fire on >=1 word), IRQEN=0x7.
+            4) write 1 word (0x4700CAFE) to mailbox FIFO -> IRQ asserts.
+            5) wfi until ISR sets g_mbox_isr_fired; ISR reads meihap, raises WIRQT,
+               W1C-clears IRQS, and proves IRQS/IRQP read back 0.
+CHECKERS  : g_mbox_isr_fired within 200k cyc (else PIC->CPU delivery BROKEN) ;
+            claim-id == 1 ; IRQS/IRQP W1C clear ; ISR count stabilizes (no storm).
+COVERAGE  : completes E10 to the CPU (mailbox -> PIC -> MEIP -> ISR).
+DV-INFRA  : TCM [BUILT] (AXIL mailbox + PIC + meihap are RTL in bare sep).
+OCAH-REF  : fw/sep/tests/sep_mailbox_plic_test/*.c.
+
+--------------------------------------------------------------------------------
+#9  sep_hmac_kmac_cpu_crypto_smoke_test                         TOP-10 · FW
+    (C-dirs: hmac_test, kmac_test)
+--------------------------------------------------------------------------------
+SUMMARY   : Brings the HMAC and KMAC crypto engines in over the real CPU path.
+            HMAC = staged SHA-256 with 3 exact digest checks; KMAC = cSHAKE/L128
+            with SW-entropy-masked state, XOR-unmasked digest smoke.
+DATA-PATH : (HMAC) data -> HMAC_MSG_FIFO -> SHA-256 -> DIGEST[0..7].
+            (KMAC) msg+right_encode -> MSG_FIFO -> Keccak -> STATE share0^share1.
+STEPS     : HMAC: config CFG(sha_en,SHA256); hash_start; FIFO feed w/ fifo_full
+            backpressure; hash_process; poll hmac_done; read+bswap DIGEST.
+            KMAC: poll idle; CFG_SHADOWED(cSHAKE,L128,SW entropy); assert
+            entropy_ready; load 192b seed; PREFIX("KMAC"); START; msg "test"+
+            right_encode(256); PROCESS; read share0^share1; DONE.
+CHECKERS  : HMAC: empty / "abc" / "Hello OTBN." digests match independent SW
+            SHA-256 goldens; no timeout; ERR_CODE==0.
+            KMAC: done; ERR_CODE==0; non-zero unmasked digest (smoke-only exact
+            digest delta documented in the OSS test header).
+COVERAGE  : HMAC + KMAC engine datapath (config->FIFO->process->digest) from the
+            real CPU->fabric->IP path (complements the E3 sideload KATs).
+DV-INFRA  : TCM [BUILT] (HMAC/KMAC are RTL in bare sep; KMAC uses SW entropy).
+OCAH-REF  : fw/sep/tests/hmac_test/*.c ; fw/sep/tests/kmac_test/*.c.
+
+--------------------------------------------------------------------------------
+#10 sep_rom_sanity_test                                          TOP-10 · FW
+    (C-dir: rom_sanity_test)
+--------------------------------------------------------------------------------
+SUMMARY   : Verifies the CPU IFU can fetch and execute instruction sequences from
+            the boot ROM (I/U/R/J-type + NOP sleds + arg passthrough), via indirect
+            JALR calls into preloaded ROM code. The only boot-ROM execution test.
+DATA-PATH : CPU fetch -> IFU -> boot-ROM bus -> ROM MEM (preloaded words) ->
+            decode/execute -> result in a0 across SRAM->ROM->SRAM.
+STEPS     : 1) filter init.
+            2) call 7 ROM functions via function pointers (offsets 0x00..0x50):
+               ADDI=42, ADDI-chain=123, arg+1, LUI/ADDI=0xDEADBEEF, JAL-skip=55,
+               NOP-sled=77, ADD(30,12)=42.
+CHECKERS  : each ROM call returns its expected value; pass iff all 7 match.
+COVERAGE  : CPU IFU -> boot-ROM fetch/execute (control-flow types).
+DV-INFRA  : TCM [BUILT] · boot-ROM [BUILT] (preloaded with the ROM functions).
+OCAH-REF  : fw/sep/tests/rom_sanity_test/*.c ; doc/testplan/rom/ROM_TEST_PLAN.md.
+
+
+################################################################################
+#  TIER 3 — TOP-20  (adds #11-20)
+################################################################################
+
+--------------------------------------------------------------------------------
+#11 sep_km_aes_sideload_kat_test                                 TOP-20 · UVM
+--------------------------------------------------------------------------------
+STATUS    : IN PROGRESS. Frontdoor known-key variant includes updated OCAH P6b;
+            CHK-PUB public KEY_SHARE read-as-zero was added after the kept VCS
+            run, so fresh VCS/Verilator proof is pending before Done.
+            No backdoor. See VPLAN.md Part B #11.
+SUMMARY   : Real rom_main KM firmware boots on real DRBG; host loads a KNOWN 256b
+            key (CMD_KEY_LOAD) and sideloads it to AES. AES is left released
+            pre-noise so its masking PRNG reseeds off real EDN. Consume-proof:
+            public KEY_SHARE0/1 CSRs read zero after sideload; sideload ECB-256
+            ciphertext == independent AES-256-ECB golden(known key) == SW-key
+            ciphertext, and != dummy-key ciphertext. Also a sideload DECRYPT of
+            that ciphertext recovers the original PT (OCAH P6b round-trip).
+DATA-PATH : ESRC->CSRNG->EDN (KM boot + AES masking) -> KM key_transfer ->
+            AES sideload port -> AES ECB-256.
+STEPS     : 1) stage LC_PROD efuse (REAL fuse-sense); park OTBN/KMAC/HMAC, leave
+               AES released; real DRBG/EDN AUTO mode; release KM, wait RESP_KM_READY.
+            2) KM CMD_KEY_LOAD(dest=AES, known 256b distinct-word key).
+            3) AES ECB-256, dummy SW key, reseed, encrypt fixed PT -> ct_dummy
+               (golden-checked == AES(dummy,PT)).
+            4) KM CMD_KEY_TRANSFER(AES); read-back SW_RESET_N for isolation.
+            5) Frontdoor-read public AES KEY_SHARE0/1 CSRs and require zero.
+            6) AES sideload=1, encrypt same PT -> ct_side.
+            7) AES sideload=1, decrypt ct_side -> pt_side_dec; assert PT match.
+            8) AES SW-key=known, encrypt same PT -> ct_swref.
+CHECKERS  : [x] CHK0 real KM firmware boots on real DRBG/EDN entropy.
+            [x] CHK-A CMD_KEY_LOAD stages known 256b AES key, nonzero handle.
+            [x] CHK1-CHK4 strict DRBG golden with sufficient evidence, mismatch=0.
+            [x] CHK5_km and CHK5_aes observe real entropy-consumer beats.
+            [x] CHK-NEG dummy-key AES ciphertext matches independent AES golden.
+            [x] CHK-B CMD_KEY_TRANSFER(handle,AES) returns rc=0.
+            [x] CHK-ISO only AES released among sideload targets during transfer.
+            [x] CHK-PUB public AES KEY_SHARE0/1 reads zero after sideload.
+            [x] CHK-F ct_side == AES-256-ECB golden(known_key,PT).
+            [x] CHK-G ct_side != ct_dummy.
+            [x] CHK-RT sideload decrypt round-trip returns original PT.
+            [x] CHK-H/I ct_swref == golden AND ct_side == ct_swref.
+            [x] CHK-EOT CSRNG/EDN + AES STATUS alerts clear.
+EVIDENCE  : Verilator kept log
+            `build/runs/20260623_121226__verilator__all/sep_km_aes_sideload_kat_test`:
+            CHK0/CHK-A/CHK-B/CHK-ISO/CHK-PUB/CHK-F/CHK-G/CHK-RT/CHK-H/I PASS;
+            CHK1-4 mismatch=0; CHK5_km=36, CHK5_aes=56 observed beats;
+            AES STATUS clean; TESTS=1 PASS=1 FAIL=0. Full regression PASS:
+            tests=26, elapsed=5394.2s.
+ACCEPTED-DELTA : OCAH's random-key + backdoor SHARE0^SHARE1 reconstruction +
+            key/mask non-degeneracy guards are replaced by the known-key golden
+            value-compare (stronger: proves the exact key flowed). AES-wrapper-
+            internal SHARE0 *mask* non-degeneracy is out of frontdoor scope,
+            covered frontdoor by #4 OTBN KAT CHK-F. Key-bus isolation uses
+            SW_RESET_N read-back (no OSS frontdoor analog of OCAH's AW monitor).
+COVERAGE  : E3 (KM->AES) ; E2 (DRBG->AES masking, dual EDN consumer) ; pre-noise
+            reseed timing.
+DV-INFRA  : KM ROM/SRAM [BUILT] · rom_main KM firmware [BUILT, +km_rom_hex] ·
+            AES golden env/sep_aes_golden.py [BUILT] · AES stimulus
+            seq_lib/sep_aes_seq.py [BUILT] · entropy · AXI VIP.
+OCAH-REF  : uvm_tests/subsystem/sep_km_aes_sideload_kat_test.sv (+ _seq) ;
+            VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#12 sep_km_hmac_sideload_kat_test                                TOP-20 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : Frontdoor known-key variant of OCAH . Real rom_main boots on
+            real DRBG; host loads a KNOWN 256b key (CMD_KEY_LOAD) and sideloads it
+            to HMAC. Public HMAC KEY CSRs read zero after sideload. Consume-proof:
+            engine digest matches independent HMAC-SHA256 golden under OCAH's
+            pinned RTL convention {key_word_rev=1,key_be=1,msg_be=0}, and != dummy.
+DATA-PATH : ESRC->CSRNG->EDN->KM-AXIS -> KM key_transfer -> HMAC sideload
+            (KEY_VALID) -> HMAC keyed SHA-256.
+STEPS     : 1) real DRBG/EDN; KM boot; CMD_KEY_LOAD(dest=HMAC, known 256b key).
+            2) CMD_KEY_TRANSFER(HMAC); read-back SW_RESET_N for isolation.
+            3) Frontdoor-read public HMAC KEY CSRs and require zero.
+            4) HMAC CFG keyed-256; hash_start; feed msg; hash_process; read DIGEST.
+            5) Compare against independent golden under pinned convention and dummy key.
+CHECKERS  : [x] CHK0 real KM firmware boots on real DRBG/EDN entropy.
+            [x] CHK-A CMD_KEY_LOAD stages known 256b HMAC key, nonzero handle.
+            [x] CHK1-CHK4 strict DRBG golden with sufficient evidence, mismatch=0.
+            [x] CHK5_km observes real KM entropy-consumer beats.
+            [x] CHK-ISO only HMAC released among sideload targets during transfer.
+            [x] CHK-B CMD_KEY_TRANSFER(handle,HMAC) returns rc=0.
+            [x] CHK-PUB public HMAC KEY frontdoor reads zero after sideload.
+            [x] CHK-MAC digest == HMAC-SHA256 golden(known_key,msg) under
+                pinned convention {key_word_rev=1,key_be=1,msg_be=0}.
+            [x] CHK-NEG digest != HMAC(dummy).
+            [x] CHK-RW1C HMAC done event observed, W1C-cleared, reads back clear.
+            [x] CHK-ERR ERR_CODE==0 and hmac_err clear.
+            [x] CHK-EOT KM outbound FIFO empty; CSRNG/EDN alerts clear.
+EVIDENCE  : Verilator kept log
+            `build/runs/20260623_121226__verilator__all/sep_km_hmac_sideload_kat_test`:
+            CHK0/CHK-A/CHK-ISO/CHK-B/CHK-PUB/CHK-MAC/CHK-NEG/CHK-RW1C PASS;
+            HMAC STATUS clean with ERR_CODE=0/hmac_err=0; CHK1-4 mismatch=0;
+            CHK5_km=36 observed beats; TESTS=1 PASS=1 FAIL=0. Full regression
+            PASS: tests=26, elapsed=5394.2s.
+COVERAGE  : E3 (KM->HMAC) ; HMAC keyed-MAC absorb+process ; KEY_VALID sideload.
+DV-INFRA  : KM ROM/SRAM [BUILT] · rom_main KM firmware [BUILT, +km_rom_hex] ·
+            HMAC golden env/sep_hmac_golden.py [BUILT] · HMAC stimulus
+            seq_lib/sep_hmac_seq.py [BUILT] · entropy · AXI VIP.
+OCAH-REF  : uvm_tests/subsystem/sep_km_hmac_sideload_kat_test.sv (+ _seq) ;
+            VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#13 sep_km_kmac_sideload_kat_test                                TOP-20 · UVM
+--------------------------------------------------------------------------------
+STATUS    : DONE. Frontdoor known-key variant is Verilator-proven in the full
+            OSS SEP regression. No backdoor.
+SUMMARY   : Real rom_main boots on real DRBG; host loads a KNOWN 256b key
+            (CMD_KEY_LOAD) and sideloads it to KMAC. KMAC runs keyed KMAC-256
+            (cSHAKE, PREFIX="KMAC"). Consume-proof: sideload digest equals the
+            SW-key(known) digest and differs from dummy-key digest. Public
+            KMAC KEY_SHARE0/1 CSRs read zero after sideload. Also proves KMAC
+            consumed real EDN masking entropy.
+DATA-PATH : ESRC->CSRNG->EDN (KM boot/load + KMAC masking) -> KM key_transfer ->
+            KMAC sideload -> KMAC keyed Keccak.
+STEPS     : 1) stage LC_PROD efuse (REAL fuse-sense); park OTBN/AES/HMAC/KMAC;
+               bring up strict real DRBG/EDN with CHK5_km and CHK5_kmac observed.
+            2) KM CMD_KEY_LOAD(dest=KMAC, known 256b distinct-word key).
+            3) Release KMAC; KMAC dummy-key KMAC-256 -> c_dummy.
+            4) Read-back SW_RESET_N for isolation; CMD_KEY_TRANSFER(KMAC).
+            5) Frontdoor-read public KMAC KEY_SHARE0/1 CSRs and require zero.
+            6) KMAC sideload=1 -> a_side ; KMAC SW-key=known -> b_swref.
+CHECKERS  : [x] CHK0 real KM firmware boots on real DRBG/EDN entropy.
+            [x] CHK-A CMD_KEY_LOAD stages known 256b KMAC key, nonzero handle.
+            [x] CHK1-CHK4 strict DRBG golden with sufficient evidence, mismatch=0.
+            [x] CHK5_km and CHK5_kmac observe real entropy-consumer beats.
+            [x] CHK-NEG dummy-key KMAC op completes and provides reference digest.
+            [x] CHK-ISO only KMAC released among sideload targets during transfer.
+            [x] CHK-B CMD_KEY_TRANSFER(handle,KMAC) returns rc=0.
+            [x] CHK-PUB public KMAC KEY_SHARE0/1 reads zero after sideload.
+            [x] CHK-SIDE sideload digest differs from dummy-key digest.
+            [x] CHK-MAC sideload digest equals SW-key digest using known key.
+            [x] CHK-ERR KMAC ERR_CODE==0.
+            [x] CHK-EOT KM outbound FIFO empty; CSRNG/EDN alerts clear.
+EVIDENCE  : Verilator kept log
+            `build/runs/20260623_121226__verilator__all/sep_km_kmac_sideload_kat_test`:
+            CHK0/CHK-A/CHK-NEG/CHK-ISO/CHK-B/CHK-PUB/CHK-SIDE/CHK-MAC PASS;
+            KMAC ERR_CODE=0; CHK1-4 mismatch=0; CHK5_km=36, CHK5_kmac=6
+            observed beats; TESTS=1 PASS=1 FAIL=0. Full regression PASS:
+            tests=26, elapsed=5394.2s.
+ACCEPTED-DELTA : OCAH's random-key + backdoor SHARE0^SHARE1 reconstruction +
+            key/mask non-degeneracy guards are replaced by the known-key
+            frontdoor value control plus sideload-vs-SW consume cross-check.
+            The KMAC-wrapper-internal SHARE0 mask non-degeneracy property is out
+            of frontdoor scope and covered frontdoor by #4 OTBN KAT CHK-F. Key-bus
+            isolation uses SW_RESET_N read-back (no OSS frontdoor analog of OCAH's
+            AW monitor). Like OCAH, no bit-exact KMAC golden is used.
+COVERAGE  : E3 (KM->KMAC) ; E2 (DRBG->KMAC masking) ; cSHAKE PREFIX encode.
+DV-INFRA  : KM ROM/SRAM [BUILT] · rom_main KM firmware [BUILT, +km_rom_hex] ·
+            KMAC stimulus seq_lib/sep_kmac_seq.py [BUILT] · entropy scoreboard
+            (CHK5_kmac observe) · AXI VIP.
+OCAH-REF  : uvm_tests/subsystem/sep_km_kmac_sideload_kat_test.sv (+ _seq) ;
+            VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#14 sep_irq_ip_to_aggregator_test                                TOP-20 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : Drives real CSRNG and EDN INTR_TEST registers and observes the
+            corresponding bits at the SEP interrupt aggregator. This closes the
+            E10 breadth gap that point checks from DMA and mailbox do not cover.
+DATA-PATH : CSRNG/EDN INTR_TEST -> IP intr_o -> sep_interrupts aggregator probe.
+STEPS     : 1) For each covered IRQ, pre-clear INTR_TEST and W1C INTR_STATE.
+            2) Assert the aggregator bit is low before injection.
+            3) Enable INTR_ENABLE and write the real INTR_TEST bit.
+            4) Wait for the matching sep_interrupts bit to assert.
+            5) Clear INTR_TEST + W1C INTR_STATE and wait for deassert.
+CHECKERS  : [x] Each covered CSRNG/EDN interrupt aggregator bit is baseline-low.
+            [x] CSRNG/EDN INTR_ENABLE, INTR_TEST, and W1C INTR_STATE writes succeed.
+            [x] Each real INTR_TEST bit asserts expected sep_interrupts bit.
+            [x] INTR_STATE sets after injection and clears after W1C readback.
+            [x] One-hot isolation: other mapped aggregator bits remain low.
+            [x] Clear sequence deasserts each aggregator bit after W1C clear.
+            [x] Test fails if no interrupt checks run.
+EVIDENCE  : Verilator kept log
+            `build/runs/20260623_121226__verilator__all/sep_irq_ip_to_aggregator_test`:
+            all 6 CSRNG/EDN IRQs propagate to aggregator, one-hot, with RW1C
+            clear; TESTS=1 PASS=1 FAIL=0. Full regression PASS: tests=26,
+            elapsed=5394.2s.
+COVERAGE  : E10 IP-owned interrupt source -> SEP interrupt aggregator, covering
+            six CSRNG/EDN real interrupt paths not proven by force-only glue tests.
+DV-INFRA  : reset/clock · RAL/AXI register access · sep_irq_probe_if equivalent.
+OCAH-REF  : uvm_tests/subsystem/sep_irq_ip_to_aggregator_test.sv (+ _seq) ;
+            VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#15 sep_drbg_real_sink_multi_km_aes_test                         TOP-20 · UVM
+--------------------------------------------------------------------------------
+STATUS    : DONE (Verilator full OSS regression) 2026-06-23.
+            BIT-EXACT per-sink routing, STRONGER than OCAH; see VPLAN.md Part B #15.
+SUMMARY   : One real DRBG/ESRC/EDN feeds TWO real sinks concurrently (true cocotb fork)
+            -- KM AXIS (rom_main boot + CMD_KEY_GENERATE DRBG pulls) and AES native
+            crypto-EDN (ECB-256 reseed+encrypt). Strict CHK1..CHK4 bit-exact anchors the
+            shared DRBG. CHK5 is BIT-EXACT: a new tb_top AXIS1 probe (entropy_muxed_req[1],
+            crypto-leg pre-adapter) lets the scoreboard prove AES post-adapter beat ==
+            AXIS1 word in order (per-sink routing; AES is the sole active crypto sink so
+            the round-robin adapter grants it every word in order). Going beyond OCAH,
+            every AXIS1 word + every KM word is checked as a member of the CHK4 genbits
+            golden multiset (partition proof). KM = bit-exact membership (rom_main order
+            firmware-driven, not order-scored).
+DATA-PATH : ESRC->CSRNG->EDN -> {KM AXIS endpoint ; AXIS1 -> drbg_axis_edn_adapter -> AES}.
+STEPS     : 1) stage LC_PROD efuse (REAL fuse-sense); park OTBN/KMAC/HMAC (KM+AES = sinks;
+               AES left released pre-noise for its masking reseed).
+            2) bring_up_entropy(strict, score_km=membership, score_sinks={aes:golden});
+               wait genbits; start FIFO drain; release KM, wait RESP_KM_READY.
+            3) TRUE FORK: cocotb.start_soon(km_arm: 1 keygen) || (aes_arm: 2 reseed+encrypt);
+               bounded to one CSRNG Generate (~22 < cfg.glen=32) so CHK4 stays bit-exact.
+            4) assert both per-sink beat deltas>0 (CHK-CONCUR); AES block-0 ct==golden; report.
+CHECKERS  : [x] CHK1-CHK4 strict bit-exact DRBG golden, mismatch=0.
+            [x] CHK5_aes BIT-EXACT per-sink routing: each AES beat == next AXIS1 word.
+            [x] CHK5_axis1 crypto-leg AXIS1 words are genbits-golden members.
+            [x] CHK5_km KM AXIS words are genbits-golden members.
+            [x] CHK-AESKAT AES block-0 ct == AES-256-ECB golden.
+            [x] CHK-CONCUR KM and AES beat counts both advance during concurrent fork.
+            [x] CHK-EOT CSRNG/EDN alerts==0; AES STATUS alert bits clear.
+            [x] Test fails on timeout, missing evidence, mismatch, AXIS1 underrun,
+                or genbits-membership miss.
+EVIDENCE  : Verilator kept log
+            `build/runs/20260623_121226__verilator__all/sep_drbg_real_sink_multi_km_aes_test`:
+            CHK-AESKAT PASS; CHK-CONCUR KM 14->36 and AES 8->24; CHK5_km
+            membership 36/36; CHK5_axis1 membership 28/28; CHK5_aes 24/24
+            mismatch=0; CHK1-4 mismatch=0; TESTS=1 PASS=1 FAIL=0. Full
+            regression PASS: tests=26, elapsed=5394.2s.
+ACCEPTED-DELTA : per-sink bit-exact for >1 CONCURRENT crypto sink (AES+KMAC at once) needs
+            OCAH's full per-endpoint arbiter-assignment trace (round-robin reorder; the
+            scoreboard rejects >1 golden crypto sink). KM bit-exact ORDER needs controlled
+            KM firmware (rom_main is firmware-driven). Neither is in #15's KM+AES scope.
+            Consumption bounded < glen to keep the one-Generate-per-seed CHK4 golden exact
+            (a 4-keygen/8-block attempt produced 53>32 and tripped CHK4).
+COVERAGE  : E2 multi-sink (one DRBG -> KM + AES, true fork) ; bit-exact per-sink routing +
+            genbits-anchored partition ; AES engine correctness (block-0 KAT) ; CHK1..CHK4.
+DV-INFRA  : KM ROM/SRAM + rom_main [BUILT] · real ESRC/CSRNG/EDN + CHK1..CHK4 golden [BUILT] ·
+            tb_top AXIS1 probe + scoreboard crypto-golden/membership path [BUILT this test] ·
+            SepAes + sep_aes_golden [BUILT] · AXI VIP. Multi-concurrent-crypto-sink golden
+            (full per-endpoint arbiter-assignment trace) [TODO, follow-on; not needed by TOP-20].
+OCAH-REF  : uvm_tests/drbg/sep_drbg_real_sink_multi_km_aes_test.sv (+ _seq) ;
+            doc/testplan/drbg/DRBG_VPLAN.txt.
+
+--------------------------------------------------------------------------------
+#16 sep_cpu_ifu_lsu_alias_remap_matrix_test                      TOP-20 · FW
+--------------------------------------------------------------------------------
+SUMMARY   : Real EL2 FW-boot test of the CPU-side local alias remap (edge E12):
+            the firmware programs the alias window and proves both the LSU and the
+            IFU u_lsu/u_ifu_local_alias_remap (sep_cpu.sv) remap a 0xD000_xxxx
+            access to physical SRAM 0x1000_xxxx. Verilator merge-gate proven
+            (all --regress 31/31 PASS, 20260624_102154__verilator__all). MUST be
+            cpu mode -- the OSS no_cpu LSU
+            splice is POST-remap, so no_cpu would bypass E12.
+DATA-PATH : CPU IFU/LSU raw req -> u_ifu/u_lsu_local_alias_remap (addr - base,
+            target_base=0) -> fabric -> SEP SRAM (0x1000_0000). Sub-0xC000_0000
+            passes through unchanged.
+STEPS     : 1) program SEP_LOCAL_BASE@0x10A300C8=0xC0000000 +
+               SEP_REGION_SIZE@0x10A300D0=0x40000000 (reset 0x0100_0000 is too
+               small to reach SRAM), read both back.
+            2) LSU write via alias 0xD0000308 -> read direct phys 0x10000308.
+            3) LSU write direct 0x10000310 -> read via alias 0xD0000310.
+            4) write "li a0,42; ret" to SRAM 0x10000000, fence.i, CALL fn-ptr
+               alias 0xD0000000 -> real IFU fetch remaps -> executes -> returns 42.
+            Uses 0xD000_xxxx (above the TCM), NOT OCAH's 0xC000_03xx -- a real CPU
+            access to 0xC000_03xx hits ICCM/TCM and never reaches the fabric remap;
+            OCAH drives 0xC000_03xx on the raw pre-remap VIP port.
+CHECKERS  : CHK-CSR (program+readback) ; CHK-LSU-WR (alias-write -> phys) ;
+            CHK-LSU-RD (phys-write -> alias-read) ; CHK-IFU (alias fetch+execute
+            returns 42). IFU non-vacuity is RTL-guaranteed: the IFU demux runs on
+            the POST-remap address, so 0xD0000000 without a correct remap routes to
+            the err-slave (no execute).
+COVERAGE  : E12 CPU-side IFU + LSU local-alias remap (real datapath).
+DV-INFRA  : TCM [BUILT] · SRAM [BUILT] · alias-remap CSRs (no tb_top change).
+OCAH-REF  : uvm_tests/fabric/sep_fabric_gap_matrix_tests.sv (+ _sequences,
+            run_ifu_lsu_alias / scenario_id=36) ;
+            doc/testplan/fabric/fabric_testplan.md.
+PORT-NOTE : DONE (Verilator merge-gate: all --regress 31/31 PASS,
+            `20260624_102154__verilator__all`; VCS dev `20260624_043831__vcs`,
+            audited). Stronger than OCAH: real IFU fetch+execute through the remap
+            (OCAH drives a synthetic write on the IFU VIP port) + bidirectional LSU.
+            Accepted delta: OCAH's ALIAS_ENTRY0_* (0x10A1_00xx) programs a SEPARATE
+            alias-table remapper (other masters), out of scope for the CPU
+            local-alias-remap. See VPLAN.md Part B.
+
+--------------------------------------------------------------------------------
+#17 sep_efuse_jtag_axil_el2_cpu_mux_test                         TOP-20 · FW
+    (C-dir: sep_efuse_jtag_el2_cpu_mux_test)
+--------------------------------------------------------------------------------
+SUMMARY   : EL2 CPU streams eFuse-MMR traffic (RMA_SIP_TOKEN MMR write/read with a
+            readback value-check) while cocotb concurrently drives the DUT's real
+            SEP-OTP JTAG AXI-Lite port (j_axi_* AxiLiteMaster); both meet at the
+            eFuse interface-controller AXI-Lite mux. Proves CPU+JTAG coexistence
+            (no corruption/starvation) AND the LC-gated JTAG deny. Verilator
+            merge-gate proven (all --regress 31/31 PASS,
+            20260624_102154__verilator__all).
+DATA-PATH : EL2 eFuse MMIO (RMA_SIP_TOKEN_I_1/2) -> eFuse interface-controller
+            u_axi_lite_mux <- JTAG AXI-Lite (axil_sep_otp_jtag), LC-gated by the
+            sensed lc_state (PROD -> shadow denied, MMR allowed).
+STEPS     : 1) real-sense PROD OTP image; efuse_wait_sense_done(); publish CPU_READY.
+            2) EL2 fixed-window loop (256): write pattern to TOKEN_I_1, read back +
+               value-check, write TOKEN_I_2, publish loop counter to scratch-cold[2].
+            3) cocotb (concurrent): 16 JTAG MMR ops (token0 read / token3 write /
+               every-4th MMR-last read) all OKAY.
+            4) JTAG shadow read @0x10930000 DENIED -> DECERR (resp=3) + 0xbadcab1e.
+            5) JTAG MMR read after deny still OKAY (restricted-state allow).
+            6) CPU loop counter advanced across the burst (read scratch_cold_probe_o).
+CHECKERS  : CHK-SENSE ; firmware CPU-MMR readback integrity (256 iters) ; CHK-JTAG-MMR
+            (16 OKAY) ; CHK-JTAG-DENY (DECERR resp=3 AND 0xbadcab1e) ; CHK-JTAG-ALLOW ;
+            CHK-COEXIST (counter advances during burst) ; fw_pass.
+COVERAGE  : eFuse JTAG-vs-CPU mux arbitration (E13-adjacent) + LC-gated JTAG access.
+DV-INFRA  : TCM [BUILT] · eFuse/OTP [BUILT] · tb_top j_axi AXI-Lite master [BUILT] ·
+            sep_base_test.{jtag_axil_op,poll_boot} [BUILT].
+OCAH-REF  : fw/sep/tests/sep_efuse_jtag_el2_cpu_mux_test/*.c ;
+            uvm_tests/efuse/sep_efuse_jtag_axil_el2_cpu_mux_test.sv ;
+            doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md.
+PORT-NOTE : DONE (Verilator merge-gate: all --regress 31/31 PASS,
+            `20260624_102154__verilator__all`; VCS dev `20260624_042111__vcs`,
+            audited). Two OCAH backdoors eliminated: real PROD-sense replaces
+            force_jtag_lc_state (one image proves allow+deny); fixed 256-iter loop +
+            counter-advance replaces uvm_hdl_deposit UVM_DONE. Stronger than OCAH:
+            CPU readback value-checked (OCAH discards it); 16-op MMR burst at
+            restricted PROD; JTAG deny requires the specific DECERR. See VPLAN.md.
+
+--------------------------------------------------------------------------------
+#18 sep_nmi_sanity_test                                          TOP-20 · FW
+    (C-dir: nmi_sanity_test)
+--------------------------------------------------------------------------------
+SUMMARY   : Real EL2 FW-boot test of the NMI mechanism: trampoline alignment,
+            SEP_NMI_VEC default/writeback/sticky-lock, and live NMI delivery from a
+            WDT bark — handler clears+disables the WDT and returns (mret); main
+            reports PASS. Verilator merge-gate proven (all --regress 31/31 PASS,
+            20260624_102154__verilator__all).
+DATA-PATH : WDT bark (sep.sv nmi_int = intr_wdog_timer_bark) -> CPU NMI -> trap to
+            nmi_vec (SEP_NMI_VEC CSR) -> 256B-aligned _nmi_handler trampoline
+            (start.S) -> registered C handler. All internal to bare sep.
+STEPS     : 1) register NMI handler; check trampoline 256B-aligned.
+            2) check SEP_NMI_VEC default 0xC0000100; set vector; lock; verify
+               write-after-lock is rejected.
+            3) WDT: bark=4 (sim; ~1000x-slower clk_wdt_i), bite high, enable; wfi.
+            4) bark fires NMI -> handler clears bark + disables WDT -> mret;
+               main reads back INTR_STATE.bark cleared and WDOG_CTRL==0.
+CHECKERS  : per-checker positive-evidence PASS lines — CHK-ALIGN, CHK-VEC-DEFAULT,
+            CHK-VEC-WRITE, CHK-LOCK (lock=1 + locked write ignored), CHK-WDT-NMI,
+            CHK-WDT-CLEAR (post-NMI INTR_STATE.bark cleared + WDOG_CTRL disabled).
+COVERAGE  : NMI vector/lock CSRs ; WDT-bark -> NMI -> CPU delivery + clear contract.
+DV-INFRA  : TCM [BUILT] · NMI trampoline (start.S) + sep_nmi.h/sep_wdt.h [BUILT].
+OCAH-REF  : fw/sep/tests/nmi_sanity_test/*.c ; common/nmi.h ; common/crt0.cpp.s.
+PORT-NOTE : DONE (Verilator merge-gate: all --regress 31/31 PASS,
+            `20260624_102154__verilator__all`; VCS dev `20260624_033108__vcs`,
+            audited). Deltas: bark threshold 4 vs OCAH 100 (sim, threshold-indep);
+            PASS-by-main-return vs OCAH in-handler test_pass(). See VPLAN.md Part B.
+
+--------------------------------------------------------------------------------
+#19 sep_reset_wdt_sanity_test                                    TOP-20 · FW
+    (C-dirs: sep_reset_ctrl_csr_test, wdt_sanity_test)
+--------------------------------------------------------------------------------
+SUMMARY   : reset_ctrl: SW_RESET_N drives per-IP resets (OTBN/AES/HMAC/KMAC
+            released at 0x1E, KM held); pulse each, prove the probe reg clears; bad
+            address -> NMI. WDT: bark->NMI, pet stops count, disable freezes count,
+            re-enable -> bite reset.
+DATA-PATH : SW_RESET_N -> per-IP sw_rst_n -> IP probe regs ; WDOG_COUNT ->
+            bark/bite compare -> NMI / reset.
+STEPS     : reset_ctrl: check SW_RESET_N==0x1E; per IP {write probe; pulse reset;
+            verify probe cleared}; bad write + bad read of the unmapped gap (settle
+            between them) -> expect 2 D-bus-error NMIs.
+            WDT: bark=4/bite=10 (sim), enable; on 1st bark NMI {handler clears bark
+            + disables}; main reads INTR_STATE.bark cleared + WDOG_CTRL==0, verifies
+            count!=0, pet->0, +500cyc still 0; re-enable -> 2nd bark NMI -> main
+            returns PASS, WDT runs on to BITE (cocotb watches wdt_timer_rst_req_o).
+CHECKERS  : SW_RESET_N default 0x1E ; each IP probe clears after reset pulse ;
+            bad-addr NMI count==2 ; CHK-WDT-NMI / CHK-WDT-CLEAR (post-NMI bark
+            cleared + WDOG_CTRL disabled) / CHK-WDT-PET / CHK-WDT-REBARK ; cocotb
+            CHK-BITE (wdt_timer_rst_req_o asserts).
+COVERAGE  : reset_ctrl per-IP SW reset wires + bad-addr NMI ; WDT bark/bite/pet.
+DV-INFRA  : TCM [BUILT] · sep_nmi.h/sep_wdt.h/sep_reset.h [BUILT] · tb_top
+            wdt_timer_rst_req_o output [BUILT].
+OCAH-REF  : fw/sep/tests/sep_reset_ctrl_csr_test/*.c ;
+            fw/sep/tests/wdt_sanity_test/*.c ; doc/testplan/wdt/wdt_testplan.md.
+PORT-NOTE : DONE (Verilator merge-gate: all --regress 31/31 PASS,
+            `20260624_102154__verilator__all`; VCS dev `20260624_033201__vcs`,
+            audited). Combined into one EL2 boot; unified NMI handler (WDT-bark vs
+            D-bus-error by bark bit). Deltas: small WDT thresholds (sim); settle
+            between the bad store and bad load (VeeR imprecise store-error NMI else
+            coalesces to 1); BITE via real wdt_timer_rst_req_o pin. See VPLAN.md.
+
+--------------------------------------------------------------------------------
+#20 sep_lcc_uvm_inbound_filter_gating_test                       TOP-20 · UVM
+--------------------------------------------------------------------------------
+SUMMARY   : Host drives a no-CPU LCC/security-boundary scenario: real-sense a PROD
+            OTP image, read FEAT_CTRL over the CPU-LSU control bus, write DEMOTE_1,
+            and prove feat_ctrl.sep_debug gates the real SMN-inbound external AXI
+            path. Verilator merge-gate proven (all --regress 31/31 PASS,
+            20260624_102154__verilator__all).
+DATA-PATH : eFuse LC_STATE/SIP_DIS/SYS_DIS -> LCC FEAT_CTRL[0] sep_debug ->
+            sep.sv inbound_filter_skip_i -> u_inbound_filter -> real m_axi
+            external read allowed/blocked at the LCC FEAT_CTRL probe address.
+STEPS     : 1) Real-sense OTP LC_STATE=PROD with pinned SIP_DIS/SYS_DIS.
+            2) Control-bus exact 64-bit FEAT_CTRL golden check proves
+               PROD sep_debug=0.
+            3) External m_axi FEAT_CTRL read is blocked with specific DECERR.
+            4) Control-bus DEMOTE_1 write/readback flips PROD -> PROD_DBG_1.
+            5) Control-bus exact 64-bit FEAT_CTRL golden check proves
+               PROD_DBG_1 sep_debug=1.
+            6) External m_axi reads BOTH FEAT_CTRL halves OKAY and matches the
+               distinctive golden value 0xf0f00000_ffffffff.
+CHECKERS  : CHK-PROD-FEAT FEAT_CTRL==0xf000000000000000 and sep_debug=0;
+            CHK-PROD-BLOCK external m_axi read returns DECERR resp=3, not a
+            timeout; CHK-DEMOTE DEMOTE_1 readback==1; CHK-DBG-FEAT
+            FEAT_CTRL==0xf0f00000ffffffff and sep_debug=1; CHK-DBG-ALLOW
+            external m_axi reads FEAT_CTRL==0xf0f00000_ffffffff (hi word
+            distinctive); CHK-IDENTITY/CHK-NONVAC prove blocked@0 and allowed@1;
+            scoreboard summary must show nonzero checks and 0 errors.
+COVERAGE  : LCC security state -> inbound-filter bypass gating on the real
+            external SMN-inbound port, covering the filter polarity/security path
+            that address-map smoke does not prove.
+DV-INFRA  : Real eFuse responder; CPU-LSU s_axi control agent; SMN-inbound m_axi
+            external agent; LCC golden model; no CPU firmware.
+OCAH-REF  : uvm_tests/lcc/sep_lcc_uvm_inbound_filter_gating_test.sv (+ _seq) ;
+            doc/testplan/lcc/LCC_VPLAN.txt. Stronger than OCAH: exact 64-bit
+            FEAT_CTRL golden checks replace OCAH's bit-0-only check; frontdoor
+            FEAT_CTRL[0] identity replaces OCAH backdoor filter_skip_i read; the
+            allowed external read must return the distinctive LCC FEAT_CTRL value.
+EVIDENCE  : VCS `build/runs/20260624_022200__vcs__sep_lcc_uvm_inbound_filter_gating_test`
+            PASS: real-sensed OTP LC_STATE=PROD, eFuse compare 0 errors,
+            CHK-PROD-FEAT/-BLOCK/-DEMOTE/-DBG-FEAT/-DBG-ALLOW/-IDENTITY/-NONVAC,
+            scoreboard 6 checks (5 value-verified) 0 errors, TESTS=1 PASS=1
+            FAIL=0 SKIP=0. Verilator merge-gate: all --regress 31/31 PASS, run
+            20260624_102154__verilator__all.
+
+================================================================================
+END
+================================================================================

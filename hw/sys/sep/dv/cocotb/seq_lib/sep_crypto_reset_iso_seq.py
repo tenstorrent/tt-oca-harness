@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Per-IP SW-reset control (sep_crypto_per_ip_reset_isolation_test).
+
+Drives the SEP reset_ctrl SW_RESET_N register over the CPU-LSU master (no_cpu) to
+pulse one crypto engine's per-IP reset while a sibling holds a live, golden-checked
+crypto RESULT in its datapath output registers. The crypto operations themselves
+(SHA-256 on HMAC, ECB-256 on AES) run on the proven SepHmac / SepAes drivers; this
+module only owns the reset-control register so the held-result observation is a
+real crypto-datapath state, not a poked status bit.
+
+SW_RESET_N @ 0x1080_3000 (sep_reset_ctrl) is RW and ACTIVE-LOW: bit N high = IP N
+released, low = held in reset. Reset default 0x1E (km[0] held, otbn[1]/aes[2]/
+hmac[3]/kmac[4] released). A reset pulse for IP N = write (0x1E & ~(1<<N)) to
+assert, settle, then 0x1E to release -- always preserving km held (bit0=0) and the
+other engines released. The pulsed engine's whole wrapper rst_ni drops (sep_crypto.sv
+hmac_wrapper.rst_ni/aes.rst_ni fed from sep_sw_rst_no.<ip>), clearing its held result;
+a sibling's wrapper rst_ni is untouched, so its held result survives -- the isolation.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+
+# sep_reset_ctrl SW_RESET_N (active-low per-IP resets).
+SW_RESET_N = 0x1080_3000
+SW_RESET_N_DEFAULT = 0x1E            # km[0] held, otbn/aes/hmac/kmac released
+RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC = 0, 1, 2, 3, 4
+
+
+@dataclass(frozen=True)
+class CryptoEngine:
+    """One crypto engine: display name + its SW_RESET_N bit."""
+    name: str
+    rst_bit: int
+
+
+# Representative A/B pair: two independently-resettable crypto engines that each
+# hold a live golden-checked result (HMAC DIGEST, AES DATA_OUT).
+ENG_HMAC = CryptoEngine("hmac", RST_HMAC)
+ENG_AES = CryptoEngine("aes", RST_AES)
+
+
+class SepCryptoResetIso(SepAxiRegDriver):
+    """Direct-AXI driver for the per-IP SW_RESET_N reset-control register."""
+
+    _DRIVER_TAG = "RSTISO"
+
+    async def assert_reset(self, rst_bit: int) -> None:
+        """Hold IP ``rst_bit`` in reset (active-low), preserving km held + others released."""
+        await self._wr(SW_RESET_N, SW_RESET_N_DEFAULT & ~(1 << rst_bit) & 0xFFFF_FFFF)
+
+    async def release_resets(self) -> None:
+        """Restore the reset default (all crypto released, km held)."""
+        await self._wr(SW_RESET_N, SW_RESET_N_DEFAULT)
+
+    async def read_back(self) -> int:
+        """Read the live SW_RESET_N value (non-vacuity / evidence)."""
+        return await self._rd(SW_RESET_N)

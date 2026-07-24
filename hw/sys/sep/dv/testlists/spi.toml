@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Daily regression policy: run `./run.sh no_cpu --regress ...` and
+# `./run.sh cpu --regress ...` separately. Tests with run_modes=["no_cpu"]
+# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
+# full-CPU default model.
+
+[[tests]]
+name = "sep_spi_flash_jedec_smoke_test"
+module = "spi.sep_spi_flash_jedec_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "spi"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OT SPI flash command breadth (OCAH spi_ot flash_write_read + sector_erase).
+# cpu-firmware port: the OT spi_host multi-command flash sequence runs from the
+# CPU, like every OCAH spi_ot flash test. [RAND-REP] -- the cocotb test seeds
+# legal flash address/word-count/data and patches them into the firmware param
+# block per run (+spi1_directed pins the directed defaults). WREN/PROGRAM/READ +
+# ERASE against the OcahSpiFlash BFM, value-checked. dual/quad opcode+lane path
+# deferred (BFM single-bit, no 0x3B/0x6B). cpu; +skip_fuse_sense.
+name = "sep_spi_ot_flash_cmd_rand_test"
+module = "spi.sep_spi_ot_flash_cmd_rand_test"
+firmware = "spi_ot_flash_cmd_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["boot", "cpu", "spi", "flash", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OT SPI host control-plane breadth: CSR reset/R-W, INTR test+W1C, ERROR_STATUS
+# W1C (underflow/cmdinval/csidinval), TX watermark, SPIEN enable-gate. [RAND-REP]
+# folds the OCAH OT-SPI host-control directed family. no_cpu (AXI drives the host
+# CSRs); pure control plane, no flash BFM. DISTINCT from SPI flash command breadth (flash datapath).
+name = "sep_spi_ot_host_csr_irq_rand_test"
+module = "spi.sep_spi_ot_host_csr_irq_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["spi", "csr", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_spi_ot_dma_rx_test"
+module = "spi.sep_spi_ot_dma_rx_test"
+firmware = "spi_ot_dma_rx_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "spi", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# OT SPI DMA-TX: SRAM -> Secure DMA (HW handshake on TX watermark) -> SPI TXFIFO
+# -> flash. The TX complement of #3 sep_spi_ot_dma_rx. [RAND-REP] seeds the flash
+# address/data (patched into the firmware param block). DMA-feeds a real flash
+# PAGE PROGRAM stream + reads it back; cocotb BFM golden cross-checks. cpu-fw.
+name = "sep_spi_ot_dma_tx_test"
+module = "spi.sep_spi_ot_dma_tx_test"
+firmware = "spi_ot_dma_tx_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["boot", "cpu", "spi", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Daily regression policy: run `./run.sh no_cpu --regress ...` and
+# `./run.sh cpu --regress ...` separately. Tests with run_modes=["no_cpu"]
+# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
+# full-CPU default model.
+
+[[tests]]
+name = "sep_otbn_mem_smoke_test"
+module = "otbn.sep_otbn_mem_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "otbn", "crypto", "memory"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_esrc_e2e_smoke_test"
+module = "system.sep_esrc_e2e_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
+
+[[tests]]
+name = "sep_hmac_kmac_cpu_crypto_smoke_test"
+module = "cpu.sep_hmac_kmac_cpu_crypto_smoke_test"
+firmware = "hmac_kmac_smoke_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "crypto", "hmac", "kmac", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk
+# over SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256; SepKmacCfg
+# is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
+# from EDN, so entropy bring-up is required (+esrc_noise_force); +skip_fuse_sense.
+name = "sep_kmac_mode_strength_rand_test"
+module = "crypto.sep_kmac_mode_strength_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "kmac", "sha3", "rand-rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Standalone AES mode x key-size breadth (RAND-REP). no_cpu direct-AXI walk over
+# {ECB,CBC,CTR} x {128,192,256}; SepAesCfg is SSOT for CTRL+key+IV+data and
+# the golden. AES masking reseeds from crypto-EDN, so entropy bring-up is required
+# (+esrc_noise_force for deterministic ESRC noise); +skip_fuse_sense (no OTP need).
+name = "sep_aes_mode_keysize_rand_test"
+module = "crypto.sep_aes_mode_keysize_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand-rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Standalone HMAC SHA-variant breadth (RAND-REP). no_cpu direct-AXI walk over
+# {SHA256,384,512} x {keyed,plain} x legal key-length; SepHmacCfg is the SSOT
+# for CFG+key and the golden. Required cells walked deterministically in one run;
+# seed randomizes key+message. +skip_fuse_sense (HMAC needs no OTP/entropy).
+name = "sep_hmac_sha_variant_rand_test"
+module = "crypto.sep_hmac_sha_variant_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "hmac", "rand-rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# DRBG real-sink multi-consumer KM + AES concurrent (OCAH P3.7 / TOP-20 #15, edge
+# E2 multi-rand): one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
+# (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
+# (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
+# shared DRBG is correct; CHK5_km + CHK5_aes observed (>=1 beat each) prove
+# concurrent multi-sink consumption. Per-sink bit-exact (which word to which sink)
+# is the documented delta (needs the OCAH AXIS1 pre-adapter tap + arbiter trace,
+# not built; sep_drbg_scoreboard raises NotImplementedError for crypto golden).
+# no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
+# oscillators under Verilator. rom_main.rom.parhex from tracked source.
+name = "sep_drbg_real_sink_multi_km_aes_test"
+module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
+seed = 1
+timeout_sec = 7200
+tags = ["drbg", "entropy", "crypto", "multi-sink", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# Crypto-EDN arbiter contention: AES (crypto_edn[0]) + KMAC (crypto_edn[1]) BOTH
+# pull the shared crypto-EDN leg concurrently off one verified DRBG stream.
+# Two real crypto clients contend the round-robin arbiter (distinct from the KM+AES
+# test above: there AES was the sole crypto client + KM was the second leg). No KM
+# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + per-sink
+# MEMBERSHIP (each AES and each KMAC word is a genbits-golden word) + both-beats +
+# both-KAT under contention. +esrc_noise_force (masking entropy) + +skip_fuse_sense.
+name = "sep_crypto_edn_multisink_arbitration_test"
+module = "crypto.sep_crypto_edn_multisink_arbitration_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["drbg", "entropy", "crypto", "multi-sink", "aes", "kmac", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]

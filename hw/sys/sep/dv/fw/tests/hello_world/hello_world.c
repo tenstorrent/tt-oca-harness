@@ -1,19 +1,15 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+// SPDX-License-Identifier: Apache-2.0
+//
+// SEP OSS hello-world boot firmware: open the outbound filter, print a banner
+// over the testbench mailbox, and return PASS. Fully self-contained — uses only
+// the OSS drivers (no libc, no internal headers).
 
-#include <stdio.h>
-#include "test_completion.h"
+#include "sep_mailbox.h"
 #include "sep_outbound_filter.h"
 
-int main(void) {
-    // Initialize outbound filter to allow testpass mailbox access
+int main(void)
+{
     sep_outbound_filter_init();
-
-    printf("Hello World from OCH SEP!\n");
-    // Require FW to explicitly signal PASS to the testbench/cocotb.
-    test_pass(0);
-    // Keep CPU alive after signaling completion.
-    while (1) {
-        __asm__("wfi");
-    }
+    sep_mbx_puts("Hello from SEP OSS firmware!\n");
+    return 0;  // start.S writes the PASS completion magic on a 0 return
 }
