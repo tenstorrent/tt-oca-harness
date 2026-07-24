@@ -16,13 +16,13 @@
 #define SMU_REF_CLK_FREQ_MHZ 100u
 
 // PLL register offsets relative to SMC base.
-#define PLL_CGM_0_STATUS_OFFSET     0x3000u
-#define PLL_CGM_2_STATUS_OFFSET     0x3008u
-#define PLL_AWM_0_STATUS_OFFSET     0x3014u
-#define PLL_AG_MUX_SELECT_OFFSET    0x3020u
+#define PLL_CGM_0_STATUS_OFFSET 0x3000u
+#define PLL_CGM_2_STATUS_OFFSET 0x3008u
+#define PLL_AWM_0_STATUS_OFFSET 0x3014u
+#define PLL_AG_MUX_SELECT_OFFSET 0x3020u
 
 // CGM_STATUS.lock_detect is bit 0.
-#define PLL_CGM_LOCK_DETECT_MASK    0x1u
+#define PLL_CGM_LOCK_DETECT_MASK 0x1u
 
 // Initialize PLL based on strap and fuse configuration.
 //

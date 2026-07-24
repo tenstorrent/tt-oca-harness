@@ -22,21 +22,20 @@
 #include "errors.h"
 
 // AES operation modes.
-#define AES_OP_ENCRYPT   0x1u
-#define AES_OP_DECRYPT   0x2u
-#define AES_MODE_ECB     0x01u
-#define AES_MODE_CBC     0x02u
-#define AES_KEYLEN_128   0x1u
+#define AES_OP_ENCRYPT 0x1u
+#define AES_OP_DECRYPT 0x2u
+#define AES_MODE_ECB 0x01u
+#define AES_MODE_CBC 0x02u
+#define AES_KEYLEN_128 0x1u
 
 // Timeout for AES status polling.
-#define AES_TIMEOUT  1000000
+#define AES_TIMEOUT 1000000
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-static int wait_idle(void)
-{
+static int wait_idle(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         AES_STATUS_reg_u s;
         s.val = mmio_read32(AES_STATUS_REG_ADDR);
@@ -45,8 +44,7 @@ static int wait_idle(void)
     return -1;
 }
 
-static int wait_input_ready(void)
-{
+static int wait_input_ready(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         AES_STATUS_reg_u s;
         s.val = mmio_read32(AES_STATUS_REG_ADDR);
@@ -55,8 +53,7 @@ static int wait_input_ready(void)
     return -1;
 }
 
-static int wait_output_valid(void)
-{
+static int wait_output_valid(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         AES_STATUS_reg_u s;
         s.val = mmio_read32(AES_STATUS_REG_ADDR);
@@ -66,20 +63,16 @@ static int wait_output_valid(void)
 }
 
 // Write CTRL_SHADOWED (must be written twice for shadowed register).
-static void write_ctrl(uint32_t val)
-{
+static void write_ctrl(uint32_t val) {
     mmio_write32(AES_CTRL_SHADOWED_REG_ADDR, val);
     mmio_write32(AES_CTRL_SHADOWED_REG_ADDR, val);
 }
 
-static void write_key_128(const uint8_t *key)
-{
+static void write_key_128(const uint8_t *key) {
     // KEY_SHARE0: actual key in first 4 words, zero-fill rest.
     for (int i = 0; i < 4; ++i) {
-        uint32_t w = (uint32_t)key[i * 4]          |
-                     ((uint32_t)key[i * 4 + 1] << 8)  |
-                     ((uint32_t)key[i * 4 + 2] << 16) |
-                     ((uint32_t)key[i * 4 + 3] << 24);
+        uint32_t w = (uint32_t)key[i * 4] | ((uint32_t)key[i * 4 + 1] << 8) |
+                     ((uint32_t)key[i * 4 + 2] << 16) | ((uint32_t)key[i * 4 + 3] << 24);
         mmio_write32(AES_KEY_SHARE0_0__REG_ADDR + (uint32_t)(i * 4), w);
     }
     for (int i = 4; i < 8; ++i) {
@@ -92,41 +85,33 @@ static void write_key_128(const uint8_t *key)
     }
 }
 
-static void write_iv(const uint8_t *iv)
-{
+static void write_iv(const uint8_t *iv) {
     for (int i = 0; i < 4; ++i) {
-        uint32_t w = (uint32_t)iv[i * 4]          |
-                     ((uint32_t)iv[i * 4 + 1] << 8)  |
-                     ((uint32_t)iv[i * 4 + 2] << 16) |
-                     ((uint32_t)iv[i * 4 + 3] << 24);
+        uint32_t w = (uint32_t)iv[i * 4] | ((uint32_t)iv[i * 4 + 1] << 8) |
+                     ((uint32_t)iv[i * 4 + 2] << 16) | ((uint32_t)iv[i * 4 + 3] << 24);
         mmio_write32(AES_IV_0__REG_ADDR + (uint32_t)(i * 4), w);
     }
 }
 
-static void write_data_in(const uint8_t *in)
-{
+static void write_data_in(const uint8_t *in) {
     for (int i = 0; i < 4; ++i) {
-        uint32_t w = (uint32_t)in[i * 4]          |
-                     ((uint32_t)in[i * 4 + 1] << 8)  |
-                     ((uint32_t)in[i * 4 + 2] << 16) |
-                     ((uint32_t)in[i * 4 + 3] << 24);
+        uint32_t w = (uint32_t)in[i * 4] | ((uint32_t)in[i * 4 + 1] << 8) |
+                     ((uint32_t)in[i * 4 + 2] << 16) | ((uint32_t)in[i * 4 + 3] << 24);
         mmio_write32(AES_DATA_IN_0__REG_ADDR + (uint32_t)(i * 4), w);
     }
 }
 
-static void read_data_out(uint8_t *out)
-{
+static void read_data_out(uint8_t *out) {
     for (int i = 0; i < 4; ++i) {
         uint32_t w = mmio_read32(AES_DATA_OUT_0__REG_ADDR + (uint32_t)(i * 4));
-        out[i * 4]     = (uint8_t)(w);
+        out[i * 4] = (uint8_t)(w);
         out[i * 4 + 1] = (uint8_t)(w >> 8);
         out[i * 4 + 2] = (uint8_t)(w >> 16);
         out[i * 4 + 3] = (uint8_t)(w >> 24);
     }
 }
 
-static void aes_cleanup(void)
-{
+static void aes_cleanup(void) {
     AES_CTRL_SHADOWED_reg_u ctrl = {.val = 0};
     ctrl.f.operation = AES_OP_DECRYPT;
     ctrl.f.mode = AES_MODE_ECB;
@@ -144,8 +129,7 @@ static void aes_cleanup(void)
 // Public API
 // ---------------------------------------------------------------------------
 
-int aes_init(void)
-{
+int aes_init(void) {
     // Release AES from SW reset.
     uint32_t rst = mmio_read32(SEP_RESET_CTRL_SW_RESET_N_REG_ADDR);
     rst |= SEP_RESET_CTRL_SW_RESET_N_AES_SW_RST_N_MASK;
@@ -161,11 +145,9 @@ int aes_init(void)
     return 0;
 }
 
-int aes128cbc_decrypt(uint8_t *data, uint32_t len,
-                      const uint8_t *key, const uint8_t *iv)
-{
+int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uint8_t *iv) {
     if (len == 0u || (len & 0xFu) != 0u) {
-        return -1;  // Must be non-zero and multiple of 16.
+        return -1; // Must be non-zero and multiple of 16.
     }
 
     // Configure: DEC, CBC, AES-128, automatic.
@@ -195,7 +177,7 @@ int aes128cbc_decrypt(uint8_t *data, uint32_t len,
 
         if (wait_output_valid() != 0) goto fail;
 
-        read_data_out(blk);  // Decrypt in-place.
+        read_data_out(blk); // Decrypt in-place.
     }
 
     aes_cleanup();

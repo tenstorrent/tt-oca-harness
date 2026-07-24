@@ -31,14 +31,14 @@
 #include "sep_mailbox.h"
 
 // Boot-ROM base (SEP_BOOT_ROM_MEM_BASE_ADDR); ROM function entry byte offsets.
-#define ROM_BASE   0x10040000u
-#define ROM_FUNC0  (ROM_BASE + 0x00)
-#define ROM_FUNC1  (ROM_BASE + 0x08)
-#define ROM_FUNC2  (ROM_BASE + 0x14)
-#define ROM_FUNC3  (ROM_BASE + 0x1C)
-#define ROM_FUNC4  (ROM_BASE + 0x28)
-#define ROM_FUNC5  (ROM_BASE + 0x38)
-#define ROM_FUNC6  (ROM_BASE + 0x50)
+#define ROM_BASE 0x10040000u
+#define ROM_FUNC0 (ROM_BASE + 0x00)
+#define ROM_FUNC1 (ROM_BASE + 0x08)
+#define ROM_FUNC2 (ROM_BASE + 0x14)
+#define ROM_FUNC3 (ROM_BASE + 0x1C)
+#define ROM_FUNC4 (ROM_BASE + 0x28)
+#define ROM_FUNC5 (ROM_BASE + 0x38)
+#define ROM_FUNC6 (ROM_BASE + 0x50)
 
 typedef int32_t (*func_void_t)(void);
 typedef int32_t (*func_i32_t)(int32_t);
@@ -46,8 +46,7 @@ typedef int32_t (*func_i32_i32_t)(int32_t, int32_t);
 
 // Call a ROM function, compare its return value to the golden, and log a
 // pass/fail line naming the contract and the observed value.
-static int check(const char *name, int32_t got, int32_t want)
-{
+static int check(const char *name, int32_t got, int32_t want) {
     sep_mbx_puts(got == want ? "[PASS] " : "[FAIL] ");
     sep_mbx_puts(name);
     sep_mbx_puts(" got=");
@@ -58,28 +57,20 @@ static int check(const char *name, int32_t got, int32_t want)
     return got == want ? 0 : 1;
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP ROM IFU sanity test\n");
 
     // Each call drives the IFU to fetch the function body from boot-ROM.
-    errors += check("IFU simple return (I-type)",
-                    ((func_void_t)ROM_FUNC0)(), 42);
-    errors += check("IFU multi-instruction",
-                    ((func_void_t)ROM_FUNC1)(), 123);
-    errors += check("IFU arg passthrough",
-                    ((func_i32_t)ROM_FUNC2)(99), 100);
-    errors += check("IFU LUI+ADDI (U-type)",
-                    ((func_void_t)ROM_FUNC3)(), (int32_t)0xDEADBEEF);
-    errors += check("IFU jump (J-type JAL)",
-                    ((func_void_t)ROM_FUNC4)(), 55);
-    errors += check("IFU NOP sled",
-                    ((func_void_t)ROM_FUNC5)(), 77);
-    errors += check("IFU two-arg add (R-type)",
-                    ((func_i32_i32_t)ROM_FUNC6)(30, 12), 42);
+    errors += check("IFU simple return (I-type)", ((func_void_t)ROM_FUNC0)(), 42);
+    errors += check("IFU multi-instruction", ((func_void_t)ROM_FUNC1)(), 123);
+    errors += check("IFU arg passthrough", ((func_i32_t)ROM_FUNC2)(99), 100);
+    errors += check("IFU LUI+ADDI (U-type)", ((func_void_t)ROM_FUNC3)(), (int32_t)0xDEADBEEF);
+    errors += check("IFU jump (J-type JAL)", ((func_void_t)ROM_FUNC4)(), 55);
+    errors += check("IFU NOP sled", ((func_void_t)ROM_FUNC5)(), 77);
+    errors += check("IFU two-arg add (R-type)", ((func_i32_i32_t)ROM_FUNC6)(30, 12), 42);
 
     if (errors == 0) {
         sep_mbx_puts("PASS: 7/7 boot-ROM IFU functions fetched+executed "

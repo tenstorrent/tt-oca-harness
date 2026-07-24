@@ -10,11 +10,11 @@
 #include <stdint.h>
 
 // OTBN status/error codes.
-#define OTBN_OK              0
-#define OTBN_ERR_TIMEOUT    -1
-#define OTBN_ERR_EXEC       -2
-#define OTBN_ERR_CRC        -3
-#define OTBN_ERR_NOT_IDLE   -4
+#define OTBN_OK 0
+#define OTBN_ERR_TIMEOUT -1
+#define OTBN_ERR_EXEC -2
+#define OTBN_ERR_CRC -3
+#define OTBN_ERR_NOT_IDLE -4
 
 // Initialize OTBN: release from SW reset, zero DMEM.
 // Returns OTBN_OK on success.
@@ -25,12 +25,10 @@ int otbn_init(void);
 int otbn_load_rsa_app(void);
 
 // Write word_count 32-bit words to OTBN DMEM starting at byte offset.
-void otbn_dmem_write(uint32_t byte_offset, const uint32_t *data,
-                     uint32_t word_count);
+void otbn_dmem_write(uint32_t byte_offset, const uint32_t *data, uint32_t word_count);
 
 // Read word_count 32-bit words from OTBN DMEM starting at byte offset.
-void otbn_dmem_read(uint32_t byte_offset, uint32_t *data,
-                    uint32_t word_count);
+void otbn_dmem_read(uint32_t byte_offset, uint32_t *data, uint32_t word_count);
 
 // Execute the loaded OTBN program and wait for completion.
 // Returns OTBN_OK on success, OTBN_ERR_TIMEOUT or OTBN_ERR_EXEC on failure.

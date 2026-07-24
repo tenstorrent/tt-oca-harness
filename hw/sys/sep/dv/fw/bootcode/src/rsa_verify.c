@@ -13,10 +13,7 @@
 
 #include "rsa_verify.h"
 
-int rsa_3072_verify(const uint8_t *digest,
-                    const uint8_t *signature,
-                    const uint8_t *modulus)
-{
+int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8_t *modulus) {
     (void)digest;
     (void)signature;
     (void)modulus;

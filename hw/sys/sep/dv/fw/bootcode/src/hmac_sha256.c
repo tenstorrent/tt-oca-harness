@@ -15,7 +15,7 @@
 
 // Hardware timeout: generous limit for SHA-256 block processing.
 // Each 64-byte block takes ~80 cycles; 1M iterations covers any realistic message.
-#define HMAC_TIMEOUT  1000000
+#define HMAC_TIMEOUT 1000000
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -23,8 +23,7 @@
 
 // Wait for hmac_done interrupt or hmac_idle status.
 // Returns 0 on success, -1 on timeout.
-static int wait_for_completion(void)
-{
+static int wait_for_completion(void) {
     for (int i = 0; i < HMAC_TIMEOUT; ++i) {
         HMAC_INTR_STATE_reg_u intr;
         intr.val = mmio_read32(HMAC_INTR_STATE_REG_ADDR);
@@ -46,8 +45,7 @@ static int wait_for_completion(void)
 
 // Feed data into the MSG_FIFO.
 // Uses 32-bit word writes for aligned bulk, byte writes for head/tail.
-static void fifo_feed(const uint8_t *data, uint32_t len)
-{
+static void fifo_feed(const uint8_t *data, uint32_t len) {
     uint32_t i = 0;
 
     // Byte-by-byte until 4-byte aligned (or done).
@@ -71,7 +69,7 @@ static void fifo_feed(const uint8_t *data, uint32_t len)
         uint32_t word;
         // Memcpy-equivalent for strict-aliasing safety.
         const uint8_t *p = data + i;
-        word  = (uint32_t)p[0];
+        word = (uint32_t)p[0];
         word |= (uint32_t)p[1] << 8;
         word |= (uint32_t)p[2] << 16;
         word |= (uint32_t)p[3] << 24;
@@ -94,18 +92,17 @@ static void fifo_feed(const uint8_t *data, uint32_t len)
 // Public API
 // ---------------------------------------------------------------------------
 
-int sha256(const uint8_t *data, uint32_t len, uint8_t *digest)
-{
+int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
     // 1. Clear any pending interrupt state.
-    mmio_write32(HMAC_INTR_STATE_REG_ADDR, 0x7u);  // clear all 3 bits
+    mmio_write32(HMAC_INTR_STATE_REG_ADDR, 0x7u); // clear all 3 bits
 
     // 2. Configure: SHA-256, no HMAC, no endian swap, no digest swap.
     HMAC_CFG_reg_u cfg = {.val = 0};
-    cfg.f.hmac_en     = 0;     // SHA-only (no HMAC key)
-    cfg.f.sha_en      = 1;     // Enable SHA engine
-    cfg.f.endian_swap = 0;     // Little-endian input
-    cfg.f.digest_swap = 0;     // No digest byte swap
-    cfg.f.digest_size = 1;     // SHA2-256
+    cfg.f.hmac_en = 0;     // SHA-only (no HMAC key)
+    cfg.f.sha_en = 1;      // Enable SHA engine
+    cfg.f.endian_swap = 0; // Little-endian input
+    cfg.f.digest_swap = 0; // No digest byte swap
+    cfg.f.digest_size = 1; // SHA2-256
     mmio_write32(HMAC_CFG_REG_ADDR, cfg.val);
 
     // 3. Start a new hash operation.
@@ -135,7 +132,7 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest)
         uint32_t raw = mmio_read32(HMAC_DIGEST_0__REG_ADDR + (uint32_t)(i * 4));
         digest[i * 4 + 0] = (uint8_t)(raw >> 24);
         digest[i * 4 + 1] = (uint8_t)(raw >> 16);
-        digest[i * 4 + 2] = (uint8_t)(raw >>  8);
+        digest[i * 4 + 2] = (uint8_t)(raw >> 8);
         digest[i * 4 + 3] = (uint8_t)(raw);
     }
 
@@ -147,11 +144,9 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest)
     return 0;
 }
 
-int hmac_sha256(const uint8_t *key, uint32_t key_len,
-                const uint8_t *data, uint32_t data_len,
-                uint8_t *digest)
-{
-    if (key_len > 32u) return -1;  // IP supports 256-bit key max.
+int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint32_t data_len,
+                uint8_t *digest) {
+    if (key_len > 32u) return -1; // IP supports 256-bit key max.
 
     // 1. Clear any pending interrupt state.
     mmio_write32(HMAC_INTR_STATE_REG_ADDR, 0x7u);
@@ -172,11 +167,11 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len,
 
     // 3. Configure: HMAC + SHA-256 mode.
     HMAC_CFG_reg_u cfg = {.val = 0};
-    cfg.f.hmac_en     = 1;     // HMAC mode (uses KEY registers)
-    cfg.f.sha_en      = 1;     // Enable SHA engine
-    cfg.f.endian_swap = 0;     // Little-endian input
-    cfg.f.digest_swap = 0;     // No digest byte swap
-    cfg.f.digest_size = 1;     // SHA2-256
+    cfg.f.hmac_en = 1;     // HMAC mode (uses KEY registers)
+    cfg.f.sha_en = 1;      // Enable SHA engine
+    cfg.f.endian_swap = 0; // Little-endian input
+    cfg.f.digest_swap = 0; // No digest byte swap
+    cfg.f.digest_size = 1; // SHA2-256
     mmio_write32(HMAC_CFG_REG_ADDR, cfg.val);
 
     // 4. Start HMAC operation.
@@ -204,7 +199,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len,
         uint32_t raw = mmio_read32(HMAC_DIGEST_0__REG_ADDR + (uint32_t)(i * 4));
         digest[i * 4 + 0] = (uint8_t)(raw >> 24);
         digest[i * 4 + 1] = (uint8_t)(raw >> 16);
-        digest[i * 4 + 2] = (uint8_t)(raw >>  8);
+        digest[i * 4 + 2] = (uint8_t)(raw >> 8);
         digest[i * 4 + 3] = (uint8_t)(raw);
     }
 

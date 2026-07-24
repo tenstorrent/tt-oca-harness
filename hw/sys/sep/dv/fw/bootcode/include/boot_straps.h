@@ -24,7 +24,7 @@ struct boot_straps {
     bool boot_recovery;         // true = recovery mode (even if primary, wait SMC manifest)
     bool rotate_update;         // true = use rotated manifest slot (primary ↔ backup)
     bool status_report_disable; // true = skip status ring buffer init
-    bool bl0_pll_clk;          // true = init PLL from fuses; false = use refclk
+    bool bl0_pll_clk;           // true = init PLL from fuses; false = use refclk
 
     // Raw register values kept for diagnostic output.
     uint32_t raw_lo;

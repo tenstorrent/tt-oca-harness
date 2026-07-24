@@ -31,27 +31,25 @@
 // ~500 us sim time (~22 min on Verilator). A small threshold fires the same
 // bark->NMI path far sooner -- the mechanism under test is identical. Bite is set
 // high so the bite/reset path never trips here (that is exercised by #19).
-#define WDT_BARK_SIM    4u
-#define WDT_BITE_HIGH   0x10000u
+#define WDT_BARK_SIM 4u
+#define WDT_BITE_HIGH 0x10000u
 
-#define LOCKED_WRITE_VAL 0xDEADBEE0u   // attempted (and rejected) post-lock write
-#define NMI_WAIT_ITERS   200000        // bound on the wait for the bark NMI
+#define LOCKED_WRITE_VAL 0xDEADBEE0u // attempted (and rejected) post-lock write
+#define NMI_WAIT_ITERS 200000        // bound on the wait for the bark NMI
 
 static volatile uint32_t g_nmi_fired = 0;
 
 // NMI handler: clear the WDT bark (W1C) and disable the watchdog so nmi_int
 // deasserts before mret, then flag completion. Returns -> trampoline mret ->
 // resumes the spin loop in main().
-void nmi_handler(void)
-{
+void nmi_handler(void) {
     wdt_clear_bark();
     wdt_disable();
     g_nmi_fired = 1;
     __asm__ volatile("fence" ::: "memory");
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
     sep_outbound_filter_init();

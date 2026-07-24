@@ -14,15 +14,15 @@
 #include "sep_smc_interface.h"
 #include "rom_virt_console.h"
 
-#define MIN_WARNING_CAPACITY            2
-#define MIN_STATUS_CAPACITY             3
+#define MIN_WARNING_CAPACITY 2
+#define MIN_STATUS_CAPACITY 3
 
 /*
  * Status reporting structure that exists in SMC SRAM
  */
 struct status_ring_buffer {
-    uint32_t head;              /* SEP modified */
-    uint32_t tail;              /* SMC modified */
+    uint32_t head; /* SEP modified */
+    uint32_t tail; /* SMC modified */
     uint32_t num_entries;
     uint32_t entries[];
 };
@@ -30,14 +30,11 @@ struct status_ring_buffer {
 static bool rpt_status_enabled = false;
 static volatile struct status_ring_buffer *ring_buffer;
 
-static inline int contains_range_u32(uint32_t base, uint32_t size,
-                                     uint32_t addr, uint32_t len)
-{
+static inline int contains_range_u32(uint32_t base, uint32_t size, uint32_t addr, uint32_t len) {
     return (addr >= base) && (len <= size) && ((addr - base) <= (size - len));
 }
 
-void init_status_reporting(void)
-{
+void init_status_reporting(void) {
     /*
      * wait for status reporting fifo to be ready
      * potentially hang forever
@@ -67,14 +64,12 @@ void init_status_reporting(void)
     simputshex32("ring buffer num_entries: ", ring_buffer->num_entries);
 }
 
-void status_ring_buffer_insert(uint32_t value)
-{
+void status_ring_buffer_insert(uint32_t value) {
     uint32_t head, tail, used, capacity, num_entries;
-    uint32_t type = (value & 0xff000000) >> 24;   // Extract bits [31:24] - Message Type
+    uint32_t type = (value & 0xff000000) >> 24; // Extract bits [31:24] - Message Type
     volatile uint32_t *entries;
 
-    if (!rpt_status_enabled)
-        return;
+    if (!rpt_status_enabled) return;
 
     // Snapshot ring buffer values before checks
     head = ring_buffer->head;
@@ -92,14 +87,14 @@ void status_ring_buffer_insert(uint32_t value)
     // Don't write to an unknown address.
     // Don't disable status reporting, in case it's a transient error.
     if (num_entries == 0 || head >= num_entries || tail >= num_entries || capacity >= num_entries ||
-       !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, (uint32_t)(entries + head), sizeof(uint32_t))) {
+        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, (uint32_t)(entries + head),
+                            sizeof(uint32_t))) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, SEP_MSG_STATUS_REPORTING_INVALID));
         return;
     }
 
     /* if no entry left, we can't do anything so return */
-    if (!capacity)
-        return;
+    if (!capacity) return;
 
     /*
      * Check capacity against type specific constraints

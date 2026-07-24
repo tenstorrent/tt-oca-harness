@@ -28,12 +28,12 @@
 // PIC source = internal-interrupt index + 1 (VeeR source 0 is the tied
 // no-interrupt source). intr_dma_done -> sep_internal_interrupts[8] -> source 9;
 // intr_dma_error -> [11] -> source 12 (hw/sep/sep.sv interrupt map).
-#define EXT_INT_DMA_DONE   9
-#define EXT_INT_DMA_ERROR  12
+#define EXT_INT_DMA_DONE 9
+#define EXT_INT_DMA_ERROR 12
 
-#define TEST_DATA_SIZE     0x100u                  // 256 bytes (multiple of 4)
-#define DMA_SRC_ADDR       0x10000000u             // SEP SRAM base
-#define DMA_DST_ADDR       0xC0042000u             // DCCM, high enough to clear .data/.bss/.intvec
+#define TEST_DATA_SIZE 0x100u    // 256 bytes (multiple of 4)
+#define DMA_SRC_ADDR 0x10000000u // SEP SRAM base
+#define DMA_DST_ADDR 0xC0042000u // DCCM, high enough to clear .data/.bss/.intvec
 #define DMA_STATUS_RW1C_MASK \
     (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR | SEP_DMA_STATUS_CHUNK_DONE)
 
@@ -54,13 +54,13 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP DMA SHA-256 test\n");
 
     // Route the DMA done/error interrupts to the ISR through the VeeR PIC.
     pic_register_handler(EXT_INT_DMA_DONE, dma_isr);
     pic_register_handler(EXT_INT_DMA_ERROR, dma_isr);
-    pic_set_gateway(EXT_INT_DMA_DONE, 0, 0);   // level-triggered, active-high
+    pic_set_gateway(EXT_INT_DMA_DONE, 0, 0); // level-triggered, active-high
     pic_set_gateway(EXT_INT_DMA_ERROR, 0, 0);
     pic_set_priority(EXT_INT_DMA_DONE, 1);
     pic_set_priority(EXT_INT_DMA_ERROR, 1);

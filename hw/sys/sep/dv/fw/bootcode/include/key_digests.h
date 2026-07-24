@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "manifest.h"  // PUBK_SEL_NUM_ROM_KEYS, RSA_3072_KEY_SZ_BYTES
+#include "manifest.h" // PUBK_SEL_NUM_ROM_KEYS, RSA_3072_KEY_SZ_BYTES
 
 #ifndef SHA256_DIGEST_SIZE_BYTES
 #define SHA256_DIGEST_SIZE_BYTES 32
@@ -25,11 +25,11 @@
 
 // Per-key information stored in ROM.
 typedef struct {
-    const uint8_t *digest;  // SHA-256 of the RSA-3072 modulus (32 bytes), or NULL
+    const uint8_t *digest; // SHA-256 of the RSA-3072 modulus (32 bytes), or NULL
 } public_key_info_t;
 
 // Number of ROM key slots.
-#define NUM_PUBLIC_KEY_DIGESTS  PUBK_SEL_NUM_ROM_KEYS
+#define NUM_PUBLIC_KEY_DIGESTS PUBK_SEL_NUM_ROM_KEYS
 
 // ROM key digest table.
 // Index 0..5 correspond to dev0, dev1, prod0..prod3.

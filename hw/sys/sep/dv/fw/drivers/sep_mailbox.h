@@ -16,14 +16,12 @@
 
 #define SEP_STDOUT_ADDR 0x80000000u
 
-static inline void sep_mbx_putc(char c)
-{
+static inline void sep_mbx_putc(char c) {
     *((volatile uint8_t *)SEP_STDOUT_ADDR) = (uint8_t)c;
     __asm__ volatile("fence" ::: "memory");
 }
 
-static inline void sep_mbx_puts(const char *s)
-{
+static inline void sep_mbx_puts(const char *s) {
     while (*s) {
         sep_mbx_putc(*s++);
     }
@@ -32,8 +30,7 @@ static inline void sep_mbx_puts(const char *s)
 // Emit a 32-bit value as "0x" + 8 hex digits on the console. Lets a firmware
 // test surface a captured value (claim id, status word, counter) in the kept
 // simulator log as positive evidence, with no libc/printf.
-static inline void sep_mbx_puthex(uint32_t v)
-{
+static inline void sep_mbx_puthex(uint32_t v) {
     static const char hex[] = "0123456789abcdef";
     sep_mbx_putc('0');
     sep_mbx_putc('x');
@@ -42,4 +39,4 @@ static inline void sep_mbx_puthex(uint32_t v)
     }
 }
 
-#endif  // SEP_MAILBOX_H
+#endif // SEP_MAILBOX_H

@@ -26,50 +26,46 @@
 
 // Outbound mailbox 0 register file (0x10A0_0000). Offsets per
 // hw/ip/axil_mailbox/data/registers/c/axil_mailbox_reg.h.
-#define SEP_AXIL_MBOX0_BASE        0x10A00000u
-#define SEP_AXIL_MBOX0_WRITE_DATA  (SEP_AXIL_MBOX0_BASE + 0x00u)  // push word into FIFO
-#define SEP_AXIL_MBOX0_STATUS      (SEP_AXIL_MBOX0_BASE + 0x10u)  // RO threshold/full/empty
-#define SEP_AXIL_MBOX0_WIRQT       (SEP_AXIL_MBOX0_BASE + 0x20u)  // write-IRQ threshold
-#define SEP_AXIL_MBOX0_RIRQT       (SEP_AXIL_MBOX0_BASE + 0x28u)  // read-IRQ threshold
-#define SEP_AXIL_MBOX0_IRQS        (SEP_AXIL_MBOX0_BASE + 0x30u)  // IRQ status (W1C)
-#define SEP_AXIL_MBOX0_IRQEN       (SEP_AXIL_MBOX0_BASE + 0x38u)  // IRQ enable
-#define SEP_AXIL_MBOX0_IRQP        (SEP_AXIL_MBOX0_BASE + 0x40u)  // IRQ pending (RO, IRQS & IRQEN)
+#define SEP_AXIL_MBOX0_BASE 0x10A00000u
+#define SEP_AXIL_MBOX0_WRITE_DATA (SEP_AXIL_MBOX0_BASE + 0x00u) // push word into FIFO
+#define SEP_AXIL_MBOX0_STATUS (SEP_AXIL_MBOX0_BASE + 0x10u)     // RO threshold/full/empty
+#define SEP_AXIL_MBOX0_WIRQT (SEP_AXIL_MBOX0_BASE + 0x20u)      // write-IRQ threshold
+#define SEP_AXIL_MBOX0_RIRQT (SEP_AXIL_MBOX0_BASE + 0x28u)      // read-IRQ threshold
+#define SEP_AXIL_MBOX0_IRQS (SEP_AXIL_MBOX0_BASE + 0x30u)       // IRQ status (W1C)
+#define SEP_AXIL_MBOX0_IRQEN (SEP_AXIL_MBOX0_BASE + 0x38u)      // IRQ enable
+#define SEP_AXIL_MBOX0_IRQP (SEP_AXIL_MBOX0_BASE + 0x40u)       // IRQ pending (RO, IRQS & IRQEN)
 
 // IRQS / IRQEN / IRQP bit fields (axi_lite_mailbox status_q decode).
-#define SEP_AXIL_MBOX_IRQ_WRITE    (1u << 0)  // write FIFO usage crossed WIRQT
-#define SEP_AXIL_MBOX_IRQ_READ     (1u << 1)  // read FIFO usage crossed RIRQT
-#define SEP_AXIL_MBOX_IRQ_ERROR    (1u << 2)  // FIFO over/underflow error
-#define SEP_AXIL_MBOX_IRQ_ALL      (SEP_AXIL_MBOX_IRQ_WRITE | \
-                                    SEP_AXIL_MBOX_IRQ_READ | \
-                                    SEP_AXIL_MBOX_IRQ_ERROR)
+#define SEP_AXIL_MBOX_IRQ_WRITE (1u << 0) // write FIFO usage crossed WIRQT
+#define SEP_AXIL_MBOX_IRQ_READ (1u << 1)  // read FIFO usage crossed RIRQT
+#define SEP_AXIL_MBOX_IRQ_ERROR (1u << 2) // FIFO over/underflow error
+#define SEP_AXIL_MBOX_IRQ_ALL \
+    (SEP_AXIL_MBOX_IRQ_WRITE | SEP_AXIL_MBOX_IRQ_READ | SEP_AXIL_MBOX_IRQ_ERROR)
 
 // Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
-#define SEP_AXIL_MBOX0_PIC_SRC     1u
+#define SEP_AXIL_MBOX0_PIC_SRC 1u
 
 // CLOCK_GATE_CTRL (sep_cpu_ctrl @ 0x10A3_0008): bit 2 ungates the mailbox CSR
 // clock. Guarded so a TU that also pulls in sep_entropy.h keeps one definition.
 #ifndef SEP_CLOCK_GATE_CTRL
-#define SEP_CLOCK_GATE_CTRL        0x10A30008u
+#define SEP_CLOCK_GATE_CTRL 0x10A30008u
 #endif
-#define SEP_CLOCK_GATE_MAILBOX     (1u << 2)
+#define SEP_CLOCK_GATE_MAILBOX (1u << 2)
 
-static inline uint32_t sep_axil_mbox_rd(uint32_t addr)
-{
+static inline uint32_t sep_axil_mbox_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
 }
 
-static inline void sep_axil_mbox_wr(uint32_t addr, uint32_t value)
-{
+static inline void sep_axil_mbox_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
     __asm__ volatile("fence" ::: "memory");
 }
 
 // Ungate the mailbox CSR clock (read-modify-write so reset gating of the other
 // blocks is preserved).
-static inline void sep_axil_mbox_clock_enable(void)
-{
+static inline void sep_axil_mbox_clock_enable(void) {
     uint32_t cg = sep_axil_mbox_rd(SEP_CLOCK_GATE_CTRL);
     sep_axil_mbox_wr(SEP_CLOCK_GATE_CTRL, cg | SEP_CLOCK_GATE_MAILBOX);
 }
 
-#endif  // SEP_AXIL_MAILBOX_H
+#endif // SEP_AXIL_MAILBOX_H

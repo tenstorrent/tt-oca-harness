@@ -18,17 +18,16 @@
 // Fuse sense done is bit 0 of SMC_FUSE_SENSE_STATUS (SEP-local register).
 #define FUSE_SENSE_DONE_MASK 0x1u
 
-static void wait_for_smc_fuse_sense(void)
-{
+static void wait_for_smc_fuse_sense(void) {
     // Poll SMC_FUSE_SENSE_STATUS until smc_fuse_sense_done=1.
     // This is the fuse-sense completion wait used by the boot flow.
-    while ((mmio_read32(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR) & FUSE_SENSE_DONE_MASK) == 0u) {
+    while ((mmio_read32(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR) & FUSE_SENSE_DONE_MASK) ==
+           0u) {
         // spin
     }
 }
 
-uint16_t pll_init(bool bl0_pll_clk_strap)
-{
+uint16_t pll_init(bool bl0_pll_clk_strap) {
     if (!bl0_pll_clk_strap) {
         simputs("CLK_REFCLK\n");
         return (uint16_t)SMU_REF_CLK_FREQ_MHZ;

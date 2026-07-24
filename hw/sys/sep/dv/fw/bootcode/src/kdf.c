@@ -21,13 +21,11 @@
 #include "errors.h"
 
 // Maximum KDF argument size.
-#define MAX_KDF_ARG_BYTES  16
+#define MAX_KDF_ARG_BYTES 16
 
-int kbkdf_hmac_sha256(const uint8_t *key, uint32_t key_len,
-                      const uint8_t *info, const uint8_t *salt,
-                      uint8_t *out, uint32_t out_len)
-{
-    if (out_len > 32u) return -1;  // Max one HMAC block.
+int kbkdf_hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *info,
+                      const uint8_t *salt, uint8_t *out, uint32_t out_len) {
+    if (out_len > 32u) return -1; // Max one HMAC block.
 
     // Build the PRF input message:
     //   [4: counter=1] [16: info] [1: 0x00] [16: salt] [4: L_bits]

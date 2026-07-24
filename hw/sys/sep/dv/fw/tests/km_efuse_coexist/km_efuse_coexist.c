@@ -43,35 +43,34 @@
 
 // --- Shared coexistence protocol (MUST match km_rom_coexist.S and the cocotb
 //     observer sep_efuse_km_axil_cpu_mux_coexist_test.py). ---
-#define KM_READY_TOKEN    0xA11FE5EEu   // KM -> EL2: KM up
-#define EL2_GO_TOKEN      0x60600060u   // EL2 -> KM: start contending
-#define KM_TAG0           0xA5000000u   // owner tag on MMR0
-#define KM_TAG1           0x5A000000u   // owner tag on MMR1
-#define KM_TAG_MASK       0xFF000000u
-#define KM_PAYLOAD_MASK   0x00FFFFFFu   // 24-bit counter payload
-#define KNOWN_UID         0xDEADBEEFu   // golden CHIPLET_UID word0 (image preload)
-#define CPU_READY_MARKER  0xE9050001u   // EL2 -> observer: both CPUs up
+#define KM_READY_TOKEN 0xA11FE5EEu // KM -> EL2: KM up
+#define EL2_GO_TOKEN 0x60600060u   // EL2 -> KM: start contending
+#define KM_TAG0 0xA5000000u        // owner tag on MMR0
+#define KM_TAG1 0x5A000000u        // owner tag on MMR1
+#define KM_TAG_MASK 0xFF000000u
+#define KM_PAYLOAD_MASK 0x00FFFFFFu  // 24-bit counter payload
+#define KNOWN_UID 0xDEADBEEFu        // golden CHIPLET_UID word0 (image preload)
+#define CPU_READY_MARKER 0xE9050001u // EL2 -> observer: both CPUs up
 
 // Scratch-cold word layout the cocotb observer reads back.
-#define SCRATCH_READY     0u   // EL2 -> observer: CPU_READY_MARKER
-#define SCRATCH_COUNT     2u   // host loop counter
-#define SCRATCH_BAD_UID   3u   // host CHIPLET_UID corruption count
-#define SCRATCH_CHANGES   4u   // KM counter changes witnessed
-#define SCRATCH_BACKWARD  5u   // KM counter went backward count
-#define SCRATCH_BAD_TAG   6u   // KM tag/attribution/ordering failure count
+#define SCRATCH_READY 0u    // EL2 -> observer: CPU_READY_MARKER
+#define SCRATCH_COUNT 2u    // host loop counter
+#define SCRATCH_BAD_UID 3u  // host CHIPLET_UID corruption count
+#define SCRATCH_CHANGES 4u  // KM counter changes witnessed
+#define SCRATCH_BACKWARD 5u // KM counter went backward count
+#define SCRATCH_BAD_TAG 6u  // KM tag/attribution/ordering failure count
 
 // Fixed contended window. Long enough that the free-running KM makes many MMR
 // changes through the mux while the (slower, multi-read) host completes; above
 // the OCAH minimum-evidence floor (MIN_CPU_EFUSE_LOOPS = 256).
-#define CONTENDED_LOOPS   512u
-#define SENSE_WAIT_LIMIT  1000000
-#define MBOX_WAIT_LIMIT   500000
+#define CONTENDED_LOOPS 512u
+#define SENSE_WAIT_LIMIT 1000000
+#define MBOX_WAIT_LIMIT 500000
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();            // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP KM-eFuse mux coexist test\n");
 
     // Real fuse-sense must be complete before the host CHIPLET_UID read path is
@@ -133,11 +132,11 @@ int main(void)
                 last_p0 = p0;
             }
         } else {
-            if ((m0 & KM_TAG_MASK) != KM_TAG0) bad_tag++;   // cross-attribution
+            if ((m0 & KM_TAG_MASK) != KM_TAG0) bad_tag++; // cross-attribution
             if ((m1 & KM_TAG_MASK) != KM_TAG1) bad_tag++;
-            if (p1 < p0)                       bad_tag++;   // lead/trail ordering
-            if (p0 != last_p0)                 changes++;   // KM progress
-            if (p0 < last_p0)                  backward++;  // torn/stale response
+            if (p1 < p0) bad_tag++;       // lead/trail ordering
+            if (p0 != last_p0) changes++; // KM progress
+            if (p0 < last_p0) backward++; // torn/stale response
             last_p0 = p0;
         }
         sep_scratch_wr(SCRATCH_COUNT, loop + 1);

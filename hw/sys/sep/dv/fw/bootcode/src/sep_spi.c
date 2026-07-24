@@ -19,18 +19,15 @@
 #include "sep_spi.h"
 #include "rom_virt_console.h"
 
-void spi_set_rotate(bool rotate)
-{
+void spi_set_rotate(bool rotate) {
     (void)rotate;
 }
 
-void spi_set_sysclk(uint16_t freq_mhz)
-{
+void spi_set_sysclk(uint16_t freq_mhz) {
     (void)freq_mhz;
 }
 
-uint32_t spi_init(void)
-{
+uint32_t spi_init(void) {
     // Non-zero -> the OSS `sep` has no Cadence xSPI, so SPI is unavailable and
     // the ROM takes its non-SPI (SMC-SRAM) manifest path. The testbench serves
     // the manifest+BL1 from a behavioral memory at the SMC-SRAM base.
@@ -38,12 +35,10 @@ uint32_t spi_init(void)
     return 1u;
 }
 
-uint32_t spi_reinit(void)
-{
+uint32_t spi_reinit(void) {
     return 1u;
 }
 
-bool spi_primary_tlv_failed(void)
-{
+bool spi_primary_tlv_failed(void) {
     return true;
 }

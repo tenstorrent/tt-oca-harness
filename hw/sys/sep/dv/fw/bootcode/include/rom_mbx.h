@@ -24,8 +24,12 @@ enum {
 
 // Status codes and reporting are now in errors.h (STATUS_OUT / report_status).
 
-static inline void rom_mbx_putc(char c) { mmio_write8(ROM_MBX_ADDR, (uint8_t)c); }
-static inline void rom_mbx_putw(uint32_t w) { mmio_write32(ROM_MBX_ADDR, w); }
+static inline void rom_mbx_putc(char c) {
+    mmio_write8(ROM_MBX_ADDR, (uint8_t)c);
+}
+static inline void rom_mbx_putw(uint32_t w) {
+    mmio_write32(ROM_MBX_ADDR, w);
+}
 
 static inline void rom_mbx_puts(const char *s) {
     while (*s) {

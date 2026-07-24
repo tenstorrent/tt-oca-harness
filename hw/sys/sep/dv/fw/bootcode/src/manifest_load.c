@@ -33,8 +33,8 @@
 #include "sep_smc_interface.h"
 
 // SEP EXT SRAM: staging area for manifest and payload.
-#define SRAM_BASE ((uint32_t)SEP_SRAM_MEM_BASE_ADDR)  // 0x10100000
-#define SRAM_SIZE ((uint32_t)SEP_SRAM_MEM_SIZE)        // 0x00040000 (256 KiB)
+#define SRAM_BASE ((uint32_t)SEP_SRAM_MEM_BASE_ADDR) // 0x10100000
+#define SRAM_SIZE ((uint32_t)SEP_SRAM_MEM_SIZE)      // 0x00040000 (256 KiB)
 
 // SPI XIP region size (for payload location check).
 #ifndef SEP_SPI_MAX_SIZE
@@ -99,8 +99,7 @@ static uint32_t manifest_check_integrity(const manifest_t *m) {
 
 // Load the manifest header (1184 bytes) from source via DMA.
 static uint32_t load_manifest_header(manifest_t *dest, uint32_t src_addr) {
-    uint32_t err = sep_dma_copy((uint32_t)dest, src_addr,
-                                (uint32_t)sizeof(manifest_t));
+    uint32_t err = sep_dma_copy((uint32_t)dest, src_addr, (uint32_t)sizeof(manifest_t));
     return err ? MANIFEST_ERR_DMA_FAILED : MANIFEST_OK;
 }
 
@@ -150,7 +149,7 @@ static uint32_t validate_manifest_header(const manifest_t *m) {
 
     // Everything (manifest + payload) must fit in SRAM.
     uint32_t total = (uint32_t)p_off + p_len;
-    if (total < (uint32_t)p_off) {  // overflow
+    if (total < (uint32_t)p_off) { // overflow
         return MANIFEST_ERR_PAYLOAD_TOO_LARGE;
     }
     if (total > SRAM_SIZE) {
@@ -177,9 +176,7 @@ static uint32_t load_manifest_extra(manifest_t *m, uint32_t src_addr) {
         return MANIFEST_OK;
     }
     uint32_t remaining = m->manifest_length - hdr_size;
-    uint32_t err = sep_dma_copy((uint32_t)m + hdr_size,
-                                src_addr + hdr_size,
-                                remaining);
+    uint32_t err = sep_dma_copy((uint32_t)m + hdr_size, src_addr + hdr_size, remaining);
     return err ? MANIFEST_ERR_DMA_FAILED : MANIFEST_OK;
 }
 
@@ -209,26 +206,21 @@ static uint32_t load_payload(const manifest_t *m, uint32_t src_addr) {
 //   - TEST_DEV/RMA → secure boot is enabled only if the manifest flag requests it
 static bool secure_boot_enabled(const manifest_t *m) {
     bool sboot_dis = get_bl0_state()->sboot_dis;
-    if (sboot_dis)
-        return false;
+    if (sboot_dis) return false;
 
-    bool mfst_flag = (m->boot_arguments.flag_args &
-                      (1u << FLAG_ARGS_BIT_SECURE_BOOT)) != 0;
+    bool mfst_flag = (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_SECURE_BOOT)) != 0;
     uint32_t lc_state = get_bl0_state()->lc_state;
 
     // In TEST_DEV or RMA states, the manifest flag decides whether secure boot is enabled.
     // In PROD/PROD_END, secure boot is always enforced.
-    if (!mfst_flag &&
-        (lc_state == LC_STATE_TEST_DEV || lc_state_is_rma(lc_state)))
-        return false;
+    if (!mfst_flag && (lc_state == LC_STATE_TEST_DEV || lc_state_is_rma(lc_state))) return false;
 
     return true;
 }
 
 // ── C13.11: Validate payload structure (TOC header + entries) ──
 static uint32_t validate_manifest_payload(const manifest_t *m) {
-    const struct toc_header *toc =
-        (const struct toc_header *)manifest_payload_address(m);
+    const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
 
     // Validate TOC header magic.
     if (toc->identifier != TOC_HEADER_MAGIC_WORD) {
@@ -260,7 +252,7 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
         uint32_t off = (uint32_t)e->offset;
         uint32_t len = (uint32_t)e->length;
         uint32_t end = off + len;
-        if (end < off) {  // overflow
+        if (end < off) { // overflow
             return MANIFEST_ERR_IMAGE_OOB;
         }
         if (end > p_len) {
@@ -308,8 +300,9 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     // Original payload_offset says: flash_addr + payload_offset = flash payload location
     // So keep payload_offset as-is; it's relative to manifest start.
     // manifest_payload_address(dest) = dest + payload_offset = SRAM payload addr.
-    // This is correct IF we DMA payload from (src_addr + payload_offset) to (dest + payload_offset).
-    // No adjustment needed when payload_offset is stored relative to manifest start.
+    // This is correct IF we DMA payload from (src_addr + payload_offset) to (dest +
+    // payload_offset). No adjustment needed when payload_offset is stored relative to manifest
+    // start.
 
     // C13.6 (integrity): Verify manifest hash.
     err = manifest_check_integrity(dest);
@@ -331,14 +324,12 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         // by the time we get here, but in warm/cool reset paths HW may
         // not enforce it. Wait unconditionally.
         {
-            uint8_t sel_ids = (uint8_t)(sel & 0xFFu) |
-                              (uint8_t)((sel >> 8) & 0xFFu);
+            uint8_t sel_ids = (uint8_t)(sel & 0xFFu) | (uint8_t)((sel >> 8) & 0xFFu);
             if (sel_ids) {
                 // Only wait if we actually need to read SMC fuse map.
                 for (int i = 0; i < 1000000; ++i) {
-                    uint32_t fss = mmio_read32(
-                        SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR);
-                    if (fss & 0x1u) break;  // smc_fuse_sense_done
+                    uint32_t fss = mmio_read32(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR);
+                    if (fss & 0x1u) break; // smc_fuse_sense_done
                 }
             }
         }
@@ -361,17 +352,15 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         // Reference logic for chiplet_id checking.
         {
             uint32_t smc_base = sep_get_smc_base();
-            uint8_t sel_lo = (uint8_t)(sel & 0xFFu);  // bits [0..7]
+            uint8_t sel_lo = (uint8_t)(sel & 0xFFu); // bits [0..7]
             for (uint32_t i = 0; i < DEVICE_ID_NUM_WORDS; ++i) {
                 if (!(sel_lo & (1u << i))) continue;
-                uint32_t fuse_val = mmio_read32(
-                    smc_base + SMC_FUSE_MAP_CHIPLET_ID_OFFSET + i * 4u);
+                uint32_t fuse_val = mmio_read32(smc_base + SMC_FUSE_MAP_CHIPLET_ID_OFFSET + i * 4u);
                 if (dest->usage_constraints.chiplet_id[i] != fuse_val) {
                     simputs("CHIPLET_ID_MISMATCH\n");
                     simputshex32("CID_IDX=", i);
                     simputshex32("CID_FUSE=", fuse_val);
-                    simputshex32("CID_MFST=",
-                                 dest->usage_constraints.chiplet_id[i]);
+                    simputshex32("CID_MFST=", dest->usage_constraints.chiplet_id[i]);
                     return MANIFEST_ERR_LC_USAGE_CONSTRAINT;
                 }
             }
@@ -381,17 +370,15 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         // Reference logic for package_id checking.
         {
             uint32_t smc_base = sep_get_smc_base();
-            uint8_t sel_hi = (uint8_t)((sel >> 8) & 0xFFu);  // bits [8..15]
+            uint8_t sel_hi = (uint8_t)((sel >> 8) & 0xFFu); // bits [8..15]
             for (uint32_t i = 0; i < DEVICE_ID_NUM_WORDS; ++i) {
                 if (!(sel_hi & (1u << i))) continue;
-                uint32_t fuse_val = mmio_read32(
-                    smc_base + SMC_FUSE_MAP_PACKAGE_ID_OFFSET + i * 4u);
+                uint32_t fuse_val = mmio_read32(smc_base + SMC_FUSE_MAP_PACKAGE_ID_OFFSET + i * 4u);
                 if (dest->usage_constraints.package_id[i] != fuse_val) {
                     simputs("PACKAGE_ID_MISMATCH\n");
                     simputshex32("PID_IDX=", i);
                     simputshex32("PID_FUSE=", fuse_val);
-                    simputshex32("PID_MFST=",
-                                 dest->usage_constraints.package_id[i]);
+                    simputshex32("PID_MFST=", dest->usage_constraints.package_id[i]);
                     return MANIFEST_ERR_LC_USAGE_CONSTRAINT;
                 }
             }
@@ -431,14 +418,13 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             uint32_t spi_end = SEP_SPI_BASE + SEP_SPI_MAX_SIZE;
             if (payload_src < SEP_SPI_BASE || payload_end > spi_end) {
                 simputs("PAYLOAD_LOC_SPI_OOB\n");
-                report_status(STATUS_TYPE_ERROR,
-                              SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH);
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH);
                 return MANIFEST_ERR_PAYLOAD_BAD_LOC;
             }
         } else {
             // SMC SRAM path (recovery / secondary).
             uint32_t smc_sram = sep_get_smc_sram_base();
-            uint32_t smc_end  = smc_sram + SMC_SRAM_SIZE_BYTES;
+            uint32_t smc_end = smc_sram + SMC_SRAM_SIZE_BYTES;
             if (payload_src < smc_sram || payload_end > smc_end) {
                 simputs("PAYLOAD_LOC_SMC_OOB\n");
                 return MANIFEST_ERR_PAYLOAD_BAD_LOC;
@@ -491,7 +477,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
     if (from_spi) {
         offsets[0] = PRIMARY_MANIFEST_OFFSET;
         offsets[1] = BACKUP_MANIFEST_OFFSET;
-        num_retries = 1;  // Try primary, then backup.
+        num_retries = 1; // Try primary, then backup.
     } else {
         // Recovery or secondary: wait for SMC to place manifest.
         report_status(STATUS_TYPE_INFO, SEP_MSG_WAIT_FOR_SMC_MANIFEST_READY);
@@ -501,7 +487,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             if (status & SMC_SEP_STATUS_MANIFEST_READY) break;
         }
         offsets[0] = smc_scratch_read(SMC_SCRATCH_MANIFEST_ADDR_IDX);
-        num_retries = 0;  // Single attempt for SMC path.
+        num_retries = 0; // Single attempt for SMC path.
     }
 
     uint32_t last_err = 0;

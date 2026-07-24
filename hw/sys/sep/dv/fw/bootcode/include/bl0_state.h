@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BL0_STATE_MAGIC 0x53304C42u  // "BL0S"
+#define BL0_STATE_MAGIC 0x53304C42u // "BL0S"
 
 // SHA256 digest size (bytes). Used for ROM hash and measurement fields.
 #ifndef SHA256_DIGEST_SIZE_BYTES
@@ -20,14 +20,14 @@
 
 // DCCM layout (from linker script / EL2 snapshot).
 #define OROM_DCCM_BASE 0xC0040000u
-#define OROM_DCCM_SIZE 0x00020000u  // 128 KiB
+#define OROM_DCCM_SIZE 0x00020000u // 128 KiB
 
 // Boot mode identifiers (C13.8: BL0 state expansion).
 enum {
-    BOOT_MODE_UNKNOWN    = 0u,
-    BOOT_MODE_SPI        = 1u,  // primary chiplet, normal (SPI flash)
-    BOOT_MODE_RECOVERY   = 2u,  // primary chiplet, recovery (SMC SRAM)
-    BOOT_MODE_SECONDARY  = 3u,  // secondary chiplet (SMC SRAM)
+    BOOT_MODE_UNKNOWN = 0u,
+    BOOT_MODE_SPI = 1u,       // primary chiplet, normal (SPI flash)
+    BOOT_MODE_RECOVERY = 2u,  // primary chiplet, recovery (SMC SRAM)
+    BOOT_MODE_SECONDARY = 3u, // secondary chiplet (SMC SRAM)
 };
 
 struct bl0_state {
@@ -74,18 +74,16 @@ struct bl0_state {
 };
 
 // BL0 state is placed at end of DCCM for BL1 discovery.
-#define BL0_STATE_SIZE  sizeof(struct bl0_state)
-#define BL0_STATE_ADDR  (OROM_DCCM_BASE + OROM_DCCM_SIZE - BL0_STATE_SIZE)
+#define BL0_STATE_SIZE sizeof(struct bl0_state)
+#define BL0_STATE_ADDR (OROM_DCCM_BASE + OROM_DCCM_SIZE - BL0_STATE_SIZE)
 
-static inline struct bl0_state *get_bl0_state(void)
-{
+static inline struct bl0_state *get_bl0_state(void) {
     return (struct bl0_state *)(uintptr_t)BL0_STATE_ADDR;
 }
 
 // Initialize bl0_state with magic numbers and zero all fields.
 // Must be called after DCCM is cleared (vector.S scrub or manual clear).
-static inline void init_bl0_state(void)
-{
+static inline void init_bl0_state(void) {
     struct bl0_state *s = get_bl0_state();
 
     // Zero everything first.
@@ -100,9 +98,7 @@ static inline void init_bl0_state(void)
 }
 
 // Verify bl0_state integrity (for BL1 use or debug).
-static inline bool verify_bl0_state(const struct bl0_state *s)
-{
-    return s->start_magic == BL0_STATE_MAGIC &&
-           s->end_magic == BL0_STATE_MAGIC &&
+static inline bool verify_bl0_state(const struct bl0_state *s) {
+    return s->start_magic == BL0_STATE_MAGIC && s->end_magic == BL0_STATE_MAGIC &&
            s->size == (uint32_t)sizeof(struct bl0_state);
 }

@@ -16,4 +16,3 @@ __attribute__((used, aligned(4))) const char g_rom_version[] = BL0_VERSION "\n";
 // Format: "sha256:<64-hex-chars>\0..." (80 bytes).
 // Placeholder is all-zeros; the build script overwrites it.
 __attribute__((used, aligned(4))) const char g_rom_sha256_str[80] = {0};
-

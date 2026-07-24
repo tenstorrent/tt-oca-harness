@@ -21,14 +21,13 @@
 
 // SMC CPU CTRL reset control register offset (holds SMC cores in reset).
 // Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET  0x0020u
+#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
 
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
 
-uint32_t lc_read_state(void)
-{
+uint32_t lc_read_state(void) {
     SEP_EFUSE_MAP_LC_STATE_reg_u reg;
     reg.val = mmio_read32(SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
     // OCAH efuse field is 8-bit (diff encoded by RTL).
@@ -41,8 +40,7 @@ uint32_t lc_read_state(void)
 // LC state classification
 // ---------------------------------------------------------------------------
 
-bool lc_state_is_valid(uint32_t lc_state)
-{
+bool lc_state_is_valid(uint32_t lc_state) {
     // Valid states (from RTL sep_lifecycle_ctrl.sv case statements):
     //   0x0:     TEST_DEV
     //   0x1:     PROD
@@ -65,32 +63,29 @@ bool lc_state_is_valid(uint32_t lc_state)
     }
 }
 
-bool lc_state_enforces_secure_boot(uint32_t lc_state)
-{
+bool lc_state_enforces_secure_boot(uint32_t lc_state) {
     // PROD and PROD_END enforce secure boot.
     // TEST_DEV and RMA states do not (debug/manufacturing).
     return (lc_state == LC_STATE_PROD || lc_state == LC_STATE_PROD_END);
 }
 
-bool lc_state_is_rma(uint32_t lc_state)
-{
+bool lc_state_is_rma(uint32_t lc_state) {
     return (lc_state >= LC_STATE_RMA_SIP_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI);
 }
 
-int lc_state_to_manifest_bit(uint32_t lc_state)
-{
+int lc_state_to_manifest_bit(uint32_t lc_state) {
     // Map decoded LC state to manifest usage_constraints.life_cycle_states bit.
     // These bit positions are defined in manifest.h (LC_STATES_BIT_*).
     switch (lc_state) {
     case LC_STATE_TEST_DEV:
-        return LC_STATES_BIT_TEST_DEV;   // bit 0
+        return LC_STATES_BIT_TEST_DEV; // bit 0
     case LC_STATE_PROD:
-        return LC_STATES_BIT_PROD;       // bit 1
+        return LC_STATES_BIT_PROD; // bit 1
     case LC_STATE_PROD_END:
-        return LC_STATES_BIT_PROD_END;   // bit 2
+        return LC_STATES_BIT_PROD_END; // bit 2
     case LC_STATE_RMA_SIP_LO:
     case LC_STATE_RMA_SIP_HI:
-        return LC_STATES_BIT_RMA_SOP;    // bit 3
+        return LC_STATES_BIT_RMA_SOP; // bit 3
     case LC_STATE_RMA_CHIPLET_LO:
     case 0x5u:
     case 0x6u:
@@ -105,8 +100,7 @@ int lc_state_to_manifest_bit(uint32_t lc_state)
 // Feature control and demotion registers
 // ---------------------------------------------------------------------------
 
-uint32_t lc_read_feat_ctrl(uint32_t *hi)
-{
+uint32_t lc_read_feat_ctrl(uint32_t *hi) {
     // FEAT_CTRL is a 64-bit read-only register.
     // Read low 32 bits, then high 32 bits.
     uint32_t lo = mmio_read32(SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR);
@@ -116,19 +110,17 @@ uint32_t lc_read_feat_ctrl(uint32_t *hi)
     return lo;
 }
 
-void lc_write_demotion(bool demote, bool lock)
-{
+void lc_write_demotion(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK;
-    if (lock)   val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
+    if (lock) val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
     mmio_write32(SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR, val);
 }
 
-void lc_write_demotion_2(bool demote, bool lock)
-{
+void lc_write_demotion_2(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK;
-    if (lock)   val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
+    if (lock) val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
     mmio_write32(SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR, val);
 }
 
@@ -142,8 +134,7 @@ void lc_write_demotion_2(bool demote, bool lock)
 // Forward declaration (defined in rom_main.c).
 __attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
 
-uint32_t rom_lifecycle_policy(void)
-{
+uint32_t rom_lifecycle_policy(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_LC_STATE);
 
     // ── Step 1: Read LC_STATE from efuse shadow register ──
@@ -164,7 +155,7 @@ uint32_t rom_lifecycle_policy(void)
         // SMC continue running in an unknown state.
         uint32_t smc_base = sep_get_smc_base();
         uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu;  // core0~core3 reset_n bits → hold all cores in reset
+        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
         mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
         simputs("SMC_RESET_ON_INVALID_LC\n");
 
@@ -186,14 +177,21 @@ uint32_t rom_lifecycle_policy(void)
 
     // ── Step 6: Log state name ──
     switch (lc_state) {
-    case LC_STATE_TEST_DEV:     simputs("LC=TEST_DEV\n");     break;
-    case LC_STATE_PROD:         simputs("LC=PROD\n");         break;
-    case LC_STATE_PROD_END:     simputs("LC=PROD_END\n");     break;
+    case LC_STATE_TEST_DEV:
+        simputs("LC=TEST_DEV\n");
+        break;
+    case LC_STATE_PROD:
+        simputs("LC=PROD\n");
+        break;
+    case LC_STATE_PROD_END:
+        simputs("LC=PROD_END\n");
+        break;
     case LC_STATE_RMA_SIP_LO:
-    case LC_STATE_RMA_SIP_HI:   simputs("LC=RMA_SIP\n");      break;
+    case LC_STATE_RMA_SIP_HI:
+        simputs("LC=RMA_SIP\n");
+        break;
     default:
-        if (lc_state >= LC_STATE_RMA_CHIPLET_LO &&
-            lc_state <= LC_STATE_RMA_CHIPLET_HI) {
+        if (lc_state >= LC_STATE_RMA_CHIPLET_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI) {
             simputs("LC=RMA_CHIPLET\n");
         }
         break;

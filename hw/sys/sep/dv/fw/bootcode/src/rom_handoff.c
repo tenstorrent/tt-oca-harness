@@ -25,10 +25,8 @@
 // ---------------------------------------------------------------------------
 
 // Scan the TOC for the first entry matching the given image type.
-static const struct toc_entry *find_toc_entry(const manifest_t *m,
-                                               uint64_t image_type) {
-    const struct toc_header *toc =
-        (const struct toc_header *)manifest_payload_address(m);
+static const struct toc_entry *find_toc_entry(const manifest_t *m, uint64_t image_type) {
+    const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
     uint32_t n = (uint32_t)toc->image_count;
     for (uint32_t i = 0; i < n; ++i) {
         if (toc->images[i].type == image_type) {
@@ -41,8 +39,7 @@ static const struct toc_entry *find_toc_entry(const manifest_t *m,
 // Copy BL1 image to its SRAM load address via CPU memcpy.
 // Both src (manifest payload in SRAM) and dst (BL1 link address in SRAM)
 // are LSU-accessible.
-static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr,
-                              uint32_t length) {
+static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr, uint32_t length) {
     volatile uint32_t *dst = (volatile uint32_t *)(uintptr_t)dest_addr;
     const uint32_t *src32 = (const uint32_t *)src;
     uint32_t words = length >> 2;
@@ -53,27 +50,23 @@ static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr,
     if (rem) {
         uint32_t last = 0;
         const uint8_t *tail = (const uint8_t *)&src32[words];
-        for (uint32_t j = 0; j < rem; ++j)
-            last |= (uint32_t)tail[j] << (8u * j);
+        for (uint32_t j = 0; j < rem; ++j) last |= (uint32_t)tail[j] << (8u * j);
         dst[words] = last;
     }
 }
 
 // Jump to BL1 entry point.  Does not return.
-__attribute__((noreturn))
-static void jump_to_bl1(uint32_t entry_addr) {
+__attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
     // fence.i flushes IFU pipeline so freshly written SRAM code is visible.
     // fence completes pending stores.
     simputs("PRE_JUMP\n");
-    __asm__ volatile(
-        "csrw mepc, %0\n"
-        "fence.i\n"
-        "fence\n"
-        "mret\n"
-        :
-        : "r"(entry_addr)
-        : "memory"
-    );
+    __asm__ volatile("csrw mepc, %0\n"
+                     "fence.i\n"
+                     "fence\n"
+                     "mret\n"
+                     :
+                     : "r"(entry_addr)
+                     : "memory");
     __builtin_unreachable();
 }
 
@@ -84,8 +77,7 @@ static void jump_to_bl1(uint32_t entry_addr) {
 uint32_t rom_handoff_bl1(const manifest_t *m) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
 
-    const struct toc_header *toc =
-        (const struct toc_header *)manifest_payload_address(m);
+    const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
 
     // ── Step 1: Find BL1 in the TOC ──
     const struct toc_entry *bl1 = find_toc_entry(m, IMAGE_TYPE_SEP_BL1);
@@ -94,9 +86,9 @@ uint32_t rom_handoff_bl1(const manifest_t *m) {
         return MANIFEST_ERR_NO_BL1_IMAGE;
     }
 
-    uint32_t load_addr  = (uint32_t)bl1->load_addr;
+    uint32_t load_addr = (uint32_t)bl1->load_addr;
     uint32_t img_length = (uint32_t)bl1->length;
-    uint32_t entry_off  = (uint32_t)bl1->entry_point;
+    uint32_t entry_off = (uint32_t)bl1->entry_point;
     uint32_t img_offset = (uint32_t)bl1->offset;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);

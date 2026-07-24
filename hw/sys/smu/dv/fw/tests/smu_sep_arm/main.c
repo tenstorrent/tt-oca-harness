@@ -13,12 +13,11 @@
 #define CLA_ENABLE_EAP 0x20u
 #define CLA_ENABLE 0x40u
 
-static uint64_t cla_eap_value(uint32_t action0, uint32_t action1, int enable1)
-{
+static uint64_t cla_eap_value(uint32_t action0, uint32_t action1, int enable1) {
     uint64_t value = 0;
-    value |= (uint64_t)3u << 14;   // NOR
-    value |= (uint64_t)63u << 16;  // event-none 0
-    value |= (uint64_t)62u << 22;  // event-none 1
+    value |= (uint64_t)3u << 14;  // NOR
+    value |= (uint64_t)63u << 16; // event-none 0
+    value |= (uint64_t)62u << 22; // event-none 1
     value |= (uint64_t)action0 << 28;
     value |= (uint64_t)action1 << 32;
     value |= (uint64_t)1u << 36;
@@ -28,13 +27,11 @@ static uint64_t cla_eap_value(uint32_t action0, uint32_t action1, int enable1)
     return value;
 }
 
-static void write64(uintptr_t address, uint64_t value)
-{
+static void write64(uintptr_t address, uint64_t value) {
     *((volatile uint64_t *)address) = value;
 }
 
-int main(void)
-{
+int main(void) {
     // #3582 inverted custom action 2. Normal boot fires only run actions 1 and 4.
     write64(SMC_CLA_CDFDCSR_ADDR, (uint64_t)1u << 63);
     write64(SMC_CLA_CTRL_ADDR, CLA_ENABLE | CLA_ENABLE_EAP);

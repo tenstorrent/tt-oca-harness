@@ -23,6 +23,5 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest);
 // data/data_len: message to authenticate.
 // digest: output buffer (32 bytes).
 // Returns 0 on success, non-zero on timeout/error.
-int hmac_sha256(const uint8_t *key, uint32_t key_len,
-                const uint8_t *data, uint32_t data_len,
+int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint32_t data_len,
                 uint8_t *digest);

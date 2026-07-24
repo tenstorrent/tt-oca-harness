@@ -23,9 +23,9 @@
 
 // sep_cpu_ctrl CSRs (och_sep_top_reg). SEP_NMI_VEC holds the NMI jump address;
 // the LOCK is write-once-set and, once set, freezes SEP_NMI_VEC until reset.
-#define SEP_NMI_VEC_ADDR        0x10A30180u
-#define SEP_NMI_VEC_LOCK_ADDR   0x10A30188u
-#define SEP_NMI_VEC_DEFAULT     0xC0000100u  // reset value (256-byte aligned)
+#define SEP_NMI_VEC_ADDR 0x10A30180u
+#define SEP_NMI_VEC_LOCK_ADDR 0x10A30188u
+#define SEP_NMI_VEC_DEFAULT 0xC0000100u // reset value (256-byte aligned)
 
 typedef void (*sep_nmi_handler_t)(void);
 
@@ -72,4 +72,4 @@ static inline uint32_t nmi_read_lock_reg(void) {
     return _sep_nmi_rd(SEP_NMI_VEC_LOCK_ADDR);
 }
 
-#endif  // SEP_NMI_H
+#endif // SEP_NMI_H

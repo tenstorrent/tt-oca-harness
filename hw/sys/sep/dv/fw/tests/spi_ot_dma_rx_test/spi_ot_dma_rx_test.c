@@ -31,15 +31,15 @@
 #include "sep_dma.h"
 #include "sep_spi.h"
 
-#define RX_SIZE        64u                    // bytes to receive (multiple of 4)
-#define RX_WORDS       (RX_SIZE / 4u)
-#define DMA_CHUNK      16u                    // RX_WM(4 words) * 4B: drain to below WM
-#define RX_WATERMARK   4u                     // RX FIFO words that assert lsio_trigger
-#define DST_ADDR       (0x10000000u + 0x6000u) // SEP SRAM, clear of the low pages
-#define RX_PATTERN     0xA5u                   // BFM-preloaded flash byte (see test .py)
-#define EXPECT_WORD    0xA5A5A5A5u             // 4 x RX_PATTERN, packing-agnostic
-#define FILL_WORD      0xDEADBEEFu             // pre-DMA SRAM marker
-#define SPI_READ_OPCODE 0x03u                  // NOR-flash READ (1-1-1), 24-bit addr
+#define RX_SIZE 64u // bytes to receive (multiple of 4)
+#define RX_WORDS (RX_SIZE / 4u)
+#define DMA_CHUNK 16u                    // RX_WM(4 words) * 4B: drain to below WM
+#define RX_WATERMARK 4u                  // RX FIFO words that assert lsio_trigger
+#define DST_ADDR (0x10000000u + 0x6000u) // SEP SRAM, clear of the low pages
+#define RX_PATTERN 0xA5u                 // BFM-preloaded flash byte (see test .py)
+#define EXPECT_WORD 0xA5A5A5A5u          // 4 x RX_PATTERN, packing-agnostic
+#define FILL_WORD 0xDEADBEEFu            // pre-DMA SRAM marker
+#define SPI_READ_OPCODE 0x03u            // NOR-flash READ (1-1-1), 24-bit addr
 #define DMA_STATUS_RW1C_MASK \
     (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR | SEP_DMA_STATUS_CHUNK_DONE)
 
@@ -49,7 +49,7 @@
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP SPI OT DMA RX test\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
@@ -59,12 +59,12 @@ int main(void) {
     // see no CS toggle; clearing it routes to the real mux CSR (a no-op on bare sep,
     // where the extension aperture is tied off).
     sep_spi_mux_release_cs();
-    spi_wr(SPI_CTRL_REG, (RX_WATERMARK << SPI_CTRL_RX_WM_SHIFT) |
-                             SPI_CTRL_OUTPUT_EN | SPI_CTRL_SPIEN);
+    spi_wr(SPI_CTRL_REG,
+           (RX_WATERMARK << SPI_CTRL_RX_WM_SHIFT) | SPI_CTRL_OUTPUT_EN | SPI_CTRL_SPIEN);
     spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
     spi_wr(SPI_CSID_REG, 0);
     spi_wr(SPI_EVENT_ENABLE_REG, SPI_EVENT_RXWM);
-    spi_wr(SPI_ERROR_STATUS_REG, 0xFFFFFFFFu);   // clear any sticky error
+    spi_wr(SPI_ERROR_STATUS_REG, 0xFFFFFFFFu); // clear any sticky error
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host not ready\n");
         return 1;
@@ -89,27 +89,27 @@ int main(void) {
     sep_dma_wr(SEP_DMA_DST_ADDR_HI, 0x0);
     sep_dma_wr(SEP_DMA_ADDR_SPACE_ID, SEP_DMA_ASID_OT | (SEP_DMA_ASID_OT << 4));
     sep_dma_wr(SEP_DMA_TRANSFER_WIDTH, SEP_DMA_WIDTH_4B);
-    sep_dma_wr(SEP_DMA_SRC_CONFIG, SEP_DMA_ADDR_WRAP);   // fixed RXDATA register
-    sep_dma_wr(SEP_DMA_DST_CONFIG, SEP_DMA_ADDR_INCR);   // walk through SRAM
+    sep_dma_wr(SEP_DMA_SRC_CONFIG, SEP_DMA_ADDR_WRAP); // fixed RXDATA register
+    sep_dma_wr(SEP_DMA_DST_CONFIG, SEP_DMA_ADDR_INCR); // walk through SRAM
     sep_dma_wr(SEP_DMA_TOTAL_DATA_SIZE, RX_SIZE);
     sep_dma_wr(SEP_DMA_CHUNK_DATA_SIZE, DMA_CHUNK);
     sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
-    sep_dma_wr(SEP_DMA_CONTROL, SEP_DMA_CTRL_GO | SEP_DMA_CTRL_INITIAL |
-                                    SEP_DMA_CTRL_HW_HANDSHAKE | SEP_DMA_OPCODE_COPY);
+    sep_dma_wr(SEP_DMA_CONTROL, SEP_DMA_CTRL_GO | SEP_DMA_CTRL_INITIAL | SEP_DMA_CTRL_HW_HANDSHAKE |
+                                    SEP_DMA_OPCODE_COPY);
 
     // --- Issue the SPI flash READ --------------------------------------------
     // TX segment: opcode 0x03 + 24-bit address 0 (4 bytes, LSB-first in TXDATA),
     // CS held asserted (CSAAT). RX segment: clock in RX_SIZE bytes, release CS.
     // The flash BFM streams its preloaded 0xA5 bytes back on MISO.
-    spi_wr(SPI_TXDATA_REG, SPI_READ_OPCODE);   // 0x03, then addr bytes 0,0,0
+    spi_wr(SPI_TXDATA_REG, SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
     spi_wr(SPI_CMD_REG, (SPI_CMD_DIR_TX << SPI_CMD_DIR_SHIFT) | SPI_CMD_CSAAT |
                             ((4u - 1u) << SPI_CMD_LEN_SHIFT));
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host stuck after command phase\n");
         errors++;
     }
-    spi_wr(SPI_CMD_REG, (SPI_CMD_DIR_RX << SPI_CMD_DIR_SHIFT) |
-                            ((RX_SIZE - 1u) << SPI_CMD_LEN_SHIFT));
+    spi_wr(SPI_CMD_REG,
+           (SPI_CMD_DIR_RX << SPI_CMD_DIR_SHIFT) | ((RX_SIZE - 1u) << SPI_CMD_LEN_SHIFT));
 
     // --- Wait for the DMA to drain all chunks --------------------------------
     uint32_t status_before_clear = 0;

@@ -12,13 +12,13 @@
 #include <stdint.h>
 
 // KM<->SEP mailbox, host (SEP/EL2) side.
-#define SEP_KM_MBOX_WRITE_DATA       0x10920000u  // EL2 -> KM payload
-#define SEP_KM_MBOX_WRITE_SEPARATOR  0x10920004u  // write 1 to frame a message
-#define SEP_KM_MBOX_READ_DATA        0x10920008u  // KM -> EL2 payload
-#define SEP_KM_MBOX_STATUS           0x1092000Cu  // SEP_STATUS
+#define SEP_KM_MBOX_WRITE_DATA 0x10920000u      // EL2 -> KM payload
+#define SEP_KM_MBOX_WRITE_SEPARATOR 0x10920004u // write 1 to frame a message
+#define SEP_KM_MBOX_READ_DATA 0x10920008u       // KM -> EL2 payload
+#define SEP_KM_MBOX_STATUS 0x1092000Cu          // SEP_STATUS
 
 // SEP_STATUS bits.
-#define SEP_KM_MBOX_OUTBOUND_EMPTY   (1u << 2)    // KM->EL2 FIFO empty when set
+#define SEP_KM_MBOX_OUTBOUND_EMPTY (1u << 2) // KM->EL2 FIFO empty when set
 
 static inline uint32_t sep_km_mbox_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
@@ -47,4 +47,4 @@ static inline void sep_km_mbox_send(uint32_t value) {
     sep_km_mbox_wr(SEP_KM_MBOX_WRITE_DATA, value);
 }
 
-#endif  // SEP_KM_MAILBOX_H
+#endif // SEP_KM_MAILBOX_H

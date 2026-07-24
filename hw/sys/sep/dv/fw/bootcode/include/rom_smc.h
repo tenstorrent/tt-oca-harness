@@ -21,6 +21,6 @@
 
 // Convenience aliases for ROM post code / virtual console scratch indices.
 enum {
-    SMC_SCRATCH_POST_CODE    = SMC_SCRATCH_POST_CODE_IDX,
+    SMC_SCRATCH_POST_CODE = SMC_SCRATCH_POST_CODE_IDX,
     SMC_SCRATCH_VIRT_CONSOLE = SMC_SCRATCH_VIRT_CONSOLE_IDX,
 };

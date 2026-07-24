@@ -33,16 +33,15 @@
 #include "sha256.h"
 
 // Compare one HMAC SHA-256 against an independent software SHA-256 golden.
-static int hmac_check(const char *name, const uint8_t *msg, uint32_t len)
-{
+static int hmac_check(const char *name, const uint8_t *msg, uint32_t len) {
     uint32_t hw[8];
     int rc = sep_hmac_sha256(msg, len, hw);
     if (rc != 0) {
         sep_mbx_puts("[FAIL] ");
         sep_mbx_puts(name);
-        sep_mbx_puts(rc == 1 ? " HMAC timeout\n"
-                   : rc == 2 ? " HMAC ERR_CODE!=0\n"
-                             : " HMAC done RW1C did not clear\n");
+        sep_mbx_puts(rc == 1   ? " HMAC timeout\n"
+                     : rc == 2 ? " HMAC ERR_CODE!=0\n"
+                               : " HMAC done RW1C did not clear\n");
         return 1;
     }
 
@@ -66,16 +65,15 @@ static int hmac_check(const char *name, const uint8_t *msg, uint32_t len)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP HMAC/KMAC crypto smoke test\n");
 
     // --- HMAC: three messages vs independent software SHA-256 goldens. ---
     static const uint8_t msg_empty[] = "";
-    static const uint8_t msg_abc[]   = "abc";
+    static const uint8_t msg_abc[] = "abc";
     static const uint8_t msg_hello[] = "Hello OTBN.";
     errors += hmac_check("empty", msg_empty, 0);
     errors += hmac_check("abc", msg_abc, 3);

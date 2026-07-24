@@ -44,11 +44,14 @@ enum {
     SEP_MSG_DMA_ERROR = 0x00020002u,
 };
 
-static inline uint32_t dma_read(uint32_t addr) { return mmio_read32(addr); }
-static inline void dma_write(uint32_t addr, uint32_t v) { mmio_write32(addr, v); }
+static inline uint32_t dma_read(uint32_t addr) {
+    return mmio_read32(addr);
+}
+static inline void dma_write(uint32_t addr, uint32_t v) {
+    mmio_write32(addr, v);
+}
 
-static inline int contains_range_u32(uint32_t base, uint32_t size, uint32_t addr,
-                                     uint32_t len) {
+static inline int contains_range_u32(uint32_t base, uint32_t size, uint32_t addr, uint32_t len) {
     // Reject wraparound.
     if (len == 0u) {
         return 1;
@@ -82,8 +85,7 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
     // Destination can be in SEP SRAM, SMC SRAM, or ICCM (for BL1 handoff).
     const uint32_t smc_sram = sep_get_smc_sram_base();
     if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
-        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) &&
-        !dest_is_iccm(dest, n)) {
+        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) && !dest_is_iccm(dest, n)) {
         return SEP_MSG_OUT_OF_RANGE_ERROR;
     }
 

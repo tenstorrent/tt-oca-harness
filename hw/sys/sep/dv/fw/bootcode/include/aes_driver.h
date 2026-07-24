@@ -21,5 +21,4 @@ int aes_init(void);
 //   iv      - 16 bytes initialization vector
 //
 // Returns 0 on success, non-zero on failure.
-int aes128cbc_decrypt(uint8_t *data, uint32_t len,
-                      const uint8_t *key, const uint8_t *iv);
+int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uint8_t *iv);

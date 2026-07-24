@@ -32,13 +32,12 @@
 #include "sep_scratch.h"
 
 #define CPU_READY_MARKER 0xE9050001u
-#define SCRATCH_READY    0u            // scratch-cold[0]: CPU_READY
-#define SCRATCH_COUNT    2u            // scratch-cold[2]: loop counter
-#define SCRATCH_ERR      3u            // scratch-cold[3]: CPU MMR read mismatch count
-#define SENSE_TIMEOUT    200000
+#define SCRATCH_READY 0u // scratch-cold[0]: CPU_READY
+#define SCRATCH_COUNT 2u // scratch-cold[2]: loop counter
+#define SCRATCH_ERR 3u   // scratch-cold[3]: CPU MMR read mismatch count
+#define SENSE_TIMEOUT 200000
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
     sep_mbx_puts("SEP eFuse JTAG/EL2 mux test\n");
 
@@ -60,7 +59,7 @@ int main(void)
         // CPU eFuse-MMR traffic through the mux (TOKEN_I_0; JTAG uses 1/3/LAST).
         uint32_t rb = sep_efuse_rd(SEP_EFUSE_MMR0);
         if (rb != 0u) {
-            integ_err++;                       // CPU path corrupted under contention
+            integ_err++; // CPU path corrupted under contention
         }
         // Publish progress (1..N) so the observer can prove the CPU advanced while
         // the JTAG burst ran.

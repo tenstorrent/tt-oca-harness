@@ -15,6 +15,4 @@
 //   modulus    - 384 bytes, RSA-3072 public key modulus (big-endian byte order)
 //
 // Returns 0 on success (signature valid), non-zero on failure.
-int rsa_3072_verify(const uint8_t *digest,
-                    const uint8_t *signature,
-                    const uint8_t *modulus);
+int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8_t *modulus);

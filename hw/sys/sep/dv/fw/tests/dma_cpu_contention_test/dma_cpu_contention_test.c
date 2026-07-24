@@ -41,28 +41,27 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define DMA_SRC_ADDR     0x10000000u  // SRAM: DMA copy source
-#define DMA_DST_ADDR     0x10004000u  // SRAM: DMA copy destination
-#define CONT_ADDR        0x10008000u  // SRAM: CPU contention region (disjoint)
+#define DMA_SRC_ADDR 0x10000000u // SRAM: DMA copy source
+#define DMA_DST_ADDR 0x10004000u // SRAM: DMA copy destination
+#define CONT_ADDR 0x10008000u    // SRAM: CPU contention region (disjoint)
 
-#define DMA_BYTES        0x800u       // 2 KiB DMA copy (>> CPU loop)
-#define DMA_WORDS        (DMA_BYTES / 4)
-#define CONT_WORDS       64u          // 256 B CPU store loop (8:1 vs DMA)
+#define DMA_BYTES 0x800u // 2 KiB DMA copy (>> CPU loop)
+#define DMA_WORDS (DMA_BYTES / 4)
+#define CONT_WORDS 64u // 256 B CPU store loop (8:1 vs DMA)
 
-#define SRC_SEED         0xC0DE0000u
-#define CPU_SEED         0x5A5A0000u
+#define SRC_SEED 0xC0DE0000u
+#define CPU_SEED 0x5A5A0000u
 
-#define DMA_WAIT_ITERS   4000000      // bounded poll for DONE/ERROR
+#define DMA_WAIT_ITERS 4000000 // bounded poll for DONE/ERROR
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP DMA/CPU contention test\n");
 
-    volatile uint32_t *src  = (volatile uint32_t *)DMA_SRC_ADDR;
-    volatile uint32_t *dst  = (volatile uint32_t *)DMA_DST_ADDR;
+    volatile uint32_t *src = (volatile uint32_t *)DMA_SRC_ADDR;
+    volatile uint32_t *dst = (volatile uint32_t *)DMA_DST_ADDR;
     volatile uint32_t *cont = (volatile uint32_t *)CONT_ADDR;
 
     // Stage the source pattern; clear the DMA destination and the CPU region.

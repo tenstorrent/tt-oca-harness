@@ -15,20 +15,18 @@
 #include "rom_virt_console.h"
 
 // Read-lock bits for secret fuse fields (all in low 32 bits of LOCKS register).
-#define FUSE_SECRET_READ_LOCK_MASK                              \
-    (SEP_EFUSE_MAP_LOCKS_CLASS_KEY_READ_LOCK_MASK |             \
+#define FUSE_SECRET_READ_LOCK_MASK \
+    (SEP_EFUSE_MAP_LOCKS_CLASS_KEY_READ_LOCK_MASK | \
      SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_READ_LOCK_MASK | \
      SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_MASK)
 
-void lock_fuse_secrets(void)
-{
+void lock_fuse_secrets(void) {
     // LOCKS register is SET_ONLY: writing 1 bits sets them, 0 bits are ignored.
     // No need to read-modify-write — just write the bits we want to set.
     mmio_write32(SEP_EFUSE_MAP_LOCKS_REG_ADDR, FUSE_SECRET_READ_LOCK_MASK);
 }
 
-bool check_fuse_secrets_locked(void)
-{
+bool check_fuse_secrets_locked(void) {
     uint32_t locks_lo = mmio_read32(SEP_EFUSE_MAP_LOCKS_REG_ADDR);
     bool locked = (locks_lo & FUSE_SECRET_READ_LOCK_MASK) == FUSE_SECRET_READ_LOCK_MASK;
 

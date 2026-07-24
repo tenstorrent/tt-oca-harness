@@ -8,8 +8,7 @@
 #include "errors.h"
 #include "sep_smc_interface.h"
 
-void init_straps(struct boot_straps *straps)
-{
+void init_straps(struct boot_straps *straps) {
     const uint32_t lo = smc_read_straps_lo();
     const uint32_t hi = smc_read_straps_hi();
 
@@ -17,11 +16,11 @@ void init_straps(struct boot_straps *straps)
     straps->raw_hi = hi;
 
     // Bit positions defined in sep_smc_interface.h (SEP↔SMC interface contract).
-    straps->primary_chiplet       = !!(lo & SMC_STRAP_PRIMARY_CHIPLET_MASK);
-    straps->boot_recovery         = !!(hi & SMC_STRAP_BOOT_RECOVERY_MASK);
-    straps->rotate_update         = !!(hi & SMC_STRAP_ROTATE_UPDATE_MASK);
+    straps->primary_chiplet = !!(lo & SMC_STRAP_PRIMARY_CHIPLET_MASK);
+    straps->boot_recovery = !!(hi & SMC_STRAP_BOOT_RECOVERY_MASK);
+    straps->rotate_update = !!(hi & SMC_STRAP_ROTATE_UPDATE_MASK);
     straps->status_report_disable = !!(lo & SMC_STRAP_STATUS_RPT_DISABLE_MASK);
-    straps->bl0_pll_clk           = !!(hi & SMC_STRAP_BL0_PLLCLK_MASK);
+    straps->bl0_pll_clk = !!(hi & SMC_STRAP_BL0_PLLCLK_MASK);
 
     // Diagnostic output (always, regardless of channel enables).
     simputshex32("STRAPS_LO=", lo);

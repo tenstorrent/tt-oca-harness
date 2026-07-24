@@ -13,22 +13,19 @@
 
 #include <stdint.h>
 
-#define SEP_SCRATCH_COLD_BASE   0x10802000u  // SCRATCH[0]; stride 8 bytes
+#define SEP_SCRATCH_COLD_BASE 0x10802000u // SCRATCH[0]; stride 8 bytes
 #define SEP_SCRATCH_COLD_STRIDE 0x8u
 
-static inline uint32_t sep_scratch_addr(uint32_t idx)
-{
+static inline uint32_t sep_scratch_addr(uint32_t idx) {
     return SEP_SCRATCH_COLD_BASE + idx * SEP_SCRATCH_COLD_STRIDE;
 }
 
-static inline void sep_scratch_wr(uint32_t idx, uint32_t value)
-{
+static inline void sep_scratch_wr(uint32_t idx, uint32_t value) {
     *(volatile uint32_t *)sep_scratch_addr(idx) = value;
 }
 
-static inline uint32_t sep_scratch_rd(uint32_t idx)
-{
+static inline uint32_t sep_scratch_rd(uint32_t idx) {
     return *(volatile uint32_t *)sep_scratch_addr(idx);
 }
 
-#endif  // SEP_SCRATCH_H
+#endif // SEP_SCRATCH_H

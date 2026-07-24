@@ -21,13 +21,13 @@
 // LC state raw values (4-bit, from RTL sep_lifecycle_ctrl.sv case statements)
 // ---------------------------------------------------------------------------
 
-#define LC_STATE_TEST_DEV       0x0u
-#define LC_STATE_PROD           0x1u
-#define LC_STATE_RMA_SIP_LO     0x2u  // RMA_SiP range: 0x2..0x3 (4'b001?)
-#define LC_STATE_RMA_SIP_HI     0x3u
-#define LC_STATE_RMA_CHIPLET_LO 0x4u  // RMA_CHIPLET range: 0x4..0x7 (4'b01??)
+#define LC_STATE_TEST_DEV 0x0u
+#define LC_STATE_PROD 0x1u
+#define LC_STATE_RMA_SIP_LO 0x2u // RMA_SiP range: 0x2..0x3 (4'b001?)
+#define LC_STATE_RMA_SIP_HI 0x3u
+#define LC_STATE_RMA_CHIPLET_LO 0x4u // RMA_CHIPLET range: 0x4..0x7 (4'b01??)
 #define LC_STATE_RMA_CHIPLET_HI 0x7u
-#define LC_STATE_PROD_END       0x8u
+#define LC_STATE_PROD_END 0x8u
 
 // ---------------------------------------------------------------------------
 // API

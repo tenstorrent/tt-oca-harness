@@ -31,28 +31,34 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define ROM_BASE    0x10040000u            // SEP_BOOT_ROM_MEM_BASE_ADDR
-#define ROM_SIZE    0x00010000u            // SEP_BOOT_ROM_MEM_SIZE (64 KiB)
-#define ROM_TOP_LO  (ROM_BASE + ROM_SIZE - 8)   // top valid 64-bit word, low half
+#define ROM_BASE 0x10040000u                 // SEP_BOOT_ROM_MEM_BASE_ADDR
+#define ROM_SIZE 0x00010000u                 // SEP_BOOT_ROM_MEM_SIZE (64 KiB)
+#define ROM_TOP_LO (ROM_BASE + ROM_SIZE - 8) // top valid 64-bit word, low half
 
-static inline uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
-static inline void     wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+static inline uint32_t rd(uint32_t a) {
+    return *(volatile uint32_t *)a;
+}
+static inline void wr(uint32_t a, uint32_t v) {
+    *(volatile uint32_t *)a = v;
+}
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 console window
+    sep_outbound_filter_init(); // open the 0x8000_0000 console window
     sep_mbx_puts("SEP boot ROM LSU read test\n");
 
     // CHK-ROM-READ: the loaded image (mem_rom_test_rom.hex). Each 64-bit ROM word
     // is read as low half (+0) then high half (+4). Words 0..4 are at indices 0..4.
-    struct { uint32_t addr; uint32_t exp; } reads[] = {
-        {ROM_BASE + 0x00, 0x89abcdef}, {ROM_BASE + 0x04, 0x01234567},  // 0x0123456789abcdef
-        {ROM_BASE + 0x08, 0x76543210}, {ROM_BASE + 0x0c, 0xfedcba98},  // 0xfedcba9876543210
-        {ROM_BASE + 0x10, 0xdeadbeef}, {ROM_BASE + 0x14, 0x00000000},  // 0x00000000deadbeef
-        {ROM_BASE + 0x18, 0x12345678}, {ROM_BASE + 0x1c, 0xcafebabe},  // 0xcafebabe12345678
-        {ROM_BASE + 0x20, 0x5a5a5a5a}, {ROM_BASE + 0x24, 0xa5a5a5a5},  // 0xa5a5a5a55a5a5a5a
+    struct {
+        uint32_t addr;
+        uint32_t exp;
+    } reads[] = {
+        {ROM_BASE + 0x00, 0x89abcdef}, {ROM_BASE + 0x04, 0x01234567}, // 0x0123456789abcdef
+        {ROM_BASE + 0x08, 0x76543210}, {ROM_BASE + 0x0c, 0xfedcba98}, // 0xfedcba9876543210
+        {ROM_BASE + 0x10, 0xdeadbeef}, {ROM_BASE + 0x14, 0x00000000}, // 0x00000000deadbeef
+        {ROM_BASE + 0x18, 0x12345678}, {ROM_BASE + 0x1c, 0xcafebabe}, // 0xcafebabe12345678
+        {ROM_BASE + 0x20, 0x5a5a5a5a}, {ROM_BASE + 0x24, 0xa5a5a5a5}, // 0xa5a5a5a55a5a5a5a
     };
     int read_ok = 1;
     for (unsigned i = 0; i < sizeof(reads) / sizeof(reads[0]); i++) {

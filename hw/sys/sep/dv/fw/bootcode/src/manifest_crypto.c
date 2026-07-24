@@ -28,18 +28,17 @@
 
 // Fuse key length for reading raw public key hashes from fuses.
 // The value stores a 32-byte SHA-256 digest.
-#define FUSE_KEY_LENGTH  32
+#define FUSE_KEY_LENGTH 32
 
 // Max KDF argument bytes.
-#define MAX_KDF_ARGUMENT_BYTES  16
+#define MAX_KDF_ARGUMENT_BYTES 16
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
 // Constant-time byte comparison (prevents timing side-channel).
-static bool const_time_eq(const uint8_t *a, const uint8_t *b, uint32_t len)
-{
+static bool const_time_eq(const uint8_t *a, const uint8_t *b, uint32_t len) {
     volatile uint8_t diff = 0;
     for (uint32_t i = 0; i < len; ++i) {
         diff |= a[i] ^ b[i];
@@ -56,8 +55,7 @@ static bool const_time_eq(const uint8_t *a, const uint8_t *b, uint32_t len)
 // Read security version from fuse (thermometer encoding: count 1-bits).
 // BL1_VERSION is 8 × 32-bit words = 256 bits; version = popcount.
 // Reference logic for security version decoding.
-static uint32_t get_security_version_from_fuse(uint32_t reg_addr)
-{
+static uint32_t get_security_version_from_fuse(uint32_t reg_addr) {
     uint32_t version = 0;
     for (uint32_t i = 0; i < 8u; ++i) {
         uint32_t w = mmio_read32(reg_addr + i * 4u);
@@ -72,8 +70,7 @@ static uint32_t get_security_version_from_fuse(uint32_t reg_addr)
 
 // Check that the manifest's security_version is >= the fuse version.
 // Reference logic for security version comparison.
-static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr)
-{
+static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr) {
     uint32_t fuse_ver = get_security_version_from_fuse(fuse_addr);
     report_status(STATUS_TYPE_INFO, SEP_MSG_READ_BL1_SECURITY_VERSION);
     simputshex32("FUSE_VER=", fuse_ver);
@@ -92,8 +89,7 @@ static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr
 
 // Check if a key has been revoked via the CHIPLET_PUBK_REVOKE fuse.
 // Reference logic for key revocation checks.
-static uint32_t check_pubkey_revoked(int revocation_index)
-{
+static uint32_t check_pubkey_revoked(int revocation_index) {
     SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_u revoke;
     revoke.val = mmio_read32(SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR);
     simputshex32("PUBK_REVOKE=", revoke.val);
@@ -111,9 +107,7 @@ static uint32_t check_pubkey_revoked(int revocation_index)
 
 // Verify public key hash: SHA-256 of manifest modulus vs expected digest.
 // Reference logic for public key hash checks.
-static uint32_t check_pubkey_hash(const uint8_t *pub_key,
-                                  const uint8_t *expected_digest)
-{
+static uint32_t check_pubkey_hash(const uint8_t *pub_key, const uint8_t *expected_digest) {
     uint8_t digest[32];
     if (sha256(pub_key, RSA_3072_KEY_SZ_BYTES, digest) != 0) {
         simputs("PUBK_HASH_TIMEOUT\n");
@@ -129,12 +123,11 @@ static uint32_t check_pubkey_hash(const uint8_t *pub_key,
 
 // Read a fuse key digest (32 bytes) from the given fuse address.
 // Returns true if at least one byte is non-zero.
-static bool read_fuse_key(uint32_t fuse_addr, uint8_t *key)
-{
+static bool read_fuse_key(uint32_t fuse_addr, uint8_t *key) {
     bool non_zero = false;
     for (uint32_t i = 0; i < FUSE_KEY_LENGTH / 4u; ++i) {
         uint32_t val = mmio_read32(fuse_addr + i * 4u);
-        key[i * 4]     = (uint8_t)(val);
+        key[i * 4] = (uint8_t)(val);
         key[i * 4 + 1] = (uint8_t)(val >> 8);
         key[i * 4 + 2] = (uint8_t)(val >> 16);
         key[i * 4 + 3] = (uint8_t)(val >> 24);
@@ -145,8 +138,7 @@ static bool read_fuse_key(uint32_t fuse_addr, uint8_t *key)
 
 // Full signature validation: key selection → revocation → hash → RSA verify.
 // Reference flow for full signature validation.
-static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state)
-{
+static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state) {
     uint32_t err;
     const uint8_t *signature = m->signature.rsa_signature;
     const uint8_t *pub_key = m->public_key.rsa_modulus;
@@ -230,10 +222,8 @@ static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state)
 // (d) Payload hash verification
 // ---------------------------------------------------------------------------
 
-uint32_t verify_payload_hash(const manifest_t *m)
-{
-    const uint8_t *payload = (const uint8_t *)m +
-                             (uint32_t)m->boot_arguments.payload_offset;
+uint32_t verify_payload_hash(const manifest_t *m) {
+    const uint8_t *payload = (const uint8_t *)m + (uint32_t)m->boot_arguments.payload_offset;
     uint32_t hash_len = (uint32_t)m->payload_hashed_length;
 
     if (hash_len == 0u) {
@@ -262,19 +252,17 @@ uint32_t verify_payload_hash(const manifest_t *m)
 
 // Read encryption class_key from fuse (32 bytes = 8 × 32-bit words).
 // SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR = 0x10930064
-static void get_enc_key(uint8_t *key)
-{
+static void get_enc_key(uint8_t *key) {
     for (uint32_t i = 0; i < FUSE_KEY_LENGTH / 4u; ++i) {
         uint32_t val = mmio_read32(SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR + i * 4u);
-        key[i * 4]     = (uint8_t)(val);
+        key[i * 4] = (uint8_t)(val);
         key[i * 4 + 1] = (uint8_t)(val >> 8);
         key[i * 4 + 2] = (uint8_t)(val >> 16);
         key[i * 4 + 3] = (uint8_t)(val >> 24);
     }
 }
 
-static uint32_t decrypt_payload(const manifest_t *m)
-{
+static uint32_t decrypt_payload(const manifest_t *m) {
     uint8_t class_key[FUSE_KEY_LENGTH];
     uint8_t derived_key[AES_KEY_SIZE_BYTES];
     uint8_t info[MAX_KDF_ARGUMENT_BYTES];
@@ -295,9 +283,8 @@ static uint32_t decrypt_payload(const manifest_t *m)
     }
 
     // Derive AES key via KBKDF-HMAC-SHA256.
-    if (kbkdf_hmac_sha256(class_key, FUSE_KEY_LENGTH,
-                          info, salt,
-                          derived_key, AES_KEY_SIZE_BYTES) != 0) {
+    if (kbkdf_hmac_sha256(class_key, FUSE_KEY_LENGTH, info, salt, derived_key,
+                          AES_KEY_SIZE_BYTES) != 0) {
         simputs("KDF_FAIL\n");
         rc = MANIFEST_ERR_DECRYPT_FAILED;
         goto cleanup;
@@ -311,10 +298,9 @@ static uint32_t decrypt_payload(const manifest_t *m)
     }
 
     // Decrypt payload in-place (manifest is in SRAM, cast away const).
-    uint8_t *payload = (uint8_t *)(uintptr_t)m +
-                       (uint32_t)m->boot_arguments.payload_offset;
-    if (aes128cbc_decrypt(payload, (uint32_t)m->payload_length,
-                          derived_key, m->encryption_iv) != 0) {
+    uint8_t *payload = (uint8_t *)(uintptr_t)m + (uint32_t)m->boot_arguments.payload_offset;
+    if (aes128cbc_decrypt(payload, (uint32_t)m->payload_length, derived_key, m->encryption_iv) !=
+        0) {
         simputs("AES_DEC_FAIL\n");
         rc = MANIFEST_ERR_DECRYPT_FAILED;
         goto cleanup;
@@ -334,8 +320,7 @@ cleanup:
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state)
-{
+uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     uint32_t err;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK);
@@ -344,8 +329,7 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state)
     // Check manifest security_version against BL1_VERSION fuse.
     // If the manifest flags indicate version update is requested,
     // we still validate (update happens after successful boot in BL1).
-    err = check_security_version(m->security_version,
-                                 SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR);
+    err = check_security_version(m->security_version, SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR);
     if (err) return err;
 
     // ── (c) Signature verification (includes (b) key revocation) ──

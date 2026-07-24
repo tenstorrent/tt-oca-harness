@@ -50,42 +50,45 @@
 // CLOCK_GATE_CTRL (sep_cpu_ctrl @ 0x10A3_0008). The mailbox CSR clock (bit 2)
 // and the entropy/CSRNG clock (bit 10) are off at reset and must be ungated
 // before touching those registers.
-#define CLOCK_GATE_CTRL    0x10A30008u
-#define CG_MAILBOX_BIT     (1u << 2)
-#define CG_ENTROPY_BIT     (1u << 10)
+#define CLOCK_GATE_CTRL 0x10A30008u
+#define CG_MAILBOX_BIT (1u << 2)
+#define CG_ENTROPY_BIT (1u << 10)
 
 // OTBN done: sep_internal_interrupts[29] -> PIC source 30. Standard OpenTitan
 // INTR layout (STATE/ENABLE/TEST at +0x00/04/08), done = bit 0.
-#define OTBN_INTR_STATE    0x10900000u
-#define OTBN_INTR_ENABLE   0x10900004u
-#define OTBN_INTR_TEST     0x10900008u
-#define OTBN_DONE_BIT      0x1u
-#define OTBN_PIC_SRC       30u
+#define OTBN_INTR_STATE 0x10900000u
+#define OTBN_INTR_ENABLE 0x10900004u
+#define OTBN_INTR_TEST 0x10900008u
+#define OTBN_DONE_BIT 0x1u
+#define OTBN_PIC_SRC 30u
 
 // CSRNG cmd_req_done: sep_internal_interrupts[23] -> PIC source 24. CSRNG base
 // 0x1091_5000 (DRBG aperture, CSRNG half), cmd_req_done = bit 0.
-#define CSRNG_INTR_STATE   0x10915000u
-#define CSRNG_INTR_ENABLE  0x10915004u
-#define CSRNG_INTR_TEST    0x10915008u
+#define CSRNG_INTR_STATE 0x10915000u
+#define CSRNG_INTR_ENABLE 0x10915004u
+#define CSRNG_INTR_TEST 0x10915008u
 #define CSRNG_CMD_DONE_BIT 0x1u
-#define CSRNG_PIC_SRC      24u
+#define CSRNG_PIC_SRC 24u
 
-#define MBOX_TRIGGER_WORD  0x4700CAFEu
-#define ISR_WAIT_ITERS     200000
-#define STORM_CHECK_ITERS  256
+#define MBOX_TRIGGER_WORD 0x4700CAFEu
+#define ISR_WAIT_ITERS 200000
+#define STORM_CHECK_ITERS 256
 
 // Per-source observation slots, indexed by SRC_*.
 enum { SRC_MBOX = 0, SRC_OTBN = 1, SRC_CSRNG = 2, SRC_N = 3 };
 
-static volatile uint32_t g_count[SRC_N]    = {0, 0, 0};
-static volatile uint32_t g_claim[SRC_N]    = {0, 0, 0};
+static volatile uint32_t g_count[SRC_N] = {0, 0, 0};
+static volatile uint32_t g_claim[SRC_N] = {0, 0, 0};
 static volatile uint32_t g_mbox_irqs_after = 0;
 
-static inline uint32_t rd32(uint32_t a) { return *(volatile uint32_t *)a; }
-static inline void      wr32(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+static inline uint32_t rd32(uint32_t a) {
+    return *(volatile uint32_t *)a;
+}
+static inline void wr32(uint32_t a, uint32_t v) {
+    *(volatile uint32_t *)a = v;
+}
 
-static inline uint32_t claim_id(void)
-{
+static inline uint32_t claim_id(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     return (meihap >> 2) & 0xFF;
@@ -93,8 +96,7 @@ static inline uint32_t claim_id(void)
 
 // Outbound mailbox 0 ISR: capture claim id, clear the level (raise WIRQT past
 // the FIFO usage + W1C IRQS), re-read IRQS as the W1C witness.
-void __attribute__((interrupt("machine"))) mbox_isr(void)
-{
+void __attribute__((interrupt("machine"))) mbox_isr(void) {
     g_claim[SRC_MBOX] = claim_id();
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu);
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
@@ -106,8 +108,7 @@ void __attribute__((interrupt("machine"))) mbox_isr(void)
 // OTBN done ISR: capture claim id, W1C the INTR_STATE done bit (de-asserts the
 // level so the PIC claim completes). INTR_TEST is one-shot, so clearing STATE
 // keeps it clear.
-void __attribute__((interrupt("machine"))) otbn_isr(void)
-{
+void __attribute__((interrupt("machine"))) otbn_isr(void) {
     g_claim[SRC_OTBN] = claim_id();
     wr32(OTBN_INTR_STATE, OTBN_DONE_BIT);
     g_count[SRC_OTBN]++;
@@ -115,8 +116,7 @@ void __attribute__((interrupt("machine"))) otbn_isr(void)
 }
 
 // CSRNG cmd_req_done ISR: capture claim id, W1C the INTR_STATE done bit.
-void __attribute__((interrupt("machine"))) csrng_isr(void)
-{
+void __attribute__((interrupt("machine"))) csrng_isr(void) {
     g_claim[SRC_CSRNG] = claim_id();
     wr32(CSRNG_INTR_STATE, CSRNG_CMD_DONE_BIT);
     g_count[SRC_CSRNG]++;
@@ -125,8 +125,7 @@ void __attribute__((interrupt("machine"))) csrng_isr(void)
 
 // Wait (WFI, no poll fallback) until source ``s``'s count advances past
 // ``before``. Returns 1 if it fired, 0 on timeout.
-static int wait_isr(int s, uint32_t before)
-{
+static int wait_isr(int s, uint32_t before) {
     int timeout = ISR_WAIT_ITERS;
     while (timeout-- > 0) {
         __asm__ volatile("wfi");
@@ -138,8 +137,7 @@ static int wait_isr(int s, uint32_t before)
 }
 
 // CHK-ONEHOT helper: every source other than ``s`` must have an unchanged count.
-static int only_one_fired(int s, const uint32_t snapshot[SRC_N])
-{
+static int only_one_fired(int s, const uint32_t snapshot[SRC_N]) {
     for (int j = 0; j < SRC_N; j++) {
         if (j == s) {
             continue;
@@ -153,28 +151,26 @@ static int only_one_fired(int s, const uint32_t snapshot[SRC_N])
 
 // Drive one INTR_TEST source (OTBN/CSRNG): enable, snapshot, force via INTR_TEST,
 // wait for the ISR, then check delivery / claim-id map / one-hot / W1C clear.
-static int run_intr_test_source(const char *name, int s, uint32_t pic_src,
-                                uint32_t intr_state, uint32_t intr_enable,
-                                uint32_t intr_test, uint32_t bit)
-{
+static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint32_t intr_state,
+                                uint32_t intr_enable, uint32_t intr_test, uint32_t bit) {
     int errors = 0;
     uint32_t snap[SRC_N];
 
-    wr32(intr_enable, bit);             // unmask the done interrupt
+    wr32(intr_enable, bit); // unmask the done interrupt
     for (int j = 0; j < SRC_N; j++) {
         snap[j] = g_count[j];
     }
     __asm__ volatile("fence" ::: "memory");
 
-    wr32(intr_test, bit);               // force the interrupt (no datapath run)
+    wr32(intr_test, bit); // force the interrupt (no datapath run)
 
     if (!wait_isr(s, snap[s])) {
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" ISR never reached the CPU\n");
-        return 1;                       // fatal for this source
+        return 1; // fatal for this source
     }
-    if (g_claim[s] != pic_src) {        // CHK-MAP
+    if (g_claim[s] != pic_src) { // CHK-MAP
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" wrong PIC claim id ");
@@ -182,13 +178,13 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src,
         sep_mbx_putc('\n');
         errors++;
     }
-    if (!only_one_fired(s, snap)) {     // CHK-ONEHOT
+    if (!only_one_fired(s, snap)) { // CHK-ONEHOT
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" triggered a neighbour source (not one-hot)\n");
         errors++;
     }
-    if (rd32(intr_state) & bit) {       // CHK-IP-RW1C
+    if (rd32(intr_state) & bit) { // CHK-IP-RW1C
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" INTR_STATE did not clear via W1C\n");
@@ -197,11 +193,10 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src,
     return errors;
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();         // open the 0x8000_0000 console window
+    sep_outbound_filter_init(); // open the 0x8000_0000 console window
     sep_mbx_puts("SEP PIC IRQ source map delivery test\n");
 
     // Ungate the mailbox CSR clock (bit 2) and the entropy/CSRNG clock (bit 10);
@@ -244,8 +239,8 @@ int main(void)
     // --- Source 1: mailbox[0] -> PIC source 1 (real FIFO push) ---
     {
         uint32_t snap[SRC_N];
-        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);  // clear stale
-        sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0u);                    // usage 1 > 0 fires
+        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL); // clear stale
+        sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0u);                   // usage 1 > 0 fires
         sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
         for (int j = 0; j < SRC_N; j++) {
             snap[j] = g_count[j];
@@ -258,34 +253,32 @@ int main(void)
             sep_mbx_puts("FAIL: mailbox ISR never reached the CPU\n");
             return 1;
         }
-        if (g_claim[SRC_MBOX] != SEP_AXIL_MBOX0_PIC_SRC) {     // CHK-MAP
+        if (g_claim[SRC_MBOX] != SEP_AXIL_MBOX0_PIC_SRC) { // CHK-MAP
             sep_mbx_puts("FAIL: mailbox wrong PIC claim id ");
             sep_mbx_puthex(g_claim[SRC_MBOX]);
             sep_mbx_putc('\n');
             errors++;
         }
-        if (!only_one_fired(SRC_MBOX, snap)) {                  // CHK-ONEHOT
+        if (!only_one_fired(SRC_MBOX, snap)) { // CHK-ONEHOT
             sep_mbx_puts("FAIL: mailbox triggered a neighbour source\n");
             errors++;
         }
-        if (g_mbox_irqs_after & SEP_AXIL_MBOX_IRQ_ALL) {        // CHK-IP-RW1C
+        if (g_mbox_irqs_after & SEP_AXIL_MBOX_IRQ_ALL) { // CHK-IP-RW1C
             sep_mbx_puts("FAIL: mailbox IRQS did not clear via W1C ");
             sep_mbx_puthex(g_mbox_irqs_after);
             sep_mbx_putc('\n');
             errors++;
         }
-        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u);             // belt: mask after clear
+        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u); // belt: mask after clear
     }
 
     // --- Source 2: OTBN done -> PIC source 30 (INTR_TEST; CHK-DELIVER) ---
-    errors += run_intr_test_source("OTBN", SRC_OTBN, OTBN_PIC_SRC,
-                                   OTBN_INTR_STATE, OTBN_INTR_ENABLE,
-                                   OTBN_INTR_TEST, OTBN_DONE_BIT);
+    errors += run_intr_test_source("OTBN", SRC_OTBN, OTBN_PIC_SRC, OTBN_INTR_STATE,
+                                   OTBN_INTR_ENABLE, OTBN_INTR_TEST, OTBN_DONE_BIT);
 
     // --- Source 3: CSRNG cmd_req_done -> PIC source 24 (INTR_TEST) ---
-    errors += run_intr_test_source("CSRNG", SRC_CSRNG, CSRNG_PIC_SRC,
-                                   CSRNG_INTR_STATE, CSRNG_INTR_ENABLE,
-                                   CSRNG_INTR_TEST, CSRNG_CMD_DONE_BIT);
+    errors += run_intr_test_source("CSRNG", SRC_CSRNG, CSRNG_PIC_SRC, CSRNG_INTR_STATE,
+                                   CSRNG_INTR_ENABLE, CSRNG_INTR_TEST, CSRNG_CMD_DONE_BIT);
 
     // CHK-PIC-COMPLETE: every source's line de-asserted after its ISR cleared the
     // source, so a quiet window must see no re-fire (the claim completed cleanly).

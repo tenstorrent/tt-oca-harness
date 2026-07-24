@@ -15,4053 +15,3687 @@
 #ifndef OCH_SEP_TOP_REG_H
 #define OCH_SEP_TOP_REG_H
 
-
-
 //==============================================================================
 // Addresses for Address Map: och_sep_top
 //==============================================================================
 
-
-#define OCH_SEP_TOP_REG_MAP_BASE_ADDR  (0x10000000)
-#define OCH_SEP_TOP_REG_MAP_SIZE       (0xB0085084)
-
-
+#define OCH_SEP_TOP_REG_MAP_BASE_ADDR (0x10000000)
+#define OCH_SEP_TOP_REG_MAP_SIZE (0xB0085084)
 
 //==============================================================================
 // Memory: sep_sram
 //==============================================================================
 
-#define SEP_SRAM_MEM_BASE_ADDR  (0x10000000)
-#define SEP_SRAM_MEM_SIZE       (0x00040000)
-
-
+#define SEP_SRAM_MEM_BASE_ADDR (0x10000000)
+#define SEP_SRAM_MEM_SIZE (0x00040000)
 
 //==============================================================================
 // Memory: sep_boot_rom
 //==============================================================================
 
-#define SEP_BOOT_ROM_MEM_BASE_ADDR  (0x10040000)
-#define SEP_BOOT_ROM_MEM_SIZE       (0x00010000)
-
-
+#define SEP_BOOT_ROM_MEM_BASE_ADDR (0x10040000)
+#define SEP_BOOT_ROM_MEM_SIZE (0x00010000)
 
 //==============================================================================
 // Addresses for Address Map: secure_dma
 //==============================================================================
 
+#define SECURE_DMA_REG_MAP_BASE_ADDR (0x10800000)
+#define SECURE_DMA_REG_MAP_SIZE (0x00000150)
 
-#define SECURE_DMA_REG_MAP_BASE_ADDR  (0x10800000)
-#define SECURE_DMA_REG_MAP_SIZE       (0x00000150)
-
-#define SECURE_DMA_INTR_STATE_REG_OFFSET                                                  (0x00000000)
-#define SECURE_DMA_INTR_STATE_REG_ADDR                                                    (0x10800000)
-#define SECURE_DMA_INTR_ENABLE_REG_OFFSET                                                 (0x00000004)
-#define SECURE_DMA_INTR_ENABLE_REG_ADDR                                                   (0x10800004)
-#define SECURE_DMA_INTR_TEST_REG_OFFSET                                                   (0x00000008)
-#define SECURE_DMA_INTR_TEST_REG_ADDR                                                     (0x10800008)
-#define SECURE_DMA_ALERT_TEST_REG_OFFSET                                                  (0x0000000C)
-#define SECURE_DMA_ALERT_TEST_REG_ADDR                                                    (0x1080000C)
-#define SECURE_DMA_SRC_ADDR_LO_REG_OFFSET                                                 (0x00000010)
-#define SECURE_DMA_SRC_ADDR_LO_REG_ADDR                                                   (0x10800010)
-#define SECURE_DMA_SRC_ADDR_HI_REG_OFFSET                                                 (0x00000014)
-#define SECURE_DMA_SRC_ADDR_HI_REG_ADDR                                                   (0x10800014)
-#define SECURE_DMA_DST_ADDR_LO_REG_OFFSET                                                 (0x00000018)
-#define SECURE_DMA_DST_ADDR_LO_REG_ADDR                                                   (0x10800018)
-#define SECURE_DMA_DST_ADDR_HI_REG_OFFSET                                                 (0x0000001C)
-#define SECURE_DMA_DST_ADDR_HI_REG_ADDR                                                   (0x1080001C)
-#define SECURE_DMA_ADDR_SPACE_ID_REG_OFFSET                                               (0x00000020)
-#define SECURE_DMA_ADDR_SPACE_ID_REG_ADDR                                                 (0x10800020)
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_OFFSET                                   (0x00000024)
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR                                     (0x10800024)
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_OFFSET                                  (0x00000028)
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR                                    (0x10800028)
-#define SECURE_DMA_RANGE_VALID_REG_OFFSET                                                 (0x0000002C)
-#define SECURE_DMA_RANGE_VALID_REG_ADDR                                                   (0x1080002C)
-#define SECURE_DMA_RANGE_REGWEN_REG_OFFSET                                                (0x00000030)
-#define SECURE_DMA_RANGE_REGWEN_REG_ADDR                                                  (0x10800030)
-#define SECURE_DMA_CFG_REGWEN_REG_OFFSET                                                  (0x00000034)
-#define SECURE_DMA_CFG_REGWEN_REG_ADDR                                                    (0x10800034)
-#define SECURE_DMA_TOTAL_DATA_SIZE_REG_OFFSET                                             (0x00000038)
-#define SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR                                               (0x10800038)
-#define SECURE_DMA_CHUNK_DATA_SIZE_REG_OFFSET                                             (0x0000003C)
-#define SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR                                               (0x1080003C)
-#define SECURE_DMA_TRANSFER_WIDTH_REG_OFFSET                                              (0x00000040)
-#define SECURE_DMA_TRANSFER_WIDTH_REG_ADDR                                                (0x10800040)
-#define SECURE_DMA_CONTROL_REG_OFFSET                                                     (0x00000044)
-#define SECURE_DMA_CONTROL_REG_ADDR                                                       (0x10800044)
-#define SECURE_DMA_SRC_CONFIG_REG_OFFSET                                                  (0x00000048)
-#define SECURE_DMA_SRC_CONFIG_REG_ADDR                                                    (0x10800048)
-#define SECURE_DMA_DST_CONFIG_REG_OFFSET                                                  (0x0000004C)
-#define SECURE_DMA_DST_CONFIG_REG_ADDR                                                    (0x1080004C)
-#define SECURE_DMA_STATUS_REG_OFFSET                                                      (0x00000050)
-#define SECURE_DMA_STATUS_REG_ADDR                                                        (0x10800050)
-#define SECURE_DMA_ERROR_CODE_REG_OFFSET                                                  (0x00000054)
-#define SECURE_DMA_ERROR_CODE_REG_ADDR                                                    (0x10800054)
-#define SECURE_DMA_SHA2_DIGEST_0_REG_OFFSET                                               (0x00000058)
-#define SECURE_DMA_SHA2_DIGEST_0_REG_ADDR                                                 (0x10800058)
-#define SECURE_DMA_SHA2_DIGEST_1_REG_OFFSET                                               (0x0000005C)
-#define SECURE_DMA_SHA2_DIGEST_1_REG_ADDR                                                 (0x1080005C)
-#define SECURE_DMA_SHA2_DIGEST_2_REG_OFFSET                                               (0x00000060)
-#define SECURE_DMA_SHA2_DIGEST_2_REG_ADDR                                                 (0x10800060)
-#define SECURE_DMA_SHA2_DIGEST_3_REG_OFFSET                                               (0x00000064)
-#define SECURE_DMA_SHA2_DIGEST_3_REG_ADDR                                                 (0x10800064)
-#define SECURE_DMA_SHA2_DIGEST_4_REG_OFFSET                                               (0x00000068)
-#define SECURE_DMA_SHA2_DIGEST_4_REG_ADDR                                                 (0x10800068)
-#define SECURE_DMA_SHA2_DIGEST_5_REG_OFFSET                                               (0x0000006C)
-#define SECURE_DMA_SHA2_DIGEST_5_REG_ADDR                                                 (0x1080006C)
-#define SECURE_DMA_SHA2_DIGEST_6_REG_OFFSET                                               (0x00000070)
-#define SECURE_DMA_SHA2_DIGEST_6_REG_ADDR                                                 (0x10800070)
-#define SECURE_DMA_SHA2_DIGEST_7_REG_OFFSET                                               (0x00000074)
-#define SECURE_DMA_SHA2_DIGEST_7_REG_ADDR                                                 (0x10800074)
-#define SECURE_DMA_SHA2_DIGEST_8_REG_OFFSET                                               (0x00000078)
-#define SECURE_DMA_SHA2_DIGEST_8_REG_ADDR                                                 (0x10800078)
-#define SECURE_DMA_SHA2_DIGEST_9_REG_OFFSET                                               (0x0000007C)
-#define SECURE_DMA_SHA2_DIGEST_9_REG_ADDR                                                 (0x1080007C)
-#define SECURE_DMA_SHA2_DIGEST_10_REG_OFFSET                                              (0x00000080)
-#define SECURE_DMA_SHA2_DIGEST_10_REG_ADDR                                                (0x10800080)
-#define SECURE_DMA_SHA2_DIGEST_11_REG_OFFSET                                              (0x00000084)
-#define SECURE_DMA_SHA2_DIGEST_11_REG_ADDR                                                (0x10800084)
-#define SECURE_DMA_SHA2_DIGEST_12_REG_OFFSET                                              (0x00000088)
-#define SECURE_DMA_SHA2_DIGEST_12_REG_ADDR                                                (0x10800088)
-#define SECURE_DMA_SHA2_DIGEST_13_REG_OFFSET                                              (0x0000008C)
-#define SECURE_DMA_SHA2_DIGEST_13_REG_ADDR                                                (0x1080008C)
-#define SECURE_DMA_SHA2_DIGEST_14_REG_OFFSET                                              (0x00000090)
-#define SECURE_DMA_SHA2_DIGEST_14_REG_ADDR                                                (0x10800090)
-#define SECURE_DMA_SHA2_DIGEST_15_REG_OFFSET                                              (0x00000094)
-#define SECURE_DMA_SHA2_DIGEST_15_REG_ADDR                                                (0x10800094)
-#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_OFFSET                                       (0x00000098)
-#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR                                         (0x10800098)
-#define SECURE_DMA_CLEAR_INTR_SRC_REG_OFFSET                                              (0x0000009C)
-#define SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR                                                (0x1080009C)
-#define SECURE_DMA_CLEAR_INTR_BUS_REG_OFFSET                                              (0x000000A0)
-#define SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR                                                (0x108000A0)
-#define SECURE_DMA_INTR_SRC_ADDR_0_REG_OFFSET                                             (0x000000A4)
-#define SECURE_DMA_INTR_SRC_ADDR_0_REG_ADDR                                               (0x108000A4)
-#define SECURE_DMA_INTR_SRC_ADDR_1_REG_OFFSET                                             (0x000000A8)
-#define SECURE_DMA_INTR_SRC_ADDR_1_REG_ADDR                                               (0x108000A8)
-#define SECURE_DMA_INTR_SRC_ADDR_2_REG_OFFSET                                             (0x000000AC)
-#define SECURE_DMA_INTR_SRC_ADDR_2_REG_ADDR                                               (0x108000AC)
-#define SECURE_DMA_INTR_SRC_ADDR_3_REG_OFFSET                                             (0x000000B0)
-#define SECURE_DMA_INTR_SRC_ADDR_3_REG_ADDR                                               (0x108000B0)
-#define SECURE_DMA_INTR_SRC_ADDR_4_REG_OFFSET                                             (0x000000B4)
-#define SECURE_DMA_INTR_SRC_ADDR_4_REG_ADDR                                               (0x108000B4)
-#define SECURE_DMA_INTR_SRC_ADDR_5_REG_OFFSET                                             (0x000000B8)
-#define SECURE_DMA_INTR_SRC_ADDR_5_REG_ADDR                                               (0x108000B8)
-#define SECURE_DMA_INTR_SRC_ADDR_6_REG_OFFSET                                             (0x000000BC)
-#define SECURE_DMA_INTR_SRC_ADDR_6_REG_ADDR                                               (0x108000BC)
-#define SECURE_DMA_INTR_SRC_ADDR_7_REG_OFFSET                                             (0x000000C0)
-#define SECURE_DMA_INTR_SRC_ADDR_7_REG_ADDR                                               (0x108000C0)
-#define SECURE_DMA_INTR_SRC_ADDR_8_REG_OFFSET                                             (0x000000C4)
-#define SECURE_DMA_INTR_SRC_ADDR_8_REG_ADDR                                               (0x108000C4)
-#define SECURE_DMA_INTR_SRC_ADDR_9_REG_OFFSET                                             (0x000000C8)
-#define SECURE_DMA_INTR_SRC_ADDR_9_REG_ADDR                                               (0x108000C8)
-#define SECURE_DMA_INTR_SRC_ADDR_10_REG_OFFSET                                            (0x000000CC)
-#define SECURE_DMA_INTR_SRC_ADDR_10_REG_ADDR                                              (0x108000CC)
-#define SECURE_DMA_INTR_SRC_WR_VAL_0_REG_OFFSET                                           (0x00000124)
-#define SECURE_DMA_INTR_SRC_WR_VAL_0_REG_ADDR                                             (0x10800124)
-#define SECURE_DMA_INTR_SRC_WR_VAL_1_REG_OFFSET                                           (0x00000128)
-#define SECURE_DMA_INTR_SRC_WR_VAL_1_REG_ADDR                                             (0x10800128)
-#define SECURE_DMA_INTR_SRC_WR_VAL_2_REG_OFFSET                                           (0x0000012C)
-#define SECURE_DMA_INTR_SRC_WR_VAL_2_REG_ADDR                                             (0x1080012C)
-#define SECURE_DMA_INTR_SRC_WR_VAL_3_REG_OFFSET                                           (0x00000130)
-#define SECURE_DMA_INTR_SRC_WR_VAL_3_REG_ADDR                                             (0x10800130)
-#define SECURE_DMA_INTR_SRC_WR_VAL_4_REG_OFFSET                                           (0x00000134)
-#define SECURE_DMA_INTR_SRC_WR_VAL_4_REG_ADDR                                             (0x10800134)
-#define SECURE_DMA_INTR_SRC_WR_VAL_5_REG_OFFSET                                           (0x00000138)
-#define SECURE_DMA_INTR_SRC_WR_VAL_5_REG_ADDR                                             (0x10800138)
-#define SECURE_DMA_INTR_SRC_WR_VAL_6_REG_OFFSET                                           (0x0000013C)
-#define SECURE_DMA_INTR_SRC_WR_VAL_6_REG_ADDR                                             (0x1080013C)
-#define SECURE_DMA_INTR_SRC_WR_VAL_7_REG_OFFSET                                           (0x00000140)
-#define SECURE_DMA_INTR_SRC_WR_VAL_7_REG_ADDR                                             (0x10800140)
-#define SECURE_DMA_INTR_SRC_WR_VAL_8_REG_OFFSET                                           (0x00000144)
-#define SECURE_DMA_INTR_SRC_WR_VAL_8_REG_ADDR                                             (0x10800144)
-#define SECURE_DMA_INTR_SRC_WR_VAL_9_REG_OFFSET                                           (0x00000148)
-#define SECURE_DMA_INTR_SRC_WR_VAL_9_REG_ADDR                                             (0x10800148)
-#define SECURE_DMA_INTR_SRC_WR_VAL_10_REG_OFFSET                                          (0x0000014C)
-#define SECURE_DMA_INTR_SRC_WR_VAL_10_REG_ADDR                                            (0x1080014C)
-
+#define SECURE_DMA_INTR_STATE_REG_OFFSET (0x00000000)
+#define SECURE_DMA_INTR_STATE_REG_ADDR (0x10800000)
+#define SECURE_DMA_INTR_ENABLE_REG_OFFSET (0x00000004)
+#define SECURE_DMA_INTR_ENABLE_REG_ADDR (0x10800004)
+#define SECURE_DMA_INTR_TEST_REG_OFFSET (0x00000008)
+#define SECURE_DMA_INTR_TEST_REG_ADDR (0x10800008)
+#define SECURE_DMA_ALERT_TEST_REG_OFFSET (0x0000000C)
+#define SECURE_DMA_ALERT_TEST_REG_ADDR (0x1080000C)
+#define SECURE_DMA_SRC_ADDR_LO_REG_OFFSET (0x00000010)
+#define SECURE_DMA_SRC_ADDR_LO_REG_ADDR (0x10800010)
+#define SECURE_DMA_SRC_ADDR_HI_REG_OFFSET (0x00000014)
+#define SECURE_DMA_SRC_ADDR_HI_REG_ADDR (0x10800014)
+#define SECURE_DMA_DST_ADDR_LO_REG_OFFSET (0x00000018)
+#define SECURE_DMA_DST_ADDR_LO_REG_ADDR (0x10800018)
+#define SECURE_DMA_DST_ADDR_HI_REG_OFFSET (0x0000001C)
+#define SECURE_DMA_DST_ADDR_HI_REG_ADDR (0x1080001C)
+#define SECURE_DMA_ADDR_SPACE_ID_REG_OFFSET (0x00000020)
+#define SECURE_DMA_ADDR_SPACE_ID_REG_ADDR (0x10800020)
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_OFFSET (0x00000024)
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR (0x10800024)
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_OFFSET (0x00000028)
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR (0x10800028)
+#define SECURE_DMA_RANGE_VALID_REG_OFFSET (0x0000002C)
+#define SECURE_DMA_RANGE_VALID_REG_ADDR (0x1080002C)
+#define SECURE_DMA_RANGE_REGWEN_REG_OFFSET (0x00000030)
+#define SECURE_DMA_RANGE_REGWEN_REG_ADDR (0x10800030)
+#define SECURE_DMA_CFG_REGWEN_REG_OFFSET (0x00000034)
+#define SECURE_DMA_CFG_REGWEN_REG_ADDR (0x10800034)
+#define SECURE_DMA_TOTAL_DATA_SIZE_REG_OFFSET (0x00000038)
+#define SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR (0x10800038)
+#define SECURE_DMA_CHUNK_DATA_SIZE_REG_OFFSET (0x0000003C)
+#define SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR (0x1080003C)
+#define SECURE_DMA_TRANSFER_WIDTH_REG_OFFSET (0x00000040)
+#define SECURE_DMA_TRANSFER_WIDTH_REG_ADDR (0x10800040)
+#define SECURE_DMA_CONTROL_REG_OFFSET (0x00000044)
+#define SECURE_DMA_CONTROL_REG_ADDR (0x10800044)
+#define SECURE_DMA_SRC_CONFIG_REG_OFFSET (0x00000048)
+#define SECURE_DMA_SRC_CONFIG_REG_ADDR (0x10800048)
+#define SECURE_DMA_DST_CONFIG_REG_OFFSET (0x0000004C)
+#define SECURE_DMA_DST_CONFIG_REG_ADDR (0x1080004C)
+#define SECURE_DMA_STATUS_REG_OFFSET (0x00000050)
+#define SECURE_DMA_STATUS_REG_ADDR (0x10800050)
+#define SECURE_DMA_ERROR_CODE_REG_OFFSET (0x00000054)
+#define SECURE_DMA_ERROR_CODE_REG_ADDR (0x10800054)
+#define SECURE_DMA_SHA2_DIGEST_0_REG_OFFSET (0x00000058)
+#define SECURE_DMA_SHA2_DIGEST_0_REG_ADDR (0x10800058)
+#define SECURE_DMA_SHA2_DIGEST_1_REG_OFFSET (0x0000005C)
+#define SECURE_DMA_SHA2_DIGEST_1_REG_ADDR (0x1080005C)
+#define SECURE_DMA_SHA2_DIGEST_2_REG_OFFSET (0x00000060)
+#define SECURE_DMA_SHA2_DIGEST_2_REG_ADDR (0x10800060)
+#define SECURE_DMA_SHA2_DIGEST_3_REG_OFFSET (0x00000064)
+#define SECURE_DMA_SHA2_DIGEST_3_REG_ADDR (0x10800064)
+#define SECURE_DMA_SHA2_DIGEST_4_REG_OFFSET (0x00000068)
+#define SECURE_DMA_SHA2_DIGEST_4_REG_ADDR (0x10800068)
+#define SECURE_DMA_SHA2_DIGEST_5_REG_OFFSET (0x0000006C)
+#define SECURE_DMA_SHA2_DIGEST_5_REG_ADDR (0x1080006C)
+#define SECURE_DMA_SHA2_DIGEST_6_REG_OFFSET (0x00000070)
+#define SECURE_DMA_SHA2_DIGEST_6_REG_ADDR (0x10800070)
+#define SECURE_DMA_SHA2_DIGEST_7_REG_OFFSET (0x00000074)
+#define SECURE_DMA_SHA2_DIGEST_7_REG_ADDR (0x10800074)
+#define SECURE_DMA_SHA2_DIGEST_8_REG_OFFSET (0x00000078)
+#define SECURE_DMA_SHA2_DIGEST_8_REG_ADDR (0x10800078)
+#define SECURE_DMA_SHA2_DIGEST_9_REG_OFFSET (0x0000007C)
+#define SECURE_DMA_SHA2_DIGEST_9_REG_ADDR (0x1080007C)
+#define SECURE_DMA_SHA2_DIGEST_10_REG_OFFSET (0x00000080)
+#define SECURE_DMA_SHA2_DIGEST_10_REG_ADDR (0x10800080)
+#define SECURE_DMA_SHA2_DIGEST_11_REG_OFFSET (0x00000084)
+#define SECURE_DMA_SHA2_DIGEST_11_REG_ADDR (0x10800084)
+#define SECURE_DMA_SHA2_DIGEST_12_REG_OFFSET (0x00000088)
+#define SECURE_DMA_SHA2_DIGEST_12_REG_ADDR (0x10800088)
+#define SECURE_DMA_SHA2_DIGEST_13_REG_OFFSET (0x0000008C)
+#define SECURE_DMA_SHA2_DIGEST_13_REG_ADDR (0x1080008C)
+#define SECURE_DMA_SHA2_DIGEST_14_REG_OFFSET (0x00000090)
+#define SECURE_DMA_SHA2_DIGEST_14_REG_ADDR (0x10800090)
+#define SECURE_DMA_SHA2_DIGEST_15_REG_OFFSET (0x00000094)
+#define SECURE_DMA_SHA2_DIGEST_15_REG_ADDR (0x10800094)
+#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_OFFSET (0x00000098)
+#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR (0x10800098)
+#define SECURE_DMA_CLEAR_INTR_SRC_REG_OFFSET (0x0000009C)
+#define SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR (0x1080009C)
+#define SECURE_DMA_CLEAR_INTR_BUS_REG_OFFSET (0x000000A0)
+#define SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR (0x108000A0)
+#define SECURE_DMA_INTR_SRC_ADDR_0_REG_OFFSET (0x000000A4)
+#define SECURE_DMA_INTR_SRC_ADDR_0_REG_ADDR (0x108000A4)
+#define SECURE_DMA_INTR_SRC_ADDR_1_REG_OFFSET (0x000000A8)
+#define SECURE_DMA_INTR_SRC_ADDR_1_REG_ADDR (0x108000A8)
+#define SECURE_DMA_INTR_SRC_ADDR_2_REG_OFFSET (0x000000AC)
+#define SECURE_DMA_INTR_SRC_ADDR_2_REG_ADDR (0x108000AC)
+#define SECURE_DMA_INTR_SRC_ADDR_3_REG_OFFSET (0x000000B0)
+#define SECURE_DMA_INTR_SRC_ADDR_3_REG_ADDR (0x108000B0)
+#define SECURE_DMA_INTR_SRC_ADDR_4_REG_OFFSET (0x000000B4)
+#define SECURE_DMA_INTR_SRC_ADDR_4_REG_ADDR (0x108000B4)
+#define SECURE_DMA_INTR_SRC_ADDR_5_REG_OFFSET (0x000000B8)
+#define SECURE_DMA_INTR_SRC_ADDR_5_REG_ADDR (0x108000B8)
+#define SECURE_DMA_INTR_SRC_ADDR_6_REG_OFFSET (0x000000BC)
+#define SECURE_DMA_INTR_SRC_ADDR_6_REG_ADDR (0x108000BC)
+#define SECURE_DMA_INTR_SRC_ADDR_7_REG_OFFSET (0x000000C0)
+#define SECURE_DMA_INTR_SRC_ADDR_7_REG_ADDR (0x108000C0)
+#define SECURE_DMA_INTR_SRC_ADDR_8_REG_OFFSET (0x000000C4)
+#define SECURE_DMA_INTR_SRC_ADDR_8_REG_ADDR (0x108000C4)
+#define SECURE_DMA_INTR_SRC_ADDR_9_REG_OFFSET (0x000000C8)
+#define SECURE_DMA_INTR_SRC_ADDR_9_REG_ADDR (0x108000C8)
+#define SECURE_DMA_INTR_SRC_ADDR_10_REG_OFFSET (0x000000CC)
+#define SECURE_DMA_INTR_SRC_ADDR_10_REG_ADDR (0x108000CC)
+#define SECURE_DMA_INTR_SRC_WR_VAL_0_REG_OFFSET (0x00000124)
+#define SECURE_DMA_INTR_SRC_WR_VAL_0_REG_ADDR (0x10800124)
+#define SECURE_DMA_INTR_SRC_WR_VAL_1_REG_OFFSET (0x00000128)
+#define SECURE_DMA_INTR_SRC_WR_VAL_1_REG_ADDR (0x10800128)
+#define SECURE_DMA_INTR_SRC_WR_VAL_2_REG_OFFSET (0x0000012C)
+#define SECURE_DMA_INTR_SRC_WR_VAL_2_REG_ADDR (0x1080012C)
+#define SECURE_DMA_INTR_SRC_WR_VAL_3_REG_OFFSET (0x00000130)
+#define SECURE_DMA_INTR_SRC_WR_VAL_3_REG_ADDR (0x10800130)
+#define SECURE_DMA_INTR_SRC_WR_VAL_4_REG_OFFSET (0x00000134)
+#define SECURE_DMA_INTR_SRC_WR_VAL_4_REG_ADDR (0x10800134)
+#define SECURE_DMA_INTR_SRC_WR_VAL_5_REG_OFFSET (0x00000138)
+#define SECURE_DMA_INTR_SRC_WR_VAL_5_REG_ADDR (0x10800138)
+#define SECURE_DMA_INTR_SRC_WR_VAL_6_REG_OFFSET (0x0000013C)
+#define SECURE_DMA_INTR_SRC_WR_VAL_6_REG_ADDR (0x1080013C)
+#define SECURE_DMA_INTR_SRC_WR_VAL_7_REG_OFFSET (0x00000140)
+#define SECURE_DMA_INTR_SRC_WR_VAL_7_REG_ADDR (0x10800140)
+#define SECURE_DMA_INTR_SRC_WR_VAL_8_REG_OFFSET (0x00000144)
+#define SECURE_DMA_INTR_SRC_WR_VAL_8_REG_ADDR (0x10800144)
+#define SECURE_DMA_INTR_SRC_WR_VAL_9_REG_OFFSET (0x00000148)
+#define SECURE_DMA_INTR_SRC_WR_VAL_9_REG_ADDR (0x10800148)
+#define SECURE_DMA_INTR_SRC_WR_VAL_10_REG_OFFSET (0x0000014C)
+#define SECURE_DMA_INTR_SRC_WR_VAL_10_REG_ADDR (0x1080014C)
 
 //==============================================================================
 // Addresses for Address Map: wdt_timer
 //==============================================================================
 
+#define WDT_TIMER_REG_MAP_BASE_ADDR (0x10801000)
+#define WDT_TIMER_REG_MAP_SIZE (0x00000038)
 
-#define WDT_TIMER_REG_MAP_BASE_ADDR  (0x10801000)
-#define WDT_TIMER_REG_MAP_SIZE       (0x00000038)
-
-#define WDT_TIMER_ALERT_TEST_REG_OFFSET                                                   (0x00000000)
-#define WDT_TIMER_ALERT_TEST_REG_ADDR                                                     (0x10801000)
-#define WDT_TIMER_WKUP_CTRL_REG_OFFSET                                                    (0x00000004)
-#define WDT_TIMER_WKUP_CTRL_REG_ADDR                                                      (0x10801004)
-#define WDT_TIMER_WKUP_THOLD_HI_REG_OFFSET                                                (0x00000008)
-#define WDT_TIMER_WKUP_THOLD_HI_REG_ADDR                                                  (0x10801008)
-#define WDT_TIMER_WKUP_THOLD_LO_REG_OFFSET                                                (0x0000000C)
-#define WDT_TIMER_WKUP_THOLD_LO_REG_ADDR                                                  (0x1080100C)
-#define WDT_TIMER_WKUP_COUNT_HI_REG_OFFSET                                                (0x00000010)
-#define WDT_TIMER_WKUP_COUNT_HI_REG_ADDR                                                  (0x10801010)
-#define WDT_TIMER_WKUP_COUNT_LO_REG_OFFSET                                                (0x00000014)
-#define WDT_TIMER_WKUP_COUNT_LO_REG_ADDR                                                  (0x10801014)
-#define WDT_TIMER_WDOG_REGWEN_REG_OFFSET                                                  (0x00000018)
-#define WDT_TIMER_WDOG_REGWEN_REG_ADDR                                                    (0x10801018)
-#define WDT_TIMER_WDOG_CTRL_REG_OFFSET                                                    (0x0000001C)
-#define WDT_TIMER_WDOG_CTRL_REG_ADDR                                                      (0x1080101C)
-#define WDT_TIMER_WDOG_BARK_THOLD_REG_OFFSET                                              (0x00000020)
-#define WDT_TIMER_WDOG_BARK_THOLD_REG_ADDR                                                (0x10801020)
-#define WDT_TIMER_WDOG_BITE_THOLD_REG_OFFSET                                              (0x00000024)
-#define WDT_TIMER_WDOG_BITE_THOLD_REG_ADDR                                                (0x10801024)
-#define WDT_TIMER_WDOG_COUNT_REG_OFFSET                                                   (0x00000028)
-#define WDT_TIMER_WDOG_COUNT_REG_ADDR                                                     (0x10801028)
-#define WDT_TIMER_INTR_STATE_REG_OFFSET                                                   (0x0000002C)
-#define WDT_TIMER_INTR_STATE_REG_ADDR                                                     (0x1080102C)
-#define WDT_TIMER_INTR_TEST_REG_OFFSET                                                    (0x00000030)
-#define WDT_TIMER_INTR_TEST_REG_ADDR                                                      (0x10801030)
-#define WDT_TIMER_WKUP_CAUSE_REG_OFFSET                                                   (0x00000034)
-#define WDT_TIMER_WKUP_CAUSE_REG_ADDR                                                     (0x10801034)
-
+#define WDT_TIMER_ALERT_TEST_REG_OFFSET (0x00000000)
+#define WDT_TIMER_ALERT_TEST_REG_ADDR (0x10801000)
+#define WDT_TIMER_WKUP_CTRL_REG_OFFSET (0x00000004)
+#define WDT_TIMER_WKUP_CTRL_REG_ADDR (0x10801004)
+#define WDT_TIMER_WKUP_THOLD_HI_REG_OFFSET (0x00000008)
+#define WDT_TIMER_WKUP_THOLD_HI_REG_ADDR (0x10801008)
+#define WDT_TIMER_WKUP_THOLD_LO_REG_OFFSET (0x0000000C)
+#define WDT_TIMER_WKUP_THOLD_LO_REG_ADDR (0x1080100C)
+#define WDT_TIMER_WKUP_COUNT_HI_REG_OFFSET (0x00000010)
+#define WDT_TIMER_WKUP_COUNT_HI_REG_ADDR (0x10801010)
+#define WDT_TIMER_WKUP_COUNT_LO_REG_OFFSET (0x00000014)
+#define WDT_TIMER_WKUP_COUNT_LO_REG_ADDR (0x10801014)
+#define WDT_TIMER_WDOG_REGWEN_REG_OFFSET (0x00000018)
+#define WDT_TIMER_WDOG_REGWEN_REG_ADDR (0x10801018)
+#define WDT_TIMER_WDOG_CTRL_REG_OFFSET (0x0000001C)
+#define WDT_TIMER_WDOG_CTRL_REG_ADDR (0x1080101C)
+#define WDT_TIMER_WDOG_BARK_THOLD_REG_OFFSET (0x00000020)
+#define WDT_TIMER_WDOG_BARK_THOLD_REG_ADDR (0x10801020)
+#define WDT_TIMER_WDOG_BITE_THOLD_REG_OFFSET (0x00000024)
+#define WDT_TIMER_WDOG_BITE_THOLD_REG_ADDR (0x10801024)
+#define WDT_TIMER_WDOG_COUNT_REG_OFFSET (0x00000028)
+#define WDT_TIMER_WDOG_COUNT_REG_ADDR (0x10801028)
+#define WDT_TIMER_INTR_STATE_REG_OFFSET (0x0000002C)
+#define WDT_TIMER_INTR_STATE_REG_ADDR (0x1080102C)
+#define WDT_TIMER_INTR_TEST_REG_OFFSET (0x00000030)
+#define WDT_TIMER_INTR_TEST_REG_ADDR (0x10801030)
+#define WDT_TIMER_WKUP_CAUSE_REG_OFFSET (0x00000034)
+#define WDT_TIMER_WKUP_CAUSE_REG_ADDR (0x10801034)
 
 //==============================================================================
 // Addresses for Address Map: sep_scratch_cold
 //==============================================================================
 
+#define SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR (0x10802000)
+#define SEP_SCRATCH_COLD_REG_MAP_SIZE (0x00000040)
 
-#define SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR  (0x10802000)
-#define SEP_SCRATCH_COLD_REG_MAP_SIZE       (0x00000040)
-
-#define SEP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET                                            (0x00000000)
-#define SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR                                              (0x10802000)
-#define SEP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET                                            (0x00000008)
-#define SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR                                              (0x10802008)
-#define SEP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET                                            (0x00000010)
-#define SEP_SCRATCH_COLD_SCRATCH_2__REG_ADDR                                              (0x10802010)
-#define SEP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET                                            (0x00000018)
-#define SEP_SCRATCH_COLD_SCRATCH_3__REG_ADDR                                              (0x10802018)
-#define SEP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET                                            (0x00000020)
-#define SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR                                              (0x10802020)
-#define SEP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET                                            (0x00000028)
-#define SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR                                              (0x10802028)
-#define SEP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET                                            (0x00000030)
-#define SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR                                              (0x10802030)
-#define SEP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET                                            (0x00000038)
-#define SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR                                              (0x10802038)
-
+#define SEP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET (0x00000000)
+#define SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR (0x10802000)
+#define SEP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET (0x00000008)
+#define SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR (0x10802008)
+#define SEP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET (0x00000010)
+#define SEP_SCRATCH_COLD_SCRATCH_2__REG_ADDR (0x10802010)
+#define SEP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET (0x00000018)
+#define SEP_SCRATCH_COLD_SCRATCH_3__REG_ADDR (0x10802018)
+#define SEP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET (0x00000020)
+#define SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR (0x10802020)
+#define SEP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET (0x00000028)
+#define SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR (0x10802028)
+#define SEP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET (0x00000030)
+#define SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR (0x10802030)
+#define SEP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET (0x00000038)
+#define SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR (0x10802038)
 
 //==============================================================================
 // Addresses for Address Map: sep_scratch_warm
 //==============================================================================
 
+#define SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR (0x10802080)
+#define SEP_SCRATCH_WARM_REG_MAP_SIZE (0x00000040)
 
-#define SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR  (0x10802080)
-#define SEP_SCRATCH_WARM_REG_MAP_SIZE       (0x00000040)
-
-#define SEP_SCRATCH_WARM_SCRATCH_0__REG_OFFSET                                            (0x00000000)
-#define SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR                                              (0x10802080)
-#define SEP_SCRATCH_WARM_SCRATCH_1__REG_OFFSET                                            (0x00000008)
-#define SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR                                              (0x10802088)
-#define SEP_SCRATCH_WARM_SCRATCH_2__REG_OFFSET                                            (0x00000010)
-#define SEP_SCRATCH_WARM_SCRATCH_2__REG_ADDR                                              (0x10802090)
-#define SEP_SCRATCH_WARM_SCRATCH_3__REG_OFFSET                                            (0x00000018)
-#define SEP_SCRATCH_WARM_SCRATCH_3__REG_ADDR                                              (0x10802098)
-#define SEP_SCRATCH_WARM_SCRATCH_4__REG_OFFSET                                            (0x00000020)
-#define SEP_SCRATCH_WARM_SCRATCH_4__REG_ADDR                                              (0x108020A0)
-#define SEP_SCRATCH_WARM_SCRATCH_5__REG_OFFSET                                            (0x00000028)
-#define SEP_SCRATCH_WARM_SCRATCH_5__REG_ADDR                                              (0x108020A8)
-#define SEP_SCRATCH_WARM_SCRATCH_6__REG_OFFSET                                            (0x00000030)
-#define SEP_SCRATCH_WARM_SCRATCH_6__REG_ADDR                                              (0x108020B0)
-#define SEP_SCRATCH_WARM_SCRATCH_7__REG_OFFSET                                            (0x00000038)
-#define SEP_SCRATCH_WARM_SCRATCH_7__REG_ADDR                                              (0x108020B8)
-
+#define SEP_SCRATCH_WARM_SCRATCH_0__REG_OFFSET (0x00000000)
+#define SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR (0x10802080)
+#define SEP_SCRATCH_WARM_SCRATCH_1__REG_OFFSET (0x00000008)
+#define SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR (0x10802088)
+#define SEP_SCRATCH_WARM_SCRATCH_2__REG_OFFSET (0x00000010)
+#define SEP_SCRATCH_WARM_SCRATCH_2__REG_ADDR (0x10802090)
+#define SEP_SCRATCH_WARM_SCRATCH_3__REG_OFFSET (0x00000018)
+#define SEP_SCRATCH_WARM_SCRATCH_3__REG_ADDR (0x10802098)
+#define SEP_SCRATCH_WARM_SCRATCH_4__REG_OFFSET (0x00000020)
+#define SEP_SCRATCH_WARM_SCRATCH_4__REG_ADDR (0x108020A0)
+#define SEP_SCRATCH_WARM_SCRATCH_5__REG_OFFSET (0x00000028)
+#define SEP_SCRATCH_WARM_SCRATCH_5__REG_ADDR (0x108020A8)
+#define SEP_SCRATCH_WARM_SCRATCH_6__REG_OFFSET (0x00000030)
+#define SEP_SCRATCH_WARM_SCRATCH_6__REG_ADDR (0x108020B0)
+#define SEP_SCRATCH_WARM_SCRATCH_7__REG_OFFSET (0x00000038)
+#define SEP_SCRATCH_WARM_SCRATCH_7__REG_ADDR (0x108020B8)
 
 //==============================================================================
 // Addresses for Address Map: sep_reset_ctrl
 //==============================================================================
 
+#define SEP_RESET_CTRL_REG_MAP_BASE_ADDR (0x10803000)
+#define SEP_RESET_CTRL_REG_MAP_SIZE (0x00000008)
 
-#define SEP_RESET_CTRL_REG_MAP_BASE_ADDR  (0x10803000)
-#define SEP_RESET_CTRL_REG_MAP_SIZE       (0x00000008)
-
-#define SEP_RESET_CTRL_SW_RESET_N_REG_OFFSET                                              (0x00000000)
-#define SEP_RESET_CTRL_SW_RESET_N_REG_ADDR                                                (0x10803000)
-
+#define SEP_RESET_CTRL_SW_RESET_N_REG_OFFSET (0x00000000)
+#define SEP_RESET_CTRL_SW_RESET_N_REG_ADDR (0x10803000)
 
 //==============================================================================
 // Addresses for Address Map: otbn
 //==============================================================================
 
+#define OTBN_REG_MAP_BASE_ADDR (0x10900000)
+#define OTBN_REG_MAP_SIZE (0x0000C000)
 
-#define OTBN_REG_MAP_BASE_ADDR  (0x10900000)
-#define OTBN_REG_MAP_SIZE       (0x0000C000)
-
-#define OTBN_INTR_STATE_REG_OFFSET                                                        (0x00000000)
-#define OTBN_INTR_STATE_REG_ADDR                                                          (0x10900000)
-#define OTBN_INTR_ENABLE_REG_OFFSET                                                       (0x00000004)
-#define OTBN_INTR_ENABLE_REG_ADDR                                                         (0x10900004)
-#define OTBN_INTR_TEST_REG_OFFSET                                                         (0x00000008)
-#define OTBN_INTR_TEST_REG_ADDR                                                           (0x10900008)
-#define OTBN_ALERT_TEST_REG_OFFSET                                                        (0x0000000C)
-#define OTBN_ALERT_TEST_REG_ADDR                                                          (0x1090000C)
-#define OTBN_CMD_REG_OFFSET                                                               (0x00000010)
-#define OTBN_CMD_REG_ADDR                                                                 (0x10900010)
-#define OTBN_CTRL_REG_OFFSET                                                              (0x00000014)
-#define OTBN_CTRL_REG_ADDR                                                                (0x10900014)
-#define OTBN_STATUS_REG_OFFSET                                                            (0x00000018)
-#define OTBN_STATUS_REG_ADDR                                                              (0x10900018)
-#define OTBN_ERR_BITS_REG_OFFSET                                                          (0x0000001C)
-#define OTBN_ERR_BITS_REG_ADDR                                                            (0x1090001C)
-#define OTBN_FATAL_ALERT_CAUSE_REG_OFFSET                                                 (0x00000020)
-#define OTBN_FATAL_ALERT_CAUSE_REG_ADDR                                                   (0x10900020)
-#define OTBN_INSN_CNT_REG_OFFSET                                                          (0x00000024)
-#define OTBN_INSN_CNT_REG_ADDR                                                            (0x10900024)
-#define OTBN_LOAD_CHECKSUM_REG_OFFSET                                                     (0x00000028)
-#define OTBN_LOAD_CHECKSUM_REG_ADDR                                                       (0x10900028)
-
+#define OTBN_INTR_STATE_REG_OFFSET (0x00000000)
+#define OTBN_INTR_STATE_REG_ADDR (0x10900000)
+#define OTBN_INTR_ENABLE_REG_OFFSET (0x00000004)
+#define OTBN_INTR_ENABLE_REG_ADDR (0x10900004)
+#define OTBN_INTR_TEST_REG_OFFSET (0x00000008)
+#define OTBN_INTR_TEST_REG_ADDR (0x10900008)
+#define OTBN_ALERT_TEST_REG_OFFSET (0x0000000C)
+#define OTBN_ALERT_TEST_REG_ADDR (0x1090000C)
+#define OTBN_CMD_REG_OFFSET (0x00000010)
+#define OTBN_CMD_REG_ADDR (0x10900010)
+#define OTBN_CTRL_REG_OFFSET (0x00000014)
+#define OTBN_CTRL_REG_ADDR (0x10900014)
+#define OTBN_STATUS_REG_OFFSET (0x00000018)
+#define OTBN_STATUS_REG_ADDR (0x10900018)
+#define OTBN_ERR_BITS_REG_OFFSET (0x0000001C)
+#define OTBN_ERR_BITS_REG_ADDR (0x1090001C)
+#define OTBN_FATAL_ALERT_CAUSE_REG_OFFSET (0x00000020)
+#define OTBN_FATAL_ALERT_CAUSE_REG_ADDR (0x10900020)
+#define OTBN_INSN_CNT_REG_OFFSET (0x00000024)
+#define OTBN_INSN_CNT_REG_ADDR (0x10900024)
+#define OTBN_LOAD_CHECKSUM_REG_OFFSET (0x00000028)
+#define OTBN_LOAD_CHECKSUM_REG_ADDR (0x10900028)
 
 //==============================================================================
 // Memory: IMEM
 //==============================================================================
 
-#define OTBN_IMEM_MEM_BASE_ADDR  (0x10904000)
-#define OTBN_IMEM_MEM_SIZE       (0x00004000)
-
-
+#define OTBN_IMEM_MEM_BASE_ADDR (0x10904000)
+#define OTBN_IMEM_MEM_SIZE (0x00004000)
 
 //==============================================================================
 // Memory: DMEM
 //==============================================================================
 
-#define OTBN_DMEM_MEM_BASE_ADDR  (0x10908000)
-#define OTBN_DMEM_MEM_SIZE       (0x00004000)
-
-
+#define OTBN_DMEM_MEM_BASE_ADDR (0x10908000)
+#define OTBN_DMEM_MEM_SIZE (0x00004000)
 
 //==============================================================================
 // Addresses for Address Map: aes
 //==============================================================================
 
+#define AES_REG_MAP_BASE_ADDR (0x10910000)
+#define AES_REG_MAP_SIZE (0x00000088)
 
-#define AES_REG_MAP_BASE_ADDR  (0x10910000)
-#define AES_REG_MAP_SIZE       (0x00000088)
-
-#define AES_ALERT_TEST_REG_OFFSET                                                         (0x00000000)
-#define AES_ALERT_TEST_REG_ADDR                                                           (0x10910000)
-#define AES_KEY_SHARE0_0__REG_OFFSET                                                      (0x00000004)
-#define AES_KEY_SHARE0_0__REG_ADDR                                                        (0x10910004)
-#define AES_KEY_SHARE0_1__REG_OFFSET                                                      (0x00000008)
-#define AES_KEY_SHARE0_1__REG_ADDR                                                        (0x10910008)
-#define AES_KEY_SHARE0_2__REG_OFFSET                                                      (0x0000000C)
-#define AES_KEY_SHARE0_2__REG_ADDR                                                        (0x1091000C)
-#define AES_KEY_SHARE0_3__REG_OFFSET                                                      (0x00000010)
-#define AES_KEY_SHARE0_3__REG_ADDR                                                        (0x10910010)
-#define AES_KEY_SHARE0_4__REG_OFFSET                                                      (0x00000014)
-#define AES_KEY_SHARE0_4__REG_ADDR                                                        (0x10910014)
-#define AES_KEY_SHARE0_5__REG_OFFSET                                                      (0x00000018)
-#define AES_KEY_SHARE0_5__REG_ADDR                                                        (0x10910018)
-#define AES_KEY_SHARE0_6__REG_OFFSET                                                      (0x0000001C)
-#define AES_KEY_SHARE0_6__REG_ADDR                                                        (0x1091001C)
-#define AES_KEY_SHARE0_7__REG_OFFSET                                                      (0x00000020)
-#define AES_KEY_SHARE0_7__REG_ADDR                                                        (0x10910020)
-#define AES_KEY_SHARE1_0__REG_OFFSET                                                      (0x00000024)
-#define AES_KEY_SHARE1_0__REG_ADDR                                                        (0x10910024)
-#define AES_KEY_SHARE1_1__REG_OFFSET                                                      (0x00000028)
-#define AES_KEY_SHARE1_1__REG_ADDR                                                        (0x10910028)
-#define AES_KEY_SHARE1_2__REG_OFFSET                                                      (0x0000002C)
-#define AES_KEY_SHARE1_2__REG_ADDR                                                        (0x1091002C)
-#define AES_KEY_SHARE1_3__REG_OFFSET                                                      (0x00000030)
-#define AES_KEY_SHARE1_3__REG_ADDR                                                        (0x10910030)
-#define AES_KEY_SHARE1_4__REG_OFFSET                                                      (0x00000034)
-#define AES_KEY_SHARE1_4__REG_ADDR                                                        (0x10910034)
-#define AES_KEY_SHARE1_5__REG_OFFSET                                                      (0x00000038)
-#define AES_KEY_SHARE1_5__REG_ADDR                                                        (0x10910038)
-#define AES_KEY_SHARE1_6__REG_OFFSET                                                      (0x0000003C)
-#define AES_KEY_SHARE1_6__REG_ADDR                                                        (0x1091003C)
-#define AES_KEY_SHARE1_7__REG_OFFSET                                                      (0x00000040)
-#define AES_KEY_SHARE1_7__REG_ADDR                                                        (0x10910040)
-#define AES_IV_0__REG_OFFSET                                                              (0x00000044)
-#define AES_IV_0__REG_ADDR                                                                (0x10910044)
-#define AES_IV_1__REG_OFFSET                                                              (0x00000048)
-#define AES_IV_1__REG_ADDR                                                                (0x10910048)
-#define AES_IV_2__REG_OFFSET                                                              (0x0000004C)
-#define AES_IV_2__REG_ADDR                                                                (0x1091004C)
-#define AES_IV_3__REG_OFFSET                                                              (0x00000050)
-#define AES_IV_3__REG_ADDR                                                                (0x10910050)
-#define AES_DATA_IN_0__REG_OFFSET                                                         (0x00000054)
-#define AES_DATA_IN_0__REG_ADDR                                                           (0x10910054)
-#define AES_DATA_IN_1__REG_OFFSET                                                         (0x00000058)
-#define AES_DATA_IN_1__REG_ADDR                                                           (0x10910058)
-#define AES_DATA_IN_2__REG_OFFSET                                                         (0x0000005C)
-#define AES_DATA_IN_2__REG_ADDR                                                           (0x1091005C)
-#define AES_DATA_IN_3__REG_OFFSET                                                         (0x00000060)
-#define AES_DATA_IN_3__REG_ADDR                                                           (0x10910060)
-#define AES_DATA_OUT_0__REG_OFFSET                                                        (0x00000064)
-#define AES_DATA_OUT_0__REG_ADDR                                                          (0x10910064)
-#define AES_DATA_OUT_1__REG_OFFSET                                                        (0x00000068)
-#define AES_DATA_OUT_1__REG_ADDR                                                          (0x10910068)
-#define AES_DATA_OUT_2__REG_OFFSET                                                        (0x0000006C)
-#define AES_DATA_OUT_2__REG_ADDR                                                          (0x1091006C)
-#define AES_DATA_OUT_3__REG_OFFSET                                                        (0x00000070)
-#define AES_DATA_OUT_3__REG_ADDR                                                          (0x10910070)
-#define AES_CTRL_SHADOWED_REG_OFFSET                                                      (0x00000074)
-#define AES_CTRL_SHADOWED_REG_ADDR                                                        (0x10910074)
-#define AES_CTRL_AUX_SHADOWED_REG_OFFSET                                                  (0x00000078)
-#define AES_CTRL_AUX_SHADOWED_REG_ADDR                                                    (0x10910078)
-#define AES_CTRL_AUX_REGWEN_REG_OFFSET                                                    (0x0000007C)
-#define AES_CTRL_AUX_REGWEN_REG_ADDR                                                      (0x1091007C)
-#define AES_TRIGGER_REG_OFFSET                                                            (0x00000080)
-#define AES_TRIGGER_REG_ADDR                                                              (0x10910080)
-#define AES_STATUS_REG_OFFSET                                                             (0x00000084)
-#define AES_STATUS_REG_ADDR                                                               (0x10910084)
-
+#define AES_ALERT_TEST_REG_OFFSET (0x00000000)
+#define AES_ALERT_TEST_REG_ADDR (0x10910000)
+#define AES_KEY_SHARE0_0__REG_OFFSET (0x00000004)
+#define AES_KEY_SHARE0_0__REG_ADDR (0x10910004)
+#define AES_KEY_SHARE0_1__REG_OFFSET (0x00000008)
+#define AES_KEY_SHARE0_1__REG_ADDR (0x10910008)
+#define AES_KEY_SHARE0_2__REG_OFFSET (0x0000000C)
+#define AES_KEY_SHARE0_2__REG_ADDR (0x1091000C)
+#define AES_KEY_SHARE0_3__REG_OFFSET (0x00000010)
+#define AES_KEY_SHARE0_3__REG_ADDR (0x10910010)
+#define AES_KEY_SHARE0_4__REG_OFFSET (0x00000014)
+#define AES_KEY_SHARE0_4__REG_ADDR (0x10910014)
+#define AES_KEY_SHARE0_5__REG_OFFSET (0x00000018)
+#define AES_KEY_SHARE0_5__REG_ADDR (0x10910018)
+#define AES_KEY_SHARE0_6__REG_OFFSET (0x0000001C)
+#define AES_KEY_SHARE0_6__REG_ADDR (0x1091001C)
+#define AES_KEY_SHARE0_7__REG_OFFSET (0x00000020)
+#define AES_KEY_SHARE0_7__REG_ADDR (0x10910020)
+#define AES_KEY_SHARE1_0__REG_OFFSET (0x00000024)
+#define AES_KEY_SHARE1_0__REG_ADDR (0x10910024)
+#define AES_KEY_SHARE1_1__REG_OFFSET (0x00000028)
+#define AES_KEY_SHARE1_1__REG_ADDR (0x10910028)
+#define AES_KEY_SHARE1_2__REG_OFFSET (0x0000002C)
+#define AES_KEY_SHARE1_2__REG_ADDR (0x1091002C)
+#define AES_KEY_SHARE1_3__REG_OFFSET (0x00000030)
+#define AES_KEY_SHARE1_3__REG_ADDR (0x10910030)
+#define AES_KEY_SHARE1_4__REG_OFFSET (0x00000034)
+#define AES_KEY_SHARE1_4__REG_ADDR (0x10910034)
+#define AES_KEY_SHARE1_5__REG_OFFSET (0x00000038)
+#define AES_KEY_SHARE1_5__REG_ADDR (0x10910038)
+#define AES_KEY_SHARE1_6__REG_OFFSET (0x0000003C)
+#define AES_KEY_SHARE1_6__REG_ADDR (0x1091003C)
+#define AES_KEY_SHARE1_7__REG_OFFSET (0x00000040)
+#define AES_KEY_SHARE1_7__REG_ADDR (0x10910040)
+#define AES_IV_0__REG_OFFSET (0x00000044)
+#define AES_IV_0__REG_ADDR (0x10910044)
+#define AES_IV_1__REG_OFFSET (0x00000048)
+#define AES_IV_1__REG_ADDR (0x10910048)
+#define AES_IV_2__REG_OFFSET (0x0000004C)
+#define AES_IV_2__REG_ADDR (0x1091004C)
+#define AES_IV_3__REG_OFFSET (0x00000050)
+#define AES_IV_3__REG_ADDR (0x10910050)
+#define AES_DATA_IN_0__REG_OFFSET (0x00000054)
+#define AES_DATA_IN_0__REG_ADDR (0x10910054)
+#define AES_DATA_IN_1__REG_OFFSET (0x00000058)
+#define AES_DATA_IN_1__REG_ADDR (0x10910058)
+#define AES_DATA_IN_2__REG_OFFSET (0x0000005C)
+#define AES_DATA_IN_2__REG_ADDR (0x1091005C)
+#define AES_DATA_IN_3__REG_OFFSET (0x00000060)
+#define AES_DATA_IN_3__REG_ADDR (0x10910060)
+#define AES_DATA_OUT_0__REG_OFFSET (0x00000064)
+#define AES_DATA_OUT_0__REG_ADDR (0x10910064)
+#define AES_DATA_OUT_1__REG_OFFSET (0x00000068)
+#define AES_DATA_OUT_1__REG_ADDR (0x10910068)
+#define AES_DATA_OUT_2__REG_OFFSET (0x0000006C)
+#define AES_DATA_OUT_2__REG_ADDR (0x1091006C)
+#define AES_DATA_OUT_3__REG_OFFSET (0x00000070)
+#define AES_DATA_OUT_3__REG_ADDR (0x10910070)
+#define AES_CTRL_SHADOWED_REG_OFFSET (0x00000074)
+#define AES_CTRL_SHADOWED_REG_ADDR (0x10910074)
+#define AES_CTRL_AUX_SHADOWED_REG_OFFSET (0x00000078)
+#define AES_CTRL_AUX_SHADOWED_REG_ADDR (0x10910078)
+#define AES_CTRL_AUX_REGWEN_REG_OFFSET (0x0000007C)
+#define AES_CTRL_AUX_REGWEN_REG_ADDR (0x1091007C)
+#define AES_TRIGGER_REG_OFFSET (0x00000080)
+#define AES_TRIGGER_REG_ADDR (0x10910080)
+#define AES_STATUS_REG_OFFSET (0x00000084)
+#define AES_STATUS_REG_ADDR (0x10910084)
 
 //==============================================================================
 // Addresses for Address Map: hmac
 //==============================================================================
 
+#define HMAC_REG_MAP_BASE_ADDR (0x10911000)
+#define HMAC_REG_MAP_SIZE (0x00002000)
 
-#define HMAC_REG_MAP_BASE_ADDR  (0x10911000)
-#define HMAC_REG_MAP_SIZE       (0x00002000)
-
-#define HMAC_INTR_STATE_REG_OFFSET                                                        (0x00000000)
-#define HMAC_INTR_STATE_REG_ADDR                                                          (0x10911000)
-#define HMAC_INTR_ENABLE_REG_OFFSET                                                       (0x00000004)
-#define HMAC_INTR_ENABLE_REG_ADDR                                                         (0x10911004)
-#define HMAC_INTR_TEST_REG_OFFSET                                                         (0x00000008)
-#define HMAC_INTR_TEST_REG_ADDR                                                           (0x10911008)
-#define HMAC_ALERT_TEST_REG_OFFSET                                                        (0x0000000C)
-#define HMAC_ALERT_TEST_REG_ADDR                                                          (0x1091100C)
-#define HMAC_CFG_REG_OFFSET                                                               (0x00000010)
-#define HMAC_CFG_REG_ADDR                                                                 (0x10911010)
-#define HMAC_CMD_REG_OFFSET                                                               (0x00000014)
-#define HMAC_CMD_REG_ADDR                                                                 (0x10911014)
-#define HMAC_STATUS_REG_OFFSET                                                            (0x00000018)
-#define HMAC_STATUS_REG_ADDR                                                              (0x10911018)
-#define HMAC_ERR_CODE_REG_OFFSET                                                          (0x0000001C)
-#define HMAC_ERR_CODE_REG_ADDR                                                            (0x1091101C)
-#define HMAC_WIPE_SECRET_REG_OFFSET                                                       (0x00000020)
-#define HMAC_WIPE_SECRET_REG_ADDR                                                         (0x10911020)
-#define HMAC_KEY_0__REG_OFFSET                                                            (0x00000024)
-#define HMAC_KEY_0__REG_ADDR                                                              (0x10911024)
-#define HMAC_KEY_1__REG_OFFSET                                                            (0x00000028)
-#define HMAC_KEY_1__REG_ADDR                                                              (0x10911028)
-#define HMAC_KEY_2__REG_OFFSET                                                            (0x0000002C)
-#define HMAC_KEY_2__REG_ADDR                                                              (0x1091102C)
-#define HMAC_KEY_3__REG_OFFSET                                                            (0x00000030)
-#define HMAC_KEY_3__REG_ADDR                                                              (0x10911030)
-#define HMAC_KEY_4__REG_OFFSET                                                            (0x00000034)
-#define HMAC_KEY_4__REG_ADDR                                                              (0x10911034)
-#define HMAC_KEY_5__REG_OFFSET                                                            (0x00000038)
-#define HMAC_KEY_5__REG_ADDR                                                              (0x10911038)
-#define HMAC_KEY_6__REG_OFFSET                                                            (0x0000003C)
-#define HMAC_KEY_6__REG_ADDR                                                              (0x1091103C)
-#define HMAC_KEY_7__REG_OFFSET                                                            (0x00000040)
-#define HMAC_KEY_7__REG_ADDR                                                              (0x10911040)
-#define HMAC_KEY_8__REG_OFFSET                                                            (0x00000044)
-#define HMAC_KEY_8__REG_ADDR                                                              (0x10911044)
-#define HMAC_KEY_9__REG_OFFSET                                                            (0x00000048)
-#define HMAC_KEY_9__REG_ADDR                                                              (0x10911048)
-#define HMAC_KEY_10__REG_OFFSET                                                           (0x0000004C)
-#define HMAC_KEY_10__REG_ADDR                                                             (0x1091104C)
-#define HMAC_KEY_11__REG_OFFSET                                                           (0x00000050)
-#define HMAC_KEY_11__REG_ADDR                                                             (0x10911050)
-#define HMAC_KEY_12__REG_OFFSET                                                           (0x00000054)
-#define HMAC_KEY_12__REG_ADDR                                                             (0x10911054)
-#define HMAC_KEY_13__REG_OFFSET                                                           (0x00000058)
-#define HMAC_KEY_13__REG_ADDR                                                             (0x10911058)
-#define HMAC_KEY_14__REG_OFFSET                                                           (0x0000005C)
-#define HMAC_KEY_14__REG_ADDR                                                             (0x1091105C)
-#define HMAC_KEY_15__REG_OFFSET                                                           (0x00000060)
-#define HMAC_KEY_15__REG_ADDR                                                             (0x10911060)
-#define HMAC_KEY_16__REG_OFFSET                                                           (0x00000064)
-#define HMAC_KEY_16__REG_ADDR                                                             (0x10911064)
-#define HMAC_KEY_17__REG_OFFSET                                                           (0x00000068)
-#define HMAC_KEY_17__REG_ADDR                                                             (0x10911068)
-#define HMAC_KEY_18__REG_OFFSET                                                           (0x0000006C)
-#define HMAC_KEY_18__REG_ADDR                                                             (0x1091106C)
-#define HMAC_KEY_19__REG_OFFSET                                                           (0x00000070)
-#define HMAC_KEY_19__REG_ADDR                                                             (0x10911070)
-#define HMAC_KEY_20__REG_OFFSET                                                           (0x00000074)
-#define HMAC_KEY_20__REG_ADDR                                                             (0x10911074)
-#define HMAC_KEY_21__REG_OFFSET                                                           (0x00000078)
-#define HMAC_KEY_21__REG_ADDR                                                             (0x10911078)
-#define HMAC_KEY_22__REG_OFFSET                                                           (0x0000007C)
-#define HMAC_KEY_22__REG_ADDR                                                             (0x1091107C)
-#define HMAC_KEY_23__REG_OFFSET                                                           (0x00000080)
-#define HMAC_KEY_23__REG_ADDR                                                             (0x10911080)
-#define HMAC_KEY_24__REG_OFFSET                                                           (0x00000084)
-#define HMAC_KEY_24__REG_ADDR                                                             (0x10911084)
-#define HMAC_KEY_25__REG_OFFSET                                                           (0x00000088)
-#define HMAC_KEY_25__REG_ADDR                                                             (0x10911088)
-#define HMAC_KEY_26__REG_OFFSET                                                           (0x0000008C)
-#define HMAC_KEY_26__REG_ADDR                                                             (0x1091108C)
-#define HMAC_KEY_27__REG_OFFSET                                                           (0x00000090)
-#define HMAC_KEY_27__REG_ADDR                                                             (0x10911090)
-#define HMAC_KEY_28__REG_OFFSET                                                           (0x00000094)
-#define HMAC_KEY_28__REG_ADDR                                                             (0x10911094)
-#define HMAC_KEY_29__REG_OFFSET                                                           (0x00000098)
-#define HMAC_KEY_29__REG_ADDR                                                             (0x10911098)
-#define HMAC_KEY_30__REG_OFFSET                                                           (0x0000009C)
-#define HMAC_KEY_30__REG_ADDR                                                             (0x1091109C)
-#define HMAC_KEY_31__REG_OFFSET                                                           (0x000000A0)
-#define HMAC_KEY_31__REG_ADDR                                                             (0x109110A0)
-#define HMAC_DIGEST_0__REG_OFFSET                                                         (0x000000A4)
-#define HMAC_DIGEST_0__REG_ADDR                                                           (0x109110A4)
-#define HMAC_DIGEST_1__REG_OFFSET                                                         (0x000000A8)
-#define HMAC_DIGEST_1__REG_ADDR                                                           (0x109110A8)
-#define HMAC_DIGEST_2__REG_OFFSET                                                         (0x000000AC)
-#define HMAC_DIGEST_2__REG_ADDR                                                           (0x109110AC)
-#define HMAC_DIGEST_3__REG_OFFSET                                                         (0x000000B0)
-#define HMAC_DIGEST_3__REG_ADDR                                                           (0x109110B0)
-#define HMAC_DIGEST_4__REG_OFFSET                                                         (0x000000B4)
-#define HMAC_DIGEST_4__REG_ADDR                                                           (0x109110B4)
-#define HMAC_DIGEST_5__REG_OFFSET                                                         (0x000000B8)
-#define HMAC_DIGEST_5__REG_ADDR                                                           (0x109110B8)
-#define HMAC_DIGEST_6__REG_OFFSET                                                         (0x000000BC)
-#define HMAC_DIGEST_6__REG_ADDR                                                           (0x109110BC)
-#define HMAC_DIGEST_7__REG_OFFSET                                                         (0x000000C0)
-#define HMAC_DIGEST_7__REG_ADDR                                                           (0x109110C0)
-#define HMAC_DIGEST_8__REG_OFFSET                                                         (0x000000C4)
-#define HMAC_DIGEST_8__REG_ADDR                                                           (0x109110C4)
-#define HMAC_DIGEST_9__REG_OFFSET                                                         (0x000000C8)
-#define HMAC_DIGEST_9__REG_ADDR                                                           (0x109110C8)
-#define HMAC_DIGEST_10__REG_OFFSET                                                        (0x000000CC)
-#define HMAC_DIGEST_10__REG_ADDR                                                          (0x109110CC)
-#define HMAC_DIGEST_11__REG_OFFSET                                                        (0x000000D0)
-#define HMAC_DIGEST_11__REG_ADDR                                                          (0x109110D0)
-#define HMAC_DIGEST_12__REG_OFFSET                                                        (0x000000D4)
-#define HMAC_DIGEST_12__REG_ADDR                                                          (0x109110D4)
-#define HMAC_DIGEST_13__REG_OFFSET                                                        (0x000000D8)
-#define HMAC_DIGEST_13__REG_ADDR                                                          (0x109110D8)
-#define HMAC_DIGEST_14__REG_OFFSET                                                        (0x000000DC)
-#define HMAC_DIGEST_14__REG_ADDR                                                          (0x109110DC)
-#define HMAC_DIGEST_15__REG_OFFSET                                                        (0x000000E0)
-#define HMAC_DIGEST_15__REG_ADDR                                                          (0x109110E0)
-#define HMAC_MSG_LENGTH_LOWER_REG_OFFSET                                                  (0x000000E4)
-#define HMAC_MSG_LENGTH_LOWER_REG_ADDR                                                    (0x109110E4)
-#define HMAC_MSG_LENGTH_UPPER_REG_OFFSET                                                  (0x000000E8)
-#define HMAC_MSG_LENGTH_UPPER_REG_ADDR                                                    (0x109110E8)
-
+#define HMAC_INTR_STATE_REG_OFFSET (0x00000000)
+#define HMAC_INTR_STATE_REG_ADDR (0x10911000)
+#define HMAC_INTR_ENABLE_REG_OFFSET (0x00000004)
+#define HMAC_INTR_ENABLE_REG_ADDR (0x10911004)
+#define HMAC_INTR_TEST_REG_OFFSET (0x00000008)
+#define HMAC_INTR_TEST_REG_ADDR (0x10911008)
+#define HMAC_ALERT_TEST_REG_OFFSET (0x0000000C)
+#define HMAC_ALERT_TEST_REG_ADDR (0x1091100C)
+#define HMAC_CFG_REG_OFFSET (0x00000010)
+#define HMAC_CFG_REG_ADDR (0x10911010)
+#define HMAC_CMD_REG_OFFSET (0x00000014)
+#define HMAC_CMD_REG_ADDR (0x10911014)
+#define HMAC_STATUS_REG_OFFSET (0x00000018)
+#define HMAC_STATUS_REG_ADDR (0x10911018)
+#define HMAC_ERR_CODE_REG_OFFSET (0x0000001C)
+#define HMAC_ERR_CODE_REG_ADDR (0x1091101C)
+#define HMAC_WIPE_SECRET_REG_OFFSET (0x00000020)
+#define HMAC_WIPE_SECRET_REG_ADDR (0x10911020)
+#define HMAC_KEY_0__REG_OFFSET (0x00000024)
+#define HMAC_KEY_0__REG_ADDR (0x10911024)
+#define HMAC_KEY_1__REG_OFFSET (0x00000028)
+#define HMAC_KEY_1__REG_ADDR (0x10911028)
+#define HMAC_KEY_2__REG_OFFSET (0x0000002C)
+#define HMAC_KEY_2__REG_ADDR (0x1091102C)
+#define HMAC_KEY_3__REG_OFFSET (0x00000030)
+#define HMAC_KEY_3__REG_ADDR (0x10911030)
+#define HMAC_KEY_4__REG_OFFSET (0x00000034)
+#define HMAC_KEY_4__REG_ADDR (0x10911034)
+#define HMAC_KEY_5__REG_OFFSET (0x00000038)
+#define HMAC_KEY_5__REG_ADDR (0x10911038)
+#define HMAC_KEY_6__REG_OFFSET (0x0000003C)
+#define HMAC_KEY_6__REG_ADDR (0x1091103C)
+#define HMAC_KEY_7__REG_OFFSET (0x00000040)
+#define HMAC_KEY_7__REG_ADDR (0x10911040)
+#define HMAC_KEY_8__REG_OFFSET (0x00000044)
+#define HMAC_KEY_8__REG_ADDR (0x10911044)
+#define HMAC_KEY_9__REG_OFFSET (0x00000048)
+#define HMAC_KEY_9__REG_ADDR (0x10911048)
+#define HMAC_KEY_10__REG_OFFSET (0x0000004C)
+#define HMAC_KEY_10__REG_ADDR (0x1091104C)
+#define HMAC_KEY_11__REG_OFFSET (0x00000050)
+#define HMAC_KEY_11__REG_ADDR (0x10911050)
+#define HMAC_KEY_12__REG_OFFSET (0x00000054)
+#define HMAC_KEY_12__REG_ADDR (0x10911054)
+#define HMAC_KEY_13__REG_OFFSET (0x00000058)
+#define HMAC_KEY_13__REG_ADDR (0x10911058)
+#define HMAC_KEY_14__REG_OFFSET (0x0000005C)
+#define HMAC_KEY_14__REG_ADDR (0x1091105C)
+#define HMAC_KEY_15__REG_OFFSET (0x00000060)
+#define HMAC_KEY_15__REG_ADDR (0x10911060)
+#define HMAC_KEY_16__REG_OFFSET (0x00000064)
+#define HMAC_KEY_16__REG_ADDR (0x10911064)
+#define HMAC_KEY_17__REG_OFFSET (0x00000068)
+#define HMAC_KEY_17__REG_ADDR (0x10911068)
+#define HMAC_KEY_18__REG_OFFSET (0x0000006C)
+#define HMAC_KEY_18__REG_ADDR (0x1091106C)
+#define HMAC_KEY_19__REG_OFFSET (0x00000070)
+#define HMAC_KEY_19__REG_ADDR (0x10911070)
+#define HMAC_KEY_20__REG_OFFSET (0x00000074)
+#define HMAC_KEY_20__REG_ADDR (0x10911074)
+#define HMAC_KEY_21__REG_OFFSET (0x00000078)
+#define HMAC_KEY_21__REG_ADDR (0x10911078)
+#define HMAC_KEY_22__REG_OFFSET (0x0000007C)
+#define HMAC_KEY_22__REG_ADDR (0x1091107C)
+#define HMAC_KEY_23__REG_OFFSET (0x00000080)
+#define HMAC_KEY_23__REG_ADDR (0x10911080)
+#define HMAC_KEY_24__REG_OFFSET (0x00000084)
+#define HMAC_KEY_24__REG_ADDR (0x10911084)
+#define HMAC_KEY_25__REG_OFFSET (0x00000088)
+#define HMAC_KEY_25__REG_ADDR (0x10911088)
+#define HMAC_KEY_26__REG_OFFSET (0x0000008C)
+#define HMAC_KEY_26__REG_ADDR (0x1091108C)
+#define HMAC_KEY_27__REG_OFFSET (0x00000090)
+#define HMAC_KEY_27__REG_ADDR (0x10911090)
+#define HMAC_KEY_28__REG_OFFSET (0x00000094)
+#define HMAC_KEY_28__REG_ADDR (0x10911094)
+#define HMAC_KEY_29__REG_OFFSET (0x00000098)
+#define HMAC_KEY_29__REG_ADDR (0x10911098)
+#define HMAC_KEY_30__REG_OFFSET (0x0000009C)
+#define HMAC_KEY_30__REG_ADDR (0x1091109C)
+#define HMAC_KEY_31__REG_OFFSET (0x000000A0)
+#define HMAC_KEY_31__REG_ADDR (0x109110A0)
+#define HMAC_DIGEST_0__REG_OFFSET (0x000000A4)
+#define HMAC_DIGEST_0__REG_ADDR (0x109110A4)
+#define HMAC_DIGEST_1__REG_OFFSET (0x000000A8)
+#define HMAC_DIGEST_1__REG_ADDR (0x109110A8)
+#define HMAC_DIGEST_2__REG_OFFSET (0x000000AC)
+#define HMAC_DIGEST_2__REG_ADDR (0x109110AC)
+#define HMAC_DIGEST_3__REG_OFFSET (0x000000B0)
+#define HMAC_DIGEST_3__REG_ADDR (0x109110B0)
+#define HMAC_DIGEST_4__REG_OFFSET (0x000000B4)
+#define HMAC_DIGEST_4__REG_ADDR (0x109110B4)
+#define HMAC_DIGEST_5__REG_OFFSET (0x000000B8)
+#define HMAC_DIGEST_5__REG_ADDR (0x109110B8)
+#define HMAC_DIGEST_6__REG_OFFSET (0x000000BC)
+#define HMAC_DIGEST_6__REG_ADDR (0x109110BC)
+#define HMAC_DIGEST_7__REG_OFFSET (0x000000C0)
+#define HMAC_DIGEST_7__REG_ADDR (0x109110C0)
+#define HMAC_DIGEST_8__REG_OFFSET (0x000000C4)
+#define HMAC_DIGEST_8__REG_ADDR (0x109110C4)
+#define HMAC_DIGEST_9__REG_OFFSET (0x000000C8)
+#define HMAC_DIGEST_9__REG_ADDR (0x109110C8)
+#define HMAC_DIGEST_10__REG_OFFSET (0x000000CC)
+#define HMAC_DIGEST_10__REG_ADDR (0x109110CC)
+#define HMAC_DIGEST_11__REG_OFFSET (0x000000D0)
+#define HMAC_DIGEST_11__REG_ADDR (0x109110D0)
+#define HMAC_DIGEST_12__REG_OFFSET (0x000000D4)
+#define HMAC_DIGEST_12__REG_ADDR (0x109110D4)
+#define HMAC_DIGEST_13__REG_OFFSET (0x000000D8)
+#define HMAC_DIGEST_13__REG_ADDR (0x109110D8)
+#define HMAC_DIGEST_14__REG_OFFSET (0x000000DC)
+#define HMAC_DIGEST_14__REG_ADDR (0x109110DC)
+#define HMAC_DIGEST_15__REG_OFFSET (0x000000E0)
+#define HMAC_DIGEST_15__REG_ADDR (0x109110E0)
+#define HMAC_MSG_LENGTH_LOWER_REG_OFFSET (0x000000E4)
+#define HMAC_MSG_LENGTH_LOWER_REG_ADDR (0x109110E4)
+#define HMAC_MSG_LENGTH_UPPER_REG_OFFSET (0x000000E8)
+#define HMAC_MSG_LENGTH_UPPER_REG_ADDR (0x109110E8)
 
 //==============================================================================
 // Memory: MSG_FIFO
 //==============================================================================
 
-#define HMAC_MSG_FIFO_MEM_BASE_ADDR  (0x10912000)
-#define HMAC_MSG_FIFO_MEM_SIZE       (0x00001000)
-
-
+#define HMAC_MSG_FIFO_MEM_BASE_ADDR (0x10912000)
+#define HMAC_MSG_FIFO_MEM_SIZE (0x00001000)
 
 //==============================================================================
 // Addresses for Address Map: kmac
 //==============================================================================
 
+#define KMAC_REG_MAP_BASE_ADDR (0x10913000)
+#define KMAC_REG_MAP_SIZE (0x00001000)
 
-#define KMAC_REG_MAP_BASE_ADDR  (0x10913000)
-#define KMAC_REG_MAP_SIZE       (0x00001000)
-
-#define KMAC_INTR_STATE_REG_OFFSET                                                        (0x00000000)
-#define KMAC_INTR_STATE_REG_ADDR                                                          (0x10913000)
-#define KMAC_INTR_ENABLE_REG_OFFSET                                                       (0x00000004)
-#define KMAC_INTR_ENABLE_REG_ADDR                                                         (0x10913004)
-#define KMAC_INTR_TEST_REG_OFFSET                                                         (0x00000008)
-#define KMAC_INTR_TEST_REG_ADDR                                                           (0x10913008)
-#define KMAC_ALERT_TEST_REG_OFFSET                                                        (0x0000000C)
-#define KMAC_ALERT_TEST_REG_ADDR                                                          (0x1091300C)
-#define KMAC_CFG_REGWEN_REG_OFFSET                                                        (0x00000010)
-#define KMAC_CFG_REGWEN_REG_ADDR                                                          (0x10913010)
-#define KMAC_CFG_SHADOWED_REG_OFFSET                                                      (0x00000014)
-#define KMAC_CFG_SHADOWED_REG_ADDR                                                        (0x10913014)
-#define KMAC_CMD_REG_OFFSET                                                               (0x00000018)
-#define KMAC_CMD_REG_ADDR                                                                 (0x10913018)
-#define KMAC_STATUS_REG_OFFSET                                                            (0x0000001C)
-#define KMAC_STATUS_REG_ADDR                                                              (0x1091301C)
-#define KMAC_ENTROPY_PERIOD_REG_OFFSET                                                    (0x00000020)
-#define KMAC_ENTROPY_PERIOD_REG_ADDR                                                      (0x10913020)
-#define KMAC_ENTROPY_REFRESH_HASH_CNT_REG_OFFSET                                          (0x00000024)
-#define KMAC_ENTROPY_REFRESH_HASH_CNT_REG_ADDR                                            (0x10913024)
-#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_OFFSET                                (0x00000028)
-#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_ADDR                                  (0x10913028)
-#define KMAC_ENTROPY_SEED_REG_OFFSET                                                      (0x0000002C)
-#define KMAC_ENTROPY_SEED_REG_ADDR                                                        (0x1091302C)
-#define KMAC_KEY_SHARE0_0__REG_OFFSET                                                     (0x00000030)
-#define KMAC_KEY_SHARE0_0__REG_ADDR                                                       (0x10913030)
-#define KMAC_KEY_SHARE0_1__REG_OFFSET                                                     (0x00000034)
-#define KMAC_KEY_SHARE0_1__REG_ADDR                                                       (0x10913034)
-#define KMAC_KEY_SHARE0_2__REG_OFFSET                                                     (0x00000038)
-#define KMAC_KEY_SHARE0_2__REG_ADDR                                                       (0x10913038)
-#define KMAC_KEY_SHARE0_3__REG_OFFSET                                                     (0x0000003C)
-#define KMAC_KEY_SHARE0_3__REG_ADDR                                                       (0x1091303C)
-#define KMAC_KEY_SHARE0_4__REG_OFFSET                                                     (0x00000040)
-#define KMAC_KEY_SHARE0_4__REG_ADDR                                                       (0x10913040)
-#define KMAC_KEY_SHARE0_5__REG_OFFSET                                                     (0x00000044)
-#define KMAC_KEY_SHARE0_5__REG_ADDR                                                       (0x10913044)
-#define KMAC_KEY_SHARE0_6__REG_OFFSET                                                     (0x00000048)
-#define KMAC_KEY_SHARE0_6__REG_ADDR                                                       (0x10913048)
-#define KMAC_KEY_SHARE0_7__REG_OFFSET                                                     (0x0000004C)
-#define KMAC_KEY_SHARE0_7__REG_ADDR                                                       (0x1091304C)
-#define KMAC_KEY_SHARE0_8__REG_OFFSET                                                     (0x00000050)
-#define KMAC_KEY_SHARE0_8__REG_ADDR                                                       (0x10913050)
-#define KMAC_KEY_SHARE0_9__REG_OFFSET                                                     (0x00000054)
-#define KMAC_KEY_SHARE0_9__REG_ADDR                                                       (0x10913054)
-#define KMAC_KEY_SHARE0_10__REG_OFFSET                                                    (0x00000058)
-#define KMAC_KEY_SHARE0_10__REG_ADDR                                                      (0x10913058)
-#define KMAC_KEY_SHARE0_11__REG_OFFSET                                                    (0x0000005C)
-#define KMAC_KEY_SHARE0_11__REG_ADDR                                                      (0x1091305C)
-#define KMAC_KEY_SHARE0_12__REG_OFFSET                                                    (0x00000060)
-#define KMAC_KEY_SHARE0_12__REG_ADDR                                                      (0x10913060)
-#define KMAC_KEY_SHARE0_13__REG_OFFSET                                                    (0x00000064)
-#define KMAC_KEY_SHARE0_13__REG_ADDR                                                      (0x10913064)
-#define KMAC_KEY_SHARE0_14__REG_OFFSET                                                    (0x00000068)
-#define KMAC_KEY_SHARE0_14__REG_ADDR                                                      (0x10913068)
-#define KMAC_KEY_SHARE0_15__REG_OFFSET                                                    (0x0000006C)
-#define KMAC_KEY_SHARE0_15__REG_ADDR                                                      (0x1091306C)
-#define KMAC_KEY_SHARE1_0__REG_OFFSET                                                     (0x00000070)
-#define KMAC_KEY_SHARE1_0__REG_ADDR                                                       (0x10913070)
-#define KMAC_KEY_SHARE1_1__REG_OFFSET                                                     (0x00000074)
-#define KMAC_KEY_SHARE1_1__REG_ADDR                                                       (0x10913074)
-#define KMAC_KEY_SHARE1_2__REG_OFFSET                                                     (0x00000078)
-#define KMAC_KEY_SHARE1_2__REG_ADDR                                                       (0x10913078)
-#define KMAC_KEY_SHARE1_3__REG_OFFSET                                                     (0x0000007C)
-#define KMAC_KEY_SHARE1_3__REG_ADDR                                                       (0x1091307C)
-#define KMAC_KEY_SHARE1_4__REG_OFFSET                                                     (0x00000080)
-#define KMAC_KEY_SHARE1_4__REG_ADDR                                                       (0x10913080)
-#define KMAC_KEY_SHARE1_5__REG_OFFSET                                                     (0x00000084)
-#define KMAC_KEY_SHARE1_5__REG_ADDR                                                       (0x10913084)
-#define KMAC_KEY_SHARE1_6__REG_OFFSET                                                     (0x00000088)
-#define KMAC_KEY_SHARE1_6__REG_ADDR                                                       (0x10913088)
-#define KMAC_KEY_SHARE1_7__REG_OFFSET                                                     (0x0000008C)
-#define KMAC_KEY_SHARE1_7__REG_ADDR                                                       (0x1091308C)
-#define KMAC_KEY_SHARE1_8__REG_OFFSET                                                     (0x00000090)
-#define KMAC_KEY_SHARE1_8__REG_ADDR                                                       (0x10913090)
-#define KMAC_KEY_SHARE1_9__REG_OFFSET                                                     (0x00000094)
-#define KMAC_KEY_SHARE1_9__REG_ADDR                                                       (0x10913094)
-#define KMAC_KEY_SHARE1_10__REG_OFFSET                                                    (0x00000098)
-#define KMAC_KEY_SHARE1_10__REG_ADDR                                                      (0x10913098)
-#define KMAC_KEY_SHARE1_11__REG_OFFSET                                                    (0x0000009C)
-#define KMAC_KEY_SHARE1_11__REG_ADDR                                                      (0x1091309C)
-#define KMAC_KEY_SHARE1_12__REG_OFFSET                                                    (0x000000A0)
-#define KMAC_KEY_SHARE1_12__REG_ADDR                                                      (0x109130A0)
-#define KMAC_KEY_SHARE1_13__REG_OFFSET                                                    (0x000000A4)
-#define KMAC_KEY_SHARE1_13__REG_ADDR                                                      (0x109130A4)
-#define KMAC_KEY_SHARE1_14__REG_OFFSET                                                    (0x000000A8)
-#define KMAC_KEY_SHARE1_14__REG_ADDR                                                      (0x109130A8)
-#define KMAC_KEY_SHARE1_15__REG_OFFSET                                                    (0x000000AC)
-#define KMAC_KEY_SHARE1_15__REG_ADDR                                                      (0x109130AC)
-#define KMAC_KEY_LEN_REG_OFFSET                                                           (0x000000B0)
-#define KMAC_KEY_LEN_REG_ADDR                                                             (0x109130B0)
-#define KMAC_PREFIX_0__REG_OFFSET                                                         (0x000000B4)
-#define KMAC_PREFIX_0__REG_ADDR                                                           (0x109130B4)
-#define KMAC_PREFIX_1__REG_OFFSET                                                         (0x000000B8)
-#define KMAC_PREFIX_1__REG_ADDR                                                           (0x109130B8)
-#define KMAC_PREFIX_2__REG_OFFSET                                                         (0x000000BC)
-#define KMAC_PREFIX_2__REG_ADDR                                                           (0x109130BC)
-#define KMAC_PREFIX_3__REG_OFFSET                                                         (0x000000C0)
-#define KMAC_PREFIX_3__REG_ADDR                                                           (0x109130C0)
-#define KMAC_PREFIX_4__REG_OFFSET                                                         (0x000000C4)
-#define KMAC_PREFIX_4__REG_ADDR                                                           (0x109130C4)
-#define KMAC_PREFIX_5__REG_OFFSET                                                         (0x000000C8)
-#define KMAC_PREFIX_5__REG_ADDR                                                           (0x109130C8)
-#define KMAC_PREFIX_6__REG_OFFSET                                                         (0x000000CC)
-#define KMAC_PREFIX_6__REG_ADDR                                                           (0x109130CC)
-#define KMAC_PREFIX_7__REG_OFFSET                                                         (0x000000D0)
-#define KMAC_PREFIX_7__REG_ADDR                                                           (0x109130D0)
-#define KMAC_PREFIX_8__REG_OFFSET                                                         (0x000000D4)
-#define KMAC_PREFIX_8__REG_ADDR                                                           (0x109130D4)
-#define KMAC_PREFIX_9__REG_OFFSET                                                         (0x000000D8)
-#define KMAC_PREFIX_9__REG_ADDR                                                           (0x109130D8)
-#define KMAC_PREFIX_10__REG_OFFSET                                                        (0x000000DC)
-#define KMAC_PREFIX_10__REG_ADDR                                                          (0x109130DC)
-#define KMAC_ERR_CODE_REG_OFFSET                                                          (0x000000E0)
-#define KMAC_ERR_CODE_REG_ADDR                                                            (0x109130E0)
-
+#define KMAC_INTR_STATE_REG_OFFSET (0x00000000)
+#define KMAC_INTR_STATE_REG_ADDR (0x10913000)
+#define KMAC_INTR_ENABLE_REG_OFFSET (0x00000004)
+#define KMAC_INTR_ENABLE_REG_ADDR (0x10913004)
+#define KMAC_INTR_TEST_REG_OFFSET (0x00000008)
+#define KMAC_INTR_TEST_REG_ADDR (0x10913008)
+#define KMAC_ALERT_TEST_REG_OFFSET (0x0000000C)
+#define KMAC_ALERT_TEST_REG_ADDR (0x1091300C)
+#define KMAC_CFG_REGWEN_REG_OFFSET (0x00000010)
+#define KMAC_CFG_REGWEN_REG_ADDR (0x10913010)
+#define KMAC_CFG_SHADOWED_REG_OFFSET (0x00000014)
+#define KMAC_CFG_SHADOWED_REG_ADDR (0x10913014)
+#define KMAC_CMD_REG_OFFSET (0x00000018)
+#define KMAC_CMD_REG_ADDR (0x10913018)
+#define KMAC_STATUS_REG_OFFSET (0x0000001C)
+#define KMAC_STATUS_REG_ADDR (0x1091301C)
+#define KMAC_ENTROPY_PERIOD_REG_OFFSET (0x00000020)
+#define KMAC_ENTROPY_PERIOD_REG_ADDR (0x10913020)
+#define KMAC_ENTROPY_REFRESH_HASH_CNT_REG_OFFSET (0x00000024)
+#define KMAC_ENTROPY_REFRESH_HASH_CNT_REG_ADDR (0x10913024)
+#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_OFFSET (0x00000028)
+#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_ADDR (0x10913028)
+#define KMAC_ENTROPY_SEED_REG_OFFSET (0x0000002C)
+#define KMAC_ENTROPY_SEED_REG_ADDR (0x1091302C)
+#define KMAC_KEY_SHARE0_0__REG_OFFSET (0x00000030)
+#define KMAC_KEY_SHARE0_0__REG_ADDR (0x10913030)
+#define KMAC_KEY_SHARE0_1__REG_OFFSET (0x00000034)
+#define KMAC_KEY_SHARE0_1__REG_ADDR (0x10913034)
+#define KMAC_KEY_SHARE0_2__REG_OFFSET (0x00000038)
+#define KMAC_KEY_SHARE0_2__REG_ADDR (0x10913038)
+#define KMAC_KEY_SHARE0_3__REG_OFFSET (0x0000003C)
+#define KMAC_KEY_SHARE0_3__REG_ADDR (0x1091303C)
+#define KMAC_KEY_SHARE0_4__REG_OFFSET (0x00000040)
+#define KMAC_KEY_SHARE0_4__REG_ADDR (0x10913040)
+#define KMAC_KEY_SHARE0_5__REG_OFFSET (0x00000044)
+#define KMAC_KEY_SHARE0_5__REG_ADDR (0x10913044)
+#define KMAC_KEY_SHARE0_6__REG_OFFSET (0x00000048)
+#define KMAC_KEY_SHARE0_6__REG_ADDR (0x10913048)
+#define KMAC_KEY_SHARE0_7__REG_OFFSET (0x0000004C)
+#define KMAC_KEY_SHARE0_7__REG_ADDR (0x1091304C)
+#define KMAC_KEY_SHARE0_8__REG_OFFSET (0x00000050)
+#define KMAC_KEY_SHARE0_8__REG_ADDR (0x10913050)
+#define KMAC_KEY_SHARE0_9__REG_OFFSET (0x00000054)
+#define KMAC_KEY_SHARE0_9__REG_ADDR (0x10913054)
+#define KMAC_KEY_SHARE0_10__REG_OFFSET (0x00000058)
+#define KMAC_KEY_SHARE0_10__REG_ADDR (0x10913058)
+#define KMAC_KEY_SHARE0_11__REG_OFFSET (0x0000005C)
+#define KMAC_KEY_SHARE0_11__REG_ADDR (0x1091305C)
+#define KMAC_KEY_SHARE0_12__REG_OFFSET (0x00000060)
+#define KMAC_KEY_SHARE0_12__REG_ADDR (0x10913060)
+#define KMAC_KEY_SHARE0_13__REG_OFFSET (0x00000064)
+#define KMAC_KEY_SHARE0_13__REG_ADDR (0x10913064)
+#define KMAC_KEY_SHARE0_14__REG_OFFSET (0x00000068)
+#define KMAC_KEY_SHARE0_14__REG_ADDR (0x10913068)
+#define KMAC_KEY_SHARE0_15__REG_OFFSET (0x0000006C)
+#define KMAC_KEY_SHARE0_15__REG_ADDR (0x1091306C)
+#define KMAC_KEY_SHARE1_0__REG_OFFSET (0x00000070)
+#define KMAC_KEY_SHARE1_0__REG_ADDR (0x10913070)
+#define KMAC_KEY_SHARE1_1__REG_OFFSET (0x00000074)
+#define KMAC_KEY_SHARE1_1__REG_ADDR (0x10913074)
+#define KMAC_KEY_SHARE1_2__REG_OFFSET (0x00000078)
+#define KMAC_KEY_SHARE1_2__REG_ADDR (0x10913078)
+#define KMAC_KEY_SHARE1_3__REG_OFFSET (0x0000007C)
+#define KMAC_KEY_SHARE1_3__REG_ADDR (0x1091307C)
+#define KMAC_KEY_SHARE1_4__REG_OFFSET (0x00000080)
+#define KMAC_KEY_SHARE1_4__REG_ADDR (0x10913080)
+#define KMAC_KEY_SHARE1_5__REG_OFFSET (0x00000084)
+#define KMAC_KEY_SHARE1_5__REG_ADDR (0x10913084)
+#define KMAC_KEY_SHARE1_6__REG_OFFSET (0x00000088)
+#define KMAC_KEY_SHARE1_6__REG_ADDR (0x10913088)
+#define KMAC_KEY_SHARE1_7__REG_OFFSET (0x0000008C)
+#define KMAC_KEY_SHARE1_7__REG_ADDR (0x1091308C)
+#define KMAC_KEY_SHARE1_8__REG_OFFSET (0x00000090)
+#define KMAC_KEY_SHARE1_8__REG_ADDR (0x10913090)
+#define KMAC_KEY_SHARE1_9__REG_OFFSET (0x00000094)
+#define KMAC_KEY_SHARE1_9__REG_ADDR (0x10913094)
+#define KMAC_KEY_SHARE1_10__REG_OFFSET (0x00000098)
+#define KMAC_KEY_SHARE1_10__REG_ADDR (0x10913098)
+#define KMAC_KEY_SHARE1_11__REG_OFFSET (0x0000009C)
+#define KMAC_KEY_SHARE1_11__REG_ADDR (0x1091309C)
+#define KMAC_KEY_SHARE1_12__REG_OFFSET (0x000000A0)
+#define KMAC_KEY_SHARE1_12__REG_ADDR (0x109130A0)
+#define KMAC_KEY_SHARE1_13__REG_OFFSET (0x000000A4)
+#define KMAC_KEY_SHARE1_13__REG_ADDR (0x109130A4)
+#define KMAC_KEY_SHARE1_14__REG_OFFSET (0x000000A8)
+#define KMAC_KEY_SHARE1_14__REG_ADDR (0x109130A8)
+#define KMAC_KEY_SHARE1_15__REG_OFFSET (0x000000AC)
+#define KMAC_KEY_SHARE1_15__REG_ADDR (0x109130AC)
+#define KMAC_KEY_LEN_REG_OFFSET (0x000000B0)
+#define KMAC_KEY_LEN_REG_ADDR (0x109130B0)
+#define KMAC_PREFIX_0__REG_OFFSET (0x000000B4)
+#define KMAC_PREFIX_0__REG_ADDR (0x109130B4)
+#define KMAC_PREFIX_1__REG_OFFSET (0x000000B8)
+#define KMAC_PREFIX_1__REG_ADDR (0x109130B8)
+#define KMAC_PREFIX_2__REG_OFFSET (0x000000BC)
+#define KMAC_PREFIX_2__REG_ADDR (0x109130BC)
+#define KMAC_PREFIX_3__REG_OFFSET (0x000000C0)
+#define KMAC_PREFIX_3__REG_ADDR (0x109130C0)
+#define KMAC_PREFIX_4__REG_OFFSET (0x000000C4)
+#define KMAC_PREFIX_4__REG_ADDR (0x109130C4)
+#define KMAC_PREFIX_5__REG_OFFSET (0x000000C8)
+#define KMAC_PREFIX_5__REG_ADDR (0x109130C8)
+#define KMAC_PREFIX_6__REG_OFFSET (0x000000CC)
+#define KMAC_PREFIX_6__REG_ADDR (0x109130CC)
+#define KMAC_PREFIX_7__REG_OFFSET (0x000000D0)
+#define KMAC_PREFIX_7__REG_ADDR (0x109130D0)
+#define KMAC_PREFIX_8__REG_OFFSET (0x000000D4)
+#define KMAC_PREFIX_8__REG_ADDR (0x109130D4)
+#define KMAC_PREFIX_9__REG_OFFSET (0x000000D8)
+#define KMAC_PREFIX_9__REG_ADDR (0x109130D8)
+#define KMAC_PREFIX_10__REG_OFFSET (0x000000DC)
+#define KMAC_PREFIX_10__REG_ADDR (0x109130DC)
+#define KMAC_ERR_CODE_REG_OFFSET (0x000000E0)
+#define KMAC_ERR_CODE_REG_ADDR (0x109130E0)
 
 //==============================================================================
 // Memory: STATE
 //==============================================================================
 
-#define KMAC_STATE_MEM_BASE_ADDR  (0x10913400)
-#define KMAC_STATE_MEM_SIZE       (0x00000200)
-
-
+#define KMAC_STATE_MEM_BASE_ADDR (0x10913400)
+#define KMAC_STATE_MEM_SIZE (0x00000200)
 
 //==============================================================================
 // Memory: MSG_FIFO
 //==============================================================================
 
-#define KMAC_MSG_FIFO_MEM_BASE_ADDR  (0x10913800)
-#define KMAC_MSG_FIFO_MEM_SIZE       (0x00000800)
-
-
+#define KMAC_MSG_FIFO_MEM_BASE_ADDR (0x10913800)
+#define KMAC_MSG_FIFO_MEM_SIZE (0x00000800)
 
 //==============================================================================
 // Addresses for Address Map: sep_lifecycle_ctrl
 //==============================================================================
 
+#define SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR (0x10918000)
+#define SEP_LIFECYCLE_CTRL_REG_MAP_SIZE (0x00000018)
 
-#define SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR  (0x10918000)
-#define SEP_LIFECYCLE_CTRL_REG_MAP_SIZE       (0x00000018)
-
-#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_OFFSET                                           (0x00000000)
-#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR                                             (0x10918000)
-#define SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_OFFSET                                            (0x00000008)
-#define SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR                                              (0x10918008)
-#define SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_OFFSET                                            (0x00000010)
-#define SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR                                              (0x10918010)
-
+#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_OFFSET (0x00000000)
+#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR (0x10918000)
+#define SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_OFFSET (0x00000008)
+#define SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR (0x10918008)
+#define SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_OFFSET (0x00000010)
+#define SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR (0x10918010)
 
 //==============================================================================
 // Addresses for Address Map: km_mailbox_sep
 //==============================================================================
 
+#define KM_MAILBOX_SEP_REG_MAP_BASE_ADDR (0x10920000)
+#define KM_MAILBOX_SEP_REG_MAP_SIZE (0x0000001C)
 
-#define KM_MAILBOX_SEP_REG_MAP_BASE_ADDR  (0x10920000)
-#define KM_MAILBOX_SEP_REG_MAP_SIZE       (0x0000001C)
-
-#define KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET                                          (0x00000000)
-#define KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_ADDR                                            (0x10920000)
-#define KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET                                     (0x00000004)
-#define KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_ADDR                                       (0x10920004)
-#define KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET                                           (0x00000008)
-#define KM_MAILBOX_SEP_SEP_READ_DATA_REG_ADDR                                             (0x10920008)
-#define KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET                                              (0x0000000C)
-#define KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR                                                (0x1092000C)
-#define KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET                                          (0x00000010)
-#define KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_ADDR                                            (0x10920010)
-#define KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET                                          (0x00000014)
-#define KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR                                            (0x10920014)
-#define KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET                                                (0x00000018)
-#define KM_MAILBOX_SEP_SEP_CTRL_REG_ADDR                                                  (0x10920018)
-
+#define KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET (0x00000000)
+#define KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_ADDR (0x10920000)
+#define KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET (0x00000004)
+#define KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_ADDR (0x10920004)
+#define KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET (0x00000008)
+#define KM_MAILBOX_SEP_SEP_READ_DATA_REG_ADDR (0x10920008)
+#define KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET (0x0000000C)
+#define KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR (0x1092000C)
+#define KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET (0x00000010)
+#define KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_ADDR (0x10920010)
+#define KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET (0x00000014)
+#define KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR (0x10920014)
+#define KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET (0x00000018)
+#define KM_MAILBOX_SEP_SEP_CTRL_REG_ADDR (0x10920018)
 
 //==============================================================================
 // Addresses for Address Map: sep_efuse_map
 //==============================================================================
 
+#define SEP_EFUSE_MAP_REG_MAP_BASE_ADDR (0x10930000)
+#define SEP_EFUSE_MAP_REG_MAP_SIZE (0x00000400)
 
-#define SEP_EFUSE_MAP_REG_MAP_BASE_ADDR  (0x10930000)
-#define SEP_EFUSE_MAP_REG_MAP_SIZE       (0x00000400)
-
-#define SEP_EFUSE_MAP_LOCKS_REG_OFFSET                                                    (0x00000000)
-#define SEP_EFUSE_MAP_LOCKS_REG_ADDR                                                      (0x10930000)
-#define SEP_EFUSE_MAP_LC_STATE_REG_OFFSET                                                 (0x00000008)
-#define SEP_EFUSE_MAP_LC_STATE_REG_ADDR                                                   (0x10930008)
-#define SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET                                                (0x0000000C)
-#define SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR                                                  (0x1093000C)
-#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET                                         (0x00000010)
-#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR                                           (0x10930010)
-#define SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET                                                  (0x00000014)
-#define SEP_EFUSE_MAP_SIP_DIS_REG_ADDR                                                    (0x10930014)
-#define SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET                                                  (0x0000001C)
-#define SEP_EFUSE_MAP_SYS_DIS_REG_ADDR                                                    (0x1093001C)
-#define SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET                                     (0x00000024)
-#define SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR                                       (0x10930024)
-#define SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET                                 (0x00000044)
-#define SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR                                   (0x10930044)
-#define SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET                                                (0x00000064)
-#define SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR                                                  (0x10930064)
-#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET                                      (0x00000084)
-#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR                                        (0x10930084)
-#define SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET                                              (0x00000088)
-#define SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR                                                (0x10930088)
-#define SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET                                              (0x000000A8)
-#define SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR                                                (0x109300A8)
-#define SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET                                              (0x000000C8)
-#define SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR                                                (0x109300C8)
-#define SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_OFFSET                                          (0x000000E8)
-#define SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_ADDR                                            (0x109300E8)
-#define SEP_EFUSE_MAP_SIP_UID_REG_OFFSET                                                  (0x00000108)
-#define SEP_EFUSE_MAP_SIP_UID_REG_ADDR                                                    (0x10930108)
-#define SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_OFFSET                                          (0x00000128)
-#define SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_ADDR                                            (0x10930128)
-#define SEP_EFUSE_MAP_SYS_UID_REG_OFFSET                                                  (0x00000148)
-#define SEP_EFUSE_MAP_SYS_UID_REG_ADDR                                                    (0x10930148)
-#define SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET                                               (0x00000168)
-#define SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR                                                 (0x10930168)
-#define SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_OFFSET                                             (0x0000016C)
-#define SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_ADDR                                               (0x1093016C)
-#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_OFFSET                                    (0x00000170)
-#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_ADDR                                      (0x10930170)
-#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_OFFSET                                       (0x00000174)
-#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_ADDR                                         (0x10930174)
-#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_OFFSET                                        (0x00000178)
-#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_ADDR                                          (0x10930178)
-#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_OFFSET                                       (0x0000017C)
-#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_ADDR                                         (0x1093017C)
-#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_OFFSET                                        (0x00000180)
-#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_ADDR                                          (0x10930180)
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_OFFSET                                        (0x00000184)
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_ADDR                                          (0x10930184)
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_OFFSET                                       (0x00000188)
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_ADDR                                         (0x10930188)
-#define SEP_EFUSE_MAP_SPI_PHY_MISC_REG_OFFSET                                             (0x0000018C)
-#define SEP_EFUSE_MAP_SPI_PHY_MISC_REG_ADDR                                               (0x1093018C)
-#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_OFFSET                                        (0x00000190)
-#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_ADDR                                          (0x10930190)
-#define SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_OFFSET                                             (0x00000194)
-#define SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_ADDR                                               (0x10930194)
-#define SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_OFFSET                                             (0x000001B4)
-#define SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_ADDR                                               (0x109301B4)
-#define SEP_EFUSE_MAP_RESERVED_0_REG_OFFSET                                               (0x000001D4)
-#define SEP_EFUSE_MAP_RESERVED_0_REG_ADDR                                                 (0x109301D4)
-#define SEP_EFUSE_MAP_RESERVED_1_REG_OFFSET                                               (0x00000214)
-#define SEP_EFUSE_MAP_RESERVED_1_REG_ADDR                                                 (0x10930214)
-#define SEP_EFUSE_MAP_RESERVED_2_REG_OFFSET                                               (0x00000254)
-#define SEP_EFUSE_MAP_RESERVED_2_REG_ADDR                                                 (0x10930254)
-#define SEP_EFUSE_MAP_RESERVED_3_REG_OFFSET                                               (0x00000294)
-#define SEP_EFUSE_MAP_RESERVED_3_REG_ADDR                                                 (0x10930294)
-#define SEP_EFUSE_MAP_RESERVED_4_REG_OFFSET                                               (0x000002D4)
-#define SEP_EFUSE_MAP_RESERVED_4_REG_ADDR                                                 (0x109302D4)
-#define SEP_EFUSE_MAP_RESERVED_5_REG_OFFSET                                               (0x00000314)
-#define SEP_EFUSE_MAP_RESERVED_5_REG_ADDR                                                 (0x10930314)
-#define SEP_EFUSE_MAP_RESERVED_6_REG_OFFSET                                               (0x00000354)
-#define SEP_EFUSE_MAP_RESERVED_6_REG_ADDR                                                 (0x10930354)
-#define SEP_EFUSE_MAP_RESERVED_7_REG_OFFSET                                               (0x00000394)
-#define SEP_EFUSE_MAP_RESERVED_7_REG_ADDR                                                 (0x10930394)
-#define SEP_EFUSE_MAP_RESERVED_LAST_256_REG_OFFSET                                        (0x000003D4)
-#define SEP_EFUSE_MAP_RESERVED_LAST_256_REG_ADDR                                          (0x109303D4)
-#define SEP_EFUSE_MAP_RESERVED_LAST_64_REG_OFFSET                                         (0x000003F4)
-#define SEP_EFUSE_MAP_RESERVED_LAST_64_REG_ADDR                                           (0x109303F4)
-#define SEP_EFUSE_MAP_RESERVED_LAST_32_REG_OFFSET                                         (0x000003FC)
-#define SEP_EFUSE_MAP_RESERVED_LAST_32_REG_ADDR                                           (0x109303FC)
-
+#define SEP_EFUSE_MAP_LOCKS_REG_OFFSET (0x00000000)
+#define SEP_EFUSE_MAP_LOCKS_REG_ADDR (0x10930000)
+#define SEP_EFUSE_MAP_LC_STATE_REG_OFFSET (0x00000008)
+#define SEP_EFUSE_MAP_LC_STATE_REG_ADDR (0x10930008)
+#define SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET (0x0000000C)
+#define SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR (0x1093000C)
+#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET (0x00000010)
+#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR (0x10930010)
+#define SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET (0x00000014)
+#define SEP_EFUSE_MAP_SIP_DIS_REG_ADDR (0x10930014)
+#define SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET (0x0000001C)
+#define SEP_EFUSE_MAP_SYS_DIS_REG_ADDR (0x1093001C)
+#define SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET (0x00000024)
+#define SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR (0x10930024)
+#define SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET (0x00000044)
+#define SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR (0x10930044)
+#define SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET (0x00000064)
+#define SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR (0x10930064)
+#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET (0x00000084)
+#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR (0x10930084)
+#define SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET (0x00000088)
+#define SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR (0x10930088)
+#define SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET (0x000000A8)
+#define SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR (0x109300A8)
+#define SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET (0x000000C8)
+#define SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR (0x109300C8)
+#define SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_OFFSET (0x000000E8)
+#define SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_ADDR (0x109300E8)
+#define SEP_EFUSE_MAP_SIP_UID_REG_OFFSET (0x00000108)
+#define SEP_EFUSE_MAP_SIP_UID_REG_ADDR (0x10930108)
+#define SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_OFFSET (0x00000128)
+#define SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_ADDR (0x10930128)
+#define SEP_EFUSE_MAP_SYS_UID_REG_OFFSET (0x00000148)
+#define SEP_EFUSE_MAP_SYS_UID_REG_ADDR (0x10930148)
+#define SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET (0x00000168)
+#define SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR (0x10930168)
+#define SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_OFFSET (0x0000016C)
+#define SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_ADDR (0x1093016C)
+#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_OFFSET (0x00000170)
+#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_ADDR (0x10930170)
+#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_OFFSET (0x00000174)
+#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_ADDR (0x10930174)
+#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_OFFSET (0x00000178)
+#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_ADDR (0x10930178)
+#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_OFFSET (0x0000017C)
+#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_ADDR (0x1093017C)
+#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_OFFSET (0x00000180)
+#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_ADDR (0x10930180)
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_OFFSET (0x00000184)
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_ADDR (0x10930184)
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_OFFSET (0x00000188)
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_ADDR (0x10930188)
+#define SEP_EFUSE_MAP_SPI_PHY_MISC_REG_OFFSET (0x0000018C)
+#define SEP_EFUSE_MAP_SPI_PHY_MISC_REG_ADDR (0x1093018C)
+#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_OFFSET (0x00000190)
+#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_ADDR (0x10930190)
+#define SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_OFFSET (0x00000194)
+#define SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_ADDR (0x10930194)
+#define SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_OFFSET (0x000001B4)
+#define SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_ADDR (0x109301B4)
+#define SEP_EFUSE_MAP_RESERVED_0_REG_OFFSET (0x000001D4)
+#define SEP_EFUSE_MAP_RESERVED_0_REG_ADDR (0x109301D4)
+#define SEP_EFUSE_MAP_RESERVED_1_REG_OFFSET (0x00000214)
+#define SEP_EFUSE_MAP_RESERVED_1_REG_ADDR (0x10930214)
+#define SEP_EFUSE_MAP_RESERVED_2_REG_OFFSET (0x00000254)
+#define SEP_EFUSE_MAP_RESERVED_2_REG_ADDR (0x10930254)
+#define SEP_EFUSE_MAP_RESERVED_3_REG_OFFSET (0x00000294)
+#define SEP_EFUSE_MAP_RESERVED_3_REG_ADDR (0x10930294)
+#define SEP_EFUSE_MAP_RESERVED_4_REG_OFFSET (0x000002D4)
+#define SEP_EFUSE_MAP_RESERVED_4_REG_ADDR (0x109302D4)
+#define SEP_EFUSE_MAP_RESERVED_5_REG_OFFSET (0x00000314)
+#define SEP_EFUSE_MAP_RESERVED_5_REG_ADDR (0x10930314)
+#define SEP_EFUSE_MAP_RESERVED_6_REG_OFFSET (0x00000354)
+#define SEP_EFUSE_MAP_RESERVED_6_REG_ADDR (0x10930354)
+#define SEP_EFUSE_MAP_RESERVED_7_REG_OFFSET (0x00000394)
+#define SEP_EFUSE_MAP_RESERVED_7_REG_ADDR (0x10930394)
+#define SEP_EFUSE_MAP_RESERVED_LAST_256_REG_OFFSET (0x000003D4)
+#define SEP_EFUSE_MAP_RESERVED_LAST_256_REG_ADDR (0x109303D4)
+#define SEP_EFUSE_MAP_RESERVED_LAST_64_REG_OFFSET (0x000003F4)
+#define SEP_EFUSE_MAP_RESERVED_LAST_64_REG_ADDR (0x109303F4)
+#define SEP_EFUSE_MAP_RESERVED_LAST_32_REG_OFFSET (0x000003FC)
+#define SEP_EFUSE_MAP_RESERVED_LAST_32_REG_ADDR (0x109303FC)
 
 //==============================================================================
 // Addresses for Address Map: efuse_interface_ctrl
 //==============================================================================
 
+#define EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR (0x10930400)
+#define EFUSE_INTERFACE_CTRL_REG_MAP_SIZE (0x0000001C)
 
-#define EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR  (0x10930400)
-#define EFUSE_INTERFACE_CTRL_REG_MAP_SIZE       (0x0000001C)
-
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                       (0x00000000)
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR                         (0x10930400)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET                                (0x00000004)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR                                  (0x10930404)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET                                   (0x00000008)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR                                     (0x10930408)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET                 (0x0000000C)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR                   (0x1093040C)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET                    (0x00000010)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR                      (0x10930410)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET                            (0x00000014)
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                              (0x10930414)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                         (0x00000018)
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                           (0x10930418)
-
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET (0x00000000)
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR (0x10930400)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET (0x00000004)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR (0x10930404)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET (0x00000008)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR (0x10930408)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET (0x0000000C)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR (0x1093040C)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET (0x00000010)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR (0x10930410)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET (0x00000014)
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR (0x10930414)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET (0x00000018)
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR (0x10930418)
 
 //==============================================================================
 // Addresses for Address Map: efuse_mmr
 //==============================================================================
 
+#define EFUSE_MMR_REG_MAP_BASE_ADDR (0x10930500)
+#define EFUSE_MMR_REG_MAP_SIZE (0x00000070)
 
-#define EFUSE_MMR_REG_MAP_BASE_ADDR  (0x10930500)
-#define EFUSE_MMR_REG_MAP_SIZE       (0x00000070)
-
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET                                           (0x00000000)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR                                             (0x10930500)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_OFFSET                                           (0x00000004)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR                                             (0x10930504)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_OFFSET                                           (0x00000008)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_ADDR                                             (0x10930508)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_OFFSET                                           (0x0000000C)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR                                             (0x1093050C)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_OFFSET                                           (0x00000010)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_ADDR                                             (0x10930510)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_OFFSET                                           (0x00000014)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_ADDR                                             (0x10930514)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_OFFSET                                           (0x00000018)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_ADDR                                             (0x10930518)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_OFFSET                                           (0x0000001C)
-#define EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_ADDR                                             (0x1093051C)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_OFFSET                                       (0x00000020)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR                                         (0x10930520)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_OFFSET                                       (0x00000024)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_ADDR                                         (0x10930524)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_OFFSET                                       (0x00000028)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_ADDR                                         (0x10930528)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_OFFSET                                       (0x0000002C)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_ADDR                                         (0x1093052C)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_OFFSET                                       (0x00000030)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_ADDR                                         (0x10930530)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_OFFSET                                       (0x00000034)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_ADDR                                         (0x10930534)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_OFFSET                                       (0x00000038)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_ADDR                                         (0x10930538)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_OFFSET                                       (0x0000003C)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_ADDR                                         (0x1093053C)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_OFFSET                                       (0x00000040)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR                                         (0x10930540)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_OFFSET                                       (0x00000044)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_ADDR                                         (0x10930544)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_OFFSET                                       (0x00000048)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_ADDR                                         (0x10930548)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_OFFSET                                       (0x0000004C)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_ADDR                                         (0x1093054C)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_OFFSET                                       (0x00000050)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_ADDR                                         (0x10930550)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_OFFSET                                       (0x00000054)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_ADDR                                         (0x10930554)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_OFFSET                                       (0x00000058)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_ADDR                                         (0x10930558)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_OFFSET                                       (0x0000005C)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_ADDR                                         (0x1093055C)
-#define EFUSE_MMR_TOKEN_EOP_REG_OFFSET                                                    (0x00000060)
-#define EFUSE_MMR_TOKEN_EOP_REG_ADDR                                                      (0x10930560)
-#define EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_OFFSET                                          (0x00000064)
-#define EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR                                            (0x10930564)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET                                      (0x00000068)
-#define EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                        (0x10930568)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                      (0x0000006C)
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                        (0x1093056C)
-
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET (0x00000000)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR (0x10930500)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_OFFSET (0x00000004)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR (0x10930504)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_OFFSET (0x00000008)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_2__REG_ADDR (0x10930508)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_OFFSET (0x0000000C)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR (0x1093050C)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_OFFSET (0x00000010)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_4__REG_ADDR (0x10930510)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_OFFSET (0x00000014)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_5__REG_ADDR (0x10930514)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_OFFSET (0x00000018)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_6__REG_ADDR (0x10930518)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_OFFSET (0x0000001C)
+#define EFUSE_MMR_RMA_SIP_TOKEN_I_7__REG_ADDR (0x1093051C)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_OFFSET (0x00000020)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR (0x10930520)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_OFFSET (0x00000024)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_1__REG_ADDR (0x10930524)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_OFFSET (0x00000028)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_2__REG_ADDR (0x10930528)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_OFFSET (0x0000002C)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_3__REG_ADDR (0x1093052C)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_OFFSET (0x00000030)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_4__REG_ADDR (0x10930530)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_OFFSET (0x00000034)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_5__REG_ADDR (0x10930534)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_OFFSET (0x00000038)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_6__REG_ADDR (0x10930538)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_OFFSET (0x0000003C)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_I_7__REG_ADDR (0x1093053C)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_OFFSET (0x00000040)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR (0x10930540)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_OFFSET (0x00000044)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_1__REG_ADDR (0x10930544)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_OFFSET (0x00000048)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_2__REG_ADDR (0x10930548)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_OFFSET (0x0000004C)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_3__REG_ADDR (0x1093054C)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_OFFSET (0x00000050)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_4__REG_ADDR (0x10930550)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_OFFSET (0x00000054)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_5__REG_ADDR (0x10930554)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_OFFSET (0x00000058)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_6__REG_ADDR (0x10930558)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_OFFSET (0x0000005C)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_7__REG_ADDR (0x1093055C)
+#define EFUSE_MMR_TOKEN_EOP_REG_OFFSET (0x00000060)
+#define EFUSE_MMR_TOKEN_EOP_REG_ADDR (0x10930560)
+#define EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_OFFSET (0x00000064)
+#define EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR (0x10930564)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET (0x00000068)
+#define EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR (0x10930568)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET (0x0000006C)
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR (0x1093056C)
 
 //==============================================================================
 // Addresses for Address Map: efuse_shim_ctrl
 //==============================================================================
 
+#define EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR (0x10930600)
+#define EFUSE_SHIM_CTRL_REG_MAP_SIZE (0x00000044)
 
-#define EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR  (0x10930600)
-#define EFUSE_SHIM_CTRL_REG_MAP_SIZE       (0x00000044)
-
-#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_REG_OFFSET                                      (0x00000000)
-#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_REG_ADDR                                        (0x10930600)
-#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_1_REG_OFFSET                                    (0x00000004)
-#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_1_REG_ADDR                                      (0x10930604)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_0_REG_OFFSET                                    (0x00000008)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_0_REG_ADDR                                      (0x10930608)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_1_REG_OFFSET                                    (0x0000000C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_1_REG_ADDR                                      (0x1093060C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_2_REG_OFFSET                                    (0x00000010)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_2_REG_ADDR                                      (0x10930610)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_3_REG_OFFSET                                    (0x00000014)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_3_REG_ADDR                                      (0x10930614)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_4_REG_OFFSET                                    (0x00000018)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_4_REG_ADDR                                      (0x10930618)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_5_REG_OFFSET                                    (0x0000001C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_5_REG_ADDR                                      (0x1093061C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_6_REG_OFFSET                                    (0x00000020)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_6_REG_ADDR                                      (0x10930620)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_REG_OFFSET                                    (0x00000024)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_REG_ADDR                                      (0x10930624)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_REG_OFFSET                                    (0x00000028)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_REG_ADDR                                      (0x10930628)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_9_REG_OFFSET                                    (0x0000002C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_9_REG_ADDR                                      (0x1093062C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_10_REG_OFFSET                                   (0x00000030)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_10_REG_ADDR                                     (0x10930630)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_11_REG_OFFSET                                   (0x00000034)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_11_REG_ADDR                                     (0x10930634)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_12_REG_OFFSET                                   (0x00000038)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_12_REG_ADDR                                     (0x10930638)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_13_REG_OFFSET                                   (0x0000003C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_13_REG_ADDR                                     (0x1093063C)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_14_REG_OFFSET                                   (0x00000040)
-#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_14_REG_ADDR                                     (0x10930640)
-
+#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_REG_OFFSET (0x00000000)
+#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_REG_ADDR (0x10930600)
+#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_1_REG_OFFSET (0x00000004)
+#define EFUSE_SHIM_CTRL_EFUSE_CTRL_STATUS_1_REG_ADDR (0x10930604)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_0_REG_OFFSET (0x00000008)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_0_REG_ADDR (0x10930608)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_1_REG_OFFSET (0x0000000C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_1_REG_ADDR (0x1093060C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_2_REG_OFFSET (0x00000010)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_2_REG_ADDR (0x10930610)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_3_REG_OFFSET (0x00000014)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_3_REG_ADDR (0x10930614)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_4_REG_OFFSET (0x00000018)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_4_REG_ADDR (0x10930618)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_5_REG_OFFSET (0x0000001C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_5_REG_ADDR (0x1093061C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_6_REG_OFFSET (0x00000020)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_6_REG_ADDR (0x10930620)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_REG_OFFSET (0x00000024)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_REG_ADDR (0x10930624)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_REG_OFFSET (0x00000028)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_REG_ADDR (0x10930628)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_9_REG_OFFSET (0x0000002C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_9_REG_ADDR (0x1093062C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_10_REG_OFFSET (0x00000030)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_10_REG_ADDR (0x10930630)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_11_REG_OFFSET (0x00000034)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_11_REG_ADDR (0x10930634)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_12_REG_OFFSET (0x00000038)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_12_REG_ADDR (0x10930638)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_13_REG_OFFSET (0x0000003C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_13_REG_ADDR (0x1093063C)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_14_REG_OFFSET (0x00000040)
+#define EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_14_REG_ADDR (0x10930640)
 
 //==============================================================================
 // Addresses for Address Map: axil_mailbox
 //==============================================================================
 
-
-#define AXIL_MAILBOX_REG_MAP_BASE_ADDR  (0x10A00000)
-#define AXIL_MAILBOX_REG_MAP_SIZE       (0x00007850)
-
-
+#define AXIL_MAILBOX_REG_MAP_BASE_ADDR (0x10A00000)
+#define AXIL_MAILBOX_REG_MAP_SIZE (0x00007850)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_0
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR (0x10A00000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR  (0x10A00000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR                               (0x10A00000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_REG_ADDR                                (0x10A00008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_ADDR                                   (0x10A00010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR                              (0x10A00018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_REG_ADDR                                    (0x10A00020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_REG_ADDR                                    (0x10A00028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_REG_ADDR                                     (0x10A00030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_REG_ADDR                                    (0x10A00038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_REG_ADDR                                     (0x10A00040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_REG_ADDR                                     (0x10A00048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR (0x10A00000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_REG_ADDR (0x10A00008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_ADDR (0x10A00010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR (0x10A00018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_REG_ADDR (0x10A00020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_REG_ADDR (0x10A00028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_REG_ADDR (0x10A00030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_REG_ADDR (0x10A00038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_REG_ADDR (0x10A00040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_REG_ADDR (0x10A00048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_0
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR (0x10A00800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR  (0x10A00800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR                                (0x10A00800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_REG_ADDR                                 (0x10A00808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_STATUS_REG_ADDR                                    (0x10A00810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR                               (0x10A00818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_REG_ADDR                                     (0x10A00820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_RIRQT_REG_ADDR                                     (0x10A00828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQS_REG_ADDR                                      (0x10A00830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQEN_REG_ADDR                                     (0x10A00838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQP_REG_ADDR                                      (0x10A00840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_0_CTRL_REG_ADDR                                      (0x10A00848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR (0x10A00800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_REG_ADDR (0x10A00808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_STATUS_REG_ADDR (0x10A00810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR (0x10A00818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_REG_ADDR (0x10A00820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_RIRQT_REG_ADDR (0x10A00828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQS_REG_ADDR (0x10A00830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQEN_REG_ADDR (0x10A00838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_IRQP_REG_ADDR (0x10A00840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_0_CTRL_REG_ADDR (0x10A00848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_1
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_REG_MAP_BASE_ADDR (0x10A01000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_REG_MAP_BASE_ADDR  (0x10A01000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_REG_ADDR                               (0x10A01000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_READ_DATA_REG_ADDR                                (0x10A01008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_STATUS_REG_ADDR                                   (0x10A01010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_ERROR_FLAGS_REG_ADDR                              (0x10A01018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WIRQT_REG_ADDR                                    (0x10A01020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_RIRQT_REG_ADDR                                    (0x10A01028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQS_REG_ADDR                                     (0x10A01030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQEN_REG_ADDR                                    (0x10A01038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQP_REG_ADDR                                     (0x10A01040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_CTRL_REG_ADDR                                     (0x10A01048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WRITE_DATA_REG_ADDR (0x10A01000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_READ_DATA_REG_ADDR (0x10A01008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_STATUS_REG_ADDR (0x10A01010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_ERROR_FLAGS_REG_ADDR (0x10A01018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_WIRQT_REG_ADDR (0x10A01020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_RIRQT_REG_ADDR (0x10A01028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQS_REG_ADDR (0x10A01030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQEN_REG_ADDR (0x10A01038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_IRQP_REG_ADDR (0x10A01040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_1_CTRL_REG_ADDR (0x10A01048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_1
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_REG_MAP_BASE_ADDR (0x10A01800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_REG_MAP_BASE_ADDR  (0x10A01800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_REG_ADDR                                (0x10A01800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_READ_DATA_REG_ADDR                                 (0x10A01808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_STATUS_REG_ADDR                                    (0x10A01810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_ERROR_FLAGS_REG_ADDR                               (0x10A01818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WIRQT_REG_ADDR                                     (0x10A01820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_RIRQT_REG_ADDR                                     (0x10A01828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQS_REG_ADDR                                      (0x10A01830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQEN_REG_ADDR                                     (0x10A01838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQP_REG_ADDR                                      (0x10A01840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_1_CTRL_REG_ADDR                                      (0x10A01848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WRITE_DATA_REG_ADDR (0x10A01800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_READ_DATA_REG_ADDR (0x10A01808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_STATUS_REG_ADDR (0x10A01810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_ERROR_FLAGS_REG_ADDR (0x10A01818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_WIRQT_REG_ADDR (0x10A01820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_RIRQT_REG_ADDR (0x10A01828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQS_REG_ADDR (0x10A01830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQEN_REG_ADDR (0x10A01838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_IRQP_REG_ADDR (0x10A01840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_1_CTRL_REG_ADDR (0x10A01848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_2
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_REG_MAP_BASE_ADDR (0x10A02000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_REG_MAP_BASE_ADDR  (0x10A02000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WRITE_DATA_REG_ADDR                               (0x10A02000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_READ_DATA_REG_ADDR                                (0x10A02008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_STATUS_REG_ADDR                                   (0x10A02010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_ERROR_FLAGS_REG_ADDR                              (0x10A02018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WIRQT_REG_ADDR                                    (0x10A02020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_RIRQT_REG_ADDR                                    (0x10A02028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQS_REG_ADDR                                     (0x10A02030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQEN_REG_ADDR                                    (0x10A02038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQP_REG_ADDR                                     (0x10A02040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_CTRL_REG_ADDR                                     (0x10A02048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WRITE_DATA_REG_ADDR (0x10A02000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_READ_DATA_REG_ADDR (0x10A02008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_STATUS_REG_ADDR (0x10A02010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_ERROR_FLAGS_REG_ADDR (0x10A02018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_WIRQT_REG_ADDR (0x10A02020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_RIRQT_REG_ADDR (0x10A02028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQS_REG_ADDR (0x10A02030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQEN_REG_ADDR (0x10A02038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_IRQP_REG_ADDR (0x10A02040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_2_CTRL_REG_ADDR (0x10A02048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_2
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_REG_MAP_BASE_ADDR (0x10A02800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_REG_MAP_BASE_ADDR  (0x10A02800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WRITE_DATA_REG_ADDR                                (0x10A02800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_READ_DATA_REG_ADDR                                 (0x10A02808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_STATUS_REG_ADDR                                    (0x10A02810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_ERROR_FLAGS_REG_ADDR                               (0x10A02818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WIRQT_REG_ADDR                                     (0x10A02820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_RIRQT_REG_ADDR                                     (0x10A02828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQS_REG_ADDR                                      (0x10A02830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQEN_REG_ADDR                                     (0x10A02838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQP_REG_ADDR                                      (0x10A02840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_2_CTRL_REG_ADDR                                      (0x10A02848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WRITE_DATA_REG_ADDR (0x10A02800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_READ_DATA_REG_ADDR (0x10A02808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_STATUS_REG_ADDR (0x10A02810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_ERROR_FLAGS_REG_ADDR (0x10A02818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_WIRQT_REG_ADDR (0x10A02820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_RIRQT_REG_ADDR (0x10A02828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQS_REG_ADDR (0x10A02830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQEN_REG_ADDR (0x10A02838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_IRQP_REG_ADDR (0x10A02840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_2_CTRL_REG_ADDR (0x10A02848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_3
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_REG_MAP_BASE_ADDR (0x10A03000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_REG_MAP_BASE_ADDR  (0x10A03000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WRITE_DATA_REG_ADDR                               (0x10A03000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_READ_DATA_REG_ADDR                                (0x10A03008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_STATUS_REG_ADDR                                   (0x10A03010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_ERROR_FLAGS_REG_ADDR                              (0x10A03018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WIRQT_REG_ADDR                                    (0x10A03020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_RIRQT_REG_ADDR                                    (0x10A03028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQS_REG_ADDR                                     (0x10A03030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQEN_REG_ADDR                                    (0x10A03038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQP_REG_ADDR                                     (0x10A03040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_CTRL_REG_ADDR                                     (0x10A03048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WRITE_DATA_REG_ADDR (0x10A03000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_READ_DATA_REG_ADDR (0x10A03008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_STATUS_REG_ADDR (0x10A03010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_ERROR_FLAGS_REG_ADDR (0x10A03018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_WIRQT_REG_ADDR (0x10A03020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_RIRQT_REG_ADDR (0x10A03028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQS_REG_ADDR (0x10A03030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQEN_REG_ADDR (0x10A03038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_IRQP_REG_ADDR (0x10A03040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_3_CTRL_REG_ADDR (0x10A03048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_3
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_REG_MAP_BASE_ADDR (0x10A03800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_REG_MAP_BASE_ADDR  (0x10A03800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WRITE_DATA_REG_ADDR                                (0x10A03800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_READ_DATA_REG_ADDR                                 (0x10A03808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_STATUS_REG_ADDR                                    (0x10A03810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_ERROR_FLAGS_REG_ADDR                               (0x10A03818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WIRQT_REG_ADDR                                     (0x10A03820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_RIRQT_REG_ADDR                                     (0x10A03828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQS_REG_ADDR                                      (0x10A03830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQEN_REG_ADDR                                     (0x10A03838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQP_REG_ADDR                                      (0x10A03840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_3_CTRL_REG_ADDR                                      (0x10A03848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WRITE_DATA_REG_ADDR (0x10A03800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_READ_DATA_REG_ADDR (0x10A03808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_STATUS_REG_ADDR (0x10A03810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_ERROR_FLAGS_REG_ADDR (0x10A03818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_WIRQT_REG_ADDR (0x10A03820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_RIRQT_REG_ADDR (0x10A03828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQS_REG_ADDR (0x10A03830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQEN_REG_ADDR (0x10A03838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_IRQP_REG_ADDR (0x10A03840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_3_CTRL_REG_ADDR (0x10A03848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_4
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_REG_MAP_BASE_ADDR (0x10A04000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_REG_MAP_BASE_ADDR  (0x10A04000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WRITE_DATA_REG_ADDR                               (0x10A04000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_READ_DATA_REG_ADDR                                (0x10A04008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_STATUS_REG_ADDR                                   (0x10A04010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_ERROR_FLAGS_REG_ADDR                              (0x10A04018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WIRQT_REG_ADDR                                    (0x10A04020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_RIRQT_REG_ADDR                                    (0x10A04028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQS_REG_ADDR                                     (0x10A04030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQEN_REG_ADDR                                    (0x10A04038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQP_REG_ADDR                                     (0x10A04040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_CTRL_REG_ADDR                                     (0x10A04048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WRITE_DATA_REG_ADDR (0x10A04000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_READ_DATA_REG_ADDR (0x10A04008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_STATUS_REG_ADDR (0x10A04010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_ERROR_FLAGS_REG_ADDR (0x10A04018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_WIRQT_REG_ADDR (0x10A04020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_RIRQT_REG_ADDR (0x10A04028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQS_REG_ADDR (0x10A04030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQEN_REG_ADDR (0x10A04038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_IRQP_REG_ADDR (0x10A04040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_4_CTRL_REG_ADDR (0x10A04048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_4
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_REG_MAP_BASE_ADDR (0x10A04800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_REG_MAP_BASE_ADDR  (0x10A04800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WRITE_DATA_REG_ADDR                                (0x10A04800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_READ_DATA_REG_ADDR                                 (0x10A04808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_STATUS_REG_ADDR                                    (0x10A04810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_ERROR_FLAGS_REG_ADDR                               (0x10A04818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WIRQT_REG_ADDR                                     (0x10A04820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_RIRQT_REG_ADDR                                     (0x10A04828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQS_REG_ADDR                                      (0x10A04830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQEN_REG_ADDR                                     (0x10A04838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQP_REG_ADDR                                      (0x10A04840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_4_CTRL_REG_ADDR                                      (0x10A04848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WRITE_DATA_REG_ADDR (0x10A04800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_READ_DATA_REG_ADDR (0x10A04808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_STATUS_REG_ADDR (0x10A04810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_ERROR_FLAGS_REG_ADDR (0x10A04818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_WIRQT_REG_ADDR (0x10A04820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_RIRQT_REG_ADDR (0x10A04828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQS_REG_ADDR (0x10A04830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQEN_REG_ADDR (0x10A04838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_IRQP_REG_ADDR (0x10A04840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_4_CTRL_REG_ADDR (0x10A04848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_5
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_REG_MAP_BASE_ADDR (0x10A05000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_REG_MAP_BASE_ADDR  (0x10A05000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WRITE_DATA_REG_ADDR                               (0x10A05000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_READ_DATA_REG_ADDR                                (0x10A05008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_STATUS_REG_ADDR                                   (0x10A05010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_ERROR_FLAGS_REG_ADDR                              (0x10A05018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WIRQT_REG_ADDR                                    (0x10A05020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_RIRQT_REG_ADDR                                    (0x10A05028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQS_REG_ADDR                                     (0x10A05030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQEN_REG_ADDR                                    (0x10A05038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQP_REG_ADDR                                     (0x10A05040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_CTRL_REG_ADDR                                     (0x10A05048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WRITE_DATA_REG_ADDR (0x10A05000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_READ_DATA_REG_ADDR (0x10A05008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_STATUS_REG_ADDR (0x10A05010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_ERROR_FLAGS_REG_ADDR (0x10A05018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_WIRQT_REG_ADDR (0x10A05020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_RIRQT_REG_ADDR (0x10A05028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQS_REG_ADDR (0x10A05030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQEN_REG_ADDR (0x10A05038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_IRQP_REG_ADDR (0x10A05040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_5_CTRL_REG_ADDR (0x10A05048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_5
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_REG_MAP_BASE_ADDR (0x10A05800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_REG_MAP_BASE_ADDR  (0x10A05800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WRITE_DATA_REG_ADDR                                (0x10A05800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_READ_DATA_REG_ADDR                                 (0x10A05808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_STATUS_REG_ADDR                                    (0x10A05810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_ERROR_FLAGS_REG_ADDR                               (0x10A05818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WIRQT_REG_ADDR                                     (0x10A05820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_RIRQT_REG_ADDR                                     (0x10A05828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQS_REG_ADDR                                      (0x10A05830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQEN_REG_ADDR                                     (0x10A05838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQP_REG_ADDR                                      (0x10A05840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_5_CTRL_REG_ADDR                                      (0x10A05848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WRITE_DATA_REG_ADDR (0x10A05800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_READ_DATA_REG_ADDR (0x10A05808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_STATUS_REG_ADDR (0x10A05810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_ERROR_FLAGS_REG_ADDR (0x10A05818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_WIRQT_REG_ADDR (0x10A05820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_RIRQT_REG_ADDR (0x10A05828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQS_REG_ADDR (0x10A05830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQEN_REG_ADDR (0x10A05838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_IRQP_REG_ADDR (0x10A05840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_5_CTRL_REG_ADDR (0x10A05848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_6
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_REG_MAP_BASE_ADDR (0x10A06000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_REG_MAP_BASE_ADDR  (0x10A06000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WRITE_DATA_REG_ADDR                               (0x10A06000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_READ_DATA_REG_ADDR                                (0x10A06008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_STATUS_REG_ADDR                                   (0x10A06010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_ERROR_FLAGS_REG_ADDR                              (0x10A06018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WIRQT_REG_ADDR                                    (0x10A06020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_RIRQT_REG_ADDR                                    (0x10A06028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQS_REG_ADDR                                     (0x10A06030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQEN_REG_ADDR                                    (0x10A06038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQP_REG_ADDR                                     (0x10A06040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_CTRL_REG_ADDR                                     (0x10A06048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WRITE_DATA_REG_ADDR (0x10A06000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_READ_DATA_REG_ADDR (0x10A06008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_STATUS_REG_ADDR (0x10A06010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_ERROR_FLAGS_REG_ADDR (0x10A06018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_WIRQT_REG_ADDR (0x10A06020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_RIRQT_REG_ADDR (0x10A06028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQS_REG_ADDR (0x10A06030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQEN_REG_ADDR (0x10A06038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_IRQP_REG_ADDR (0x10A06040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_6_CTRL_REG_ADDR (0x10A06048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_6
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_REG_MAP_BASE_ADDR (0x10A06800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_REG_MAP_BASE_ADDR  (0x10A06800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WRITE_DATA_REG_ADDR                                (0x10A06800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_READ_DATA_REG_ADDR                                 (0x10A06808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_STATUS_REG_ADDR                                    (0x10A06810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_ERROR_FLAGS_REG_ADDR                               (0x10A06818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WIRQT_REG_ADDR                                     (0x10A06820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_RIRQT_REG_ADDR                                     (0x10A06828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQS_REG_ADDR                                      (0x10A06830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQEN_REG_ADDR                                     (0x10A06838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQP_REG_ADDR                                      (0x10A06840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_6_CTRL_REG_ADDR                                      (0x10A06848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WRITE_DATA_REG_ADDR (0x10A06800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_READ_DATA_REG_ADDR (0x10A06808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_STATUS_REG_ADDR (0x10A06810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_ERROR_FLAGS_REG_ADDR (0x10A06818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_WIRQT_REG_ADDR (0x10A06820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_RIRQT_REG_ADDR (0x10A06828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQS_REG_ADDR (0x10A06830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQEN_REG_ADDR (0x10A06838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_IRQP_REG_ADDR (0x10A06840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_6_CTRL_REG_ADDR (0x10A06848)
 
 //==============================================================================
 // Addresses for Address Map: outbound_mailbox_7
 //==============================================================================
 
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_REG_MAP_BASE_ADDR (0x10A07000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_REG_MAP_BASE_ADDR  (0x10A07000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WRITE_DATA_REG_OFFSET                             (0x00000000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WRITE_DATA_REG_ADDR                               (0x10A07000)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_READ_DATA_REG_OFFSET                              (0x00000008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_READ_DATA_REG_ADDR                                (0x10A07008)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_STATUS_REG_OFFSET                                 (0x00000010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_STATUS_REG_ADDR                                   (0x10A07010)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_ERROR_FLAGS_REG_OFFSET                            (0x00000018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_ERROR_FLAGS_REG_ADDR                              (0x10A07018)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WIRQT_REG_OFFSET                                  (0x00000020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WIRQT_REG_ADDR                                    (0x10A07020)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_RIRQT_REG_OFFSET                                  (0x00000028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_RIRQT_REG_ADDR                                    (0x10A07028)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQS_REG_OFFSET                                   (0x00000030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQS_REG_ADDR                                     (0x10A07030)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQEN_REG_OFFSET                                  (0x00000038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQEN_REG_ADDR                                    (0x10A07038)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQP_REG_OFFSET                                   (0x00000040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQP_REG_ADDR                                     (0x10A07040)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_CTRL_REG_OFFSET                                   (0x00000048)
-#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_CTRL_REG_ADDR                                     (0x10A07048)
-
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WRITE_DATA_REG_ADDR (0x10A07000)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_READ_DATA_REG_ADDR (0x10A07008)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_STATUS_REG_ADDR (0x10A07010)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_ERROR_FLAGS_REG_ADDR (0x10A07018)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_WIRQT_REG_ADDR (0x10A07020)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_RIRQT_REG_ADDR (0x10A07028)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQS_REG_ADDR (0x10A07030)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQEN_REG_ADDR (0x10A07038)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_IRQP_REG_ADDR (0x10A07040)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_OUTBOUND_MAILBOX_7_CTRL_REG_ADDR (0x10A07048)
 
 //==============================================================================
 // Addresses for Address Map: inbound_mailbox_7
 //==============================================================================
 
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_REG_MAP_BASE_ADDR (0x10A07800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_REG_MAP_SIZE (0x00000050)
 
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_REG_MAP_BASE_ADDR  (0x10A07800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_REG_MAP_SIZE       (0x00000050)
-
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WRITE_DATA_REG_OFFSET                              (0x00000000)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WRITE_DATA_REG_ADDR                                (0x10A07800)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_READ_DATA_REG_OFFSET                               (0x00000008)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_READ_DATA_REG_ADDR                                 (0x10A07808)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_STATUS_REG_OFFSET                                  (0x00000010)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_STATUS_REG_ADDR                                    (0x10A07810)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_ERROR_FLAGS_REG_OFFSET                             (0x00000018)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_ERROR_FLAGS_REG_ADDR                               (0x10A07818)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WIRQT_REG_OFFSET                                   (0x00000020)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WIRQT_REG_ADDR                                     (0x10A07820)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_RIRQT_REG_OFFSET                                   (0x00000028)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_RIRQT_REG_ADDR                                     (0x10A07828)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQS_REG_OFFSET                                    (0x00000030)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQS_REG_ADDR                                      (0x10A07830)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQEN_REG_OFFSET                                   (0x00000038)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQEN_REG_ADDR                                     (0x10A07838)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQP_REG_OFFSET                                    (0x00000040)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQP_REG_ADDR                                      (0x10A07840)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_REG_OFFSET                                    (0x00000048)
-#define AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_REG_ADDR                                      (0x10A07848)
-
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WRITE_DATA_REG_OFFSET (0x00000000)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WRITE_DATA_REG_ADDR (0x10A07800)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_READ_DATA_REG_OFFSET (0x00000008)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_READ_DATA_REG_ADDR (0x10A07808)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_STATUS_REG_OFFSET (0x00000010)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_STATUS_REG_ADDR (0x10A07810)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_ERROR_FLAGS_REG_OFFSET (0x00000018)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_ERROR_FLAGS_REG_ADDR (0x10A07818)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WIRQT_REG_OFFSET (0x00000020)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_WIRQT_REG_ADDR (0x10A07820)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_RIRQT_REG_OFFSET (0x00000028)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_RIRQT_REG_ADDR (0x10A07828)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQS_REG_OFFSET (0x00000030)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQS_REG_ADDR (0x10A07830)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQEN_REG_OFFSET (0x00000038)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQEN_REG_ADDR (0x10A07838)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQP_REG_OFFSET (0x00000040)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQP_REG_ADDR (0x10A07840)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_REG_OFFSET (0x00000048)
+#define AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_REG_ADDR (0x10A07848)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[0]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR  (0x10A10000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR (0x10A10000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR  (0x10A10000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR (0x10A10000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_START_REG_ADDR                     (0x10A10000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_END_REG_ADDR                       (0x10A10008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10010)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_START_REG_ADDR (0x10A10000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_END_REG_ADDR (0x10A10008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR (0x10A10010)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[1]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR  (0x10A10020)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR (0x10A10020)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR  (0x10A10020)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR (0x10A10020)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_START_REG_ADDR                     (0x10A10020)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_END_REG_ADDR                       (0x10A10028)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10030)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_START_REG_ADDR (0x10A10020)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_END_REG_ADDR (0x10A10028)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR (0x10A10030)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[2]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REG_MAP_BASE_ADDR  (0x10A10040)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REG_MAP_BASE_ADDR (0x10A10040)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR  (0x10A10040)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR (0x10A10040)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_START_REG_ADDR                     (0x10A10040)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_END_REG_ADDR                       (0x10A10048)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10050)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_START_REG_ADDR (0x10A10040)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_END_REG_ADDR (0x10A10048)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR (0x10A10050)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[3]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REG_MAP_BASE_ADDR  (0x10A10060)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REG_MAP_BASE_ADDR (0x10A10060)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR  (0x10A10060)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR (0x10A10060)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_START_REG_ADDR                     (0x10A10060)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_END_REG_ADDR                       (0x10A10068)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10070)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_START_REG_ADDR (0x10A10060)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_END_REG_ADDR (0x10A10068)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR (0x10A10070)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[4]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REG_MAP_BASE_ADDR  (0x10A10080)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REG_MAP_BASE_ADDR (0x10A10080)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR  (0x10A10080)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR (0x10A10080)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_START_REG_ADDR                     (0x10A10080)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_END_REG_ADDR                       (0x10A10088)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10090)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_START_REG_ADDR (0x10A10080)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_END_REG_ADDR (0x10A10088)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR (0x10A10090)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[5]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REG_MAP_BASE_ADDR  (0x10A100A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REG_MAP_BASE_ADDR (0x10A100A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR  (0x10A100A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR (0x10A100A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_START_REG_ADDR                     (0x10A100A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_END_REG_ADDR                       (0x10A100A8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR                     (0x10A100B0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_START_REG_ADDR (0x10A100A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_END_REG_ADDR (0x10A100A8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR (0x10A100B0)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[6]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REG_MAP_BASE_ADDR  (0x10A100C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REG_MAP_BASE_ADDR (0x10A100C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR  (0x10A100C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR (0x10A100C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_START_REG_ADDR                     (0x10A100C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_END_REG_ADDR                       (0x10A100C8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR                     (0x10A100D0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_START_REG_ADDR (0x10A100C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_END_REG_ADDR (0x10A100C8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR (0x10A100D0)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[7]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REG_MAP_BASE_ADDR  (0x10A100E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REG_MAP_BASE_ADDR (0x10A100E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR  (0x10A100E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR (0x10A100E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_START_REG_ADDR                     (0x10A100E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_END_REG_ADDR                       (0x10A100E8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR                     (0x10A100F0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_START_REG_ADDR (0x10A100E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_END_REG_ADDR (0x10A100E8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR (0x10A100F0)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[8]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REG_MAP_BASE_ADDR  (0x10A10100)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REG_MAP_BASE_ADDR (0x10A10100)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR  (0x10A10100)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR (0x10A10100)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_START_REG_ADDR                     (0x10A10100)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_END_REG_ADDR                       (0x10A10108)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10110)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_START_REG_ADDR (0x10A10100)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_END_REG_ADDR (0x10A10108)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR (0x10A10110)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[9]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REG_MAP_BASE_ADDR  (0x10A10120)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REG_MAP_BASE_ADDR (0x10A10120)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR  (0x10A10120)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR (0x10A10120)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_START_REG_OFFSET                   (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_START_REG_ADDR                     (0x10A10120)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_END_REG_OFFSET                     (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_END_REG_ADDR                       (0x10A10128)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET                   (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR                     (0x10A10130)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_START_REG_ADDR (0x10A10120)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_END_REG_ADDR (0x10A10128)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR (0x10A10130)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[10]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REG_MAP_BASE_ADDR  (0x10A10140)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REG_MAP_BASE_ADDR (0x10A10140)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR  (0x10A10140)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR (0x10A10140)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_START_REG_ADDR                    (0x10A10140)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_END_REG_ADDR                      (0x10A10148)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR                    (0x10A10150)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_START_REG_ADDR (0x10A10140)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_END_REG_ADDR (0x10A10148)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR (0x10A10150)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[11]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REG_MAP_BASE_ADDR  (0x10A10160)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REG_MAP_BASE_ADDR (0x10A10160)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR  (0x10A10160)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR (0x10A10160)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_START_REG_ADDR                    (0x10A10160)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_END_REG_ADDR                      (0x10A10168)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR                    (0x10A10170)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_START_REG_ADDR (0x10A10160)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_END_REG_ADDR (0x10A10168)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR (0x10A10170)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[12]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REG_MAP_BASE_ADDR  (0x10A10180)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REG_MAP_BASE_ADDR (0x10A10180)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR  (0x10A10180)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR (0x10A10180)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_START_REG_ADDR                    (0x10A10180)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_END_REG_ADDR                      (0x10A10188)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR                    (0x10A10190)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_START_REG_ADDR (0x10A10180)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_END_REG_ADDR (0x10A10188)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR (0x10A10190)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[13]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REG_MAP_BASE_ADDR  (0x10A101A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REG_MAP_BASE_ADDR (0x10A101A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR  (0x10A101A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR (0x10A101A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_START_REG_ADDR                    (0x10A101A0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_END_REG_ADDR                      (0x10A101A8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR                    (0x10A101B0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_START_REG_ADDR (0x10A101A0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_END_REG_ADDR (0x10A101A8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR (0x10A101B0)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[14]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REG_MAP_BASE_ADDR  (0x10A101C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REG_MAP_BASE_ADDR (0x10A101C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR  (0x10A101C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR (0x10A101C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_START_REG_ADDR                    (0x10A101C0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_END_REG_ADDR                      (0x10A101C8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR                    (0x10A101D0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_START_REG_ADDR (0x10A101C0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_END_REG_ADDR (0x10A101C8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR (0x10A101D0)
 
 //==============================================================================
 // Addresses for Address Map: local_master_alias_remap_ctrl[15]
 //==============================================================================
 
-
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REG_MAP_BASE_ADDR  (0x10A101E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REG_MAP_SIZE       (0x00000018)
-
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REG_MAP_BASE_ADDR (0x10A101E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REG_MAP_SIZE (0x00000018)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR  (0x10A101E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_SIZE       (0x00000018)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR (0x10A101E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REG_FILE_SIZE (0x00000018)
 
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_START_REG_OFFSET                  (0x00000000)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_START_REG_ADDR                    (0x10A101E0)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_END_REG_OFFSET                    (0x00000008)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_END_REG_ADDR                      (0x10A101E8)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET                  (0x00000010)
-#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR                    (0x10A101F0)
-
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_START_REG_OFFSET (0x00000000)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_START_REG_ADDR (0x10A101E0)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_END_REG_OFFSET (0x00000008)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_END_REG_ADDR (0x10A101E8)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET (0x00000010)
+#define LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR (0x10A101F0)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[0]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR  (0x10A10200)
-#define AP_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR (0x10A10200)
+#define AP_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR  (0x10A10200)
-#define AP_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR (0x10A10200)
+#define AP_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10200)
-
+#define AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR (0x10A10200)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[1]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR  (0x10A10208)
-#define AP_OUTPUT_REMAP_CTRL_1__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR (0x10A10208)
+#define AP_OUTPUT_REMAP_CTRL_1__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR  (0x10A10208)
-#define AP_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR (0x10A10208)
+#define AP_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10208)
-
+#define AP_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR (0x10A10208)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[2]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_2__REG_MAP_BASE_ADDR  (0x10A10210)
-#define AP_OUTPUT_REMAP_CTRL_2__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_2__REG_MAP_BASE_ADDR (0x10A10210)
+#define AP_OUTPUT_REMAP_CTRL_2__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR  (0x10A10210)
-#define AP_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR (0x10A10210)
+#define AP_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10210)
-
+#define AP_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR (0x10A10210)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[3]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_3__REG_MAP_BASE_ADDR  (0x10A10218)
-#define AP_OUTPUT_REMAP_CTRL_3__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_3__REG_MAP_BASE_ADDR (0x10A10218)
+#define AP_OUTPUT_REMAP_CTRL_3__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR  (0x10A10218)
-#define AP_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR (0x10A10218)
+#define AP_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10218)
-
+#define AP_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR (0x10A10218)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[4]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_4__REG_MAP_BASE_ADDR  (0x10A10220)
-#define AP_OUTPUT_REMAP_CTRL_4__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_4__REG_MAP_BASE_ADDR (0x10A10220)
+#define AP_OUTPUT_REMAP_CTRL_4__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR  (0x10A10220)
-#define AP_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR (0x10A10220)
+#define AP_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10220)
-
+#define AP_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR (0x10A10220)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[5]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_5__REG_MAP_BASE_ADDR  (0x10A10228)
-#define AP_OUTPUT_REMAP_CTRL_5__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_5__REG_MAP_BASE_ADDR (0x10A10228)
+#define AP_OUTPUT_REMAP_CTRL_5__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR  (0x10A10228)
-#define AP_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR (0x10A10228)
+#define AP_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10228)
-
+#define AP_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR (0x10A10228)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[6]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_6__REG_MAP_BASE_ADDR  (0x10A10230)
-#define AP_OUTPUT_REMAP_CTRL_6__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_6__REG_MAP_BASE_ADDR (0x10A10230)
+#define AP_OUTPUT_REMAP_CTRL_6__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR  (0x10A10230)
-#define AP_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR (0x10A10230)
+#define AP_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10230)
-
+#define AP_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR (0x10A10230)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[7]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_7__REG_MAP_BASE_ADDR  (0x10A10238)
-#define AP_OUTPUT_REMAP_CTRL_7__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_7__REG_MAP_BASE_ADDR (0x10A10238)
+#define AP_OUTPUT_REMAP_CTRL_7__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR  (0x10A10238)
-#define AP_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR (0x10A10238)
+#define AP_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10238)
-
+#define AP_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR (0x10A10238)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[8]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_8__REG_MAP_BASE_ADDR  (0x10A10240)
-#define AP_OUTPUT_REMAP_CTRL_8__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_8__REG_MAP_BASE_ADDR (0x10A10240)
+#define AP_OUTPUT_REMAP_CTRL_8__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR  (0x10A10240)
-#define AP_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR (0x10A10240)
+#define AP_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10240)
-
+#define AP_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR (0x10A10240)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[9]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_9__REG_MAP_BASE_ADDR  (0x10A10248)
-#define AP_OUTPUT_REMAP_CTRL_9__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_9__REG_MAP_BASE_ADDR (0x10A10248)
+#define AP_OUTPUT_REMAP_CTRL_9__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR  (0x10A10248)
-#define AP_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR (0x10A10248)
+#define AP_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET                            (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR                              (0x10A10248)
-
+#define AP_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR (0x10A10248)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[10]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_10__REG_MAP_BASE_ADDR  (0x10A10250)
-#define AP_OUTPUT_REMAP_CTRL_10__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_10__REG_MAP_BASE_ADDR (0x10A10250)
+#define AP_OUTPUT_REMAP_CTRL_10__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR  (0x10A10250)
-#define AP_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR (0x10A10250)
+#define AP_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10250)
-
+#define AP_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR (0x10A10250)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[11]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_11__REG_MAP_BASE_ADDR  (0x10A10258)
-#define AP_OUTPUT_REMAP_CTRL_11__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_11__REG_MAP_BASE_ADDR (0x10A10258)
+#define AP_OUTPUT_REMAP_CTRL_11__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR  (0x10A10258)
-#define AP_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR (0x10A10258)
+#define AP_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10258)
-
+#define AP_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR (0x10A10258)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[12]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_12__REG_MAP_BASE_ADDR  (0x10A10260)
-#define AP_OUTPUT_REMAP_CTRL_12__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_12__REG_MAP_BASE_ADDR (0x10A10260)
+#define AP_OUTPUT_REMAP_CTRL_12__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR  (0x10A10260)
-#define AP_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR (0x10A10260)
+#define AP_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10260)
-
+#define AP_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR (0x10A10260)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[13]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_13__REG_MAP_BASE_ADDR  (0x10A10268)
-#define AP_OUTPUT_REMAP_CTRL_13__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_13__REG_MAP_BASE_ADDR (0x10A10268)
+#define AP_OUTPUT_REMAP_CTRL_13__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR  (0x10A10268)
-#define AP_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR (0x10A10268)
+#define AP_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10268)
-
+#define AP_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR (0x10A10268)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[14]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_14__REG_MAP_BASE_ADDR  (0x10A10270)
-#define AP_OUTPUT_REMAP_CTRL_14__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_14__REG_MAP_BASE_ADDR (0x10A10270)
+#define AP_OUTPUT_REMAP_CTRL_14__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR  (0x10A10270)
-#define AP_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR (0x10A10270)
+#define AP_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10270)
-
+#define AP_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR (0x10A10270)
 
 //==============================================================================
 // Addresses for Address Map: ap_output_remap_ctrl[15]
 //==============================================================================
 
-
-#define AP_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR  (0x10A10278)
-#define AP_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE       (0x00000008)
-
-
+#define AP_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR (0x10A10278)
+#define AP_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define AP_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR  (0x10A10278)
-#define AP_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_SIZE       (0x00000008)
+#define AP_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR (0x10A10278)
+#define AP_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_SIZE (0x00000008)
 
-#define AP_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET                           (0x00000000)
-#define AP_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR                             (0x10A10278)
-
+#define AP_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define AP_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR (0x10A10278)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[0]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR  (0x10A10300)
-#define STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR (0x10A10300)
+#define STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR  (0x10A10300)
-#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_BASE_ADDR (0x10A10300)
+#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10300)
-
+#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR (0x10A10300)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[1]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR  (0x10A10308)
-#define STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR (0x10A10308)
+#define STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR  (0x10A10308)
-#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_BASE_ADDR (0x10A10308)
+#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10308)
-
+#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_1__REGION_REGION_ATTRS_REG_ADDR (0x10A10308)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[2]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_2__REG_MAP_BASE_ADDR  (0x10A10310)
-#define STEE_OUTPUT_REMAP_CTRL_2__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_2__REG_MAP_BASE_ADDR (0x10A10310)
+#define STEE_OUTPUT_REMAP_CTRL_2__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR  (0x10A10310)
-#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_BASE_ADDR (0x10A10310)
+#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10310)
-
+#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_2__REGION_REGION_ATTRS_REG_ADDR (0x10A10310)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[3]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_3__REG_MAP_BASE_ADDR  (0x10A10318)
-#define STEE_OUTPUT_REMAP_CTRL_3__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_3__REG_MAP_BASE_ADDR (0x10A10318)
+#define STEE_OUTPUT_REMAP_CTRL_3__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR  (0x10A10318)
-#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_BASE_ADDR (0x10A10318)
+#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10318)
-
+#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_3__REGION_REGION_ATTRS_REG_ADDR (0x10A10318)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[4]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_4__REG_MAP_BASE_ADDR  (0x10A10320)
-#define STEE_OUTPUT_REMAP_CTRL_4__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_4__REG_MAP_BASE_ADDR (0x10A10320)
+#define STEE_OUTPUT_REMAP_CTRL_4__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR  (0x10A10320)
-#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_BASE_ADDR (0x10A10320)
+#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10320)
-
+#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_4__REGION_REGION_ATTRS_REG_ADDR (0x10A10320)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[5]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_5__REG_MAP_BASE_ADDR  (0x10A10328)
-#define STEE_OUTPUT_REMAP_CTRL_5__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_5__REG_MAP_BASE_ADDR (0x10A10328)
+#define STEE_OUTPUT_REMAP_CTRL_5__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR  (0x10A10328)
-#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_BASE_ADDR (0x10A10328)
+#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10328)
-
+#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_5__REGION_REGION_ATTRS_REG_ADDR (0x10A10328)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[6]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_6__REG_MAP_BASE_ADDR  (0x10A10330)
-#define STEE_OUTPUT_REMAP_CTRL_6__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_6__REG_MAP_BASE_ADDR (0x10A10330)
+#define STEE_OUTPUT_REMAP_CTRL_6__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR  (0x10A10330)
-#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_BASE_ADDR (0x10A10330)
+#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10330)
-
+#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_6__REGION_REGION_ATTRS_REG_ADDR (0x10A10330)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[7]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_7__REG_MAP_BASE_ADDR  (0x10A10338)
-#define STEE_OUTPUT_REMAP_CTRL_7__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_7__REG_MAP_BASE_ADDR (0x10A10338)
+#define STEE_OUTPUT_REMAP_CTRL_7__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR  (0x10A10338)
-#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_BASE_ADDR (0x10A10338)
+#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10338)
-
+#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_7__REGION_REGION_ATTRS_REG_ADDR (0x10A10338)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[8]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_8__REG_MAP_BASE_ADDR  (0x10A10340)
-#define STEE_OUTPUT_REMAP_CTRL_8__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_8__REG_MAP_BASE_ADDR (0x10A10340)
+#define STEE_OUTPUT_REMAP_CTRL_8__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR  (0x10A10340)
-#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_BASE_ADDR (0x10A10340)
+#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10340)
-
+#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_8__REGION_REGION_ATTRS_REG_ADDR (0x10A10340)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[9]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_9__REG_MAP_BASE_ADDR  (0x10A10348)
-#define STEE_OUTPUT_REMAP_CTRL_9__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_9__REG_MAP_BASE_ADDR (0x10A10348)
+#define STEE_OUTPUT_REMAP_CTRL_9__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR  (0x10A10348)
-#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_BASE_ADDR (0x10A10348)
+#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET                          (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR                            (0x10A10348)
-
+#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_9__REGION_REGION_ATTRS_REG_ADDR (0x10A10348)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[10]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_10__REG_MAP_BASE_ADDR  (0x10A10350)
-#define STEE_OUTPUT_REMAP_CTRL_10__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_10__REG_MAP_BASE_ADDR (0x10A10350)
+#define STEE_OUTPUT_REMAP_CTRL_10__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR  (0x10A10350)
-#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_BASE_ADDR (0x10A10350)
+#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10350)
-
+#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_10__REGION_REGION_ATTRS_REG_ADDR (0x10A10350)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[11]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_11__REG_MAP_BASE_ADDR  (0x10A10358)
-#define STEE_OUTPUT_REMAP_CTRL_11__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_11__REG_MAP_BASE_ADDR (0x10A10358)
+#define STEE_OUTPUT_REMAP_CTRL_11__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR  (0x10A10358)
-#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_BASE_ADDR (0x10A10358)
+#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10358)
-
+#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_11__REGION_REGION_ATTRS_REG_ADDR (0x10A10358)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[12]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_12__REG_MAP_BASE_ADDR  (0x10A10360)
-#define STEE_OUTPUT_REMAP_CTRL_12__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_12__REG_MAP_BASE_ADDR (0x10A10360)
+#define STEE_OUTPUT_REMAP_CTRL_12__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR  (0x10A10360)
-#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_BASE_ADDR (0x10A10360)
+#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10360)
-
+#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_12__REGION_REGION_ATTRS_REG_ADDR (0x10A10360)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[13]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_13__REG_MAP_BASE_ADDR  (0x10A10368)
-#define STEE_OUTPUT_REMAP_CTRL_13__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_13__REG_MAP_BASE_ADDR (0x10A10368)
+#define STEE_OUTPUT_REMAP_CTRL_13__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR  (0x10A10368)
-#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_BASE_ADDR (0x10A10368)
+#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10368)
-
+#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_13__REGION_REGION_ATTRS_REG_ADDR (0x10A10368)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[14]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_14__REG_MAP_BASE_ADDR  (0x10A10370)
-#define STEE_OUTPUT_REMAP_CTRL_14__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_14__REG_MAP_BASE_ADDR (0x10A10370)
+#define STEE_OUTPUT_REMAP_CTRL_14__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR  (0x10A10370)
-#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_BASE_ADDR (0x10A10370)
+#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10370)
-
+#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_14__REGION_REGION_ATTRS_REG_ADDR (0x10A10370)
 
 //==============================================================================
 // Addresses for Address Map: stee_output_remap_ctrl[15]
 //==============================================================================
 
-
-#define STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR  (0x10A10378)
-#define STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE       (0x00000008)
-
-
+#define STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR (0x10A10378)
+#define STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_SIZE (0x00000008)
 
 //==============================================================================
 // Register File: REGION
 //==============================================================================
 
-#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR  (0x10A10378)
-#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_SIZE       (0x00000008)
+#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_BASE_ADDR (0x10A10378)
+#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REG_FILE_SIZE (0x00000008)
 
-#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET                         (0x00000000)
-#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR                           (0x10A10378)
-
+#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_OFFSET (0x00000000)
+#define STEE_OUTPUT_REMAP_CTRL_15__REGION_REGION_ATTRS_REG_ADDR (0x10A10378)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[0]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR (0x10A20000)
+#define OUTBOUND_FILTER_CTRL_0__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR  (0x10A20000)
-#define OUTBOUND_FILTER_CTRL_0__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR                                    (0x10A20000)
-#define OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR                                       (0x10A20008)
-#define OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR                                         (0x10A20010)
-
+#define OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR (0x10A20000)
+#define OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR (0x10A20008)
+#define OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR (0x10A20010)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[1]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR (0x10A20020)
+#define OUTBOUND_FILTER_CTRL_1__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR  (0x10A20020)
-#define OUTBOUND_FILTER_CTRL_1__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_ADDR                                    (0x10A20020)
-#define OUTBOUND_FILTER_CTRL_1__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_1__START_ADDR_REG_ADDR                                       (0x10A20028)
-#define OUTBOUND_FILTER_CTRL_1__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_1__END_ADDR_REG_ADDR                                         (0x10A20030)
-
+#define OUTBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_ADDR (0x10A20020)
+#define OUTBOUND_FILTER_CTRL_1__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_1__START_ADDR_REG_ADDR (0x10A20028)
+#define OUTBOUND_FILTER_CTRL_1__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_1__END_ADDR_REG_ADDR (0x10A20030)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[2]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_2__REG_MAP_BASE_ADDR (0x10A20040)
+#define OUTBOUND_FILTER_CTRL_2__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_2__REG_MAP_BASE_ADDR  (0x10A20040)
-#define OUTBOUND_FILTER_CTRL_2__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_ADDR                                    (0x10A20040)
-#define OUTBOUND_FILTER_CTRL_2__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_2__START_ADDR_REG_ADDR                                       (0x10A20048)
-#define OUTBOUND_FILTER_CTRL_2__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_2__END_ADDR_REG_ADDR                                         (0x10A20050)
-
+#define OUTBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_ADDR (0x10A20040)
+#define OUTBOUND_FILTER_CTRL_2__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_2__START_ADDR_REG_ADDR (0x10A20048)
+#define OUTBOUND_FILTER_CTRL_2__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_2__END_ADDR_REG_ADDR (0x10A20050)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[3]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_3__REG_MAP_BASE_ADDR (0x10A20060)
+#define OUTBOUND_FILTER_CTRL_3__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_3__REG_MAP_BASE_ADDR  (0x10A20060)
-#define OUTBOUND_FILTER_CTRL_3__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_ADDR                                    (0x10A20060)
-#define OUTBOUND_FILTER_CTRL_3__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_3__START_ADDR_REG_ADDR                                       (0x10A20068)
-#define OUTBOUND_FILTER_CTRL_3__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_3__END_ADDR_REG_ADDR                                         (0x10A20070)
-
+#define OUTBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_ADDR (0x10A20060)
+#define OUTBOUND_FILTER_CTRL_3__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_3__START_ADDR_REG_ADDR (0x10A20068)
+#define OUTBOUND_FILTER_CTRL_3__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_3__END_ADDR_REG_ADDR (0x10A20070)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[4]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_4__REG_MAP_BASE_ADDR (0x10A20080)
+#define OUTBOUND_FILTER_CTRL_4__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_4__REG_MAP_BASE_ADDR  (0x10A20080)
-#define OUTBOUND_FILTER_CTRL_4__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_ADDR                                    (0x10A20080)
-#define OUTBOUND_FILTER_CTRL_4__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_4__START_ADDR_REG_ADDR                                       (0x10A20088)
-#define OUTBOUND_FILTER_CTRL_4__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_4__END_ADDR_REG_ADDR                                         (0x10A20090)
-
+#define OUTBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_ADDR (0x10A20080)
+#define OUTBOUND_FILTER_CTRL_4__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_4__START_ADDR_REG_ADDR (0x10A20088)
+#define OUTBOUND_FILTER_CTRL_4__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_4__END_ADDR_REG_ADDR (0x10A20090)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[5]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_5__REG_MAP_BASE_ADDR (0x10A200A0)
+#define OUTBOUND_FILTER_CTRL_5__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_5__REG_MAP_BASE_ADDR  (0x10A200A0)
-#define OUTBOUND_FILTER_CTRL_5__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_ADDR                                    (0x10A200A0)
-#define OUTBOUND_FILTER_CTRL_5__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_5__START_ADDR_REG_ADDR                                       (0x10A200A8)
-#define OUTBOUND_FILTER_CTRL_5__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_5__END_ADDR_REG_ADDR                                         (0x10A200B0)
-
+#define OUTBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_ADDR (0x10A200A0)
+#define OUTBOUND_FILTER_CTRL_5__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_5__START_ADDR_REG_ADDR (0x10A200A8)
+#define OUTBOUND_FILTER_CTRL_5__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_5__END_ADDR_REG_ADDR (0x10A200B0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[6]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_6__REG_MAP_BASE_ADDR (0x10A200C0)
+#define OUTBOUND_FILTER_CTRL_6__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_6__REG_MAP_BASE_ADDR  (0x10A200C0)
-#define OUTBOUND_FILTER_CTRL_6__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_ADDR                                    (0x10A200C0)
-#define OUTBOUND_FILTER_CTRL_6__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_6__START_ADDR_REG_ADDR                                       (0x10A200C8)
-#define OUTBOUND_FILTER_CTRL_6__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_6__END_ADDR_REG_ADDR                                         (0x10A200D0)
-
+#define OUTBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_ADDR (0x10A200C0)
+#define OUTBOUND_FILTER_CTRL_6__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_6__START_ADDR_REG_ADDR (0x10A200C8)
+#define OUTBOUND_FILTER_CTRL_6__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_6__END_ADDR_REG_ADDR (0x10A200D0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[7]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_7__REG_MAP_BASE_ADDR (0x10A200E0)
+#define OUTBOUND_FILTER_CTRL_7__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_7__REG_MAP_BASE_ADDR  (0x10A200E0)
-#define OUTBOUND_FILTER_CTRL_7__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_ADDR                                    (0x10A200E0)
-#define OUTBOUND_FILTER_CTRL_7__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_7__START_ADDR_REG_ADDR                                       (0x10A200E8)
-#define OUTBOUND_FILTER_CTRL_7__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_7__END_ADDR_REG_ADDR                                         (0x10A200F0)
-
+#define OUTBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_ADDR (0x10A200E0)
+#define OUTBOUND_FILTER_CTRL_7__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_7__START_ADDR_REG_ADDR (0x10A200E8)
+#define OUTBOUND_FILTER_CTRL_7__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_7__END_ADDR_REG_ADDR (0x10A200F0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[8]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_8__REG_MAP_BASE_ADDR (0x10A20100)
+#define OUTBOUND_FILTER_CTRL_8__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_8__REG_MAP_BASE_ADDR  (0x10A20100)
-#define OUTBOUND_FILTER_CTRL_8__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_ADDR                                    (0x10A20100)
-#define OUTBOUND_FILTER_CTRL_8__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_8__START_ADDR_REG_ADDR                                       (0x10A20108)
-#define OUTBOUND_FILTER_CTRL_8__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_8__END_ADDR_REG_ADDR                                         (0x10A20110)
-
+#define OUTBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_ADDR (0x10A20100)
+#define OUTBOUND_FILTER_CTRL_8__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_8__START_ADDR_REG_ADDR (0x10A20108)
+#define OUTBOUND_FILTER_CTRL_8__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_8__END_ADDR_REG_ADDR (0x10A20110)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[9]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_9__REG_MAP_BASE_ADDR (0x10A20120)
+#define OUTBOUND_FILTER_CTRL_9__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_9__REG_MAP_BASE_ADDR  (0x10A20120)
-#define OUTBOUND_FILTER_CTRL_9__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define OUTBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_ADDR                                    (0x10A20120)
-#define OUTBOUND_FILTER_CTRL_9__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define OUTBOUND_FILTER_CTRL_9__START_ADDR_REG_ADDR                                       (0x10A20128)
-#define OUTBOUND_FILTER_CTRL_9__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define OUTBOUND_FILTER_CTRL_9__END_ADDR_REG_ADDR                                         (0x10A20130)
-
+#define OUTBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_ADDR (0x10A20120)
+#define OUTBOUND_FILTER_CTRL_9__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_9__START_ADDR_REG_ADDR (0x10A20128)
+#define OUTBOUND_FILTER_CTRL_9__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_9__END_ADDR_REG_ADDR (0x10A20130)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[10]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_10__REG_MAP_BASE_ADDR (0x10A20140)
+#define OUTBOUND_FILTER_CTRL_10__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_10__REG_MAP_BASE_ADDR  (0x10A20140)
-#define OUTBOUND_FILTER_CTRL_10__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_ADDR                                   (0x10A20140)
-#define OUTBOUND_FILTER_CTRL_10__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_10__START_ADDR_REG_ADDR                                      (0x10A20148)
-#define OUTBOUND_FILTER_CTRL_10__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_10__END_ADDR_REG_ADDR                                        (0x10A20150)
-
+#define OUTBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_ADDR (0x10A20140)
+#define OUTBOUND_FILTER_CTRL_10__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_10__START_ADDR_REG_ADDR (0x10A20148)
+#define OUTBOUND_FILTER_CTRL_10__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_10__END_ADDR_REG_ADDR (0x10A20150)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[11]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_11__REG_MAP_BASE_ADDR (0x10A20160)
+#define OUTBOUND_FILTER_CTRL_11__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_11__REG_MAP_BASE_ADDR  (0x10A20160)
-#define OUTBOUND_FILTER_CTRL_11__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_ADDR                                   (0x10A20160)
-#define OUTBOUND_FILTER_CTRL_11__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_11__START_ADDR_REG_ADDR                                      (0x10A20168)
-#define OUTBOUND_FILTER_CTRL_11__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_11__END_ADDR_REG_ADDR                                        (0x10A20170)
-
+#define OUTBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_ADDR (0x10A20160)
+#define OUTBOUND_FILTER_CTRL_11__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_11__START_ADDR_REG_ADDR (0x10A20168)
+#define OUTBOUND_FILTER_CTRL_11__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_11__END_ADDR_REG_ADDR (0x10A20170)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[12]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_12__REG_MAP_BASE_ADDR (0x10A20180)
+#define OUTBOUND_FILTER_CTRL_12__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_12__REG_MAP_BASE_ADDR  (0x10A20180)
-#define OUTBOUND_FILTER_CTRL_12__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_ADDR                                   (0x10A20180)
-#define OUTBOUND_FILTER_CTRL_12__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_12__START_ADDR_REG_ADDR                                      (0x10A20188)
-#define OUTBOUND_FILTER_CTRL_12__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_12__END_ADDR_REG_ADDR                                        (0x10A20190)
-
+#define OUTBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_ADDR (0x10A20180)
+#define OUTBOUND_FILTER_CTRL_12__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_12__START_ADDR_REG_ADDR (0x10A20188)
+#define OUTBOUND_FILTER_CTRL_12__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_12__END_ADDR_REG_ADDR (0x10A20190)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[13]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_13__REG_MAP_BASE_ADDR (0x10A201A0)
+#define OUTBOUND_FILTER_CTRL_13__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_13__REG_MAP_BASE_ADDR  (0x10A201A0)
-#define OUTBOUND_FILTER_CTRL_13__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_ADDR                                   (0x10A201A0)
-#define OUTBOUND_FILTER_CTRL_13__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_13__START_ADDR_REG_ADDR                                      (0x10A201A8)
-#define OUTBOUND_FILTER_CTRL_13__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_13__END_ADDR_REG_ADDR                                        (0x10A201B0)
-
+#define OUTBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_ADDR (0x10A201A0)
+#define OUTBOUND_FILTER_CTRL_13__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_13__START_ADDR_REG_ADDR (0x10A201A8)
+#define OUTBOUND_FILTER_CTRL_13__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_13__END_ADDR_REG_ADDR (0x10A201B0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[14]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_14__REG_MAP_BASE_ADDR (0x10A201C0)
+#define OUTBOUND_FILTER_CTRL_14__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_14__REG_MAP_BASE_ADDR  (0x10A201C0)
-#define OUTBOUND_FILTER_CTRL_14__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_ADDR                                   (0x10A201C0)
-#define OUTBOUND_FILTER_CTRL_14__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_14__START_ADDR_REG_ADDR                                      (0x10A201C8)
-#define OUTBOUND_FILTER_CTRL_14__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_14__END_ADDR_REG_ADDR                                        (0x10A201D0)
-
+#define OUTBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_ADDR (0x10A201C0)
+#define OUTBOUND_FILTER_CTRL_14__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_14__START_ADDR_REG_ADDR (0x10A201C8)
+#define OUTBOUND_FILTER_CTRL_14__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_14__END_ADDR_REG_ADDR (0x10A201D0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[15]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR (0x10A201E0)
+#define OUTBOUND_FILTER_CTRL_15__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR  (0x10A201E0)
-#define OUTBOUND_FILTER_CTRL_15__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_ADDR                                   (0x10A201E0)
-#define OUTBOUND_FILTER_CTRL_15__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_15__START_ADDR_REG_ADDR                                      (0x10A201E8)
-#define OUTBOUND_FILTER_CTRL_15__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_15__END_ADDR_REG_ADDR                                        (0x10A201F0)
-
+#define OUTBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_ADDR (0x10A201E0)
+#define OUTBOUND_FILTER_CTRL_15__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_15__START_ADDR_REG_ADDR (0x10A201E8)
+#define OUTBOUND_FILTER_CTRL_15__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_15__END_ADDR_REG_ADDR (0x10A201F0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[16]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_16__REG_MAP_BASE_ADDR (0x10A20200)
+#define OUTBOUND_FILTER_CTRL_16__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_16__REG_MAP_BASE_ADDR  (0x10A20200)
-#define OUTBOUND_FILTER_CTRL_16__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_16__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_16__FILTER_CONFIG_REG_ADDR                                   (0x10A20200)
-#define OUTBOUND_FILTER_CTRL_16__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_16__START_ADDR_REG_ADDR                                      (0x10A20208)
-#define OUTBOUND_FILTER_CTRL_16__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_16__END_ADDR_REG_ADDR                                        (0x10A20210)
-
+#define OUTBOUND_FILTER_CTRL_16__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_16__FILTER_CONFIG_REG_ADDR (0x10A20200)
+#define OUTBOUND_FILTER_CTRL_16__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_16__START_ADDR_REG_ADDR (0x10A20208)
+#define OUTBOUND_FILTER_CTRL_16__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_16__END_ADDR_REG_ADDR (0x10A20210)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[17]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_17__REG_MAP_BASE_ADDR (0x10A20220)
+#define OUTBOUND_FILTER_CTRL_17__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_17__REG_MAP_BASE_ADDR  (0x10A20220)
-#define OUTBOUND_FILTER_CTRL_17__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_17__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_17__FILTER_CONFIG_REG_ADDR                                   (0x10A20220)
-#define OUTBOUND_FILTER_CTRL_17__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_17__START_ADDR_REG_ADDR                                      (0x10A20228)
-#define OUTBOUND_FILTER_CTRL_17__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_17__END_ADDR_REG_ADDR                                        (0x10A20230)
-
+#define OUTBOUND_FILTER_CTRL_17__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_17__FILTER_CONFIG_REG_ADDR (0x10A20220)
+#define OUTBOUND_FILTER_CTRL_17__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_17__START_ADDR_REG_ADDR (0x10A20228)
+#define OUTBOUND_FILTER_CTRL_17__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_17__END_ADDR_REG_ADDR (0x10A20230)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[18]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_18__REG_MAP_BASE_ADDR (0x10A20240)
+#define OUTBOUND_FILTER_CTRL_18__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_18__REG_MAP_BASE_ADDR  (0x10A20240)
-#define OUTBOUND_FILTER_CTRL_18__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_18__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_18__FILTER_CONFIG_REG_ADDR                                   (0x10A20240)
-#define OUTBOUND_FILTER_CTRL_18__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_18__START_ADDR_REG_ADDR                                      (0x10A20248)
-#define OUTBOUND_FILTER_CTRL_18__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_18__END_ADDR_REG_ADDR                                        (0x10A20250)
-
+#define OUTBOUND_FILTER_CTRL_18__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_18__FILTER_CONFIG_REG_ADDR (0x10A20240)
+#define OUTBOUND_FILTER_CTRL_18__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_18__START_ADDR_REG_ADDR (0x10A20248)
+#define OUTBOUND_FILTER_CTRL_18__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_18__END_ADDR_REG_ADDR (0x10A20250)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[19]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_19__REG_MAP_BASE_ADDR (0x10A20260)
+#define OUTBOUND_FILTER_CTRL_19__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_19__REG_MAP_BASE_ADDR  (0x10A20260)
-#define OUTBOUND_FILTER_CTRL_19__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_19__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_19__FILTER_CONFIG_REG_ADDR                                   (0x10A20260)
-#define OUTBOUND_FILTER_CTRL_19__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_19__START_ADDR_REG_ADDR                                      (0x10A20268)
-#define OUTBOUND_FILTER_CTRL_19__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_19__END_ADDR_REG_ADDR                                        (0x10A20270)
-
+#define OUTBOUND_FILTER_CTRL_19__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_19__FILTER_CONFIG_REG_ADDR (0x10A20260)
+#define OUTBOUND_FILTER_CTRL_19__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_19__START_ADDR_REG_ADDR (0x10A20268)
+#define OUTBOUND_FILTER_CTRL_19__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_19__END_ADDR_REG_ADDR (0x10A20270)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[20]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_20__REG_MAP_BASE_ADDR (0x10A20280)
+#define OUTBOUND_FILTER_CTRL_20__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_20__REG_MAP_BASE_ADDR  (0x10A20280)
-#define OUTBOUND_FILTER_CTRL_20__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_20__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_20__FILTER_CONFIG_REG_ADDR                                   (0x10A20280)
-#define OUTBOUND_FILTER_CTRL_20__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_20__START_ADDR_REG_ADDR                                      (0x10A20288)
-#define OUTBOUND_FILTER_CTRL_20__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_20__END_ADDR_REG_ADDR                                        (0x10A20290)
-
+#define OUTBOUND_FILTER_CTRL_20__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_20__FILTER_CONFIG_REG_ADDR (0x10A20280)
+#define OUTBOUND_FILTER_CTRL_20__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_20__START_ADDR_REG_ADDR (0x10A20288)
+#define OUTBOUND_FILTER_CTRL_20__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_20__END_ADDR_REG_ADDR (0x10A20290)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[21]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_21__REG_MAP_BASE_ADDR (0x10A202A0)
+#define OUTBOUND_FILTER_CTRL_21__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_21__REG_MAP_BASE_ADDR  (0x10A202A0)
-#define OUTBOUND_FILTER_CTRL_21__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_21__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_21__FILTER_CONFIG_REG_ADDR                                   (0x10A202A0)
-#define OUTBOUND_FILTER_CTRL_21__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_21__START_ADDR_REG_ADDR                                      (0x10A202A8)
-#define OUTBOUND_FILTER_CTRL_21__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_21__END_ADDR_REG_ADDR                                        (0x10A202B0)
-
+#define OUTBOUND_FILTER_CTRL_21__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_21__FILTER_CONFIG_REG_ADDR (0x10A202A0)
+#define OUTBOUND_FILTER_CTRL_21__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_21__START_ADDR_REG_ADDR (0x10A202A8)
+#define OUTBOUND_FILTER_CTRL_21__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_21__END_ADDR_REG_ADDR (0x10A202B0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[22]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_22__REG_MAP_BASE_ADDR (0x10A202C0)
+#define OUTBOUND_FILTER_CTRL_22__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_22__REG_MAP_BASE_ADDR  (0x10A202C0)
-#define OUTBOUND_FILTER_CTRL_22__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_22__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_22__FILTER_CONFIG_REG_ADDR                                   (0x10A202C0)
-#define OUTBOUND_FILTER_CTRL_22__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_22__START_ADDR_REG_ADDR                                      (0x10A202C8)
-#define OUTBOUND_FILTER_CTRL_22__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_22__END_ADDR_REG_ADDR                                        (0x10A202D0)
-
+#define OUTBOUND_FILTER_CTRL_22__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_22__FILTER_CONFIG_REG_ADDR (0x10A202C0)
+#define OUTBOUND_FILTER_CTRL_22__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_22__START_ADDR_REG_ADDR (0x10A202C8)
+#define OUTBOUND_FILTER_CTRL_22__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_22__END_ADDR_REG_ADDR (0x10A202D0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[23]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_23__REG_MAP_BASE_ADDR (0x10A202E0)
+#define OUTBOUND_FILTER_CTRL_23__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_23__REG_MAP_BASE_ADDR  (0x10A202E0)
-#define OUTBOUND_FILTER_CTRL_23__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_23__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_23__FILTER_CONFIG_REG_ADDR                                   (0x10A202E0)
-#define OUTBOUND_FILTER_CTRL_23__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_23__START_ADDR_REG_ADDR                                      (0x10A202E8)
-#define OUTBOUND_FILTER_CTRL_23__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_23__END_ADDR_REG_ADDR                                        (0x10A202F0)
-
+#define OUTBOUND_FILTER_CTRL_23__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_23__FILTER_CONFIG_REG_ADDR (0x10A202E0)
+#define OUTBOUND_FILTER_CTRL_23__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_23__START_ADDR_REG_ADDR (0x10A202E8)
+#define OUTBOUND_FILTER_CTRL_23__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_23__END_ADDR_REG_ADDR (0x10A202F0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[24]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_24__REG_MAP_BASE_ADDR (0x10A20300)
+#define OUTBOUND_FILTER_CTRL_24__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_24__REG_MAP_BASE_ADDR  (0x10A20300)
-#define OUTBOUND_FILTER_CTRL_24__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_24__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_24__FILTER_CONFIG_REG_ADDR                                   (0x10A20300)
-#define OUTBOUND_FILTER_CTRL_24__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_24__START_ADDR_REG_ADDR                                      (0x10A20308)
-#define OUTBOUND_FILTER_CTRL_24__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_24__END_ADDR_REG_ADDR                                        (0x10A20310)
-
+#define OUTBOUND_FILTER_CTRL_24__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_24__FILTER_CONFIG_REG_ADDR (0x10A20300)
+#define OUTBOUND_FILTER_CTRL_24__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_24__START_ADDR_REG_ADDR (0x10A20308)
+#define OUTBOUND_FILTER_CTRL_24__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_24__END_ADDR_REG_ADDR (0x10A20310)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[25]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_25__REG_MAP_BASE_ADDR (0x10A20320)
+#define OUTBOUND_FILTER_CTRL_25__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_25__REG_MAP_BASE_ADDR  (0x10A20320)
-#define OUTBOUND_FILTER_CTRL_25__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_25__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_25__FILTER_CONFIG_REG_ADDR                                   (0x10A20320)
-#define OUTBOUND_FILTER_CTRL_25__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_25__START_ADDR_REG_ADDR                                      (0x10A20328)
-#define OUTBOUND_FILTER_CTRL_25__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_25__END_ADDR_REG_ADDR                                        (0x10A20330)
-
+#define OUTBOUND_FILTER_CTRL_25__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_25__FILTER_CONFIG_REG_ADDR (0x10A20320)
+#define OUTBOUND_FILTER_CTRL_25__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_25__START_ADDR_REG_ADDR (0x10A20328)
+#define OUTBOUND_FILTER_CTRL_25__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_25__END_ADDR_REG_ADDR (0x10A20330)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[26]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_26__REG_MAP_BASE_ADDR (0x10A20340)
+#define OUTBOUND_FILTER_CTRL_26__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_26__REG_MAP_BASE_ADDR  (0x10A20340)
-#define OUTBOUND_FILTER_CTRL_26__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_26__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_26__FILTER_CONFIG_REG_ADDR                                   (0x10A20340)
-#define OUTBOUND_FILTER_CTRL_26__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_26__START_ADDR_REG_ADDR                                      (0x10A20348)
-#define OUTBOUND_FILTER_CTRL_26__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_26__END_ADDR_REG_ADDR                                        (0x10A20350)
-
+#define OUTBOUND_FILTER_CTRL_26__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_26__FILTER_CONFIG_REG_ADDR (0x10A20340)
+#define OUTBOUND_FILTER_CTRL_26__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_26__START_ADDR_REG_ADDR (0x10A20348)
+#define OUTBOUND_FILTER_CTRL_26__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_26__END_ADDR_REG_ADDR (0x10A20350)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[27]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_27__REG_MAP_BASE_ADDR (0x10A20360)
+#define OUTBOUND_FILTER_CTRL_27__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_27__REG_MAP_BASE_ADDR  (0x10A20360)
-#define OUTBOUND_FILTER_CTRL_27__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_27__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_27__FILTER_CONFIG_REG_ADDR                                   (0x10A20360)
-#define OUTBOUND_FILTER_CTRL_27__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_27__START_ADDR_REG_ADDR                                      (0x10A20368)
-#define OUTBOUND_FILTER_CTRL_27__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_27__END_ADDR_REG_ADDR                                        (0x10A20370)
-
+#define OUTBOUND_FILTER_CTRL_27__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_27__FILTER_CONFIG_REG_ADDR (0x10A20360)
+#define OUTBOUND_FILTER_CTRL_27__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_27__START_ADDR_REG_ADDR (0x10A20368)
+#define OUTBOUND_FILTER_CTRL_27__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_27__END_ADDR_REG_ADDR (0x10A20370)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[28]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_28__REG_MAP_BASE_ADDR (0x10A20380)
+#define OUTBOUND_FILTER_CTRL_28__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_28__REG_MAP_BASE_ADDR  (0x10A20380)
-#define OUTBOUND_FILTER_CTRL_28__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_28__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_28__FILTER_CONFIG_REG_ADDR                                   (0x10A20380)
-#define OUTBOUND_FILTER_CTRL_28__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_28__START_ADDR_REG_ADDR                                      (0x10A20388)
-#define OUTBOUND_FILTER_CTRL_28__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_28__END_ADDR_REG_ADDR                                        (0x10A20390)
-
+#define OUTBOUND_FILTER_CTRL_28__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_28__FILTER_CONFIG_REG_ADDR (0x10A20380)
+#define OUTBOUND_FILTER_CTRL_28__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_28__START_ADDR_REG_ADDR (0x10A20388)
+#define OUTBOUND_FILTER_CTRL_28__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_28__END_ADDR_REG_ADDR (0x10A20390)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[29]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_29__REG_MAP_BASE_ADDR (0x10A203A0)
+#define OUTBOUND_FILTER_CTRL_29__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_29__REG_MAP_BASE_ADDR  (0x10A203A0)
-#define OUTBOUND_FILTER_CTRL_29__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_29__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_29__FILTER_CONFIG_REG_ADDR                                   (0x10A203A0)
-#define OUTBOUND_FILTER_CTRL_29__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_29__START_ADDR_REG_ADDR                                      (0x10A203A8)
-#define OUTBOUND_FILTER_CTRL_29__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_29__END_ADDR_REG_ADDR                                        (0x10A203B0)
-
+#define OUTBOUND_FILTER_CTRL_29__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_29__FILTER_CONFIG_REG_ADDR (0x10A203A0)
+#define OUTBOUND_FILTER_CTRL_29__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_29__START_ADDR_REG_ADDR (0x10A203A8)
+#define OUTBOUND_FILTER_CTRL_29__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_29__END_ADDR_REG_ADDR (0x10A203B0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[30]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_30__REG_MAP_BASE_ADDR (0x10A203C0)
+#define OUTBOUND_FILTER_CTRL_30__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_30__REG_MAP_BASE_ADDR  (0x10A203C0)
-#define OUTBOUND_FILTER_CTRL_30__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_30__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_30__FILTER_CONFIG_REG_ADDR                                   (0x10A203C0)
-#define OUTBOUND_FILTER_CTRL_30__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_30__START_ADDR_REG_ADDR                                      (0x10A203C8)
-#define OUTBOUND_FILTER_CTRL_30__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_30__END_ADDR_REG_ADDR                                        (0x10A203D0)
-
+#define OUTBOUND_FILTER_CTRL_30__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_30__FILTER_CONFIG_REG_ADDR (0x10A203C0)
+#define OUTBOUND_FILTER_CTRL_30__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_30__START_ADDR_REG_ADDR (0x10A203C8)
+#define OUTBOUND_FILTER_CTRL_30__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_30__END_ADDR_REG_ADDR (0x10A203D0)
 
 //==============================================================================
 // Addresses for Address Map: outbound_filter_ctrl[31]
 //==============================================================================
 
+#define OUTBOUND_FILTER_CTRL_31__REG_MAP_BASE_ADDR (0x10A203E0)
+#define OUTBOUND_FILTER_CTRL_31__REG_MAP_SIZE (0x00000018)
 
-#define OUTBOUND_FILTER_CTRL_31__REG_MAP_BASE_ADDR  (0x10A203E0)
-#define OUTBOUND_FILTER_CTRL_31__REG_MAP_SIZE       (0x00000018)
-
-#define OUTBOUND_FILTER_CTRL_31__FILTER_CONFIG_REG_OFFSET                                 (0x00000000)
-#define OUTBOUND_FILTER_CTRL_31__FILTER_CONFIG_REG_ADDR                                   (0x10A203E0)
-#define OUTBOUND_FILTER_CTRL_31__START_ADDR_REG_OFFSET                                    (0x00000008)
-#define OUTBOUND_FILTER_CTRL_31__START_ADDR_REG_ADDR                                      (0x10A203E8)
-#define OUTBOUND_FILTER_CTRL_31__END_ADDR_REG_OFFSET                                      (0x00000010)
-#define OUTBOUND_FILTER_CTRL_31__END_ADDR_REG_ADDR                                        (0x10A203F0)
-
+#define OUTBOUND_FILTER_CTRL_31__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define OUTBOUND_FILTER_CTRL_31__FILTER_CONFIG_REG_ADDR (0x10A203E0)
+#define OUTBOUND_FILTER_CTRL_31__START_ADDR_REG_OFFSET (0x00000008)
+#define OUTBOUND_FILTER_CTRL_31__START_ADDR_REG_ADDR (0x10A203E8)
+#define OUTBOUND_FILTER_CTRL_31__END_ADDR_REG_OFFSET (0x00000010)
+#define OUTBOUND_FILTER_CTRL_31__END_ADDR_REG_ADDR (0x10A203F0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[0]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR (0x10A21000)
+#define INBOUND_FILTER_CTRL_0__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR  (0x10A21000)
-#define INBOUND_FILTER_CTRL_0__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR                                     (0x10A21000)
-#define INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR                                        (0x10A21008)
-#define INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR                                          (0x10A21010)
-
+#define INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR (0x10A21000)
+#define INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR (0x10A21008)
+#define INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR (0x10A21010)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[1]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR (0x10A21020)
+#define INBOUND_FILTER_CTRL_1__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR  (0x10A21020)
-#define INBOUND_FILTER_CTRL_1__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_ADDR                                     (0x10A21020)
-#define INBOUND_FILTER_CTRL_1__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_1__START_ADDR_REG_ADDR                                        (0x10A21028)
-#define INBOUND_FILTER_CTRL_1__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_1__END_ADDR_REG_ADDR                                          (0x10A21030)
-
+#define INBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_1__FILTER_CONFIG_REG_ADDR (0x10A21020)
+#define INBOUND_FILTER_CTRL_1__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_1__START_ADDR_REG_ADDR (0x10A21028)
+#define INBOUND_FILTER_CTRL_1__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_1__END_ADDR_REG_ADDR (0x10A21030)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[2]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_2__REG_MAP_BASE_ADDR (0x10A21040)
+#define INBOUND_FILTER_CTRL_2__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_2__REG_MAP_BASE_ADDR  (0x10A21040)
-#define INBOUND_FILTER_CTRL_2__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_ADDR                                     (0x10A21040)
-#define INBOUND_FILTER_CTRL_2__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_2__START_ADDR_REG_ADDR                                        (0x10A21048)
-#define INBOUND_FILTER_CTRL_2__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_2__END_ADDR_REG_ADDR                                          (0x10A21050)
-
+#define INBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_2__FILTER_CONFIG_REG_ADDR (0x10A21040)
+#define INBOUND_FILTER_CTRL_2__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_2__START_ADDR_REG_ADDR (0x10A21048)
+#define INBOUND_FILTER_CTRL_2__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_2__END_ADDR_REG_ADDR (0x10A21050)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[3]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_3__REG_MAP_BASE_ADDR (0x10A21060)
+#define INBOUND_FILTER_CTRL_3__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_3__REG_MAP_BASE_ADDR  (0x10A21060)
-#define INBOUND_FILTER_CTRL_3__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_ADDR                                     (0x10A21060)
-#define INBOUND_FILTER_CTRL_3__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_3__START_ADDR_REG_ADDR                                        (0x10A21068)
-#define INBOUND_FILTER_CTRL_3__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_3__END_ADDR_REG_ADDR                                          (0x10A21070)
-
+#define INBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_3__FILTER_CONFIG_REG_ADDR (0x10A21060)
+#define INBOUND_FILTER_CTRL_3__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_3__START_ADDR_REG_ADDR (0x10A21068)
+#define INBOUND_FILTER_CTRL_3__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_3__END_ADDR_REG_ADDR (0x10A21070)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[4]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_4__REG_MAP_BASE_ADDR (0x10A21080)
+#define INBOUND_FILTER_CTRL_4__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_4__REG_MAP_BASE_ADDR  (0x10A21080)
-#define INBOUND_FILTER_CTRL_4__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_ADDR                                     (0x10A21080)
-#define INBOUND_FILTER_CTRL_4__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_4__START_ADDR_REG_ADDR                                        (0x10A21088)
-#define INBOUND_FILTER_CTRL_4__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_4__END_ADDR_REG_ADDR                                          (0x10A21090)
-
+#define INBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_4__FILTER_CONFIG_REG_ADDR (0x10A21080)
+#define INBOUND_FILTER_CTRL_4__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_4__START_ADDR_REG_ADDR (0x10A21088)
+#define INBOUND_FILTER_CTRL_4__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_4__END_ADDR_REG_ADDR (0x10A21090)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[5]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_5__REG_MAP_BASE_ADDR (0x10A210A0)
+#define INBOUND_FILTER_CTRL_5__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_5__REG_MAP_BASE_ADDR  (0x10A210A0)
-#define INBOUND_FILTER_CTRL_5__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_ADDR                                     (0x10A210A0)
-#define INBOUND_FILTER_CTRL_5__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_5__START_ADDR_REG_ADDR                                        (0x10A210A8)
-#define INBOUND_FILTER_CTRL_5__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_5__END_ADDR_REG_ADDR                                          (0x10A210B0)
-
+#define INBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_5__FILTER_CONFIG_REG_ADDR (0x10A210A0)
+#define INBOUND_FILTER_CTRL_5__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_5__START_ADDR_REG_ADDR (0x10A210A8)
+#define INBOUND_FILTER_CTRL_5__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_5__END_ADDR_REG_ADDR (0x10A210B0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[6]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_6__REG_MAP_BASE_ADDR (0x10A210C0)
+#define INBOUND_FILTER_CTRL_6__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_6__REG_MAP_BASE_ADDR  (0x10A210C0)
-#define INBOUND_FILTER_CTRL_6__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_ADDR                                     (0x10A210C0)
-#define INBOUND_FILTER_CTRL_6__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_6__START_ADDR_REG_ADDR                                        (0x10A210C8)
-#define INBOUND_FILTER_CTRL_6__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_6__END_ADDR_REG_ADDR                                          (0x10A210D0)
-
+#define INBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_6__FILTER_CONFIG_REG_ADDR (0x10A210C0)
+#define INBOUND_FILTER_CTRL_6__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_6__START_ADDR_REG_ADDR (0x10A210C8)
+#define INBOUND_FILTER_CTRL_6__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_6__END_ADDR_REG_ADDR (0x10A210D0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[7]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_7__REG_MAP_BASE_ADDR (0x10A210E0)
+#define INBOUND_FILTER_CTRL_7__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_7__REG_MAP_BASE_ADDR  (0x10A210E0)
-#define INBOUND_FILTER_CTRL_7__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_ADDR                                     (0x10A210E0)
-#define INBOUND_FILTER_CTRL_7__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_7__START_ADDR_REG_ADDR                                        (0x10A210E8)
-#define INBOUND_FILTER_CTRL_7__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_7__END_ADDR_REG_ADDR                                          (0x10A210F0)
-
+#define INBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_7__FILTER_CONFIG_REG_ADDR (0x10A210E0)
+#define INBOUND_FILTER_CTRL_7__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_7__START_ADDR_REG_ADDR (0x10A210E8)
+#define INBOUND_FILTER_CTRL_7__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_7__END_ADDR_REG_ADDR (0x10A210F0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[8]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_8__REG_MAP_BASE_ADDR (0x10A21100)
+#define INBOUND_FILTER_CTRL_8__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_8__REG_MAP_BASE_ADDR  (0x10A21100)
-#define INBOUND_FILTER_CTRL_8__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_ADDR                                     (0x10A21100)
-#define INBOUND_FILTER_CTRL_8__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_8__START_ADDR_REG_ADDR                                        (0x10A21108)
-#define INBOUND_FILTER_CTRL_8__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_8__END_ADDR_REG_ADDR                                          (0x10A21110)
-
+#define INBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_8__FILTER_CONFIG_REG_ADDR (0x10A21100)
+#define INBOUND_FILTER_CTRL_8__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_8__START_ADDR_REG_ADDR (0x10A21108)
+#define INBOUND_FILTER_CTRL_8__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_8__END_ADDR_REG_ADDR (0x10A21110)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[9]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_9__REG_MAP_BASE_ADDR (0x10A21120)
+#define INBOUND_FILTER_CTRL_9__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_9__REG_MAP_BASE_ADDR  (0x10A21120)
-#define INBOUND_FILTER_CTRL_9__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_OFFSET                                   (0x00000000)
-#define INBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_ADDR                                     (0x10A21120)
-#define INBOUND_FILTER_CTRL_9__START_ADDR_REG_OFFSET                                      (0x00000008)
-#define INBOUND_FILTER_CTRL_9__START_ADDR_REG_ADDR                                        (0x10A21128)
-#define INBOUND_FILTER_CTRL_9__END_ADDR_REG_OFFSET                                        (0x00000010)
-#define INBOUND_FILTER_CTRL_9__END_ADDR_REG_ADDR                                          (0x10A21130)
-
+#define INBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_9__FILTER_CONFIG_REG_ADDR (0x10A21120)
+#define INBOUND_FILTER_CTRL_9__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_9__START_ADDR_REG_ADDR (0x10A21128)
+#define INBOUND_FILTER_CTRL_9__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_9__END_ADDR_REG_ADDR (0x10A21130)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[10]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_10__REG_MAP_BASE_ADDR (0x10A21140)
+#define INBOUND_FILTER_CTRL_10__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_10__REG_MAP_BASE_ADDR  (0x10A21140)
-#define INBOUND_FILTER_CTRL_10__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_ADDR                                    (0x10A21140)
-#define INBOUND_FILTER_CTRL_10__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_10__START_ADDR_REG_ADDR                                       (0x10A21148)
-#define INBOUND_FILTER_CTRL_10__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_10__END_ADDR_REG_ADDR                                         (0x10A21150)
-
+#define INBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_10__FILTER_CONFIG_REG_ADDR (0x10A21140)
+#define INBOUND_FILTER_CTRL_10__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_10__START_ADDR_REG_ADDR (0x10A21148)
+#define INBOUND_FILTER_CTRL_10__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_10__END_ADDR_REG_ADDR (0x10A21150)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[11]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_11__REG_MAP_BASE_ADDR (0x10A21160)
+#define INBOUND_FILTER_CTRL_11__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_11__REG_MAP_BASE_ADDR  (0x10A21160)
-#define INBOUND_FILTER_CTRL_11__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_ADDR                                    (0x10A21160)
-#define INBOUND_FILTER_CTRL_11__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_11__START_ADDR_REG_ADDR                                       (0x10A21168)
-#define INBOUND_FILTER_CTRL_11__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_11__END_ADDR_REG_ADDR                                         (0x10A21170)
-
+#define INBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_11__FILTER_CONFIG_REG_ADDR (0x10A21160)
+#define INBOUND_FILTER_CTRL_11__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_11__START_ADDR_REG_ADDR (0x10A21168)
+#define INBOUND_FILTER_CTRL_11__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_11__END_ADDR_REG_ADDR (0x10A21170)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[12]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_12__REG_MAP_BASE_ADDR (0x10A21180)
+#define INBOUND_FILTER_CTRL_12__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_12__REG_MAP_BASE_ADDR  (0x10A21180)
-#define INBOUND_FILTER_CTRL_12__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_ADDR                                    (0x10A21180)
-#define INBOUND_FILTER_CTRL_12__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_12__START_ADDR_REG_ADDR                                       (0x10A21188)
-#define INBOUND_FILTER_CTRL_12__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_12__END_ADDR_REG_ADDR                                         (0x10A21190)
-
+#define INBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_12__FILTER_CONFIG_REG_ADDR (0x10A21180)
+#define INBOUND_FILTER_CTRL_12__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_12__START_ADDR_REG_ADDR (0x10A21188)
+#define INBOUND_FILTER_CTRL_12__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_12__END_ADDR_REG_ADDR (0x10A21190)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[13]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_13__REG_MAP_BASE_ADDR (0x10A211A0)
+#define INBOUND_FILTER_CTRL_13__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_13__REG_MAP_BASE_ADDR  (0x10A211A0)
-#define INBOUND_FILTER_CTRL_13__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_ADDR                                    (0x10A211A0)
-#define INBOUND_FILTER_CTRL_13__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_13__START_ADDR_REG_ADDR                                       (0x10A211A8)
-#define INBOUND_FILTER_CTRL_13__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_13__END_ADDR_REG_ADDR                                         (0x10A211B0)
-
+#define INBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_13__FILTER_CONFIG_REG_ADDR (0x10A211A0)
+#define INBOUND_FILTER_CTRL_13__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_13__START_ADDR_REG_ADDR (0x10A211A8)
+#define INBOUND_FILTER_CTRL_13__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_13__END_ADDR_REG_ADDR (0x10A211B0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[14]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_14__REG_MAP_BASE_ADDR (0x10A211C0)
+#define INBOUND_FILTER_CTRL_14__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_14__REG_MAP_BASE_ADDR  (0x10A211C0)
-#define INBOUND_FILTER_CTRL_14__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_ADDR                                    (0x10A211C0)
-#define INBOUND_FILTER_CTRL_14__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_14__START_ADDR_REG_ADDR                                       (0x10A211C8)
-#define INBOUND_FILTER_CTRL_14__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_14__END_ADDR_REG_ADDR                                         (0x10A211D0)
-
+#define INBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_14__FILTER_CONFIG_REG_ADDR (0x10A211C0)
+#define INBOUND_FILTER_CTRL_14__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_14__START_ADDR_REG_ADDR (0x10A211C8)
+#define INBOUND_FILTER_CTRL_14__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_14__END_ADDR_REG_ADDR (0x10A211D0)
 
 //==============================================================================
 // Addresses for Address Map: inbound_filter_ctrl[15]
 //==============================================================================
 
+#define INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR (0x10A211E0)
+#define INBOUND_FILTER_CTRL_15__REG_MAP_SIZE (0x00000018)
 
-#define INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR  (0x10A211E0)
-#define INBOUND_FILTER_CTRL_15__REG_MAP_SIZE       (0x00000018)
-
-#define INBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_OFFSET                                  (0x00000000)
-#define INBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_ADDR                                    (0x10A211E0)
-#define INBOUND_FILTER_CTRL_15__START_ADDR_REG_OFFSET                                     (0x00000008)
-#define INBOUND_FILTER_CTRL_15__START_ADDR_REG_ADDR                                       (0x10A211E8)
-#define INBOUND_FILTER_CTRL_15__END_ADDR_REG_OFFSET                                       (0x00000010)
-#define INBOUND_FILTER_CTRL_15__END_ADDR_REG_ADDR                                         (0x10A211F0)
-
+#define INBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_OFFSET (0x00000000)
+#define INBOUND_FILTER_CTRL_15__FILTER_CONFIG_REG_ADDR (0x10A211E0)
+#define INBOUND_FILTER_CTRL_15__START_ADDR_REG_OFFSET (0x00000008)
+#define INBOUND_FILTER_CTRL_15__START_ADDR_REG_ADDR (0x10A211E8)
+#define INBOUND_FILTER_CTRL_15__END_ADDR_REG_OFFSET (0x00000010)
+#define INBOUND_FILTER_CTRL_15__END_ADDR_REG_ADDR (0x10A211F0)
 
 //==============================================================================
 // Addresses for Address Map: sep_cpu_ctrl
 //==============================================================================
 
+#define SEP_CPU_CTRL_REG_MAP_BASE_ADDR (0x10A30000)
+#define SEP_CPU_CTRL_REG_MAP_SIZE (0x00001008)
 
-#define SEP_CPU_CTRL_REG_MAP_BASE_ADDR  (0x10A30000)
-#define SEP_CPU_CTRL_REG_MAP_SIZE       (0x00001008)
-
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_OFFSET                                           (0x00000008)
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR                                             (0x10A30008)
-#define SEP_CPU_CTRL_REFERENCE_COUNTER_REG_OFFSET                                         (0x00000010)
-#define SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR                                           (0x10A30010)
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_OFFSET                                         (0x00000018)
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_ADDR                                           (0x10A30018)
-#define SEP_CPU_CTRL_PKA_CTRL_REG_OFFSET                                                  (0x00000020)
-#define SEP_CPU_CTRL_PKA_CTRL_REG_ADDR                                                    (0x10A30020)
-#define SEP_CPU_CTRL_SPACC_CTRL_REG_OFFSET                                                (0x00000030)
-#define SEP_CPU_CTRL_SPACC_CTRL_REG_ADDR                                                  (0x10A30030)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_TROOT_REG_OFFSET                                       (0x00000040)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_TROOT_REG_ADDR                                         (0x10A30040)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_DMA_REG_OFFSET                                         (0x00000048)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_DMA_REG_ADDR                                           (0x10A30048)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_SPACC_REG_OFFSET                                       (0x00000050)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_SPACC_REG_ADDR                                         (0x10A30050)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_SYS_IN_REG_OFFSET                                      (0x00000058)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_SYS_IN_REG_ADDR                                        (0x10A30058)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_INBOUND_REG_OFFSET                             (0x00000060)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_INBOUND_REG_ADDR                               (0x10A30060)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_OUTBOUND_REG_OFFSET                            (0x00000068)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_OUTBOUND_REG_ADDR                              (0x10A30068)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_WRITE_REG_OFFSET                               (0x00000070)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_WRITE_REG_ADDR                                 (0x10A30070)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_READ_REG_OFFSET                                (0x00000078)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_READ_REG_ADDR                                  (0x10A30078)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_FILTER_OUT_REG_OFFSET                                  (0x00000080)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_FILTER_OUT_REG_ADDR                                    (0x10A30080)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ALIAS_REMAP_REG_OFFSET                                 (0x00000088)
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_ALIAS_REMAP_REG_ADDR                                   (0x10A30088)
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_OFFSET                                            (0x00000090)
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_ADDR                                              (0x10A30090)
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_OFFSET                                             (0x00000098)
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_ADDR                                               (0x10A30098)
-#define SEP_CPU_CTRL_TIMEOUT_MODE_REG_OFFSET                                              (0x000000A0)
-#define SEP_CPU_CTRL_TIMEOUT_MODE_REG_ADDR                                                (0x10A300A0)
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_REG_OFFSET                                             (0x000000B0)
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_REG_ADDR                                               (0x10A300B0)
-#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_OFFSET                                      (0x000000C0)
-#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_ADDR                                        (0x10A300C0)
-#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_OFFSET                                       (0x000000C8)
-#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_ADDR                                         (0x10A300C8)
-#define SEP_CPU_CTRL_SEP_REGION_SIZE_REG_OFFSET                                           (0x000000D0)
-#define SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR                                             (0x10A300D0)
-#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_OFFSET                                      (0x00000100)
-#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_ADDR                                        (0x10A30100)
-#define SEP_CPU_CTRL_SMU_REGION_SIZE_REG_OFFSET                                           (0x00000110)
-#define SEP_CPU_CTRL_SMU_REGION_SIZE_REG_ADDR                                             (0x10A30110)
-#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET                                     (0x00000140)
-#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR                                       (0x10A30140)
-#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET                                     (0x00000150)
-#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR                                       (0x10A30150)
-#define SEP_CPU_CTRL_SEP_STRAPS_REG_OFFSET                                                (0x00000160)
-#define SEP_CPU_CTRL_SEP_STRAPS_REG_ADDR                                                  (0x10A30160)
-#define SEP_CPU_CTRL_RAS_BANK_INFO_REG_OFFSET                                             (0x00000170)
-#define SEP_CPU_CTRL_RAS_BANK_INFO_REG_ADDR                                               (0x10A30170)
-#define SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET                                              (0x00000178)
-#define SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR                                                (0x10A30178)
-#define SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET                                               (0x00000180)
-#define SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR                                                 (0x10A30180)
-#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_OFFSET                                          (0x00000188)
-#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_ADDR                                            (0x10A30188)
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_OFFSET                                          (0x00000190)
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR                                            (0x10A30190)
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_OFFSET                                     (0x00000198)
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR                                       (0x10A30198)
-#define SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET                                            (0x00001000)
-#define SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR                                              (0x10A31000)
-
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_OFFSET (0x00000008)
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR (0x10A30008)
+#define SEP_CPU_CTRL_REFERENCE_COUNTER_REG_OFFSET (0x00000010)
+#define SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR (0x10A30010)
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_OFFSET (0x00000018)
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_ADDR (0x10A30018)
+#define SEP_CPU_CTRL_PKA_CTRL_REG_OFFSET (0x00000020)
+#define SEP_CPU_CTRL_PKA_CTRL_REG_ADDR (0x10A30020)
+#define SEP_CPU_CTRL_SPACC_CTRL_REG_OFFSET (0x00000030)
+#define SEP_CPU_CTRL_SPACC_CTRL_REG_ADDR (0x10A30030)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_TROOT_REG_OFFSET (0x00000040)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_TROOT_REG_ADDR (0x10A30040)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_DMA_REG_OFFSET (0x00000048)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_DMA_REG_ADDR (0x10A30048)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_SPACC_REG_OFFSET (0x00000050)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_SPACC_REG_ADDR (0x10A30050)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_SYS_IN_REG_OFFSET (0x00000058)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_SYS_IN_REG_ADDR (0x10A30058)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_INBOUND_REG_OFFSET (0x00000060)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_INBOUND_REG_ADDR (0x10A30060)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_OUTBOUND_REG_OFFSET (0x00000068)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_OUTBOUND_REG_ADDR (0x10A30068)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_WRITE_REG_OFFSET (0x00000070)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_WRITE_REG_ADDR (0x10A30070)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_READ_REG_OFFSET (0x00000078)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_READ_REG_ADDR (0x10A30078)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_FILTER_OUT_REG_OFFSET (0x00000080)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_FILTER_OUT_REG_ADDR (0x10A30080)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ALIAS_REMAP_REG_OFFSET (0x00000088)
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_ALIAS_REMAP_REG_ADDR (0x10A30088)
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_OFFSET (0x00000090)
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_ADDR (0x10A30090)
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_OFFSET (0x00000098)
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_ADDR (0x10A30098)
+#define SEP_CPU_CTRL_TIMEOUT_MODE_REG_OFFSET (0x000000A0)
+#define SEP_CPU_CTRL_TIMEOUT_MODE_REG_ADDR (0x10A300A0)
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_REG_OFFSET (0x000000B0)
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_REG_ADDR (0x10A300B0)
+#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_OFFSET (0x000000C0)
+#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_ADDR (0x10A300C0)
+#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_OFFSET (0x000000C8)
+#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_ADDR (0x10A300C8)
+#define SEP_CPU_CTRL_SEP_REGION_SIZE_REG_OFFSET (0x000000D0)
+#define SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR (0x10A300D0)
+#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_OFFSET (0x00000100)
+#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_ADDR (0x10A30100)
+#define SEP_CPU_CTRL_SMU_REGION_SIZE_REG_OFFSET (0x00000110)
+#define SEP_CPU_CTRL_SMU_REGION_SIZE_REG_ADDR (0x10A30110)
+#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET (0x00000140)
+#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR (0x10A30140)
+#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET (0x00000150)
+#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR (0x10A30150)
+#define SEP_CPU_CTRL_SEP_STRAPS_REG_OFFSET (0x00000160)
+#define SEP_CPU_CTRL_SEP_STRAPS_REG_ADDR (0x10A30160)
+#define SEP_CPU_CTRL_RAS_BANK_INFO_REG_OFFSET (0x00000170)
+#define SEP_CPU_CTRL_RAS_BANK_INFO_REG_ADDR (0x10A30170)
+#define SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET (0x00000178)
+#define SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR (0x10A30178)
+#define SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET (0x00000180)
+#define SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR (0x10A30180)
+#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_OFFSET (0x00000188)
+#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_ADDR (0x10A30188)
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_OFFSET (0x00000190)
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR (0x10A30190)
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_OFFSET (0x00000198)
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR (0x10A30198)
+#define SEP_CPU_CTRL_SEP_VERSION_ID_REG_OFFSET (0x00001000)
+#define SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR (0x10A31000)
 
 //==============================================================================
 // Addresses for Address Map: spi_controller
 //==============================================================================
 
+#define SPI_CONTROLLER_REG_MAP_BASE_ADDR (0x10B00000)
+#define SPI_CONTROLLER_REG_MAP_SIZE (0x00000038)
 
-#define SPI_CONTROLLER_REG_MAP_BASE_ADDR  (0x10B00000)
-#define SPI_CONTROLLER_REG_MAP_SIZE       (0x00000038)
-
-#define SPI_CONTROLLER_INTR_STATUS_REG_OFFSET                                             (0x00000000)
-#define SPI_CONTROLLER_INTR_STATUS_REG_ADDR                                               (0x10B00000)
-#define SPI_CONTROLLER_INTR_ENABLE_REG_OFFSET                                             (0x00000004)
-#define SPI_CONTROLLER_INTR_ENABLE_REG_ADDR                                               (0x10B00004)
-#define SPI_CONTROLLER_INTR_TEST_REG_OFFSET                                               (0x00000008)
-#define SPI_CONTROLLER_INTR_TEST_REG_ADDR                                                 (0x10B00008)
-#define SPI_CONTROLLER_CTRL_REG_OFFSET                                                    (0x00000010)
-#define SPI_CONTROLLER_CTRL_REG_ADDR                                                      (0x10B00010)
-#define SPI_CONTROLLER_STATUS_REG_OFFSET                                                  (0x00000014)
-#define SPI_CONTROLLER_STATUS_REG_ADDR                                                    (0x10B00014)
-#define SPI_CONTROLLER_CFG_REG_OFFSET                                                     (0x00000018)
-#define SPI_CONTROLLER_CFG_REG_ADDR                                                       (0x10B00018)
-#define SPI_CONTROLLER_CSID_REG_OFFSET                                                    (0x0000001C)
-#define SPI_CONTROLLER_CSID_REG_ADDR                                                      (0x10B0001C)
-#define SPI_CONTROLLER_CMD_REG_OFFSET                                                     (0x00000020)
-#define SPI_CONTROLLER_CMD_REG_ADDR                                                       (0x10B00020)
-#define SPI_CONTROLLER_RXDATA_REG_OFFSET                                                  (0x00000024)
-#define SPI_CONTROLLER_RXDATA_REG_ADDR                                                    (0x10B00024)
-#define SPI_CONTROLLER_TXDATA_REG_OFFSET                                                  (0x00000028)
-#define SPI_CONTROLLER_TXDATA_REG_ADDR                                                    (0x10B00028)
-#define SPI_CONTROLLER_ERROR_ENABLE_REG_OFFSET                                            (0x0000002C)
-#define SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR                                              (0x10B0002C)
-#define SPI_CONTROLLER_ERROR_STATUS_REG_OFFSET                                            (0x00000030)
-#define SPI_CONTROLLER_ERROR_STATUS_REG_ADDR                                              (0x10B00030)
-#define SPI_CONTROLLER_EVENT_ENABLE_REG_OFFSET                                            (0x00000034)
-#define SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR                                              (0x10B00034)
-
+#define SPI_CONTROLLER_INTR_STATUS_REG_OFFSET (0x00000000)
+#define SPI_CONTROLLER_INTR_STATUS_REG_ADDR (0x10B00000)
+#define SPI_CONTROLLER_INTR_ENABLE_REG_OFFSET (0x00000004)
+#define SPI_CONTROLLER_INTR_ENABLE_REG_ADDR (0x10B00004)
+#define SPI_CONTROLLER_INTR_TEST_REG_OFFSET (0x00000008)
+#define SPI_CONTROLLER_INTR_TEST_REG_ADDR (0x10B00008)
+#define SPI_CONTROLLER_CTRL_REG_OFFSET (0x00000010)
+#define SPI_CONTROLLER_CTRL_REG_ADDR (0x10B00010)
+#define SPI_CONTROLLER_STATUS_REG_OFFSET (0x00000014)
+#define SPI_CONTROLLER_STATUS_REG_ADDR (0x10B00014)
+#define SPI_CONTROLLER_CFG_REG_OFFSET (0x00000018)
+#define SPI_CONTROLLER_CFG_REG_ADDR (0x10B00018)
+#define SPI_CONTROLLER_CSID_REG_OFFSET (0x0000001C)
+#define SPI_CONTROLLER_CSID_REG_ADDR (0x10B0001C)
+#define SPI_CONTROLLER_CMD_REG_OFFSET (0x00000020)
+#define SPI_CONTROLLER_CMD_REG_ADDR (0x10B00020)
+#define SPI_CONTROLLER_RXDATA_REG_OFFSET (0x00000024)
+#define SPI_CONTROLLER_RXDATA_REG_ADDR (0x10B00024)
+#define SPI_CONTROLLER_TXDATA_REG_OFFSET (0x00000028)
+#define SPI_CONTROLLER_TXDATA_REG_ADDR (0x10B00028)
+#define SPI_CONTROLLER_ERROR_ENABLE_REG_OFFSET (0x0000002C)
+#define SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR (0x10B0002C)
+#define SPI_CONTROLLER_ERROR_STATUS_REG_OFFSET (0x00000030)
+#define SPI_CONTROLLER_ERROR_STATUS_REG_ADDR (0x10B00030)
+#define SPI_CONTROLLER_EVENT_ENABLE_REG_OFFSET (0x00000034)
+#define SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR (0x10B00034)
 
 //==============================================================================
 // Memory: ap_region
 //==============================================================================
 
-#define AP_REGION_MEM_BASE_ADDR  (0x11000000)
-#define AP_REGION_MEM_SIZE       (0x00800000)
-
-
+#define AP_REGION_MEM_BASE_ADDR (0x11000000)
+#define AP_REGION_MEM_SIZE (0x00800000)
 
 //==============================================================================
 // Memory: stee_region
 //==============================================================================
 
-#define STEE_REGION_MEM_BASE_ADDR  (0x11800000)
-#define STEE_REGION_MEM_SIZE       (0x00800000)
-
-
+#define STEE_REGION_MEM_BASE_ADDR (0x11800000)
+#define STEE_REGION_MEM_SIZE (0x00800000)
 
 //==============================================================================
 // Addresses for Address Map: sep_axi_extension
 //==============================================================================
 
-
-#define SEP_AXI_EXTENSION_REG_MAP_BASE_ADDR  (0x20000000)
-#define SEP_AXI_EXTENSION_REG_MAP_SIZE       (0x20000000)
-
-
+#define SEP_AXI_EXTENSION_REG_MAP_BASE_ADDR (0x20000000)
+#define SEP_AXI_EXTENSION_REG_MAP_SIZE (0x20000000)
 
 //==============================================================================
 // Addresses for Address Map: och_sep_spi_mux_ctrl
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_REG_MAP_BASE_ADDR (0x20000000)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_REG_MAP_SIZE (0x0000000C)
 
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_REG_MAP_BASE_ADDR  (0x20000000)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_REG_MAP_SIZE       (0x0000000C)
-
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_OFFSET                    (0x00000000)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_ADDR                      (0x20000000)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_REG_OFFSET                     (0x00000004)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_REG_ADDR                       (0x20000004)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_REG_OFFSET                    (0x00000008)
-#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_REG_ADDR                      (0x20000008)
-
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_ADDR (0x20000000)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_REG_OFFSET (0x00000004)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_REG_ADDR (0x20000004)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_REG_ADDR (0x20000008)
 
 //==============================================================================
 // Addresses for Address Map: och_sep_cdns_spi_ctrl
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_REG_MAP_BASE_ADDR (0x20001000)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_REG_MAP_SIZE (0x00000064)
 
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_REG_MAP_BASE_ADDR  (0x20001000)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_REG_MAP_SIZE       (0x00000064)
-
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_OFFSET                       (0x00000000)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_ADDR                         (0x20001000)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_REG_OFFSET                (0x00000008)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_REG_ADDR                  (0x20001008)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_REG_OFFSET             (0x00000010)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_REG_ADDR               (0x20001010)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_REG_OFFSET                  (0x00000018)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_REG_ADDR                    (0x20001018)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_REG_OFFSET             (0x00000020)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_REG_ADDR               (0x20001020)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_REG_OFFSET             (0x00000024)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR               (0x20001024)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_REG_OFFSET            (0x00000028)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR              (0x20001028)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_OFFSET        (0x0000002C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR          (0x2000102C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_OFFSET        (0x00000030)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR          (0x20001030)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_OFFSET       (0x00000034)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR         (0x20001034)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_REG_OFFSET                  (0x00000038)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_REG_ADDR                    (0x20001038)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_REG_OFFSET                   (0x00000040)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_REG_ADDR                     (0x20001040)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_REG_OFFSET          (0x00000044)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_REG_ADDR            (0x20001044)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_REG_OFFSET          (0x0000004C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_REG_ADDR            (0x2000104C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_REG_OFFSET                        (0x00000050)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_REG_ADDR                          (0x20001050)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_REG_OFFSET                   (0x00000054)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_REG_ADDR                     (0x20001054)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_REG_OFFSET                    (0x00000058)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_REG_ADDR                      (0x20001058)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_REG_OFFSET                   (0x0000005C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_REG_ADDR                     (0x2000105C)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_OFFSET               (0x00000060)
-#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_ADDR                 (0x20001060)
-
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_ADDR (0x20001000)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_REG_ADDR (0x20001008)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_REG_OFFSET (0x00000010)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_REG_ADDR (0x20001010)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_REG_OFFSET (0x00000018)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_REG_ADDR (0x20001018)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_REG_OFFSET (0x00000020)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_REG_ADDR (0x20001020)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_REG_OFFSET (0x00000024)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR (0x20001024)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_REG_OFFSET (0x00000028)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR (0x20001028)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_OFFSET (0x0000002C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR (0x2000102C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_OFFSET (0x00000030)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR (0x20001030)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_OFFSET (0x00000034)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR (0x20001034)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_REG_OFFSET (0x00000038)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_REG_ADDR (0x20001038)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_REG_OFFSET (0x00000040)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_REG_ADDR (0x20001040)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_REG_OFFSET (0x00000044)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_REG_ADDR (0x20001044)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_REG_OFFSET (0x0000004C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_REG_ADDR (0x2000104C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_REG_OFFSET (0x00000050)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_REG_ADDR (0x20001050)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_REG_OFFSET (0x00000054)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_REG_ADDR (0x20001054)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_REG_OFFSET (0x00000058)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_REG_ADDR (0x20001058)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_REG_OFFSET (0x0000005C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_REG_ADDR (0x2000105C)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_OFFSET (0x00000060)
+#define SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_ADDR (0x20001060)
 
 //==============================================================================
 // Addresses for Address Map: cdns_xspi_ctrl_reg
 //==============================================================================
 
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_REG_MAP_BASE_ADDR  (0x20002000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_REG_MAP_SIZE       (0x00001038)
-
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_REG_MAP_BASE_ADDR (0x20002000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_REG_MAP_SIZE (0x00001038)
 
 //==============================================================================
 // Addresses for Address Map: ctrl_cmd_stat_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_REG_MAP_BASE_ADDR (0x20002000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_REG_MAP_SIZE (0x0000015C)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_REG_MAP_BASE_ADDR  (0x20002000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_REG_MAP_SIZE       (0x0000015C)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG0_REG_OFFSET          (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG0_REG_ADDR            (0x20002000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG1_REG_OFFSET          (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG1_REG_ADDR            (0x20002004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG2_REG_OFFSET          (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG2_REG_ADDR            (0x20002008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG3_REG_OFFSET          (0x0000000C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG3_REG_ADDR            (0x2000200C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG4_REG_OFFSET          (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG4_REG_ADDR            (0x20002010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG5_REG_OFFSET          (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG5_REG_ADDR            (0x20002014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_PTR_REG_OFFSET    (0x00000040)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_PTR_REG_ADDR      (0x20002040)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_REG_OFFSET        (0x00000044)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_REG_ADDR          (0x20002044)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CTRL_STATUS_REG_OFFSET       (0x00000100)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CTRL_STATUS_REG_ADDR         (0x20002100)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_STATUS_REG_OFFSET        (0x00000104)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_STATUS_REG_ADDR          (0x20002104)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_STATUS_REG_OFFSET       (0x00000110)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_STATUS_REG_ADDR         (0x20002110)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_ENABLE_REG_OFFSET       (0x00000114)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_ENABLE_REG_ADDR         (0x20002114)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_COMP_INTR_STATUS_REG_OFFSET  (0x00000120)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_COMP_INTR_STATUS_REG_ADDR  (0x20002120)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_STATUS_REG_OFFSET  (0x00000130)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_STATUS_REG_ADDR  (0x20002130)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_EN_REG_OFFSET  (0x00000134)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_EN_REG_ADDR   (0x20002134)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_L_REG_OFFSET  (0x00000150)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_L_REG_ADDR  (0x20002150)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_H_REG_OFFSET  (0x00000154)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_H_REG_ADDR  (0x20002154)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_BOOT_STATUS_REG_OFFSET       (0x00000158)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_BOOT_STATUS_REG_ADDR         (0x20002158)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG0_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG0_REG_ADDR (0x20002000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG1_REG_OFFSET (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG1_REG_ADDR (0x20002004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG2_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG2_REG_ADDR (0x20002008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG3_REG_OFFSET (0x0000000C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG3_REG_ADDR (0x2000200C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG4_REG_OFFSET (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG4_REG_ADDR (0x20002010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG5_REG_OFFSET (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_REG5_REG_ADDR (0x20002014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_PTR_REG_OFFSET (0x00000040)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_PTR_REG_ADDR (0x20002040)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_REG_OFFSET (0x00000044)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CMD_STATUS_REG_ADDR (0x20002044)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CTRL_STATUS_REG_OFFSET (0x00000100)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_CTRL_STATUS_REG_ADDR (0x20002100)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_STATUS_REG_OFFSET (0x00000104)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_STATUS_REG_ADDR (0x20002104)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_STATUS_REG_OFFSET (0x00000110)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_STATUS_REG_ADDR (0x20002110)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_ENABLE_REG_OFFSET (0x00000114)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_INTR_ENABLE_REG_ADDR (0x20002114)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_COMP_INTR_STATUS_REG_OFFSET \
+    (0x00000120)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_COMP_INTR_STATUS_REG_ADDR \
+    (0x20002120)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_STATUS_REG_OFFSET \
+    (0x00000130)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_STATUS_REG_ADDR \
+    (0x20002130)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_EN_REG_OFFSET \
+    (0x00000134)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_TRD_ERROR_INTR_EN_REG_ADDR (0x20002134)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_L_REG_OFFSET \
+    (0x00000150)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_L_REG_ADDR \
+    (0x20002150)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_H_REG_OFFSET \
+    (0x00000154)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_DMA_TARGET_ERROR_H_REG_ADDR \
+    (0x20002154)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_BOOT_STATUS_REG_OFFSET (0x00000158)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CMD_STAT_A_BOOT_STATUS_REG_ADDR (0x20002158)
 
 //==============================================================================
 // Addresses for Address Map: ctrl_cfg_common_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_REG_MAP_BASE_ADDR (0x20002200)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_REG_MAP_SIZE (0x00000064)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_REG_MAP_BASE_ADDR  (0x20002200)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_REG_MAP_SIZE       (0x00000064)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_LONG_POLLING_REG_OFFSET    (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_LONG_POLLING_REG_ADDR      (0x20002208)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SHORT_POLLING_REG_OFFSET   (0x0000000C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SHORT_POLLING_REG_ADDR     (0x2000220C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_CTRL_CONFIG_REG_OFFSET     (0x00000030)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_CTRL_CONFIG_REG_ADDR       (0x20002230)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DMA_SETTINGS_REG_OFFSET    (0x0000003C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DMA_SETTINGS_REG_ADDR      (0x2000223C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_SIZE_REG_OFFSET       (0x00000040)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_SIZE_REG_ADDR         (0x20002240)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_TRD_INFO_REG_OFFSET   (0x00000044)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_TRD_INFO_REG_ADDR     (0x20002244)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR0_REG_OFFSET      (0x0000004C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR0_REG_ADDR        (0x2000224C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR1_REG_OFFSET      (0x00000050)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR1_REG_ADDR        (0x20002250)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DISCOVERY_CONTROL_REG_OFFSET  (0x00000060)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DISCOVERY_CONTROL_REG_ADDR  (0x20002260)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_LONG_POLLING_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_LONG_POLLING_REG_ADDR (0x20002208)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SHORT_POLLING_REG_OFFSET (0x0000000C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SHORT_POLLING_REG_ADDR (0x2000220C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_CTRL_CONFIG_REG_OFFSET (0x00000030)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_CTRL_CONFIG_REG_ADDR (0x20002230)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DMA_SETTINGS_REG_OFFSET (0x0000003C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DMA_SETTINGS_REG_ADDR (0x2000223C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_SIZE_REG_OFFSET (0x00000040)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_SIZE_REG_ADDR (0x20002240)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_TRD_INFO_REG_OFFSET (0x00000044)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_TRD_INFO_REG_ADDR (0x20002244)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR0_REG_OFFSET (0x0000004C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR0_REG_ADDR (0x2000224C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR1_REG_OFFSET (0x00000050)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_SDMA_ADDR1_REG_ADDR (0x20002250)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DISCOVERY_CONTROL_REG_OFFSET \
+    (0x00000060)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CFG_COMMON_A_DISCOVERY_CONTROL_REG_ADDR \
+    (0x20002260)
 
 //==============================================================================
 // Addresses for Address Map: cmn_seq_regs_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_REG_MAP_BASE_ADDR (0x20002380)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_REG_MAP_SIZE (0x00000024)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_REG_MAP_BASE_ADDR  (0x20002380)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_REG_MAP_SIZE       (0x00000024)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_XIP_MODE_CFG_REG_OFFSET       (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_XIP_MODE_CFG_REG_ADDR         (0x20002388)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_REG_OFFSET     (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_REG_ADDR       (0x20002390)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_1_REG_OFFSET   (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_1_REG_ADDR     (0x20002394)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_CFG_REG_OFFSET  (0x00000018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_CFG_REG_ADDR    (0x20002398)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_REG_OFFSET  (0x0000001C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_REG_ADDR    (0x2000239C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_1_REG_OFFSET  (0x00000020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_1_REG_ADDR  (0x200023A0)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_XIP_MODE_CFG_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_XIP_MODE_CFG_REG_ADDR (0x20002388)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_REG_OFFSET (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_REG_ADDR (0x20002390)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_1_REG_OFFSET (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_GLOBAL_SEQ_CFG_1_REG_ADDR (0x20002394)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_CFG_REG_OFFSET \
+    (0x00000018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_CFG_REG_ADDR (0x20002398)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_REG_OFFSET \
+    (0x0000001C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_REG_ADDR (0x2000239C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_1_REG_OFFSET \
+    (0x00000020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CMN_SEQ_REGS_A_DIRECT_ACCESS_RMP_1_REG_ADDR \
+    (0x200023A0)
 
 //==============================================================================
 // Addresses for Address Map: dev_seq_regs_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_REG_MAP_BASE_ADDR (0x20002400)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_REG_MAP_SIZE (0x0000007C)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_REG_MAP_BASE_ADDR  (0x20002400)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_REG_MAP_SIZE       (0x0000007C)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_0_REG_OFFSET      (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_0_REG_ADDR        (0x20002400)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_1_REG_OFFSET      (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_1_REG_ADDR        (0x20002404)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_0_REG_OFFSET      (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_0_REG_ADDR        (0x20002410)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_1_REG_OFFSET      (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_1_REG_ADDR        (0x20002414)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_2_REG_OFFSET      (0x00000018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_2_REG_ADDR        (0x20002418)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_0_REG_OFFSET     (0x00000020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_0_REG_ADDR       (0x20002420)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_1_REG_OFFSET     (0x00000024)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_1_REG_ADDR       (0x20002424)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_2_REG_OFFSET     (0x00000028)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_2_REG_ADDR       (0x20002428)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_0_REG_OFFSET     (0x00000030)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_0_REG_ADDR       (0x20002430)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_1_REG_OFFSET     (0x00000034)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_1_REG_ADDR       (0x20002434)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_2_REG_OFFSET     (0x00000038)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_2_REG_ADDR       (0x20002438)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_WE_SEQ_CFG_0_REG_OFFSET       (0x00000040)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_WE_SEQ_CFG_0_REG_ADDR         (0x20002440)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_0_REG_OFFSET     (0x00000050)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_0_REG_ADDR       (0x20002450)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_1_REG_OFFSET     (0x00000054)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_1_REG_ADDR       (0x20002454)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_2_REG_OFFSET     (0x00000058)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_2_REG_ADDR       (0x20002458)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_3_REG_OFFSET     (0x0000005C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_3_REG_ADDR       (0x2000245C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_4_REG_OFFSET     (0x00000060)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_4_REG_ADDR       (0x20002460)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_5_REG_OFFSET     (0x00000064)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_5_REG_ADDR       (0x20002464)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_7_REG_OFFSET     (0x0000006C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_7_REG_ADDR       (0x2000246C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_8_REG_OFFSET     (0x00000070)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_8_REG_ADDR       (0x20002470)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_9_REG_OFFSET     (0x00000074)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_9_REG_ADDR       (0x20002474)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_10_REG_OFFSET    (0x00000078)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_10_REG_ADDR      (0x20002478)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_0_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_0_REG_ADDR (0x20002400)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_1_REG_OFFSET (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_RST_SEQ_CFG_1_REG_ADDR (0x20002404)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_0_REG_OFFSET (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_0_REG_ADDR (0x20002410)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_1_REG_OFFSET (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_1_REG_ADDR (0x20002414)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_2_REG_OFFSET (0x00000018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_ERS_SEQ_CFG_2_REG_ADDR (0x20002418)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_0_REG_OFFSET (0x00000020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_0_REG_ADDR (0x20002420)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_1_REG_OFFSET (0x00000024)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_1_REG_ADDR (0x20002424)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_2_REG_OFFSET (0x00000028)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_PROG_SEQ_CFG_2_REG_ADDR (0x20002428)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_0_REG_OFFSET (0x00000030)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_0_REG_ADDR (0x20002430)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_1_REG_OFFSET (0x00000034)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_1_REG_ADDR (0x20002434)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_2_REG_OFFSET (0x00000038)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_READ_SEQ_CFG_2_REG_ADDR (0x20002438)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_WE_SEQ_CFG_0_REG_OFFSET (0x00000040)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_WE_SEQ_CFG_0_REG_ADDR (0x20002440)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_0_REG_OFFSET (0x00000050)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_0_REG_ADDR (0x20002450)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_1_REG_OFFSET (0x00000054)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_1_REG_ADDR (0x20002454)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_2_REG_OFFSET (0x00000058)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_2_REG_ADDR (0x20002458)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_3_REG_OFFSET (0x0000005C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_3_REG_ADDR (0x2000245C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_4_REG_OFFSET (0x00000060)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_4_REG_ADDR (0x20002460)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_5_REG_OFFSET (0x00000064)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_5_REG_ADDR (0x20002464)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_7_REG_OFFSET (0x0000006C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_7_REG_ADDR (0x2000246C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_8_REG_OFFSET (0x00000070)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_8_REG_ADDR (0x20002470)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_9_REG_OFFSET (0x00000074)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_9_REG_ADDR (0x20002474)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_10_REG_OFFSET (0x00000078)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_DEV_SEQ_REGS_A_STAT_SEQ_CFG_10_REG_ADDR (0x20002478)
 
 //==============================================================================
 // Addresses for Address Map: ctrl_consts_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_REG_MAP_BASE_ADDR (0x20002F00)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_REG_MAP_SIZE (0x00000008)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_REG_MAP_BASE_ADDR  (0x20002F00)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_REG_MAP_SIZE       (0x00000008)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_XSPI_CTRL_VERSION_REG_OFFSET   (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_XSPI_CTRL_VERSION_REG_ADDR     (0x20002F00)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_CTRL_FEATURES_REG_REG_OFFSET   (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_CTRL_FEATURES_REG_REG_ADDR     (0x20002F04)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_XSPI_CTRL_VERSION_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_XSPI_CTRL_VERSION_REG_ADDR (0x20002F00)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_CTRL_FEATURES_REG_REG_OFFSET (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_CTRL_CONSTS_A_CTRL_FEATURES_REG_REG_ADDR (0x20002F04)
 
 //==============================================================================
 // Addresses for Address Map: rf_minictrl_regs_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_REG_MAP_BASE_ADDR (0x20003000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_REG_MAP_SIZE (0x00000038)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_REG_MAP_BASE_ADDR  (0x20003000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_REG_MAP_SIZE       (0x00000038)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_WP_SETTINGS_REG_OFFSET    (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_WP_SETTINGS_REG_ADDR      (0x20003000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RESET_PIN_SETTINGS_REG_OFFSET  (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RESET_PIN_SETTINGS_REG_ADDR  (0x20003004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_CLOCK_MODE_SETTINGS_REG_OFFSET  (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_CLOCK_MODE_SETTINGS_REG_ADDR  (0x20003008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_JEDEC_RST_TIMING_REG_REG_OFFSET  (0x0000000C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_JEDEC_RST_TIMING_REG_REG_ADDR  (0x2000300C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_DELAY_REG_REG_OFFSET  (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_DELAY_REG_REG_ADDR    (0x20003010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RST_RECOVERY_REG_REG_OFFSET  (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RST_RECOVERY_REG_REG_ADDR  (0x20003014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_ACTIVE_MAX_REG_REG_OFFSET  (0x00000018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_ACTIVE_MAX_REG_REG_ADDR  (0x20003018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_HF_OFFSET_REG_REG_OFFSET  (0x00000020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_HF_OFFSET_REG_REG_ADDR    (0x20003020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_UPDATE_CNT_REG_OFFSET  (0x00000030)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_UPDATE_CNT_REG_ADDR  (0x20003030)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_CTRL_REG_OFFSET   (0x00000034)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_CTRL_REG_ADDR     (0x20003034)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_WP_SETTINGS_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_WP_SETTINGS_REG_ADDR (0x20003000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RESET_PIN_SETTINGS_REG_OFFSET \
+    (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RESET_PIN_SETTINGS_REG_ADDR \
+    (0x20003004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_CLOCK_MODE_SETTINGS_REG_OFFSET \
+    (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_CLOCK_MODE_SETTINGS_REG_ADDR \
+    (0x20003008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_JEDEC_RST_TIMING_REG_REG_OFFSET \
+    (0x0000000C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_JEDEC_RST_TIMING_REG_REG_ADDR \
+    (0x2000300C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_DELAY_REG_REG_OFFSET \
+    (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_DELAY_REG_REG_ADDR (0x20003010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RST_RECOVERY_REG_REG_OFFSET \
+    (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_RST_RECOVERY_REG_REG_ADDR \
+    (0x20003014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_ACTIVE_MAX_REG_REG_OFFSET \
+    (0x00000018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DEV_ACTIVE_MAX_REG_REG_ADDR \
+    (0x20003018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_HF_OFFSET_REG_REG_OFFSET \
+    (0x00000020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_HF_OFFSET_REG_REG_ADDR (0x20003020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_UPDATE_CNT_REG_OFFSET \
+    (0x00000030)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_UPDATE_CNT_REG_ADDR \
+    (0x20003030)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_CTRL_REG_OFFSET (0x00000034)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_CTRL_REG_RF_MINICTRL_REGS_A_DLL_PHY_CTRL_REG_ADDR (0x20003034)
 
 //==============================================================================
 // Addresses for Address Map: cdns_xspi_phy_reg
 //==============================================================================
 
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_REG_MAP_BASE_ADDR  (0x20004000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_REG_MAP_SIZE       (0x00002098)
-
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_REG_MAP_BASE_ADDR (0x20004000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_REG_MAP_SIZE (0x00002098)
 
 //==============================================================================
 // Addresses for Address Map: dataslice_Rfile_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_REG_MAP_BASE_ADDR (0x20006000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_REG_MAP_SIZE (0x00000078)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_REG_MAP_BASE_ADDR  (0x20006000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_REG_MAP_SIZE       (0x00000078)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQ_TIMING_REG_REG_OFFSET  (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQ_TIMING_REG_REG_ADDR  (0x20006000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQS_TIMING_REG_REG_OFFSET  (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQS_TIMING_REG_REG_ADDR  (0x20006004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_GATE_LPBK_CTRL_REG_REG_OFFSET  (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_GATE_LPBK_CTRL_REG_REG_ADDR  (0x20006008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_MASTER_CTRL_REG_REG_OFFSET  (0x0000000C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_MASTER_CTRL_REG_REG_ADDR  (0x2000600C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_SLAVE_CTRL_REG_REG_OFFSET  (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_SLAVE_CTRL_REG_REG_ADDR  (0x20006010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_IE_TIMING_REG_REG_OFFSET  (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_IE_TIMING_REG_REG_ADDR  (0x20006014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_OBS_REG_0_REG_OFFSET    (0x00000018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_OBS_REG_0_REG_ADDR      (0x20006018)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_0_REG_OFFSET  (0x0000001C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_0_REG_ADDR  (0x2000601C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_1_REG_OFFSET  (0x00000020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_1_REG_ADDR  (0x20006020)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_STATIC_TOGG_REG_REG_OFFSET  (0x00000028)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_STATIC_TOGG_REG_REG_ADDR  (0x20006028)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_WR_DESKEW_PD_CTRL_0_REG_REG_OFFSET  (0x00000034)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_WR_DESKEW_PD_CTRL_0_REG_REG_ADDR  (0x20006034)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_VERSION_REG_REG_OFFSET  (0x00000070)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_VERSION_REG_REG_ADDR    (0x20006070)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_FEATURES_REG_REG_OFFSET  (0x00000074)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_FEATURES_REG_REG_ADDR   (0x20006074)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQ_TIMING_REG_REG_OFFSET \
+    (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQ_TIMING_REG_REG_ADDR \
+    (0x20006000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQS_TIMING_REG_REG_OFFSET \
+    (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DQS_TIMING_REG_REG_ADDR \
+    (0x20006004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_GATE_LPBK_CTRL_REG_REG_OFFSET \
+    (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_GATE_LPBK_CTRL_REG_REG_ADDR \
+    (0x20006008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_MASTER_CTRL_REG_REG_OFFSET \
+    (0x0000000C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_MASTER_CTRL_REG_REG_ADDR \
+    (0x2000600C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_SLAVE_CTRL_REG_REG_OFFSET \
+    (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_SLAVE_CTRL_REG_REG_ADDR \
+    (0x20006010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_IE_TIMING_REG_REG_OFFSET \
+    (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_IE_TIMING_REG_REG_ADDR \
+    (0x20006014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_OBS_REG_0_REG_OFFSET (0x00000018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_OBS_REG_0_REG_ADDR (0x20006018)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_0_REG_OFFSET \
+    (0x0000001C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_0_REG_ADDR \
+    (0x2000601C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_1_REG_OFFSET \
+    (0x00000020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_DLL_OBS_REG_1_REG_ADDR \
+    (0x20006020)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_STATIC_TOGG_REG_REG_OFFSET \
+    (0x00000028)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_STATIC_TOGG_REG_REG_ADDR \
+    (0x20006028)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_WR_DESKEW_PD_CTRL_0_REG_REG_OFFSET \
+    (0x00000034)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_WR_DESKEW_PD_CTRL_0_REG_REG_ADDR \
+    (0x20006034)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_VERSION_REG_REG_OFFSET \
+    (0x00000070)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_VERSION_REG_REG_ADDR (0x20006070)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_FEATURES_REG_REG_OFFSET \
+    (0x00000074)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_DATASLICE_RFILE_A_PHY_FEATURES_REG_REG_ADDR (0x20006074)
 
 //==============================================================================
 // Addresses for Address Map: ctb_Rfile_a
 //==============================================================================
 
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_REG_MAP_BASE_ADDR (0x20006080)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_REG_MAP_SIZE (0x00000018)
 
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_REG_MAP_BASE_ADDR  (0x20006080)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_REG_MAP_SIZE       (0x00000018)
-
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_CTRL_REG_REG_OFFSET           (0x00000000)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_CTRL_REG_REG_ADDR             (0x20006080)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_TSEL_REG_REG_OFFSET           (0x00000004)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_TSEL_REG_REG_ADDR             (0x20006084)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_0_REG_OFFSET        (0x00000008)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_0_REG_ADDR          (0x20006088)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_1_REG_OFFSET        (0x0000000C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_1_REG_ADDR          (0x2000608C)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_0_REG_OFFSET      (0x00000010)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_0_REG_ADDR        (0x20006090)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_1_REG_OFFSET      (0x00000014)
-#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_1_REG_ADDR        (0x20006094)
-
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_CTRL_REG_REG_OFFSET (0x00000000)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_CTRL_REG_REG_ADDR (0x20006080)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_TSEL_REG_REG_OFFSET (0x00000004)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_TSEL_REG_REG_ADDR (0x20006084)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_0_REG_OFFSET (0x00000008)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_0_REG_ADDR (0x20006088)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_1_REG_OFFSET (0x0000000C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_CTRL_1_REG_ADDR (0x2000608C)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_0_REG_OFFSET (0x00000010)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_0_REG_ADDR (0x20006090)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_1_REG_OFFSET (0x00000014)
+#define SEP_AXI_EXTENSION_CDNS_XSPI_PHY_REG_CTB_RFILE_A_PHY_GPIO_STATUS_1_REG_ADDR (0x20006094)
 
 //==============================================================================
 // Memory: xip_region
 //==============================================================================
 
-#define SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR  (0x30000000)
-#define SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE       (0x10000000)
-
-
+#define SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR (0x30000000)
+#define SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE (0x10000000)
 
 //==============================================================================
 // Memory: sep_iccm
 //==============================================================================
 
-#define SEP_ICCM_MEM_BASE_ADDR  (0xC0000000)
-#define SEP_ICCM_MEM_SIZE       (0x00040000)
-
-
+#define SEP_ICCM_MEM_BASE_ADDR (0xC0000000)
+#define SEP_ICCM_MEM_SIZE (0x00040000)
 
 //==============================================================================
 // Memory: sep_dccm
 //==============================================================================
 
-#define SEP_DCCM_MEM_BASE_ADDR  (0xC0040000)
-#define SEP_DCCM_MEM_SIZE       (0x00020000)
-
-
+#define SEP_DCCM_MEM_BASE_ADDR (0xC0040000)
+#define SEP_DCCM_MEM_SIZE (0x00020000)
 
 //==============================================================================
 // Addresses for Address Map: pic
 //==============================================================================
 
+#define PIC_REG_MAP_BASE_ADDR (0xC0080000)
+#define PIC_REG_MAP_SIZE (0x00005084)
 
-#define PIC_REG_MAP_BASE_ADDR  (0xC0080000)
-#define PIC_REG_MAP_SIZE       (0x00005084)
-
-#define PIC_MEIPL_0__REG_OFFSET                                                           (0x00000004)
-#define PIC_MEIPL_0__REG_ADDR                                                             (0xC0080004)
-#define PIC_MEIPL_1__REG_OFFSET                                                           (0x00000008)
-#define PIC_MEIPL_1__REG_ADDR                                                             (0xC0080008)
-#define PIC_MEIPL_2__REG_OFFSET                                                           (0x0000000C)
-#define PIC_MEIPL_2__REG_ADDR                                                             (0xC008000C)
-#define PIC_MEIPL_3__REG_OFFSET                                                           (0x00000010)
-#define PIC_MEIPL_3__REG_ADDR                                                             (0xC0080010)
-#define PIC_MEIPL_4__REG_OFFSET                                                           (0x00000014)
-#define PIC_MEIPL_4__REG_ADDR                                                             (0xC0080014)
-#define PIC_MEIPL_5__REG_OFFSET                                                           (0x00000018)
-#define PIC_MEIPL_5__REG_ADDR                                                             (0xC0080018)
-#define PIC_MEIPL_6__REG_OFFSET                                                           (0x0000001C)
-#define PIC_MEIPL_6__REG_ADDR                                                             (0xC008001C)
-#define PIC_MEIPL_7__REG_OFFSET                                                           (0x00000020)
-#define PIC_MEIPL_7__REG_ADDR                                                             (0xC0080020)
-#define PIC_MEIPL_8__REG_OFFSET                                                           (0x00000024)
-#define PIC_MEIPL_8__REG_ADDR                                                             (0xC0080024)
-#define PIC_MEIPL_9__REG_OFFSET                                                           (0x00000028)
-#define PIC_MEIPL_9__REG_ADDR                                                             (0xC0080028)
-#define PIC_MEIPL_10__REG_OFFSET                                                          (0x0000002C)
-#define PIC_MEIPL_10__REG_ADDR                                                            (0xC008002C)
-#define PIC_MEIPL_11__REG_OFFSET                                                          (0x00000030)
-#define PIC_MEIPL_11__REG_ADDR                                                            (0xC0080030)
-#define PIC_MEIPL_12__REG_OFFSET                                                          (0x00000034)
-#define PIC_MEIPL_12__REG_ADDR                                                            (0xC0080034)
-#define PIC_MEIPL_13__REG_OFFSET                                                          (0x00000038)
-#define PIC_MEIPL_13__REG_ADDR                                                            (0xC0080038)
-#define PIC_MEIPL_14__REG_OFFSET                                                          (0x0000003C)
-#define PIC_MEIPL_14__REG_ADDR                                                            (0xC008003C)
-#define PIC_MEIPL_15__REG_OFFSET                                                          (0x00000040)
-#define PIC_MEIPL_15__REG_ADDR                                                            (0xC0080040)
-#define PIC_MEIPL_16__REG_OFFSET                                                          (0x00000044)
-#define PIC_MEIPL_16__REG_ADDR                                                            (0xC0080044)
-#define PIC_MEIPL_17__REG_OFFSET                                                          (0x00000048)
-#define PIC_MEIPL_17__REG_ADDR                                                            (0xC0080048)
-#define PIC_MEIPL_18__REG_OFFSET                                                          (0x0000004C)
-#define PIC_MEIPL_18__REG_ADDR                                                            (0xC008004C)
-#define PIC_MEIPL_19__REG_OFFSET                                                          (0x00000050)
-#define PIC_MEIPL_19__REG_ADDR                                                            (0xC0080050)
-#define PIC_MEIPL_20__REG_OFFSET                                                          (0x00000054)
-#define PIC_MEIPL_20__REG_ADDR                                                            (0xC0080054)
-#define PIC_MEIPL_21__REG_OFFSET                                                          (0x00000058)
-#define PIC_MEIPL_21__REG_ADDR                                                            (0xC0080058)
-#define PIC_MEIPL_22__REG_OFFSET                                                          (0x0000005C)
-#define PIC_MEIPL_22__REG_ADDR                                                            (0xC008005C)
-#define PIC_MEIPL_23__REG_OFFSET                                                          (0x00000060)
-#define PIC_MEIPL_23__REG_ADDR                                                            (0xC0080060)
-#define PIC_MEIPL_24__REG_OFFSET                                                          (0x00000064)
-#define PIC_MEIPL_24__REG_ADDR                                                            (0xC0080064)
-#define PIC_MEIPL_25__REG_OFFSET                                                          (0x00000068)
-#define PIC_MEIPL_25__REG_ADDR                                                            (0xC0080068)
-#define PIC_MEIPL_26__REG_OFFSET                                                          (0x0000006C)
-#define PIC_MEIPL_26__REG_ADDR                                                            (0xC008006C)
-#define PIC_MEIPL_27__REG_OFFSET                                                          (0x00000070)
-#define PIC_MEIPL_27__REG_ADDR                                                            (0xC0080070)
-#define PIC_MEIPL_28__REG_OFFSET                                                          (0x00000074)
-#define PIC_MEIPL_28__REG_ADDR                                                            (0xC0080074)
-#define PIC_MEIPL_29__REG_OFFSET                                                          (0x00000078)
-#define PIC_MEIPL_29__REG_ADDR                                                            (0xC0080078)
-#define PIC_MEIPL_30__REG_OFFSET                                                          (0x0000007C)
-#define PIC_MEIPL_30__REG_ADDR                                                            (0xC008007C)
-#define PIC_MEIPL_31__REG_OFFSET                                                          (0x00000080)
-#define PIC_MEIPL_31__REG_ADDR                                                            (0xC0080080)
-#define PIC_MEIP_0__REG_OFFSET                                                            (0x00001000)
-#define PIC_MEIP_0__REG_ADDR                                                              (0xC0081000)
-#define PIC_MEIP_1__REG_OFFSET                                                            (0x00001004)
-#define PIC_MEIP_1__REG_ADDR                                                              (0xC0081004)
-#define PIC_MEIE_0__REG_OFFSET                                                            (0x00002004)
-#define PIC_MEIE_0__REG_ADDR                                                              (0xC0082004)
-#define PIC_MEIE_1__REG_OFFSET                                                            (0x00002008)
-#define PIC_MEIE_1__REG_ADDR                                                              (0xC0082008)
-#define PIC_MEIE_2__REG_OFFSET                                                            (0x0000200C)
-#define PIC_MEIE_2__REG_ADDR                                                              (0xC008200C)
-#define PIC_MEIE_3__REG_OFFSET                                                            (0x00002010)
-#define PIC_MEIE_3__REG_ADDR                                                              (0xC0082010)
-#define PIC_MEIE_4__REG_OFFSET                                                            (0x00002014)
-#define PIC_MEIE_4__REG_ADDR                                                              (0xC0082014)
-#define PIC_MEIE_5__REG_OFFSET                                                            (0x00002018)
-#define PIC_MEIE_5__REG_ADDR                                                              (0xC0082018)
-#define PIC_MEIE_6__REG_OFFSET                                                            (0x0000201C)
-#define PIC_MEIE_6__REG_ADDR                                                              (0xC008201C)
-#define PIC_MEIE_7__REG_OFFSET                                                            (0x00002020)
-#define PIC_MEIE_7__REG_ADDR                                                              (0xC0082020)
-#define PIC_MEIE_8__REG_OFFSET                                                            (0x00002024)
-#define PIC_MEIE_8__REG_ADDR                                                              (0xC0082024)
-#define PIC_MEIE_9__REG_OFFSET                                                            (0x00002028)
-#define PIC_MEIE_9__REG_ADDR                                                              (0xC0082028)
-#define PIC_MEIE_10__REG_OFFSET                                                           (0x0000202C)
-#define PIC_MEIE_10__REG_ADDR                                                             (0xC008202C)
-#define PIC_MEIE_11__REG_OFFSET                                                           (0x00002030)
-#define PIC_MEIE_11__REG_ADDR                                                             (0xC0082030)
-#define PIC_MEIE_12__REG_OFFSET                                                           (0x00002034)
-#define PIC_MEIE_12__REG_ADDR                                                             (0xC0082034)
-#define PIC_MEIE_13__REG_OFFSET                                                           (0x00002038)
-#define PIC_MEIE_13__REG_ADDR                                                             (0xC0082038)
-#define PIC_MEIE_14__REG_OFFSET                                                           (0x0000203C)
-#define PIC_MEIE_14__REG_ADDR                                                             (0xC008203C)
-#define PIC_MEIE_15__REG_OFFSET                                                           (0x00002040)
-#define PIC_MEIE_15__REG_ADDR                                                             (0xC0082040)
-#define PIC_MEIE_16__REG_OFFSET                                                           (0x00002044)
-#define PIC_MEIE_16__REG_ADDR                                                             (0xC0082044)
-#define PIC_MEIE_17__REG_OFFSET                                                           (0x00002048)
-#define PIC_MEIE_17__REG_ADDR                                                             (0xC0082048)
-#define PIC_MEIE_18__REG_OFFSET                                                           (0x0000204C)
-#define PIC_MEIE_18__REG_ADDR                                                             (0xC008204C)
-#define PIC_MEIE_19__REG_OFFSET                                                           (0x00002050)
-#define PIC_MEIE_19__REG_ADDR                                                             (0xC0082050)
-#define PIC_MEIE_20__REG_OFFSET                                                           (0x00002054)
-#define PIC_MEIE_20__REG_ADDR                                                             (0xC0082054)
-#define PIC_MEIE_21__REG_OFFSET                                                           (0x00002058)
-#define PIC_MEIE_21__REG_ADDR                                                             (0xC0082058)
-#define PIC_MEIE_22__REG_OFFSET                                                           (0x0000205C)
-#define PIC_MEIE_22__REG_ADDR                                                             (0xC008205C)
-#define PIC_MEIE_23__REG_OFFSET                                                           (0x00002060)
-#define PIC_MEIE_23__REG_ADDR                                                             (0xC0082060)
-#define PIC_MEIE_24__REG_OFFSET                                                           (0x00002064)
-#define PIC_MEIE_24__REG_ADDR                                                             (0xC0082064)
-#define PIC_MEIE_25__REG_OFFSET                                                           (0x00002068)
-#define PIC_MEIE_25__REG_ADDR                                                             (0xC0082068)
-#define PIC_MEIE_26__REG_OFFSET                                                           (0x0000206C)
-#define PIC_MEIE_26__REG_ADDR                                                             (0xC008206C)
-#define PIC_MEIE_27__REG_OFFSET                                                           (0x00002070)
-#define PIC_MEIE_27__REG_ADDR                                                             (0xC0082070)
-#define PIC_MEIE_28__REG_OFFSET                                                           (0x00002074)
-#define PIC_MEIE_28__REG_ADDR                                                             (0xC0082074)
-#define PIC_MEIE_29__REG_OFFSET                                                           (0x00002078)
-#define PIC_MEIE_29__REG_ADDR                                                             (0xC0082078)
-#define PIC_MEIE_30__REG_OFFSET                                                           (0x0000207C)
-#define PIC_MEIE_30__REG_ADDR                                                             (0xC008207C)
-#define PIC_MEIE_31__REG_OFFSET                                                           (0x00002080)
-#define PIC_MEIE_31__REG_ADDR                                                             (0xC0082080)
-#define PIC_MPICCFG_REG_OFFSET                                                            (0x00003000)
-#define PIC_MPICCFG_REG_ADDR                                                              (0xC0083000)
-#define PIC_MEIGWCTRL_0__REG_OFFSET                                                       (0x00004004)
-#define PIC_MEIGWCTRL_0__REG_ADDR                                                         (0xC0084004)
-#define PIC_MEIGWCTRL_1__REG_OFFSET                                                       (0x00004008)
-#define PIC_MEIGWCTRL_1__REG_ADDR                                                         (0xC0084008)
-#define PIC_MEIGWCTRL_2__REG_OFFSET                                                       (0x0000400C)
-#define PIC_MEIGWCTRL_2__REG_ADDR                                                         (0xC008400C)
-#define PIC_MEIGWCTRL_3__REG_OFFSET                                                       (0x00004010)
-#define PIC_MEIGWCTRL_3__REG_ADDR                                                         (0xC0084010)
-#define PIC_MEIGWCTRL_4__REG_OFFSET                                                       (0x00004014)
-#define PIC_MEIGWCTRL_4__REG_ADDR                                                         (0xC0084014)
-#define PIC_MEIGWCTRL_5__REG_OFFSET                                                       (0x00004018)
-#define PIC_MEIGWCTRL_5__REG_ADDR                                                         (0xC0084018)
-#define PIC_MEIGWCTRL_6__REG_OFFSET                                                       (0x0000401C)
-#define PIC_MEIGWCTRL_6__REG_ADDR                                                         (0xC008401C)
-#define PIC_MEIGWCTRL_7__REG_OFFSET                                                       (0x00004020)
-#define PIC_MEIGWCTRL_7__REG_ADDR                                                         (0xC0084020)
-#define PIC_MEIGWCTRL_8__REG_OFFSET                                                       (0x00004024)
-#define PIC_MEIGWCTRL_8__REG_ADDR                                                         (0xC0084024)
-#define PIC_MEIGWCTRL_9__REG_OFFSET                                                       (0x00004028)
-#define PIC_MEIGWCTRL_9__REG_ADDR                                                         (0xC0084028)
-#define PIC_MEIGWCTRL_10__REG_OFFSET                                                      (0x0000402C)
-#define PIC_MEIGWCTRL_10__REG_ADDR                                                        (0xC008402C)
-#define PIC_MEIGWCTRL_11__REG_OFFSET                                                      (0x00004030)
-#define PIC_MEIGWCTRL_11__REG_ADDR                                                        (0xC0084030)
-#define PIC_MEIGWCTRL_12__REG_OFFSET                                                      (0x00004034)
-#define PIC_MEIGWCTRL_12__REG_ADDR                                                        (0xC0084034)
-#define PIC_MEIGWCTRL_13__REG_OFFSET                                                      (0x00004038)
-#define PIC_MEIGWCTRL_13__REG_ADDR                                                        (0xC0084038)
-#define PIC_MEIGWCTRL_14__REG_OFFSET                                                      (0x0000403C)
-#define PIC_MEIGWCTRL_14__REG_ADDR                                                        (0xC008403C)
-#define PIC_MEIGWCTRL_15__REG_OFFSET                                                      (0x00004040)
-#define PIC_MEIGWCTRL_15__REG_ADDR                                                        (0xC0084040)
-#define PIC_MEIGWCTRL_16__REG_OFFSET                                                      (0x00004044)
-#define PIC_MEIGWCTRL_16__REG_ADDR                                                        (0xC0084044)
-#define PIC_MEIGWCTRL_17__REG_OFFSET                                                      (0x00004048)
-#define PIC_MEIGWCTRL_17__REG_ADDR                                                        (0xC0084048)
-#define PIC_MEIGWCTRL_18__REG_OFFSET                                                      (0x0000404C)
-#define PIC_MEIGWCTRL_18__REG_ADDR                                                        (0xC008404C)
-#define PIC_MEIGWCTRL_19__REG_OFFSET                                                      (0x00004050)
-#define PIC_MEIGWCTRL_19__REG_ADDR                                                        (0xC0084050)
-#define PIC_MEIGWCTRL_20__REG_OFFSET                                                      (0x00004054)
-#define PIC_MEIGWCTRL_20__REG_ADDR                                                        (0xC0084054)
-#define PIC_MEIGWCTRL_21__REG_OFFSET                                                      (0x00004058)
-#define PIC_MEIGWCTRL_21__REG_ADDR                                                        (0xC0084058)
-#define PIC_MEIGWCTRL_22__REG_OFFSET                                                      (0x0000405C)
-#define PIC_MEIGWCTRL_22__REG_ADDR                                                        (0xC008405C)
-#define PIC_MEIGWCTRL_23__REG_OFFSET                                                      (0x00004060)
-#define PIC_MEIGWCTRL_23__REG_ADDR                                                        (0xC0084060)
-#define PIC_MEIGWCTRL_24__REG_OFFSET                                                      (0x00004064)
-#define PIC_MEIGWCTRL_24__REG_ADDR                                                        (0xC0084064)
-#define PIC_MEIGWCTRL_25__REG_OFFSET                                                      (0x00004068)
-#define PIC_MEIGWCTRL_25__REG_ADDR                                                        (0xC0084068)
-#define PIC_MEIGWCTRL_26__REG_OFFSET                                                      (0x0000406C)
-#define PIC_MEIGWCTRL_26__REG_ADDR                                                        (0xC008406C)
-#define PIC_MEIGWCTRL_27__REG_OFFSET                                                      (0x00004070)
-#define PIC_MEIGWCTRL_27__REG_ADDR                                                        (0xC0084070)
-#define PIC_MEIGWCTRL_28__REG_OFFSET                                                      (0x00004074)
-#define PIC_MEIGWCTRL_28__REG_ADDR                                                        (0xC0084074)
-#define PIC_MEIGWCTRL_29__REG_OFFSET                                                      (0x00004078)
-#define PIC_MEIGWCTRL_29__REG_ADDR                                                        (0xC0084078)
-#define PIC_MEIGWCTRL_30__REG_OFFSET                                                      (0x0000407C)
-#define PIC_MEIGWCTRL_30__REG_ADDR                                                        (0xC008407C)
-#define PIC_MEIGWCTRL_31__REG_OFFSET                                                      (0x00004080)
-#define PIC_MEIGWCTRL_31__REG_ADDR                                                        (0xC0084080)
-#define PIC_MEIGWCLR_0__REG_OFFSET                                                        (0x00005004)
-#define PIC_MEIGWCLR_0__REG_ADDR                                                          (0xC0085004)
-#define PIC_MEIGWCLR_1__REG_OFFSET                                                        (0x00005008)
-#define PIC_MEIGWCLR_1__REG_ADDR                                                          (0xC0085008)
-#define PIC_MEIGWCLR_2__REG_OFFSET                                                        (0x0000500C)
-#define PIC_MEIGWCLR_2__REG_ADDR                                                          (0xC008500C)
-#define PIC_MEIGWCLR_3__REG_OFFSET                                                        (0x00005010)
-#define PIC_MEIGWCLR_3__REG_ADDR                                                          (0xC0085010)
-#define PIC_MEIGWCLR_4__REG_OFFSET                                                        (0x00005014)
-#define PIC_MEIGWCLR_4__REG_ADDR                                                          (0xC0085014)
-#define PIC_MEIGWCLR_5__REG_OFFSET                                                        (0x00005018)
-#define PIC_MEIGWCLR_5__REG_ADDR                                                          (0xC0085018)
-#define PIC_MEIGWCLR_6__REG_OFFSET                                                        (0x0000501C)
-#define PIC_MEIGWCLR_6__REG_ADDR                                                          (0xC008501C)
-#define PIC_MEIGWCLR_7__REG_OFFSET                                                        (0x00005020)
-#define PIC_MEIGWCLR_7__REG_ADDR                                                          (0xC0085020)
-#define PIC_MEIGWCLR_8__REG_OFFSET                                                        (0x00005024)
-#define PIC_MEIGWCLR_8__REG_ADDR                                                          (0xC0085024)
-#define PIC_MEIGWCLR_9__REG_OFFSET                                                        (0x00005028)
-#define PIC_MEIGWCLR_9__REG_ADDR                                                          (0xC0085028)
-#define PIC_MEIGWCLR_10__REG_OFFSET                                                       (0x0000502C)
-#define PIC_MEIGWCLR_10__REG_ADDR                                                         (0xC008502C)
-#define PIC_MEIGWCLR_11__REG_OFFSET                                                       (0x00005030)
-#define PIC_MEIGWCLR_11__REG_ADDR                                                         (0xC0085030)
-#define PIC_MEIGWCLR_12__REG_OFFSET                                                       (0x00005034)
-#define PIC_MEIGWCLR_12__REG_ADDR                                                         (0xC0085034)
-#define PIC_MEIGWCLR_13__REG_OFFSET                                                       (0x00005038)
-#define PIC_MEIGWCLR_13__REG_ADDR                                                         (0xC0085038)
-#define PIC_MEIGWCLR_14__REG_OFFSET                                                       (0x0000503C)
-#define PIC_MEIGWCLR_14__REG_ADDR                                                         (0xC008503C)
-#define PIC_MEIGWCLR_15__REG_OFFSET                                                       (0x00005040)
-#define PIC_MEIGWCLR_15__REG_ADDR                                                         (0xC0085040)
-#define PIC_MEIGWCLR_16__REG_OFFSET                                                       (0x00005044)
-#define PIC_MEIGWCLR_16__REG_ADDR                                                         (0xC0085044)
-#define PIC_MEIGWCLR_17__REG_OFFSET                                                       (0x00005048)
-#define PIC_MEIGWCLR_17__REG_ADDR                                                         (0xC0085048)
-#define PIC_MEIGWCLR_18__REG_OFFSET                                                       (0x0000504C)
-#define PIC_MEIGWCLR_18__REG_ADDR                                                         (0xC008504C)
-#define PIC_MEIGWCLR_19__REG_OFFSET                                                       (0x00005050)
-#define PIC_MEIGWCLR_19__REG_ADDR                                                         (0xC0085050)
-#define PIC_MEIGWCLR_20__REG_OFFSET                                                       (0x00005054)
-#define PIC_MEIGWCLR_20__REG_ADDR                                                         (0xC0085054)
-#define PIC_MEIGWCLR_21__REG_OFFSET                                                       (0x00005058)
-#define PIC_MEIGWCLR_21__REG_ADDR                                                         (0xC0085058)
-#define PIC_MEIGWCLR_22__REG_OFFSET                                                       (0x0000505C)
-#define PIC_MEIGWCLR_22__REG_ADDR                                                         (0xC008505C)
-#define PIC_MEIGWCLR_23__REG_OFFSET                                                       (0x00005060)
-#define PIC_MEIGWCLR_23__REG_ADDR                                                         (0xC0085060)
-#define PIC_MEIGWCLR_24__REG_OFFSET                                                       (0x00005064)
-#define PIC_MEIGWCLR_24__REG_ADDR                                                         (0xC0085064)
-#define PIC_MEIGWCLR_25__REG_OFFSET                                                       (0x00005068)
-#define PIC_MEIGWCLR_25__REG_ADDR                                                         (0xC0085068)
-#define PIC_MEIGWCLR_26__REG_OFFSET                                                       (0x0000506C)
-#define PIC_MEIGWCLR_26__REG_ADDR                                                         (0xC008506C)
-#define PIC_MEIGWCLR_27__REG_OFFSET                                                       (0x00005070)
-#define PIC_MEIGWCLR_27__REG_ADDR                                                         (0xC0085070)
-#define PIC_MEIGWCLR_28__REG_OFFSET                                                       (0x00005074)
-#define PIC_MEIGWCLR_28__REG_ADDR                                                         (0xC0085074)
-#define PIC_MEIGWCLR_29__REG_OFFSET                                                       (0x00005078)
-#define PIC_MEIGWCLR_29__REG_ADDR                                                         (0xC0085078)
-#define PIC_MEIGWCLR_30__REG_OFFSET                                                       (0x0000507C)
-#define PIC_MEIGWCLR_30__REG_ADDR                                                         (0xC008507C)
-#define PIC_MEIGWCLR_31__REG_OFFSET                                                       (0x00005080)
-#define PIC_MEIGWCLR_31__REG_ADDR                                                         (0xC0085080)
-
+#define PIC_MEIPL_0__REG_OFFSET (0x00000004)
+#define PIC_MEIPL_0__REG_ADDR (0xC0080004)
+#define PIC_MEIPL_1__REG_OFFSET (0x00000008)
+#define PIC_MEIPL_1__REG_ADDR (0xC0080008)
+#define PIC_MEIPL_2__REG_OFFSET (0x0000000C)
+#define PIC_MEIPL_2__REG_ADDR (0xC008000C)
+#define PIC_MEIPL_3__REG_OFFSET (0x00000010)
+#define PIC_MEIPL_3__REG_ADDR (0xC0080010)
+#define PIC_MEIPL_4__REG_OFFSET (0x00000014)
+#define PIC_MEIPL_4__REG_ADDR (0xC0080014)
+#define PIC_MEIPL_5__REG_OFFSET (0x00000018)
+#define PIC_MEIPL_5__REG_ADDR (0xC0080018)
+#define PIC_MEIPL_6__REG_OFFSET (0x0000001C)
+#define PIC_MEIPL_6__REG_ADDR (0xC008001C)
+#define PIC_MEIPL_7__REG_OFFSET (0x00000020)
+#define PIC_MEIPL_7__REG_ADDR (0xC0080020)
+#define PIC_MEIPL_8__REG_OFFSET (0x00000024)
+#define PIC_MEIPL_8__REG_ADDR (0xC0080024)
+#define PIC_MEIPL_9__REG_OFFSET (0x00000028)
+#define PIC_MEIPL_9__REG_ADDR (0xC0080028)
+#define PIC_MEIPL_10__REG_OFFSET (0x0000002C)
+#define PIC_MEIPL_10__REG_ADDR (0xC008002C)
+#define PIC_MEIPL_11__REG_OFFSET (0x00000030)
+#define PIC_MEIPL_11__REG_ADDR (0xC0080030)
+#define PIC_MEIPL_12__REG_OFFSET (0x00000034)
+#define PIC_MEIPL_12__REG_ADDR (0xC0080034)
+#define PIC_MEIPL_13__REG_OFFSET (0x00000038)
+#define PIC_MEIPL_13__REG_ADDR (0xC0080038)
+#define PIC_MEIPL_14__REG_OFFSET (0x0000003C)
+#define PIC_MEIPL_14__REG_ADDR (0xC008003C)
+#define PIC_MEIPL_15__REG_OFFSET (0x00000040)
+#define PIC_MEIPL_15__REG_ADDR (0xC0080040)
+#define PIC_MEIPL_16__REG_OFFSET (0x00000044)
+#define PIC_MEIPL_16__REG_ADDR (0xC0080044)
+#define PIC_MEIPL_17__REG_OFFSET (0x00000048)
+#define PIC_MEIPL_17__REG_ADDR (0xC0080048)
+#define PIC_MEIPL_18__REG_OFFSET (0x0000004C)
+#define PIC_MEIPL_18__REG_ADDR (0xC008004C)
+#define PIC_MEIPL_19__REG_OFFSET (0x00000050)
+#define PIC_MEIPL_19__REG_ADDR (0xC0080050)
+#define PIC_MEIPL_20__REG_OFFSET (0x00000054)
+#define PIC_MEIPL_20__REG_ADDR (0xC0080054)
+#define PIC_MEIPL_21__REG_OFFSET (0x00000058)
+#define PIC_MEIPL_21__REG_ADDR (0xC0080058)
+#define PIC_MEIPL_22__REG_OFFSET (0x0000005C)
+#define PIC_MEIPL_22__REG_ADDR (0xC008005C)
+#define PIC_MEIPL_23__REG_OFFSET (0x00000060)
+#define PIC_MEIPL_23__REG_ADDR (0xC0080060)
+#define PIC_MEIPL_24__REG_OFFSET (0x00000064)
+#define PIC_MEIPL_24__REG_ADDR (0xC0080064)
+#define PIC_MEIPL_25__REG_OFFSET (0x00000068)
+#define PIC_MEIPL_25__REG_ADDR (0xC0080068)
+#define PIC_MEIPL_26__REG_OFFSET (0x0000006C)
+#define PIC_MEIPL_26__REG_ADDR (0xC008006C)
+#define PIC_MEIPL_27__REG_OFFSET (0x00000070)
+#define PIC_MEIPL_27__REG_ADDR (0xC0080070)
+#define PIC_MEIPL_28__REG_OFFSET (0x00000074)
+#define PIC_MEIPL_28__REG_ADDR (0xC0080074)
+#define PIC_MEIPL_29__REG_OFFSET (0x00000078)
+#define PIC_MEIPL_29__REG_ADDR (0xC0080078)
+#define PIC_MEIPL_30__REG_OFFSET (0x0000007C)
+#define PIC_MEIPL_30__REG_ADDR (0xC008007C)
+#define PIC_MEIPL_31__REG_OFFSET (0x00000080)
+#define PIC_MEIPL_31__REG_ADDR (0xC0080080)
+#define PIC_MEIP_0__REG_OFFSET (0x00001000)
+#define PIC_MEIP_0__REG_ADDR (0xC0081000)
+#define PIC_MEIP_1__REG_OFFSET (0x00001004)
+#define PIC_MEIP_1__REG_ADDR (0xC0081004)
+#define PIC_MEIE_0__REG_OFFSET (0x00002004)
+#define PIC_MEIE_0__REG_ADDR (0xC0082004)
+#define PIC_MEIE_1__REG_OFFSET (0x00002008)
+#define PIC_MEIE_1__REG_ADDR (0xC0082008)
+#define PIC_MEIE_2__REG_OFFSET (0x0000200C)
+#define PIC_MEIE_2__REG_ADDR (0xC008200C)
+#define PIC_MEIE_3__REG_OFFSET (0x00002010)
+#define PIC_MEIE_3__REG_ADDR (0xC0082010)
+#define PIC_MEIE_4__REG_OFFSET (0x00002014)
+#define PIC_MEIE_4__REG_ADDR (0xC0082014)
+#define PIC_MEIE_5__REG_OFFSET (0x00002018)
+#define PIC_MEIE_5__REG_ADDR (0xC0082018)
+#define PIC_MEIE_6__REG_OFFSET (0x0000201C)
+#define PIC_MEIE_6__REG_ADDR (0xC008201C)
+#define PIC_MEIE_7__REG_OFFSET (0x00002020)
+#define PIC_MEIE_7__REG_ADDR (0xC0082020)
+#define PIC_MEIE_8__REG_OFFSET (0x00002024)
+#define PIC_MEIE_8__REG_ADDR (0xC0082024)
+#define PIC_MEIE_9__REG_OFFSET (0x00002028)
+#define PIC_MEIE_9__REG_ADDR (0xC0082028)
+#define PIC_MEIE_10__REG_OFFSET (0x0000202C)
+#define PIC_MEIE_10__REG_ADDR (0xC008202C)
+#define PIC_MEIE_11__REG_OFFSET (0x00002030)
+#define PIC_MEIE_11__REG_ADDR (0xC0082030)
+#define PIC_MEIE_12__REG_OFFSET (0x00002034)
+#define PIC_MEIE_12__REG_ADDR (0xC0082034)
+#define PIC_MEIE_13__REG_OFFSET (0x00002038)
+#define PIC_MEIE_13__REG_ADDR (0xC0082038)
+#define PIC_MEIE_14__REG_OFFSET (0x0000203C)
+#define PIC_MEIE_14__REG_ADDR (0xC008203C)
+#define PIC_MEIE_15__REG_OFFSET (0x00002040)
+#define PIC_MEIE_15__REG_ADDR (0xC0082040)
+#define PIC_MEIE_16__REG_OFFSET (0x00002044)
+#define PIC_MEIE_16__REG_ADDR (0xC0082044)
+#define PIC_MEIE_17__REG_OFFSET (0x00002048)
+#define PIC_MEIE_17__REG_ADDR (0xC0082048)
+#define PIC_MEIE_18__REG_OFFSET (0x0000204C)
+#define PIC_MEIE_18__REG_ADDR (0xC008204C)
+#define PIC_MEIE_19__REG_OFFSET (0x00002050)
+#define PIC_MEIE_19__REG_ADDR (0xC0082050)
+#define PIC_MEIE_20__REG_OFFSET (0x00002054)
+#define PIC_MEIE_20__REG_ADDR (0xC0082054)
+#define PIC_MEIE_21__REG_OFFSET (0x00002058)
+#define PIC_MEIE_21__REG_ADDR (0xC0082058)
+#define PIC_MEIE_22__REG_OFFSET (0x0000205C)
+#define PIC_MEIE_22__REG_ADDR (0xC008205C)
+#define PIC_MEIE_23__REG_OFFSET (0x00002060)
+#define PIC_MEIE_23__REG_ADDR (0xC0082060)
+#define PIC_MEIE_24__REG_OFFSET (0x00002064)
+#define PIC_MEIE_24__REG_ADDR (0xC0082064)
+#define PIC_MEIE_25__REG_OFFSET (0x00002068)
+#define PIC_MEIE_25__REG_ADDR (0xC0082068)
+#define PIC_MEIE_26__REG_OFFSET (0x0000206C)
+#define PIC_MEIE_26__REG_ADDR (0xC008206C)
+#define PIC_MEIE_27__REG_OFFSET (0x00002070)
+#define PIC_MEIE_27__REG_ADDR (0xC0082070)
+#define PIC_MEIE_28__REG_OFFSET (0x00002074)
+#define PIC_MEIE_28__REG_ADDR (0xC0082074)
+#define PIC_MEIE_29__REG_OFFSET (0x00002078)
+#define PIC_MEIE_29__REG_ADDR (0xC0082078)
+#define PIC_MEIE_30__REG_OFFSET (0x0000207C)
+#define PIC_MEIE_30__REG_ADDR (0xC008207C)
+#define PIC_MEIE_31__REG_OFFSET (0x00002080)
+#define PIC_MEIE_31__REG_ADDR (0xC0082080)
+#define PIC_MPICCFG_REG_OFFSET (0x00003000)
+#define PIC_MPICCFG_REG_ADDR (0xC0083000)
+#define PIC_MEIGWCTRL_0__REG_OFFSET (0x00004004)
+#define PIC_MEIGWCTRL_0__REG_ADDR (0xC0084004)
+#define PIC_MEIGWCTRL_1__REG_OFFSET (0x00004008)
+#define PIC_MEIGWCTRL_1__REG_ADDR (0xC0084008)
+#define PIC_MEIGWCTRL_2__REG_OFFSET (0x0000400C)
+#define PIC_MEIGWCTRL_2__REG_ADDR (0xC008400C)
+#define PIC_MEIGWCTRL_3__REG_OFFSET (0x00004010)
+#define PIC_MEIGWCTRL_3__REG_ADDR (0xC0084010)
+#define PIC_MEIGWCTRL_4__REG_OFFSET (0x00004014)
+#define PIC_MEIGWCTRL_4__REG_ADDR (0xC0084014)
+#define PIC_MEIGWCTRL_5__REG_OFFSET (0x00004018)
+#define PIC_MEIGWCTRL_5__REG_ADDR (0xC0084018)
+#define PIC_MEIGWCTRL_6__REG_OFFSET (0x0000401C)
+#define PIC_MEIGWCTRL_6__REG_ADDR (0xC008401C)
+#define PIC_MEIGWCTRL_7__REG_OFFSET (0x00004020)
+#define PIC_MEIGWCTRL_7__REG_ADDR (0xC0084020)
+#define PIC_MEIGWCTRL_8__REG_OFFSET (0x00004024)
+#define PIC_MEIGWCTRL_8__REG_ADDR (0xC0084024)
+#define PIC_MEIGWCTRL_9__REG_OFFSET (0x00004028)
+#define PIC_MEIGWCTRL_9__REG_ADDR (0xC0084028)
+#define PIC_MEIGWCTRL_10__REG_OFFSET (0x0000402C)
+#define PIC_MEIGWCTRL_10__REG_ADDR (0xC008402C)
+#define PIC_MEIGWCTRL_11__REG_OFFSET (0x00004030)
+#define PIC_MEIGWCTRL_11__REG_ADDR (0xC0084030)
+#define PIC_MEIGWCTRL_12__REG_OFFSET (0x00004034)
+#define PIC_MEIGWCTRL_12__REG_ADDR (0xC0084034)
+#define PIC_MEIGWCTRL_13__REG_OFFSET (0x00004038)
+#define PIC_MEIGWCTRL_13__REG_ADDR (0xC0084038)
+#define PIC_MEIGWCTRL_14__REG_OFFSET (0x0000403C)
+#define PIC_MEIGWCTRL_14__REG_ADDR (0xC008403C)
+#define PIC_MEIGWCTRL_15__REG_OFFSET (0x00004040)
+#define PIC_MEIGWCTRL_15__REG_ADDR (0xC0084040)
+#define PIC_MEIGWCTRL_16__REG_OFFSET (0x00004044)
+#define PIC_MEIGWCTRL_16__REG_ADDR (0xC0084044)
+#define PIC_MEIGWCTRL_17__REG_OFFSET (0x00004048)
+#define PIC_MEIGWCTRL_17__REG_ADDR (0xC0084048)
+#define PIC_MEIGWCTRL_18__REG_OFFSET (0x0000404C)
+#define PIC_MEIGWCTRL_18__REG_ADDR (0xC008404C)
+#define PIC_MEIGWCTRL_19__REG_OFFSET (0x00004050)
+#define PIC_MEIGWCTRL_19__REG_ADDR (0xC0084050)
+#define PIC_MEIGWCTRL_20__REG_OFFSET (0x00004054)
+#define PIC_MEIGWCTRL_20__REG_ADDR (0xC0084054)
+#define PIC_MEIGWCTRL_21__REG_OFFSET (0x00004058)
+#define PIC_MEIGWCTRL_21__REG_ADDR (0xC0084058)
+#define PIC_MEIGWCTRL_22__REG_OFFSET (0x0000405C)
+#define PIC_MEIGWCTRL_22__REG_ADDR (0xC008405C)
+#define PIC_MEIGWCTRL_23__REG_OFFSET (0x00004060)
+#define PIC_MEIGWCTRL_23__REG_ADDR (0xC0084060)
+#define PIC_MEIGWCTRL_24__REG_OFFSET (0x00004064)
+#define PIC_MEIGWCTRL_24__REG_ADDR (0xC0084064)
+#define PIC_MEIGWCTRL_25__REG_OFFSET (0x00004068)
+#define PIC_MEIGWCTRL_25__REG_ADDR (0xC0084068)
+#define PIC_MEIGWCTRL_26__REG_OFFSET (0x0000406C)
+#define PIC_MEIGWCTRL_26__REG_ADDR (0xC008406C)
+#define PIC_MEIGWCTRL_27__REG_OFFSET (0x00004070)
+#define PIC_MEIGWCTRL_27__REG_ADDR (0xC0084070)
+#define PIC_MEIGWCTRL_28__REG_OFFSET (0x00004074)
+#define PIC_MEIGWCTRL_28__REG_ADDR (0xC0084074)
+#define PIC_MEIGWCTRL_29__REG_OFFSET (0x00004078)
+#define PIC_MEIGWCTRL_29__REG_ADDR (0xC0084078)
+#define PIC_MEIGWCTRL_30__REG_OFFSET (0x0000407C)
+#define PIC_MEIGWCTRL_30__REG_ADDR (0xC008407C)
+#define PIC_MEIGWCTRL_31__REG_OFFSET (0x00004080)
+#define PIC_MEIGWCTRL_31__REG_ADDR (0xC0084080)
+#define PIC_MEIGWCLR_0__REG_OFFSET (0x00005004)
+#define PIC_MEIGWCLR_0__REG_ADDR (0xC0085004)
+#define PIC_MEIGWCLR_1__REG_OFFSET (0x00005008)
+#define PIC_MEIGWCLR_1__REG_ADDR (0xC0085008)
+#define PIC_MEIGWCLR_2__REG_OFFSET (0x0000500C)
+#define PIC_MEIGWCLR_2__REG_ADDR (0xC008500C)
+#define PIC_MEIGWCLR_3__REG_OFFSET (0x00005010)
+#define PIC_MEIGWCLR_3__REG_ADDR (0xC0085010)
+#define PIC_MEIGWCLR_4__REG_OFFSET (0x00005014)
+#define PIC_MEIGWCLR_4__REG_ADDR (0xC0085014)
+#define PIC_MEIGWCLR_5__REG_OFFSET (0x00005018)
+#define PIC_MEIGWCLR_5__REG_ADDR (0xC0085018)
+#define PIC_MEIGWCLR_6__REG_OFFSET (0x0000501C)
+#define PIC_MEIGWCLR_6__REG_ADDR (0xC008501C)
+#define PIC_MEIGWCLR_7__REG_OFFSET (0x00005020)
+#define PIC_MEIGWCLR_7__REG_ADDR (0xC0085020)
+#define PIC_MEIGWCLR_8__REG_OFFSET (0x00005024)
+#define PIC_MEIGWCLR_8__REG_ADDR (0xC0085024)
+#define PIC_MEIGWCLR_9__REG_OFFSET (0x00005028)
+#define PIC_MEIGWCLR_9__REG_ADDR (0xC0085028)
+#define PIC_MEIGWCLR_10__REG_OFFSET (0x0000502C)
+#define PIC_MEIGWCLR_10__REG_ADDR (0xC008502C)
+#define PIC_MEIGWCLR_11__REG_OFFSET (0x00005030)
+#define PIC_MEIGWCLR_11__REG_ADDR (0xC0085030)
+#define PIC_MEIGWCLR_12__REG_OFFSET (0x00005034)
+#define PIC_MEIGWCLR_12__REG_ADDR (0xC0085034)
+#define PIC_MEIGWCLR_13__REG_OFFSET (0x00005038)
+#define PIC_MEIGWCLR_13__REG_ADDR (0xC0085038)
+#define PIC_MEIGWCLR_14__REG_OFFSET (0x0000503C)
+#define PIC_MEIGWCLR_14__REG_ADDR (0xC008503C)
+#define PIC_MEIGWCLR_15__REG_OFFSET (0x00005040)
+#define PIC_MEIGWCLR_15__REG_ADDR (0xC0085040)
+#define PIC_MEIGWCLR_16__REG_OFFSET (0x00005044)
+#define PIC_MEIGWCLR_16__REG_ADDR (0xC0085044)
+#define PIC_MEIGWCLR_17__REG_OFFSET (0x00005048)
+#define PIC_MEIGWCLR_17__REG_ADDR (0xC0085048)
+#define PIC_MEIGWCLR_18__REG_OFFSET (0x0000504C)
+#define PIC_MEIGWCLR_18__REG_ADDR (0xC008504C)
+#define PIC_MEIGWCLR_19__REG_OFFSET (0x00005050)
+#define PIC_MEIGWCLR_19__REG_ADDR (0xC0085050)
+#define PIC_MEIGWCLR_20__REG_OFFSET (0x00005054)
+#define PIC_MEIGWCLR_20__REG_ADDR (0xC0085054)
+#define PIC_MEIGWCLR_21__REG_OFFSET (0x00005058)
+#define PIC_MEIGWCLR_21__REG_ADDR (0xC0085058)
+#define PIC_MEIGWCLR_22__REG_OFFSET (0x0000505C)
+#define PIC_MEIGWCLR_22__REG_ADDR (0xC008505C)
+#define PIC_MEIGWCLR_23__REG_OFFSET (0x00005060)
+#define PIC_MEIGWCLR_23__REG_ADDR (0xC0085060)
+#define PIC_MEIGWCLR_24__REG_OFFSET (0x00005064)
+#define PIC_MEIGWCLR_24__REG_ADDR (0xC0085064)
+#define PIC_MEIGWCLR_25__REG_OFFSET (0x00005068)
+#define PIC_MEIGWCLR_25__REG_ADDR (0xC0085068)
+#define PIC_MEIGWCLR_26__REG_OFFSET (0x0000506C)
+#define PIC_MEIGWCLR_26__REG_ADDR (0xC008506C)
+#define PIC_MEIGWCLR_27__REG_OFFSET (0x00005070)
+#define PIC_MEIGWCLR_27__REG_ADDR (0xC0085070)
+#define PIC_MEIGWCLR_28__REG_OFFSET (0x00005074)
+#define PIC_MEIGWCLR_28__REG_ADDR (0xC0085074)
+#define PIC_MEIGWCLR_29__REG_OFFSET (0x00005078)
+#define PIC_MEIGWCLR_29__REG_ADDR (0xC0085078)
+#define PIC_MEIGWCLR_30__REG_OFFSET (0x0000507C)
+#define PIC_MEIGWCLR_30__REG_ADDR (0xC008507C)
+#define PIC_MEIGWCLR_31__REG_OFFSET (0x00005080)
+#define PIC_MEIGWCLR_31__REG_ADDR (0xC0085080)
 
 #ifndef __ASSEMBLER__
 
@@ -4082,7 +3716,6 @@ typedef union {
 
 #define SEP_SRAM_MEM_WORD_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t data : 64;
 } SEP_BOOT_ROM_MEM_WORD_reg_t;
@@ -4093,7 +3726,6 @@ typedef union {
 } SEP_BOOT_ROM_MEM_WORD_reg_u;
 
 #define SEP_BOOT_ROM_MEM_WORD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dma_done : 1;
@@ -4108,7 +3740,6 @@ typedef union {
 
 #define SECURE_DMA_INTR_STATE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t dma_done : 1;
     uint32_t dma_chunk_done : 1;
@@ -4121,7 +3752,6 @@ typedef union {
 } SECURE_DMA_INTR_ENABLE_reg_u;
 
 #define SECURE_DMA_INTR_ENABLE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dma_done : 1;
@@ -4136,7 +3766,6 @@ typedef union {
 
 #define SECURE_DMA_INTR_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t fatal_fault : 1;
 } SECURE_DMA_ALERT_TEST_reg_t;
@@ -4147,7 +3776,6 @@ typedef union {
 } SECURE_DMA_ALERT_TEST_reg_u;
 
 #define SECURE_DMA_ALERT_TEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t addr : 32;
@@ -4160,7 +3788,6 @@ typedef union {
 
 #define SECURE_DMA_SRC_ADDR_LO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t addr : 32;
 } SECURE_DMA_SRC_ADDR_HI_reg_t;
@@ -4171,7 +3798,6 @@ typedef union {
 } SECURE_DMA_SRC_ADDR_HI_reg_u;
 
 #define SECURE_DMA_SRC_ADDR_HI_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t addr : 32;
@@ -4184,7 +3810,6 @@ typedef union {
 
 #define SECURE_DMA_DST_ADDR_LO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t addr : 32;
 } SECURE_DMA_DST_ADDR_HI_reg_t;
@@ -4195,7 +3820,6 @@ typedef union {
 } SECURE_DMA_DST_ADDR_HI_reg_u;
 
 #define SECURE_DMA_DST_ADDR_HI_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t src_asid : 4;
@@ -4209,7 +3833,6 @@ typedef union {
 
 #define SECURE_DMA_ADDR_SPACE_ID_REG_DEFAULT (0x00000077)
 
-
 typedef struct {
     uint32_t base : 32;
 } SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_reg_t;
@@ -4220,7 +3843,6 @@ typedef union {
 } SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_reg_u;
 
 #define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t limit : 32;
@@ -4233,7 +3855,6 @@ typedef union {
 
 #define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t range_valid : 1;
 } SECURE_DMA_RANGE_VALID_reg_t;
@@ -4244,7 +3865,6 @@ typedef union {
 } SECURE_DMA_RANGE_VALID_reg_u;
 
 #define SECURE_DMA_RANGE_VALID_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t regwen : 4;
@@ -4257,7 +3877,6 @@ typedef union {
 
 #define SECURE_DMA_RANGE_REGWEN_REG_DEFAULT (0x00000006)
 
-
 typedef struct {
     uint32_t regwen : 4;
 } SECURE_DMA_CFG_REGWEN_reg_t;
@@ -4268,7 +3887,6 @@ typedef union {
 } SECURE_DMA_CFG_REGWEN_reg_u;
 
 #define SECURE_DMA_CFG_REGWEN_REG_DEFAULT (0x00000006)
-
 
 typedef struct {
     uint32_t size : 32;
@@ -4281,7 +3899,6 @@ typedef union {
 
 #define SECURE_DMA_TOTAL_DATA_SIZE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t size : 32;
 } SECURE_DMA_CHUNK_DATA_SIZE_reg_t;
@@ -4293,7 +3910,6 @@ typedef union {
 
 #define SECURE_DMA_CHUNK_DATA_SIZE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t width : 2;
 } SECURE_DMA_TRANSFER_WIDTH_reg_t;
@@ -4304,7 +3920,6 @@ typedef union {
 } SECURE_DMA_TRANSFER_WIDTH_reg_u;
 
 #define SECURE_DMA_TRANSFER_WIDTH_REG_DEFAULT (0x00000002)
-
 
 typedef struct {
     uint32_t opcode : 4;
@@ -4325,7 +3940,6 @@ typedef union {
 
 #define SECURE_DMA_CONTROL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t increment : 1;
     uint32_t wrap : 1;
@@ -4338,7 +3952,6 @@ typedef union {
 
 #define SECURE_DMA_SRC_CONFIG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t increment : 1;
     uint32_t wrap : 1;
@@ -4350,7 +3963,6 @@ typedef union {
 } SECURE_DMA_DST_CONFIG_reg_u;
 
 #define SECURE_DMA_DST_CONFIG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t busy : 1;
@@ -4367,7 +3979,6 @@ typedef union {
 } SECURE_DMA_STATUS_reg_u;
 
 #define SECURE_DMA_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t src_addr_error : 1;
@@ -4387,7 +3998,6 @@ typedef union {
 
 #define SECURE_DMA_ERROR_CODE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } SECURE_DMA_SHA2_DIGEST_reg_t;
@@ -4398,7 +4008,6 @@ typedef union {
 } SECURE_DMA_SHA2_DIGEST_reg_u;
 
 #define SECURE_DMA_SHA2_DIGEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t mask : 11;
@@ -4411,7 +4020,6 @@ typedef union {
 
 #define SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT (0x000007FF)
 
-
 typedef struct {
     uint32_t source : 11;
 } SECURE_DMA_CLEAR_INTR_SRC_reg_t;
@@ -4422,7 +4030,6 @@ typedef union {
 } SECURE_DMA_CLEAR_INTR_SRC_reg_u;
 
 #define SECURE_DMA_CLEAR_INTR_SRC_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t bus : 11;
@@ -4435,7 +4042,6 @@ typedef union {
 
 #define SECURE_DMA_CLEAR_INTR_BUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t addr : 32;
 } SECURE_DMA_INTR_SRC_ADDR_reg_t;
@@ -4446,7 +4052,6 @@ typedef union {
 } SECURE_DMA_INTR_SRC_ADDR_reg_u;
 
 #define SECURE_DMA_INTR_SRC_ADDR_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t wr_val : 32;
@@ -4459,7 +4064,6 @@ typedef union {
 
 #define SECURE_DMA_INTR_SRC_WR_VAL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t fatal_fault : 1;
 } AON_TIMER_ALERT_TEST_reg_t;
@@ -4470,7 +4074,6 @@ typedef union {
 } AON_TIMER_ALERT_TEST_reg_u;
 
 #define AON_TIMER_ALERT_TEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t enable : 1;
@@ -4484,7 +4087,6 @@ typedef union {
 
 #define AON_TIMER_WKUP_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t threshold_hi : 32;
 } AON_TIMER_WKUP_THOLD_HI_reg_t;
@@ -4495,7 +4097,6 @@ typedef union {
 } AON_TIMER_WKUP_THOLD_HI_reg_u;
 
 #define AON_TIMER_WKUP_THOLD_HI_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t threshold_lo : 32;
@@ -4508,7 +4109,6 @@ typedef union {
 
 #define AON_TIMER_WKUP_THOLD_LO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t count_hi : 32;
 } AON_TIMER_WKUP_COUNT_HI_reg_t;
@@ -4519,7 +4119,6 @@ typedef union {
 } AON_TIMER_WKUP_COUNT_HI_reg_u;
 
 #define AON_TIMER_WKUP_COUNT_HI_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t count_lo : 32;
@@ -4532,7 +4131,6 @@ typedef union {
 
 #define AON_TIMER_WKUP_COUNT_LO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t regwen : 1;
 } AON_TIMER_WDOG_REGWEN_reg_t;
@@ -4543,7 +4141,6 @@ typedef union {
 } AON_TIMER_WDOG_REGWEN_reg_u;
 
 #define AON_TIMER_WDOG_REGWEN_REG_DEFAULT (0x00000001)
-
 
 typedef struct {
     uint32_t enable : 1;
@@ -4557,7 +4154,6 @@ typedef union {
 
 #define AON_TIMER_WDOG_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t threshold : 32;
 } AON_TIMER_WDOG_BARK_THOLD_reg_t;
@@ -4568,7 +4164,6 @@ typedef union {
 } AON_TIMER_WDOG_BARK_THOLD_reg_u;
 
 #define AON_TIMER_WDOG_BARK_THOLD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t threshold : 32;
@@ -4581,7 +4176,6 @@ typedef union {
 
 #define AON_TIMER_WDOG_BITE_THOLD_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t count : 32;
 } AON_TIMER_WDOG_COUNT_reg_t;
@@ -4592,7 +4186,6 @@ typedef union {
 } AON_TIMER_WDOG_COUNT_reg_u;
 
 #define AON_TIMER_WDOG_COUNT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t wkup_timer_expired : 1;
@@ -4606,7 +4199,6 @@ typedef union {
 
 #define AON_TIMER_INTR_STATE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t wkup_timer_expired : 1;
     uint32_t wdog_timer_bark : 1;
@@ -4619,7 +4211,6 @@ typedef union {
 
 #define AON_TIMER_INTR_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t cause : 1;
 } AON_TIMER_WKUP_CAUSE_reg_t;
@@ -4631,7 +4222,6 @@ typedef union {
 
 #define AON_TIMER_WKUP_CAUSE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t data : 32;
 } SEP_SCRATCH_SCRATCH_reg_t;
@@ -4642,7 +4232,6 @@ typedef union {
 } SEP_SCRATCH_SCRATCH_reg_u;
 
 #define SEP_SCRATCH_SCRATCH_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t km_sw_rst_n : 1;
@@ -4659,7 +4248,6 @@ typedef union {
 
 #define SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT (0x0000001E)
 
-
 typedef struct {
     uint32_t done : 1;
 } OTBN_INTR_STATE_reg_t;
@@ -4670,7 +4258,6 @@ typedef union {
 } OTBN_INTR_STATE_reg_u;
 
 #define OTBN_INTR_STATE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t done : 1;
@@ -4683,7 +4270,6 @@ typedef union {
 
 #define OTBN_INTR_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t done : 1;
 } OTBN_INTR_TEST_reg_t;
@@ -4694,7 +4280,6 @@ typedef union {
 } OTBN_INTR_TEST_reg_u;
 
 #define OTBN_INTR_TEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t fatal : 1;
@@ -4708,7 +4293,6 @@ typedef union {
 
 #define OTBN_ALERT_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t cmd : 8;
 } OTBN_CMD_reg_t;
@@ -4719,7 +4303,6 @@ typedef union {
 } OTBN_CMD_reg_u;
 
 #define OTBN_CMD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t software_errs_fatal : 1;
@@ -4732,7 +4315,6 @@ typedef union {
 
 #define OTBN_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t status : 8;
 } OTBN_STATUS_reg_t;
@@ -4743,7 +4325,6 @@ typedef union {
 } OTBN_STATUS_reg_u;
 
 #define OTBN_STATUS_REG_DEFAULT (0x00000004)
-
 
 typedef struct {
     uint32_t bad_data_addr : 1;
@@ -4772,7 +4353,6 @@ typedef union {
 
 #define OTBN_ERR_BITS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t imem_intg_violation : 1;
     uint32_t dmem_intg_violation : 1;
@@ -4791,7 +4371,6 @@ typedef union {
 
 #define OTBN_FATAL_ALERT_CAUSE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t insn_cnt : 32;
 } OTBN_INSN_CNT_reg_t;
@@ -4803,7 +4382,6 @@ typedef union {
 
 #define OTBN_INSN_CNT_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t checksum : 32;
 } OTBN_LOAD_CHECKSUM_reg_t;
@@ -4814,7 +4392,6 @@ typedef union {
 } OTBN_LOAD_CHECKSUM_reg_u;
 
 #define OTBN_LOAD_CHECKSUM_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t recov_ctrl_update_err : 1;
@@ -4828,7 +4405,6 @@ typedef union {
 
 #define AES_ALERT_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t key_share0_0 : 32;
 } AES_KEY_SHARE0_reg_t;
@@ -4839,7 +4415,6 @@ typedef union {
 } AES_KEY_SHARE0_reg_u;
 
 #define AES_KEY_SHARE0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t key_share1_0 : 32;
@@ -4852,7 +4427,6 @@ typedef union {
 
 #define AES_KEY_SHARE1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t iv_0 : 32;
 } AES_IV_reg_t;
@@ -4863,7 +4437,6 @@ typedef union {
 } AES_IV_reg_u;
 
 #define AES_IV_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t data_in_0 : 32;
@@ -4876,7 +4449,6 @@ typedef union {
 
 #define AES_DATA_IN_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data_out_0 : 32;
 } AES_DATA_OUT_reg_t;
@@ -4887,7 +4459,6 @@ typedef union {
 } AES_DATA_OUT_reg_u;
 
 #define AES_DATA_OUT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t operation : 2;
@@ -4905,7 +4476,6 @@ typedef union {
 
 #define AES_CTRL_SHADOWED_REG_DEFAULT (0x00001181)
 
-
 typedef struct {
     uint32_t key_touch_forces_reseed : 1;
     uint32_t force_masks : 1;
@@ -4918,7 +4488,6 @@ typedef union {
 
 #define AES_CTRL_AUX_SHADOWED_REG_DEFAULT (0x00000001)
 
-
 typedef struct {
     uint32_t ctrl_aux_regwen : 1;
 } AES_CTRL_AUX_REGWEN_reg_t;
@@ -4929,7 +4498,6 @@ typedef union {
 } AES_CTRL_AUX_REGWEN_reg_u;
 
 #define AES_CTRL_AUX_REGWEN_REG_DEFAULT (0x00000001)
-
 
 typedef struct {
     uint32_t start : 1;
@@ -4944,7 +4512,6 @@ typedef union {
 } AES_TRIGGER_reg_u;
 
 #define AES_TRIGGER_REG_DEFAULT (0x0000000E)
-
 
 typedef struct {
     uint32_t idle : 1;
@@ -4963,7 +4530,6 @@ typedef union {
 
 #define AES_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t hmac_done : 1;
     uint32_t fifo_empty : 1;
@@ -4976,7 +4542,6 @@ typedef union {
 } HMAC_INTR_STATE_reg_u;
 
 #define HMAC_INTR_STATE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t hmac_done : 1;
@@ -4991,7 +4556,6 @@ typedef union {
 
 #define HMAC_INTR_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t hmac_done : 1;
     uint32_t fifo_empty : 1;
@@ -5005,7 +4569,6 @@ typedef union {
 
 #define HMAC_INTR_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t fatal_fault : 1;
 } HMAC_ALERT_TEST_reg_t;
@@ -5016,7 +4579,6 @@ typedef union {
 } HMAC_ALERT_TEST_reg_u;
 
 #define HMAC_ALERT_TEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t hmac_en : 1;
@@ -5035,7 +4597,6 @@ typedef union {
 
 #define HMAC_CFG_REG_DEFAULT (0x00004100)
 
-
 typedef struct {
     uint32_t hash_start : 1;
     uint32_t hash_process : 1;
@@ -5049,7 +4610,6 @@ typedef union {
 } HMAC_CMD_reg_u;
 
 #define HMAC_CMD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t hmac_idle : 1;
@@ -5066,7 +4626,6 @@ typedef union {
 
 #define HMAC_STATUS_REG_DEFAULT (0x00000003)
 
-
 typedef struct {
     uint32_t err_code : 32;
 } HMAC_ERR_CODE_reg_t;
@@ -5077,7 +4636,6 @@ typedef union {
 } HMAC_ERR_CODE_reg_u;
 
 #define HMAC_ERR_CODE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t secret : 32;
@@ -5090,7 +4648,6 @@ typedef union {
 
 #define HMAC_WIPE_SECRET_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t key_0 : 32;
 } HMAC_KEY_reg_t;
@@ -5101,7 +4658,6 @@ typedef union {
 } HMAC_KEY_reg_u;
 
 #define HMAC_KEY_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t digest_0 : 32;
@@ -5114,7 +4670,6 @@ typedef union {
 
 #define HMAC_DIGEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t v : 32;
 } HMAC_MSG_LENGTH_LOWER_reg_t;
@@ -5126,7 +4681,6 @@ typedef union {
 
 #define HMAC_MSG_LENGTH_LOWER_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t v : 32;
 } HMAC_MSG_LENGTH_UPPER_reg_t;
@@ -5137,7 +4691,6 @@ typedef union {
 } HMAC_MSG_LENGTH_UPPER_reg_u;
 
 #define HMAC_MSG_LENGTH_UPPER_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t kmac_done : 1;
@@ -5152,7 +4705,6 @@ typedef union {
 
 #define KMAC_INTR_STATE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t kmac_done : 1;
     uint32_t fifo_empty : 1;
@@ -5165,7 +4717,6 @@ typedef union {
 } KMAC_INTR_ENABLE_reg_u;
 
 #define KMAC_INTR_ENABLE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t kmac_done : 1;
@@ -5180,7 +4731,6 @@ typedef union {
 
 #define KMAC_INTR_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t recov_operation_err : 1;
     uint32_t fatal_fault_err : 1;
@@ -5193,7 +4743,6 @@ typedef union {
 
 #define KMAC_ALERT_TEST_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t en : 1;
 } KMAC_CFG_REGWEN_reg_t;
@@ -5204,7 +4753,6 @@ typedef union {
 } KMAC_CFG_REGWEN_reg_u;
 
 #define KMAC_CFG_REGWEN_REG_DEFAULT (0x00000001)
-
 
 typedef struct {
     uint32_t kmac_en : 1;
@@ -5233,7 +4781,6 @@ typedef union {
 
 #define KMAC_CFG_SHADOWED_REG_DEFAULT (0x00001000)
 
-
 typedef struct {
     uint32_t cmd : 6;
     uint32_t rsvd_0 : 2;
@@ -5248,7 +4795,6 @@ typedef union {
 } KMAC_CMD_reg_u;
 
 #define KMAC_CMD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t sha3_idle : 1;
@@ -5270,7 +4816,6 @@ typedef union {
 
 #define KMAC_STATUS_REG_DEFAULT (0x00004001)
 
-
 typedef struct {
     uint32_t prescaler : 10;
     uint32_t rsvd_0 : 6;
@@ -5284,7 +4829,6 @@ typedef union {
 
 #define KMAC_ENTROPY_PERIOD_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t hash_cnt : 10;
 } KMAC_ENTROPY_REFRESH_HASH_CNT_reg_t;
@@ -5295,7 +4839,6 @@ typedef union {
 } KMAC_ENTROPY_REFRESH_HASH_CNT_reg_u;
 
 #define KMAC_ENTROPY_REFRESH_HASH_CNT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t threshold : 10;
@@ -5308,7 +4851,6 @@ typedef union {
 
 #define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t seed : 32;
 } KMAC_ENTROPY_SEED_reg_t;
@@ -5319,7 +4861,6 @@ typedef union {
 } KMAC_ENTROPY_SEED_reg_u;
 
 #define KMAC_ENTROPY_SEED_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t key_0 : 32;
@@ -5332,7 +4873,6 @@ typedef union {
 
 #define KMAC_KEY_SHARE0_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t key_0 : 32;
 } KMAC_KEY_SHARE1_reg_t;
@@ -5343,7 +4883,6 @@ typedef union {
 } KMAC_KEY_SHARE1_reg_u;
 
 #define KMAC_KEY_SHARE1_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t len : 3;
@@ -5356,7 +4895,6 @@ typedef union {
 
 #define KMAC_KEY_LEN_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t prefix_0 : 32;
 } KMAC_PREFIX_reg_t;
@@ -5367,7 +4905,6 @@ typedef union {
 } KMAC_PREFIX_reg_u;
 
 #define KMAC_PREFIX_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t err_code : 32;
@@ -5380,7 +4917,6 @@ typedef union {
 
 #define KMAC_ERR_CODE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t feature_control : 64;
 } SEP_LIFECYCLE_CTRL_FEAT_CTRL_reg_t;
@@ -5391,7 +4927,6 @@ typedef union {
 } SEP_LIFECYCLE_CTRL_FEAT_CTRL_reg_u;
 
 #define SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t demote : 1;
@@ -5406,7 +4941,6 @@ typedef union {
 
 #define SEP_LIFECYCLE_CTRL_DEMOTE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } KM_MAILBOX_SEP_WRITE_DATA_REG_reg_t;
@@ -5417,7 +4951,6 @@ typedef union {
 } KM_MAILBOX_SEP_WRITE_DATA_REG_reg_u;
 
 #define KM_MAILBOX_SEP_WRITE_DATA_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t set : 1;
@@ -5431,7 +4964,6 @@ typedef union {
 
 #define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } KM_MAILBOX_SEP_READ_DATA_REG_reg_t;
@@ -5442,7 +4974,6 @@ typedef union {
 } KM_MAILBOX_SEP_READ_DATA_REG_reg_u;
 
 #define KM_MAILBOX_SEP_READ_DATA_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t inbound_empty : 1;
@@ -5467,7 +4998,6 @@ typedef union {
 
 #define KM_MAILBOX_SEP_STATUS_REG_REG_DEFAULT (0x00000005)
 
-
 typedef struct {
     uint32_t outbound_read_data_avail : 1;
     uint32_t inbound_write_space_avail : 1;
@@ -5483,7 +5013,6 @@ typedef union {
 } KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u;
 
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t outbound_read_data_avail_en : 1;
@@ -5501,7 +5030,6 @@ typedef union {
 
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t inbound_overflow_resp : 1;
     uint32_t outbound_underflow_resp : 1;
@@ -5515,7 +5043,6 @@ typedef union {
 } KM_MAILBOX_SEP_CTRL_REG_reg_u;
 
 #define KM_MAILBOX_SEP_CTRL_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t lc_state_write_lock : 1;
@@ -5591,7 +5118,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_LOCKS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t lc_state : 8;
     uint32_t rsvd : 24;
@@ -5603,7 +5129,6 @@ typedef union {
 } SEP_EFUSE_MAP_LC_STATE_reg_u;
 
 #define SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT (0x000000F0)
-
 
 typedef struct {
     uint32_t disable_secure_boot : 1;
@@ -5617,7 +5142,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t transient_rma_en : 1;
     uint32_t rsvd : 31;
@@ -5629,7 +5153,6 @@ typedef union {
 } SEP_EFUSE_MAP_TRANSIENT_RMA_EN_reg_u;
 
 #define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t sep_debug : 1;
@@ -5654,7 +5177,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t select : 32;
 } SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_t;
@@ -5665,7 +5187,6 @@ typedef union {
 } SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_u;
 
 #define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rpt : 2;
@@ -5678,7 +5199,6 @@ typedef union {
 } SEP_EFUSE_MAP_STATUS_RPT_reg_u;
 
 #define SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rom_endianness_ctrl : 1;
@@ -5693,7 +5213,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t spi_control_field_en : 8;
     uint32_t smu_pll_sysclk : 11;
@@ -5707,7 +5226,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t discovery : 32;
 } SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_reg_t;
@@ -5718,7 +5236,6 @@ typedef union {
 } SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_reg_u;
 
 #define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dq_timing : 32;
@@ -5731,7 +5248,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t dqs_timing : 32;
 } SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_reg_t;
@@ -5742,7 +5258,6 @@ typedef union {
 } SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_reg_u;
 
 #define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t gate_lpbk : 32;
@@ -5755,7 +5270,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t dll_slave : 32;
 } SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_reg_t;
@@ -5766,7 +5280,6 @@ typedef union {
 } SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_reg_u;
 
 #define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dll_master : 32;
@@ -5779,7 +5292,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t misc : 32;
 } SEP_EFUSE_MAP_SPI_PHY_MISC_reg_t;
@@ -5790,7 +5302,6 @@ typedef union {
 } SEP_EFUSE_MAP_SPI_PHY_MISC_reg_u;
 
 #define SEP_EFUSE_MAP_SPI_PHY_MISC_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rb_valid_time : 32;
@@ -5803,7 +5314,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t rsvd : 64;
 } SEP_EFUSE_MAP_RESERVED_LAST_64_reg_t;
@@ -5815,7 +5325,6 @@ typedef union {
 
 #define SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rsvd : 32;
 } SEP_EFUSE_MAP_RESERVED_LAST_32_reg_t;
@@ -5826,7 +5335,6 @@ typedef union {
 } SEP_EFUSE_MAP_RESERVED_LAST_32_reg_u;
 
 #define SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t efuse_sense_done : 1;
@@ -5847,7 +5355,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t efuse_addr : 16;
     uint32_t efuse_data : 1;
@@ -5867,7 +5374,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t efuse_addr : 16;
     uint32_t efuse_read_go : 1;
@@ -5886,7 +5392,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t dout : 32;
 } EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_t;
@@ -5898,7 +5403,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t dout : 32;
 } EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_t;
@@ -5909,7 +5413,6 @@ typedef union {
 } EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u;
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t read_req_timeout_cycles : 28;
@@ -5923,7 +5426,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT (0x00800000)
 
-
 typedef struct {
     uint32_t program_req_timeout_cycles : 28;
     uint32_t program_req_timeout_enable : 1;
@@ -5936,7 +5438,6 @@ typedef union {
 
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT (0x00800000)
 
-
 typedef struct {
     uint32_t token : 32;
 } EFUSE_MMR_RMA_TOKEN_I_reg_t;
@@ -5948,7 +5449,6 @@ typedef union {
 
 #define EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t token : 32;
 } EFUSE_MMR_SEC_DISABLE_TOKEN_I_reg_t;
@@ -5959,7 +5459,6 @@ typedef union {
 } EFUSE_MMR_SEC_DISABLE_TOKEN_I_reg_u;
 
 #define EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rma_sip_token_go : 1;
@@ -5976,7 +5475,6 @@ typedef union {
 
 #define EFUSE_MMR_TOKEN_EOP_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t token_match_status : 6;
 } EFUSE_MMR_TOKEN_MATCH_reg_t;
@@ -5987,7 +5485,6 @@ typedef union {
 } EFUSE_MMR_TOKEN_MATCH_reg_u;
 
 #define EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t clock_divider_value : 8;
@@ -6003,7 +5500,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_REG_DEFAULT (0x00010108)
 
-
 typedef struct {
     uint32_t clk_period_ten_ps : 13;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_reg_t;
@@ -6014,7 +5510,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_REG_DEFAULT (0x000003E8)
-
 
 typedef struct {
     uint32_t tcs_cycles : 24;
@@ -6027,7 +5522,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_0_REG_DEFAULT (0x005B8D80)
 
-
 typedef struct {
     uint32_t trw_cycles : 19;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_reg_t;
@@ -6038,7 +5532,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_REG_DEFAULT (0x0001D4C0)
-
 
 typedef struct {
     uint32_t tas_cycles : 16;
@@ -6052,7 +5545,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_REG_DEFAULT (0x09600960)
 
-
 typedef struct {
     uint32_t tcsrst_cycles : 32;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_reg_t;
@@ -6063,7 +5555,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_REG_DEFAULT (0x00B71B00)
-
 
 typedef struct {
     uint32_t trwh_cycles : 16;
@@ -6077,7 +5568,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_REG_DEFAULT (0x320055F0)
 
-
 typedef struct {
     uint32_t tpw_cycles : 19;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_reg_t;
@@ -6088,7 +5578,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_REG_DEFAULT (0x00035B60)
-
 
 typedef struct {
     uint32_t tcppw_cycles : 20;
@@ -6101,7 +5590,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_6_REG_DEFAULT (0x00061A80)
 
-
 typedef struct {
     uint32_t tpgm_cycles : 21;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_reg_t;
@@ -6112,7 +5600,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_REG_DEFAULT (0x000927C0)
-
 
 typedef struct {
     uint32_t twwl_cycles : 12;
@@ -6126,7 +5613,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_REG_DEFAULT (0x00960960)
 
-
 typedef struct {
     uint32_t tdh_cycles : 12;
     uint32_t tdles_cycles : 12;
@@ -6139,7 +5625,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_REG_DEFAULT (0x00960960)
 
-
 typedef struct {
     uint32_t tpes_cycles : 17;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_10_reg_t;
@@ -6151,7 +5636,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_10_REG_DEFAULT (0x0000EA60)
 
-
 typedef struct {
     uint32_t tcps_cycles : 18;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_reg_t;
@@ -6162,7 +5646,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_REG_DEFAULT (0x0001D4C0)
-
 
 typedef struct {
     uint32_t tcph_cycles : 17;
@@ -6176,7 +5659,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_REG_DEFAULT (0x12C0EA60)
 
-
 typedef struct {
     uint32_t tpgrd_cycles : 12;
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_reg_t;
@@ -6187,7 +5669,6 @@ typedef union {
 } EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_reg_u;
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_REG_DEFAULT (0x00000960)
-
 
 typedef struct {
     uint32_t tpeh_cycles : 18;
@@ -6201,7 +5682,6 @@ typedef union {
 
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_REG_DEFAULT (0x2581D4C0)
 
-
 typedef struct {
     uint64_t write_data : 64;
 } AXIL_MAILBOX_WRITE_DATA_reg_t;
@@ -6213,7 +5693,6 @@ typedef union {
 
 #define AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t read_data : 64;
 } AXIL_MAILBOX_READ_DATA_reg_t;
@@ -6224,7 +5703,6 @@ typedef union {
 } AXIL_MAILBOX_READ_DATA_reg_u;
 
 #define AXIL_MAILBOX_READ_DATA_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t empty : 1;
@@ -6240,7 +5718,6 @@ typedef union {
 
 #define AXIL_MAILBOX_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t read_error : 1;
     uint64_t write_error : 1;
@@ -6253,7 +5730,6 @@ typedef union {
 
 #define AXIL_MAILBOX_ERROR_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t wirqt : 8;
 } AXIL_MAILBOX_WIRQT_reg_t;
@@ -6265,7 +5741,6 @@ typedef union {
 
 #define AXIL_MAILBOX_WIRQT_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t rirqt : 8;
 } AXIL_MAILBOX_RIRQT_reg_t;
@@ -6276,7 +5751,6 @@ typedef union {
 } AXIL_MAILBOX_RIRQT_reg_u;
 
 #define AXIL_MAILBOX_RIRQT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t wtirq : 1;
@@ -6291,7 +5765,6 @@ typedef union {
 
 #define AXIL_MAILBOX_IRQS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t wtirq : 1;
     uint64_t rtirq : 1;
@@ -6304,7 +5777,6 @@ typedef union {
 } AXIL_MAILBOX_IRQEN_reg_u;
 
 #define AXIL_MAILBOX_IRQEN_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t wtirq : 1;
@@ -6319,7 +5791,6 @@ typedef union {
 
 #define AXIL_MAILBOX_IRQP_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t wflush : 1;
     uint64_t rflush : 1;
@@ -6331,7 +5802,6 @@ typedef union {
 } AXIL_MAILBOX_CTRL_reg_u;
 
 #define AXIL_MAILBOX_CTRL_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t rsvd_0 : 12;
@@ -6345,7 +5815,6 @@ typedef union {
 
 #define REMAP_REGION_REGION_START_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t rsvd_0 : 12;
     uint64_t end_addr : 44;
@@ -6357,7 +5826,6 @@ typedef union {
 } REMAP_REGION_REGION_END_reg_u;
 
 #define REMAP_REGION_REGION_END_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t rsvd_0 : 12;
@@ -6374,7 +5842,6 @@ typedef union {
 
 #define REMAP_REGION_REGION_ATTRS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t offset : 56;
 } OUTPUT_REMAP_REGION_REGION_ATTRS_reg_t;
@@ -6385,7 +5852,6 @@ typedef union {
 } OUTPUT_REMAP_REGION_REGION_ATTRS_reg_u;
 
 #define OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t read_allowed : 1;
@@ -6411,7 +5877,6 @@ typedef union {
 
 #define FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT (0x00003000)
 
-
 typedef struct {
     uint64_t start_addr : 56;
 } FILTER_CTRL_START_ADDR_reg_t;
@@ -6423,7 +5888,6 @@ typedef union {
 
 #define FILTER_CTRL_START_ADDR_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t end_addr : 56;
 } FILTER_CTRL_END_ADDR_reg_t;
@@ -6434,7 +5898,6 @@ typedef union {
 } FILTER_CTRL_END_ADDR_reg_u;
 
 #define FILTER_CTRL_END_ADDR_REG_DEFAULT (0x00000007)
-
 
 typedef struct {
     uint64_t spacc_cg_enable : 1;
@@ -6461,7 +5924,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_DEFAULT (0x001F0083)
 
-
 typedef struct {
     uint64_t rc : 64;
 } SEP_CPU_CTRL_REFERENCE_COUNTER_reg_t;
@@ -6472,7 +5934,6 @@ typedef union {
 } SEP_CPU_CTRL_REFERENCE_COUNTER_reg_u;
 
 #define SEP_CPU_CTRL_REFERENCE_COUNTER_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t troot_timeout_int : 1;
@@ -6494,7 +5955,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t pka_dpa_disable : 1;
     uint32_t rsvd_0 : 7;
@@ -6509,7 +5969,6 @@ typedef union {
 } SEP_CPU_CTRL_PKA_CTRL_reg_u;
 
 #define SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT (0x00000001)
-
 
 typedef struct {
     uint32_t spacc_dpa_disable : 1;
@@ -6526,7 +5985,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SPACC_CTRL_REG_DEFAULT (0x00000001)
 
-
 typedef struct {
     uint64_t data : 48;
 } SEP_CPU_CTRL_TIMEOUT_COUNT_reg_t;
@@ -6537,7 +5995,6 @@ typedef union {
 } SEP_CPU_CTRL_TIMEOUT_COUNT_reg_u;
 
 #define SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t troot_timeout_en : 1;
@@ -6559,7 +6016,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t troot_timeout_clear : 1;
     uint64_t sys_in_timeout_clear : 1;
@@ -6579,7 +6035,6 @@ typedef union {
 } SEP_CPU_CTRL_TIMEOUT_CLEAR_reg_u;
 
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t troot_timeout_mode : 2;
@@ -6601,7 +6056,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_TIMEOUT_MODE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rsvd_0 : 25;
     uint32_t sep_standalone : 1;
@@ -6620,7 +6074,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t addr : 56;
 } SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_reg_t;
@@ -6631,7 +6084,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_reg_u;
 
 #define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t addr : 56;
@@ -6644,7 +6096,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT (0xC0000000)
 
-
 typedef struct {
     uint64_t size : 32;
 } SEP_CPU_CTRL_SEP_REGION_SIZE_reg_t;
@@ -6655,7 +6106,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_REGION_SIZE_reg_u;
 
 #define SEP_CPU_CTRL_SEP_REGION_SIZE_REG_DEFAULT (0x01000000)
-
 
 typedef struct {
     uint64_t addr : 56;
@@ -6668,7 +6118,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT (0x80000000)
 
-
 typedef struct {
     uint64_t size : 32;
 } SEP_CPU_CTRL_SMU_REGION_SIZE_reg_t;
@@ -6679,7 +6128,6 @@ typedef union {
 } SEP_CPU_CTRL_SMU_REGION_SIZE_reg_u;
 
 #define SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT (0x40000000)
-
 
 typedef struct {
     uint64_t smc_fuse_sense_done : 1;
@@ -6692,7 +6140,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t sep_fuse_sense_done : 1;
 } SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_t;
@@ -6703,7 +6150,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u;
 
 #define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t test_en : 1;
@@ -6717,7 +6163,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t bank_chip : 4;
     uint32_t bank_instance : 4;
@@ -6730,7 +6175,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t sep_sw_debug : 32;
 } SEP_CPU_CTRL_SEP_SW_DEBUG_reg_t;
@@ -6741,7 +6185,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_SW_DEBUG_reg_u;
 
 #define SEP_CPU_CTRL_SEP_SW_DEBUG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t rsvd : 1;
@@ -6755,7 +6198,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT (0xC0000100)
 
-
 typedef struct {
     uint64_t lock : 1;
 } SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_reg_t;
@@ -6766,7 +6208,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_reg_u;
 
 #define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t sel : 2;
@@ -6779,7 +6220,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT (0x00000003)
 
-
 typedef struct {
     uint64_t lock : 1;
 } SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_reg_t;
@@ -6791,7 +6231,6 @@ typedef union {
 
 #define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t version_id : 32;
 } SEP_CPU_CTRL_SEP_VERSION_ID_reg_t;
@@ -6802,7 +6241,6 @@ typedef union {
 } SEP_CPU_CTRL_SEP_VERSION_ID_reg_u;
 
 #define SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT (0xDEADBEEF)
-
 
 typedef struct {
     uint32_t error : 1;
@@ -6817,7 +6255,6 @@ typedef union {
 
 #define SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t error : 1;
     uint32_t rsvd_0 : 3;
@@ -6831,7 +6268,6 @@ typedef union {
 
 #define SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t error : 1;
     uint32_t rsvd_0 : 3;
@@ -6844,7 +6280,6 @@ typedef union {
 } SPI_CONTROLLER_INTR_TEST_reg_u;
 
 #define SPI_CONTROLLER_INTR_TEST_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rx_watermark : 8;
@@ -6861,7 +6296,6 @@ typedef union {
 } SPI_CONTROLLER_CTRL_reg_u;
 
 #define SPI_CONTROLLER_CTRL_REG_DEFAULT (0x0000007F)
-
 
 typedef struct {
     uint32_t txqd : 8;
@@ -6888,7 +6322,6 @@ typedef union {
 
 #define SPI_CONTROLLER_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t clkdiv : 16;
     uint32_t csnidle : 4;
@@ -6907,7 +6340,6 @@ typedef union {
 
 #define SPI_CONTROLLER_CFG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t csid : 32;
 } SPI_CONTROLLER_CSID_reg_t;
@@ -6918,7 +6350,6 @@ typedef union {
 } SPI_CONTROLLER_CSID_reg_u;
 
 #define SPI_CONTROLLER_CSID_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t len : 9;
@@ -6934,7 +6365,6 @@ typedef union {
 
 #define SPI_CONTROLLER_CMD_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rxdata : 32;
 } SPI_CONTROLLER_RXDATA_reg_t;
@@ -6946,7 +6376,6 @@ typedef union {
 
 #define SPI_CONTROLLER_RXDATA_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t txdata : 32;
 } SPI_CONTROLLER_TXDATA_reg_t;
@@ -6957,7 +6386,6 @@ typedef union {
 } SPI_CONTROLLER_TXDATA_reg_u;
 
 #define SPI_CONTROLLER_TXDATA_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t cmdbusy : 1;
@@ -6977,7 +6405,6 @@ typedef union {
 } SPI_CONTROLLER_ERROR_ENABLE_reg_u;
 
 #define SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT (0x00011111)
-
 
 typedef struct {
     uint32_t cmdbusy : 1;
@@ -7000,7 +6427,6 @@ typedef union {
 
 #define SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rxfull : 1;
     uint32_t rsvd_0 : 3;
@@ -7022,7 +6448,6 @@ typedef union {
 
 #define SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t data : 64;
 } REMAPPED_REGION_MEM_WORD_reg_t;
@@ -7033,7 +6458,6 @@ typedef union {
 } REMAPPED_REGION_MEM_WORD_reg_u;
 
 #define REMAPPED_REGION_MEM_WORD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t spi_sel : 1;
@@ -7053,7 +6477,6 @@ typedef union {
 
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_DEFAULT (0x00000002)
 
-
 typedef struct {
     uint32_t data : 32;
 } OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_reg_t;
@@ -7065,7 +6488,6 @@ typedef union {
 
 #define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_reg_t;
@@ -7076,7 +6498,6 @@ typedef union {
 } OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_reg_u;
 
 #define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t spi_enable : 1;
@@ -7099,7 +6520,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_DEFAULT (0x80000000)
 
-
 typedef struct {
     uint32_t addr_oe_polarity : 1;
     uint32_t addr_ie_polarity : 1;
@@ -7113,7 +6533,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t discovery_inhibit : 1;
@@ -7139,7 +6558,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_REG_DEFAULT (0x00000490)
 
-
 typedef struct {
     uint32_t spi_aw_addr_pad : 2;
     uint32_t spi_ar_addr_pad : 2;
@@ -7152,7 +6570,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rb_valid_time : 32;
 } OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_reg_t;
@@ -7163,7 +6580,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_REG_DEFAULT (0x00002710)
-
 
 typedef struct {
     uint32_t phy_dq_timing : 32;
@@ -7176,7 +6592,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_REG_DEFAULT (0x00000101)
 
-
 typedef struct {
     uint32_t phy_dqs_timing : 32;
 } OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_reg_t;
@@ -7187,7 +6602,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_REG_DEFAULT (0x00000404)
-
 
 typedef struct {
     uint32_t phy_gate_lpbk_ctrl : 32;
@@ -7200,7 +6614,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_DEFAULT (0x00200030)
 
-
 typedef struct {
     uint32_t phy_dll_slave_ctrl : 32;
 } OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_reg_t;
@@ -7212,7 +6625,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_DEFAULT (0x0000051A)
 
-
 typedef struct {
     uint32_t phy_dll_master_ctrl : 32;
 } OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_reg_t;
@@ -7223,7 +6635,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_DEFAULT (0x00800000)
-
 
 typedef struct {
     uint32_t dqs_last_data_drop_en : 1;
@@ -7240,7 +6651,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_REG_DEFAULT (0x00000001)
 
-
 typedef struct {
     uint32_t xspi_iddq_en : 1;
     uint32_t xspi_scan_atspeed_tmode : 1;
@@ -7253,7 +6663,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_REG_DEFAULT (0x00000002)
 
-
 typedef struct {
     uint32_t phy_gpio_reg_status_0 : 32;
 } OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_reg_t;
@@ -7264,7 +6673,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t phy_gpio_reg_status_1 : 32;
@@ -7277,7 +6685,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t boot_en : 1;
 } OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_reg_t;
@@ -7288,7 +6695,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t crc_enable : 1;
@@ -7303,7 +6709,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_reg_t;
@@ -7315,7 +6720,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t data : 32;
 } OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_reg_t;
@@ -7326,7 +6730,6 @@ typedef union {
 } OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_reg_u;
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t clock_divider_value : 8;
@@ -7342,7 +6745,6 @@ typedef union {
 
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_DEFAULT (0x00018014)
 
-
 typedef struct {
     uint32_t cmd0 : 32;
 } CTRL_CMD_STAT_CMD_REG0_reg_t;
@@ -7353,7 +6755,6 @@ typedef union {
 } CTRL_CMD_STAT_CMD_REG0_reg_u;
 
 #define CTRL_CMD_STAT_CMD_REG0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t cmd1 : 32;
@@ -7366,7 +6767,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_CMD_REG1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t cmd2 : 32;
 } CTRL_CMD_STAT_CMD_REG2_reg_t;
@@ -7377,7 +6777,6 @@ typedef union {
 } CTRL_CMD_STAT_CMD_REG2_reg_u;
 
 #define CTRL_CMD_STAT_CMD_REG2_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t cmd3 : 32;
@@ -7390,7 +6789,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_CMD_REG3_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t cmd4 : 32;
 } CTRL_CMD_STAT_CMD_REG4_reg_t;
@@ -7401,7 +6799,6 @@ typedef union {
 } CTRL_CMD_STAT_CMD_REG4_reg_u;
 
 #define CTRL_CMD_STAT_CMD_REG4_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t cmd5 : 32;
@@ -7414,7 +6811,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_CMD_REG5_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t thrd_status_sel : 3;
 } CTRL_CMD_STAT_CMD_STATUS_PTR_reg_t;
@@ -7426,7 +6822,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_CMD_STATUS_PTR_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t cmd_status : 32;
 } CTRL_CMD_STAT_CMD_STATUS_reg_t;
@@ -7437,7 +6832,6 @@ typedef union {
 } CTRL_CMD_STAT_CMD_STATUS_reg_u;
 
 #define CTRL_CMD_STAT_CMD_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t sdma_busy : 1;
@@ -7460,7 +6854,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_CTRL_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t trd_busy : 8;
 } CTRL_CMD_STAT_TRD_STATUS_reg_t;
@@ -7471,7 +6864,6 @@ typedef union {
 } CTRL_CMD_STAT_TRD_STATUS_reg_u;
 
 #define CTRL_CMD_STAT_TRD_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rsvd_0 : 12;
@@ -7500,7 +6892,6 @@ typedef union {
 } CTRL_CMD_STAT_INTR_STATUS_reg_u;
 
 #define CTRL_CMD_STAT_INTR_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rsvd_0 : 12;
@@ -7532,7 +6923,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_INTR_ENABLE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t trd0_comp : 1;
     uint32_t trd1_comp : 1;
@@ -7550,7 +6940,6 @@ typedef union {
 } CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_reg_u;
 
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t trd0_error_stat : 1;
@@ -7570,7 +6959,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t trd_error_intr_en : 8;
 } CTRL_CMD_STAT_TRD_ERROR_INTR_EN_reg_t;
@@ -7581,7 +6969,6 @@ typedef union {
 } CTRL_CMD_STAT_TRD_ERROR_INTR_EN_reg_u;
 
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_EN_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t target_err_l : 32;
@@ -7594,7 +6981,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_DMA_TARGET_ERROR_L_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t target_err_h : 32;
 } CTRL_CMD_STAT_DMA_TARGET_ERROR_H_reg_t;
@@ -7605,7 +6991,6 @@ typedef union {
 } CTRL_CMD_STAT_DMA_TARGET_ERROR_H_reg_u;
 
 #define CTRL_CMD_STAT_DMA_TARGET_ERROR_H_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t boot_dqs_err : 1;
@@ -7620,7 +7005,6 @@ typedef union {
 
 #define CTRL_CMD_STAT_BOOT_STATUS_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t long_polling : 16;
 } CTRL_CFG_COMMON_LONG_POLLING_reg_t;
@@ -7632,7 +7016,6 @@ typedef union {
 
 #define CTRL_CFG_COMMON_LONG_POLLING_REG_DEFAULT (0x000003E8)
 
-
 typedef struct {
     uint32_t short_polling : 16;
 } CTRL_CFG_COMMON_SHORT_POLLING_reg_t;
@@ -7643,7 +7026,6 @@ typedef union {
 } CTRL_CFG_COMMON_SHORT_POLLING_reg_u;
 
 #define CTRL_CFG_COMMON_SHORT_POLLING_REG_DEFAULT (0x000001F4)
-
 
 typedef struct {
     uint32_t rsvd_0 : 3;
@@ -7658,7 +7040,6 @@ typedef union {
 } CTRL_CFG_COMMON_CTRL_CONFIG_reg_u;
 
 #define CTRL_CFG_COMMON_CTRL_CONFIG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t burst_sel : 8;
@@ -7675,7 +7056,6 @@ typedef union {
 
 #define CTRL_CFG_COMMON_DMA_SETTINGS_REG_DEFAULT (0x000D0000)
 
-
 typedef struct {
     uint32_t sdma_size : 32;
 } CTRL_CFG_COMMON_SDMA_SIZE_reg_t;
@@ -7686,7 +7066,6 @@ typedef union {
 } CTRL_CFG_COMMON_SDMA_SIZE_reg_u;
 
 #define CTRL_CFG_COMMON_SDMA_SIZE_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t sdma_trd : 3;
@@ -7701,7 +7080,6 @@ typedef union {
 
 #define CTRL_CFG_COMMON_SDMA_TRD_INFO_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t sdma_addr_l : 32;
 } CTRL_CFG_COMMON_SDMA_ADDR0_reg_t;
@@ -7713,7 +7091,6 @@ typedef union {
 
 #define CTRL_CFG_COMMON_SDMA_ADDR0_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t sdma_addr_h : 32;
 } CTRL_CFG_COMMON_SDMA_ADDR1_reg_t;
@@ -7724,7 +7101,6 @@ typedef union {
 } CTRL_CFG_COMMON_SDMA_ADDR1_reg_u;
 
 #define CTRL_CFG_COMMON_SDMA_ADDR1_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t discovery_req : 1;
@@ -7748,7 +7124,6 @@ typedef union {
 
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t xip_en : 8;
     uint32_t xip_en_mb_val : 8;
@@ -7761,7 +7136,6 @@ typedef union {
 } CMN_SEQ_REGS_XIP_MODE_CFG_reg_u;
 
 #define CMN_SEQ_REGS_XIP_MODE_CFG_REG_DEFAULT (0x00FF0000)
-
 
 typedef struct {
     uint32_t seq_page_size_rd : 4;
@@ -7789,7 +7163,6 @@ typedef union {
 
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_REG_DEFAULT (0x0000208F)
 
-
 typedef struct {
     uint32_t seq_page_size_ext : 9;
     uint32_t rsvd_0 : 7;
@@ -7806,7 +7179,6 @@ typedef union {
 } CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_reg_u;
 
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dac_bank_num : 3;
@@ -7828,7 +7200,6 @@ typedef union {
 
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rmp_addr_val : 32;
 } CMN_SEQ_REGS_DIRECT_ACCESS_RMP_reg_t;
@@ -7840,7 +7211,6 @@ typedef union {
 
 #define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t rmp_addr_val_1 : 32;
 } CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_reg_t;
@@ -7851,7 +7221,6 @@ typedef union {
 } CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_reg_u;
 
 #define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rst_seq_p1_cmd0_val : 8;
@@ -7875,7 +7244,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_REG_DEFAULT (0x00019966)
 
-
 typedef struct {
     uint32_t rst_seq_p1_cmd0_ext_en : 1;
     uint32_t rst_seq_p1_cmd1_ext_en : 1;
@@ -7891,7 +7259,6 @@ typedef union {
 } DEV_SEQ_REGS_RST_SEQ_CFG_1_reg_u;
 
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_REG_DEFAULT (0xD0669900)
-
 
 typedef struct {
     uint32_t erss_seq_p1_cmd_val : 8;
@@ -7913,7 +7280,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_REG_DEFAULT (0x00DF3020)
 
-
 typedef struct {
     uint32_t erss_seq_p1_sect_size : 5;
 } DEV_SEQ_REGS_ERS_SEQ_CFG_1_reg_t;
@@ -7924,7 +7290,6 @@ typedef union {
 } DEV_SEQ_REGS_ERS_SEQ_CFG_1_reg_u;
 
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_1_REG_DEFAULT (0x0000000C)
-
 
 typedef struct {
     uint32_t ersa_seq_p1_cmd_val : 8;
@@ -7942,7 +7307,6 @@ typedef union {
 } DEV_SEQ_REGS_ERS_SEQ_CFG_2_reg_u;
 
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_REG_DEFAULT (0x009F0060)
-
 
 typedef struct {
     uint32_t prog_seq_p1_cmd_val : 8;
@@ -7967,7 +7331,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_REG_DEFAULT (0x00003002)
 
-
 typedef struct {
     uint32_t prog_seq_p1_cmd_ext_en : 1;
     uint32_t rsvd_0 : 7;
@@ -7980,7 +7343,6 @@ typedef union {
 } DEV_SEQ_REGS_PROG_SEQ_CFG_1_reg_u;
 
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_1_REG_DEFAULT (0x0000FD00)
-
 
 typedef struct {
     uint32_t prog_seq_p2_target : 1;
@@ -7996,7 +7358,6 @@ typedef union {
 } DEV_SEQ_REGS_PROG_SEQ_CFG_2_reg_u;
 
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_2_REG_DEFAULT (0x00000002)
-
 
 typedef struct {
     uint32_t read_seq_p1_cmd_val : 8;
@@ -8021,7 +7382,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_REG_DEFAULT (0x00003003)
 
-
 typedef struct {
     uint32_t read_seq_p1_cmd_ext_en : 1;
     uint32_t rsvd_0 : 3;
@@ -8041,7 +7401,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_REG_DEFAULT (0x0000FC00)
 
-
 typedef struct {
     uint32_t read_seq_p2_target : 1;
     uint32_t read_seq_p2_burst_type : 1;
@@ -8057,7 +7416,6 @@ typedef union {
 } DEV_SEQ_REGS_READ_SEQ_CFG_2_reg_u;
 
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_REG_DEFAULT (0x00000F0A)
-
 
 typedef struct {
     uint32_t we_seq_p1_cmd_val : 8;
@@ -8076,7 +7434,6 @@ typedef union {
 } DEV_SEQ_REGS_WE_SEQ_CFG_0_reg_u;
 
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_REG_DEFAULT (0x01F90006)
-
 
 typedef struct {
     uint32_t stat_seq_p1_cmd_ios : 2;
@@ -8099,7 +7456,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t stat_seq_p1_dev_rdy_dummy_cnt : 6;
     uint32_t stat_seq_p1_dev_rdy_addr_en : 1;
@@ -8118,7 +7474,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t stat_seq_p1_dev_rdy_cmd_val : 8;
     uint32_t stat_seq_p1_ers_fail_cmd_val : 8;
@@ -8132,7 +7487,6 @@ typedef union {
 } DEV_SEQ_REGS_STAT_SEQ_CFG_2_reg_u;
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_2_REG_DEFAULT (0x05000505)
-
 
 typedef struct {
     uint32_t stat_seq_p1_dev_rdy_cmd_ext_val : 8;
@@ -8148,7 +7502,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_3_REG_DEFAULT (0xFA00FAFA)
 
-
 typedef struct {
     uint32_t rsvd_0 : 2;
     uint32_t stat_seq_p2_mask_cmd_mod : 1;
@@ -8162,7 +7515,6 @@ typedef union {
 } DEV_SEQ_REGS_STAT_SEQ_CFG_4_reg_u;
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_4_REG_DEFAULT (0x00000F00)
-
 
 typedef struct {
     uint32_t stat_seq_dev_rdy_idx : 4;
@@ -8188,7 +7540,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_REG_DEFAULT (0x00000040)
 
-
 typedef struct {
     uint32_t stat_seq_dev_rdy_addr : 32;
 } DEV_SEQ_REGS_STAT_SEQ_CFG_7_reg_t;
@@ -8199,7 +7550,6 @@ typedef union {
 } DEV_SEQ_REGS_STAT_SEQ_CFG_7_reg_u;
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_7_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t stat_seq_prog_fail_addr : 32;
@@ -8212,7 +7562,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_8_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t stat_seq_ers_fail_addr : 32;
 } DEV_SEQ_REGS_STAT_SEQ_CFG_9_reg_t;
@@ -8223,7 +7572,6 @@ typedef union {
 } DEV_SEQ_REGS_STAT_SEQ_CFG_9_reg_u;
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_9_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t stat_seq_ecc_fail_mask : 8;
@@ -8242,7 +7590,6 @@ typedef union {
 
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t xspi_ctrl_rev : 8;
     uint32_t xspi_ctrl_fix : 8;
@@ -8255,7 +7602,6 @@ typedef union {
 } CTRL_CONSTS_XSPI_CTRL_VERSION_reg_u;
 
 #define CTRL_CONSTS_XSPI_CTRL_VERSION_REG_DEFAULT (0x65220206)
-
 
 typedef struct {
     uint32_t n_threads : 4;
@@ -8278,7 +7624,6 @@ typedef union {
 
 #define CTRL_CONSTS_CTRL_FEATURES_REG_REG_DEFAULT (0x03710003)
 
-
 typedef struct {
     uint32_t wp : 1;
     uint32_t wp_enable : 1;
@@ -8290,7 +7635,6 @@ typedef union {
 } RF_MINICTRL_REGS_WP_SETTINGS_reg_u;
 
 #define RF_MINICTRL_REGS_WP_SETTINGS_REG_DEFAULT (0x00000001)
-
 
 typedef struct {
     uint32_t sw_ctrled_hw_rst : 1;
@@ -8315,7 +7659,6 @@ typedef union {
 
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_REG_DEFAULT (0x00000001)
 
-
 typedef struct {
     uint32_t spi_clock_mode : 1;
 } RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_reg_t;
@@ -8326,7 +7669,6 @@ typedef union {
 } RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_reg_u;
 
 #define RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t tcsh_delay : 8;
@@ -8339,7 +7681,6 @@ typedef union {
 } RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_reg_u;
 
 #define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_REG_DEFAULT (0x00008080)
-
 
 typedef struct {
     uint32_t cssot_delay : 8;
@@ -8355,7 +7696,6 @@ typedef union {
 
 #define RF_MINICTRL_REGS_DEV_DELAY_REG_REG_DEFAULT (0x01000100)
 
-
 typedef struct {
     uint32_t rst_recovery : 32;
 } RF_MINICTRL_REGS_RST_RECOVERY_REG_reg_t;
@@ -8367,7 +7707,6 @@ typedef union {
 
 #define RF_MINICTRL_REGS_RST_RECOVERY_REG_REG_DEFAULT (0x0000000A)
 
-
 typedef struct {
     uint32_t dev_active_max : 32;
 } RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_reg_t;
@@ -8378,7 +7717,6 @@ typedef union {
 } RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_reg_u;
 
 #define RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_REG_DEFAULT (0x00000080)
-
 
 typedef struct {
     uint32_t hf_offset_index : 6;
@@ -8393,7 +7731,6 @@ typedef union {
 
 #define RF_MINICTRL_REGS_HF_OFFSET_REG_REG_DEFAULT (0x00000D03)
 
-
 typedef struct {
     uint32_t resync_cnt : 32;
 } RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_reg_t;
@@ -8404,7 +7741,6 @@ typedef union {
 } RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_reg_u;
 
 #define RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t resync_idle_cnt : 8;
@@ -8427,7 +7763,6 @@ typedef union {
 
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_REG_DEFAULT (0x01030707)
 
-
 typedef struct {
     uint32_t data_select_oe_end : 3;
     uint32_t rsvd_0 : 1;
@@ -8444,7 +7779,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_DQ_TIMING_REG_reg_u;
 
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_REG_DEFAULT (0x00000002)
-
 
 typedef struct {
     uint32_t rsvd_0 : 8;
@@ -8463,7 +7797,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_DQS_TIMING_REG_reg_u;
 
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_REG_DEFAULT (0x00100000)
-
 
 typedef struct {
     uint32_t gate_cfg : 4;
@@ -8490,7 +7823,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_REG_DEFAULT (0x00D80000)
 
-
 typedef struct {
     uint32_t param_dll_start_point : 8;
     uint32_t rsvd_0 : 8;
@@ -8507,7 +7839,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_REG_DEFAULT (0x00800000)
 
-
 typedef struct {
     uint32_t read_dqs_delay : 8;
     uint32_t clk_wr_delay : 8;
@@ -8519,7 +7850,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_reg_u;
 
 #define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t rddata_en_ie_dly : 4;
@@ -8541,7 +7871,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_REG_DEFAULT (0x00100000)
 
-
 typedef struct {
     uint32_t lpbk_status : 2;
     uint32_t rsvd_0 : 6;
@@ -8556,7 +7885,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_OBS_REG_0_reg_u;
 
 #define DATASLICE_RFILE_PHY_OBS_REG_0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dll_lock : 1;
@@ -8574,7 +7902,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t decoder_out_rd : 8;
     uint32_t rsvd_0 : 8;
@@ -8587,7 +7914,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_DLL_OBS_REG_1_reg_u;
 
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t static_tog_clk_div : 16;
@@ -8602,7 +7928,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_STATIC_TOGG_REG_reg_u;
 
 #define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t dq_phase_detect_sel : 3;
@@ -8619,7 +7944,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t phy_rev : 8;
     uint32_t phy_fix : 8;
@@ -8632,7 +7956,6 @@ typedef union {
 } DATASLICE_RFILE_PHY_VERSION_REG_reg_u;
 
 #define DATASLICE_RFILE_PHY_VERSION_REG_REG_DEFAULT (0x61820107)
-
 
 typedef struct {
     uint32_t onfi_40 : 1;
@@ -8659,7 +7982,6 @@ typedef union {
 
 #define DATASLICE_RFILE_PHY_FEATURES_REG_REG_DEFAULT (0x000019E8)
 
-
 typedef struct {
     uint32_t ctrl_clkperiod_delay : 1;
     uint32_t rsvd_0 : 3;
@@ -8672,7 +7994,6 @@ typedef union {
 } CTB_RFILE_PHY_CTRL_REG_reg_u;
 
 #define CTB_RFILE_PHY_CTRL_REG_REG_DEFAULT (0x00000180)
-
 
 typedef struct {
     uint32_t rsvd_0 : 8;
@@ -8689,7 +8010,6 @@ typedef union {
 
 #define CTB_RFILE_PHY_TSEL_REG_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t phy_gpio_ctrl_0_value : 32;
 } CTB_RFILE_PHY_GPIO_CTRL_0_reg_t;
@@ -8700,7 +8020,6 @@ typedef union {
 } CTB_RFILE_PHY_GPIO_CTRL_0_reg_u;
 
 #define CTB_RFILE_PHY_GPIO_CTRL_0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t phy_gpio_ctrl_1_value : 32;
@@ -8713,7 +8032,6 @@ typedef union {
 
 #define CTB_RFILE_PHY_GPIO_CTRL_1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t phy_gpio_status_0_value : 32;
 } CTB_RFILE_PHY_GPIO_STATUS_0_reg_t;
@@ -8724,7 +8042,6 @@ typedef union {
 } CTB_RFILE_PHY_GPIO_STATUS_0_reg_u;
 
 #define CTB_RFILE_PHY_GPIO_STATUS_0_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t phy_gpio_status_1_value : 32;
@@ -8737,7 +8054,6 @@ typedef union {
 
 #define CTB_RFILE_PHY_GPIO_STATUS_1_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint64_t data : 64;
 } SEP_ICCM_MEM_WORD_reg_t;
@@ -8748,7 +8064,6 @@ typedef union {
 } SEP_ICCM_MEM_WORD_reg_u;
 
 #define SEP_ICCM_MEM_WORD_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint64_t data : 64;
@@ -8761,7 +8076,6 @@ typedef union {
 
 #define SEP_DCCM_MEM_WORD_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t intpriority : 4;
 } EL2_PIC_MEIPL_reg_t;
@@ -8772,7 +8086,6 @@ typedef union {
 } EL2_PIC_MEIPL_reg_u;
 
 #define EL2_PIC_MEIPL_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t intpend : 32;
@@ -8785,7 +8098,6 @@ typedef union {
 
 #define EL2_PIC_MEIP_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t inten : 1;
 } EL2_PIC_MEIE_reg_t;
@@ -8797,7 +8109,6 @@ typedef union {
 
 #define EL2_PIC_MEIE_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t priord : 1;
 } EL2_PIC_MPICCFG_reg_t;
@@ -8808,7 +8119,6 @@ typedef union {
 } EL2_PIC_MPICCFG_reg_u;
 
 #define EL2_PIC_MPICCFG_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     uint32_t polarity : 1;
@@ -8822,7 +8132,6 @@ typedef union {
 
 #define EL2_PIC_MEIGWCTRL_REG_DEFAULT (0x00000000)
 
-
 typedef struct {
     uint32_t clear : 1;
 } EL2_PIC_MEIGWCLR_reg_t;
@@ -8833,7 +8142,6 @@ typedef union {
 } EL2_PIC_MEIGWCLR_reg_u;
 
 #define EL2_PIC_MEIGWCLR_REG_DEFAULT (0x00000000)
-
 
 typedef struct {
     SEP_SRAM_MEM_WORD_reg_u sep_sram_mem_array[32768];
@@ -9000,13 +8308,17 @@ typedef struct {
     SEP_EFUSE_MAP_SPI_RB_VALID_TIME_reg_u sep_efuse_map_spi_rb_valid_time;
     SEP_EFUSE_MAP_RESERVED_LAST_64_reg_u sep_efuse_map_reserved_last_64;
     SEP_EFUSE_MAP_RESERVED_LAST_32_reg_u sep_efuse_map_reserved_last_32;
-    EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u efuse_interface_ctrl_efuse_interface_ctrl_status;
+    EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u
+        efuse_interface_ctrl_efuse_interface_ctrl_status;
     EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u efuse_interface_ctrl_efuse_program_ctrl;
     EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_u efuse_interface_ctrl_efuse_read_ctrl;
-    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u efuse_interface_ctrl_efuse_program_interface_read_data;
-    EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u efuse_interface_ctrl_efuse_read_interface_read_data;
+    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u
+        efuse_interface_ctrl_efuse_program_interface_read_data;
+    EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u
+        efuse_interface_ctrl_efuse_read_interface_read_data;
     EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_u efuse_interface_ctrl_efuse_read_req_timeout;
-    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u efuse_interface_ctrl_efuse_program_req_timeout;
+    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u
+        efuse_interface_ctrl_efuse_program_req_timeout;
     EFUSE_MMR_RMA_TOKEN_I_reg_u efuse_mmr_rma_sip_token_i[8];
     EFUSE_MMR_RMA_TOKEN_I_reg_u efuse_mmr_rma_chiplet_token_i[8];
     EFUSE_MMR_SEC_DISABLE_TOKEN_I_reg_u efuse_mmr_sec_disable_token_i[8];
@@ -9397,9 +8709,12 @@ typedef struct {
     OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_reg_u och_sep_cdns_spi_ctrl_init_rb_valid_time;
     OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_reg_u och_sep_cdns_spi_ctrl_init_phy_dq_timing;
     OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_reg_u och_sep_cdns_spi_ctrl_init_phy_dqs_timing;
-    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_reg_u och_sep_cdns_spi_ctrl_init_phy_gate_lpbk_ctrl;
-    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_reg_u och_sep_cdns_spi_ctrl_init_phy_dll_slave_ctrl;
-    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_reg_u och_sep_cdns_spi_ctrl_init_phy_dll_master_ctrl;
+    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_reg_u
+        och_sep_cdns_spi_ctrl_init_phy_gate_lpbk_ctrl;
+    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_reg_u
+        och_sep_cdns_spi_ctrl_init_phy_dll_slave_ctrl;
+    OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_reg_u
+        och_sep_cdns_spi_ctrl_init_phy_dll_master_ctrl;
     OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_reg_u och_sep_cdns_spi_ctrl_init_phy_misc;
     OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_reg_u och_sep_cdns_spi_ctrl_phy_sideband;
     OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_reg_u och_sep_cdns_spi_ctrl_phy_gpio_reg_status_0;
@@ -9511,3082 +8826,3082 @@ typedef struct {
 // Bit Fields for Address Map: och_sep_top
 //==============================================================================
 
-#define SEP_SRAM_MEM_WORD_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_SRAM_MEM_WORD_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_SRAM_MEM_WORD_DATA_SHIFT 0
 
-#define SEP_BOOT_ROM_MEM_WORD_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_BOOT_ROM_MEM_WORD_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_BOOT_ROM_MEM_WORD_DATA_SHIFT 0
 
-#define SECURE_DMA_INTR_STATE_DMA_DONE_MASK  0x1
+#define SECURE_DMA_INTR_STATE_DMA_DONE_MASK 0x1
 #define SECURE_DMA_INTR_STATE_DMA_DONE_SHIFT 0
 
-#define SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_MASK  0x2
+#define SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_MASK 0x2
 #define SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_SHIFT 1
 
-#define SECURE_DMA_INTR_STATE_DMA_ERROR_MASK  0x4
+#define SECURE_DMA_INTR_STATE_DMA_ERROR_MASK 0x4
 #define SECURE_DMA_INTR_STATE_DMA_ERROR_SHIFT 2
 
-#define SECURE_DMA_INTR_ENABLE_DMA_DONE_MASK  0x1
+#define SECURE_DMA_INTR_ENABLE_DMA_DONE_MASK 0x1
 #define SECURE_DMA_INTR_ENABLE_DMA_DONE_SHIFT 0
 
-#define SECURE_DMA_INTR_ENABLE_DMA_CHUNK_DONE_MASK  0x2
+#define SECURE_DMA_INTR_ENABLE_DMA_CHUNK_DONE_MASK 0x2
 #define SECURE_DMA_INTR_ENABLE_DMA_CHUNK_DONE_SHIFT 1
 
-#define SECURE_DMA_INTR_ENABLE_DMA_ERROR_MASK  0x4
+#define SECURE_DMA_INTR_ENABLE_DMA_ERROR_MASK 0x4
 #define SECURE_DMA_INTR_ENABLE_DMA_ERROR_SHIFT 2
 
-#define SECURE_DMA_INTR_TEST_DMA_DONE_MASK  0x1
+#define SECURE_DMA_INTR_TEST_DMA_DONE_MASK 0x1
 #define SECURE_DMA_INTR_TEST_DMA_DONE_SHIFT 0
 
-#define SECURE_DMA_INTR_TEST_DMA_CHUNK_DONE_MASK  0x2
+#define SECURE_DMA_INTR_TEST_DMA_CHUNK_DONE_MASK 0x2
 #define SECURE_DMA_INTR_TEST_DMA_CHUNK_DONE_SHIFT 1
 
-#define SECURE_DMA_INTR_TEST_DMA_ERROR_MASK  0x4
+#define SECURE_DMA_INTR_TEST_DMA_ERROR_MASK 0x4
 #define SECURE_DMA_INTR_TEST_DMA_ERROR_SHIFT 2
 
-#define SECURE_DMA_ALERT_TEST_FATAL_FAULT_MASK  0x1
+#define SECURE_DMA_ALERT_TEST_FATAL_FAULT_MASK 0x1
 #define SECURE_DMA_ALERT_TEST_FATAL_FAULT_SHIFT 0
 
-#define SECURE_DMA_SRC_ADDR_LO_ADDR_MASK  0xFFFFFFFF
+#define SECURE_DMA_SRC_ADDR_LO_ADDR_MASK 0xFFFFFFFF
 #define SECURE_DMA_SRC_ADDR_LO_ADDR_SHIFT 0
 
-#define SECURE_DMA_SRC_ADDR_HI_ADDR_MASK  0xFFFFFFFF
+#define SECURE_DMA_SRC_ADDR_HI_ADDR_MASK 0xFFFFFFFF
 #define SECURE_DMA_SRC_ADDR_HI_ADDR_SHIFT 0
 
-#define SECURE_DMA_DST_ADDR_LO_ADDR_MASK  0xFFFFFFFF
+#define SECURE_DMA_DST_ADDR_LO_ADDR_MASK 0xFFFFFFFF
 #define SECURE_DMA_DST_ADDR_LO_ADDR_SHIFT 0
 
-#define SECURE_DMA_DST_ADDR_HI_ADDR_MASK  0xFFFFFFFF
+#define SECURE_DMA_DST_ADDR_HI_ADDR_MASK 0xFFFFFFFF
 #define SECURE_DMA_DST_ADDR_HI_ADDR_SHIFT 0
 
-#define SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK  0xF
+#define SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK 0xF
 #define SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_SHIFT 0
 
-#define SECURE_DMA_ADDR_SPACE_ID_DST_ASID_MASK  0xF0
+#define SECURE_DMA_ADDR_SPACE_ID_DST_ASID_MASK 0xF0
 #define SECURE_DMA_ADDR_SPACE_ID_DST_ASID_SHIFT 4
 
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_MASK  0xFFFFFFFF
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_MASK 0xFFFFFFFF
 #define SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_SHIFT 0
 
-#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_LIMIT_MASK  0xFFFFFFFF
+#define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_LIMIT_MASK 0xFFFFFFFF
 #define SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_LIMIT_SHIFT 0
 
-#define SECURE_DMA_RANGE_VALID_RANGE_VALID_MASK  0x1
+#define SECURE_DMA_RANGE_VALID_RANGE_VALID_MASK 0x1
 #define SECURE_DMA_RANGE_VALID_RANGE_VALID_SHIFT 0
 
-#define SECURE_DMA_RANGE_REGWEN_REGWEN_MASK  0xF
+#define SECURE_DMA_RANGE_REGWEN_REGWEN_MASK 0xF
 #define SECURE_DMA_RANGE_REGWEN_REGWEN_SHIFT 0
 
-#define SECURE_DMA_CFG_REGWEN_REGWEN_MASK  0xF
+#define SECURE_DMA_CFG_REGWEN_REGWEN_MASK 0xF
 #define SECURE_DMA_CFG_REGWEN_REGWEN_SHIFT 0
 
-#define SECURE_DMA_TOTAL_DATA_SIZE_SIZE_MASK  0xFFFFFFFF
+#define SECURE_DMA_TOTAL_DATA_SIZE_SIZE_MASK 0xFFFFFFFF
 #define SECURE_DMA_TOTAL_DATA_SIZE_SIZE_SHIFT 0
 
-#define SECURE_DMA_CHUNK_DATA_SIZE_SIZE_MASK  0xFFFFFFFF
+#define SECURE_DMA_CHUNK_DATA_SIZE_SIZE_MASK 0xFFFFFFFF
 #define SECURE_DMA_CHUNK_DATA_SIZE_SIZE_SHIFT 0
 
-#define SECURE_DMA_TRANSFER_WIDTH_WIDTH_MASK  0x3
+#define SECURE_DMA_TRANSFER_WIDTH_WIDTH_MASK 0x3
 #define SECURE_DMA_TRANSFER_WIDTH_WIDTH_SHIFT 0
 
-#define SECURE_DMA_CONTROL_OPCODE_MASK  0xF
+#define SECURE_DMA_CONTROL_OPCODE_MASK 0xF
 #define SECURE_DMA_CONTROL_OPCODE_SHIFT 0
 
-#define SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK  0x10
+#define SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK 0x10
 #define SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_SHIFT 4
 
-#define SECURE_DMA_CONTROL_DIGEST_SWAP_MASK  0x20
+#define SECURE_DMA_CONTROL_DIGEST_SWAP_MASK 0x20
 #define SECURE_DMA_CONTROL_DIGEST_SWAP_SHIFT 5
 
-#define SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK  0x100
+#define SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK 0x100
 #define SECURE_DMA_CONTROL_INITIAL_TRANSFER_SHIFT 8
 
-#define SECURE_DMA_CONTROL_ABORT_MASK  0x8000000
+#define SECURE_DMA_CONTROL_ABORT_MASK 0x8000000
 #define SECURE_DMA_CONTROL_ABORT_SHIFT 27
 
-#define SECURE_DMA_CONTROL_GO_MASK  0x80000000
+#define SECURE_DMA_CONTROL_GO_MASK 0x80000000
 #define SECURE_DMA_CONTROL_GO_SHIFT 31
 
-#define SECURE_DMA_SRC_CONFIG_INCREMENT_MASK  0x1
+#define SECURE_DMA_SRC_CONFIG_INCREMENT_MASK 0x1
 #define SECURE_DMA_SRC_CONFIG_INCREMENT_SHIFT 0
 
-#define SECURE_DMA_SRC_CONFIG_WRAP_MASK  0x2
+#define SECURE_DMA_SRC_CONFIG_WRAP_MASK 0x2
 #define SECURE_DMA_SRC_CONFIG_WRAP_SHIFT 1
 
-#define SECURE_DMA_DST_CONFIG_INCREMENT_MASK  0x1
+#define SECURE_DMA_DST_CONFIG_INCREMENT_MASK 0x1
 #define SECURE_DMA_DST_CONFIG_INCREMENT_SHIFT 0
 
-#define SECURE_DMA_DST_CONFIG_WRAP_MASK  0x2
+#define SECURE_DMA_DST_CONFIG_WRAP_MASK 0x2
 #define SECURE_DMA_DST_CONFIG_WRAP_SHIFT 1
 
-#define SECURE_DMA_STATUS_BUSY_MASK  0x1
+#define SECURE_DMA_STATUS_BUSY_MASK 0x1
 #define SECURE_DMA_STATUS_BUSY_SHIFT 0
 
-#define SECURE_DMA_STATUS_DONE_MASK  0x2
+#define SECURE_DMA_STATUS_DONE_MASK 0x2
 #define SECURE_DMA_STATUS_DONE_SHIFT 1
 
-#define SECURE_DMA_STATUS_ABORTED_MASK  0x4
+#define SECURE_DMA_STATUS_ABORTED_MASK 0x4
 #define SECURE_DMA_STATUS_ABORTED_SHIFT 2
 
-#define SECURE_DMA_STATUS_ERROR_MASK  0x8
+#define SECURE_DMA_STATUS_ERROR_MASK 0x8
 #define SECURE_DMA_STATUS_ERROR_SHIFT 3
 
-#define SECURE_DMA_STATUS_SHA2_DIGEST_VALID_MASK  0x10
+#define SECURE_DMA_STATUS_SHA2_DIGEST_VALID_MASK 0x10
 #define SECURE_DMA_STATUS_SHA2_DIGEST_VALID_SHIFT 4
 
-#define SECURE_DMA_STATUS_CHUNK_DONE_MASK  0x20
+#define SECURE_DMA_STATUS_CHUNK_DONE_MASK 0x20
 #define SECURE_DMA_STATUS_CHUNK_DONE_SHIFT 5
 
-#define SECURE_DMA_ERROR_CODE_SRC_ADDR_ERROR_MASK  0x1
+#define SECURE_DMA_ERROR_CODE_SRC_ADDR_ERROR_MASK 0x1
 #define SECURE_DMA_ERROR_CODE_SRC_ADDR_ERROR_SHIFT 0
 
-#define SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_MASK  0x2
+#define SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_MASK 0x2
 #define SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT 1
 
-#define SECURE_DMA_ERROR_CODE_OPCODE_ERROR_MASK  0x4
+#define SECURE_DMA_ERROR_CODE_OPCODE_ERROR_MASK 0x4
 #define SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT 2
 
-#define SECURE_DMA_ERROR_CODE_SIZE_ERROR_MASK  0x8
+#define SECURE_DMA_ERROR_CODE_SIZE_ERROR_MASK 0x8
 #define SECURE_DMA_ERROR_CODE_SIZE_ERROR_SHIFT 3
 
-#define SECURE_DMA_ERROR_CODE_BUS_ERROR_MASK  0x10
+#define SECURE_DMA_ERROR_CODE_BUS_ERROR_MASK 0x10
 #define SECURE_DMA_ERROR_CODE_BUS_ERROR_SHIFT 4
 
-#define SECURE_DMA_ERROR_CODE_BASE_LIMIT_ERROR_MASK  0x20
+#define SECURE_DMA_ERROR_CODE_BASE_LIMIT_ERROR_MASK 0x20
 #define SECURE_DMA_ERROR_CODE_BASE_LIMIT_ERROR_SHIFT 5
 
-#define SECURE_DMA_ERROR_CODE_RANGE_VALID_ERROR_MASK  0x40
+#define SECURE_DMA_ERROR_CODE_RANGE_VALID_ERROR_MASK 0x40
 #define SECURE_DMA_ERROR_CODE_RANGE_VALID_ERROR_SHIFT 6
 
-#define SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK  0x80
+#define SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK 0x80
 #define SECURE_DMA_ERROR_CODE_ASID_ERROR_SHIFT 7
 
-#define SECURE_DMA_SHA2_DIGEST_DATA_MASK  0xFFFFFFFF
+#define SECURE_DMA_SHA2_DIGEST_DATA_MASK 0xFFFFFFFF
 #define SECURE_DMA_SHA2_DIGEST_DATA_SHIFT 0
 
-#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK  0x7FF
+#define SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK 0x7FF
 #define SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_SHIFT 0
 
-#define SECURE_DMA_CLEAR_INTR_SRC_SOURCE_MASK  0x7FF
+#define SECURE_DMA_CLEAR_INTR_SRC_SOURCE_MASK 0x7FF
 #define SECURE_DMA_CLEAR_INTR_SRC_SOURCE_SHIFT 0
 
-#define SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK  0x7FF
+#define SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK 0x7FF
 #define SECURE_DMA_CLEAR_INTR_BUS_BUS_SHIFT 0
 
-#define SECURE_DMA_INTR_SRC_ADDR_ADDR_MASK  0xFFFFFFFF
+#define SECURE_DMA_INTR_SRC_ADDR_ADDR_MASK 0xFFFFFFFF
 #define SECURE_DMA_INTR_SRC_ADDR_ADDR_SHIFT 0
 
-#define SECURE_DMA_INTR_SRC_WR_VAL_WR_VAL_MASK  0xFFFFFFFF
+#define SECURE_DMA_INTR_SRC_WR_VAL_WR_VAL_MASK 0xFFFFFFFF
 #define SECURE_DMA_INTR_SRC_WR_VAL_WR_VAL_SHIFT 0
 
-#define AON_TIMER_ALERT_TEST_FATAL_FAULT_MASK  0x1
+#define AON_TIMER_ALERT_TEST_FATAL_FAULT_MASK 0x1
 #define AON_TIMER_ALERT_TEST_FATAL_FAULT_SHIFT 0
 
-#define AON_TIMER_WKUP_CTRL_ENABLE_MASK  0x1
+#define AON_TIMER_WKUP_CTRL_ENABLE_MASK 0x1
 #define AON_TIMER_WKUP_CTRL_ENABLE_SHIFT 0
 
-#define AON_TIMER_WKUP_CTRL_PRESCALER_MASK  0x1FFE
+#define AON_TIMER_WKUP_CTRL_PRESCALER_MASK 0x1FFE
 #define AON_TIMER_WKUP_CTRL_PRESCALER_SHIFT 1
 
-#define AON_TIMER_WKUP_THOLD_HI_THRESHOLD_HI_MASK  0xFFFFFFFF
+#define AON_TIMER_WKUP_THOLD_HI_THRESHOLD_HI_MASK 0xFFFFFFFF
 #define AON_TIMER_WKUP_THOLD_HI_THRESHOLD_HI_SHIFT 0
 
-#define AON_TIMER_WKUP_THOLD_LO_THRESHOLD_LO_MASK  0xFFFFFFFF
+#define AON_TIMER_WKUP_THOLD_LO_THRESHOLD_LO_MASK 0xFFFFFFFF
 #define AON_TIMER_WKUP_THOLD_LO_THRESHOLD_LO_SHIFT 0
 
-#define AON_TIMER_WKUP_COUNT_HI_COUNT_HI_MASK  0xFFFFFFFF
+#define AON_TIMER_WKUP_COUNT_HI_COUNT_HI_MASK 0xFFFFFFFF
 #define AON_TIMER_WKUP_COUNT_HI_COUNT_HI_SHIFT 0
 
-#define AON_TIMER_WKUP_COUNT_LO_COUNT_LO_MASK  0xFFFFFFFF
+#define AON_TIMER_WKUP_COUNT_LO_COUNT_LO_MASK 0xFFFFFFFF
 #define AON_TIMER_WKUP_COUNT_LO_COUNT_LO_SHIFT 0
 
-#define AON_TIMER_WDOG_REGWEN_REGWEN_MASK  0x1
+#define AON_TIMER_WDOG_REGWEN_REGWEN_MASK 0x1
 #define AON_TIMER_WDOG_REGWEN_REGWEN_SHIFT 0
 
-#define AON_TIMER_WDOG_CTRL_ENABLE_MASK  0x1
+#define AON_TIMER_WDOG_CTRL_ENABLE_MASK 0x1
 #define AON_TIMER_WDOG_CTRL_ENABLE_SHIFT 0
 
-#define AON_TIMER_WDOG_CTRL_PAUSE_IN_SLEEP_MASK  0x2
+#define AON_TIMER_WDOG_CTRL_PAUSE_IN_SLEEP_MASK 0x2
 #define AON_TIMER_WDOG_CTRL_PAUSE_IN_SLEEP_SHIFT 1
 
-#define AON_TIMER_WDOG_BARK_THOLD_THRESHOLD_MASK  0xFFFFFFFF
+#define AON_TIMER_WDOG_BARK_THOLD_THRESHOLD_MASK 0xFFFFFFFF
 #define AON_TIMER_WDOG_BARK_THOLD_THRESHOLD_SHIFT 0
 
-#define AON_TIMER_WDOG_BITE_THOLD_THRESHOLD_MASK  0xFFFFFFFF
+#define AON_TIMER_WDOG_BITE_THOLD_THRESHOLD_MASK 0xFFFFFFFF
 #define AON_TIMER_WDOG_BITE_THOLD_THRESHOLD_SHIFT 0
 
-#define AON_TIMER_WDOG_COUNT_COUNT_MASK  0xFFFFFFFF
+#define AON_TIMER_WDOG_COUNT_COUNT_MASK 0xFFFFFFFF
 #define AON_TIMER_WDOG_COUNT_COUNT_SHIFT 0
 
-#define AON_TIMER_INTR_STATE_WKUP_TIMER_EXPIRED_MASK  0x1
+#define AON_TIMER_INTR_STATE_WKUP_TIMER_EXPIRED_MASK 0x1
 #define AON_TIMER_INTR_STATE_WKUP_TIMER_EXPIRED_SHIFT 0
 
-#define AON_TIMER_INTR_STATE_WDOG_TIMER_BARK_MASK  0x2
+#define AON_TIMER_INTR_STATE_WDOG_TIMER_BARK_MASK 0x2
 #define AON_TIMER_INTR_STATE_WDOG_TIMER_BARK_SHIFT 1
 
-#define AON_TIMER_INTR_TEST_WKUP_TIMER_EXPIRED_MASK  0x1
+#define AON_TIMER_INTR_TEST_WKUP_TIMER_EXPIRED_MASK 0x1
 #define AON_TIMER_INTR_TEST_WKUP_TIMER_EXPIRED_SHIFT 0
 
-#define AON_TIMER_INTR_TEST_WDOG_TIMER_BARK_MASK  0x2
+#define AON_TIMER_INTR_TEST_WDOG_TIMER_BARK_MASK 0x2
 #define AON_TIMER_INTR_TEST_WDOG_TIMER_BARK_SHIFT 1
 
-#define AON_TIMER_WKUP_CAUSE_CAUSE_MASK  0x1
+#define AON_TIMER_WKUP_CAUSE_CAUSE_MASK 0x1
 #define AON_TIMER_WKUP_CAUSE_CAUSE_SHIFT 0
 
-#define SEP_SCRATCH_SCRATCH_DATA_MASK  0xFFFFFFFF
+#define SEP_SCRATCH_SCRATCH_DATA_MASK 0xFFFFFFFF
 #define SEP_SCRATCH_SCRATCH_DATA_SHIFT 0
 
-#define SEP_RESET_CTRL_SW_RESET_N_KM_SW_RST_N_MASK  0x1
+#define SEP_RESET_CTRL_SW_RESET_N_KM_SW_RST_N_MASK 0x1
 #define SEP_RESET_CTRL_SW_RESET_N_KM_SW_RST_N_SHIFT 0
 
-#define SEP_RESET_CTRL_SW_RESET_N_OTBN_SW_RST_N_MASK  0x2
+#define SEP_RESET_CTRL_SW_RESET_N_OTBN_SW_RST_N_MASK 0x2
 #define SEP_RESET_CTRL_SW_RESET_N_OTBN_SW_RST_N_SHIFT 1
 
-#define SEP_RESET_CTRL_SW_RESET_N_AES_SW_RST_N_MASK  0x4
+#define SEP_RESET_CTRL_SW_RESET_N_AES_SW_RST_N_MASK 0x4
 #define SEP_RESET_CTRL_SW_RESET_N_AES_SW_RST_N_SHIFT 2
 
-#define SEP_RESET_CTRL_SW_RESET_N_HMAC_SW_RST_N_MASK  0x8
+#define SEP_RESET_CTRL_SW_RESET_N_HMAC_SW_RST_N_MASK 0x8
 #define SEP_RESET_CTRL_SW_RESET_N_HMAC_SW_RST_N_SHIFT 3
 
-#define SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_MASK  0x10
+#define SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_MASK 0x10
 #define SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_SHIFT 4
 
-#define OTBN_INTR_STATE_DONE_MASK  0x1
+#define OTBN_INTR_STATE_DONE_MASK 0x1
 #define OTBN_INTR_STATE_DONE_SHIFT 0
 
-#define OTBN_INTR_ENABLE_DONE_MASK  0x1
+#define OTBN_INTR_ENABLE_DONE_MASK 0x1
 #define OTBN_INTR_ENABLE_DONE_SHIFT 0
 
-#define OTBN_INTR_TEST_DONE_MASK  0x1
+#define OTBN_INTR_TEST_DONE_MASK 0x1
 #define OTBN_INTR_TEST_DONE_SHIFT 0
 
-#define OTBN_ALERT_TEST_FATAL_MASK  0x1
+#define OTBN_ALERT_TEST_FATAL_MASK 0x1
 #define OTBN_ALERT_TEST_FATAL_SHIFT 0
 
-#define OTBN_ALERT_TEST_RECOV_MASK  0x2
+#define OTBN_ALERT_TEST_RECOV_MASK 0x2
 #define OTBN_ALERT_TEST_RECOV_SHIFT 1
 
-#define OTBN_CMD_CMD_MASK  0xFF
+#define OTBN_CMD_CMD_MASK 0xFF
 #define OTBN_CMD_CMD_SHIFT 0
 
-#define OTBN_CTRL_SOFTWARE_ERRS_FATAL_MASK  0x1
+#define OTBN_CTRL_SOFTWARE_ERRS_FATAL_MASK 0x1
 #define OTBN_CTRL_SOFTWARE_ERRS_FATAL_SHIFT 0
 
-#define OTBN_STATUS_STATUS_MASK  0xFF
+#define OTBN_STATUS_STATUS_MASK 0xFF
 #define OTBN_STATUS_STATUS_SHIFT 0
 
-#define OTBN_ERR_BITS_BAD_DATA_ADDR_MASK  0x1
+#define OTBN_ERR_BITS_BAD_DATA_ADDR_MASK 0x1
 #define OTBN_ERR_BITS_BAD_DATA_ADDR_SHIFT 0
 
-#define OTBN_ERR_BITS_BAD_INSN_ADDR_MASK  0x2
+#define OTBN_ERR_BITS_BAD_INSN_ADDR_MASK 0x2
 #define OTBN_ERR_BITS_BAD_INSN_ADDR_SHIFT 1
 
-#define OTBN_ERR_BITS_CALL_STACK_MASK  0x4
+#define OTBN_ERR_BITS_CALL_STACK_MASK 0x4
 #define OTBN_ERR_BITS_CALL_STACK_SHIFT 2
 
-#define OTBN_ERR_BITS_ILLEGAL_INSN_MASK  0x8
+#define OTBN_ERR_BITS_ILLEGAL_INSN_MASK 0x8
 #define OTBN_ERR_BITS_ILLEGAL_INSN_SHIFT 3
 
-#define OTBN_ERR_BITS_LOOP_MASK  0x10
+#define OTBN_ERR_BITS_LOOP_MASK 0x10
 #define OTBN_ERR_BITS_LOOP_SHIFT 4
 
-#define OTBN_ERR_BITS_KEY_INVALID_MASK  0x20
+#define OTBN_ERR_BITS_KEY_INVALID_MASK 0x20
 #define OTBN_ERR_BITS_KEY_INVALID_SHIFT 5
 
-#define OTBN_ERR_BITS_RND_REP_CHK_FAIL_MASK  0x40
+#define OTBN_ERR_BITS_RND_REP_CHK_FAIL_MASK 0x40
 #define OTBN_ERR_BITS_RND_REP_CHK_FAIL_SHIFT 6
 
-#define OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_MASK  0x80
+#define OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_MASK 0x80
 #define OTBN_ERR_BITS_RND_FIPS_CHK_FAIL_SHIFT 7
 
-#define OTBN_ERR_BITS_IMEM_INTG_VIOLATION_MASK  0x10000
+#define OTBN_ERR_BITS_IMEM_INTG_VIOLATION_MASK 0x10000
 #define OTBN_ERR_BITS_IMEM_INTG_VIOLATION_SHIFT 16
 
-#define OTBN_ERR_BITS_DMEM_INTG_VIOLATION_MASK  0x20000
+#define OTBN_ERR_BITS_DMEM_INTG_VIOLATION_MASK 0x20000
 #define OTBN_ERR_BITS_DMEM_INTG_VIOLATION_SHIFT 17
 
-#define OTBN_ERR_BITS_REG_INTG_VIOLATION_MASK  0x40000
+#define OTBN_ERR_BITS_REG_INTG_VIOLATION_MASK 0x40000
 #define OTBN_ERR_BITS_REG_INTG_VIOLATION_SHIFT 18
 
-#define OTBN_ERR_BITS_BUS_INTG_VIOLATION_MASK  0x80000
+#define OTBN_ERR_BITS_BUS_INTG_VIOLATION_MASK 0x80000
 #define OTBN_ERR_BITS_BUS_INTG_VIOLATION_SHIFT 19
 
-#define OTBN_ERR_BITS_BAD_INTERNAL_STATE_MASK  0x100000
+#define OTBN_ERR_BITS_BAD_INTERNAL_STATE_MASK 0x100000
 #define OTBN_ERR_BITS_BAD_INTERNAL_STATE_SHIFT 20
 
-#define OTBN_ERR_BITS_ILLEGAL_BUS_ACCESS_MASK  0x200000
+#define OTBN_ERR_BITS_ILLEGAL_BUS_ACCESS_MASK 0x200000
 #define OTBN_ERR_BITS_ILLEGAL_BUS_ACCESS_SHIFT 21
 
-#define OTBN_ERR_BITS_LIFECYCLE_ESCALATION_MASK  0x400000
+#define OTBN_ERR_BITS_LIFECYCLE_ESCALATION_MASK 0x400000
 #define OTBN_ERR_BITS_LIFECYCLE_ESCALATION_SHIFT 22
 
-#define OTBN_ERR_BITS_FATAL_SOFTWARE_MASK  0x800000
+#define OTBN_ERR_BITS_FATAL_SOFTWARE_MASK 0x800000
 #define OTBN_ERR_BITS_FATAL_SOFTWARE_SHIFT 23
 
-#define OTBN_FATAL_ALERT_CAUSE_IMEM_INTG_VIOLATION_MASK  0x1
+#define OTBN_FATAL_ALERT_CAUSE_IMEM_INTG_VIOLATION_MASK 0x1
 #define OTBN_FATAL_ALERT_CAUSE_IMEM_INTG_VIOLATION_SHIFT 0
 
-#define OTBN_FATAL_ALERT_CAUSE_DMEM_INTG_VIOLATION_MASK  0x2
+#define OTBN_FATAL_ALERT_CAUSE_DMEM_INTG_VIOLATION_MASK 0x2
 #define OTBN_FATAL_ALERT_CAUSE_DMEM_INTG_VIOLATION_SHIFT 1
 
-#define OTBN_FATAL_ALERT_CAUSE_REG_INTG_VIOLATION_MASK  0x4
+#define OTBN_FATAL_ALERT_CAUSE_REG_INTG_VIOLATION_MASK 0x4
 #define OTBN_FATAL_ALERT_CAUSE_REG_INTG_VIOLATION_SHIFT 2
 
-#define OTBN_FATAL_ALERT_CAUSE_BUS_INTG_VIOLATION_MASK  0x8
+#define OTBN_FATAL_ALERT_CAUSE_BUS_INTG_VIOLATION_MASK 0x8
 #define OTBN_FATAL_ALERT_CAUSE_BUS_INTG_VIOLATION_SHIFT 3
 
-#define OTBN_FATAL_ALERT_CAUSE_BAD_INTERNAL_STATE_MASK  0x10
+#define OTBN_FATAL_ALERT_CAUSE_BAD_INTERNAL_STATE_MASK 0x10
 #define OTBN_FATAL_ALERT_CAUSE_BAD_INTERNAL_STATE_SHIFT 4
 
-#define OTBN_FATAL_ALERT_CAUSE_ILLEGAL_BUS_ACCESS_MASK  0x20
+#define OTBN_FATAL_ALERT_CAUSE_ILLEGAL_BUS_ACCESS_MASK 0x20
 #define OTBN_FATAL_ALERT_CAUSE_ILLEGAL_BUS_ACCESS_SHIFT 5
 
-#define OTBN_FATAL_ALERT_CAUSE_LIFECYCLE_ESCALATION_MASK  0x40
+#define OTBN_FATAL_ALERT_CAUSE_LIFECYCLE_ESCALATION_MASK 0x40
 #define OTBN_FATAL_ALERT_CAUSE_LIFECYCLE_ESCALATION_SHIFT 6
 
-#define OTBN_FATAL_ALERT_CAUSE_FATAL_SOFTWARE_MASK  0x80
+#define OTBN_FATAL_ALERT_CAUSE_FATAL_SOFTWARE_MASK 0x80
 #define OTBN_FATAL_ALERT_CAUSE_FATAL_SOFTWARE_SHIFT 7
 
-#define OTBN_INSN_CNT_INSN_CNT_MASK  0xFFFFFFFF
+#define OTBN_INSN_CNT_INSN_CNT_MASK 0xFFFFFFFF
 #define OTBN_INSN_CNT_INSN_CNT_SHIFT 0
 
-#define OTBN_LOAD_CHECKSUM_CHECKSUM_MASK  0xFFFFFFFF
+#define OTBN_LOAD_CHECKSUM_CHECKSUM_MASK 0xFFFFFFFF
 #define OTBN_LOAD_CHECKSUM_CHECKSUM_SHIFT 0
 
-#define AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_MASK  0x1
+#define AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_MASK 0x1
 #define AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_SHIFT 0
 
-#define AES_ALERT_TEST_FATAL_FAULT_MASK  0x2
+#define AES_ALERT_TEST_FATAL_FAULT_MASK 0x2
 #define AES_ALERT_TEST_FATAL_FAULT_SHIFT 1
 
-#define AES_KEY_SHARE0_KEY_SHARE0_0_MASK  0xFFFFFFFF
+#define AES_KEY_SHARE0_KEY_SHARE0_0_MASK 0xFFFFFFFF
 #define AES_KEY_SHARE0_KEY_SHARE0_0_SHIFT 0
 
-#define AES_KEY_SHARE1_KEY_SHARE1_0_MASK  0xFFFFFFFF
+#define AES_KEY_SHARE1_KEY_SHARE1_0_MASK 0xFFFFFFFF
 #define AES_KEY_SHARE1_KEY_SHARE1_0_SHIFT 0
 
-#define AES_IV_IV_0_MASK  0xFFFFFFFF
+#define AES_IV_IV_0_MASK 0xFFFFFFFF
 #define AES_IV_IV_0_SHIFT 0
 
-#define AES_DATA_IN_DATA_IN_0_MASK  0xFFFFFFFF
+#define AES_DATA_IN_DATA_IN_0_MASK 0xFFFFFFFF
 #define AES_DATA_IN_DATA_IN_0_SHIFT 0
 
-#define AES_DATA_OUT_DATA_OUT_0_MASK  0xFFFFFFFF
+#define AES_DATA_OUT_DATA_OUT_0_MASK 0xFFFFFFFF
 #define AES_DATA_OUT_DATA_OUT_0_SHIFT 0
 
-#define AES_CTRL_SHADOWED_OPERATION_MASK  0x3
+#define AES_CTRL_SHADOWED_OPERATION_MASK 0x3
 #define AES_CTRL_SHADOWED_OPERATION_SHIFT 0
 
-#define AES_CTRL_SHADOWED_MODE_MASK  0xFC
+#define AES_CTRL_SHADOWED_MODE_MASK 0xFC
 #define AES_CTRL_SHADOWED_MODE_SHIFT 2
 
-#define AES_CTRL_SHADOWED_KEY_LEN_MASK  0x700
+#define AES_CTRL_SHADOWED_KEY_LEN_MASK 0x700
 #define AES_CTRL_SHADOWED_KEY_LEN_SHIFT 8
 
-#define AES_CTRL_SHADOWED_SIDELOAD_MASK  0x800
+#define AES_CTRL_SHADOWED_SIDELOAD_MASK 0x800
 #define AES_CTRL_SHADOWED_SIDELOAD_SHIFT 11
 
-#define AES_CTRL_SHADOWED_PRNG_RESEED_RATE_MASK  0x7000
+#define AES_CTRL_SHADOWED_PRNG_RESEED_RATE_MASK 0x7000
 #define AES_CTRL_SHADOWED_PRNG_RESEED_RATE_SHIFT 12
 
-#define AES_CTRL_SHADOWED_MANUAL_OPERATION_MASK  0x8000
+#define AES_CTRL_SHADOWED_MANUAL_OPERATION_MASK 0x8000
 #define AES_CTRL_SHADOWED_MANUAL_OPERATION_SHIFT 15
 
-#define AES_CTRL_AUX_SHADOWED_KEY_TOUCH_FORCES_RESEED_MASK  0x1
+#define AES_CTRL_AUX_SHADOWED_KEY_TOUCH_FORCES_RESEED_MASK 0x1
 #define AES_CTRL_AUX_SHADOWED_KEY_TOUCH_FORCES_RESEED_SHIFT 0
 
-#define AES_CTRL_AUX_SHADOWED_FORCE_MASKS_MASK  0x2
+#define AES_CTRL_AUX_SHADOWED_FORCE_MASKS_MASK 0x2
 #define AES_CTRL_AUX_SHADOWED_FORCE_MASKS_SHIFT 1
 
-#define AES_CTRL_AUX_REGWEN_CTRL_AUX_REGWEN_MASK  0x1
+#define AES_CTRL_AUX_REGWEN_CTRL_AUX_REGWEN_MASK 0x1
 #define AES_CTRL_AUX_REGWEN_CTRL_AUX_REGWEN_SHIFT 0
 
-#define AES_TRIGGER_START_MASK  0x1
+#define AES_TRIGGER_START_MASK 0x1
 #define AES_TRIGGER_START_SHIFT 0
 
-#define AES_TRIGGER_KEY_IV_DATA_IN_CLEAR_MASK  0x2
+#define AES_TRIGGER_KEY_IV_DATA_IN_CLEAR_MASK 0x2
 #define AES_TRIGGER_KEY_IV_DATA_IN_CLEAR_SHIFT 1
 
-#define AES_TRIGGER_DATA_OUT_CLEAR_MASK  0x4
+#define AES_TRIGGER_DATA_OUT_CLEAR_MASK 0x4
 #define AES_TRIGGER_DATA_OUT_CLEAR_SHIFT 2
 
-#define AES_TRIGGER_PRNG_RESEED_MASK  0x8
+#define AES_TRIGGER_PRNG_RESEED_MASK 0x8
 #define AES_TRIGGER_PRNG_RESEED_SHIFT 3
 
-#define AES_STATUS_IDLE_MASK  0x1
+#define AES_STATUS_IDLE_MASK 0x1
 #define AES_STATUS_IDLE_SHIFT 0
 
-#define AES_STATUS_STALL_MASK  0x2
+#define AES_STATUS_STALL_MASK 0x2
 #define AES_STATUS_STALL_SHIFT 1
 
-#define AES_STATUS_OUTPUT_LOST_MASK  0x4
+#define AES_STATUS_OUTPUT_LOST_MASK 0x4
 #define AES_STATUS_OUTPUT_LOST_SHIFT 2
 
-#define AES_STATUS_OUTPUT_VALID_MASK  0x8
+#define AES_STATUS_OUTPUT_VALID_MASK 0x8
 #define AES_STATUS_OUTPUT_VALID_SHIFT 3
 
-#define AES_STATUS_INPUT_READY_MASK  0x10
+#define AES_STATUS_INPUT_READY_MASK 0x10
 #define AES_STATUS_INPUT_READY_SHIFT 4
 
-#define AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK  0x20
+#define AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK 0x20
 #define AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_SHIFT 5
 
-#define AES_STATUS_ALERT_FATAL_FAULT_MASK  0x40
+#define AES_STATUS_ALERT_FATAL_FAULT_MASK 0x40
 #define AES_STATUS_ALERT_FATAL_FAULT_SHIFT 6
 
-#define HMAC_INTR_STATE_HMAC_DONE_MASK  0x1
+#define HMAC_INTR_STATE_HMAC_DONE_MASK 0x1
 #define HMAC_INTR_STATE_HMAC_DONE_SHIFT 0
 
-#define HMAC_INTR_STATE_FIFO_EMPTY_MASK  0x2
+#define HMAC_INTR_STATE_FIFO_EMPTY_MASK 0x2
 #define HMAC_INTR_STATE_FIFO_EMPTY_SHIFT 1
 
-#define HMAC_INTR_STATE_HMAC_ERR_MASK  0x4
+#define HMAC_INTR_STATE_HMAC_ERR_MASK 0x4
 #define HMAC_INTR_STATE_HMAC_ERR_SHIFT 2
 
-#define HMAC_INTR_ENABLE_HMAC_DONE_MASK  0x1
+#define HMAC_INTR_ENABLE_HMAC_DONE_MASK 0x1
 #define HMAC_INTR_ENABLE_HMAC_DONE_SHIFT 0
 
-#define HMAC_INTR_ENABLE_FIFO_EMPTY_MASK  0x2
+#define HMAC_INTR_ENABLE_FIFO_EMPTY_MASK 0x2
 #define HMAC_INTR_ENABLE_FIFO_EMPTY_SHIFT 1
 
-#define HMAC_INTR_ENABLE_HMAC_ERR_MASK  0x4
+#define HMAC_INTR_ENABLE_HMAC_ERR_MASK 0x4
 #define HMAC_INTR_ENABLE_HMAC_ERR_SHIFT 2
 
-#define HMAC_INTR_TEST_HMAC_DONE_MASK  0x1
+#define HMAC_INTR_TEST_HMAC_DONE_MASK 0x1
 #define HMAC_INTR_TEST_HMAC_DONE_SHIFT 0
 
-#define HMAC_INTR_TEST_FIFO_EMPTY_MASK  0x2
+#define HMAC_INTR_TEST_FIFO_EMPTY_MASK 0x2
 #define HMAC_INTR_TEST_FIFO_EMPTY_SHIFT 1
 
-#define HMAC_INTR_TEST_HMAC_ERR_MASK  0x4
+#define HMAC_INTR_TEST_HMAC_ERR_MASK 0x4
 #define HMAC_INTR_TEST_HMAC_ERR_SHIFT 2
 
-#define HMAC_ALERT_TEST_FATAL_FAULT_MASK  0x1
+#define HMAC_ALERT_TEST_FATAL_FAULT_MASK 0x1
 #define HMAC_ALERT_TEST_FATAL_FAULT_SHIFT 0
 
-#define HMAC_CFG_HMAC_EN_MASK  0x1
+#define HMAC_CFG_HMAC_EN_MASK 0x1
 #define HMAC_CFG_HMAC_EN_SHIFT 0
 
-#define HMAC_CFG_SHA_EN_MASK  0x2
+#define HMAC_CFG_SHA_EN_MASK 0x2
 #define HMAC_CFG_SHA_EN_SHIFT 1
 
-#define HMAC_CFG_ENDIAN_SWAP_MASK  0x4
+#define HMAC_CFG_ENDIAN_SWAP_MASK 0x4
 #define HMAC_CFG_ENDIAN_SWAP_SHIFT 2
 
-#define HMAC_CFG_DIGEST_SWAP_MASK  0x8
+#define HMAC_CFG_DIGEST_SWAP_MASK 0x8
 #define HMAC_CFG_DIGEST_SWAP_SHIFT 3
 
-#define HMAC_CFG_KEY_SWAP_MASK  0x10
+#define HMAC_CFG_KEY_SWAP_MASK 0x10
 #define HMAC_CFG_KEY_SWAP_SHIFT 4
 
-#define HMAC_CFG_DIGEST_SIZE_MASK  0x1E0
+#define HMAC_CFG_DIGEST_SIZE_MASK 0x1E0
 #define HMAC_CFG_DIGEST_SIZE_SHIFT 5
 
-#define HMAC_CFG_KEY_LENGTH_MASK  0x7E00
+#define HMAC_CFG_KEY_LENGTH_MASK 0x7E00
 #define HMAC_CFG_KEY_LENGTH_SHIFT 9
 
-#define HMAC_CMD_HASH_START_MASK  0x1
+#define HMAC_CMD_HASH_START_MASK 0x1
 #define HMAC_CMD_HASH_START_SHIFT 0
 
-#define HMAC_CMD_HASH_PROCESS_MASK  0x2
+#define HMAC_CMD_HASH_PROCESS_MASK 0x2
 #define HMAC_CMD_HASH_PROCESS_SHIFT 1
 
-#define HMAC_CMD_HASH_STOP_MASK  0x4
+#define HMAC_CMD_HASH_STOP_MASK 0x4
 #define HMAC_CMD_HASH_STOP_SHIFT 2
 
-#define HMAC_CMD_HASH_CONTINUE_MASK  0x8
+#define HMAC_CMD_HASH_CONTINUE_MASK 0x8
 #define HMAC_CMD_HASH_CONTINUE_SHIFT 3
 
-#define HMAC_STATUS_HMAC_IDLE_MASK  0x1
+#define HMAC_STATUS_HMAC_IDLE_MASK 0x1
 #define HMAC_STATUS_HMAC_IDLE_SHIFT 0
 
-#define HMAC_STATUS_FIFO_EMPTY_MASK  0x2
+#define HMAC_STATUS_FIFO_EMPTY_MASK 0x2
 #define HMAC_STATUS_FIFO_EMPTY_SHIFT 1
 
-#define HMAC_STATUS_FIFO_FULL_MASK  0x4
+#define HMAC_STATUS_FIFO_FULL_MASK 0x4
 #define HMAC_STATUS_FIFO_FULL_SHIFT 2
 
-#define HMAC_STATUS_FIFO_DEPTH_MASK  0x3F0
+#define HMAC_STATUS_FIFO_DEPTH_MASK 0x3F0
 #define HMAC_STATUS_FIFO_DEPTH_SHIFT 4
 
-#define HMAC_ERR_CODE_ERR_CODE_MASK  0xFFFFFFFF
+#define HMAC_ERR_CODE_ERR_CODE_MASK 0xFFFFFFFF
 #define HMAC_ERR_CODE_ERR_CODE_SHIFT 0
 
-#define HMAC_WIPE_SECRET_SECRET_MASK  0xFFFFFFFF
+#define HMAC_WIPE_SECRET_SECRET_MASK 0xFFFFFFFF
 #define HMAC_WIPE_SECRET_SECRET_SHIFT 0
 
-#define HMAC_KEY_KEY_0_MASK  0xFFFFFFFF
+#define HMAC_KEY_KEY_0_MASK 0xFFFFFFFF
 #define HMAC_KEY_KEY_0_SHIFT 0
 
-#define HMAC_DIGEST_DIGEST_0_MASK  0xFFFFFFFF
+#define HMAC_DIGEST_DIGEST_0_MASK 0xFFFFFFFF
 #define HMAC_DIGEST_DIGEST_0_SHIFT 0
 
-#define HMAC_MSG_LENGTH_LOWER_V_MASK  0xFFFFFFFF
+#define HMAC_MSG_LENGTH_LOWER_V_MASK 0xFFFFFFFF
 #define HMAC_MSG_LENGTH_LOWER_V_SHIFT 0
 
-#define HMAC_MSG_LENGTH_UPPER_V_MASK  0xFFFFFFFF
+#define HMAC_MSG_LENGTH_UPPER_V_MASK 0xFFFFFFFF
 #define HMAC_MSG_LENGTH_UPPER_V_SHIFT 0
 
-#define KMAC_INTR_STATE_KMAC_DONE_MASK  0x1
+#define KMAC_INTR_STATE_KMAC_DONE_MASK 0x1
 #define KMAC_INTR_STATE_KMAC_DONE_SHIFT 0
 
-#define KMAC_INTR_STATE_FIFO_EMPTY_MASK  0x2
+#define KMAC_INTR_STATE_FIFO_EMPTY_MASK 0x2
 #define KMAC_INTR_STATE_FIFO_EMPTY_SHIFT 1
 
-#define KMAC_INTR_STATE_KMAC_ERR_MASK  0x4
+#define KMAC_INTR_STATE_KMAC_ERR_MASK 0x4
 #define KMAC_INTR_STATE_KMAC_ERR_SHIFT 2
 
-#define KMAC_INTR_ENABLE_KMAC_DONE_MASK  0x1
+#define KMAC_INTR_ENABLE_KMAC_DONE_MASK 0x1
 #define KMAC_INTR_ENABLE_KMAC_DONE_SHIFT 0
 
-#define KMAC_INTR_ENABLE_FIFO_EMPTY_MASK  0x2
+#define KMAC_INTR_ENABLE_FIFO_EMPTY_MASK 0x2
 #define KMAC_INTR_ENABLE_FIFO_EMPTY_SHIFT 1
 
-#define KMAC_INTR_ENABLE_KMAC_ERR_MASK  0x4
+#define KMAC_INTR_ENABLE_KMAC_ERR_MASK 0x4
 #define KMAC_INTR_ENABLE_KMAC_ERR_SHIFT 2
 
-#define KMAC_INTR_TEST_KMAC_DONE_MASK  0x1
+#define KMAC_INTR_TEST_KMAC_DONE_MASK 0x1
 #define KMAC_INTR_TEST_KMAC_DONE_SHIFT 0
 
-#define KMAC_INTR_TEST_FIFO_EMPTY_MASK  0x2
+#define KMAC_INTR_TEST_FIFO_EMPTY_MASK 0x2
 #define KMAC_INTR_TEST_FIFO_EMPTY_SHIFT 1
 
-#define KMAC_INTR_TEST_KMAC_ERR_MASK  0x4
+#define KMAC_INTR_TEST_KMAC_ERR_MASK 0x4
 #define KMAC_INTR_TEST_KMAC_ERR_SHIFT 2
 
-#define KMAC_ALERT_TEST_RECOV_OPERATION_ERR_MASK  0x1
+#define KMAC_ALERT_TEST_RECOV_OPERATION_ERR_MASK 0x1
 #define KMAC_ALERT_TEST_RECOV_OPERATION_ERR_SHIFT 0
 
-#define KMAC_ALERT_TEST_FATAL_FAULT_ERR_MASK  0x2
+#define KMAC_ALERT_TEST_FATAL_FAULT_ERR_MASK 0x2
 #define KMAC_ALERT_TEST_FATAL_FAULT_ERR_SHIFT 1
 
-#define KMAC_CFG_REGWEN_EN_MASK  0x1
+#define KMAC_CFG_REGWEN_EN_MASK 0x1
 #define KMAC_CFG_REGWEN_EN_SHIFT 0
 
-#define KMAC_CFG_SHADOWED_KMAC_EN_MASK  0x1
+#define KMAC_CFG_SHADOWED_KMAC_EN_MASK 0x1
 #define KMAC_CFG_SHADOWED_KMAC_EN_SHIFT 0
 
-#define KMAC_CFG_SHADOWED_KSTRENGTH_MASK  0xE
+#define KMAC_CFG_SHADOWED_KSTRENGTH_MASK 0xE
 #define KMAC_CFG_SHADOWED_KSTRENGTH_SHIFT 1
 
-#define KMAC_CFG_SHADOWED_MODE_MASK  0x30
+#define KMAC_CFG_SHADOWED_MODE_MASK 0x30
 #define KMAC_CFG_SHADOWED_MODE_SHIFT 4
 
-#define KMAC_CFG_SHADOWED_MSG_ENDIANNESS_MASK  0x100
+#define KMAC_CFG_SHADOWED_MSG_ENDIANNESS_MASK 0x100
 #define KMAC_CFG_SHADOWED_MSG_ENDIANNESS_SHIFT 8
 
-#define KMAC_CFG_SHADOWED_STATE_ENDIANNESS_MASK  0x200
+#define KMAC_CFG_SHADOWED_STATE_ENDIANNESS_MASK 0x200
 #define KMAC_CFG_SHADOWED_STATE_ENDIANNESS_SHIFT 9
 
-#define KMAC_CFG_SHADOWED_SIDELOAD_MASK  0x1000
+#define KMAC_CFG_SHADOWED_SIDELOAD_MASK 0x1000
 #define KMAC_CFG_SHADOWED_SIDELOAD_SHIFT 12
 
-#define KMAC_CFG_SHADOWED_ENTROPY_MODE_MASK  0x30000
+#define KMAC_CFG_SHADOWED_ENTROPY_MODE_MASK 0x30000
 #define KMAC_CFG_SHADOWED_ENTROPY_MODE_SHIFT 16
 
-#define KMAC_CFG_SHADOWED_ENTROPY_FAST_PROCESS_MASK  0x80000
+#define KMAC_CFG_SHADOWED_ENTROPY_FAST_PROCESS_MASK 0x80000
 #define KMAC_CFG_SHADOWED_ENTROPY_FAST_PROCESS_SHIFT 19
 
-#define KMAC_CFG_SHADOWED_MSG_MASK_MASK  0x100000
+#define KMAC_CFG_SHADOWED_MSG_MASK_MASK 0x100000
 #define KMAC_CFG_SHADOWED_MSG_MASK_SHIFT 20
 
-#define KMAC_CFG_SHADOWED_ENTROPY_READY_MASK  0x1000000
+#define KMAC_CFG_SHADOWED_ENTROPY_READY_MASK 0x1000000
 #define KMAC_CFG_SHADOWED_ENTROPY_READY_SHIFT 24
 
-#define KMAC_CFG_SHADOWED_EN_UNSUPPORTED_MODESTRENGTH_MASK  0x4000000
+#define KMAC_CFG_SHADOWED_EN_UNSUPPORTED_MODESTRENGTH_MASK 0x4000000
 #define KMAC_CFG_SHADOWED_EN_UNSUPPORTED_MODESTRENGTH_SHIFT 26
 
-#define KMAC_CMD_CMD_MASK  0x3F
+#define KMAC_CMD_CMD_MASK 0x3F
 #define KMAC_CMD_CMD_SHIFT 0
 
-#define KMAC_CMD_ENTROPY_REQ_MASK  0x100
+#define KMAC_CMD_ENTROPY_REQ_MASK 0x100
 #define KMAC_CMD_ENTROPY_REQ_SHIFT 8
 
-#define KMAC_CMD_HASH_CNT_CLR_MASK  0x200
+#define KMAC_CMD_HASH_CNT_CLR_MASK 0x200
 #define KMAC_CMD_HASH_CNT_CLR_SHIFT 9
 
-#define KMAC_CMD_ERR_PROCESSED_MASK  0x400
+#define KMAC_CMD_ERR_PROCESSED_MASK 0x400
 #define KMAC_CMD_ERR_PROCESSED_SHIFT 10
 
-#define KMAC_STATUS_SHA3_IDLE_MASK  0x1
+#define KMAC_STATUS_SHA3_IDLE_MASK 0x1
 #define KMAC_STATUS_SHA3_IDLE_SHIFT 0
 
-#define KMAC_STATUS_SHA3_ABSORB_MASK  0x2
+#define KMAC_STATUS_SHA3_ABSORB_MASK 0x2
 #define KMAC_STATUS_SHA3_ABSORB_SHIFT 1
 
-#define KMAC_STATUS_SHA3_SQUEEZE_MASK  0x4
+#define KMAC_STATUS_SHA3_SQUEEZE_MASK 0x4
 #define KMAC_STATUS_SHA3_SQUEEZE_SHIFT 2
 
-#define KMAC_STATUS_FIFO_DEPTH_MASK  0x1F00
+#define KMAC_STATUS_FIFO_DEPTH_MASK 0x1F00
 #define KMAC_STATUS_FIFO_DEPTH_SHIFT 8
 
-#define KMAC_STATUS_FIFO_EMPTY_MASK  0x4000
+#define KMAC_STATUS_FIFO_EMPTY_MASK 0x4000
 #define KMAC_STATUS_FIFO_EMPTY_SHIFT 14
 
-#define KMAC_STATUS_FIFO_FULL_MASK  0x8000
+#define KMAC_STATUS_FIFO_FULL_MASK 0x8000
 #define KMAC_STATUS_FIFO_FULL_SHIFT 15
 
-#define KMAC_STATUS_ALERT_FATAL_FAULT_MASK  0x10000
+#define KMAC_STATUS_ALERT_FATAL_FAULT_MASK 0x10000
 #define KMAC_STATUS_ALERT_FATAL_FAULT_SHIFT 16
 
-#define KMAC_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK  0x20000
+#define KMAC_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK 0x20000
 #define KMAC_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_SHIFT 17
 
-#define KMAC_ENTROPY_PERIOD_PRESCALER_MASK  0x3FF
+#define KMAC_ENTROPY_PERIOD_PRESCALER_MASK 0x3FF
 #define KMAC_ENTROPY_PERIOD_PRESCALER_SHIFT 0
 
-#define KMAC_ENTROPY_PERIOD_WAIT_TIMER_MASK  0xFFFF0000
+#define KMAC_ENTROPY_PERIOD_WAIT_TIMER_MASK 0xFFFF0000
 #define KMAC_ENTROPY_PERIOD_WAIT_TIMER_SHIFT 16
 
-#define KMAC_ENTROPY_REFRESH_HASH_CNT_HASH_CNT_MASK  0x3FF
+#define KMAC_ENTROPY_REFRESH_HASH_CNT_HASH_CNT_MASK 0x3FF
 #define KMAC_ENTROPY_REFRESH_HASH_CNT_HASH_CNT_SHIFT 0
 
-#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_THRESHOLD_MASK  0x3FF
+#define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_THRESHOLD_MASK 0x3FF
 #define KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_THRESHOLD_SHIFT 0
 
-#define KMAC_ENTROPY_SEED_SEED_MASK  0xFFFFFFFF
+#define KMAC_ENTROPY_SEED_SEED_MASK 0xFFFFFFFF
 #define KMAC_ENTROPY_SEED_SEED_SHIFT 0
 
-#define KMAC_KEY_SHARE0_KEY_0_MASK  0xFFFFFFFF
+#define KMAC_KEY_SHARE0_KEY_0_MASK 0xFFFFFFFF
 #define KMAC_KEY_SHARE0_KEY_0_SHIFT 0
 
-#define KMAC_KEY_SHARE1_KEY_0_MASK  0xFFFFFFFF
+#define KMAC_KEY_SHARE1_KEY_0_MASK 0xFFFFFFFF
 #define KMAC_KEY_SHARE1_KEY_0_SHIFT 0
 
-#define KMAC_KEY_LEN_LEN_MASK  0x7
+#define KMAC_KEY_LEN_LEN_MASK 0x7
 #define KMAC_KEY_LEN_LEN_SHIFT 0
 
-#define KMAC_PREFIX_PREFIX_0_MASK  0xFFFFFFFF
+#define KMAC_PREFIX_PREFIX_0_MASK 0xFFFFFFFF
 #define KMAC_PREFIX_PREFIX_0_SHIFT 0
 
-#define KMAC_ERR_CODE_ERR_CODE_MASK  0xFFFFFFFF
+#define KMAC_ERR_CODE_ERR_CODE_MASK 0xFFFFFFFF
 #define KMAC_ERR_CODE_ERR_CODE_SHIFT 0
 
-#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_FEATURE_CONTROL_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_LIFECYCLE_CTRL_FEAT_CTRL_FEATURE_CONTROL_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_LIFECYCLE_CTRL_FEAT_CTRL_FEATURE_CONTROL_SHIFT 0
 
-#define SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK  0x1
+#define SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK 0x1
 #define SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_SHIFT 0
 
-#define SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK  0x2
+#define SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK 0x2
 #define SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_SHIFT 1
 
-#define SEP_LIFECYCLE_CTRL_DEMOTE_RSVD_MASK  0xFFFFFFFFFFFFFFFC
+#define SEP_LIFECYCLE_CTRL_DEMOTE_RSVD_MASK 0xFFFFFFFFFFFFFFFC
 #define SEP_LIFECYCLE_CTRL_DEMOTE_RSVD_SHIFT 2
 
-#define KM_MAILBOX_SEP_WRITE_DATA_REG_DATA_MASK  0xFFFFFFFF
+#define KM_MAILBOX_SEP_WRITE_DATA_REG_DATA_MASK 0xFFFFFFFF
 #define KM_MAILBOX_SEP_WRITE_DATA_REG_DATA_SHIFT 0
 
-#define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_SET_MASK  0x1
+#define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_SET_MASK 0x1
 #define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_SET_SHIFT 0
 
-#define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_RSVD_MASK  0xFFFFFFFE
+#define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_RSVD_MASK 0xFFFFFFFE
 #define KM_MAILBOX_SEP_WRITE_SEPARATOR_REG_RSVD_SHIFT 1
 
-#define KM_MAILBOX_SEP_READ_DATA_REG_DATA_MASK  0xFFFFFFFF
+#define KM_MAILBOX_SEP_READ_DATA_REG_DATA_MASK 0xFFFFFFFF
 #define KM_MAILBOX_SEP_READ_DATA_REG_DATA_SHIFT 0
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_EMPTY_MASK  0x1
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_EMPTY_MASK 0x1
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_EMPTY_SHIFT 0
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_FULL_MASK  0x2
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_FULL_MASK 0x2
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_FULL_SHIFT 1
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_EMPTY_MASK  0x4
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_EMPTY_MASK 0x4
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_EMPTY_SHIFT 2
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_FULL_MASK  0x8
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_FULL_MASK 0x8
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_FULL_SHIFT 3
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_DEPTH_MASK  0xFF0
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_DEPTH_MASK 0xFF0
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_DEPTH_SHIFT 4
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_DEPTH_MASK  0xFF000
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_DEPTH_MASK 0xFF000
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_DEPTH_SHIFT 12
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_OVERFLOW_MASK  0x100000
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_OVERFLOW_MASK 0x100000
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_OVERFLOW_SHIFT 20
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_OVERFLOW_MASK  0x200000
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_OVERFLOW_MASK 0x200000
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_OVERFLOW_SHIFT 21
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_UNDERFLOW_MASK  0x400000
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_UNDERFLOW_MASK 0x400000
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_UNDERFLOW_SHIFT 22
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_UNDERFLOW_MASK  0x800000
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_UNDERFLOW_MASK 0x800000
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_UNDERFLOW_SHIFT 23
 
-#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_SEPARATOR_MASK  0x1000000
+#define KM_MAILBOX_SEP_STATUS_REG_INBOUND_SEPARATOR_MASK 0x1000000
 #define KM_MAILBOX_SEP_STATUS_REG_INBOUND_SEPARATOR_SHIFT 24
 
-#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_SEPARATOR_MASK  0x2000000
+#define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_SEPARATOR_MASK 0x2000000
 #define KM_MAILBOX_SEP_STATUS_REG_OUTBOUND_SEPARATOR_SHIFT 25
 
-#define KM_MAILBOX_SEP_STATUS_REG_RSVD_MASK  0xFC000000
+#define KM_MAILBOX_SEP_STATUS_REG_RSVD_MASK 0xFC000000
 #define KM_MAILBOX_SEP_STATUS_REG_RSVD_SHIFT 26
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_READ_DATA_AVAIL_MASK  0x1
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_READ_DATA_AVAIL_MASK 0x1
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_READ_DATA_AVAIL_SHIFT 0
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_WRITE_SPACE_AVAIL_MASK  0x2
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_WRITE_SPACE_AVAIL_MASK 0x2
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_WRITE_SPACE_AVAIL_SHIFT 1
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_OVERFLOW_MASK  0x4
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_OVERFLOW_MASK 0x4
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_INBOUND_OVERFLOW_SHIFT 2
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_UNDERFLOW_MASK  0x8
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_UNDERFLOW_MASK 0x8
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_OUTBOUND_UNDERFLOW_SHIFT 3
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_FLUSHED_BY_KM_MASK  0x10
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_FLUSHED_BY_KM_MASK 0x10
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_FLUSHED_BY_KM_SHIFT 4
 
-#define KM_MAILBOX_SEP_IRQ_STATUS_REG_RSVD_MASK  0xFFFFFFE0
+#define KM_MAILBOX_SEP_IRQ_STATUS_REG_RSVD_MASK 0xFFFFFFE0
 #define KM_MAILBOX_SEP_IRQ_STATUS_REG_RSVD_SHIFT 5
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_READ_DATA_AVAIL_EN_MASK  0x1
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_READ_DATA_AVAIL_EN_MASK 0x1
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_READ_DATA_AVAIL_EN_SHIFT 0
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_WRITE_SPACE_AVAIL_EN_MASK  0x2
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_WRITE_SPACE_AVAIL_EN_MASK 0x2
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_WRITE_SPACE_AVAIL_EN_SHIFT 1
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_OVERFLOW_EN_MASK  0x4
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_OVERFLOW_EN_MASK 0x4
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_INBOUND_OVERFLOW_EN_SHIFT 2
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_UNDERFLOW_EN_MASK  0x8
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_UNDERFLOW_EN_MASK 0x8
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_OUTBOUND_UNDERFLOW_EN_SHIFT 3
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_FLUSHED_BY_KM_EN_MASK  0x10
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_FLUSHED_BY_KM_EN_MASK 0x10
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_FLUSHED_BY_KM_EN_SHIFT 4
 
-#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_RSVD_MASK  0xFFFFFFE0
+#define KM_MAILBOX_SEP_IRQ_ENABLE_REG_RSVD_MASK 0xFFFFFFE0
 #define KM_MAILBOX_SEP_IRQ_ENABLE_REG_RSVD_SHIFT 5
 
-#define KM_MAILBOX_SEP_CTRL_REG_INBOUND_OVERFLOW_RESP_MASK  0x1
+#define KM_MAILBOX_SEP_CTRL_REG_INBOUND_OVERFLOW_RESP_MASK 0x1
 #define KM_MAILBOX_SEP_CTRL_REG_INBOUND_OVERFLOW_RESP_SHIFT 0
 
-#define KM_MAILBOX_SEP_CTRL_REG_OUTBOUND_UNDERFLOW_RESP_MASK  0x2
+#define KM_MAILBOX_SEP_CTRL_REG_OUTBOUND_UNDERFLOW_RESP_MASK 0x2
 #define KM_MAILBOX_SEP_CTRL_REG_OUTBOUND_UNDERFLOW_RESP_SHIFT 1
 
-#define KM_MAILBOX_SEP_CTRL_REG_FLUSH_MASK  0x4
+#define KM_MAILBOX_SEP_CTRL_REG_FLUSH_MASK 0x4
 #define KM_MAILBOX_SEP_CTRL_REG_FLUSH_SHIFT 2
 
-#define KM_MAILBOX_SEP_CTRL_REG_RSVD_MASK  0xFFFFFFF8
+#define KM_MAILBOX_SEP_CTRL_REG_RSVD_MASK 0xFFFFFFF8
 #define KM_MAILBOX_SEP_CTRL_REG_RSVD_SHIFT 3
 
-#define SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_MASK  0x1
+#define SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_MASK 0x1
 #define SEP_EFUSE_MAP_LOCKS_LC_STATE_WRITE_LOCK_SHIFT 0
 
-#define SEP_EFUSE_MAP_LOCKS_LC_STATE_READ_LOCK_MASK  0x2
+#define SEP_EFUSE_MAP_LOCKS_LC_STATE_READ_LOCK_MASK 0x2
 #define SEP_EFUSE_MAP_LOCKS_LC_STATE_READ_LOCK_SHIFT 1
 
-#define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_WRITE_LOCK_MASK  0x4
+#define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_WRITE_LOCK_MASK 0x4
 #define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_WRITE_LOCK_SHIFT 2
 
-#define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_READ_LOCK_MASK  0x8
+#define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_READ_LOCK_MASK 0x8
 #define SEP_EFUSE_MAP_LOCKS_SBOOT_DIS_READ_LOCK_SHIFT 3
 
-#define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_WRITE_LOCK_MASK  0x10
+#define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_WRITE_LOCK_MASK 0x10
 #define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_WRITE_LOCK_SHIFT 4
 
-#define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_READ_LOCK_MASK  0x20
+#define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_READ_LOCK_MASK 0x20
 #define SEP_EFUSE_MAP_LOCKS_TRANSIENT_RMA_EN_READ_LOCK_SHIFT 5
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_DIS_WRITE_LOCK_MASK  0x40
+#define SEP_EFUSE_MAP_LOCKS_SIP_DIS_WRITE_LOCK_MASK 0x40
 #define SEP_EFUSE_MAP_LOCKS_SIP_DIS_WRITE_LOCK_SHIFT 6
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_DIS_READ_LOCK_MASK  0x80
+#define SEP_EFUSE_MAP_LOCKS_SIP_DIS_READ_LOCK_MASK 0x80
 #define SEP_EFUSE_MAP_LOCKS_SIP_DIS_READ_LOCK_SHIFT 7
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_DIS_WRITE_LOCK_MASK  0x100
+#define SEP_EFUSE_MAP_LOCKS_SYS_DIS_WRITE_LOCK_MASK 0x100
 #define SEP_EFUSE_MAP_LOCKS_SYS_DIS_WRITE_LOCK_SHIFT 8
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_DIS_READ_LOCK_MASK  0x200
+#define SEP_EFUSE_MAP_LOCKS_SYS_DIS_READ_LOCK_MASK 0x200
 #define SEP_EFUSE_MAP_LOCKS_SYS_DIS_READ_LOCK_SHIFT 9
 
-#define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_MASK  0x400
+#define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_MASK 0x400
 #define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_SHIFT 10
 
-#define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_READ_LOCK_MASK  0x800
+#define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_READ_LOCK_MASK 0x800
 #define SEP_EFUSE_MAP_LOCKS_RMA_SIP_TOKEN_DIGEST_READ_LOCK_SHIFT 11
 
-#define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_MASK  0x1000
+#define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_MASK 0x1000
 #define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_SHIFT 12
 
-#define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_MASK  0x2000
+#define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_MASK 0x2000
 #define SEP_EFUSE_MAP_LOCKS_RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_SHIFT 13
 
-#define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_WRITE_LOCK_MASK  0x4000
+#define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_WRITE_LOCK_MASK 0x4000
 #define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_WRITE_LOCK_SHIFT 14
 
-#define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_READ_LOCK_MASK  0x8000
+#define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_READ_LOCK_MASK 0x8000
 #define SEP_EFUSE_MAP_LOCKS_CLASS_KEY_READ_LOCK_SHIFT 15
 
-#define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_WRITE_LOCK_MASK  0x10000
+#define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_WRITE_LOCK_MASK 0x10000
 #define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_WRITE_LOCK_SHIFT 16
 
-#define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_READ_LOCK_MASK  0x20000
+#define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_READ_LOCK_MASK 0x20000
 #define SEP_EFUSE_MAP_LOCKS_CHIPLET_PUBK_REVOKE_READ_LOCK_SHIFT 17
 
-#define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_WRITE_LOCK_MASK  0x40000
+#define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_WRITE_LOCK_MASK 0x40000
 #define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_WRITE_LOCK_SHIFT 18
 
-#define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_READ_LOCK_MASK  0x80000
+#define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_READ_LOCK_MASK 0x80000
 #define SEP_EFUSE_MAP_LOCKS_BL1_VERSION_READ_LOCK_SHIFT 19
 
-#define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_WRITE_LOCK_MASK  0x100000
+#define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_WRITE_LOCK_MASK 0x100000
 #define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_WRITE_LOCK_SHIFT 20
 
-#define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_READ_LOCK_MASK  0x200000
+#define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_READ_LOCK_MASK 0x200000
 #define SEP_EFUSE_MAP_LOCKS_BL2_VERSION_READ_LOCK_SHIFT 21
 
-#define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_WRITE_LOCK_MASK  0x400000
+#define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_WRITE_LOCK_MASK 0x400000
 #define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_WRITE_LOCK_SHIFT 22
 
-#define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_READ_LOCK_MASK  0x800000
+#define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_READ_LOCK_MASK 0x800000
 #define SEP_EFUSE_MAP_LOCKS_CHIPLET_UID_READ_LOCK_SHIFT 23
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_WRITE_LOCK_MASK  0x1000000
+#define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_WRITE_LOCK_MASK 0x1000000
 #define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_WRITE_LOCK_SHIFT 24
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_READ_LOCK_MASK  0x2000000
+#define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_READ_LOCK_MASK 0x2000000
 #define SEP_EFUSE_MAP_LOCKS_SIP_PUBK_DIGEST_READ_LOCK_SHIFT 25
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_UID_WRITE_LOCK_MASK  0x4000000
+#define SEP_EFUSE_MAP_LOCKS_SIP_UID_WRITE_LOCK_MASK 0x4000000
 #define SEP_EFUSE_MAP_LOCKS_SIP_UID_WRITE_LOCK_SHIFT 26
 
-#define SEP_EFUSE_MAP_LOCKS_SIP_UID_READ_LOCK_MASK  0x8000000
+#define SEP_EFUSE_MAP_LOCKS_SIP_UID_READ_LOCK_MASK 0x8000000
 #define SEP_EFUSE_MAP_LOCKS_SIP_UID_READ_LOCK_SHIFT 27
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_WRITE_LOCK_MASK  0x10000000
+#define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_WRITE_LOCK_MASK 0x10000000
 #define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_WRITE_LOCK_SHIFT 28
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_READ_LOCK_MASK  0x20000000
+#define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_READ_LOCK_MASK 0x20000000
 #define SEP_EFUSE_MAP_LOCKS_SYS_PUBK_DIGEST_READ_LOCK_SHIFT 29
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_UID_WRITE_LOCK_MASK  0x40000000
+#define SEP_EFUSE_MAP_LOCKS_SYS_UID_WRITE_LOCK_MASK 0x40000000
 #define SEP_EFUSE_MAP_LOCKS_SYS_UID_WRITE_LOCK_SHIFT 30
 
-#define SEP_EFUSE_MAP_LOCKS_SYS_UID_READ_LOCK_MASK  0x80000000
+#define SEP_EFUSE_MAP_LOCKS_SYS_UID_READ_LOCK_MASK 0x80000000
 #define SEP_EFUSE_MAP_LOCKS_SYS_UID_READ_LOCK_SHIFT 31
 
-#define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_WRITE_LOCK_MASK  0x100000000
+#define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_WRITE_LOCK_MASK 0x100000000
 #define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_WRITE_LOCK_SHIFT 32
 
-#define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_READ_LOCK_MASK  0x200000000
+#define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_READ_LOCK_MASK 0x200000000
 #define SEP_EFUSE_MAP_LOCKS_STATUS_RPT_READ_LOCK_SHIFT 33
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_WRITE_LOCK_MASK  0x400000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_WRITE_LOCK_MASK 0x400000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_WRITE_LOCK_SHIFT 34
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_READ_LOCK_MASK  0x800000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_READ_LOCK_MASK 0x800000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_ROM_CTRL_READ_LOCK_SHIFT 35
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_WRITE_LOCK_MASK  0x1000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_WRITE_LOCK_MASK 0x1000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_WRITE_LOCK_SHIFT 36
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_READ_LOCK_MASK  0x2000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_READ_LOCK_MASK 0x2000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_SPI_CTRL_READ_LOCK_SHIFT 37
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK_MASK  0x4000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK_MASK 0x4000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK_SHIFT 38
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_READ_LOCK_MASK  0x8000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_READ_LOCK_MASK 0x8000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_0_READ_LOCK_SHIFT 39
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK_MASK  0x10000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK_MASK 0x10000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK_SHIFT 40
 
-#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_READ_LOCK_MASK  0x20000000000
+#define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_READ_LOCK_MASK 0x20000000000
 #define SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_READ_LOCK_SHIFT 41
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_0_WRITE_LOCK_MASK  0x40000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_0_WRITE_LOCK_MASK 0x40000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_0_WRITE_LOCK_SHIFT 42
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_0_READ_LOCK_MASK  0x80000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_0_READ_LOCK_MASK 0x80000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_0_READ_LOCK_SHIFT 43
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_1_WRITE_LOCK_MASK  0x100000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_1_WRITE_LOCK_MASK 0x100000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_1_WRITE_LOCK_SHIFT 44
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_1_READ_LOCK_MASK  0x200000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_1_READ_LOCK_MASK 0x200000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_1_READ_LOCK_SHIFT 45
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_2_WRITE_LOCK_MASK  0x400000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_2_WRITE_LOCK_MASK 0x400000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_2_WRITE_LOCK_SHIFT 46
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_2_READ_LOCK_MASK  0x800000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_2_READ_LOCK_MASK 0x800000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_2_READ_LOCK_SHIFT 47
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_3_WRITE_LOCK_MASK  0x1000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_3_WRITE_LOCK_MASK 0x1000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_3_WRITE_LOCK_SHIFT 48
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_3_READ_LOCK_MASK  0x2000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_3_READ_LOCK_MASK 0x2000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_3_READ_LOCK_SHIFT 49
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_4_WRITE_LOCK_MASK  0x4000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_4_WRITE_LOCK_MASK 0x4000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_4_WRITE_LOCK_SHIFT 50
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_4_READ_LOCK_MASK  0x8000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_4_READ_LOCK_MASK 0x8000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_4_READ_LOCK_SHIFT 51
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_5_WRITE_LOCK_MASK  0x10000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_5_WRITE_LOCK_MASK 0x10000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_5_WRITE_LOCK_SHIFT 52
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_5_READ_LOCK_MASK  0x20000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_5_READ_LOCK_MASK 0x20000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_5_READ_LOCK_SHIFT 53
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_6_WRITE_LOCK_MASK  0x40000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_6_WRITE_LOCK_MASK 0x40000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_6_WRITE_LOCK_SHIFT 54
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_6_READ_LOCK_MASK  0x80000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_6_READ_LOCK_MASK 0x80000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_6_READ_LOCK_SHIFT 55
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_7_WRITE_LOCK_MASK  0x100000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_7_WRITE_LOCK_MASK 0x100000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_7_WRITE_LOCK_SHIFT 56
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_7_READ_LOCK_MASK  0x200000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_7_READ_LOCK_MASK 0x200000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_7_READ_LOCK_SHIFT 57
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_WRITE_LOCK_MASK  0x400000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_WRITE_LOCK_MASK 0x400000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_WRITE_LOCK_SHIFT 58
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_READ_LOCK_MASK  0x800000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_READ_LOCK_MASK 0x800000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_READ_LOCK_SHIFT 59
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_WRITE_LOCK_MASK  0x1000000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_WRITE_LOCK_MASK 0x1000000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_WRITE_LOCK_SHIFT 60
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_READ_LOCK_MASK  0x2000000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_READ_LOCK_MASK 0x2000000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_64_READ_LOCK_SHIFT 61
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_WRITE_LOCK_MASK  0x4000000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_WRITE_LOCK_MASK 0x4000000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_WRITE_LOCK_SHIFT 62
 
-#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_READ_LOCK_MASK  0x8000000000000000
+#define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_READ_LOCK_MASK 0x8000000000000000
 #define SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_32_READ_LOCK_SHIFT 63
 
-#define SEP_EFUSE_MAP_LC_STATE_LC_STATE_MASK  0xFF
+#define SEP_EFUSE_MAP_LC_STATE_LC_STATE_MASK 0xFF
 #define SEP_EFUSE_MAP_LC_STATE_LC_STATE_SHIFT 0
 
-#define SEP_EFUSE_MAP_LC_STATE_RSVD_MASK  0xFFFFFF00
+#define SEP_EFUSE_MAP_LC_STATE_RSVD_MASK 0xFFFFFF00
 #define SEP_EFUSE_MAP_LC_STATE_RSVD_SHIFT 8
 
-#define SEP_EFUSE_MAP_SBOOT_DIS_DISABLE_SECURE_BOOT_MASK  0x1
+#define SEP_EFUSE_MAP_SBOOT_DIS_DISABLE_SECURE_BOOT_MASK 0x1
 #define SEP_EFUSE_MAP_SBOOT_DIS_DISABLE_SECURE_BOOT_SHIFT 0
 
-#define SEP_EFUSE_MAP_SBOOT_DIS_RSVD_MASK  0xFFFFFFFE
+#define SEP_EFUSE_MAP_SBOOT_DIS_RSVD_MASK 0xFFFFFFFE
 #define SEP_EFUSE_MAP_SBOOT_DIS_RSVD_SHIFT 1
 
-#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_TRANSIENT_RMA_EN_MASK  0x1
+#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_TRANSIENT_RMA_EN_MASK 0x1
 #define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_TRANSIENT_RMA_EN_SHIFT 0
 
-#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_RSVD_MASK  0xFFFFFFFE
+#define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_RSVD_MASK 0xFFFFFFFE
 #define SEP_EFUSE_MAP_TRANSIENT_RMA_EN_RSVD_SHIFT 1
 
-#define SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_MASK  0x1
+#define SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_MASK 0x1
 #define SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_SHIFT 0
 
-#define SEP_EFUSE_MAP_LC_DISABLE_SOC_DEBUG_MASK  0x2
+#define SEP_EFUSE_MAP_LC_DISABLE_SOC_DEBUG_MASK 0x2
 #define SEP_EFUSE_MAP_LC_DISABLE_SOC_DEBUG_SHIFT 1
 
-#define SEP_EFUSE_MAP_LC_DISABLE_AP_DEBUG_MASK  0x4
+#define SEP_EFUSE_MAP_LC_DISABLE_AP_DEBUG_MASK 0x4
 #define SEP_EFUSE_MAP_LC_DISABLE_AP_DEBUG_SHIFT 2
 
-#define SEP_EFUSE_MAP_LC_DISABLE_AP_TRACE_MASK  0x8
+#define SEP_EFUSE_MAP_LC_DISABLE_AP_TRACE_MASK 0x8
 #define SEP_EFUSE_MAP_LC_DISABLE_AP_TRACE_SHIFT 3
 
-#define SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK  0x10
+#define SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK 0x10
 #define SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT 4
 
-#define SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_MASK  0xFFFFFFE0
+#define SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_MASK 0xFFFFFFE0
 #define SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_SHIFT 5
 
-#define SEP_EFUSE_MAP_LC_DISABLE_FUSE_TEST_MASK  0x100000000
+#define SEP_EFUSE_MAP_LC_DISABLE_FUSE_TEST_MASK 0x100000000
 #define SEP_EFUSE_MAP_LC_DISABLE_FUSE_TEST_SHIFT 32
 
-#define SEP_EFUSE_MAP_LC_DISABLE_SEP_STEST_MASK  0x200000000
+#define SEP_EFUSE_MAP_LC_DISABLE_SEP_STEST_MASK 0x200000000
 #define SEP_EFUSE_MAP_LC_DISABLE_SEP_STEST_SHIFT 33
 
-#define SEP_EFUSE_MAP_LC_DISABLE_SEP_DTEST_MASK  0x400000000
+#define SEP_EFUSE_MAP_LC_DISABLE_SEP_DTEST_MASK 0x400000000
 #define SEP_EFUSE_MAP_LC_DISABLE_SEP_DTEST_SHIFT 34
 
-#define SEP_EFUSE_MAP_LC_DISABLE_AP_STEST_MASK  0x800000000
+#define SEP_EFUSE_MAP_LC_DISABLE_AP_STEST_MASK 0x800000000
 #define SEP_EFUSE_MAP_LC_DISABLE_AP_STEST_SHIFT 35
 
-#define SEP_EFUSE_MAP_LC_DISABLE_AP_DTEST_MASK  0x1000000000
+#define SEP_EFUSE_MAP_LC_DISABLE_AP_DTEST_MASK 0x1000000000
 #define SEP_EFUSE_MAP_LC_DISABLE_AP_DTEST_SHIFT 36
 
-#define SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_MASK  0xFFE000000000
+#define SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_MASK 0xFFE000000000
 #define SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_SHIFT 37
 
-#define SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_MASK  0xFFFF000000000000
+#define SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_MASK 0xFFFF000000000000
 #define SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_SHIFT 48
 
-#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_SELECT_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_SELECT_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_SELECT_SHIFT 0
 
-#define SEP_EFUSE_MAP_STATUS_RPT_RPT_MASK  0x3
+#define SEP_EFUSE_MAP_STATUS_RPT_RPT_MASK 0x3
 #define SEP_EFUSE_MAP_STATUS_RPT_RPT_SHIFT 0
 
-#define SEP_EFUSE_MAP_STATUS_RPT_RESERVED_MASK  0xFFFFFFFC
+#define SEP_EFUSE_MAP_STATUS_RPT_RESERVED_MASK 0xFFFFFFFC
 #define SEP_EFUSE_MAP_STATUS_RPT_RESERVED_SHIFT 2
 
-#define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_ENDIANNESS_CTRL_MASK  0x1
+#define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_ENDIANNESS_CTRL_MASK 0x1
 #define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_ENDIANNESS_CTRL_SHIFT 0
 
-#define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_SWAP_CTRL_MASK  0x3E
+#define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_SWAP_CTRL_MASK 0x3E
 #define SEP_EFUSE_MAP_SEP_ROM_CTRL_ROM_SWAP_CTRL_SHIFT 1
 
-#define SEP_EFUSE_MAP_SEP_ROM_CTRL_RESERVED_MASK  0xFFFFFFC0
+#define SEP_EFUSE_MAP_SEP_ROM_CTRL_RESERVED_MASK 0xFFFFFFC0
 #define SEP_EFUSE_MAP_SEP_ROM_CTRL_RESERVED_SHIFT 6
 
-#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_MASK  0xFF
+#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_MASK 0xFF
 #define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_SHIFT 0
 
-#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SMU_PLL_SYSCLK_MASK  0x7FF00
+#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SMU_PLL_SYSCLK_MASK 0x7FF00
 #define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SMU_PLL_SYSCLK_SHIFT 8
 
-#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_RSVD_MASK  0xFFF80000
+#define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_RSVD_MASK 0xFFF80000
 #define SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_SPI_CONTROL_FIELD_EN_RSVD_SHIFT 19
 
-#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_DISCOVERY_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_DISCOVERY_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_DISCOVERY_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_DQ_TIMING_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_DQ_TIMING_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_DQ_TIMING_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_DQS_TIMING_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_DQS_TIMING_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_DQS_TIMING_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_GATE_LPBK_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_GATE_LPBK_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_GATE_LPBK_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_DLL_SLAVE_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_DLL_SLAVE_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_DLL_SLAVE_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_DLL_MASTER_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_DLL_MASTER_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_DLL_MASTER_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_PHY_MISC_MISC_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_PHY_MISC_MISC_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_PHY_MISC_MISC_SHIFT 0
 
-#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_RB_VALID_TIME_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_RB_VALID_TIME_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_SPI_RB_VALID_TIME_RB_VALID_TIME_SHIFT 0
 
-#define SEP_EFUSE_MAP_RESERVED_LAST_64_RSVD_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_EFUSE_MAP_RESERVED_LAST_64_RSVD_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_EFUSE_MAP_RESERVED_LAST_64_RSVD_SHIFT 0
 
-#define SEP_EFUSE_MAP_RESERVED_LAST_32_RSVD_MASK  0xFFFFFFFF
+#define SEP_EFUSE_MAP_RESERVED_LAST_32_RSVD_MASK 0xFFFFFFFF
 #define SEP_EFUSE_MAP_RESERVED_LAST_32_RSVD_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK  0x1
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK 0x1
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK  0x10
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK 0x10
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_SHIFT 4
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK  0x20
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK 0x20
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_SHIFT 5
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK  0x40
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK 0x40
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_SHIFT 6
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK  0x100
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK 0x100
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_SHIFT 8
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK  0x200
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK 0x200
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_SHIFT 9
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK  0x400
+#define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK 0x400
 #define EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT 10
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK  0xFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK 0xFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK  0x10000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK 0x10000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT 16
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK  0x20000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK 0x20000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT 17
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_MASK  0x40000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_MASK 0x40000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_SHIFT 18
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK  0x1000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK 0x1000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT 24
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK  0x2000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK 0x2000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_SHIFT 25
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK  0x4000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK 0x4000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_SHIFT 26
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK  0x8000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK 0x8000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT 27
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK  0xFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK 0xFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK  0x10000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK 0x10000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT 16
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK  0x1000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK 0x1000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_SHIFT 24
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK  0x2000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK 0x2000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_SHIFT 25
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK  0x4000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK 0x4000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_SHIFT 26
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK  0x10000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK 0x10000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_SHIFT 28
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK  0xFFFFFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK 0xFFFFFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK  0xFFFFFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK 0xFFFFFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK  0xFFFFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK 0xFFFFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK  0x10000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK 0x10000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_SHIFT 28
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK  0xFFFFFFF
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK 0xFFFFFFF
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_SHIFT 0
 
-#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK  0x10000000
+#define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK 0x10000000
 #define EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT 28
 
-#define EFUSE_MMR_RMA_TOKEN_I_TOKEN_MASK  0xFFFFFFFF
+#define EFUSE_MMR_RMA_TOKEN_I_TOKEN_MASK 0xFFFFFFFF
 #define EFUSE_MMR_RMA_TOKEN_I_TOKEN_SHIFT 0
 
-#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_MASK  0xFFFFFFFF
+#define EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_MASK 0xFFFFFFFF
 #define EFUSE_MMR_SEC_DISABLE_TOKEN_I_TOKEN_SHIFT 0
 
-#define EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_MASK  0x1
+#define EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_MASK 0x1
 #define EFUSE_MMR_TOKEN_EOP_RMA_SIP_TOKEN_GO_SHIFT 0
 
-#define EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_MASK  0x100
+#define EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_MASK 0x100
 #define EFUSE_MMR_TOKEN_EOP_RMA_CHIPLET_TOKEN_GO_SHIFT 8
 
-#define EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_MASK  0x10000
+#define EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_MASK 0x10000
 #define EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT 16
 
-#define EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK  0x3F
+#define EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK 0x3F
 #define EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIVIDER_VALUE_MASK  0xFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIVIDER_VALUE_MASK 0xFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIVIDER_VALUE_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DUTYCYCLE_MASK  0xFF00
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DUTYCYCLE_MASK 0xFF00
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DUTYCYCLE_SHIFT 8
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_ENABLE_MASK  0x10000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_ENABLE_MASK 0x10000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_ENABLE_SHIFT 16
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_SET_MASK  0x20000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_SET_MASK 0x20000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_CLOCK_DIV_SET_SHIFT 17
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_CLK_PERIOD_TEN_PS_MASK  0x1FFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_CLK_PERIOD_TEN_PS_MASK 0x1FFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_CTRL_STATUS_1_CLK_PERIOD_TEN_PS_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_0_TCS_CYCLES_MASK  0xFFFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_0_TCS_CYCLES_MASK 0xFFFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_0_TCS_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_TRW_CYCLES_MASK  0x7FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_TRW_CYCLES_MASK 0x7FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_1_TRW_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAS_CYCLES_MASK  0xFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAS_CYCLES_MASK 0xFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAS_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAH_CYCLES_MASK  0xFFFF0000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAH_CYCLES_MASK 0xFFFF0000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_2_TAH_CYCLES_SHIFT 16
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_TCSRST_CYCLES_MASK  0xFFFFFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_TCSRST_CYCLES_MASK 0xFFFFFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_3_TCSRST_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRWH_CYCLES_MASK  0xFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRWH_CYCLES_MASK 0xFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRWH_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRD_CYCLES_MASK  0xFFFF0000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRD_CYCLES_MASK 0xFFFF0000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_4_TRD_CYCLES_SHIFT 16
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_TPW_CYCLES_MASK  0x7FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_TPW_CYCLES_MASK 0x7FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_5_TPW_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_6_TCPPW_CYCLES_MASK  0xFFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_6_TCPPW_CYCLES_MASK 0xFFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_6_TCPPW_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_TPGM_CYCLES_MASK  0x1FFFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_TPGM_CYCLES_MASK 0x1FFFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_7_TPGM_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TWWL_CYCLES_MASK  0xFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TWWL_CYCLES_MASK 0xFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TWWL_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TDS_CYCLES_MASK  0xFFF000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TDS_CYCLES_MASK 0xFFF000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_8_TDS_CYCLES_SHIFT 12
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDH_CYCLES_MASK  0xFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDH_CYCLES_MASK 0xFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDH_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDLES_CYCLES_MASK  0xFFF000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDLES_CYCLES_MASK 0xFFF000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_9_TDLES_CYCLES_SHIFT 12
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_10_TPES_CYCLES_MASK  0x1FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_10_TPES_CYCLES_MASK 0x1FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_10_TPES_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_TCPS_CYCLES_MASK  0x3FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_TCPS_CYCLES_MASK 0x3FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_11_TCPS_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TCPH_CYCLES_MASK  0x1FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TCPH_CYCLES_MASK 0x1FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TCPH_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TPGML_CYCLES_MASK  0x1FFE0000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TPGML_CYCLES_MASK 0x1FFE0000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_12_TPGML_CYCLES_SHIFT 17
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_TPGRD_CYCLES_MASK  0xFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_TPGRD_CYCLES_MASK 0xFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_13_TPGRD_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TPEH_CYCLES_MASK  0x3FFFF
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TPEH_CYCLES_MASK 0x3FFFF
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TPEH_CYCLES_SHIFT 0
 
-#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TRSTS_CYCLES_MASK  0x3FFC0000
+#define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TRSTS_CYCLES_MASK 0x3FFC0000
 #define EFUSE_SHIM_CTRL_SAMSUNG_EFUSE_TIMING_CTRL_14_TRSTS_CYCLES_SHIFT 18
 
-#define AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_SHIFT 0
 
-#define AXIL_MAILBOX_READ_DATA_READ_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define AXIL_MAILBOX_READ_DATA_READ_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define AXIL_MAILBOX_READ_DATA_READ_DATA_SHIFT 0
 
-#define AXIL_MAILBOX_STATUS_EMPTY_MASK  0x1
+#define AXIL_MAILBOX_STATUS_EMPTY_MASK 0x1
 #define AXIL_MAILBOX_STATUS_EMPTY_SHIFT 0
 
-#define AXIL_MAILBOX_STATUS_FULL_MASK  0x2
+#define AXIL_MAILBOX_STATUS_FULL_MASK 0x2
 #define AXIL_MAILBOX_STATUS_FULL_SHIFT 1
 
-#define AXIL_MAILBOX_STATUS_WRITE_LEVEL_ABOVE_THRESH_MASK  0x4
+#define AXIL_MAILBOX_STATUS_WRITE_LEVEL_ABOVE_THRESH_MASK 0x4
 #define AXIL_MAILBOX_STATUS_WRITE_LEVEL_ABOVE_THRESH_SHIFT 2
 
-#define AXIL_MAILBOX_STATUS_READ_LEVEL_ABOVE_THRESH_MASK  0x8
+#define AXIL_MAILBOX_STATUS_READ_LEVEL_ABOVE_THRESH_MASK 0x8
 #define AXIL_MAILBOX_STATUS_READ_LEVEL_ABOVE_THRESH_SHIFT 3
 
-#define AXIL_MAILBOX_ERROR_READ_ERROR_MASK  0x1
+#define AXIL_MAILBOX_ERROR_READ_ERROR_MASK 0x1
 #define AXIL_MAILBOX_ERROR_READ_ERROR_SHIFT 0
 
-#define AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK  0x2
+#define AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK 0x2
 #define AXIL_MAILBOX_ERROR_WRITE_ERROR_SHIFT 1
 
-#define AXIL_MAILBOX_WIRQT_WIRQT_MASK  0xFF
+#define AXIL_MAILBOX_WIRQT_WIRQT_MASK 0xFF
 #define AXIL_MAILBOX_WIRQT_WIRQT_SHIFT 0
 
-#define AXIL_MAILBOX_RIRQT_RIRQT_MASK  0xFF
+#define AXIL_MAILBOX_RIRQT_RIRQT_MASK 0xFF
 #define AXIL_MAILBOX_RIRQT_RIRQT_SHIFT 0
 
-#define AXIL_MAILBOX_IRQS_WTIRQ_MASK  0x1
+#define AXIL_MAILBOX_IRQS_WTIRQ_MASK 0x1
 #define AXIL_MAILBOX_IRQS_WTIRQ_SHIFT 0
 
-#define AXIL_MAILBOX_IRQS_RTIRQ_MASK  0x2
+#define AXIL_MAILBOX_IRQS_RTIRQ_MASK 0x2
 #define AXIL_MAILBOX_IRQS_RTIRQ_SHIFT 1
 
-#define AXIL_MAILBOX_IRQS_EIRQ_MASK  0x4
+#define AXIL_MAILBOX_IRQS_EIRQ_MASK 0x4
 #define AXIL_MAILBOX_IRQS_EIRQ_SHIFT 2
 
-#define AXIL_MAILBOX_IRQEN_WTIRQ_MASK  0x1
+#define AXIL_MAILBOX_IRQEN_WTIRQ_MASK 0x1
 #define AXIL_MAILBOX_IRQEN_WTIRQ_SHIFT 0
 
-#define AXIL_MAILBOX_IRQEN_RTIRQ_MASK  0x2
+#define AXIL_MAILBOX_IRQEN_RTIRQ_MASK 0x2
 #define AXIL_MAILBOX_IRQEN_RTIRQ_SHIFT 1
 
-#define AXIL_MAILBOX_IRQEN_EIRQ_MASK  0x4
+#define AXIL_MAILBOX_IRQEN_EIRQ_MASK 0x4
 #define AXIL_MAILBOX_IRQEN_EIRQ_SHIFT 2
 
-#define AXIL_MAILBOX_IRQP_WTIRQ_MASK  0x1
+#define AXIL_MAILBOX_IRQP_WTIRQ_MASK 0x1
 #define AXIL_MAILBOX_IRQP_WTIRQ_SHIFT 0
 
-#define AXIL_MAILBOX_IRQP_RTIRQ_MASK  0x2
+#define AXIL_MAILBOX_IRQP_RTIRQ_MASK 0x2
 #define AXIL_MAILBOX_IRQP_RTIRQ_SHIFT 1
 
-#define AXIL_MAILBOX_IRQP_EIRQ_MASK  0x4
+#define AXIL_MAILBOX_IRQP_EIRQ_MASK 0x4
 #define AXIL_MAILBOX_IRQP_EIRQ_SHIFT 2
 
-#define AXIL_MAILBOX_CTRL_WFLUSH_MASK  0x1
+#define AXIL_MAILBOX_CTRL_WFLUSH_MASK 0x1
 #define AXIL_MAILBOX_CTRL_WFLUSH_SHIFT 0
 
-#define AXIL_MAILBOX_CTRL_RFLUSH_MASK  0x2
+#define AXIL_MAILBOX_CTRL_RFLUSH_MASK 0x2
 #define AXIL_MAILBOX_CTRL_RFLUSH_SHIFT 1
 
-#define REMAP_REGION_REGION_START_START_ADDR_MASK  0xFFFFFFFFFFF000
+#define REMAP_REGION_REGION_START_START_ADDR_MASK 0xFFFFFFFFFFF000
 #define REMAP_REGION_REGION_START_START_ADDR_SHIFT 12
 
-#define REMAP_REGION_REGION_END_END_ADDR_MASK  0xFFFFFFFFFFF000
+#define REMAP_REGION_REGION_END_END_ADDR_MASK 0xFFFFFFFFFFF000
 #define REMAP_REGION_REGION_END_END_ADDR_SHIFT 12
 
-#define REMAP_REGION_REGION_ATTRS_OFFSET_MASK  0xFFFFFFFFFFF000
+#define REMAP_REGION_REGION_ATTRS_OFFSET_MASK 0xFFFFFFFFFFF000
 #define REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT 12
 
-#define REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK  0x4000000000000000
+#define REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK 0x4000000000000000
 #define REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT 62
 
-#define REMAP_REGION_REGION_ATTRS_VALID_MASK  0x8000000000000000
+#define REMAP_REGION_REGION_ATTRS_VALID_MASK 0x8000000000000000
 #define REMAP_REGION_REGION_ATTRS_VALID_SHIFT 63
 
-#define OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK  0xFFFFFFFFFFFFFF
+#define OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK 0xFFFFFFFFFFFFFF
 #define OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT 0
 
-#define FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK  0x1
+#define FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK 0x1
 #define FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_SHIFT 0
 
-#define FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_MASK  0x2
+#define FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_MASK 0x2
 #define FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_SHIFT 1
 
-#define FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK  0x10
+#define FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK 0x10
 #define FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_SHIFT 4
 
-#define FILTER_CTRL_FILTER_CONFIG_ALLOW_NS_MASK  0x100
+#define FILTER_CTRL_FILTER_CONFIG_ALLOW_NS_MASK 0x100
 #define FILTER_CTRL_FILTER_CONFIG_ALLOW_NS_SHIFT 8
 
-#define FILTER_CTRL_FILTER_CONFIG_DATA_BUS_WIDTH_MASK  0x7000
+#define FILTER_CTRL_FILTER_CONFIG_DATA_BUS_WIDTH_MASK 0x7000
 #define FILTER_CTRL_FILTER_CONFIG_DATA_BUS_WIDTH_SHIFT 12
 
-#define FILTER_CTRL_FILTER_CONFIG_SRC_ID_MASK  0xF0000
+#define FILTER_CTRL_FILTER_CONFIG_SRC_ID_MASK 0xF0000
 #define FILTER_CTRL_FILTER_CONFIG_SRC_ID_SHIFT 16
 
-#define FILTER_CTRL_FILTER_CONFIG_GROUP_ID_MASK  0xF00000
+#define FILTER_CTRL_FILTER_CONFIG_GROUP_ID_MASK 0xF00000
 #define FILTER_CTRL_FILTER_CONFIG_GROUP_ID_SHIFT 20
 
-#define FILTER_CTRL_FILTER_CONFIG_ALLOW_BURST_MASK  0x1000000
+#define FILTER_CTRL_FILTER_CONFIG_ALLOW_BURST_MASK 0x1000000
 #define FILTER_CTRL_FILTER_CONFIG_ALLOW_BURST_SHIFT 24
 
-#define FILTER_CTRL_FILTER_CONFIG_LOCKED_MASK  0x8000000000000000
+#define FILTER_CTRL_FILTER_CONFIG_LOCKED_MASK 0x8000000000000000
 #define FILTER_CTRL_FILTER_CONFIG_LOCKED_SHIFT 63
 
-#define FILTER_CTRL_START_ADDR_START_ADDR_MASK  0xFFFFFFFFFFFFFF
+#define FILTER_CTRL_START_ADDR_START_ADDR_MASK 0xFFFFFFFFFFFFFF
 #define FILTER_CTRL_START_ADDR_START_ADDR_SHIFT 0
 
-#define FILTER_CTRL_END_ADDR_END_ADDR_MASK  0xFFFFFFFFFFFFFF
+#define FILTER_CTRL_END_ADDR_END_ADDR_MASK 0xFFFFFFFFFFFFFF
 #define FILTER_CTRL_END_ADDR_END_ADDR_SHIFT 0
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SPACC_CG_ENABLE_MASK  0x1
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SPACC_CG_ENABLE_MASK 0x1
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SPACC_CG_ENABLE_SHIFT 0
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_PKA_CG_ENABLE_MASK  0x2
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_PKA_CG_ENABLE_MASK 0x2
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_PKA_CG_ENABLE_SHIFT 1
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_DMA_CG_ENABLE_MASK  0x4
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_DMA_CG_ENABLE_MASK 0x4
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_DMA_CG_ENABLE_SHIFT 2
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_MAILBOX_CG_EN_MASK  0x8
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_MAILBOX_CG_EN_MASK 0x8
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_MAILBOX_CG_EN_SHIFT 3
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FABRIC_CG_ENABLE_MASK  0x10
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FABRIC_CG_ENABLE_MASK 0x10
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FABRIC_CG_ENABLE_SHIFT 4
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_IN_CG_ENABLE_MASK  0x40
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_IN_CG_ENABLE_MASK 0x40
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_IN_CG_ENABLE_SHIFT 6
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SRAM_CG_ENABLE_MASK  0x80
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SRAM_CG_ENABLE_MASK 0x80
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_SRAM_CG_ENABLE_SHIFT 7
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ZEROER_CG_ENABLE_MASK  0x100
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ZEROER_CG_ENABLE_MASK 0x100
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ZEROER_CG_ENABLE_SHIFT 8
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ALIAS_REMAP_CG_ENABLE_MASK  0x200
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ALIAS_REMAP_CG_ENABLE_MASK 0x200
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ALIAS_REMAP_CG_ENABLE_SHIFT 9
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_OUT_CG_ENABLE_MASK  0x400
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_OUT_CG_ENABLE_MASK 0x400
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_FILTER_OUT_CG_ENABLE_SHIFT 10
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_OT_HMAC_CG_ENABLE_MASK  0x800
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_OT_HMAC_CG_ENABLE_MASK 0x800
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_OT_HMAC_CG_ENABLE_SHIFT 11
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ENTROPY_FIFO_CG_ENABLE_MASK  0x1000
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ENTROPY_FIFO_CG_ENABLE_MASK 0x1000
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_ENTROPY_FIFO_CG_ENABLE_SHIFT 12
 
-#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_CG_HYSTERESIS_MASK  0x3F0000
+#define SEP_CPU_CTRL_CLOCK_GATE_CTRL_CG_HYSTERESIS_MASK 0x3F0000
 #define SEP_CPU_CTRL_CLOCK_GATE_CTRL_CG_HYSTERESIS_SHIFT 16
 
-#define SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_CPU_CTRL_REFERENCE_COUNTER_RC_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_TROOT_TIMEOUT_INT_MASK  0x1
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_TROOT_TIMEOUT_INT_MASK 0x1
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_TROOT_TIMEOUT_INT_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SYS_IN_TIMEOUT_INT_MASK  0x2
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SYS_IN_TIMEOUT_INT_MASK 0x2
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SYS_IN_TIMEOUT_INT_SHIFT 1
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SPACC_TIMEOUT_INT_MASK  0x4
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SPACC_TIMEOUT_INT_MASK 0x4
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_SPACC_TIMEOUT_INT_SHIFT 2
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_DMA_DATA_TIMEOUT_INT_MASK  0x8
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_DMA_DATA_TIMEOUT_INT_MASK 0x8
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_DMA_DATA_TIMEOUT_INT_SHIFT 3
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ALIAS_REMAP_TIMEOUT_INT_MASK  0x10
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ALIAS_REMAP_TIMEOUT_INT_MASK 0x10
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ALIAS_REMAP_TIMEOUT_INT_SHIFT 4
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_FILTER_OUT_TIMEOUT_INT_MASK  0x20
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_FILTER_OUT_TIMEOUT_INT_MASK 0x20
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_FILTER_OUT_TIMEOUT_INT_SHIFT 5
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_READ_TIMEOUT_INT_MASK  0x40
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_READ_TIMEOUT_INT_MASK 0x40
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_READ_TIMEOUT_INT_SHIFT 6
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_WRITE_TIMEOUT_INT_MASK  0x80
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_WRITE_TIMEOUT_INT_MASK 0x80
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_ENTROPY_WRITE_TIMEOUT_INT_SHIFT 7
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_INBOUND_MAILBOX_TIMEOUT_INT_MASK  0x100
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_INBOUND_MAILBOX_TIMEOUT_INT_MASK 0x100
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_INBOUND_MAILBOX_TIMEOUT_INT_SHIFT 8
 
-#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_OUTBOUND_MAILBOX_TIMEOUT_INT_MASK  0x200
+#define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_OUTBOUND_MAILBOX_TIMEOUT_INT_MASK 0x200
 #define SEP_CPU_CTRL_TIMEOUT_INTERRUPT_OUTBOUND_MAILBOX_TIMEOUT_INT_SHIFT 9
 
-#define SEP_CPU_CTRL_PKA_CTRL_PKA_DPA_DISABLE_MASK  0x1
+#define SEP_CPU_CTRL_PKA_CTRL_PKA_DPA_DISABLE_MASK 0x1
 #define SEP_CPU_CTRL_PKA_CTRL_PKA_DPA_DISABLE_SHIFT 0
 
-#define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_MASK  0x100
+#define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_MASK 0x100
 #define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_SHIFT 8
 
-#define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_VALID_MASK  0x10000
+#define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_VALID_MASK 0x10000
 #define SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_VALID_SHIFT 16
 
-#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_DISABLE_MASK  0x1
+#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_DISABLE_MASK 0x1
 #define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_DISABLE_SHIFT 0
 
-#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_MASK  0x100
+#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_MASK 0x100
 #define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_SHIFT 8
 
-#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_VLD_MASK  0x10000
+#define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_VLD_MASK 0x10000
 #define SEP_CPU_CTRL_SPACC_CTRL_SPACC_DPA_RAND_VLD_SHIFT 16
 
-#define SEP_CPU_CTRL_TIMEOUT_COUNT_DATA_MASK  0xFFFFFFFFFFFF
+#define SEP_CPU_CTRL_TIMEOUT_COUNT_DATA_MASK 0xFFFFFFFFFFFF
 #define SEP_CPU_CTRL_TIMEOUT_COUNT_DATA_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_TROOT_TIMEOUT_EN_MASK  0x1
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_TROOT_TIMEOUT_EN_MASK 0x1
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_TROOT_TIMEOUT_EN_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_SYS_IN_TIMEOUT_EN_MASK  0x2
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_SYS_IN_TIMEOUT_EN_MASK 0x2
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_SYS_IN_TIMEOUT_EN_SHIFT 1
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_SPACC_TIMEOUT_EN_MASK  0x4
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_SPACC_TIMEOUT_EN_MASK 0x4
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_SPACC_TIMEOUT_EN_SHIFT 2
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_DMA_DATA_TIMEOUT_EN_MASK  0x8
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_DMA_DATA_TIMEOUT_EN_MASK 0x8
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_DMA_DATA_TIMEOUT_EN_SHIFT 3
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ALIAS_REMAP_TIMEOUT_EN_MASK  0x10
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ALIAS_REMAP_TIMEOUT_EN_MASK 0x10
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_ALIAS_REMAP_TIMEOUT_EN_SHIFT 4
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_FILTER_OUT_TIMEOUT_EN_MASK  0x20
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_FILTER_OUT_TIMEOUT_EN_MASK 0x20
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_FILTER_OUT_TIMEOUT_EN_SHIFT 5
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_READ_TIMEOUT_EN_MASK  0x40
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_READ_TIMEOUT_EN_MASK 0x40
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_READ_TIMEOUT_EN_SHIFT 6
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_WRITE_TIMEOUT_EN_MASK  0x80
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_WRITE_TIMEOUT_EN_MASK 0x80
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_ENTROPY_WRITE_TIMEOUT_EN_SHIFT 7
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_INBOUND_MAILBOX_TIMEOUT_EN_MASK  0x100
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_INBOUND_MAILBOX_TIMEOUT_EN_MASK 0x100
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_INBOUND_MAILBOX_TIMEOUT_EN_SHIFT 8
 
-#define SEP_CPU_CTRL_TIMEOUT_ENABLE_OUTBOUND_MAILBOX_TIMEOUT_EN_MASK  0x200
+#define SEP_CPU_CTRL_TIMEOUT_ENABLE_OUTBOUND_MAILBOX_TIMEOUT_EN_MASK 0x200
 #define SEP_CPU_CTRL_TIMEOUT_ENABLE_OUTBOUND_MAILBOX_TIMEOUT_EN_SHIFT 9
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_TROOT_TIMEOUT_CLEAR_MASK  0x1
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_TROOT_TIMEOUT_CLEAR_MASK 0x1
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_TROOT_TIMEOUT_CLEAR_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_SYS_IN_TIMEOUT_CLEAR_MASK  0x2
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_SYS_IN_TIMEOUT_CLEAR_MASK 0x2
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_SYS_IN_TIMEOUT_CLEAR_SHIFT 1
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_SPACC_TIMEOUT_CLEAR_MASK  0x4
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_SPACC_TIMEOUT_CLEAR_MASK 0x4
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_SPACC_TIMEOUT_CLEAR_SHIFT 2
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_DMA_DATA_TIMEOUT_CLEAR_MASK  0x8
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_DMA_DATA_TIMEOUT_CLEAR_MASK 0x8
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_DMA_DATA_TIMEOUT_CLEAR_SHIFT 3
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ALIAS_REMAP_TIMEOUT_CLEAR_MASK  0x10
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ALIAS_REMAP_TIMEOUT_CLEAR_MASK 0x10
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_ALIAS_REMAP_TIMEOUT_CLEAR_SHIFT 4
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_FILTER_OUT_TIMEOUT_CLEAR_MASK  0x20
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_FILTER_OUT_TIMEOUT_CLEAR_MASK 0x20
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_FILTER_OUT_TIMEOUT_CLEAR_SHIFT 5
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_READ_TIMEOUT_CLEAR_MASK  0x40
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_READ_TIMEOUT_CLEAR_MASK 0x40
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_READ_TIMEOUT_CLEAR_SHIFT 6
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_WRITE_TIMEOUT_CLEAR_MASK  0x80
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_WRITE_TIMEOUT_CLEAR_MASK 0x80
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_ENTROPY_WRITE_TIMEOUT_CLEAR_SHIFT 7
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_INBOUND_MAILBOX_TIMEOUT_CLEAR_MASK  0x100
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_INBOUND_MAILBOX_TIMEOUT_CLEAR_MASK 0x100
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_INBOUND_MAILBOX_TIMEOUT_CLEAR_SHIFT 8
 
-#define SEP_CPU_CTRL_TIMEOUT_CLEAR_OUTBOUND_MAILBOX_TIMEOUT_CLEAR_MASK  0x200
+#define SEP_CPU_CTRL_TIMEOUT_CLEAR_OUTBOUND_MAILBOX_TIMEOUT_CLEAR_MASK 0x200
 #define SEP_CPU_CTRL_TIMEOUT_CLEAR_OUTBOUND_MAILBOX_TIMEOUT_CLEAR_SHIFT 9
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_TROOT_TIMEOUT_MODE_MASK  0x3
+#define SEP_CPU_CTRL_TIMEOUT_MODE_TROOT_TIMEOUT_MODE_MASK 0x3
 #define SEP_CPU_CTRL_TIMEOUT_MODE_TROOT_TIMEOUT_MODE_SHIFT 0
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_SYS_IN_TIMEOUT_MODE_MASK  0xC
+#define SEP_CPU_CTRL_TIMEOUT_MODE_SYS_IN_TIMEOUT_MODE_MASK 0xC
 #define SEP_CPU_CTRL_TIMEOUT_MODE_SYS_IN_TIMEOUT_MODE_SHIFT 2
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_SPACC_TIMEOUT_MODE_MASK  0x30
+#define SEP_CPU_CTRL_TIMEOUT_MODE_SPACC_TIMEOUT_MODE_MASK 0x30
 #define SEP_CPU_CTRL_TIMEOUT_MODE_SPACC_TIMEOUT_MODE_SHIFT 4
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_DMA_DATA_TIMEOUT_MODE_MASK  0xC0
+#define SEP_CPU_CTRL_TIMEOUT_MODE_DMA_DATA_TIMEOUT_MODE_MASK 0xC0
 #define SEP_CPU_CTRL_TIMEOUT_MODE_DMA_DATA_TIMEOUT_MODE_SHIFT 6
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_ALIAS_REMAP_TIMEOUT_MODE_MASK  0x300
+#define SEP_CPU_CTRL_TIMEOUT_MODE_ALIAS_REMAP_TIMEOUT_MODE_MASK 0x300
 #define SEP_CPU_CTRL_TIMEOUT_MODE_ALIAS_REMAP_TIMEOUT_MODE_SHIFT 8
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_FILTER_OUT_TIMEOUT_MODE_MASK  0xC00
+#define SEP_CPU_CTRL_TIMEOUT_MODE_FILTER_OUT_TIMEOUT_MODE_MASK 0xC00
 #define SEP_CPU_CTRL_TIMEOUT_MODE_FILTER_OUT_TIMEOUT_MODE_SHIFT 10
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_READ_TIMEOUT_MODE_MASK  0x3000
+#define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_READ_TIMEOUT_MODE_MASK 0x3000
 #define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_READ_TIMEOUT_MODE_SHIFT 12
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_WRITE_TIMEOUT_MODE_MASK  0xC000
+#define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_WRITE_TIMEOUT_MODE_MASK 0xC000
 #define SEP_CPU_CTRL_TIMEOUT_MODE_ENTROPY_WRITE_TIMEOUT_MODE_SHIFT 14
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_INBOUND_MAILBOX_TIMEOUT_MODE_MASK  0x30000
+#define SEP_CPU_CTRL_TIMEOUT_MODE_INBOUND_MAILBOX_TIMEOUT_MODE_MASK 0x30000
 #define SEP_CPU_CTRL_TIMEOUT_MODE_INBOUND_MAILBOX_TIMEOUT_MODE_SHIFT 16
 
-#define SEP_CPU_CTRL_TIMEOUT_MODE_OUTBOUND_MAILBOX_TIMEOUT_MODE_MASK  0xC0000
+#define SEP_CPU_CTRL_TIMEOUT_MODE_OUTBOUND_MAILBOX_TIMEOUT_MODE_MASK 0xC0000
 #define SEP_CPU_CTRL_TIMEOUT_MODE_OUTBOUND_MAILBOX_TIMEOUT_MODE_SHIFT 18
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_SEP_STANDALONE_MASK  0x2000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_SEP_STANDALONE_MASK 0x2000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_SEP_STANDALONE_SHIFT 25
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPACC_EN_MASK  0x4000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPACC_EN_MASK 0x4000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPACC_EN_SHIFT 26
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_PKA_EN_MASK  0x8000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_PKA_EN_MASK 0x8000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_PKA_EN_SHIFT 27
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SRAM_EN_MASK  0x10000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SRAM_EN_MASK 0x10000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SRAM_EN_SHIFT 28
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_DCCM_EN_MASK  0x20000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_DCCM_EN_MASK 0x20000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_DCCM_EN_SHIFT 29
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_ICCM_EN_MASK  0x40000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_ICCM_EN_MASK 0x40000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_ICCM_EN_SHIFT 30
 
-#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPI_EN_MASK  0x80000000
+#define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPI_EN_MASK 0x80000000
 #define SEP_CPU_CTRL_SEP_TEST_CTRL_FAST_SPI_EN_SHIFT 31
 
-#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK  0xFFFFFFFFFFFFFF
+#define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK 0xFFFFFFFFFFFFFF
 #define SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK  0xFFFFFFFFFFFFFF
+#define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK 0xFFFFFFFFFFFFFF
 #define SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK  0xFFFFFFFF
+#define SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK 0xFFFFFFFF
 #define SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_SHIFT 0
 
-#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_ADDR_MASK  0xFFFFFFFFFFFFFF
+#define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_ADDR_MASK 0xFFFFFFFFFFFFFF
 #define SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_ADDR_SHIFT 0
 
-#define SEP_CPU_CTRL_SMU_REGION_SIZE_SIZE_MASK  0xFFFFFFFF
+#define SEP_CPU_CTRL_SMU_REGION_SIZE_SIZE_MASK 0xFFFFFFFF
 #define SEP_CPU_CTRL_SMU_REGION_SIZE_SIZE_SHIFT 0
 
-#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_SMC_FUSE_SENSE_DONE_MASK  0x1
+#define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_SMC_FUSE_SENSE_DONE_MASK 0x1
 #define SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_SMC_FUSE_SENSE_DONE_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_MASK  0x1
+#define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_MASK 0x1
 #define SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_STRAPS_TEST_EN_MASK  0x1
+#define SEP_CPU_CTRL_SEP_STRAPS_TEST_EN_MASK 0x1
 #define SEP_CPU_CTRL_SEP_STRAPS_TEST_EN_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_STRAPS_BYPASS_MEM_REPAIR_MASK  0x2
+#define SEP_CPU_CTRL_SEP_STRAPS_BYPASS_MEM_REPAIR_MASK 0x2
 #define SEP_CPU_CTRL_SEP_STRAPS_BYPASS_MEM_REPAIR_SHIFT 1
 
-#define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_MASK  0xF
+#define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_MASK 0xF
 #define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_SHIFT 0
 
-#define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_MASK  0xF0
+#define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_MASK 0xF0
 #define SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_SHIFT 4
 
-#define SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK  0xFFFFFFFF
+#define SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK 0xFFFFFFFF
 #define SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_NMI_VEC_RSVD_MASK  0x1
+#define SEP_CPU_CTRL_SEP_NMI_VEC_RSVD_MASK 0x1
 #define SEP_CPU_CTRL_SEP_NMI_VEC_RSVD_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK  0xFFFFFFFE
+#define SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK 0xFFFFFFFE
 #define SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_SHIFT 1
 
-#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_MASK  0x1
+#define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_MASK 0x1
 #define SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_SHIFT 0
 
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK  0x3
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK 0x3
 #define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_SHIFT 0
 
-#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK  0x1
+#define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK 0x1
 #define SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_SHIFT 0
 
-#define SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK  0xFFFFFFFF
+#define SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK 0xFFFFFFFF
 #define SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT 0
 
-#define SPI_CONTROLLER_INTR_STATUS_ERROR_MASK  0x1
+#define SPI_CONTROLLER_INTR_STATUS_ERROR_MASK 0x1
 #define SPI_CONTROLLER_INTR_STATUS_ERROR_SHIFT 0
 
-#define SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_MASK  0x10
+#define SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_MASK 0x10
 #define SPI_CONTROLLER_INTR_STATUS_SPI_EVENT_SHIFT 4
 
-#define SPI_CONTROLLER_INTR_ENABLE_ERROR_MASK  0x1
+#define SPI_CONTROLLER_INTR_ENABLE_ERROR_MASK 0x1
 #define SPI_CONTROLLER_INTR_ENABLE_ERROR_SHIFT 0
 
-#define SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK  0x10
+#define SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_MASK 0x10
 #define SPI_CONTROLLER_INTR_ENABLE_SPI_EVENT_SHIFT 4
 
-#define SPI_CONTROLLER_INTR_TEST_ERROR_MASK  0x1
+#define SPI_CONTROLLER_INTR_TEST_ERROR_MASK 0x1
 #define SPI_CONTROLLER_INTR_TEST_ERROR_SHIFT 0
 
-#define SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK  0x10
+#define SPI_CONTROLLER_INTR_TEST_SPI_EVENT_MASK 0x10
 #define SPI_CONTROLLER_INTR_TEST_SPI_EVENT_SHIFT 4
 
-#define SPI_CONTROLLER_CTRL_RX_WATERMARK_MASK  0xFF
+#define SPI_CONTROLLER_CTRL_RX_WATERMARK_MASK 0xFF
 #define SPI_CONTROLLER_CTRL_RX_WATERMARK_SHIFT 0
 
-#define SPI_CONTROLLER_CTRL_TX_WATERMARK_MASK  0xFF00
+#define SPI_CONTROLLER_CTRL_TX_WATERMARK_MASK 0xFF00
 #define SPI_CONTROLLER_CTRL_TX_WATERMARK_SHIFT 8
 
-#define SPI_CONTROLLER_CTRL_OUTPUT_EN_MASK  0x20000000
+#define SPI_CONTROLLER_CTRL_OUTPUT_EN_MASK 0x20000000
 #define SPI_CONTROLLER_CTRL_OUTPUT_EN_SHIFT 29
 
-#define SPI_CONTROLLER_CTRL_SW_RST_MASK  0x40000000
+#define SPI_CONTROLLER_CTRL_SW_RST_MASK 0x40000000
 #define SPI_CONTROLLER_CTRL_SW_RST_SHIFT 30
 
-#define SPI_CONTROLLER_CTRL_SPIEN_MASK  0x80000000
+#define SPI_CONTROLLER_CTRL_SPIEN_MASK 0x80000000
 #define SPI_CONTROLLER_CTRL_SPIEN_SHIFT 31
 
-#define SPI_CONTROLLER_STATUS_TXQD_MASK  0xFF
+#define SPI_CONTROLLER_STATUS_TXQD_MASK 0xFF
 #define SPI_CONTROLLER_STATUS_TXQD_SHIFT 0
 
-#define SPI_CONTROLLER_STATUS_RXQD_MASK  0xFF00
+#define SPI_CONTROLLER_STATUS_RXQD_MASK 0xFF00
 #define SPI_CONTROLLER_STATUS_RXQD_SHIFT 8
 
-#define SPI_CONTROLLER_STATUS_CMDQD_MASK  0xF0000
+#define SPI_CONTROLLER_STATUS_CMDQD_MASK 0xF0000
 #define SPI_CONTROLLER_STATUS_CMDQD_SHIFT 16
 
-#define SPI_CONTROLLER_STATUS_RXWM_MASK  0x100000
+#define SPI_CONTROLLER_STATUS_RXWM_MASK 0x100000
 #define SPI_CONTROLLER_STATUS_RXWM_SHIFT 20
 
-#define SPI_CONTROLLER_STATUS_BYTEORDER_MASK  0x400000
+#define SPI_CONTROLLER_STATUS_BYTEORDER_MASK 0x400000
 #define SPI_CONTROLLER_STATUS_BYTEORDER_SHIFT 22
 
-#define SPI_CONTROLLER_STATUS_RXSTALL_MASK  0x800000
+#define SPI_CONTROLLER_STATUS_RXSTALL_MASK 0x800000
 #define SPI_CONTROLLER_STATUS_RXSTALL_SHIFT 23
 
-#define SPI_CONTROLLER_STATUS_RXEMPTY_MASK  0x1000000
+#define SPI_CONTROLLER_STATUS_RXEMPTY_MASK 0x1000000
 #define SPI_CONTROLLER_STATUS_RXEMPTY_SHIFT 24
 
-#define SPI_CONTROLLER_STATUS_RXFULL_MASK  0x2000000
+#define SPI_CONTROLLER_STATUS_RXFULL_MASK 0x2000000
 #define SPI_CONTROLLER_STATUS_RXFULL_SHIFT 25
 
-#define SPI_CONTROLLER_STATUS_TXWM_MASK  0x4000000
+#define SPI_CONTROLLER_STATUS_TXWM_MASK 0x4000000
 #define SPI_CONTROLLER_STATUS_TXWM_SHIFT 26
 
-#define SPI_CONTROLLER_STATUS_TXSTALL_MASK  0x8000000
+#define SPI_CONTROLLER_STATUS_TXSTALL_MASK 0x8000000
 #define SPI_CONTROLLER_STATUS_TXSTALL_SHIFT 27
 
-#define SPI_CONTROLLER_STATUS_TXEMPTY_MASK  0x10000000
+#define SPI_CONTROLLER_STATUS_TXEMPTY_MASK 0x10000000
 #define SPI_CONTROLLER_STATUS_TXEMPTY_SHIFT 28
 
-#define SPI_CONTROLLER_STATUS_TXFULL_MASK  0x20000000
+#define SPI_CONTROLLER_STATUS_TXFULL_MASK 0x20000000
 #define SPI_CONTROLLER_STATUS_TXFULL_SHIFT 29
 
-#define SPI_CONTROLLER_STATUS_ACTIVE_MASK  0x40000000
+#define SPI_CONTROLLER_STATUS_ACTIVE_MASK 0x40000000
 #define SPI_CONTROLLER_STATUS_ACTIVE_SHIFT 30
 
-#define SPI_CONTROLLER_STATUS_READY_MASK  0x80000000
+#define SPI_CONTROLLER_STATUS_READY_MASK 0x80000000
 #define SPI_CONTROLLER_STATUS_READY_SHIFT 31
 
-#define SPI_CONTROLLER_CFG_CLKDIV_MASK  0xFFFF
+#define SPI_CONTROLLER_CFG_CLKDIV_MASK 0xFFFF
 #define SPI_CONTROLLER_CFG_CLKDIV_SHIFT 0
 
-#define SPI_CONTROLLER_CFG_CSNIDLE_MASK  0xF0000
+#define SPI_CONTROLLER_CFG_CSNIDLE_MASK 0xF0000
 #define SPI_CONTROLLER_CFG_CSNIDLE_SHIFT 16
 
-#define SPI_CONTROLLER_CFG_CSNTRAIL_MASK  0xF00000
+#define SPI_CONTROLLER_CFG_CSNTRAIL_MASK 0xF00000
 #define SPI_CONTROLLER_CFG_CSNTRAIL_SHIFT 20
 
-#define SPI_CONTROLLER_CFG_CSNLEAD_MASK  0xF000000
+#define SPI_CONTROLLER_CFG_CSNLEAD_MASK 0xF000000
 #define SPI_CONTROLLER_CFG_CSNLEAD_SHIFT 24
 
-#define SPI_CONTROLLER_CFG_FULLCYC_MASK  0x20000000
+#define SPI_CONTROLLER_CFG_FULLCYC_MASK 0x20000000
 #define SPI_CONTROLLER_CFG_FULLCYC_SHIFT 29
 
-#define SPI_CONTROLLER_CFG_CPHA_MASK  0x40000000
+#define SPI_CONTROLLER_CFG_CPHA_MASK 0x40000000
 #define SPI_CONTROLLER_CFG_CPHA_SHIFT 30
 
-#define SPI_CONTROLLER_CFG_CPOL_MASK  0x80000000
+#define SPI_CONTROLLER_CFG_CPOL_MASK 0x80000000
 #define SPI_CONTROLLER_CFG_CPOL_SHIFT 31
 
-#define SPI_CONTROLLER_CSID_CSID_MASK  0xFFFFFFFF
+#define SPI_CONTROLLER_CSID_CSID_MASK 0xFFFFFFFF
 #define SPI_CONTROLLER_CSID_CSID_SHIFT 0
 
-#define SPI_CONTROLLER_CMD_LEN_MASK  0x1FF
+#define SPI_CONTROLLER_CMD_LEN_MASK 0x1FF
 #define SPI_CONTROLLER_CMD_LEN_SHIFT 0
 
-#define SPI_CONTROLLER_CMD_CSAAT_MASK  0x200
+#define SPI_CONTROLLER_CMD_CSAAT_MASK 0x200
 #define SPI_CONTROLLER_CMD_CSAAT_SHIFT 9
 
-#define SPI_CONTROLLER_CMD_SPEED_MASK  0xC00
+#define SPI_CONTROLLER_CMD_SPEED_MASK 0xC00
 #define SPI_CONTROLLER_CMD_SPEED_SHIFT 10
 
-#define SPI_CONTROLLER_CMD_DIRECTION_MASK  0x3000
+#define SPI_CONTROLLER_CMD_DIRECTION_MASK 0x3000
 #define SPI_CONTROLLER_CMD_DIRECTION_SHIFT 12
 
-#define SPI_CONTROLLER_RXDATA_RXDATA_MASK  0xFFFFFFFF
+#define SPI_CONTROLLER_RXDATA_RXDATA_MASK 0xFFFFFFFF
 #define SPI_CONTROLLER_RXDATA_RXDATA_SHIFT 0
 
-#define SPI_CONTROLLER_TXDATA_TXDATA_MASK  0xFFFFFFFF
+#define SPI_CONTROLLER_TXDATA_TXDATA_MASK 0xFFFFFFFF
 #define SPI_CONTROLLER_TXDATA_TXDATA_SHIFT 0
 
-#define SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_MASK  0x1
+#define SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_MASK 0x1
 #define SPI_CONTROLLER_ERROR_ENABLE_CMDBUSY_SHIFT 0
 
-#define SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK  0x10
+#define SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_MASK 0x10
 #define SPI_CONTROLLER_ERROR_ENABLE_OVERFLOW_SHIFT 4
 
-#define SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK  0x100
+#define SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_MASK 0x100
 #define SPI_CONTROLLER_ERROR_ENABLE_UNDERFLOW_SHIFT 8
 
-#define SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK  0x1000
+#define SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_MASK 0x1000
 #define SPI_CONTROLLER_ERROR_ENABLE_CMDINVAL_SHIFT 12
 
-#define SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK  0x10000
+#define SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_MASK 0x10000
 #define SPI_CONTROLLER_ERROR_ENABLE_CSIDINVAL_SHIFT 16
 
-#define SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_MASK  0x1
+#define SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_MASK 0x1
 #define SPI_CONTROLLER_ERROR_STATUS_CMDBUSY_SHIFT 0
 
-#define SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK  0x10
+#define SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_MASK 0x10
 #define SPI_CONTROLLER_ERROR_STATUS_OVERFLOW_SHIFT 4
 
-#define SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK  0x100
+#define SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_MASK 0x100
 #define SPI_CONTROLLER_ERROR_STATUS_UNDERFLOW_SHIFT 8
 
-#define SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK  0x1000
+#define SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK 0x1000
 #define SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_SHIFT 12
 
-#define SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK  0x10000
+#define SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_MASK 0x10000
 #define SPI_CONTROLLER_ERROR_STATUS_CSIDINVAL_SHIFT 16
 
-#define SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK  0x100000
+#define SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_MASK 0x100000
 #define SPI_CONTROLLER_ERROR_STATUS_ACCESSINVAL_SHIFT 20
 
-#define SPI_CONTROLLER_EVENT_ENABLE_RXFULL_MASK  0x1
+#define SPI_CONTROLLER_EVENT_ENABLE_RXFULL_MASK 0x1
 #define SPI_CONTROLLER_EVENT_ENABLE_RXFULL_SHIFT 0
 
-#define SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK  0x10
+#define SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_MASK 0x10
 #define SPI_CONTROLLER_EVENT_ENABLE_TXEMPTY_SHIFT 4
 
-#define SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK  0x100
+#define SPI_CONTROLLER_EVENT_ENABLE_RXWM_MASK 0x100
 #define SPI_CONTROLLER_EVENT_ENABLE_RXWM_SHIFT 8
 
-#define SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK  0x1000
+#define SPI_CONTROLLER_EVENT_ENABLE_TXWM_MASK 0x1000
 #define SPI_CONTROLLER_EVENT_ENABLE_TXWM_SHIFT 12
 
-#define SPI_CONTROLLER_EVENT_ENABLE_READY_MASK  0x10000
+#define SPI_CONTROLLER_EVENT_ENABLE_READY_MASK 0x10000
 #define SPI_CONTROLLER_EVENT_ENABLE_READY_SHIFT 16
 
-#define SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK  0x100000
+#define SPI_CONTROLLER_EVENT_ENABLE_IDLE_MASK 0x100000
 #define SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT 20
 
-#define REMAPPED_REGION_MEM_WORD_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define REMAPPED_REGION_MEM_WORD_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define REMAPPED_REGION_MEM_WORD_DATA_SHIFT 0
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_SPI_SEL_MASK  0x1
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_SPI_SEL_MASK 0x1
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_SPI_SEL_SHIFT 0
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CS_FORCE_HIGH_MASK  0x2
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CS_FORCE_HIGH_MASK 0x2
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CS_FORCE_HIGH_SHIFT 1
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_BUSY_MASK  0x100
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_BUSY_MASK 0x100
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_BUSY_SHIFT 8
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_BUSY_MASK  0x200
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_BUSY_MASK 0x200
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_BUSY_SHIFT 9
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_IRQ_MASK  0x10000
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_IRQ_MASK 0x10000
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_CDNS_IRQ_SHIFT 16
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_IRQ_MASK  0x20000
+#define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_IRQ_MASK 0x20000
 #define OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_OT_IRQ_SHIFT 17
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_DATA_MASK  0xFFFFFFFF
+#define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_DATA_MASK 0xFFFFFFFF
 #define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_LOW_DATA_SHIFT 0
 
-#define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_DATA_MASK  0xFFFFFFFF
+#define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_DATA_MASK 0xFFFFFFFF
 #define OCH_SEP_SPI_MUX_CTRL_SPI_CRC_HIGH_DATA_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_ENABLE_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_ENABLE_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_ENABLE_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_RESET_N_N0_SCAN_MASK  0x100
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_RESET_N_N0_SCAN_MASK 0x100
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_RESET_N_N0_SCAN_SHIFT 8
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_CTRL_REG_RESET_N_N0_SCAN_MASK  0x200
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_CTRL_REG_RESET_N_N0_SCAN_MASK 0x200
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_CTRL_REG_RESET_N_N0_SCAN_SHIFT 9
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_REG_RESET_N_N0_SCAN_MASK  0x400
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_REG_RESET_N_N0_SCAN_MASK 0x400
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_REG_RESET_N_N0_SCAN_SHIFT 10
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_AXI_RESET_N_N0_SCAN_MASK  0x800
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_AXI_RESET_N_N0_SCAN_MASK 0x800
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_AXI_RESET_N_N0_SCAN_SHIFT 11
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_RESET_N_N0_SCAN_MASK  0x1000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_RESET_N_N0_SCAN_MASK 0x1000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_PHY_RESET_N_N0_SCAN_SHIFT 12
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_REG_RESET_N_N0_SCAN_MASK  0x2000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_REG_RESET_N_N0_SCAN_MASK 0x2000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_REG_RESET_N_N0_SCAN_SHIFT 13
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_XSPI_REG_RESET_N_N0_SCAN_MASK  0x4000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_XSPI_REG_RESET_N_N0_SCAN_MASK 0x4000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_SPI_XSPI_REG_RESET_N_N0_SCAN_SHIFT 14
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_CLOCK_GATE_ENABLE_MASK  0x80000000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_CLOCK_GATE_ENABLE_MASK 0x80000000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_CLOCK_GATE_ENABLE_SHIFT 31
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_OE_POLARITY_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_OE_POLARITY_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_OE_POLARITY_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_IE_POLARITY_MASK  0x2
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_IE_POLARITY_MASK 0x2
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_ADDR_IE_POLARITY_SHIFT 1
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_OE_POLARITY_MASK  0x4
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_OE_POLARITY_MASK 0x4
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_OE_POLARITY_SHIFT 2
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_IE_POLARITY_MASK  0x8
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_IE_POLARITY_MASK 0x8
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_OUTPUT_CTRL_SLICE_IE_POLARITY_SHIFT 3
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_INHIBIT_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_INHIBIT_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_INHIBIT_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_NUM_LINES_MASK  0x1E
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_NUM_LINES_MASK 0x1E
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_NUM_LINES_SHIFT 1
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_VAL_MASK  0x20
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_VAL_MASK 0x20
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_VAL_SHIFT 5
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_EN_MASK  0x40
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_EN_MASK 0x40
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_EXTOP_EN_SHIFT 6
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_CMD_TYPE_MASK  0x180
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_CMD_TYPE_MASK 0x180
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_CMD_TYPE_SHIFT 7
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_DUMMY_CNT_MASK  0x200
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_DUMMY_CNT_MASK 0x200
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_DUMMY_CNT_SHIFT 9
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_ABNUM_MASK  0x400
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_ABNUM_MASK 0x400
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_ABNUM_SHIFT 10
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_BANK_MASK  0x3800
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_BANK_MASK 0x3800
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_BANK_SHIFT 11
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_EN_MASK  0x4000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_EN_MASK 0x4000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_EN_SHIFT 14
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_VARIANT_MASK  0x8000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_VARIANT_MASK 0x8000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_VARIANT_SHIFT 15
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_OE_MASK  0x10000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_OE_MASK 0x10000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_OE_SHIFT 16
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_CHUNK_SIZE_MASK  0xE0000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_CHUNK_SIZE_MASK 0xE0000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_CHUNK_SIZE_SHIFT 17
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_EN_MASK  0x100000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_EN_MASK 0x100000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_EN_SHIFT 20
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_CHK_MASK  0x200000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_CHK_MASK 0x200000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_DISCOVERY_CTRL_DISCOVERY_SEQ_CRC_UAL_CHUNK_CHK_SHIFT 21
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AW_ADDR_PAD_MASK  0x3
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AW_ADDR_PAD_MASK 0x3
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AW_ADDR_PAD_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AR_ADDR_PAD_MASK  0xC
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AR_ADDR_PAD_MASK 0xC
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_ADDR_CTRL_SPI_AR_ADDR_PAD_SHIFT 2
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_RB_VALID_TIME_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_RB_VALID_TIME_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_RB_VALID_TIME_RB_VALID_TIME_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_PHY_DQ_TIMING_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_PHY_DQ_TIMING_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQ_TIMING_PHY_DQ_TIMING_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_PHY_DQS_TIMING_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_PHY_DQS_TIMING_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DQS_TIMING_PHY_DQS_TIMING_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_PHY_GATE_LPBK_CTRL_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_PHY_GATE_LPBK_CTRL_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_PHY_GATE_LPBK_CTRL_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_PHY_DLL_SLAVE_CTRL_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_PHY_DLL_SLAVE_CTRL_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_PHY_DLL_SLAVE_CTRL_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_PHY_DLL_MASTER_CTRL_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_PHY_DLL_MASTER_CTRL_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_PHY_DLL_MASTER_CTRL_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_DQS_LAST_DATA_DROP_EN_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_DQS_LAST_DATA_DROP_EN_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_DQS_LAST_DATA_DROP_EN_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_WP_ENABLE_MASK  0x2
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_WP_ENABLE_MASK 0x2
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_WP_ENABLE_SHIFT 1
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SDR_EDGE_ACTIVE_MASK  0x4
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SDR_EDGE_ACTIVE_MASK 0x4
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SDR_EDGE_ACTIVE_SHIFT 2
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_RST_DQ3_ENABLE_MASK  0x8
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_RST_DQ3_ENABLE_MASK 0x8
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_RST_DQ3_ENABLE_SHIFT 3
 
-#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SW_CTRLED_HW_RST_OPTION_MASK  0x10
+#define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SW_CTRLED_HW_RST_OPTION_MASK 0x10
 #define OCH_SEP_CDNS_SPI_CTRL_INIT_PHY_MISC_SW_CTRLED_HW_RST_OPTION_SHIFT 4
 
-#define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_IDDQ_EN_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_IDDQ_EN_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_IDDQ_EN_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_SCAN_ATSPEED_TMODE_MASK  0x2
+#define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_SCAN_ATSPEED_TMODE_MASK 0x2
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_SIDEBAND_XSPI_SCAN_ATSPEED_TMODE_SHIFT 1
 
-#define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_PHY_GPIO_REG_STATUS_0_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_PHY_GPIO_REG_STATUS_0_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_0_PHY_GPIO_REG_STATUS_0_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_PHY_GPIO_REG_STATUS_1_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_PHY_GPIO_REG_STATUS_1_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_PHY_GPIO_REG_STATUS_1_PHY_GPIO_REG_STATUS_1_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_BOOT_EN_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_BOOT_EN_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_BOOT_EN_BOOT_EN_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_ENABLE_MASK  0x1
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_ENABLE_MASK 0x1
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_ENABLE_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_CLEAR_MASK  0x100
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_CLEAR_MASK 0x100
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_CTRL_CRC_CLEAR_SHIFT 8
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_DATA_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_DATA_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_LOW_DATA_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_DATA_MASK  0xFFFFFFFF
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_DATA_MASK 0xFFFFFFFF
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CRC_HIGH_DATA_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIVIDER_VALUE_MASK  0xFF
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIVIDER_VALUE_MASK 0xFF
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIVIDER_VALUE_SHIFT 0
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DUTYCYCLE_MASK  0xFF00
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DUTYCYCLE_MASK 0xFF00
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DUTYCYCLE_SHIFT 8
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_ENABLE_MASK  0x10000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_ENABLE_MASK 0x10000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_ENABLE_SHIFT 16
 
-#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_SET_MASK  0x20000
+#define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_SET_MASK 0x20000
 #define OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_CLOCK_DIV_SET_SHIFT 17
 
-#define CTRL_CMD_STAT_CMD_REG0_CMD0_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG0_CMD0_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG0_CMD0_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_REG1_CMD1_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG1_CMD1_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG1_CMD1_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_REG2_CMD2_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG2_CMD2_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG2_CMD2_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_REG3_CMD3_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG3_CMD3_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG3_CMD3_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_REG4_CMD4_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG4_CMD4_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG4_CMD4_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_REG5_CMD5_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_REG5_CMD5_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_REG5_CMD5_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_STATUS_PTR_THRD_STATUS_SEL_MASK  0x7
+#define CTRL_CMD_STAT_CMD_STATUS_PTR_THRD_STATUS_SEL_MASK 0x7
 #define CTRL_CMD_STAT_CMD_STATUS_PTR_THRD_STATUS_SEL_SHIFT 0
 
-#define CTRL_CMD_STAT_CMD_STATUS_CMD_STATUS_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_CMD_STATUS_CMD_STATUS_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_CMD_STATUS_CMD_STATUS_SHIFT 0
 
-#define CTRL_CMD_STAT_CTRL_STATUS_SDMA_BUSY_MASK  0x1
+#define CTRL_CMD_STAT_CTRL_STATUS_SDMA_BUSY_MASK 0x1
 #define CTRL_CMD_STAT_CTRL_STATUS_SDMA_BUSY_SHIFT 0
 
-#define CTRL_CMD_STAT_CTRL_STATUS_MDMA_BUSY_MASK  0x2
+#define CTRL_CMD_STAT_CTRL_STATUS_MDMA_BUSY_MASK 0x2
 #define CTRL_CMD_STAT_CTRL_STATUS_MDMA_BUSY_SHIFT 1
 
-#define CTRL_CMD_STAT_CTRL_STATUS_ACMD_ENG_BUSY_MASK  0x4
+#define CTRL_CMD_STAT_CTRL_STATUS_ACMD_ENG_BUSY_MASK 0x4
 #define CTRL_CMD_STAT_CTRL_STATUS_ACMD_ENG_BUSY_SHIFT 2
 
-#define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_BUSY_MASK  0x8
+#define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_BUSY_MASK 0x8
 #define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_BUSY_SHIFT 3
 
-#define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_MC_BUSY_MASK  0x10
+#define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_MC_BUSY_MASK 0x10
 #define CTRL_CMD_STAT_CTRL_STATUS_GCMD_ENG_MC_BUSY_SHIFT 4
 
-#define CTRL_CMD_STAT_CTRL_STATUS_DISCOVERY_BUSY_MASK  0x40
+#define CTRL_CMD_STAT_CTRL_STATUS_DISCOVERY_BUSY_MASK 0x40
 #define CTRL_CMD_STAT_CTRL_STATUS_DISCOVERY_BUSY_SHIFT 6
 
-#define CTRL_CMD_STAT_CTRL_STATUS_CTRL_BUSY_MASK  0x80
+#define CTRL_CMD_STAT_CTRL_STATUS_CTRL_BUSY_MASK 0x80
 #define CTRL_CMD_STAT_CTRL_STATUS_CTRL_BUSY_SHIFT 7
 
-#define CTRL_CMD_STAT_CTRL_STATUS_INIT_FAIL_MASK  0x300
+#define CTRL_CMD_STAT_CTRL_STATUS_INIT_FAIL_MASK 0x300
 #define CTRL_CMD_STAT_CTRL_STATUS_INIT_FAIL_SHIFT 8
 
-#define CTRL_CMD_STAT_CTRL_STATUS_INIT_COMP_MASK  0x10000
+#define CTRL_CMD_STAT_CTRL_STATUS_INIT_COMP_MASK 0x10000
 #define CTRL_CMD_STAT_CTRL_STATUS_INIT_COMP_SHIFT 16
 
-#define CTRL_CMD_STAT_TRD_STATUS_TRD_BUSY_MASK  0xFF
+#define CTRL_CMD_STAT_TRD_STATUS_TRD_BUSY_MASK 0xFF
 #define CTRL_CMD_STAT_TRD_STATUS_TRD_BUSY_SHIFT 0
 
-#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_0_MASK  0x1000
+#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_0_MASK 0x1000
 #define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_0_SHIFT 12
 
-#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_1_MASK  0x2000
+#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_1_MASK 0x2000
 #define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_1_SHIFT 13
 
-#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_2_MASK  0x4000
+#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_2_MASK 0x4000
 #define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_2_SHIFT 14
 
-#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_3_MASK  0x8000
+#define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_3_MASK 0x8000
 #define CTRL_CMD_STAT_INTR_STATUS_GP_OPEN_DRAIN_3_SHIFT 15
 
-#define CTRL_CMD_STAT_INTR_STATUS_CTRL_IDLE_MASK  0x10000
+#define CTRL_CMD_STAT_INTR_STATUS_CTRL_IDLE_MASK 0x10000
 #define CTRL_CMD_STAT_INTR_STATUS_CTRL_IDLE_SHIFT 16
 
-#define CTRL_CMD_STAT_INTR_STATUS_CDMA_TERR_MASK  0x20000
+#define CTRL_CMD_STAT_INTR_STATUS_CDMA_TERR_MASK 0x20000
 #define CTRL_CMD_STAT_INTR_STATUS_CDMA_TERR_SHIFT 17
 
-#define CTRL_CMD_STAT_INTR_STATUS_DDMA_TERR_MASK  0x40000
+#define CTRL_CMD_STAT_INTR_STATUS_DDMA_TERR_MASK 0x40000
 #define CTRL_CMD_STAT_INTR_STATUS_DDMA_TERR_SHIFT 18
 
-#define CTRL_CMD_STAT_INTR_STATUS_CMD_IGNORED_MASK  0x100000
+#define CTRL_CMD_STAT_INTR_STATUS_CMD_IGNORED_MASK 0x100000
 #define CTRL_CMD_STAT_INTR_STATUS_CMD_IGNORED_SHIFT 20
 
-#define CTRL_CMD_STAT_INTR_STATUS_SDMA_TRIGG_MASK  0x200000
+#define CTRL_CMD_STAT_INTR_STATUS_SDMA_TRIGG_MASK 0x200000
 #define CTRL_CMD_STAT_INTR_STATUS_SDMA_TRIGG_SHIFT 21
 
-#define CTRL_CMD_STAT_INTR_STATUS_SDMA_ERR_MASK  0x400000
+#define CTRL_CMD_STAT_INTR_STATUS_SDMA_ERR_MASK 0x400000
 #define CTRL_CMD_STAT_INTR_STATUS_SDMA_ERR_SHIFT 22
 
-#define CTRL_CMD_STAT_INTR_STATUS_STIG_DONE_MASK  0x800000
+#define CTRL_CMD_STAT_INTR_STATUS_STIG_DONE_MASK 0x800000
 #define CTRL_CMD_STAT_INTR_STATUS_STIG_DONE_SHIFT 23
 
-#define CTRL_CMD_STAT_INTR_STATUS_DIR_CRC_ERR_MASK  0x1000000
+#define CTRL_CMD_STAT_INTR_STATUS_DIR_CRC_ERR_MASK 0x1000000
 #define CTRL_CMD_STAT_INTR_STATUS_DIR_CRC_ERR_SHIFT 24
 
-#define CTRL_CMD_STAT_INTR_STATUS_DIR_DQS_ERR_MASK  0x2000000
+#define CTRL_CMD_STAT_INTR_STATUS_DIR_DQS_ERR_MASK 0x2000000
 #define CTRL_CMD_STAT_INTR_STATUS_DIR_DQS_ERR_SHIFT 25
 
-#define CTRL_CMD_STAT_INTR_STATUS_DIR_CMD_ERR_MASK  0x4000000
+#define CTRL_CMD_STAT_INTR_STATUS_DIR_CMD_ERR_MASK 0x4000000
 #define CTRL_CMD_STAT_INTR_STATUS_DIR_CMD_ERR_SHIFT 26
 
-#define CTRL_CMD_STAT_INTR_STATUS_DIR_ECC_CORR_ERR_MASK  0x8000000
+#define CTRL_CMD_STAT_INTR_STATUS_DIR_ECC_CORR_ERR_MASK 0x8000000
 #define CTRL_CMD_STAT_INTR_STATUS_DIR_ECC_CORR_ERR_SHIFT 27
 
-#define CTRL_CMD_STAT_INTR_STATUS_DIR_DEV_ERR_MASK  0x10000000
+#define CTRL_CMD_STAT_INTR_STATUS_DIR_DEV_ERR_MASK 0x10000000
 #define CTRL_CMD_STAT_INTR_STATUS_DIR_DEV_ERR_SHIFT 28
 
-#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_0_EN_MASK  0x1000
+#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_0_EN_MASK 0x1000
 #define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_0_EN_SHIFT 12
 
-#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_1_EN_MASK  0x2000
+#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_1_EN_MASK 0x2000
 #define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_1_EN_SHIFT 13
 
-#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_2_EN_MASK  0x4000
+#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_2_EN_MASK 0x4000
 #define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_2_EN_SHIFT 14
 
-#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_3_EN_MASK  0x8000
+#define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_3_EN_MASK 0x8000
 #define CTRL_CMD_STAT_INTR_ENABLE_GP_OPEN_DRAIN_3_EN_SHIFT 15
 
-#define CTRL_CMD_STAT_INTR_ENABLE_CTRL_IDLE_EN_MASK  0x10000
+#define CTRL_CMD_STAT_INTR_ENABLE_CTRL_IDLE_EN_MASK 0x10000
 #define CTRL_CMD_STAT_INTR_ENABLE_CTRL_IDLE_EN_SHIFT 16
 
-#define CTRL_CMD_STAT_INTR_ENABLE_CDMA_TERR_EN_MASK  0x20000
+#define CTRL_CMD_STAT_INTR_ENABLE_CDMA_TERR_EN_MASK 0x20000
 #define CTRL_CMD_STAT_INTR_ENABLE_CDMA_TERR_EN_SHIFT 17
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DDMA_TERR_EN_MASK  0x40000
+#define CTRL_CMD_STAT_INTR_ENABLE_DDMA_TERR_EN_MASK 0x40000
 #define CTRL_CMD_STAT_INTR_ENABLE_DDMA_TERR_EN_SHIFT 18
 
-#define CTRL_CMD_STAT_INTR_ENABLE_CMD_IGNORED_EN_MASK  0x100000
+#define CTRL_CMD_STAT_INTR_ENABLE_CMD_IGNORED_EN_MASK 0x100000
 #define CTRL_CMD_STAT_INTR_ENABLE_CMD_IGNORED_EN_SHIFT 20
 
-#define CTRL_CMD_STAT_INTR_ENABLE_SDMA_TRIGG_EN_MASK  0x200000
+#define CTRL_CMD_STAT_INTR_ENABLE_SDMA_TRIGG_EN_MASK 0x200000
 #define CTRL_CMD_STAT_INTR_ENABLE_SDMA_TRIGG_EN_SHIFT 21
 
-#define CTRL_CMD_STAT_INTR_ENABLE_SDMA_ERR_EN_MASK  0x400000
+#define CTRL_CMD_STAT_INTR_ENABLE_SDMA_ERR_EN_MASK 0x400000
 #define CTRL_CMD_STAT_INTR_ENABLE_SDMA_ERR_EN_SHIFT 22
 
-#define CTRL_CMD_STAT_INTR_ENABLE_STIG_DONE_EN_MASK  0x800000
+#define CTRL_CMD_STAT_INTR_ENABLE_STIG_DONE_EN_MASK 0x800000
 #define CTRL_CMD_STAT_INTR_ENABLE_STIG_DONE_EN_SHIFT 23
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DIR_CRC_ERR_EN_MASK  0x1000000
+#define CTRL_CMD_STAT_INTR_ENABLE_DIR_CRC_ERR_EN_MASK 0x1000000
 #define CTRL_CMD_STAT_INTR_ENABLE_DIR_CRC_ERR_EN_SHIFT 24
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DIR_DQS_ERR_EN_MASK  0x2000000
+#define CTRL_CMD_STAT_INTR_ENABLE_DIR_DQS_ERR_EN_MASK 0x2000000
 #define CTRL_CMD_STAT_INTR_ENABLE_DIR_DQS_ERR_EN_SHIFT 25
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DIR_CMD_ERR_EN_MASK  0x4000000
+#define CTRL_CMD_STAT_INTR_ENABLE_DIR_CMD_ERR_EN_MASK 0x4000000
 #define CTRL_CMD_STAT_INTR_ENABLE_DIR_CMD_ERR_EN_SHIFT 26
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DIR_ECC_CORR_ERR_EN_MASK  0x8000000
+#define CTRL_CMD_STAT_INTR_ENABLE_DIR_ECC_CORR_ERR_EN_MASK 0x8000000
 #define CTRL_CMD_STAT_INTR_ENABLE_DIR_ECC_CORR_ERR_EN_SHIFT 27
 
-#define CTRL_CMD_STAT_INTR_ENABLE_DIR_DEV_ERR_EN_MASK  0x10000000
+#define CTRL_CMD_STAT_INTR_ENABLE_DIR_DEV_ERR_EN_MASK 0x10000000
 #define CTRL_CMD_STAT_INTR_ENABLE_DIR_DEV_ERR_EN_SHIFT 28
 
-#define CTRL_CMD_STAT_INTR_ENABLE_INTR_EN_MASK  0x80000000
+#define CTRL_CMD_STAT_INTR_ENABLE_INTR_EN_MASK 0x80000000
 #define CTRL_CMD_STAT_INTR_ENABLE_INTR_EN_SHIFT 31
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD0_COMP_MASK  0x1
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD0_COMP_MASK 0x1
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD0_COMP_SHIFT 0
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD1_COMP_MASK  0x2
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD1_COMP_MASK 0x2
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD1_COMP_SHIFT 1
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD2_COMP_MASK  0x4
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD2_COMP_MASK 0x4
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD2_COMP_SHIFT 2
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD3_COMP_MASK  0x8
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD3_COMP_MASK 0x8
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD3_COMP_SHIFT 3
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD4_COMP_MASK  0x10
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD4_COMP_MASK 0x10
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD4_COMP_SHIFT 4
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD5_COMP_MASK  0x20
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD5_COMP_MASK 0x20
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD5_COMP_SHIFT 5
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD6_COMP_MASK  0x40
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD6_COMP_MASK 0x40
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD6_COMP_SHIFT 6
 
-#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD7_COMP_MASK  0x80
+#define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD7_COMP_MASK 0x80
 #define CTRL_CMD_STAT_TRD_COMP_INTR_STATUS_TRD7_COMP_SHIFT 7
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD0_ERROR_STAT_MASK  0x1
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD0_ERROR_STAT_MASK 0x1
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD0_ERROR_STAT_SHIFT 0
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD1_ERROR_STAT_MASK  0x2
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD1_ERROR_STAT_MASK 0x2
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD1_ERROR_STAT_SHIFT 1
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD2_ERROR_STAT_MASK  0x4
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD2_ERROR_STAT_MASK 0x4
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD2_ERROR_STAT_SHIFT 2
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD3_ERROR_STAT_MASK  0x8
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD3_ERROR_STAT_MASK 0x8
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD3_ERROR_STAT_SHIFT 3
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD4_ERROR_STAT_MASK  0x10
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD4_ERROR_STAT_MASK 0x10
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD4_ERROR_STAT_SHIFT 4
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD5_ERROR_STAT_MASK  0x20
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD5_ERROR_STAT_MASK 0x20
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD5_ERROR_STAT_SHIFT 5
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD6_ERROR_STAT_MASK  0x40
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD6_ERROR_STAT_MASK 0x40
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD6_ERROR_STAT_SHIFT 6
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD7_ERROR_STAT_MASK  0x80
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD7_ERROR_STAT_MASK 0x80
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_STATUS_TRD7_ERROR_STAT_SHIFT 7
 
-#define CTRL_CMD_STAT_TRD_ERROR_INTR_EN_TRD_ERROR_INTR_EN_MASK  0xFF
+#define CTRL_CMD_STAT_TRD_ERROR_INTR_EN_TRD_ERROR_INTR_EN_MASK 0xFF
 #define CTRL_CMD_STAT_TRD_ERROR_INTR_EN_TRD_ERROR_INTR_EN_SHIFT 0
 
-#define CTRL_CMD_STAT_DMA_TARGET_ERROR_L_TARGET_ERR_L_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_DMA_TARGET_ERROR_L_TARGET_ERR_L_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_DMA_TARGET_ERROR_L_TARGET_ERR_L_SHIFT 0
 
-#define CTRL_CMD_STAT_DMA_TARGET_ERROR_H_TARGET_ERR_H_MASK  0xFFFFFFFF
+#define CTRL_CMD_STAT_DMA_TARGET_ERROR_H_TARGET_ERR_H_MASK 0xFFFFFFFF
 #define CTRL_CMD_STAT_DMA_TARGET_ERROR_H_TARGET_ERR_H_SHIFT 0
 
-#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_DQS_ERR_MASK  0x1
+#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_DQS_ERR_MASK 0x1
 #define CTRL_CMD_STAT_BOOT_STATUS_BOOT_DQS_ERR_SHIFT 0
 
-#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_CRC_ERR_MASK  0x2
+#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_CRC_ERR_MASK 0x2
 #define CTRL_CMD_STAT_BOOT_STATUS_BOOT_CRC_ERR_SHIFT 1
 
-#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_BUS_ERR_MASK  0x4
+#define CTRL_CMD_STAT_BOOT_STATUS_BOOT_BUS_ERR_MASK 0x4
 #define CTRL_CMD_STAT_BOOT_STATUS_BOOT_BUS_ERR_SHIFT 2
 
-#define CTRL_CFG_COMMON_LONG_POLLING_LONG_POLLING_MASK  0xFFFF
+#define CTRL_CFG_COMMON_LONG_POLLING_LONG_POLLING_MASK 0xFFFF
 #define CTRL_CFG_COMMON_LONG_POLLING_LONG_POLLING_SHIFT 0
 
-#define CTRL_CFG_COMMON_SHORT_POLLING_SHORT_POLLING_MASK  0xFFFF
+#define CTRL_CFG_COMMON_SHORT_POLLING_SHORT_POLLING_MASK 0xFFFF
 #define CTRL_CFG_COMMON_SHORT_POLLING_SHORT_POLLING_SHIFT 0
 
-#define CTRL_CFG_COMMON_CTRL_CONFIG_CONT_ON_ERR_MASK  0x8
+#define CTRL_CFG_COMMON_CTRL_CONFIG_CONT_ON_ERR_MASK 0x8
 #define CTRL_CFG_COMMON_CTRL_CONFIG_CONT_ON_ERR_SHIFT 3
 
-#define CTRL_CFG_COMMON_CTRL_CONFIG_WORK_MODE_MASK  0x60
+#define CTRL_CFG_COMMON_CTRL_CONFIG_WORK_MODE_MASK 0x60
 #define CTRL_CFG_COMMON_CTRL_CONFIG_WORK_MODE_SHIFT 5
 
-#define CTRL_CFG_COMMON_DMA_SETTINGS_BURST_SEL_MASK  0xFF
+#define CTRL_CFG_COMMON_DMA_SETTINGS_BURST_SEL_MASK 0xFF
 #define CTRL_CFG_COMMON_DMA_SETTINGS_BURST_SEL_SHIFT 0
 
-#define CTRL_CFG_COMMON_DMA_SETTINGS_OTE_MASK  0x10000
+#define CTRL_CFG_COMMON_DMA_SETTINGS_OTE_MASK 0x10000
 #define CTRL_CFG_COMMON_DMA_SETTINGS_OTE_SHIFT 16
 
-#define CTRL_CFG_COMMON_DMA_SETTINGS_SDMA_ERR_RSP_MASK  0x20000
+#define CTRL_CFG_COMMON_DMA_SETTINGS_SDMA_ERR_RSP_MASK 0x20000
 #define CTRL_CFG_COMMON_DMA_SETTINGS_SDMA_ERR_RSP_SHIFT 17
 
-#define CTRL_CFG_COMMON_DMA_SETTINGS_WORD_SIZE_MASK  0xC0000
+#define CTRL_CFG_COMMON_DMA_SETTINGS_WORD_SIZE_MASK 0xC0000
 #define CTRL_CFG_COMMON_DMA_SETTINGS_WORD_SIZE_SHIFT 18
 
-#define CTRL_CFG_COMMON_SDMA_SIZE_SDMA_SIZE_MASK  0xFFFFFFFF
+#define CTRL_CFG_COMMON_SDMA_SIZE_SDMA_SIZE_MASK 0xFFFFFFFF
 #define CTRL_CFG_COMMON_SDMA_SIZE_SDMA_SIZE_SHIFT 0
 
-#define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_TRD_MASK  0x7
+#define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_TRD_MASK 0x7
 #define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_TRD_SHIFT 0
 
-#define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_DIR_MASK  0x100
+#define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_DIR_MASK 0x100
 #define CTRL_CFG_COMMON_SDMA_TRD_INFO_SDMA_DIR_SHIFT 8
 
-#define CTRL_CFG_COMMON_SDMA_ADDR0_SDMA_ADDR_L_MASK  0xFFFFFFFF
+#define CTRL_CFG_COMMON_SDMA_ADDR0_SDMA_ADDR_L_MASK 0xFFFFFFFF
 #define CTRL_CFG_COMMON_SDMA_ADDR0_SDMA_ADDR_L_SHIFT 0
 
-#define CTRL_CFG_COMMON_SDMA_ADDR1_SDMA_ADDR_H_MASK  0xFFFFFFFF
+#define CTRL_CFG_COMMON_SDMA_ADDR1_SDMA_ADDR_H_MASK 0xFFFFFFFF
 #define CTRL_CFG_COMMON_SDMA_ADDR1_SDMA_ADDR_H_SHIFT 0
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_MASK  0x1
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_MASK 0x1
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_SHIFT 0
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_TYPE_MASK  0x2
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_TYPE_MASK 0x2
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_REQ_TYPE_SHIFT 1
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_COMP_MASK  0x4
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_COMP_MASK 0x4
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_COMP_SHIFT 2
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_FAIL_MASK  0x18
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_FAIL_MASK 0x18
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_FAIL_SHIFT 3
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_INHIBIT_MASK  0x20
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_INHIBIT_MASK 0x20
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_INHIBIT_SHIFT 5
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_VAL_MASK  0x40
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_VAL_MASK 0x40
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_VAL_SHIFT 6
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_EN_MASK  0x80
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_EN_MASK 0x80
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_EXTOP_EN_SHIFT 7
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_CMD_TYPE_MASK  0x300
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_CMD_TYPE_MASK 0x300
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_CMD_TYPE_SHIFT 8
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_DUMMY_CNT_MASK  0x400
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_DUMMY_CNT_MASK 0x400
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_DUMMY_CNT_SHIFT 10
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_ABNUM_MASK  0x800
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_ABNUM_MASK 0x800
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_ABNUM_SHIFT 11
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_NUM_LINES_MASK  0xF000
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_NUM_LINES_MASK 0xF000
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_NUM_LINES_SHIFT 12
 
-#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_BANK_MASK  0x70000
+#define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_BANK_MASK 0x70000
 #define CTRL_CFG_COMMON_DISCOVERY_CONTROL_DISCOVERY_BANK_SHIFT 16
 
-#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_MASK  0xFF
+#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_MASK 0xFF
 #define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_SHIFT 0
 
-#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_MB_VAL_MASK  0xFF00
+#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_MB_VAL_MASK 0xFF00
 #define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_EN_MB_VAL_SHIFT 8
 
-#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_DIS_MB_VAL_MASK  0xFF0000
+#define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_DIS_MB_VAL_MASK 0xFF0000
 #define CMN_SEQ_REGS_XIP_MODE_CFG_XIP_DIS_MB_VAL_SHIFT 16
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_RD_MASK  0xF
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_RD_MASK 0xF
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_RD_SHIFT 0
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_PGM_MASK  0xF0
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_PGM_MASK 0xF0
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_PAGE_SIZE_PGM_SHIFT 4
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_EN_MASK  0x100
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_EN_MASK 0x100
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_EN_SHIFT 8
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_VARIANT_MASK  0x200
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_VARIANT_MASK 0x200
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_VARIANT_SHIFT 9
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_OE_MASK  0x400
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_OE_MASK 0x400
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_OE_SHIFT 10
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_CHUNK_SIZE_MASK  0x7000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_CHUNK_SIZE_MASK 0x7000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_CHUNK_SIZE_SHIFT 12
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_EN_MASK  0x10000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_EN_MASK 0x10000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_EN_SHIFT 16
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_CHK_MASK  0x20000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_CHK_MASK 0x20000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_CRC_UAL_CHUNK_CHK_SHIFT 17
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TCMS_EN_MASK  0x40000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TCMS_EN_MASK 0x40000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TCMS_EN_SHIFT 18
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_SWAP_MASK  0x100000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_SWAP_MASK 0x100000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_SWAP_SHIFT 20
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_PER_ADDR_MASK  0x200000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_PER_ADDR_MASK 0x200000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_DATA_PER_ADDR_SHIFT 21
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TYPE_MASK  0x1800000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TYPE_MASK 0x1800000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_SEQ_TYPE_SHIFT 23
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_SIZE_EXT_MASK  0x1FF
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_SIZE_EXT_MASK 0x1FF
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_SIZE_EXT_SHIFT 0
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_CA_SIZE_MASK  0x10000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_CA_SIZE_MASK 0x10000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_CA_SIZE_SHIFT 16
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_PER_BLOCK_MASK  0x7000000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_PER_BLOCK_MASK 0x7000000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PAGE_PER_BLOCK_SHIFT 24
 
-#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PLANE_CNT_MASK  0x30000000
+#define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PLANE_CNT_MASK 0x30000000
 #define CMN_SEQ_REGS_GLOBAL_SEQ_CFG_1_SEQ_PLANE_CNT_SHIFT 28
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_BANK_NUM_MASK  0x7
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_BANK_NUM_MASK 0x7
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_BANK_NUM_SHIFT 0
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RWDS_CAP_EN_MASK  0x10
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RWDS_CAP_EN_MASK 0x10
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RWDS_CAP_EN_SHIFT 4
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_EN_MASK  0x100
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_EN_MASK 0x100
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_EN_SHIFT 8
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_DIS_MASK  0x200
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_DIS_MASK 0x200
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_MODE_BIT_XIP_DIS_SHIFT 9
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RMP_ADDR_EN_MASK  0x1000
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RMP_ADDR_EN_MASK 0x1000
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_RMP_ADDR_EN_SHIFT 12
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_ADDR_MASK_MASK  0x1FFF0000
+#define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_ADDR_MASK_MASK 0x1FFF0000
 #define CMN_SEQ_REGS_DIRECT_ACCESS_CFG_DAC_ADDR_MASK_SHIFT 16
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_RMP_ADDR_VAL_MASK  0xFFFFFFFF
+#define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_RMP_ADDR_VAL_MASK 0xFFFFFFFF
 #define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_RMP_ADDR_VAL_SHIFT 0
 
-#define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_RMP_ADDR_VAL_1_MASK  0xFFFFFFFF
+#define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_RMP_ADDR_VAL_1_MASK 0xFFFFFFFF
 #define CMN_SEQ_REGS_DIRECT_ACCESS_RMP_1_RMP_ADDR_VAL_1_SHIFT 0
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD1_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD1_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD1_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_EN_MASK  0x10000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_EN_MASK 0x10000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD0_EN_SHIFT 16
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_IOS_MASK  0xC0000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_IOS_MASK 0xC0000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_IOS_SHIFT 18
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EDGE_MASK  0x200000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EDGE_MASK 0x200000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EDGE_SHIFT 21
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EN_MASK  0x400000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EN_MASK 0x400000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_DATA_EN_SHIFT 22
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_IOS_MASK  0x3000000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_IOS_MASK 0x3000000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_IOS_SHIFT 24
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_EDGE_MASK  0x10000000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_EDGE_MASK 0x10000000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_0_RST_SEQ_P1_CMD_EDGE_SHIFT 28
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_EN_MASK  0x1
+#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_EN_MASK 0x1
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_EN_SHIFT 0
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_EN_MASK  0x2
+#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_EN_MASK 0x2
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_EN_SHIFT 1
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD0_EXT_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_VAL_MASK  0xFF0000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_VAL_MASK 0xFF0000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_CMD1_EXT_VAL_SHIFT 16
 
-#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_DATA_VAL_MASK  0xFF000000
+#define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_DATA_VAL_MASK 0xFF000000
 #define DEV_SEQ_REGS_RST_SEQ_CFG_1_RST_SEQ_P1_DATA_VAL_SHIFT 24
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_IOS_MASK  0x300
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_IOS_MASK 0x300
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_IOS_SHIFT 8
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EDGE_MASK  0x800
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EDGE_MASK 0x800
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EDGE_SHIFT 11
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_CNT_MASK  0x7000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_CNT_MASK 0x7000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_CNT_SHIFT 12
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_EN_MASK  0x8000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_EN_MASK 0x8000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_EN_SHIFT 15
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_VAL_MASK  0xFF0000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_VAL_MASK 0xFF0000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_CMD_EXT_VAL_SHIFT 16
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_IOS_MASK  0x3000000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_IOS_MASK 0x3000000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_IOS_SHIFT 24
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_EDGE_MASK  0x10000000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_EDGE_MASK 0x10000000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_0_ERSS_SEQ_P1_ADDR_EDGE_SHIFT 28
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_1_ERSS_SEQ_P1_SECT_SIZE_MASK  0x1F
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_1_ERSS_SEQ_P1_SECT_SIZE_MASK 0x1F
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_1_ERSS_SEQ_P1_SECT_SIZE_SHIFT 0
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_IOS_MASK  0x300
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_IOS_MASK 0x300
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_IOS_SHIFT 8
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EDGE_MASK  0x800
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EDGE_MASK 0x800
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EDGE_SHIFT 11
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_EN_MASK  0x8000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_EN_MASK 0x8000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_EN_SHIFT 15
 
-#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_VAL_MASK  0xFF0000
+#define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_VAL_MASK 0xFF0000
 #define DEV_SEQ_REGS_ERS_SEQ_CFG_2_ERSA_SEQ_P1_CMD_EXT_VAL_SHIFT 16
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_IOS_MASK  0x300
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_IOS_MASK 0x300
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_IOS_SHIFT 8
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_EDGE_MASK  0x800
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_EDGE_MASK 0x800
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_CMD_EDGE_SHIFT 11
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_CNT_MASK  0x7000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_CNT_MASK 0x7000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_CNT_SHIFT 12
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_IOS_MASK  0x30000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_IOS_MASK 0x30000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_IOS_SHIFT 16
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_EDGE_MASK  0x80000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_EDGE_MASK 0x80000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_ADDR_EDGE_SHIFT 19
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_IOS_MASK  0x300000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_IOS_MASK 0x300000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_IOS_SHIFT 20
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_EDGE_MASK  0x800000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_EDGE_MASK 0x800000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DATA_EDGE_SHIFT 23
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DUMMY_CNT_MASK  0x3F000000
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DUMMY_CNT_MASK 0x3F000000
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_0_PROG_SEQ_P1_DUMMY_CNT_SHIFT 24
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_EN_MASK  0x1
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_EN_MASK 0x1
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_EN_SHIFT 0
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_1_PROG_SEQ_P1_CMD_EXT_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_TARGET_MASK  0x1
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_TARGET_MASK 0x1
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_TARGET_SHIFT 0
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_BURST_TYPE_MASK  0x2
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_BURST_TYPE_MASK 0x2
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_BURST_TYPE_SHIFT 1
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_MASK_CMD_MOD_MASK  0x4
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_MASK_CMD_MOD_MASK 0x4
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_MASK_CMD_MOD_SHIFT 2
 
-#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_LATENCY_CNT_MASK  0x3F00
+#define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_LATENCY_CNT_MASK 0x3F00
 #define DEV_SEQ_REGS_PROG_SEQ_CFG_2_PROG_SEQ_P2_LATENCY_CNT_SHIFT 8
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_IOS_MASK  0x300
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_IOS_MASK 0x300
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_IOS_SHIFT 8
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_EDGE_MASK  0x800
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_EDGE_MASK 0x800
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_CMD_EDGE_SHIFT 11
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_CNT_MASK  0x7000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_CNT_MASK 0x7000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_CNT_SHIFT 12
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_IOS_MASK  0x30000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_IOS_MASK 0x30000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_IOS_SHIFT 16
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_EDGE_MASK  0x80000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_EDGE_MASK 0x80000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_ADDR_EDGE_SHIFT 19
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_IOS_MASK  0x300000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_IOS_MASK 0x300000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_IOS_SHIFT 20
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_EDGE_MASK  0x800000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_EDGE_MASK 0x800000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DATA_EDGE_SHIFT 23
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DUMMY_CNT_MASK  0x3F000000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DUMMY_CNT_MASK 0x3F000000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_0_READ_SEQ_P1_DUMMY_CNT_SHIFT 24
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_EN_MASK  0x1
+#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_EN_MASK 0x1
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_EN_SHIFT 0
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CACHE_RANDOM_READ_EN_MASK  0x10
+#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CACHE_RANDOM_READ_EN_MASK 0x10
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CACHE_RANDOM_READ_EN_SHIFT 4
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_CMD_EXT_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_DUMMY_CNT_MASK  0x3F000000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_DUMMY_CNT_MASK 0x3F000000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_DUMMY_CNT_SHIFT 24
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_EN_MASK  0x80000000
+#define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_EN_MASK 0x80000000
 #define DEV_SEQ_REGS_READ_SEQ_CFG_1_READ_SEQ_P1_MB_EN_SHIFT 31
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_TARGET_MASK  0x1
+#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_TARGET_MASK 0x1
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_TARGET_SHIFT 0
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_BURST_TYPE_MASK  0x2
+#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_BURST_TYPE_MASK 0x2
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_BURST_TYPE_SHIFT 1
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_MASK_CMD_MOD_MASK  0x4
+#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_MASK_CMD_MOD_MASK 0x4
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_MASK_CMD_MOD_SHIFT 2
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_HF_BOUND_EN_MASK  0x8
+#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_HF_BOUND_EN_MASK 0x8
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_HF_BOUND_EN_SHIFT 3
 
-#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_LATENCY_CNT_MASK  0x3F00
+#define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_LATENCY_CNT_MASK 0x3F00
 #define DEV_SEQ_REGS_READ_SEQ_CFG_2_READ_SEQ_P2_LATENCY_CNT_SHIFT 8
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_IOS_MASK  0x300
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_IOS_MASK 0x300
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_IOS_SHIFT 8
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EDGE_MASK  0x800
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EDGE_MASK 0x800
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EDGE_SHIFT 11
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_EN_MASK  0x8000
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_EN_MASK 0x8000
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_EN_SHIFT 15
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_VAL_MASK  0xFF0000
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_VAL_MASK 0xFF0000
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_CMD_EXT_VAL_SHIFT 16
 
-#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_EN_MASK  0x1000000
+#define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_EN_MASK 0x1000000
 #define DEV_SEQ_REGS_WE_SEQ_CFG_0_WE_SEQ_P1_EN_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_IOS_MASK  0x3
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_IOS_MASK 0x3
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_IOS_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EDGE_MASK  0x10
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EDGE_MASK 0x10
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EDGE_SHIFT 4
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EXT_EN_MASK  0x20
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EXT_EN_MASK 0x20
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_CMD_EXT_EN_SHIFT 5
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_CNT_MASK  0x300
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_CNT_MASK 0x300
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_CNT_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_IOS_MASK  0xC00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_IOS_MASK 0xC00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_IOS_SHIFT 10
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_EDGE_MASK  0x1000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_EDGE_MASK 0x1000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_ADDR_EDGE_SHIFT 12
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_IOS_MASK  0x300000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_IOS_MASK 0x300000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_IOS_SHIFT 20
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_EDGE_MASK  0x400000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_EDGE_MASK 0x400000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_0_STAT_SEQ_P1_DATA_EDGE_SHIFT 22
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_DUMMY_CNT_MASK  0x3F
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_DUMMY_CNT_MASK 0x3F
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_DUMMY_CNT_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_ADDR_EN_MASK  0x40
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_ADDR_EN_MASK 0x40
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_DEV_RDY_ADDR_EN_SHIFT 6
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_DUMMY_CNT_MASK  0x3F0000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_DUMMY_CNT_MASK 0x3F0000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_DUMMY_CNT_SHIFT 16
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_ADDR_EN_MASK  0x400000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_ADDR_EN_MASK 0x400000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_PROG_FAIL_ADDR_EN_SHIFT 22
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_DUMMY_CNT_MASK  0x3F000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_DUMMY_CNT_MASK 0x3F000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_DUMMY_CNT_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_ADDR_EN_MASK  0x40000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_ADDR_EN_MASK 0x40000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_1_STAT_SEQ_P1_ERS_FAIL_ADDR_EN_SHIFT 30
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_DEV_RDY_CMD_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_DEV_RDY_CMD_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_DEV_RDY_CMD_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_ERS_FAIL_CMD_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_ERS_FAIL_CMD_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_ERS_FAIL_CMD_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_PROG_FAIL_CMD_VAL_MASK  0xFF000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_PROG_FAIL_CMD_VAL_MASK 0xFF000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_2_STAT_SEQ_P1_PROG_FAIL_CMD_VAL_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_DEV_RDY_CMD_EXT_VAL_MASK  0xFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_DEV_RDY_CMD_EXT_VAL_MASK 0xFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_DEV_RDY_CMD_EXT_VAL_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_ERS_FAIL_CMD_EXT_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_ERS_FAIL_CMD_EXT_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_ERS_FAIL_CMD_EXT_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_PROG_FAIL_CMD_EXT_VAL_MASK  0xFF000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_PROG_FAIL_CMD_EXT_VAL_MASK 0xFF000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_3_STAT_SEQ_P1_PROG_FAIL_CMD_EXT_VAL_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_MASK_CMD_MOD_MASK  0x4
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_MASK_CMD_MOD_MASK 0x4
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_MASK_CMD_MOD_SHIFT 2
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_LATENCY_CNT_MASK  0x3F00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_LATENCY_CNT_MASK 0x3F00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_4_STAT_SEQ_P2_LATENCY_CNT_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_IDX_MASK  0xF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_IDX_MASK 0xF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_IDX_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_VAL_MASK  0x10
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_VAL_MASK 0x10
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_VAL_SHIFT 4
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_SIZE_MASK  0x20
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_SIZE_MASK 0x20
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_SIZE_SHIFT 5
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_EN_MASK  0x40
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_EN_MASK 0x40
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_DEV_RDY_EN_SHIFT 6
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_IDX_MASK  0xF00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_IDX_MASK 0xF00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_IDX_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_VAL_MASK  0x1000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_VAL_MASK 0x1000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_VAL_SHIFT 12
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_SIZE_MASK  0x2000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_SIZE_MASK 0x2000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_SIZE_SHIFT 13
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_EN_MASK  0x4000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_EN_MASK 0x4000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_ERS_FAIL_EN_SHIFT 14
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_IDX_MASK  0xF000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_IDX_MASK 0xF000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_IDX_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_VAL_MASK  0x10000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_VAL_MASK 0x10000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_VAL_SHIFT 28
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_SIZE_MASK  0x20000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_SIZE_MASK 0x20000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_SIZE_SHIFT 29
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_EN_MASK  0x40000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_EN_MASK 0x40000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_5_STAT_SEQ_PROG_FAIL_EN_SHIFT 30
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_7_STAT_SEQ_DEV_RDY_ADDR_MASK  0xFFFFFFFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_7_STAT_SEQ_DEV_RDY_ADDR_MASK 0xFFFFFFFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_7_STAT_SEQ_DEV_RDY_ADDR_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_8_STAT_SEQ_PROG_FAIL_ADDR_MASK  0xFFFFFFFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_8_STAT_SEQ_PROG_FAIL_ADDR_MASK 0xFFFFFFFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_8_STAT_SEQ_PROG_FAIL_ADDR_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_9_STAT_SEQ_ERS_FAIL_ADDR_MASK  0xFFFFFFFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_9_STAT_SEQ_ERS_FAIL_ADDR_MASK 0xFFFFFFFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_9_STAT_SEQ_ERS_FAIL_ADDR_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_MASK_MASK  0xFF
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_MASK_MASK 0xFF
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_MASK_SHIFT 0
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_VAL_MASK  0xFF00
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_VAL_MASK 0xFF00
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_VAL_SHIFT 8
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_CORR_VAL_MASK  0xFF0000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_CORR_VAL_MASK 0xFF0000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_CORR_VAL_SHIFT 16
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_IDX_MASK  0x7000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_IDX_MASK 0x7000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_IDX_SHIFT 24
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_VAL_MASK  0x8000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_VAL_MASK 0x8000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_CRDY_VAL_SHIFT 27
 
-#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_EN_MASK  0x80000000
+#define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_EN_MASK 0x80000000
 #define DEV_SEQ_REGS_STAT_SEQ_CFG_10_STAT_SEQ_ECC_FAIL_EN_SHIFT 31
 
-#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_REV_MASK  0xFF
+#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_REV_MASK 0xFF
 #define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_REV_SHIFT 0
 
-#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_FIX_MASK  0xFF00
+#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_FIX_MASK 0xFF00
 #define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_FIX_SHIFT 8
 
-#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_MAGIC_NUMBER_MASK  0xFFFF0000
+#define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_MAGIC_NUMBER_MASK 0xFFFF0000
 #define CTRL_CONSTS_XSPI_CTRL_VERSION_XSPI_CTRL_MAGIC_NUMBER_SHIFT 16
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_N_THREADS_MASK  0xF
+#define CTRL_CONSTS_CTRL_FEATURES_REG_N_THREADS_MASK 0xF
 #define CTRL_CONSTS_CTRL_FEATURES_REG_N_THREADS_SHIFT 0
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_ASF_AVAILABLE_MASK  0x1000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_ASF_AVAILABLE_MASK 0x1000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_ASF_AVAILABLE_SHIFT 12
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_BOOT_AVAILABLE_MASK  0x10000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_BOOT_AVAILABLE_MASK 0x10000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_BOOT_AVAILABLE_SHIFT 16
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_INTF_MASK  0xC0000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_INTF_MASK 0xC0000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_INTF_SHIFT 18
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_ADDR_WIDTH_MASK  0x100000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_ADDR_WIDTH_MASK 0x100000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_ADDR_WIDTH_SHIFT 20
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_DATA_WIDTH_MASK  0x200000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_DATA_WIDTH_MASK 0x200000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_DMA_DATA_WIDTH_SHIFT 21
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_SFR_INTF_MASK  0xC00000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_SFR_INTF_MASK 0xC00000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_SFR_INTF_SHIFT 22
 
-#define CTRL_CONSTS_CTRL_FEATURES_REG_N_BANKS_MASK  0x3000000
+#define CTRL_CONSTS_CTRL_FEATURES_REG_N_BANKS_MASK 0x3000000
 #define CTRL_CONSTS_CTRL_FEATURES_REG_N_BANKS_SHIFT 24
 
-#define RF_MINICTRL_REGS_WP_SETTINGS_WP_MASK  0x1
+#define RF_MINICTRL_REGS_WP_SETTINGS_WP_MASK 0x1
 #define RF_MINICTRL_REGS_WP_SETTINGS_WP_SHIFT 0
 
-#define RF_MINICTRL_REGS_WP_SETTINGS_WP_ENABLE_MASK  0x2
+#define RF_MINICTRL_REGS_WP_SETTINGS_WP_ENABLE_MASK 0x2
 #define RF_MINICTRL_REGS_WP_SETTINGS_WP_ENABLE_SHIFT 1
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_MASK  0x1
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_MASK 0x1
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_SHIFT 0
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_RST_DQ3_ENABLE_MASK  0x2
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_RST_DQ3_ENABLE_MASK 0x2
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_RST_DQ3_ENABLE_SHIFT 1
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_OPTION_MASK  0x10
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_OPTION_MASK 0x10
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_OPTION_SHIFT 4
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK0_MASK  0x100
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK0_MASK 0x100
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK0_SHIFT 8
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK1_MASK  0x200
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK1_MASK 0x200
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK1_SHIFT 9
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK2_MASK  0x400
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK2_MASK 0x400
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK2_SHIFT 10
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK3_MASK  0x800
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK3_MASK 0x800
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK3_SHIFT 11
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK4_MASK  0x1000
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK4_MASK 0x1000
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK4_SHIFT 12
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK5_MASK  0x2000
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK5_MASK 0x2000
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK5_SHIFT 13
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK6_MASK  0x4000
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK6_MASK 0x4000
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK6_SHIFT 14
 
-#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK7_MASK  0x8000
+#define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK7_MASK 0x8000
 #define RF_MINICTRL_REGS_RESET_PIN_SETTINGS_SW_CTRLED_HW_RST_BANK7_SHIFT 15
 
-#define RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_SPI_CLOCK_MODE_MASK  0x1
+#define RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_SPI_CLOCK_MODE_MASK 0x1
 #define RF_MINICTRL_REGS_CLOCK_MODE_SETTINGS_SPI_CLOCK_MODE_SHIFT 0
 
-#define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSH_DELAY_MASK  0xFF
+#define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSH_DELAY_MASK 0xFF
 #define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSH_DELAY_SHIFT 0
 
-#define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSL_DELAY_MASK  0xFF00
+#define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSL_DELAY_MASK 0xFF00
 #define RF_MINICTRL_REGS_JEDEC_RST_TIMING_REG_TCSL_DELAY_SHIFT 8
 
-#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSSOT_DELAY_MASK  0xFF
+#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSSOT_DELAY_MASK 0xFF
 #define RF_MINICTRL_REGS_DEV_DELAY_REG_CSSOT_DELAY_SHIFT 0
 
-#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSEOT_DELAY_MASK  0xFF00
+#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSEOT_DELAY_MASK 0xFF00
 #define RF_MINICTRL_REGS_DEV_DELAY_REG_CSEOT_DELAY_SHIFT 8
 
-#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSDA_MIN_DELAY_MASK  0xFF000000
+#define RF_MINICTRL_REGS_DEV_DELAY_REG_CSDA_MIN_DELAY_MASK 0xFF000000
 #define RF_MINICTRL_REGS_DEV_DELAY_REG_CSDA_MIN_DELAY_SHIFT 24
 
-#define RF_MINICTRL_REGS_RST_RECOVERY_REG_RST_RECOVERY_MASK  0xFFFFFFFF
+#define RF_MINICTRL_REGS_RST_RECOVERY_REG_RST_RECOVERY_MASK 0xFFFFFFFF
 #define RF_MINICTRL_REGS_RST_RECOVERY_REG_RST_RECOVERY_SHIFT 0
 
-#define RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_DEV_ACTIVE_MAX_MASK  0xFFFFFFFF
+#define RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_DEV_ACTIVE_MAX_MASK 0xFFFFFFFF
 #define RF_MINICTRL_REGS_DEV_ACTIVE_MAX_REG_DEV_ACTIVE_MAX_SHIFT 0
 
-#define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_INDEX_MASK  0x3F
+#define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_INDEX_MASK 0x3F
 #define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_INDEX_SHIFT 0
 
-#define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_SIZE_MASK  0x3F00
+#define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_SIZE_MASK 0x3F00
 #define RF_MINICTRL_REGS_HF_OFFSET_REG_HF_OFFSET_SIZE_SHIFT 8
 
-#define RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_RESYNC_CNT_MASK  0xFFFFFFFF
+#define RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_RESYNC_CNT_MASK 0xFFFFFFFF
 #define RF_MINICTRL_REGS_DLL_PHY_UPDATE_CNT_RESYNC_CNT_SHIFT 0
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_IDLE_CNT_MASK  0xFF
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_IDLE_CNT_MASK 0xFF
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_IDLE_CNT_SHIFT 0
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_HIGH_WAIT_CNT_MASK  0xF00
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_HIGH_WAIT_CNT_MASK 0xF00
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_RESYNC_HIGH_WAIT_CNT_SHIFT 8
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_RD_MODE_MASK  0x10000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_RD_MODE_MASK 0x10000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_RD_MODE_SHIFT 16
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_WR_MODE_MASK  0x20000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_WR_MODE_MASK 0x20000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_EXTENDED_WR_MODE_SHIFT 17
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DQS_LAST_DATA_DROP_EN_MASK  0x100000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DQS_LAST_DATA_DROP_EN_MASK 0x100000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_DQS_LAST_DATA_DROP_EN_SHIFT 20
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_SDR_EDGE_ACTIVE_MASK  0x200000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_SDR_EDGE_ACTIVE_MASK 0x200000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_SDR_EDGE_ACTIVE_SHIFT 21
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DLL_RST_N_MASK  0x1000000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DLL_RST_N_MASK 0x1000000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_DLL_RST_N_SHIFT 24
 
-#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DFI_CTRLUPD_REQ_MASK  0x2000000
+#define RF_MINICTRL_REGS_DLL_PHY_CTRL_DFI_CTRLUPD_REQ_MASK 0x2000000
 #define RF_MINICTRL_REGS_DLL_PHY_CTRL_DFI_CTRLUPD_REQ_SHIFT 25
 
-#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_END_MASK  0x7
+#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_END_MASK 0x7
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_END_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_START_MASK  0x70
+#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_START_MASK 0x70
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_OE_START_SHIFT 4
 
-#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_END_MASK  0xF00
+#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_END_MASK 0xF00
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_END_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_START_MASK  0xF000
+#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_START_MASK 0xF000
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_SELECT_TSEL_START_SHIFT 12
 
-#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_CLKPERIOD_DELAY_MASK  0x10000
+#define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_CLKPERIOD_DELAY_MASK 0x10000
 #define DATASLICE_RFILE_PHY_DQ_TIMING_REG_DATA_CLKPERIOD_DELAY_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_END_MASK  0xF00
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_END_MASK 0xF00
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_END_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_START_MASK  0xF000
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_START_MASK 0xF000
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_DQS_SELECT_TSEL_START_SHIFT 12
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_PHONY_DQS_SEL_MASK  0x10000
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_PHONY_DQS_SEL_MASK 0x10000
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_PHONY_DQS_SEL_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_PHONY_DQS_MASK  0x100000
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_PHONY_DQS_MASK 0x100000
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_PHONY_DQS_SHIFT 20
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_LPBK_DQS_MASK  0x200000
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_LPBK_DQS_MASK 0x200000
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_LPBK_DQS_SHIFT 21
 
-#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_EXT_LPBK_DQS_MASK  0x400000
+#define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_EXT_LPBK_DQS_MASK 0x400000
 #define DATASLICE_RFILE_PHY_DQS_TIMING_REG_USE_EXT_LPBK_DQS_SHIFT 22
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_MASK  0xF
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_MASK 0xF
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_CLOSE_MASK  0x30
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_CLOSE_MASK 0x30
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_CLOSE_SHIFT 4
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_ALWAYS_ON_MASK  0x40
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_ALWAYS_ON_MASK 0x40
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_GATE_CFG_ALWAYS_ON_SHIFT 6
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_EN_MASK  0x100
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_EN_MASK 0x100
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_EN_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_INTERNAL_MASK  0x200
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_INTERNAL_MASK 0x200
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_INTERNAL_SHIFT 9
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LOOPBACK_CONTROL_MASK  0xC00
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LOOPBACK_CONTROL_MASK 0xC00
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LOOPBACK_CONTROL_SHIFT 10
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_FAIL_MUXSEL_MASK  0x1000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_FAIL_MUXSEL_MASK 0x1000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_FAIL_MUXSEL_SHIFT 12
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_ERR_CHECK_TIMING_MASK  0xE000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_ERR_CHECK_TIMING_MASK 0xE000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_LPBK_ERR_CHECK_TIMING_SHIFT 13
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_EMPTY_MASK  0x10000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_EMPTY_MASK 0x10000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_EMPTY_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_UNDERRUN_SUPPRESS_MASK  0x40000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_UNDERRUN_SUPPRESS_MASK 0x40000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_UNDERRUN_SUPPRESS_SHIFT 18
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_MASK  0xF80000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_MASK 0xF80000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_RD_DEL_SEL_SHIFT 19
 
-#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_SYNC_METHOD_MASK  0x80000000
+#define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_SYNC_METHOD_MASK 0x80000000
 #define DATASLICE_RFILE_PHY_GATE_LPBK_CTRL_REG_SYNC_METHOD_SHIFT 31
 
-#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_START_POINT_MASK  0xFF
+#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_START_POINT_MASK 0xFF
 #define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_START_POINT_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_LOCK_NUM_MASK  0x70000
+#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_LOCK_NUM_MASK 0x70000
 #define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_LOCK_NUM_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_PHASE_DETECT_SEL_MASK  0x700000
+#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_PHASE_DETECT_SEL_MASK 0x700000
 #define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_PHASE_DETECT_SEL_SHIFT 20
 
-#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_BYPASS_MODE_MASK  0x800000
+#define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_BYPASS_MODE_MASK 0x800000
 #define DATASLICE_RFILE_PHY_DLL_MASTER_CTRL_REG_PARAM_DLL_BYPASS_MODE_SHIFT 23
 
-#define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_READ_DQS_DELAY_MASK  0xFF
+#define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_READ_DQS_DELAY_MASK 0xFF
 #define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_READ_DQS_DELAY_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_CLK_WR_DELAY_MASK  0xFF00
+#define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_CLK_WR_DELAY_MASK 0xFF00
 #define DATASLICE_RFILE_PHY_DLL_SLAVE_CTRL_REG_CLK_WR_DELAY_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_RDDATA_EN_IE_DLY_MASK  0xF
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_RDDATA_EN_IE_DLY_MASK 0xF
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_RDDATA_EN_IE_DLY_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_STOP_MASK  0x70
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_STOP_MASK 0x70
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_STOP_SHIFT 4
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_START_MASK  0x700
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_START_MASK 0x700
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQS_IE_START_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_STOP_MASK  0x7000
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_STOP_MASK 0x7000
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_STOP_SHIFT 12
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_START_MASK  0x70000
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_START_MASK 0x70000
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_DQ_IE_START_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_IE_TIMING_REG_IE_ALWAYS_ON_MASK  0x100000
+#define DATASLICE_RFILE_PHY_IE_TIMING_REG_IE_ALWAYS_ON_MASK 0x100000
 #define DATASLICE_RFILE_PHY_IE_TIMING_REG_IE_ALWAYS_ON_SHIFT 20
 
-#define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_STATUS_MASK  0x3
+#define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_STATUS_MASK 0x3
 #define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_STATUS_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_DQ_DATA_MASK  0xFFFF00
+#define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_DQ_DATA_MASK 0xFFFF00
 #define DATASLICE_RFILE_PHY_OBS_REG_0_LPBK_DQ_DATA_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_UNDERRUN_MASK  0x1000000
+#define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_UNDERRUN_MASK 0x1000000
 #define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_UNDERRUN_SHIFT 24
 
-#define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_OVERFLOW_MASK  0x2000000
+#define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_OVERFLOW_MASK 0x2000000
 #define DATASLICE_RFILE_PHY_OBS_REG_0_DQS_OVERFLOW_SHIFT 25
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_MASK  0x1
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_MASK 0x1
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCKED_MODE_MASK  0x6
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCKED_MODE_MASK 0x6
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCKED_MODE_SHIFT 1
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_UNLOCK_CNT_MASK  0xF8
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_UNLOCK_CNT_MASK 0xF8
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_UNLOCK_CNT_SHIFT 3
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_VALUE_MASK  0xFF00
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_VALUE_MASK 0xFF00
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_DLL_LOCK_VALUE_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_DEC_DBG_MASK  0xFF0000
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_DEC_DBG_MASK 0xFF0000
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_DEC_DBG_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_INC_DBG_MASK  0xFF000000
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_INC_DBG_MASK 0xFF000000
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_0_LOCK_INC_DBG_SHIFT 24
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_RD_MASK  0xFF
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_RD_MASK 0xFF
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_RD_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_WR_MASK  0xFF0000
+#define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_WR_MASK 0xFF0000
 #define DATASLICE_RFILE_PHY_DLL_OBS_REG_1_DECODER_OUT_WR_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOG_CLK_DIV_MASK  0xFFFF
+#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOG_CLK_DIV_MASK 0xFFFF
 #define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOG_CLK_DIV_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_GLOBAL_ENABLE_MASK  0x10000
+#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_GLOBAL_ENABLE_MASK 0x10000
 #define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_GLOBAL_ENABLE_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_ENABLE_MASK  0x700000
+#define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_ENABLE_MASK 0x700000
 #define DATASLICE_RFILE_PHY_STATIC_TOGG_REG_STATIC_TOGG_ENABLE_SHIFT 20
 
-#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_PHASE_DETECT_SEL_MASK  0x7
+#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_PHASE_DETECT_SEL_MASK 0x7
 #define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_PHASE_DETECT_SEL_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_HALF_CYCLE_SHIFT_MASK  0x10
+#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_HALF_CYCLE_SHIFT_MASK 0x10
 #define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_HALF_CYCLE_SHIFT_SHIFT 4
 
-#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_EN_SW_HALF_CYCLE_MASK  0x20
+#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_EN_SW_HALF_CYCLE_MASK 0x20
 #define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_EN_SW_HALF_CYCLE_SHIFT 5
 
-#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_DQ_PHASE_BYPASS_MASK  0x40
+#define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_DQ_PHASE_BYPASS_MASK 0x40
 #define DATASLICE_RFILE_PHY_WR_DESKEW_PD_CTRL_0_REG_DQ_SW_DQ_PHASE_BYPASS_SHIFT 6
 
-#define DATASLICE_RFILE_PHY_VERSION_REG_PHY_REV_MASK  0xFF
+#define DATASLICE_RFILE_PHY_VERSION_REG_PHY_REV_MASK 0xFF
 #define DATASLICE_RFILE_PHY_VERSION_REG_PHY_REV_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_VERSION_REG_PHY_FIX_MASK  0xFF00
+#define DATASLICE_RFILE_PHY_VERSION_REG_PHY_FIX_MASK 0xFF00
 #define DATASLICE_RFILE_PHY_VERSION_REG_PHY_FIX_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_VERSION_REG_COMBO_PHY_MAGIC_NUMBER_MASK  0xFFFF0000
+#define DATASLICE_RFILE_PHY_VERSION_REG_COMBO_PHY_MAGIC_NUMBER_MASK 0xFFFF0000
 #define DATASLICE_RFILE_PHY_VERSION_REG_COMBO_PHY_MAGIC_NUMBER_SHIFT 16
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_40_MASK  0x1
+#define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_40_MASK 0x1
 #define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_40_SHIFT 0
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_41_MASK  0x2
+#define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_41_MASK 0x2
 #define DATASLICE_RFILE_PHY_FEATURES_REG_ONFI_41_SHIFT 1
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_SDR_16BIT_MASK  0x4
+#define DATASLICE_RFILE_PHY_FEATURES_REG_SDR_16BIT_MASK 0x4
 #define DATASLICE_RFILE_PHY_FEATURES_REG_SDR_16BIT_SHIFT 2
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_XSPI_MASK  0x8
+#define DATASLICE_RFILE_PHY_FEATURES_REG_XSPI_MASK 0x8
 #define DATASLICE_RFILE_PHY_FEATURES_REG_XSPI_SHIFT 3
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_SD_EMMC_MASK  0x10
+#define DATASLICE_RFILE_PHY_FEATURES_REG_SD_EMMC_MASK 0x10
 #define DATASLICE_RFILE_PHY_FEATURES_REG_SD_EMMC_SHIFT 4
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_BANK_NUM_MASK  0x60
+#define DATASLICE_RFILE_PHY_FEATURES_REG_BANK_NUM_MASK 0x60
 #define DATASLICE_RFILE_PHY_FEATURES_REG_BANK_NUM_SHIFT 5
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_DLL_TAP_NUM_MASK  0x80
+#define DATASLICE_RFILE_PHY_FEATURES_REG_DLL_TAP_NUM_MASK 0x80
 #define DATASLICE_RFILE_PHY_FEATURES_REG_DLL_TAP_NUM_SHIFT 7
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_AGING_MASK  0x100
+#define DATASLICE_RFILE_PHY_FEATURES_REG_AGING_MASK 0x100
 #define DATASLICE_RFILE_PHY_FEATURES_REG_AGING_SHIFT 8
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_DFI_CLOCK_RATIO_MASK  0x200
+#define DATASLICE_RFILE_PHY_FEATURES_REG_DFI_CLOCK_RATIO_MASK 0x200
 #define DATASLICE_RFILE_PHY_FEATURES_REG_DFI_CLOCK_RATIO_SHIFT 9
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_PER_BIT_DESKEW_MASK  0x400
+#define DATASLICE_RFILE_PHY_FEATURES_REG_PER_BIT_DESKEW_MASK 0x400
 #define DATASLICE_RFILE_PHY_FEATURES_REG_PER_BIT_DESKEW_SHIFT 10
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_REG_INTF_MASK  0x800
+#define DATASLICE_RFILE_PHY_FEATURES_REG_REG_INTF_MASK 0x800
 #define DATASLICE_RFILE_PHY_FEATURES_REG_REG_INTF_SHIFT 11
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_EXT_LPBK_DQS_MASK  0x1000
+#define DATASLICE_RFILE_PHY_FEATURES_REG_EXT_LPBK_DQS_MASK 0x1000
 #define DATASLICE_RFILE_PHY_FEATURES_REG_EXT_LPBK_DQS_SHIFT 12
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_JTAG_SUP_MASK  0x2000
+#define DATASLICE_RFILE_PHY_FEATURES_REG_JTAG_SUP_MASK 0x2000
 #define DATASLICE_RFILE_PHY_FEATURES_REG_JTAG_SUP_SHIFT 13
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_PLL_SUP_MASK  0x4000
+#define DATASLICE_RFILE_PHY_FEATURES_REG_PLL_SUP_MASK 0x4000
 #define DATASLICE_RFILE_PHY_FEATURES_REG_PLL_SUP_SHIFT 14
 
-#define DATASLICE_RFILE_PHY_FEATURES_REG_ASF_SUP_MASK  0x8000
+#define DATASLICE_RFILE_PHY_FEATURES_REG_ASF_SUP_MASK 0x8000
 #define DATASLICE_RFILE_PHY_FEATURES_REG_ASF_SUP_SHIFT 15
 
-#define CTB_RFILE_PHY_CTRL_REG_CTRL_CLKPERIOD_DELAY_MASK  0x1
+#define CTB_RFILE_PHY_CTRL_REG_CTRL_CLKPERIOD_DELAY_MASK 0x1
 #define CTB_RFILE_PHY_CTRL_REG_CTRL_CLKPERIOD_DELAY_SHIFT 0
 
-#define CTB_RFILE_PHY_CTRL_REG_PHONY_DQS_TIMING_MASK  0x1F0
+#define CTB_RFILE_PHY_CTRL_REG_PHONY_DQS_TIMING_MASK 0x1F0
 #define CTB_RFILE_PHY_CTRL_REG_PHONY_DQS_TIMING_SHIFT 4
 
-#define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DQS_MASK  0xF00
+#define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DQS_MASK 0xF00
 #define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DQS_SHIFT 8
 
-#define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DQS_MASK  0xF000
+#define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DQS_MASK 0xF000
 #define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DQS_SHIFT 12
 
-#define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DATA_MASK  0xF0000
+#define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DATA_MASK 0xF0000
 #define CTB_RFILE_PHY_TSEL_REG_TSEL_RD_VALUE_DATA_SHIFT 16
 
-#define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DATA_MASK  0xF00000
+#define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DATA_MASK 0xF00000
 #define CTB_RFILE_PHY_TSEL_REG_TSEL_OFF_VALUE_DATA_SHIFT 20
 
-#define CTB_RFILE_PHY_GPIO_CTRL_0_PHY_GPIO_CTRL_0_VALUE_MASK  0xFFFFFFFF
+#define CTB_RFILE_PHY_GPIO_CTRL_0_PHY_GPIO_CTRL_0_VALUE_MASK 0xFFFFFFFF
 #define CTB_RFILE_PHY_GPIO_CTRL_0_PHY_GPIO_CTRL_0_VALUE_SHIFT 0
 
-#define CTB_RFILE_PHY_GPIO_CTRL_1_PHY_GPIO_CTRL_1_VALUE_MASK  0xFFFFFFFF
+#define CTB_RFILE_PHY_GPIO_CTRL_1_PHY_GPIO_CTRL_1_VALUE_MASK 0xFFFFFFFF
 #define CTB_RFILE_PHY_GPIO_CTRL_1_PHY_GPIO_CTRL_1_VALUE_SHIFT 0
 
-#define CTB_RFILE_PHY_GPIO_STATUS_0_PHY_GPIO_STATUS_0_VALUE_MASK  0xFFFFFFFF
+#define CTB_RFILE_PHY_GPIO_STATUS_0_PHY_GPIO_STATUS_0_VALUE_MASK 0xFFFFFFFF
 #define CTB_RFILE_PHY_GPIO_STATUS_0_PHY_GPIO_STATUS_0_VALUE_SHIFT 0
 
-#define CTB_RFILE_PHY_GPIO_STATUS_1_PHY_GPIO_STATUS_1_VALUE_MASK  0xFFFFFFFF
+#define CTB_RFILE_PHY_GPIO_STATUS_1_PHY_GPIO_STATUS_1_VALUE_MASK 0xFFFFFFFF
 #define CTB_RFILE_PHY_GPIO_STATUS_1_PHY_GPIO_STATUS_1_VALUE_SHIFT 0
 
-#define SEP_ICCM_MEM_WORD_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_ICCM_MEM_WORD_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_ICCM_MEM_WORD_DATA_SHIFT 0
 
-#define SEP_DCCM_MEM_WORD_DATA_MASK  0xFFFFFFFFFFFFFFFF
+#define SEP_DCCM_MEM_WORD_DATA_MASK 0xFFFFFFFFFFFFFFFF
 #define SEP_DCCM_MEM_WORD_DATA_SHIFT 0
 
-#define EL2_PIC_MEIPL_INTPRIORITY_MASK  0xF
+#define EL2_PIC_MEIPL_INTPRIORITY_MASK 0xF
 #define EL2_PIC_MEIPL_INTPRIORITY_SHIFT 0
 
-#define EL2_PIC_MEIP_INTPEND_MASK  0xFFFFFFFF
+#define EL2_PIC_MEIP_INTPEND_MASK 0xFFFFFFFF
 #define EL2_PIC_MEIP_INTPEND_SHIFT 0
 
-#define EL2_PIC_MEIE_INTEN_MASK  0x1
+#define EL2_PIC_MEIE_INTEN_MASK 0x1
 #define EL2_PIC_MEIE_INTEN_SHIFT 0
 
-#define EL2_PIC_MPICCFG_PRIORD_MASK  0x1
+#define EL2_PIC_MPICCFG_PRIORD_MASK 0x1
 #define EL2_PIC_MPICCFG_PRIORD_SHIFT 0
 
-#define EL2_PIC_MEIGWCTRL_POLARITY_MASK  0x1
+#define EL2_PIC_MEIGWCTRL_POLARITY_MASK 0x1
 #define EL2_PIC_MEIGWCTRL_POLARITY_SHIFT 0
 
-#define EL2_PIC_MEIGWCTRL_IRQ_TYPE_MASK  0x2
+#define EL2_PIC_MEIGWCTRL_IRQ_TYPE_MASK 0x2
 #define EL2_PIC_MEIGWCTRL_IRQ_TYPE_SHIFT 1
 
-#define EL2_PIC_MEIGWCLR_CLEAR_MASK  0x1
+#define EL2_PIC_MEIGWCLR_CLEAR_MASK 0x1
 #define EL2_PIC_MEIGWCLR_CLEAR_SHIFT 0
 
 #endif

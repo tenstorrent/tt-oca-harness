@@ -23,15 +23,14 @@
 
 #ifdef DEBUG
 
-#define VCONSOLE_OP_ASCII  (0u << 1)
-#define VCONSOLE_OP_HEX16  (1u << 1)
-#define VCONSOLE_OP_DEC24  (2u << 1)
+#define VCONSOLE_OP_ASCII (0u << 1)
+#define VCONSOLE_OP_HEX16 (1u << 1)
+#define VCONSOLE_OP_DEC24 (2u << 1)
 
 static uint32_t g_vconsole_prev_val;
 
 static inline void vconsole_write_scratch2(uint32_t val) {
-    if (val == g_vconsole_prev_val)
-        val ^= 1u;
+    if (val == g_vconsole_prev_val) val ^= 1u;
     mmio_write32(SEP_SCRATCH_COLD_SCRATCH_2__REG_ADDR, val);
     g_vconsole_prev_val = val;
 }
@@ -40,7 +39,7 @@ static inline void vconsole_write_scratch2(uint32_t val) {
 
 static inline void simputs(const char *str) {
     uint32_t val = VCONSOLE_OP_ASCII;
-    int offset = 1;  // byte index: 1=LSB of payload, 3=MSB
+    int offset = 1; // byte index: 1=LSB of payload, 3=MSB
 
     while (*str) {
         val |= ((uint32_t)(uint8_t)*str++) << (8u * (uint32_t)offset++);
@@ -50,8 +49,7 @@ static inline void simputs(const char *str) {
             val = VCONSOLE_OP_ASCII;
         }
     }
-    if (offset != 1)
-        vconsole_write_scratch2(val);
+    if (offset != 1) vconsole_write_scratch2(val);
 }
 
 // ── Hex output ──

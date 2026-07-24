@@ -35,8 +35,7 @@ void rom_clear_ext_sram(void) {
 
 #if SRAM_SCRUB_BYTES > 0
     uint32_t scrub = (uint32_t)SRAM_SCRUB_BYTES;
-    if (scrub > SRAM_SIZE)
-        scrub = SRAM_SIZE;
+    if (scrub > SRAM_SIZE) scrub = SRAM_SIZE;
 
     simputshex32("SRAM_SCRUB_LEN=", scrub);
     volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)SRAM_BASE;

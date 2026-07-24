@@ -12,31 +12,26 @@
 
 #include "otbn_driver.h"
 
-int otbn_init(void)
-{
+int otbn_init(void) {
     return 1;
 }
 
-int otbn_load_rsa_app(void)
-{
+int otbn_load_rsa_app(void) {
     return 1;
 }
 
-void otbn_dmem_write(uint32_t byte_offset, const uint32_t *data, uint32_t word_count)
-{
+void otbn_dmem_write(uint32_t byte_offset, const uint32_t *data, uint32_t word_count) {
     (void)byte_offset;
     (void)data;
     (void)word_count;
 }
 
-void otbn_dmem_read(uint32_t byte_offset, uint32_t *data, uint32_t word_count)
-{
+void otbn_dmem_read(uint32_t byte_offset, uint32_t *data, uint32_t word_count) {
     (void)byte_offset;
     (void)data;
     (void)word_count;
 }
 
-int otbn_execute(void)
-{
+int otbn_execute(void) {
     return 1;
 }

@@ -37,33 +37,32 @@
 
 // Crypto-IP probe CSRs (och_sep_top_reg): default, the value we write, and the
 // value expected back after the reset pulse (== default if the reset cleared it).
-#define OTBN_INTR_ENABLE_ADDR     0x10900004u
-#define AES_CTRL_AUX_REGWEN_ADDR  0x1091007Cu
-#define HMAC_INTR_ENABLE_ADDR     0x10911004u
-#define KMAC_INTR_ENABLE_ADDR     0x10913004u
+#define OTBN_INTR_ENABLE_ADDR 0x10900004u
+#define AES_CTRL_AUX_REGWEN_ADDR 0x1091007Cu
+#define HMAC_INTR_ENABLE_ADDR 0x10911004u
+#define KMAC_INTR_ENABLE_ADDR 0x10913004u
 
-#define RESET_CTRL_BAD_ADDR       (SEP_RESET_CTRL_SW_RESET_N + 0x8u)  // unmapped gap
+#define RESET_CTRL_BAD_ADDR (SEP_RESET_CTRL_SW_RESET_N + 0x8u) // unmapped gap
 
 // WDT thresholds in WDT-clock ticks. Small for Verilator throughput (clk_wdt_i is
 // ~1000x slower than the core clock); the bark->NMI and bite->reset mechanisms
 // are threshold-independent. Bite > bark so bark fires first.
-#define WDT_BARK_SIM   4u
-#define WDT_BITE_SIM   10u
+#define WDT_BARK_SIM 4u
+#define WDT_BITE_SIM 10u
 
 #define NMI_WAIT_ITERS 200000
 
 static volatile uint32_t g_bad_addr_nmi = 0;
-static volatile uint32_t g_wdt_bark     = 0;
+static volatile uint32_t g_wdt_bark = 0;
 
 // Unified NMI handler. WDT bark (Phase B) vs D-bus error (Phase A) is told apart
 // by the WDT bark status bit; the two sources never overlap in time.
-void nmi_handler(void)
-{
+void nmi_handler(void) {
     if (wdt_get_intr_state() & WDT_INTR_BARK) {
-        wdt_clear_bark();              // deassert nmi_int before mret
+        wdt_clear_bark(); // deassert nmi_int before mret
         g_wdt_bark++;
         if (g_wdt_bark == 1u) {
-            wdt_disable();             // freeze for the pet/disable checks
+            wdt_disable(); // freeze for the pet/disable checks
         }
         // 2nd bark: leave the WDT enabled so it advances to BITE.
     } else {
@@ -80,10 +79,8 @@ void nmi_handler(void)
 
 // One IP reset-wire check: write probe, confirm, pulse this IP's reset bit, and
 // confirm the probe returned to its reset default. Returns 1 on failure.
-static int check_reset_wire(const char *name, uint32_t bit_mask,
-                            uint32_t probe_addr, uint32_t write_val,
-                            uint32_t expect_after_rst)
-{
+static int check_reset_wire(const char *name, uint32_t bit_mask, uint32_t probe_addr,
+                            uint32_t write_val, uint32_t expect_after_rst) {
     sep_reset_wr(probe_addr, write_val);
     if (sep_reset_rd(probe_addr) != write_val) {
         sep_mbx_puts("FAIL: probe write did not land: ");
@@ -105,8 +102,7 @@ static int check_reset_wire(const char *name, uint32_t bit_mask,
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
     sep_outbound_filter_init();
@@ -125,14 +121,10 @@ int main(void)
         errors++;
     }
 
-    errors += check_reset_wire("otbn", SEP_SW_RESET_N_OTBN_BIT,
-                               OTBN_INTR_ENABLE_ADDR, 0x1u, 0x0u);
-    errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT,
-                               AES_CTRL_AUX_REGWEN_ADDR, 0x0u, 0x1u);
-    errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT,
-                               HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
-    errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT,
-                               KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
+    errors += check_reset_wire("otbn", SEP_SW_RESET_N_OTBN_BIT, OTBN_INTR_ENABLE_ADDR, 0x1u, 0x0u);
+    errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR, 0x0u, 0x1u);
+    errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
+    errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
 
     if (sep_reset_rd(SEP_RESET_CTRL_SW_RESET_N) != SEP_SW_RESET_N_DEFAULT) {
         sep_mbx_puts("FAIL: SW_RESET_N not restored to default\n");
@@ -208,19 +200,22 @@ int main(void)
     int pet_ok = 1;
     if (cnt == 0u) {
         sep_mbx_puts("FAIL: WDT count 0 before pet (expected non-zero)\n");
-        errors++; pet_ok = 0;
+        errors++;
+        pet_ok = 0;
     }
     wdt_pet();
     if (wdt_get_count() != 0u) {
         sep_mbx_puts("FAIL: WDT pet did not clear count\n");
-        errors++; pet_ok = 0;
+        errors++;
+        pet_ok = 0;
     }
     for (volatile int i = 0; i < 500; i++) {
         __asm__ volatile("nop");
     }
     if (wdt_get_count() != 0u) {
         sep_mbx_puts("FAIL: disabled WDT kept counting\n");
-        errors++; pet_ok = 0;
+        errors++;
+        pet_ok = 0;
     }
     if (pet_ok) {
         sep_mbx_puts("CHK-WDT-PET PASS: count frozen non-zero, pet->0, stays 0 while disabled\n");

@@ -43,26 +43,25 @@
 // bits [9:2]. Matches the extraction start.S's _dummy_int_handler uses.
 #define CSR_MEIHAP 0xFC8
 
-#define MBOX_TRIGGER_WORD  0x4700CAFEu  // arbitrary payload pushed to fire the IRQ
-#define ISR_WAIT_ITERS     200000       // WFI spins before declaring no delivery
+#define MBOX_TRIGGER_WORD 0x4700CAFEu // arbitrary payload pushed to fire the IRQ
+#define ISR_WAIT_ITERS 200000         // WFI spins before declaring no delivery
 // Quiet window to confirm a clean deassert (no re-fire). A storm from a failed
 // clear re-traps within a few cycles of mret, so a few hundred iterations is
 // ample; kept small so the Verilator sim fits the regression timeout.
-#define STORM_CHECK_ITERS  256
+#define STORM_CHECK_ITERS 256
 
-static volatile uint32_t g_isr_fired   = 0;
-static volatile uint32_t g_isr_count   = 0;
-static volatile uint32_t g_claim_id    = 0;
+static volatile uint32_t g_isr_fired = 0;
+static volatile uint32_t g_isr_count = 0;
+static volatile uint32_t g_claim_id = 0;
 static volatile uint32_t g_irqp_before = 0;
 static volatile uint32_t g_irqs_before = 0;
-static volatile uint32_t g_irqs_after  = 0;
-static volatile uint32_t g_irqp_after  = 0;
+static volatile uint32_t g_irqs_after = 0;
+static volatile uint32_t g_irqp_after = 0;
 
 // Outbound mailbox 0 ISR: record the claim id and the asserted IRQ state, clear
 // the interrupt at the source (raise WIRQT past the FIFO usage so the level
 // condition drops, then W1C IRQS), and re-read to prove the clear stuck.
-void __attribute__((interrupt("machine"))) mailbox_isr(void)
-{
+void __attribute__((interrupt("machine"))) mailbox_isr(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     g_claim_id = (meihap >> 2) & 0xFF;
@@ -90,11 +89,10 @@ void __attribute__((interrupt("machine"))) mailbox_isr(void)
     __asm__ volatile("fence" ::: "memory");
 }
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init();        // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP mailbox PLIC test\n");
 
     // Ungate the mailbox CSR clock (off at reset).

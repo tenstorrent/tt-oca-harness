@@ -45,34 +45,37 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define SEP_LOCAL_BASE_ADDR_REG  0x10A300C8u
-#define WINDOW_BASE              0xD0000000u   // SEP_LOCAL_BASE_ADDR reset/operating value (#3711)
-#define TARGET_BASE              0x10000000u   // sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE (SEP SRAM)
-#define ADJUST                   (WINDOW_BASE - TARGET_BASE)   // 0xC000_0000 = base - target
+#define SEP_LOCAL_BASE_ADDR_REG 0x10A300C8u
+#define WINDOW_BASE 0xD0000000u            // SEP_LOCAL_BASE_ADDR reset/operating value (#3711)
+#define TARGET_BASE 0x10000000u            // sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE (SEP SRAM)
+#define ADJUST (WINDOW_BASE - TARGET_BASE) // 0xC000_0000 = base - target
 
-#define SRAM_PHYS                TARGET_BASE   // SEP SRAM base
-#define ALIAS_FOR(phys)          ((phys) + ADJUST)   // physical target addr -> its alias addr
+#define SRAM_PHYS TARGET_BASE             // SEP SRAM base
+#define ALIAS_FOR(phys) ((phys) + ADJUST) // physical target addr -> its alias addr
 
 // SRAM layout for this test (within the SRAM responder, no overlap).
-#define IFU_FN_PHYS              (SRAM_PHYS + 0x000u)     // 2 instr words live here
-#define LSU_WR_PHYS              (SRAM_PHYS + 0x308u)
-#define LSU_RD_PHYS              (SRAM_PHYS + 0x310u)
+#define IFU_FN_PHYS (SRAM_PHYS + 0x000u) // 2 instr words live here
+#define LSU_WR_PHYS (SRAM_PHYS + 0x308u)
+#define LSU_RD_PHYS (SRAM_PHYS + 0x310u)
 
-#define MARK_LSU_WR              0xA11A1036u
-#define MARK_LSU_RD              0xA11A0317u
-#define IFU_RET_VAL              42
+#define MARK_LSU_WR 0xA11A1036u
+#define MARK_LSU_RD 0xA11A0317u
+#define IFU_RET_VAL 42
 
 // "li a0,42 ; ret" (verified encodings) -- a leaf function returning 42.
-#define INSN_LI_A0_42            0x02A00513u
-#define INSN_RET                 0x00008067u
+#define INSN_LI_A0_42 0x02A00513u
+#define INSN_RET 0x00008067u
 
-static inline void wr32(uint32_t addr, uint32_t v) { *(volatile uint32_t *)addr = v; }
-static inline uint32_t rd32(uint32_t addr) { return *(volatile uint32_t *)addr; }
+static inline void wr32(uint32_t addr, uint32_t v) {
+    *(volatile uint32_t *)addr = v;
+}
+static inline uint32_t rd32(uint32_t addr) {
+    return *(volatile uint32_t *)addr;
+}
 
 typedef int (*fn_t)(void);
 
-int main(void)
-{
+int main(void) {
     int errors = 0;
 
     sep_outbound_filter_init();
@@ -91,7 +94,8 @@ int main(void)
         sep_mbx_putc('\n');
         errors++;
     } else {
-        sep_mbx_puts("CHK-CSR PASS: SEP_LOCAL_BASE=0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
+        sep_mbx_puts(
+            "CHK-CSR PASS: SEP_LOCAL_BASE=0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
     }
 
     // CHK-LSU-WR: write THROUGH the alias, read back at the physical target.
@@ -123,8 +127,8 @@ int main(void)
     wr32(IFU_FN_PHYS + 0, INSN_LI_A0_42);
     wr32(IFU_FN_PHYS + 4, INSN_RET);
     __asm__ volatile("fence rw, rw" ::: "memory");
-    __asm__ volatile(".word 0x0000100f" ::: "memory");   // fence.i (sync IFU)
-    fn_t fn = (fn_t)ALIAS_FOR(IFU_FN_PHYS);              // 0xD0000000
+    __asm__ volatile(".word 0x0000100f" ::: "memory"); // fence.i (sync IFU)
+    fn_t fn = (fn_t)ALIAS_FOR(IFU_FN_PHYS);            // 0xD0000000
     int ifu_ret = fn();
     if (ifu_ret != IFU_RET_VAL) {
         sep_mbx_puts("FAIL: IFU alias fetch returned ");
