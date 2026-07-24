@@ -3,6 +3,13 @@
 // Behavioral DAT/DCT/RLT memories for bare-smc OSS TB (I3C rebase #3934).
 // Mirrors hw/oss-example/wrapper/smc/smc_ip_integration.sv gen_i3c_dat_dct_memory
 // so smc.i3c_*_mem_* ports are not left floating (X) under CONTROLLER_SUPPORT=1.
+//
+// FIXME(SMC-DV): this deferred model is intentionally not compiled by
+// smc_sim_cfg.toml. It uses the old RLT interface, undefined DAT_DEPTH/DCT_DEPTH
+// macros, and RAM dependencies that are not part of the current SMC source
+// closure. Rewrite it against the current DAT/DCT-only RTL before enabling
+// functional I3C memory tests. Reset sanity uses deterministic tie-offs in
+// tb_top.sv meanwhile.
 
 `timescale 1ps/1fs
 

@@ -66,8 +66,9 @@ class smc_spi_loopback_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         assert _SPI_VIP_AVAILABLE, (
-            "ocah_spi_vip is unavailable (add hw/common/dv/vip to "
-            "PYTHONPATH via bin/setup_env.sh)"
+            "ocah_spi_vip is unavailable; launch through "
+            "python3 tools/dv/run_dv.py so the uv-managed DV environment "
+            "and shared VIP path are configured"
         )
 
         # --- Library layer: OcahSpiFlash internal API round-trip.

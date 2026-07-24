@@ -3,7 +3,7 @@
 
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
-driven by `dv/oss/tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
+driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
 test-development reference and `docs/SMC_VPLAN.md` for the verification plan.
 
 ## Two DUTs / two sim configs
@@ -17,14 +17,14 @@ test-development reference and `docs/SMC_VPLAN.md` for the verification plan.
 | memory | TB responder shims (`shims/mem/*.sv`) | wrapper RTL integration models |
 
 The bare-`smc` catalog is the primary DV surface (large PyUVM env, ~130 tests).
-The `smc_wrapper` catalog is an independent OSS-example pad-level baseline
-(currently an elaboration/bring-up smoke); it parallels SEP's `sep_wrapper`
-direction of folding memory/eFuse models into RTL.
+The `smc_wrapper` catalog is deferred and intentionally unregistered: its
+wrapper API, Bender targets, and SEP prim shim still need porting to the current
+repository before its elaboration test can run.
 
 ## Layout
 
 ```
-dv/oss/hw/sys/smc/dv/
+hw/sys/smc/dv/
 ├── cocotb/                 # bare-SMC PyUVM env
 │   ├── env/                #   agents, monitors, scoreboard, memory model, env cfg
 │   ├── seq_lib/            #   sequences + protocol VIP/BFM helpers (*_vip_utils, *_vip.py)
@@ -64,19 +64,19 @@ protocol-VIP proxy pattern.
 ## Run
 
 ```bash
-PY=dv/oss/tools/dv/run_dv.py
+PY=tools/dv/run_dv.py
+python3 $PY --dut smc --items smc_cold_reset_test --tool verilator
 python3 $PY --dut smc --items smc_canonical_smoke_test --stage flist --stage sim
 python3 $PY --dut smc --items all --tag smoke --stage sim       # smoke subset
 python3 $PY --dut smc --items all --tag smoke --tool vcs --cov  # coverage on VCS
 python3 $PY --dut smc --items all --stage sim --regress         # full regression
-python3 $PY --dut smc_wrapper --items all                       # wrapper baseline
 ```
 
 PASS/FAIL is classified by the global parser registry
-(`dv/oss/hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive
+(`hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive
 evidence from `results.xml`; a clean simulator exit alone is not enough.
 
 The shared OSS runner uses Bender to generate the SMC RTL filelist, then appends
 the TB top and the local memory-responder/stub sources listed in the sim cfg.
 The public filelist is vendor-clean (verify with
-`dv/oss/tools/dv/check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`).
+`tools/dv/check_no_vendor_paths.py --filelist hw/sys/smc/dv/build/smc_bender.f --target smc`).

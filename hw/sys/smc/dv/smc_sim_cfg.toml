@@ -12,25 +12,24 @@ format = "toml_list"
 
 [native.stages.clean]
 kind = "clean"
-paths = ["{run_dir}", "dv/oss/hw/sys/smc/dv/build"]
+paths = ["{run_dir}", "hw/sys/smc/dv/build"]
 
 [build]
 # Native build is driven by the Bender/filelist keys below; .core files are external-only.
 top_module = "smc_uvm_top"
-top_file = "dv/oss/hw/sys/smc/dv/tb/tb_top.sv"
+top_file = "hw/sys/smc/dv/tb/tb_top.sv"
 # Extra tb sources compiled alongside tb_top. This follows the OSS
 # memory-shim pattern and provides behavioral responders for bare SMC CPU
 # ROM/scratch/cache memory ports.
 sources = [
-  "dv/oss/hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
-  "dv/oss/hw/sys/smc/dv/shims/mem/tb_smc_output_mem_responder.sv",
-  "dv/oss/hw/sys/smc/dv/shims/mem/tb_smc_gpio_ctrl_rw_stub.sv",
-  "dv/oss/hw/sys/smc/dv/shims/mem/tb_smc_i3c_mem_responder.sv",
-  "dv/oss/hw/sys/smc/dv/shims/analog/tb_smc_efuse_responder.sv",
+  "hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
+  "hw/sys/smc/dv/shims/mem/tb_smc_output_mem_responder.sv",
+  "hw/sys/smc/dv/shims/mem/tb_smc_gpio_ctrl_rw_stub.sv",
+  "hw/sys/smc/dv/shims/analog/tb_smc_efuse_responder.sv",
 ]
-filelist = "dv/oss/hw/sys/smc/dv/build/smc_dut_compile.f"
-bender_filelist = "dv/oss/hw/sys/smc/dv/build/smc_bender.f"
-work_dir = "dv/oss/hw/sys/smc/dv/build"
+filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
+work_dir = "hw/sys/smc/dv/build"
 common_bender_targets = [
   "tech_cells_generic_exclude_deprecated",
   "tech_cells_generic_exclude_tc_sram",
@@ -42,7 +41,7 @@ common_bender_targets = [
   "register_interface_l1",
 ]
 bender_targets = ["smc", "simulation"]
-incdirs = ["dv/oss/hw/sys/smc/dv/tb"]
+incdirs = ["hw/sys/smc/dv/tb"]
 # Bender.lock still resolves Package(i3c-core) to stale deps/i3c-core while the
 # smc target also lists vendor/chipsalliance/i3c-core (I3C rebase #3934). Drop
 # the stale deps tree so i3c_pkg matches i3c_wrapper (rlt_mem_*).
@@ -52,11 +51,11 @@ exclude_files = [
 # FIXME(transition): `stubs` is a transitional Verilator-compat override set, listed ahead of the
 # bender filelist (-Wno-MODDUP first-wins). Remove once these shims are no longer needed upstream.
 stubs = [
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
 ]
 
 [build.verilator]
@@ -70,12 +69,12 @@ low_mem_make = true
 
 [cocotb]
 # Uniform flow-first layout: cocotb tests live under cocotb/.
-python_root = "dv/oss/hw/sys/smc/dv/cocotb"
-test_dir = "dv/oss/hw/sys/smc/dv/cocotb/tests"
+python_root = "hw/sys/smc/dv/cocotb"
+test_dir = "hw/sys/smc/dv/cocotb/tests"
 # Shared cocotb VIP (ocah_spi_vip, ocah_axi_vip, ...) lives at hw/common/dv/vip;
 # add it to the import path so tests can `from ocah_spi_vip import OcahSpiFlash`.
 python_paths = [
-  "dv/oss/hw/common/dv/vip",
+  "hw/common/dv/vip",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -83,17 +82,16 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [run_modes.smoke]
 description = "Minimal public reset smoke for contributor bring-up"
 timeout_sec = 1800
-# Default OTP image so fuse-sense completes (~5.5 us) and releases warm reset
-# (SCRATCH_COLD_WARM_*). Absolute path: sim cwd is attempt_*/make.
-args = [
-  "+smc_efuse_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/smc_efuse_default.hex",
-]
+# The reset-sanity milestone uses the eFuse responder's deterministic zero
+# initialization. Tests that require a particular lifecycle or programmed OTP
+# state must provide a validated, repository-local image explicitly.
+args = []
 
 # OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
 description = "DUT-only SMC cocotb target for public smoke and coverage"
-build_dir = "dv/oss/hw/sys/smc/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
+build_dir = "hw/sys/smc/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 defines = [
   # SYNTHESIS no-ops assertion/cover blocks that Verilator cannot parse.
   "SYNTHESIS",

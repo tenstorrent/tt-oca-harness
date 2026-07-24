@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# SMC OSS DV local ignores. (dv/oss/.gitignore already ignores build/.)
+# SMC OSS DV local ignores. The repository root ignores all **/build/ trees.
 
 # Python bytecode
 **/__pycache__/

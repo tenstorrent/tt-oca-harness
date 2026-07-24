@@ -192,7 +192,8 @@ seed = 1
 timeout_sec = 3600
 tags = ["ci", "vplan_gap", "cpu_depth", "u3_fw_boot", "pyuvm"]
 run_modes = ["smoke"]
-# Absolute paths: simulator cwd is attempt_*/make, not the repo root.
+# FIXME(SMC-DV): stage the named assets in each run directory before enabling
+# this firmware test. min_pass.ecc.hex is not currently checked in.
 # +skip_fuse_sense: skip eFuse sense wait.
 # +smc_hold_cpu_boot: keep pad60 boot_stall from t=0 until the sequence
 # programs RESET_VECTOR then releases (prevents ROM fetch before revector).
@@ -201,8 +202,8 @@ run_modes = ["smoke"]
 args = [
     "+skip_fuse_sense",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-    "+smc_scratch_ram_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/min_pass.ecc.hex",
+    "+smc_shadow_reg_preload=default_efuse_shadow_reg.preload",
+    "+smc_scratch_ram_hex=min_pass.ecc.hex",
 ]
 
 [[tests]]
@@ -213,7 +214,8 @@ timeout_sec = 3600
 tags = ["ci", "vplan_gap", "cpu_depth", "p2_phase_c", "u7_secure", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    "+smc_efuse_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
+    "+smc_efuse_hex=smc_efuse_default.hex",
     "+smc_efuse_prog_fail_count=1",
 ]
 
@@ -225,7 +227,8 @@ timeout_sec = 3600
 tags = ["ci", "vplan_gap", "p2_phase_c", "u7_otp", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    "+smc_efuse_hex=/proj_soc/user_dev/minshaoho/tryrun/os_oca/dv/oss/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
+    "+smc_efuse_hex=smc_efuse_default.hex",
     "+smc_efuse_prog_fail_count=1",
 ]
 

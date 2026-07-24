@@ -416,13 +416,11 @@ module smc_uvm_top
     smc_efuse_pkg::fuse_command_req_t  efuse_cmd_req;
     smc_efuse_pkg::fuse_command_resp_t efuse_cmd_resp;
 
-    // I3C DAT/DCT/RLT memories (required under CONTROLLER_SUPPORT=1 / #3934).
+    // I3C DAT/DCT memory boundary exposed by the current open SMC RTL.
     i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
     i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
     i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
     i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
-    i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
-    i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
     chipyard_4core_mem_pkg::rom_req_t            smc_rom_req;
     chipyard_4core_mem_pkg::rom_rsp_t            smc_rom_rsp;
@@ -885,26 +883,23 @@ module smc_uvm_top
         .spi_mem_rebar_ipad_o(tb_spi_mem_rebar_ipad),
         .output_axi_req_o(output_axi_req),
         .output_axi_resp_i(output_axi_resp),
-        // I3C controller memories (DAT/DCT/RLT) — see u_i3c_mem below.
+        // I3C controller DAT/DCT memory boundary.
         .i3c_dat_mem_src_i(i3c_dat_mem_src),
         .i3c_dat_mem_sink_o(i3c_dat_mem_sink),
         .i3c_dct_mem_src_i(i3c_dct_mem_src),
-        .i3c_dct_mem_sink_o(i3c_dct_mem_sink),
-        .i3c_rlt_mem_src_i(i3c_rlt_mem_src),
-        .i3c_rlt_mem_sink_o(i3c_rlt_mem_sink)
+        .i3c_dct_mem_sink_o(i3c_dct_mem_sink)
     );
 
-    // I3C DAT/DCT/RLT memories for the real open-source controller (#3934).
-    tb_smc_i3c_mem_responder u_i3c_mem (
-        .clk_i           (clk_periph_i),
-        .rst_ni          (rst_cold_ni),
-        .dat_mem_sink_i  (i3c_dat_mem_sink),
-        .dat_mem_src_o   (i3c_dat_mem_src),
-        .dct_mem_sink_i  (i3c_dct_mem_sink),
-        .dct_mem_src_o   (i3c_dct_mem_src),
-        .rlt_mem_sink_i  (i3c_rlt_mem_sink),
-        .rlt_mem_src_o   (i3c_rlt_mem_src)
-    );
+    // Reset-sanity does not exercise the I3C controller memories. Keep the
+    // responses deterministic so unrelated I3C state cannot introduce Xs.
+    //
+    // FIXME(SMC-DV): replace these DAT/DCT tie-offs with a functional
+    // behavioral memory after the current I3C interface and Bender source
+    // closure are agreed. Do not reintroduce the obsolete RLT interface.
+    for (genvar i3c_idx = 0; i3c_idx < smc_config_pkg::NUM_I3C; i3c_idx++) begin : gen_i3c_mem_tieoff
+        assign i3c_dat_mem_src[i3c_idx] = '0;
+        assign i3c_dct_mem_src[i3c_idx] = '0;
+    end
 
     // ------------------------------------------------------------------
     // External peripheral-macro boundary responders (bus terminators).

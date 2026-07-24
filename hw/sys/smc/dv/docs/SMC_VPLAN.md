@@ -4,18 +4,17 @@
 
 **Design Under Test**: `smc`
 
-**Public testbench top**: `dv/oss/hw/sys/smc/dv/tb/tb_top.sv`
+**Public testbench top**: `hw/sys/smc/dv/tb/tb_top.sv`
 
 **Test framework**: cocotb + PyUVM, using the DTP/SEP three-layer pattern:
 `env/`, `seq_lib/`, and `tests/`.
 
-**Sim config**: `dv/oss/hw/sys/smc/dv/smc_sim_cfg.toml` (`--dut smc`)
+**Sim config**: `hw/sys/smc/dv/smc_sim_cfg.toml` (`--dut smc`)
 
 This plan describes **what** the SMC OSS DV suite verifies, at what
 granularity, and against which RTL. It intentionally does **not**
 describe execution status, run history, session-specific evidence, or
-open engineering questions — those live in the development log at
-`dv/oss/hw/sys/smcoss_smc_dev.md`.
+open engineering questions — those live in `docs/smc_ossupgrade.md`.
 
 The suite is organised in three tiers:
 
@@ -77,7 +76,7 @@ AVSBus/OCTS/telemetry sideband, zeroer/DMA-like utility blocks, ECC/RAS, DFD/DBS
 ## Test Infrastructure
 
 The tests below are driven by these PyUVM agents (defined under
-`dv/oss/hw/sys/smc/dv/cocotb/env/`):
+`hw/sys/smc/dv/cocotb/env/`):
 
 | Agent | Capability | Coverage role |
 |-------|------------|---------------|
@@ -90,7 +89,7 @@ The tests below are driven by these PyUVM agents (defined under
 | `SmcSysAxiAgent` | active cocotbext-axi master on SEP_IN AXI (via `s_axi_*` → `sep_axi_in_req_i`) | Real CSR/fabric read/write |
 | `SmcProtocolVipAgent` | analysis port for `SmcProtocolVipItem` proxy transactions | Records protocol intent for scoreboarding |
 
-Protocol VIP wrappers (under `dv/oss/hw/sys/smc/dv/cocotb/seq_lib/`):
+Protocol VIP wrappers (under `hw/sys/smc/dv/cocotb/seq_lib/`):
 
 | Wrapper | Upstream | Purpose |
 |---------|----------|---------|
@@ -299,13 +298,15 @@ source of truth for this GitHub mapping. Local-implementation notes:
 
 - `smc_mailbox_idle_test` is a `pyuvm.test()` alias that reuses
   `smc_mailbox_irq_test_seq` (backing sequence at
-  `dv/oss/hw/sys/smc/dv/cocotb/seq_lib/smc_mailbox_irq_test_seq.py`).
+  `hw/sys/smc/dv/cocotb/seq_lib/smc_mailbox_irq_test_seq.py`).
 - `smc_input_fabric_axi_wr_rd_test` reuses
   `smc_input_output_fabric_wr_rd_test_seq`.
 - `smc_avsbus_sanity_test` reuses `smc_sideband_protocol_smoke_test_seq`.
 - `smc_dbs_idle_test` reuses `smc_ecc_dfd_dbs_sanity_test_seq`.
 
-> **Execution status + signoff evidence** for `project_p0`, `canonical_top6`, `canonical_top10`, `canonical_top20`, `vplan_triplets`, and `p2_phase_a` groups is tracked in `dv/oss/hw/sys/smcoss_smc_dev.md` (§header block + §6b Sign-off), not here.
+> **Execution status + signoff evidence** for `project_p0`, `canonical_top6`,
+> `canonical_top10`, `canonical_top20`, `vplan_triplets`, and `p2_phase_a`
+> groups is tracked in `docs/smc_ossupgrade.md`, not here.
 
 ### Legacy Migration Selection Matrix
 
@@ -633,7 +634,7 @@ until the blocker is cleared AND the test PASSes on both simulators.**
 | P2-10 | `cross_domain_dtp` | SMU-side DTP JTAG2AXI model (partial: #3210/#3211 CLOSED) | JTAG2AXI SMU→SMC→SEP crossings — **Deferred** (SEP_IN map hole / unit OOS) | B |
 | P2-11 | `i2c_smbus_pmbus_full` | SMBus 2.0 / PMBus device model | ARA(0x0C), PEC, Host Notify, Linear11/16 — **Partial Done** (`smc_smbus_*` + Linear16 helpers) | A |
 | P2-12 | `i3c_ccc_ibi_full` | I3C DAA/SETDASA + IBI initiation | **Skipped** (`i3ccore_stub`; IP DV owns CCC/IBI) | A |
-| P2-13 | `uart_spi_loopback` | cocotbext-uart / cocotbext-spi + tb_top signal lift | Real UART echo + SPI flash CS sequence — pin env: `requirements-python311.txt` | A |
+| P2-13 | `uart_spi_loopback` | cocotbext-uart / cocotbext-spi + tb_top signal lift | Real UART echo + SPI flash CS sequence — shared uv dependency ownership deferred | A |
 | P2-14 | `fusa_random_error` | FuSa error-injection framework | Random fault → error report → recovery — **Deferred** (Should wave) | C |
 | P2-15 | `efuse_jtag_lc_access_ctrl` | ~~`lc_state_i` drive hook + JTAG-side AXI-Lite master~~ **CLEARED** — `tb_top` now lifts `tb_lc_state_raw`/`tb_lc_state_force_sigint` + the `ej_axi` AXI-Lite master into `axil_smc_otp_jtag_req_i` | **IMPLEMENTED**: `smc_efuse_jtag_lc_access_matrix_test` — eFuse JTAG access-control matrix across LC states (see [Lifecycle-Gated eFuse JTAG Access Control](#lifecycle-gated-efuse-jtag-access-control-coverage-gap)) | B |
 

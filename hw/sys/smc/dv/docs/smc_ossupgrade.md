@@ -6,7 +6,7 @@
 | Status | Draft roadmap (planning only; not yet executed) |
 | Owner | minshaoho |
 | Date | 2026-07-21 |
-| Scope | `dv/oss/hw/sys/smc/dv/` only (OSS path; no Synopsys SVT) |
+| Scope | `hw/sys/smc/dv/` only (OSS path; no Synopsys SVT) |
 | Related | `SMC_VPLAN.md`, `oss_smc_dev.md`, SEP refs below |
 | Aspiration (non-OSS) | `dv/smc/tb/smc_synopsys_vip_overview.md` (legacy SVT AMBA VIP) |
 
@@ -54,7 +54,7 @@ OSS SMC (CSR + pin VIP + DECERR) ██████░░░░░░  ~45–55%
 
 ### 2.3 What SEP has that SMC lacks (primary target)
 
-Reference layout: `dv/oss/hw/sys/sep/dv/`
+Reference layout: `hw/sys/sep/dv/`
 
 | SEP pattern | SEP path | SMC gap |
 |-------------|----------|---------|
@@ -97,7 +97,7 @@ cocotb / PyUVM  (agents · BFMs · goldens · scoreboards)
 
 **Principles (copy from SEP shim plan):**
 
-- Shims live under `dv/oss/hw/sys/smc/dv/`; DUT RTL stays unchanged.
+- Shims live under `hw/sys/smc/dv/`; DUT RTL stays unchanged.
 - `tb_top.sv` is the only integration boundary.
 - Prefer `ocah_*_vip` + Apache-2.0 BFMs over commercial VIP.
 - Every new model documents **DEFENDS / DOES NOT DEFEND** in VPLAN.
@@ -329,7 +329,7 @@ SEP-parity milestone ≈ end of **U3** (~1–2 months).
 ## 10. File / directory touch plan (when implementing)
 
 ```
-dv/oss/hw/sys/smc/dv/
+hw/sys/smc/dv/
 ├── docs/
 │   ├── SMC_VPLAN.md              # sync defense scope + P2 promotion
 │   └── smc_ossupgrade.md         # this roadmap
@@ -344,7 +344,7 @@ dv/oss/hw/sys/smc/dv/
 └── testlists/                    # tags: reachability | protocol | firmware
 ```
 
-Shared VIP reuse: `dv/oss/hw/common/dv/vip/` (`ocah_axi_vip`, `ocah_spi_vip`,
+Shared VIP reuse: `hw/common/dv/vip/` (`ocah_axi_vip`, `ocah_spi_vip`,
 `ocah_i2c_vip`, `ocah_i3c_vip`, `ocah_uart_vip`, `ocah_memory_image` if banks fit).
 
 ---
@@ -357,7 +357,7 @@ Shared VIP reuse: `dv/oss/hw/common/dv/vip/` (`ocah_axi_vip`, `ocah_spi_vip`,
 | Shared `build/cocotb/verilator` races across sessions | Serialize rebuilds; document exclusive use |
 | Cadence / hard-macro models unavailable in OSS | Keep DECERR + IP-DV ownership; do not fake content |
 | I3C VIP CCC/IBI upstream bugs | Document deferral; SDR remains; track VIP fix |
-| FW image / toolchain not OSS-safe | Minimal bare-metal PASS image under `dv/oss` |
+| FW image / toolchain not OSS-safe | Minimal bare-metal PASS image under `hw/sys/smc/dv/assets` |
 
 ---
 
@@ -441,9 +441,8 @@ U1/U2 change was stopped; smoke re-targeted to VCS.
 Recipe:
 
 ```bash
-source bin/setup_env.sh && source dv/oss/bin/setup_env.sh
 export TMPDIR=/localdev/$USER/TMPDIR; mkdir -p "$TMPDIR"
-/usr/bin/python3.11 dv/oss/tools/dv/run_dv.py --dut smc --tool vcs --rebuild \
+python3 tools/dv/run_dv.py --dut smc --tool vcs --rebuild \
   --items smc_cold_reset_test smc_output_fabric_wr_rd_responder_test
 ```
 
@@ -461,16 +460,16 @@ export TMPDIR=/localdev/$USER/TMPDIR; mkdir -p "$TMPDIR"
 
 Run dirs:
 
-- `dv/oss/hw/sys/smc/dv/build/runs/20260721_025245__vcs__multi/` (smoke 2/2)
-- `dv/oss/hw/sys/smc/dv/build/runs/20260721_025323__vcs__multi/` (6/7 then SPI re-run PASS)
-- `dv/oss/hw/sys/smc/dv/build/runs/20260721_025508__vcs__smc_spi_loopback_test/`
+- `hw/sys/smc/dv/build/runs/20260721_025245__vcs__multi/` (smoke 2/2)
+- `hw/sys/smc/dv/build/runs/20260721_025323__vcs__multi/` (6/7 then SPI re-run PASS)
+- `hw/sys/smc/dv/build/runs/20260721_025508__vcs__smc_spi_loopback_test/`
 
 **Lesson:** `@pyuvm.test()` class docstrings must stay ASCII-safe — VCS cocotb path logs them through a Py3.9 ascii stream and treats `UnicodeEncodeError` Traceback as hard-fail even when the scenario passed.
 
 ### 2026-07-21 — U2-2 SPI pad BFM + U3 FW boot bring-up (VCS)
 
 **Tooling lesson:** prior "VCS PASS" results for U1/U2-1 used a **stale Jul-13 `simv`**.
-`--rebuild` alone did not always remake; deleting `dv/oss/hw/sys/smc/dv/build/cocotb/vcs/`
+`--rebuild` alone did not always remake; deleting `hw/sys/smc/dv/build/cocotb/vcs/`
 forced a real compile and exposed two real bugs:
 
 1. `tb_smc_output_mem_responder.sv` — VCS **ICPD** (`initial` + `always_ff` both drive `mem`);
@@ -501,7 +500,7 @@ Infrastructure landed and VCS-proven where noted:
 |------|--------|
 | CPU_CTRL addresses | Fixed to `0xC003_9000/9020/9080` in `smc_cpu_vip_utils.py` |
 | `+smc_scratch_ram_hex` absolute path | Required (sim cwd = `attempt_*/make`) |
-| `hello_world.ecc.hex` asset | `dv/oss/hw/sys/smc/dv/assets/` |
+| `hello_world.ecc.hex` asset | `hw/sys/smc/dv/assets/` |
 | boot_stall pad 60 | Default `pad2core[60]=0` (was sticky-stalling fuse_reset) |
 | `disable_sram_auto_init_i=1` | Preserve preload (auto-zero would wipe hex) |
 | eFuse bank DECERR + fuse-cmd ACK | Unconnected ports previously hung fabric under `+skip_fuse_sense` |
@@ -532,8 +531,8 @@ Infrastructure landed and VCS-proven where noted:
 
 Run dirs:
 
-- `dv/oss/hw/sys/smc/dv/build/runs/20260721_030901__vcs__multi/` (cold/SPI/output PASS)
-- `dv/oss/hw/sys/smc/dv/build/runs/20260721_034400__vcs__multi/` (SPI PASS + FW FAIL with rom_reads)
+- `hw/sys/smc/dv/build/runs/20260721_030901__vcs__multi/` (cold/SPI/output PASS)
+- `hw/sys/smc/dv/build/runs/20260721_034400__vcs__multi/` (SPI PASS + FW FAIL with rom_reads)
 
 ### 2026-07-21 — U3 FW boot Done + U4-1 UART DUT TX (VCS)
 
@@ -796,19 +795,19 @@ Proof logs (VCS): `SMBALERT# asserted` → `ARA OK: reply=0x20; SMBALERT# cleare
 
 ### 2026-07-21 — Must-catch wave (W1–W3) VCS PASS
 
-Closed the Must-gap plan items under `dv/oss/hw/sys/smc/dv/` (no `hw/` RTL):
+Closed the Must-gap plan items under `hw/sys/smc/dv/` (no DUT RTL changes):
 
 | Item | Deliverable | Evidence |
 |------|-------------|----------|
 | W1-a P2-1 FW boot | Keep `min_pass.ecc.hex` contract; promote P2-1 | VCS PASS `smc_cpu_firmware_boot_test` in `.../20260721_150000__vcs__must_catch_w1w2` |
 | W1-b P2-6 OTP | `shims/analog/tb_smc_efuse_responder.sv` + `smc_efuse_otp_burn_shadow_test` | VCS PASS `.../20260721_150527__vcs__multi` (sense+fail+burn; needs `program_enable`) |
-| W1-c UART env | `requirements-python311.txt` (`cocotbext-uart==0.1.4`); project venv already had it | VCS PASS `smc_uart_loopback_test` in must_catch run |
+| W1-c UART env | Historical run used `cocotbext-uart==0.1.4`; current shared uv ownership is deferred | VCS PASS `smc_uart_loopback_test` in must_catch run |
 | W2-a P2-2 OCCP | Retire scratch proxy → OTP program-fail + EFUSE_MAP signature | VCS PASS `smc_occp_sanity_secure_error_test` (`proxy=False`) |
 | W2-b/c P2-7/8 | `tb_cpu_ecc_inject_*` + `tb_dfd_fault_inject` / `tb_dbs_capture_*` | VCS PASS `smc_ecc_fault_inject_test`, `smc_dfd_dbs_fault_inject_test` |
 | W3 P2-11 + honesty | Linear16 helpers + VPLAN P2 table update | VCS PASS `smc_smbus_pmbus_test`; `SMC_VPLAN.md` P2 rows promoted |
 
 **must_catch_w1w2 group (VCS): 7/7 PASS** after program_enable fix  
-`dv/oss/hw/sys/smc/dv/build/runs/20260721_150000__vcs__must_catch_w1w2` + efuse/occp rerun `20260721_150527__vcs__multi`.
+`hw/sys/smc/dv/build/runs/20260721_150000__vcs__must_catch_w1w2` + efuse/occp rerun `20260721_150527__vcs__multi`.
 
 #### Remaining backlog (honest, post Must-catch)
 
