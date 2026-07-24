@@ -7,9 +7,7 @@ FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../flows/preamble.mk
 
 FLOW_DESIGN := smu
-# Empty until Bender.yml gains real per-block targets; every block shares
-# the same flist today.
-FLOW_BENDER_TARGETS :=
+FLOW_BENDER_TARGETS := -t idma_rtl -t dtp -t sep -t smc -t sep_el2
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk

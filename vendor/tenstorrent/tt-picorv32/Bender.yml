@@ -11,11 +11,13 @@ package:
     - "Claire Xenia Wolf <claire@yosyshq.com>"
 
 sources:
-  - upstream/picorv32_regs.sv
-  - upstream/picorv32_pcpi_mul.sv
-  - upstream/picorv32_pcpi_fast_mul.sv
-  - upstream/picorv32_pcpi_div.sv
-  - upstream/picorv32_axi_adapter.sv
-  - upstream/picorv32.sv
-  - upstream/picorv32_axi.sv
-  - upstream/picorv32_wb.sv
+  - target: any(picorv32_rtl, sep)
+    files:
+      - upstream/picorv32_regs.sv
+      - upstream/picorv32_pcpi_mul.sv
+      - upstream/picorv32_pcpi_fast_mul.sv
+      - upstream/picorv32_pcpi_div.sv
+      - upstream/picorv32_axi_adapter.sv
+      - upstream/picorv32.sv
+      - upstream/picorv32_axi.sv
+      - upstream/picorv32_wb.sv

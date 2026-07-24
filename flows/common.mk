@@ -10,6 +10,8 @@ ocah_flow_common_mk := 1
 include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/preamble.mk
 
 OCAH_BENDER ?= bender
+OCAH_FLOW_COMMON_BENDER_TARGETS ?= -t axi_rtl -t apb_rtl -t common_cells_rtl \
+	-t common_cell_sync_shim -t register_interface_l1
 
 # Defines shared by lint and synth so both see the same design.
 OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
@@ -50,9 +52,10 @@ ocah_require_host_tool = @command -v "$(1)" >/dev/null 2>&1 || { \
 
 # Native bender flist wrapper; bender always runs on the host, auto-discovering
 # Bender.yml from whichever directory it's invoked in.
-# $(1) = extra block-specific bender targets (FLOW_BENDER_TARGETS)
+# $(1) = block-specific bender targets (FLOW_BENDER_TARGETS)
 # $(2) = output .f path (relative to the recipe's own CWD)
-ocah_eda_flist = $(OCAH_BENDER) script flist-plus $(OCAH_FLOW_COMMON_DEFINES) $(1) > $(2)
+ocah_eda_flist = $(OCAH_BENDER) script flist-plus $(OCAH_FLOW_COMMON_DEFINES) \
+	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(1) > $(2)
 
 # Fan a goal out to selected blocks as an isolated sub-make (BLOCK=<block>
 # picks one, else all discovered blocks). Not named TARGET= to avoid
