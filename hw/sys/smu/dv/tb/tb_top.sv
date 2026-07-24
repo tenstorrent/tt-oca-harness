@@ -1,0 +1,724 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// SMU OSS cocotb top — Phase-1 SEP=0.
+// Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
+// cocotb BFMs, and terminates macro/memory boundaries with OSS responders.
+//
+// Real checkers consume:
+//   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
+//   - sep_global_base_o / sep_region_size_o (== 0 when SEP=0)
+//   - jtag_* IDCODE/BYPASS via OcahJtagTap
+//   - s_axi_* CSR frontdoor reads (VERSION_LO etc.)
+
+`timescale 1ps/1fs
+
+module smu_uvm_top
+    import smu_pkg::*;
+    import smu_axi_xbar_pkg::*;
+    import smc_pkg::*;
+    import prim_jtag_pkg::*;
+    import chipyard_4core_mem_pkg::*;
+(
+    input  wire logic clk_smu_i,
+    input  wire logic clk_ref_i,
+    input  wire logic clk_periph_i,
+    input  wire logic rst_cold_ni,
+    input  wire logic powergood_i,
+
+    // Primary JTAG TAP (cocotb OcahJtagTap)
+    input  wire logic jtag_tck,
+    input  wire logic jtag_tms,
+    input  wire logic jtag_trst,   // active-low
+    input  wire logic jtag_tdi,
+    output logic      jtag_tdo,
+    output logic      jtag_tdo_oen,
+
+    // Reset / SEP=0 observables (real checkers)
+    output logic        rst_cold_stable_ref_clk_no,
+    output logic        rst_primary_ref_clk_no,
+    output logic        rst_primary_smc_clk_no,
+    output logic        rst_primary_periph_clk_no,
+    output logic [55:0] sep_global_base_o,
+    output logic [55:0] sep_region_size_o,
+    output logic [55:0] smc_global_base_o,
+    output logic [31:0] smc_region_size_o,
+    output logic        init_mem_done_o,
+    output logic        fuse_sense_done_o,
+    output logic        fuse_reset_n_delayed_o,
+    // DTP DEBUG_CONTROL -> SMC boot-stall (hierarchical observe)
+    output logic        jtag_boot_stall_ovrd,
+    output logic        jtag_boot_stall,
+    // IC_RESET observables (DTP override)
+    output logic        jtag_ic_reset_ext_ovrd,
+    output logic        jtag_ic_reset_ext_ctrl_n,
+    output logic        jtag_ic_reset_smc_ovrd,
+    output logic        jtag_ic_reset_smc_ctrl_n,
+    // Cross-trigger CTM loopback ports (cocotb drives dst_req)
+    input  wire logic [7:0] xtrig_ctm_dst_req,
+    output logic [7:0]      xtrig_ctm_dst_ack,
+    output logic [7:0]      xtrig_ctm_src_req,
+    input  wire logic [7:0] xtrig_ctm_src_ack,
+    // Clock-stop coordination
+    input  wire logic [7:0] xtrig_clk_stop_req,
+    output logic            dtp_stop_clks_o,
+    output logic            dtp_cla_clock_stop_en,
+    // Lifecycle / demote (SEP=0 defaults)
+    output logic [7:0]      lc_state_o,
+    output logic            lc_sigint_err_o,
+    output logic [1:0]      lcc_demote_state_1_o,
+    output logic [1:0]      lcc_demote_state_2_o,
+    // GPIO strap capture (reset-unit STRAPS_* readback source)
+    input  wire logic [63:0] captured_straps_i,
+    // GPIO boot-stall pad bit[60] drive (OR'd into pad2core; Verilator-safe)
+    input  wire logic        gpio_boot_stall_drive_i,
+    output logic [31:0] ext_mailbox_interrupts,
+    output logic [31:0] jtag_ptap_state,
+    output logic [31:0] jtag_ptap_inst_decoded,
+
+    // Macro AXI-Lite activity (OR of aw/w/ar valid on boundary masters)
+    output logic tb_axil_pll_active /*verilator public_flat_rw*/,
+    output logic tb_axil_pvt_active /*verilator public_flat_rw*/,
+    output logic tb_axil_extension_active /*verilator public_flat_rw*/,
+
+    // WDT first-timeout pin observe (ChipYard rst export; clamped under isolate)
+    output logic tb_wdt_first_timeout /*verilator public_flat_rw*/,
+    // Pre-clamp WDT rst inject/observe (VPI cannot enter generate named begin)
+    input  wire logic tb_force_wdt_reset_raw /*verilator public_flat_rw*/,
+    input  wire logic tb_force_cluster_isolate /*verilator public_flat_rw*/,
+    output logic      tb_wdt_reset_raw /*verilator public_flat_rw*/,
+    output logic      tb_cluster_boundary_isolate /*verilator public_flat_rw*/,
+
+    // OCTS timer count pin observe
+    output logic [63:0] tb_timer_count /*verilator public_flat_rw*/,
+
+    // Telemetry ATB channel-0 drive / observe (receivers 1..N stay idle)
+    input  wire logic [7:0] tb_tel_atdata /*verilator public_flat_rw*/,
+    input  wire logic [6:0] tb_tel_atid /*verilator public_flat_rw*/,
+    input  wire logic       tb_tel_atvalid /*verilator public_flat_rw*/,
+    input  wire logic       tb_tel_afready /*verilator public_flat_rw*/,
+    output logic            tb_tel_atready /*verilator public_flat_rw*/,
+    output logic            tb_tel_afvalid /*verilator public_flat_rw*/,
+
+    // Flat external SMN AXI subordinate (cocotbext-axi master drives this)
+    input  wire logic [7:0]   s_axi_awid,
+    input  wire logic [55:0]  s_axi_awaddr,
+    input  wire logic [7:0]   s_axi_awlen,
+    input  wire logic [2:0]   s_axi_awsize,
+    input  wire logic [1:0]   s_axi_awburst,
+    input  wire logic         s_axi_awlock,
+    input  wire logic [3:0]   s_axi_awcache,
+    input  wire logic [2:0]   s_axi_awprot,
+    input  wire logic [3:0]   s_axi_awqos,
+    input  wire logic [3:0]   s_axi_awregion,
+    input  wire logic [11:0]  s_axi_awuser,
+    input  wire logic         s_axi_awvalid,
+    output logic              s_axi_awready,
+    input  wire logic [63:0]  s_axi_wdata,
+    input  wire logic [7:0]   s_axi_wstrb,
+    input  wire logic         s_axi_wlast,
+    input  wire logic [11:0]  s_axi_wuser,
+    input  wire logic         s_axi_wvalid,
+    output logic              s_axi_wready,
+    output logic [7:0]        s_axi_bid,
+    output logic [1:0]        s_axi_bresp,
+    output logic [11:0]       s_axi_buser,
+    output logic              s_axi_bvalid,
+    input  wire logic         s_axi_bready,
+    input  wire logic [7:0]   s_axi_arid,
+    input  wire logic [55:0]  s_axi_araddr,
+    input  wire logic [7:0]   s_axi_arlen,
+    input  wire logic [2:0]   s_axi_arsize,
+    input  wire logic [1:0]   s_axi_arburst,
+    input  wire logic         s_axi_arlock,
+    input  wire logic [3:0]   s_axi_arcache,
+    input  wire logic [2:0]   s_axi_arprot,
+    input  wire logic [3:0]   s_axi_arqos,
+    input  wire logic [3:0]   s_axi_arregion,
+    input  wire logic [11:0]  s_axi_aruser,
+    input  wire logic         s_axi_arvalid,
+    output logic              s_axi_arready,
+    output logic [7:0]        s_axi_rid,
+    output logic [63:0]       s_axi_rdata,
+    output logic [1:0]        s_axi_rresp,
+    output logic              s_axi_rlast,
+    output logic [11:0]       s_axi_ruser,
+    output logic              s_axi_rvalid,
+    input  wire logic         s_axi_rready,
+
+    // Activity counters for connectivity checks
+    output logic [31:0] smu_axi_in_awvalid_count,
+    output logic [31:0] smu_axi_out_awvalid_count
+);
+
+    // ------------------------------------------------------------------
+    // JTAG pin pack
+    // ------------------------------------------------------------------
+    jtag_tap_ctrl_t jtag_ptap_client_tap_ctrl;
+    assign jtag_ptap_client_tap_ctrl = '{tms: jtag_tms, trst_n: jtag_trst, tck: jtag_tck};
+
+    // ------------------------------------------------------------------
+    // External SMN AXI structs
+    // ------------------------------------------------------------------
+    axi_56_64_req_t   smu_axi_in_req;
+    axi_56_64_resp_t  smu_axi_in_resp;
+    axi_out_req_t     smu_axi_out_req;
+    axi_out_resp_t    smu_axi_out_resp;
+
+    assign smu_axi_in_req.aw.id     = s_axi_awid;
+    assign smu_axi_in_req.aw.addr   = s_axi_awaddr;
+    assign smu_axi_in_req.aw.len    = s_axi_awlen;
+    assign smu_axi_in_req.aw.size   = s_axi_awsize;
+    assign smu_axi_in_req.aw.burst  = s_axi_awburst;
+    assign smu_axi_in_req.aw.lock   = s_axi_awlock;
+    assign smu_axi_in_req.aw.cache  = s_axi_awcache;
+    assign smu_axi_in_req.aw.prot   = s_axi_awprot;
+    assign smu_axi_in_req.aw.qos    = s_axi_awqos;
+    assign smu_axi_in_req.aw.region = s_axi_awregion;
+    assign smu_axi_in_req.aw.user   = s_axi_awuser;
+    assign smu_axi_in_req.aw.atop   = '0;
+    assign smu_axi_in_req.aw_valid  = s_axi_awvalid;
+    assign s_axi_awready            = smu_axi_in_resp.aw_ready;
+
+    assign smu_axi_in_req.w.data    = s_axi_wdata;
+    assign smu_axi_in_req.w.strb    = s_axi_wstrb;
+    assign smu_axi_in_req.w.last    = s_axi_wlast;
+    assign smu_axi_in_req.w.user    = s_axi_wuser;
+    assign smu_axi_in_req.w_valid   = s_axi_wvalid;
+    assign s_axi_wready             = smu_axi_in_resp.w_ready;
+
+    assign s_axi_bid                = smu_axi_in_resp.b.id;
+    assign s_axi_bresp              = smu_axi_in_resp.b.resp;
+    assign s_axi_buser              = smu_axi_in_resp.b.user;
+    assign s_axi_bvalid             = smu_axi_in_resp.b_valid;
+    assign smu_axi_in_req.b_ready   = s_axi_bready;
+
+    assign smu_axi_in_req.ar.id     = s_axi_arid;
+    assign smu_axi_in_req.ar.addr   = s_axi_araddr;
+    assign smu_axi_in_req.ar.len    = s_axi_arlen;
+    assign smu_axi_in_req.ar.size   = s_axi_arsize;
+    assign smu_axi_in_req.ar.burst  = s_axi_arburst;
+    assign smu_axi_in_req.ar.lock   = s_axi_arlock;
+    assign smu_axi_in_req.ar.cache  = s_axi_arcache;
+    assign smu_axi_in_req.ar.prot   = s_axi_arprot;
+    assign smu_axi_in_req.ar.qos    = s_axi_arqos;
+    assign smu_axi_in_req.ar.region = s_axi_arregion;
+    assign smu_axi_in_req.ar.user   = s_axi_aruser;
+    assign smu_axi_in_req.ar_valid  = s_axi_arvalid;
+    assign s_axi_arready            = smu_axi_in_resp.ar_ready;
+
+    assign s_axi_rid                = smu_axi_in_resp.r.id;
+    assign s_axi_rdata              = smu_axi_in_resp.r.data;
+    assign s_axi_rresp              = smu_axi_in_resp.r.resp;
+    assign s_axi_rlast              = smu_axi_in_resp.r.last;
+    assign s_axi_ruser              = smu_axi_in_resp.r.user;
+    assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
+    assign smu_axi_in_req.r_ready   = s_axi_rready;
+
+    // Simple AXI memory responder on smu_axi_out (external SMN manager)
+    localparam int unsigned OUT_MEM_WORDS = 1024;
+    logic [63:0] out_mem [0:OUT_MEM_WORDS-1];
+    logic        out_aw_pending, out_w_pending;
+    logic [9:0]  out_aw_id_q;
+    logic [55:0] out_aw_addr_q;
+    logic [63:0] out_w_data_q;
+    logic [7:0]  out_w_strb_q;
+    logic [11:0] out_w_user_q;
+
+    assign smu_axi_out_resp.aw_ready = !smu_axi_out_resp.b_valid && !out_aw_pending;
+    assign smu_axi_out_resp.w_ready  = !smu_axi_out_resp.b_valid && !out_w_pending;
+    assign smu_axi_out_resp.ar_ready = !smu_axi_out_resp.r_valid;
+
+    always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            out_aw_pending <= 1'b0;
+            out_w_pending  <= 1'b0;
+            out_aw_id_q    <= '0;
+            out_aw_addr_q  <= '0;
+            out_w_data_q   <= '0;
+            out_w_strb_q   <= '0;
+            out_w_user_q   <= '0;
+            smu_axi_out_resp.b       <= '0;
+            smu_axi_out_resp.b_valid <= 1'b0;
+            smu_axi_out_resp.r       <= '0;
+            smu_axi_out_resp.r_valid <= 1'b0;
+            smu_axi_out_awvalid_count <= '0;
+            for (int unsigned i = 0; i < OUT_MEM_WORDS; i++) out_mem[i] <= '0;
+        end else begin
+            if (smu_axi_out_req.aw_valid && smu_axi_out_resp.aw_ready) begin
+                smu_axi_out_awvalid_count <= smu_axi_out_awvalid_count + 32'd1;
+            end
+            if (smu_axi_out_resp.b_valid && smu_axi_out_req.b_ready)
+                smu_axi_out_resp.b_valid <= 1'b0;
+            if (smu_axi_out_resp.r_valid && smu_axi_out_req.r_ready)
+                smu_axi_out_resp.r_valid <= 1'b0;
+            if (smu_axi_out_req.aw_valid && smu_axi_out_resp.aw_ready) begin
+                out_aw_pending <= 1'b1;
+                out_aw_id_q    <= smu_axi_out_req.aw.id;
+                out_aw_addr_q  <= smu_axi_out_req.aw.addr;
+            end
+            if (smu_axi_out_req.w_valid && smu_axi_out_resp.w_ready) begin
+                out_w_pending <= 1'b1;
+                out_w_data_q  <= smu_axi_out_req.w.data;
+                out_w_strb_q  <= smu_axi_out_req.w.strb;
+                out_w_user_q  <= smu_axi_out_req.w.user;
+            end
+            if (!smu_axi_out_resp.b_valid && out_aw_pending && out_w_pending) begin
+                smu_axi_out_resp.b.id    <= out_aw_id_q;
+                smu_axi_out_resp.b.resp  <= 2'b00;
+                smu_axi_out_resp.b.user  <= out_w_user_q;
+                smu_axi_out_resp.b_valid <= 1'b1;
+                out_aw_pending <= 1'b0;
+                out_w_pending  <= 1'b0;
+                for (int unsigned i = 0; i < 8; i++) begin
+                    if (out_w_strb_q[i])
+                        out_mem[out_aw_addr_q[12:3]][8*i +: 8] <= out_w_data_q[8*i +: 8];
+                end
+            end
+            if (smu_axi_out_req.ar_valid && smu_axi_out_resp.ar_ready && !smu_axi_out_resp.r_valid) begin
+                smu_axi_out_resp.r.id   <= smu_axi_out_req.ar.id;
+                smu_axi_out_resp.r.data <= out_mem[smu_axi_out_req.ar.addr[12:3]];
+                smu_axi_out_resp.r.resp <= 2'b00;
+                smu_axi_out_resp.r.last <= 1'b1;
+                smu_axi_out_resp.r.user <= '0;
+                smu_axi_out_resp.r_valid <= 1'b1;
+            end
+        end
+    end
+
+    always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni)
+            smu_axi_in_awvalid_count <= '0;
+        else if (s_axi_awvalid && s_axi_awready)
+            smu_axi_in_awvalid_count <= smu_axi_in_awvalid_count + 32'd1;
+    end
+
+    // ------------------------------------------------------------------
+    // Macro / memory / unused boundary nets
+    // ------------------------------------------------------------------
+    smc_axil_32_32_req_t  axil_pll_req, axil_pvt_req, axil_ext_req;
+    smc_axil_32_32_resp_t axil_pll_resp, axil_pvt_resp, axil_ext_resp;
+    smc_axil_32_32_req_t  smc_efuse_bank_ctrl_req;
+    smc_axil_32_32_resp_t smc_efuse_bank_ctrl_resp;
+    smc_efuse_pkg::fuse_command_req_t  smc_efuse_shim_command_req;
+    smc_efuse_pkg::fuse_command_resp_t smc_efuse_shim_command_resp;
+    smc_efuse_pkg::efuse_map_t         smc_shadow_regs;
+    gpio_pkg::gpio_axil_req_t  axil_gpio_ctrl_req;
+    gpio_pkg::gpio_axil_resp_t axil_gpio_ctrl_resp;
+
+    rom_req_t              smc_rom_req;
+    rom_rsp_t              smc_rom_rsp;
+    scratch_ram_req_t      smc_scratch_ram_req [NUM_SRAM_BANKS-1:0];
+    scratch_ram_rsp_t      smc_scratch_ram_rsp [NUM_SRAM_BANKS-1:0];
+    l1_icache_tag_req_t    smc_l1_icache_tag_req [NUM_ICACHE_TAG_BANKS-1:0];
+    l1_icache_tag_rsp_t    smc_l1_icache_tag_rsp [NUM_ICACHE_TAG_BANKS-1:0];
+    l1_icache_data_req_t   smc_l1_icache_data_req [NUM_ICACHE_DATA_BANKS-1:0];
+    l1_icache_data_rsp_t   smc_l1_icache_data_rsp [NUM_ICACHE_DATA_BANKS-1:0];
+    l1_dcache_tag_req_t    smc_l1_dcache_tag_req [NUM_DCACHE_TAG_BANKS-1:0];
+    l1_dcache_tag_rsp_t    smc_l1_dcache_tag_rsp [NUM_DCACHE_TAG_BANKS-1:0];
+    l1_dcache_data_req_t   smc_l1_dcache_data_req [NUM_DCACHE_DATA_BANKS-1:0];
+    l1_dcache_data_rsp_t   smc_l1_dcache_data_rsp [NUM_DCACHE_DATA_BANKS-1:0];
+
+    logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
+    logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad, pad2core_en, core2pad_en, lsio_sel;
+    logic [smc_pkg::NUM_MAILBOXES-1:0]  mbx_irqs;
+    jtag_tap_pkg::tap_state_e                     ptap_state;
+    jtag_inst_reg_pkg::jtag_instruction_decoded_e ptap_inst;
+    logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_base_w, sep_size_w;
+    smc_pkg::smc_axi_addr_t smc_base_w;
+    logic [31:0] smc_size_w;
+    jtag_tap_pkg::jtag_ic_reset_default_t jtag_ic_reset_ext;
+
+    // Scan / STAP loopbacks
+    jtag_scan_ctrl_t bsr_ctrl, stap_scan_ctrl, dfd_ctrl, dft_sec_ctrl, dft_ctrl;
+    logic bsr_out, stap_scan_out, dfd_out, dft_sec_out, dft_out;
+    jtag_tap_ctrl_t stap_io_ctrl;
+    logic stap_io_tdo, stap_io_tdo_oen;
+    jtag_tap_ctrl_t stap_extra_ctrl [0:0];
+    logic stap_extra_tdi [0:0];
+    logic stap_extra_tdo [0:0];
+    logic stap_extra_tdo_oen [0:0];
+
+    assign stap_extra_tdi[0] = stap_extra_tdo[0];
+
+    // XTRIG: expose CTM req/ack for cocotb (was hard-tied idle)
+    logic [7:0] xtrig_src_req_w, xtrig_dst_ack_w;
+    assign xtrig_ctm_src_req = xtrig_src_req_w;
+    assign xtrig_ctm_dst_ack = xtrig_dst_ack_w;
+
+    logic [15:0] ctp_z;
+    assign ctp_z = '0;
+
+    // Telemetry: cocotb drives channel-0; remaining receivers stay idle
+    telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] tel_data;
+    telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] tel_id;
+    logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] tel_ready, tel_valid, tel_afvalid, tel_afready;
+    assign tel_data[0] = tb_tel_atdata;
+    assign tel_id[0] = tb_tel_atid;
+    assign tel_valid[0] = tb_tel_atvalid;
+    assign tel_afready[0] = tb_tel_afready;
+    for (genvar ti = 1; ti < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; ti++) begin : gen_tel_idle
+        assign tel_data[ti] = '0;
+        assign tel_id[ti] = '0;
+        assign tel_valid[ti] = 1'b0;
+        assign tel_afready[ti] = 1'b0;
+    end
+    assign tb_tel_atready = tel_ready[0];
+    assign tb_tel_afvalid = tel_afvalid[0];
+
+    // Trace mem idle responses
+    dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
+    dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
+    assign trc_resp = '0;
+
+    // eFuse shim idle response
+    assign smc_efuse_shim_command_resp = '0;
+    assign smc_efuse_bank_ctrl_resp = '0;
+
+    // I3C mem idle
+    i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
+    i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
+    assign i3c_dat_src = '0;
+    assign i3c_dct_src = '0;
+
+    // SEP strap / irq idle (SEP=0 paths still exist as ports)
+    sep_pkg::sep_straps_t sep_straps;
+    assign sep_straps = '0;
+
+    // Observables
+    assign sep_global_base_o         = sep_base_w;
+    assign sep_region_size_o         = sep_size_w;
+    assign smc_global_base_o         = smc_base_w;
+    assign smc_region_size_o         = smc_size_w;
+    assign ext_mailbox_interrupts    = mbx_irqs;
+    assign jtag_ptap_state           = 32'(ptap_state);
+    assign jtag_ptap_inst_decoded    = 32'(ptap_inst);
+
+    // CPU memory responder (same shim as SMC OSS)
+    tb_smc_cpu_mem_responder u_cpu_mem (
+        .clk_i   (clk_smu_i),
+        .rst_ni  (rst_cold_ni),
+        .rom_req_i (smc_rom_req),
+        .rom_rsp_o (smc_rom_rsp),
+        .scratch_ram_req_i (smc_scratch_ram_req),
+        .scratch_ram_rsp_o (smc_scratch_ram_rsp),
+        .l1_icache_tag_req_i (smc_l1_icache_tag_req),
+        .l1_icache_tag_rsp_o (smc_l1_icache_tag_rsp),
+        .l1_icache_data_req_i (smc_l1_icache_data_req),
+        .l1_icache_data_rsp_o (smc_l1_icache_data_rsp),
+        .l1_dcache_tag_req_i (smc_l1_dcache_tag_req),
+        .l1_dcache_tag_rsp_o (smc_l1_dcache_tag_rsp),
+        .l1_dcache_data_req_i (smc_l1_dcache_data_req),
+        .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp),
+        .rom_read_count_o (),
+        .scratch_ram_read_count_o (),
+        .scratch_ram_write_count_o ()
+    );
+
+    // Macro boundary DECERR responders
+    prim_axi_lite_err_slv #(
+        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
+        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
+    ) u_pll_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
+                 .axil_req_i(axil_pll_req), .axil_resp_o(axil_pll_resp));
+    prim_axi_lite_err_slv #(
+        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
+        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
+    ) u_pvt_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
+                 .axil_req_i(axil_pvt_req), .axil_resp_o(axil_pvt_resp));
+    prim_axi_lite_err_slv #(
+        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
+        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
+    ) u_ext_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
+                 .axil_req_i(axil_ext_req), .axil_resp_o(axil_ext_resp));
+    prim_axi_lite_err_slv #(
+        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
+        .axil_req_t(gpio_pkg::gpio_axil_req_t), .axil_resp_t(gpio_pkg::gpio_axil_resp_t)
+    ) u_gpio_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
+                  .axil_req_i(axil_gpio_ctrl_req), .axil_resp_o(axil_gpio_ctrl_resp));
+
+    // Per-macro AXI-Lite activity for routing / isolation checkers.
+    assign tb_axil_pll_active =
+        axil_pll_req.aw_valid | axil_pll_req.w_valid | axil_pll_req.ar_valid;
+    assign tb_axil_pvt_active =
+        axil_pvt_req.aw_valid | axil_pvt_req.w_valid | axil_pvt_req.ar_valid;
+    assign tb_axil_extension_active =
+        axil_ext_req.aw_valid | axil_ext_req.w_valid | axil_ext_req.ar_valid;
+
+    // ------------------------------------------------------------------
+    // DUT: smu with SEP=0
+    // ------------------------------------------------------------------
+    logic jtag_tdo_w, jtag_tdo_oen_w;
+    assign jtag_tdo     = jtag_tdo_w;
+    assign jtag_tdo_oen = jtag_tdo_oen_w;
+
+    smu #(
+        .SEP (0)
+    ) u_dut (
+        .clk_smu_i,
+        .clk_ref_i,
+        .clk_periph_i,
+        .rst_cold_ni,
+        .rst_cold_stable_ref_clk_no,
+        .powergood_i,
+        .jtag_ptap_client_tap_ctrl_i (jtag_ptap_client_tap_ctrl),
+        .jtag_ptap_client_tdi_i      (jtag_tdi),
+        .jtag_ptap_client_tdo_o      (jtag_tdo_w),
+        .jtag_ptap_client_tdo_oen_o  (jtag_tdo_oen_w),
+        .jtag_bsr_host_scan_ctrl_o   (bsr_ctrl),
+        .jtag_bsr_host_scan_in_i     (bsr_out),
+        .jtag_bsr_host_scan_out_o    (bsr_out),
+        .jtag_stap_io_host_tap_ctrl_o(stap_io_ctrl),
+        .jtag_stap_io_host_tdi_i     (stap_io_tdo),
+        .jtag_stap_io_host_tdo_o     (stap_io_tdo),
+        .jtag_stap_io_host_tdo_oen_o (stap_io_tdo_oen),
+        .jtag_stap_extra_host_tap_ctrl_o (stap_extra_ctrl),
+        .jtag_stap_extra_host_tdi_i      (stap_extra_tdi),
+        .jtag_stap_extra_host_tdo_o      (stap_extra_tdo),
+        .jtag_stap_extra_host_tdo_oen_o  (stap_extra_tdo_oen),
+        .jtag_stap_host_scan_ctrl_o  (stap_scan_ctrl),
+        .jtag_stap_host_scan_in_i    (stap_scan_out),
+        .jtag_stap_host_scan_out_o   (stap_scan_out),
+        .jtag_dfd_host_scan_ctrl_o   (dfd_ctrl),
+        .jtag_dfd_host_scan_in_i     (dfd_out),
+        .jtag_dfd_host_scan_out_o    (dfd_out),
+        .jtag_dft_secure_host_scan_ctrl_o (dft_sec_ctrl),
+        .jtag_dft_secure_host_scan_in_i   (dft_sec_out),
+        .jtag_dft_secure_host_scan_out_o  (dft_sec_out),
+        .jtag_dft_host_scan_ctrl_o   (dft_ctrl),
+        .jtag_dft_host_scan_in_i     (dft_out),
+        .jtag_dft_host_scan_out_o    (dft_out),
+        .dtp_stop_clks_o             (dtp_stop_clks_o),
+        .jtag_ptap_state_o           (ptap_state),
+        .jtag_ptap_inst_decoded_o    (ptap_inst),
+        .jtag_ic_reset_ext_o         (jtag_ic_reset_ext),
+        .xtrig_ctm_src_req_o         (xtrig_src_req_w),
+        .xtrig_ctm_src_ack_i         (xtrig_ctm_src_ack),
+        .xtrig_ctm_dst_req_i         (xtrig_ctm_dst_req),
+        .xtrig_ctm_dst_ack_o         (xtrig_dst_ack_w),
+        .xtrig_clk_stop_req_i        (xtrig_clk_stop_req),
+        .xtrig_ctp_req_out_dout_o    (),
+        .xtrig_ctp_req_out_dout_en_o (),
+        .xtrig_ctp_req_out_din_i     (ctp_z),
+        .xtrig_ctp_req_out_din_en_o  (),
+        .xtrig_ctp_req_in_dout_o     (),
+        .xtrig_ctp_req_in_dout_en_o  (),
+        .xtrig_ctp_req_in_din_i      (ctp_z),
+        .xtrig_ctp_req_in_din_en_o   (),
+        .xtrig_ctp_ack_in_dout_o     (),
+        .xtrig_ctp_ack_in_dout_en_o  (),
+        .xtrig_ctp_ack_in_din_i      (ctp_z),
+        .xtrig_ctp_ack_in_din_en_o   (),
+        .xtrig_ctp_ack_out_dout_o    (),
+        .xtrig_ctp_ack_out_dout_en_o (),
+        .xtrig_ctp_ack_out_din_i     (ctp_z),
+        .xtrig_ctp_ack_out_din_en_o  (),
+        .rst_primary_ref_clk_no,
+        .rst_primary_smc_clk_no,
+        .rst_primary_periph_clk_no,
+        .smu_axi_in_req_i            (smu_axi_in_req),
+        .smu_axi_in_resp_o           (smu_axi_in_resp),
+        .smu_axi_out_req_o           (smu_axi_out_req),
+        .smu_axi_out_resp_i          (smu_axi_out_resp),
+        .axil_pll_req_o              (axil_pll_req),
+        .axil_pll_resp_i             (axil_pll_resp),
+        .axil_pvt_req_o              (axil_pvt_req),
+        .axil_pvt_resp_i             (axil_pvt_resp),
+        .smc_axil_extension_req_o    (axil_ext_req),
+        .smc_axil_extension_resp_i   (axil_ext_resp),
+        .smc_efuse_bank_ctrl_req_o   (smc_efuse_bank_ctrl_req),
+        .smc_efuse_bank_ctrl_resp_i  (smc_efuse_bank_ctrl_resp),
+        .smc_efuse_shim_command_req_o(smc_efuse_shim_command_req),
+        .smc_efuse_shim_command_resp_i(smc_efuse_shim_command_resp),
+        .smc_shadow_regs_o           (smc_shadow_regs),
+        .axil_req_gpio_ctrl_o        (axil_gpio_ctrl_req),
+        .axil_resp_gpio_ctrl_i       (axil_gpio_ctrl_resp),
+        .lsio_interface_select_o     (lsio_sel),
+        .pad2core_i                  (pad2core),
+        .core2pad_o                  (core2pad),
+        .pad2core_en_o               (pad2core_en),
+        .core2pad_en_o               (core2pad_en),
+        .rst_cool_n_from_pin_i       (1'b1),
+        .clk_telemetry_i             (clk_smu_i),
+        .rst_telemetry_ni            (rst_cold_ni),
+        .telemetry_atdata_i          (tel_data),
+        .telemetry_atid_i            (tel_id),
+        .telemetry_atready_o         (tel_ready),
+        .telemetry_atvalid_i         (tel_valid),
+        .telemetry_afvalid_o         (tel_afvalid),
+        .telemetry_afready_i         (tel_afready),
+        .cluster_ded_o               (),
+        .wdt_first_timeout_o         (tb_wdt_first_timeout),
+        .wdt_second_timeout_o        (),
+        .smc_global_base_o           (smc_base_w),
+        .smc_region_size_o           (smc_size_w),
+        .sep_global_base_o           (sep_base_w),
+        .sep_region_size_o           (sep_size_w),
+        .ext_interrupts_i            ('0),
+        .fuse_sense_done_o,
+        .fuse_reset_n_delayed_o,
+        .skip_mem_repair_o           (),
+        .ext_boot_seq_done_i         (1'b1),
+        .temp_interrupt_i            (1'b0),
+        .lc_state_o                  (lc_state_o),
+        .lc_sigint_err_o             (lc_sigint_err_o),
+        .ras_bank_chip_o             (),
+        .ras_bank_instance_o         (),
+        .ndmreset_request_i          ('0),
+        .ndmreset_process_o          (),
+        .ext_mailbox_interrupts_o    (mbx_irqs),
+        .cfg_flr_pf_active_i         (1'b0),
+        .isolate_req_o               (),
+        .ss_reset_complete_i         ('0),
+        .ss_config_o                 (),
+        .ss_reset_ctrl_o             (),
+        .sync_irq_o                  (),
+        .rom_intf_req_o              (smc_rom_req),
+        .rom_intf_rsp_i              (smc_rom_rsp),
+        .scratch_ram_intf_req_o      (smc_scratch_ram_req),
+        .scratch_ram_intf_rsp_i      (smc_scratch_ram_rsp),
+        .l1_icache_tag_intf_req_o    (smc_l1_icache_tag_req),
+        .l1_icache_tag_intf_rsp_i    (smc_l1_icache_tag_rsp),
+        .l1_icache_data_intf_req_o   (smc_l1_icache_data_req),
+        .l1_icache_data_intf_rsp_i   (smc_l1_icache_data_rsp),
+        .l1_dcache_tag_intf_req_o    (smc_l1_dcache_tag_req),
+        .l1_dcache_tag_intf_rsp_i    (smc_l1_dcache_tag_rsp),
+        .l1_dcache_data_intf_req_o   (smc_l1_dcache_data_req),
+        .l1_dcache_data_intf_rsp_i   (smc_l1_dcache_data_rsp),
+        .disable_sram_auto_init_i    (1'b0),
+        .init_mem_done_o,
+        .chiplet_is_primary_i        (1'b1),
+        .timer_count_o               (tb_timer_count),
+        .trace_mem_req_o             (trc_req),
+        .trace_mem_resp_i            (trc_resp),
+        .test_en_i                   (1'b0),
+        .scan_rst_ni                 (1'b1),
+        .captured_straps_i           (captured_straps_i),
+        .mem_repair_done_i           (1'b1),
+        .mem_repair_success_i        (1'b1),
+        .mem_repair_abort_i          (1'b0),
+        .mbist_done_i                (1'b1),
+        .mbist_pass_i                (1'b1),
+        .mbist_abort_i               (1'b0),
+        // SEP passthrough ports (tied; SEP=0 internals also tie)
+        .sep_sram_req_o              (),
+        .sep_sram_rsp_i              ('0),
+        .sep_boot_rom_req_o          (),
+        .sep_boot_rom_rsp_i          ('0),
+        .sep_cpu_tcm_req_o           (),
+        .sep_cpu_tcm_rsp_i           ('0),
+        .sep_efuse_bank_ctrl_req_o   (),
+        .sep_efuse_bank_ctrl_resp_i  ('0),
+        .sep_efuse_shim_command_req_o(),
+        .sep_efuse_shim_command_resp_i('0),
+        .sep_crypto_pka_imem_sram_req_o(),
+        .sep_crypto_pka_imem_sram_rsp_i('0),
+        .sep_crypto_pka_dmem_sram_req_o(),
+        .sep_crypto_pka_dmem_sram_rsp_i('0),
+        .sep_km_rom_mem_req_o        (),
+        .sep_km_rom_mem_rsp_i        ('0),
+        .sep_km_sram_mem_req_o       (),
+        .sep_km_sram_mem_rsp_i       ('0),
+        .ot_spi_irq_o                (),
+        .spi_irq_i                   (1'b0),
+        .sep_axi_extension_req_o     (),
+        .sep_axi_extension_resp_i    ('0),
+        .sep_reset_n_o               (),
+        .sep_cpu_trace_o             (),
+        .sep_extintsrc_req_i         ('0),
+        .lcc_demote_state_1_o        (lcc_demote_state_1_o),
+        .lcc_demote_state_2_o        (lcc_demote_state_2_o),
+        .secure_tm_o                 (),
+        .sep_fuse_sense_done_o       (),
+        .clk_sep_wdt_i               (clk_smu_i),
+        .sep_straps_i                (sep_straps),
+        .i3c_dat_mem_src_i           (i3c_dat_src),
+        .i3c_dat_mem_sink_o          (),
+        .i3c_dct_mem_src_i           (i3c_dct_src),
+        .i3c_dct_mem_sink_o          (),
+        .gated_clk_periph_i3c_o      (),
+        .ext_debug_bus_i             (128'h0),
+        .gpio_interrupt_o            (),
+        .uart_interrupt_o            ()
+    );
+
+    // WDT isolate clamp: observe pre-clamp raw + isolate; Force via TB pins
+    // (cocotb VPI cannot traverse generate named-begin; SMU Cfg uses SMC_4CORE).
+    assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .wdt_reset_raw[0];
+    assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+        .u_smc_cpu.cluster_boundary_isolate;
+    always @(*) begin
+        if (tb_force_cluster_isolate) begin
+            force u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+                .cluster_boundary_isolate = 1'b1;
+        end else begin
+            release u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+                .cluster_boundary_isolate;
+        end
+        if (tb_force_wdt_reset_raw) begin
+            force u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wdt_reset_raw =
+                '1;
+        end else begin
+            release u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wdt_reset_raw;
+        end
+    end
+
+    // Hierarchical observe of DTP boot-stall / CLA clock-stop (no hw/ edit).
+    assign jtag_boot_stall_ovrd = u_dut.boot_stall_jtag_ovrd;
+    assign jtag_boot_stall      = u_dut.boot_stall_jtag_val;
+    assign dtp_cla_clock_stop_en = u_dut.dtp_cla_clock_stop_en;
+    assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
+    assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
+    // SMC IC_RESET slice: observe cold-reset override/value from DTP->SMC wire.
+    assign jtag_ic_reset_smc_ovrd   = u_dut.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
+    assign jtag_ic_reset_smc_ctrl_n = u_dut.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+
+    // Loopback unused GPIO; OR TB drive for boot-stall pad bit[60].
+    // Continuous Force on pad2core is unreliable under Verilator.
+    assign pad2core = core2pad |
+        ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
+         << 60);
+
+    // ------------------------------------------------------------------
+    // Optional SoC-glue model: zero DTP_CTRL abs base bits on SMC->DTP AXIL.
+    // CTN map is relative [0, 0x2B0). SMC periph xbar forwards 0xC000_F000+.
+    // Enable with +smu_dtp_csr_addr_remap (P2-I8a). Leave off for P1 tests that
+    // treat absolute 0xC000_F000 DECERR as positive decode evidence.
+    // Force only addr[31:11]=0 (idempotent; avoids force a=a&mask loops).
+    // ------------------------------------------------------------------
+    logic smu_dtp_csr_addr_remap_en;
+    initial begin
+        smu_dtp_csr_addr_remap_en = 1'b0;
+        if ($test$plusargs("smu_dtp_csr_addr_remap")) begin
+            smu_dtp_csr_addr_remap_en = 1'b1;
+            $display("%t [TB] +smu_dtp_csr_addr_remap: zero DTP CSR AXIL addr[31:11]",
+                     $time);
+        end
+    end
+
+    // Observe for debug / scoreboard non-vacuity (always present).
+    logic        tb_dtp_csr_aw_valid;
+    logic        tb_dtp_csr_ar_valid;
+    logic [31:0] tb_dtp_csr_aw_addr;
+    logic [31:0] tb_dtp_csr_ar_addr;
+    assign tb_dtp_csr_aw_valid = u_dut.smc_axil_dtp_csr_req.aw_valid;
+    assign tb_dtp_csr_ar_valid = u_dut.smc_axil_dtp_csr_req.ar_valid;
+    assign tb_dtp_csr_aw_addr  = u_dut.smc_axil_dtp_csr_req.aw.addr;
+    assign tb_dtp_csr_ar_addr  = u_dut.smc_axil_dtp_csr_req.ar.addr;
+
+    for (genvar gi = 11; gi < 32; gi++) begin : gen_dtp_csr_addr_remap
+        always @(*) begin
+            if (smu_dtp_csr_addr_remap_en && u_dut.smc_axil_dtp_csr_req.aw_valid) begin
+                force u_dut.smc_axil_dtp_csr_req.aw.addr[gi] = 1'b0;
+            end else begin
+                release u_dut.smc_axil_dtp_csr_req.aw.addr[gi];
+            end
+            if (smu_dtp_csr_addr_remap_en && u_dut.smc_axil_dtp_csr_req.ar_valid) begin
+                force u_dut.smc_axil_dtp_csr_req.ar.addr[gi] = 1'b0;
+            end else begin
+                release u_dut.smc_axil_dtp_csr_req.ar.addr[gi];
+            end
+        end
+    end
+
+endmodule : smu_uvm_top

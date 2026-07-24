@@ -1,0 +1,149 @@
+schema_version = 1
+
+# SMU Phase-1 (SEP=0) — SMC / no-SEP stream.
+# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Universe / deferred names: testlists/deferred.toml + docs/SMU_VPLAN.md
+
+[[tests]]
+name = "smu_smc_smoke_test"
+module = "smu_smc_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "smoke", "phase1"]
+run_modes = ["smc", "smoke"]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "no_sep", "smoke", "phase1"]
+run_modes = ["smc", "smoke"]
+
+[[tests]]
+name = "smc_reset_ctrl_test"
+module = "smc_reset_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "reset", "phase1"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_mailbox_int_test"
+module = "smc_mailbox_int_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "mailbox", "phase1"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_gpio_strap_sanity_test"
+module = "smc_gpio_strap_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "gpio", "phase1"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_efuse_reg_sanity_test"
+module = "smc_efuse_reg_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "efuse", "phase1"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_wdt_sanity_test"
+module = "smc_wdt_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "wdt", "phase1"]
+run_modes = ["smc"]
+
+# P2-I11a: WDT first timeout / WDOGIP0
+[[tests]]
+name = "smc_wdt_timeout_irq_test"
+module = "smc_wdt_timeout_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "wdt", "phase2"]
+run_modes = ["smc"]
+
+# P2-I11b: WDT warm reset scratch domain split
+[[tests]]
+name = "smc_reset_unit_wdt_scratch_test"
+module = "smc_reset_unit_wdt_scratch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "wdt", "reset", "phase2"]
+run_modes = ["smc"]
+
+# P3-H5c: WDT second-timeout double pulse + mid re-seed
+[[tests]]
+name = "smc_wdt_scratch_double_pulse_test"
+module = "smc_wdt_scratch_double_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "wdt", "reset", "phase3"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_security_demote_pm_test"
+module = "smc_security_demote_pm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "security", "phase1"]
+run_modes = ["smc"]
+
+# P4: Force secure_tm_i locks eFuse LOCKS (no pin claim)
+[[tests]]
+name = "smc_efuse_secure_tm_force_test"
+module = "smc_efuse_secure_tm_force_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "efuse", "phase4"]
+run_modes = ["smc"]
+
+# P4: WDOGIP0 + isolate first-timeout pin clamp
+[[tests]]
+name = "smc_wdt_ip0_isolate_clamp_test"
+module = "smc_wdt_ip0_isolate_clamp_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "wdt", "phase4"]
+run_modes = ["smc"]
+
+# P4: PLL/PVT/extension AXI-Lite route + DECERR poison
+[[tests]]
+name = "smu_macro_axil_pll_pvt_route_test"
+module = "smu_macro_axil_pll_pvt_route_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "macro", "phase4"]
+run_modes = ["smc"]
+
+# P4: OCTS timer count advance
+[[tests]]
+name = "smu_octs_timer_count_csr_test"
+module = "smu_octs_timer_count_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "octs", "phase4"]
+run_modes = ["smc"]
+
+# P4: telemetry ATB ch0 handshake
+[[tests]]
+name = "smu_telemetry_atb_handshake_test"
+module = "smu_telemetry_atb_handshake_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "telemetry", "phase4"]
+run_modes = ["smc"]
+
+[[tests]]
+name = "smc_cpu_traffic_ext_axi_test"
+module = "smc_cpu_traffic_ext_axi_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "fabric", "phase1"]
+run_modes = ["smc", "fabric"]

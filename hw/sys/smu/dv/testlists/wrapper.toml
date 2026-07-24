@@ -1,0 +1,101 @@
+schema_version = 1
+
+# Production-wrapper baseline catalog, run via `run_dv.py --dut smu_wrapper`.
+# Independent of the bare-smu all.toml catalog. Compile profiles are the
+# [targets.*] tables in smu_wrapper_sim_cfg.toml selected per test.
+# Result-reporting policy: docs/SMU_VPLAN.md §13.
+# Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
+# smu_sep_smoke_test passes on the boot-readiness contract; the SEP console
+# path remains blocked (see testlists/deferred.toml SEP=1 banner) and is not
+# claimed as a passing result.
+
+[[tests]]
+name = "smu_wrapper_elaboration_no_sep_test"
+module = "smu_wrapper_elaboration_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 600
+tags = ["build", "smoke", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+expected_sep=0",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_wrapper_elaboration_sep_rtl_test"
+module = "smu_wrapper_elaboration_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1200
+tags = ["build", "smoke", "sep", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_smoke_test"
+module = "smu_smc_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "smu_smc_smoke", mode = "smc_smoke" }
+seed = 1
+timeout_sec = 1800
+tags = ["firmware", "smoke", "smc", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smu_smc_smoke.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sep_smoke_test"
+module = "smu_sep_smoke_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "smu_sep_smoke", mode = "sep_smoke" }
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "smoke", "smc", "sep", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_sep_arm.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
+  "+sep_itcm_hex=smu_sep_smoke.itcm.hex",
+  "+sep_dtcm_hex=smu_sep_smoke.dtcm.hex",
+]
+
+[[groups]]
+name = "smoke"
+tests = [
+  "smu_wrapper_elaboration_no_sep_test",
+  "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
+  "smu_sep_smoke_test",
+]
+
+[[groups]]
+name = "build_smoke"
+tests = [
+  "smu_wrapper_elaboration_no_sep_test",
+  "smu_wrapper_elaboration_sep_rtl_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+  "smu_wrapper_elaboration_no_sep_test",
+  "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
+  "smu_sep_smoke_test",
+]

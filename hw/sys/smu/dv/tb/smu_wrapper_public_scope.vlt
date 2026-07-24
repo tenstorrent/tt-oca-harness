@@ -1,0 +1,2 @@
+`verilator_config
+public_flat_rw -module "smu_wrapper_uvm_top" -var "*"
