@@ -37,7 +37,7 @@ ocah-lint-slang: ocah-lint-slang-flist
 	# --single-unit: slang defaults to one compilation unit per file in -f,
 	# so macros `include`d in one file aren't visible when used in another.
 	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh eda-run make lint-slang)
-	slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit -f $(OCAH_LINT_SLANG_FLIST)
+	slang --lint-only --top $(FLOW_DESIGN) --timescale=$(OCAH_FLOW_TIMESCALE) --error-limit=0 --single-unit --compat vcs -f $(OCAH_LINT_SLANG_FLIST)
 
 endif
 

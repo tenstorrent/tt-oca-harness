@@ -205,184 +205,53 @@ vendor_package:
       - "csr"
     patch_dir: "vendor/tenstorrent/aou-rtl/patches"
 
-# Open-tree RTL source list (excludes DV/FV, testbench, and build collateral).
+# RTL sources are partitioned by composable subsystem targets.
 sources:
-  # DUT-scoped source set for the DTP DV flow (`-t dtp`): the DTP subtree plus its
-  # elaboration closure only (JTAG/cross-trigger IPs, och_prim primitives, efuse
-  # packages), so the DTP build does not depend on the parse health of unrelated
-  # subsystems. Standalone target: requesting it suppresses the whole-tree group
-  # below, so do not combine it with other subsystem targets.
-  - target: dtp
+  # Shared files are selected when any owning subsystem is requested.
+  # Selecting dtp, sep, and smc together also selects SMU integration.
+  - target: all(dtp, not(sep))
+    files:
+      - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
+  - target: any(dtp, sep, smc)
     include_dirs:
       - hw/common/assert
       - hw/ip/efuse/rtl/svh
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
     files:
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_and2.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
-      - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
       - hw/common/och_prim/rtl/prim_otp_cfg_pkg.sv
       - hw/common/och_prim/rtl/prim_otp_pkg.sv
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
       - hw/common/och_prim/rtl/prim_sparse_fsm_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-      - hw/ip/efuse/rtl/efuse_pkg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
-      - hw/sys/dtp/rtl/dtp_pkg.sv
-      - hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
-      - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
-      - hw/common/och_prim/rtl/prim_apb_arb.sv
-      - hw/common/och_prim/rtl/prim_apb_mux.sv
-      - hw/common/och_prim/rtl/prim_apb_mux_struct.sv
-      - hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axi_id_converter.sv
-      - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
-      - hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
-      - hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-      - hw/common/och_prim/rtl/prim_axi_snoop.sv
-      - hw/common/och_prim/rtl/prim_axi_user_override.sv
-      - hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axil_err_slv.sv
-      - hw/common/och_prim/rtl/prim_axil_prot_filter.sv
-      - hw/common/och_prim/rtl/prim_bin2gray.sv
-      - hw/common/och_prim/rtl/prim_carry_select_adder.sv
-      - hw/common/och_prim/rtl/prim_cg_req.sv
-      - hw/common/och_prim/rtl/prim_clk_counter.sv
-      - hw/common/och_prim/rtl/prim_clk_counter_fifo_sync.sv
-      - hw/common/och_prim/rtl/prim_clk_gater_hysteresis.sv
-      - hw/common/och_prim/rtl/prim_clkmux4.sv
-      - hw/common/och_prim/rtl/prim_diff_decode_multi.sv
-      - hw/common/och_prim/rtl/prim_diff_encode_multi.sv
-      - hw/common/och_prim/rtl/prim_fair_rr_arb.sv
-      - hw/common/och_prim/rtl/prim_fifo_sync_parity.sv
-      - hw/common/och_prim/rtl/prim_gray2bin.sv
-      - hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
-      - hw/common/och_prim/rtl/prim_jtag_sib_mux_post.sv
-      - hw/common/och_prim/rtl/prim_jtag_sib_mux_pre.sv
-      - hw/common/och_prim/rtl/prim_pipe_stages.sv
-      - hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
-      - hw/common/och_prim/rtl/prim_pulse_signal.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
-      - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
-      - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
-      - hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-      - hw/common/och_prim/rtl/prim_sync2.sv
-      - hw/common/och_prim/rtl/prim_sync2r.sv
-      - hw/common/och_prim/rtl/prim_sync3.sv
-      - hw/common/och_prim/rtl/prim_sync3_pulse.sv
-      - hw/common/och_prim/rtl/prim_sync3r.sv
-      - hw/common/och_prim/rtl/prim_sync4.sv
-      - hw/common/och_prim/rtl/prim_sync4r.sv
-      - hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-      - hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
-      - hw/common/och_prim/rtl/prim_sync_reset.sv
-      - hw/common/och_prim/rtl/prim_updown_counter.sv
-      - hw/common/och_prim/rtl/prim_zero_counter.sv
-      - hw/common/och_prim_generic/rtl/prim_and3.sv
-      - hw/common/och_prim_generic/rtl/prim_clkgater.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_dffrxq.sv
-      - hw/common/och_prim_generic/rtl/prim_dffsxq.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_inv.sv
-      - hw/common/och_prim_generic/rtl/prim_inverter.sv
-      - hw/common/och_prim_generic/rtl/prim_latch_n.sv
-      - hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
-      - hw/common/och_prim_generic/rtl/prim_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
-      - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
-      - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
-      - hw/common/sync.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
-      - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network.sv
-      - hw/ip/cross_trigger/cross_trigger_network/rtl/ctn_clock_stop_ctrl.sv
-      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
-      - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-      - hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
-      - hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_byp_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_caps_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_debug_ctrl_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_idcode_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_inv_byp_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_jtag2axi_caps_reg.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
-      - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
-      - hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
-      - hw/sys/dtp/rtl/dtp.sv
-  - target: all(not(dv), not(fv), not(dtp))
+  - target: smc
     include_dirs:
-      - hw/common/assert
       - hw/ip/dfd/rtl/misc
       - hw/ip/dfd/rtl/pkg
-      - hw/ip/efuse/rtl/svh
       - hw/sys/smc/rtl/smc_cpu
-      - vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
-      - vendor/pulp-platform/idma/overlay/target/rtl/include/idma
     files:
-      # Shared OpenTitan prim utility/type packages used by the och_prim wrappers.
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
-      - hw/common/och_prim/rtl/prim_jtag_pkg.sv
-      - hw/common/och_prim/rtl/prim_otp_cfg_pkg.sv
-      - hw/common/och_prim/rtl/prim_otp_pkg.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
-      - hw/common/och_prim/rtl/prim_sparse_fsm_pkg.sv
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
+  - target: sep
+    files:
       - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
-      - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
+  - target: sep
+    files:
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
@@ -390,6 +259,8 @@ sources:
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
       - hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
+  - target: sep
+    files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_addrmap_pkg.sv
@@ -401,8 +272,14 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
+  - target: sep
+    files:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
@@ -413,16 +290,17 @@ sources:
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
       - hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
+  - target: sep
+    files:
       - hw/sys/sep/dv/models/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
-      # sep_addrmap_pkg.sv omitted: compiled earlier by the opentitan package.
+  - target: smc
+    files:
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_addrmap_pkg.sv
-      - vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
       - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
@@ -431,11 +309,15 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
+  - target: dtp
+    files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
+  - target: smc
+    files:
       - hw/ip/dfd/rtl/pkg/dfd_addr_map_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_axi_pkg.svh
@@ -454,14 +336,24 @@ sources:
       - hw/ip/dfd/rtl/pkg/dfd_trace_mem_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_tt_dbm_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_pkg.svh
+  - target: sep
+    files:
       - hw/ip/drbg/rtl/drbg_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
       - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
+  - target: any(dtp, sep, smc)
+    files:
       - hw/ip/efuse/rtl/efuse_pkg.sv
+  - target: sep
+    files:
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
       - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
+  - target: smc
+    files:
       - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
@@ -473,9 +365,13 @@ sources:
       - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
+  - target: dtp
+    files:
       - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
+  - target: sep
+    files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg_pkg.sv
@@ -487,12 +383,22 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/rtl/km_intf_pkg.sv
+  - target: smc
+    files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
       - hw/ip/uart/log_engine/rtl/log_engine_pkg.sv
+  - target: sep
+    files:
       - hw/ip/memory_interface/rtl/examples/rom/example_rom_pkg.sv
       - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+  - target: sep
+    files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
+  - target: smc
+    files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg_pkg.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
@@ -506,19 +412,25 @@ sources:
       - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
       - hw/ip/uart/uart_wrap/rtl/uart_wrap_pkg.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg_pkg.sv
+  - target: dtp
+    files:
       - hw/sys/dtp/rtl/dtp_pkg.sv
+  - target: sep
+    files:
       - hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
+  - target: any(dtp, sep)
+    files:
       - hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
-      # el2_def.sv provides only the defs sep_pkg.sv needs; the EL2 core RTL stays
-      # under the el2 package's sep_el2 target. sep_pkg.sv omitted: compiled earlier
-      # by the opentitan package.
-      - vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/include/el2_def.sv
+  - target: sep
+    files:
       - hw/sys/sep/rtl/sep_io_pkg.sv
+  - target: smc
+    files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
@@ -538,17 +450,22 @@ sources:
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit_pkg.sv
+  - target: all(dtp, sep, smc)
+    files:
       - hw/sys/smu/rtl/smu_axi_xbar_pkg.sv
       - hw/sys/smu/rtl/smu_pkg.sv
+  - target: any(sep, smc)
+    files:
       - hw/common/axi/axi4lite_intf.sv
       - hw/common/axi/axi4lite_to_pulp_axi_lite.sv
       - hw/common/axi/axi_cg_snoop.sv
-      # top_pkg.sv/tlul_pkg.sv/prim_secded_pkg.sv omitted: compiled earlier by the
-      # opentitan package. prim_mubi_pkg.sv omitted: compiled earlier by the
-      # register_interface package.
+  - target: sep
+    files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
       - hw/common/tlul/rtl/tlul_to_reg_async.sv
+  - target: any(dtp, sep, smc)
+    files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
       - hw/common/och_prim/rtl/prim_apb_mux.sv
@@ -623,6 +540,8 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
       - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
       - hw/common/sync.sv
+  - target: sep
+    files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
       - hw/common/tlul/rtl/tlul_adapter_sram.sv
@@ -637,6 +556,8 @@ sources:
       - hw/common/tlul/rtl/tlul_rsp_intg_gen.sv
       - hw/common/tlul/rtl/tlul_socket_1n.sv
       - hw/common/tlul/rtl/tlul_sram_byte.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
@@ -647,11 +568,17 @@ sources:
       - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
       - hw/common/axi/axi_filter/rtl/axi_filter_wrap.sv
       - hw/common/axi/axi_filter/rtl/traffic_filter.sv
+  - target: smc
+    files:
       - hw/common/axi/axi_hang_detector/rtl/axi_hang_detector.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
+  - target: dtp
+    files:
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
@@ -664,6 +591,8 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
+  - target: smc
+    files:
       - hw/ip/dfd/rtl/misc/dfd_assertion_macros.svh
       - hw/ip/dfd/rtl/cla/dfd_cla_action_gen.sv
       - hw/ip/dfd/rtl/cla/dfd_cla_counter.sv
@@ -720,14 +649,16 @@ sources:
       - hw/ip/dfd/rtl/unit/dfd_te_mso.sv
       - hw/ip/dfd/rtl/unit/dfd_tnif.sv
       - hw/ip/dfd/rtl/unit/dfd_unit.sv
-      # lc_ctrl_pkg/entropy_src_pkg/csrng_pkg/edn_pkg/prim_alert_pkg omitted:
-      # compiled earlier by the opentitan package.
+  - target: sep
+    files:
       - hw/ip/drbg/rtl/drbg.sv
       - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
       - hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
       - hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
       - hw/ip/drbg/rtl/drbg_entropy_router.sv
+  - target: any(sep, smc)
+    files:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
@@ -738,12 +669,13 @@ sources:
       - hw/ip/efuse/dv/models/efuse_bank_model.sv
       - hw/ip/efuse/rtl/efuse_program_interface.sv
       - hw/ip/efuse/rtl/efuse_read_interface.sv
-      - hw/ip/efuse/rtl/efuse_security_tokens.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
       - hw/ip/efuse/rtl/efuse_shadow_regs.sv
-      # prim_sha2_pkg.sv omitted: compiled earlier by the opentitan package.
-      - hw/ip/efuse/rtl/sha256_token_hash.sv
       - hw/ip/efuse/rtl/triple_redundent_comparator.sv
+  - target: sep
+    files:
+      - hw/ip/efuse/rtl/sha256_token_hash.sv
+      - hw/ip/efuse/rtl/efuse_security_tokens.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
       - hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
       - hw/ip/entropy_source/rtl/entropy_decorrelator.sv
@@ -760,6 +692,8 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_source.sv
       - hw/ip/entropy_source/rtl/gcells.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
+  - target: smc
+    files:
       - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
@@ -775,13 +709,14 @@ sources:
       - hw/ip/i2c/rtl/i2c_target_fsm.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg.sv
       - hw/ip/i2c/rtl/i2c_wrap.sv
-      # I3C stubbed: compile the stubs, not the generated core wrappers.
       - hw/ip/i3ccore_wrap/rtl/i3ccore_stub.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper_stub.sv
       - hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_wrapper.sv
+  - target: dtp
+    files:
       - hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
       - hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv
@@ -798,6 +733,8 @@ sources:
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
       - hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
+  - target: sep
+    files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg.sv
       - hw/ip/key_manager/regs/gen/sv/hmac_wrapper_key_reg.sv
@@ -823,11 +760,19 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
       - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
       - hw/common/axi/local_alias_remap/rtl/local_alias_remap.sv
+  - target: smc
+    files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
       - hw/ip/uart/log_engine/rtl/log_engine.sv
+  - target: sep
+    files:
       - hw/ip/memory_interface/rtl/memory_interface.sv
+  - target: any(sep, smc)
+    files:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
       - hw/common/axi/output_remap/rtl/output_remap.sv
+  - target: sep
+    files:
       - hw/ip/scrambler/rtl/scrambler.sv
       - hw/ip/scrambler/rtl/scrambler_1024x32.sv
       - hw/ip/scrambler/rtl/scrambler_2048x32.sv
@@ -836,6 +781,8 @@ sources:
       - hw/ip/scrambler/rtl/scrambler_8192x32.sv
       - hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
       - hw/ip/scrambler/rtl/scrambler_rotator.sv
+  - target: smc
+    files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
@@ -854,13 +801,15 @@ sources:
       - hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
       - hw/ip/zeroer/rtl/zeroer.sv
+  - target: dtp
+    files:
       - hw/sys/dtp/rtl/dtp.sv
+  - target: sep
+    files:
       - hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
-      # otp_ctrl_pkg/keymgr_pkg/sep_crypto_pkg and the OpenTitan crypto cores these
-      # wrappers instantiate are omitted: compiled earlier by the opentitan package.
       - hw/sys/sep/rtl/aes_wrapper.sv
       - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
@@ -885,6 +834,8 @@ sources:
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
+  - target: smc
+    files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
@@ -1205,32 +1156,28 @@ sources:
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_sync.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_reset_unit.sv
       - hw/sys/smc/rtl/smc_reset_unit/rtl/smc_subsystem_resets.sv
+  - target: all(dtp, sep, smc)
+    files:
       - hw/sys/smu/rtl/smu.sv
       - hw/sys/smu/rtl/smu_axi_xbar.sv
-
-  # Open-source reference models and top-level example wrappers (hw/top/),
-  # opt-in via `-t oss` since they are reference integration examples, not
-  # part of the OCAH RTL deliverable. See hw/top/README.md.
-  - target: oss
+  # Reference wrappers are additive to their corresponding subsystem targets.
+  - target: any(smc_wrapper, smu_wrapper)
     files:
-      # Vendored OpenTitan generic primitives with no other consumer today:
-      # SRAM/ROM/pad models for hw/top/*_ip_integration.sv and the GPIO pad shim.
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
-      # pulp-platform AXI4 error slave (and its common_cells fifo/counter deps),
-      # used only by hw/top/sep_ip_integration.sv's AXI extension termination.
-      - vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
-      - vendor/pulp-platform/common_cells/upstream/src/counter.sv
-      - vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
       - hw/top/sep_ip_integration.sv
+  - target: sep_wrapper
+    files:
       - hw/top/sep_wrapper.sv
+  - target: any(smc_wrapper, smu_wrapper)
+    files:
       - hw/top/smc_ip_integration.sv
+  - target: smc_wrapper
+    files:
       - hw/top/smc_wrapper.sv
+  - target: smu_wrapper
+    files:
       - hw/top/smu_wrapper.sv

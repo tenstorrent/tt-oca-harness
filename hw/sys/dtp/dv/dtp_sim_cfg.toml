@@ -22,8 +22,7 @@ top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/dtp_bender.f"
 work_dir = "hw/sys/dtp/dv/build"
-# Bender targets pruned to what the DTP DUT needs. Refine against `bender script`
-# output during flist bring-up if elaboration is missing/duplicating sources.
+# Shared dependency targets.
 common_bender_targets = [
   "axi_rtl",
   "apb_rtl",
@@ -31,8 +30,7 @@ common_bender_targets = [
   "common_cell_sync_shim",
   "register_interface_l1",
 ]
-# `dtp` selects the DUT-scoped source group in the root Bender.yml (the DTP
-# elaboration closure only, independent of unrelated subsystems' parse health).
+# DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/sys/dtp/dv/tb"]
 # Verilator-friendly behavioral stubs. Listed ahead of the bender filelist so
