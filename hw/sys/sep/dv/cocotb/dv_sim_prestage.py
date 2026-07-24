@@ -40,6 +40,7 @@ from pathlib import Path
 
 # dv root = .../dv (this file is at .../dv/cocotb/dv_sim_prestage.py).
 _DV_ROOT = Path(__file__).resolve().parents[1]
+# FIXME(SEP-DV): the default preload hex was not ported; see sep_base_test.py.
 _DEFAULT_EFUSE_PRELOAD = _DV_ROOT / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 
 

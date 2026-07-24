@@ -5,7 +5,7 @@ Open-source DV environment for the SEP (Security Processor) subsystem. DUT =
 `sep_wrapper` (`hw/.bos/wrapper/sep/`), which instantiates the bare `sep`
 core plus its IP integration (real memory macros, the generic eFuse model, and
 the OpenTitan SPI mux). Flow = cocotb/PyUVM on Verilator and VCS, driven by
-`dv/oss/tools/dv/run_dv.py` (`--dut sep`). The environment is kept self-contained
+`tools/dv/run_dv.py` (`--dut sep`). The environment is kept self-contained
 under this tree so the build, tests, shims, and docs are easy to review and reuse.
 
 ## Layout
@@ -67,8 +67,9 @@ real TCM macros, backdoor-loaded by `tb_backdoor_mem` in `tb/tb_top.sv`:
   the manifest+BL1 image from SMC memory, so the ROM takes its non-SPI (SMC-SRAM)
   manifest path. A TEST_DEV eFuse image satisfies the lifecycle check. Checks: EL2
   PC-advance + `fw_done && fw_pass` (BL1 `0xA5A55A5A`→`0xCAFEBABE` mailbox magic);
-  the ROM/BL1 console (SCRATCH2 virt-console) is decoded to the log. See
-  `dv/oss/docs/sep-rom-non-secure-boot-design.md` and `-handoff.md`.
+  the ROM/BL1 console (SCRATCH2 virt-console) is decoded to the log. See the
+  legacy repository's `docs/sep-rom-non-secure-boot-design.md` and `-handoff.md`
+  (not yet ported here).
 
 Boot/reset invariant: `ext_boot_seq_done_i=1`. Fuse-sense policy is testcase
 metadata, not a run mode: non-eFuse tests usually add `+skip_fuse_sense` in
@@ -192,27 +193,27 @@ sh tools/sep_el2_config.sh
 # verify: grep TEC_RV_ICG vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh  -> `define TEC_RV_ICG clockhdr
 
 # Build the OSS firmware first (RISC-V GCC on PATH; no picolibc) — only for boot:
-make -C dv/oss/hw/sys/sep/dv/fw/tests/hello_world
+make -C hw/sys/sep/dv/fw/tests/hello_world
 
 # For sep_rom_non_secure_boot_test, build the Boot ROM + manifest + BL1 image.
 # This compiles bl1_pass_test (fw/tests/bl1_pass_test) and packs it with the
 # vendored tt-boot-manifest packer (fw/bootcode/tools) -> build/smc_mem.hex,
 # entirely from source (no internal prebuilt blob). Packer needs Python
 # 'cryptography' + 'ruamel.yaml' (pip3 install --user cryptography ruamel.yaml).
-make -C dv/oss/hw/sys/sep/dv/fw/bootcode
+make -C hw/sys/sep/dv/fw/bootcode
 
 # Then run (model rebuilds on SV/config change; python-only changes reuse it).
 # `all` is the maximum group; tags select subsets.
-PY=dv/oss/tools/dv/run_dv.py
+PY=tools/dv/run_dv.py
 python3 $PY --dut sep --items sep_axi_smoke_test sep_address_map_test sep_hello_world_test --stage flist --stage sim
 python3 $PY --dut sep --items all --tag smoke --stage sim  # no-CPU smoke subset
 python3 $PY --dut sep --items all --tag boot  --stage sim  # firmware-boot subset
 python3 $PY --dut sep --items all --stage sim --regress    # all SEP OSS tests, fresh seed per leaf
 ```
 
-The cocotb sim stage runs in `run_dv.py`'s own interpreter, so launch it from a
-Python 3.11+ env with the OSS DV BFM package installed
-(`pip install -e dv/oss/hw/common/dv` → cocotb + pyuvm + cocotbext-axi), Verilator on
+The cocotb sim stage runs in `run_dv.py`'s own interpreter; the launcher
+bootstraps the locked uv-managed DV environment itself (root `uv.lock`, `dv`
+dependency group → cocotb + pyuvm + cocotbext-axi), so it just needs Verilator on
 PATH, and a C++20 toolchain (g++ ≥10, for Verilator `--timing`/`-fcoroutines`;
 e.g. `source /opt/rh/gcc-toolset-11/enable`) for the model build. The default
 RHEL-8 g++ 8.5 is too old and fails with `unrecognized command line option
@@ -225,9 +226,9 @@ single failing leaf with `--stage sim --seed N`.
 
 ## OSS hygiene
 
-The bender filelist uses targets `["sep", "sep_el2"]` only — never `"simulation"`
+The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — never `"simulation"`
 (it pulls Cadence + Samsung padring). FIXME(transition): the licensed Cadence SPI
 wrapper is dropped via `build.exclude_files` until it is absent from the OSS
 checkout upstream. Verify vendor-clean with
-`dv/oss/tools/dv/check_no_vendor_paths.py`. PASS/FAIL requires positive
+`tools/dv/check_no_vendor_paths.py`. PASS/FAIL requires positive
 evidence from `results.xml` — a clean simulator exit alone is not enough.

@@ -201,7 +201,7 @@ PROGRESS LOG (newest first):
   `_cocotb_make_sim` :1525-1536 → `<item_dir>/make/out/sep_efuse.hex`). Only real-fuse
   (no `+skip_fuse_sense`) tests need it — the km KATs etc. skip sense so they already
   pass; the 2 no_cpu fails (image, lcc_stitch) omit skip. Plan: pure-Python registry
-  (test→{mode,lc_raw,lock_prob,fixed,preload}) in dv/oss (NOT importing test modules) +
+  (test→{mode,lc_raw,lock_prob,fixed,preload}) in the OSS DV tree (NOT importing test modules) +
   a SEP-gated call from the two staging blocks (no-op for smc/dtp → zero blast radius;
   post-sense shadow compare is the drift detector). SHARED-RUNLIB EDIT → owner sign-off
   note (AGENTS.md §12).
@@ -269,7 +269,7 @@ PROGRESS LOG (newest first):
   forces full re-verilate; wrapper macros only elaborate once instantiated).
 - **2026-07-17 Phase 0a — base set up + #3911×#3717 reconciled.** Created
   `sep-oss-wrapper-migration` off `origin/main`; `git merge origin/3589-...` was
-  CONFLICT-FREE (0 conflicts, none in dv/oss — main's 9 dv/oss commits preserved).
+  CONFLICT-FREE (0 conflicts, none in the OSS DV tree — main's 9 OSS DV commits preserved).
   Commit `d501a134a` = raw merge. Auto-merge was NOT semantically complete:
   #3911 removed the bare-sep `rst_vec` port (EL2 reset vector now via JTAG TDR),
   but the .bos `sep_wrapper` (pre-#3911) still wired `.rst_vec` into `u_sep`
@@ -733,7 +733,7 @@ assume, since earlier VCS runs here were compile-only on the full-CPU `default` 
   to EXECUTING. Per user, work on a branch (not main) with the wrapper present.
   Because #3717 is unmerged + 104 behind main, built a THROWAWAY local integration
   branch `sep-oss-wrapper-migration` = `origin/main` + `git merge origin/3589-...`
-  (conflict-free; 0 conflicts in dv/oss, so main's 9 recent dv/oss commits incl.
+  (conflict-free; 0 conflicts in the OSS DV tree, so main's 9 recent OSS DV commits incl.
   the 95-line `tb_top.sv` work are preserved). Discovered + fixed the #3911×#3717
   semantic gap the auto-merge left: bare sep lost its `rst_vec` port under #3911,
   so dropped `rst_vec` from the .bos `sep_wrapper` (commit `f0d9bd045`,

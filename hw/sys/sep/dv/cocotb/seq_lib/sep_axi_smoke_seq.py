@@ -19,17 +19,20 @@ from pyuvm import uvm_sequence
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
 # sep_cpu_ctrl block base on the CPU-local map (CLOCK_GATE_CTRL @ +0x8 = 0x10A3_0008).
+# Offsets/reset values follow the current generated map
+# (hw/sys/sep/regs/gen/py/sep_reg.py, SEP_CPU_CTRL_*): the pre-port map had
+# TIMEOUT_COUNT_* at +0x28/+0x30/+0x38 and CLOCK_GATE_CTRL reset 0x001F_0021.
 SEP_CPU_CTRL_BASE = 0x10A3_0000
 
 CLOCK_GATE_CTRL_ADDR = SEP_CPU_CTRL_BASE + 0x008
-CLOCK_GATE_CTRL_EXP = 0x001F_0021
+CLOCK_GATE_CTRL_EXP = 0x001F_0083
 
 # (name, addr, pattern) — pure 32-bit RW scratch/threshold registers.
 WRITE_READBACK = [
     ("SEP_SW_DEBUG",         SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF),
-    ("TIMEOUT_COUNT_DMA",    SEP_CPU_CTRL_BASE + 0x028, 0x0BAD_C0DE),
-    ("TIMEOUT_COUNT_SYS_IN", SEP_CPU_CTRL_BASE + 0x030, 0xCAFE_F00D),
-    ("TIMEOUT_COUNT_MAILBOX_INBOUND", SEP_CPU_CTRL_BASE + 0x038, 0x1234_5678),
+    ("TIMEOUT_COUNT_DMA",    SEP_CPU_CTRL_BASE + 0x048, 0x0BAD_C0DE),
+    ("TIMEOUT_COUNT_SYS_IN", SEP_CPU_CTRL_BASE + 0x058, 0xCAFE_F00D),
+    ("TIMEOUT_COUNT_MAILBOX_INBOUND", SEP_CPU_CTRL_BASE + 0x060, 0x1234_5678),
 ]
 
 

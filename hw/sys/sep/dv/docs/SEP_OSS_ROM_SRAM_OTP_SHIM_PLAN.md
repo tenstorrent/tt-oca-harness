@@ -10,7 +10,7 @@
 
 Provide open-source DV infrastructure for SEP ROM, SRAM, and OTP/eFuse behavior
 without moving behavioral models into the DUT. The shims live under
-`dv/oss/hw/sys/sep/dv/` and connect only at the bare `sep` external ports, so a
+`hw/sys/sep/dv/` and connect only at the bare `sep` external ports, so a
 future OSS RTL-side model can replace them by updating `tb/tb_top.sv`,
 `sep_sim_cfg.toml`, and the related tests.
 
@@ -143,10 +143,10 @@ When OSS RTL-side ROM/SRAM/OTP models are available:
 
 Required checks after shim changes:
 
-- `dv/oss/hw/sys/sep/dv/sim/run.sh --testlist`
-- `dv/oss/hw/sys/sep/dv/sim/run.sh <test> --stage flist`
-- `python3 dv/oss/tools/dv/check_no_vendor_paths.py --filelist dv/oss/hw/sys/sep/dv/build/sep_dut_compile.f`
-- `python3 dv/oss/tools/dv/check_no_vendor_paths.py --filelist dv/oss/hw/sys/sep/dv/build/sep_bender.f`
+- `hw/sys/sep/dv/sim/run.sh --testlist`
+- `hw/sys/sep/dv/sim/run.sh <test> --stage flist`
+- `python3 tools/dv/check_no_vendor_paths.py --filelist hw/sys/sep/dv/build/sep_dut_compile.f`
+- `python3 tools/dv/check_no_vendor_paths.py --filelist hw/sys/sep/dv/build/sep_bender.f`
 - `sep_sram_smoke_test`
 - `sep_boot_rom_smoke_test`
 - `sep_efuse_sense_test`

@@ -17,6 +17,10 @@ schema_version = 1
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml"]
 
 [[groups]]
+name = "sanity"
+tests = ["sep_axi_smoke_test"]
+
+[[groups]]
 name = "all"
 tests = [
     "sep_axi_smoke_test",

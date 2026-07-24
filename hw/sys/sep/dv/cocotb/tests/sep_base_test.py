@@ -43,6 +43,9 @@ from env.sep_env_cfg import SepEnvCfg
 from env.sep_efuse_image import SepEfuseImage
 
 
+# FIXME(SEP-DV): tb/efuse_preloads/sep_efuse_default.hex was not ported with the
+# tree; real-fuse-sense tests (no +skip_fuse_sense) sense a zero OTP until it is
+# restored. Regenerate or copy the default preload before re-enabling them.
 _DEFAULT_EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[2] / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 )
@@ -412,6 +415,11 @@ class sep_base_test(uvm_test):
 
     async def spi_mux_release_cs(self) -> None:
         """Clear SPI_MUX_CTRL.cs_force_high before an OpenTitan SPI flash scenario.
+
+        FIXME(SEP-DV): the och_sep_spi_mux_ctrl_ot register block no longer
+        exists in this repository (the wrapper SPI moved to struct ports), so
+        this CSR write likely no-ops or error-responds. Re-validate the SPI
+        flash tests against the new boundary before trusting this helper.
 
         The wrapper's och_sep_spi_mux_ctrl_ot mux resets cs_force_high=1 (RDL default
         0x1), which holds the SPI chip-select deasserted, so a flash access sees no CS

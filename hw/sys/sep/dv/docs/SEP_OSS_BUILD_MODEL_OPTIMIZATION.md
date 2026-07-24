@@ -9,8 +9,8 @@
 > present vs stubbed (~15.5 → ~26 ns/s). The 5-model benchmark below is the evidence for that call.
 
 **Date:** 2026-06-28
-**Repo:** `/proj_soc/user_dev/yenhenglai/tt-och`
-**SEP OSS DV:** `dv/oss/hw/sys/sep/dv/`
+**Repo:** legacy internal checkout (pre-port measurement)
+**SEP OSS DV:** `hw/sys/sep/dv/`
 **Scope:** Measure the cost/benefit of the SEP OSS DV Verilator build-model family
 (scoped-public `.vlt`, CPU-stub, external-master gating) and recommend a build-resource
 and regression strategy. Nothing was rebuilt, re-simulated, or edited for this report —
@@ -55,7 +55,7 @@ numbers are taken verbatim from the benchmark dataset and the structural analysi
 ## 2. Background / optimization journey
 
 The build-model family is the tail of a multi-step Verilator bring-up effort. Relevant commit
-context (`git log` on `dv/oss/hw/sys/sep/dv/`):
+context (`git log` on `hw/sys/sep/dv/`):
 
 1. **External-master cones added (2026-06-24, `9d9080acf` "add TOP-16..20 testcases").**
    To support tests #17 and #20, two DUT external master ports were brought out to the tb_top
@@ -149,7 +149,7 @@ flat across the family**; the stub's benefit is a sim-time benefit.
 ## 5. Analysis — why sim-delta ≫ build-delta
 
 From the structural analysis of the compiled file set
-(`dv/oss/hw/sys/sep/dv/build/sep_bender.f`, 840 sources / 279,930 lines for the full-CPU target):
+(`hw/sys/sep/dv/build/sep_bender.f`, 840 sources / 279,930 lines for the full-CPU target):
 
 - **VeeR EL2 is only ~10.2% of compiled RTL lines** (51 files / 28,603 lines in-flist; the
   on-disk vendor tree is larger, 219 files / 62,503 lines, but SEP pulls one elaborated config).

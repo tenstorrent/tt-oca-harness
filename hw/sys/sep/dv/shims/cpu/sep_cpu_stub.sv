@@ -75,6 +75,7 @@ module sep_cpu
     input  logic [31:0] dmi_uncore_rdata,
     output logic        dmi_active,
 
+    input logic [31:1] rst_vec,  // PC to jump to @ reset (unused: no CPU in the stub)
     input logic [31:1] nmi_vec,  // PC to jump to @ NMI
     input logic [31:1] jtag_id,
 
@@ -128,7 +129,8 @@ module sep_cpu
     input  sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
     output sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
 
-    input  logic [31:0]                 sep_local_base_addr_i
+    input  logic [31:0]                 sep_local_base_addr_i,
+    input  logic [31:0]                 sep_region_size_i   // unused: alias remap lives in the real CPU wrapper
 );
 
   // -------------------------------------------------------------------------
@@ -155,13 +157,13 @@ module sep_cpu
   sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
 
   always_comb begin
-    if ((lsu_axi_req.aw.addr >= SEP_BOOT_ROM_MEM_BASE_ADDR) && (lsu_axi_req.aw.addr < SEP_BOOT_ROM_MEM_BASE_ADDR + SEP_BOOT_ROM_MEM_SIZE)) begin
+    if ((lsu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_aw_select = SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_aw_select = SEP_LSU_DEMUX_PORT_XBAR;
     end
 
-    if ((lsu_axi_req.ar.addr >= SEP_BOOT_ROM_MEM_BASE_ADDR) && (lsu_axi_req.ar.addr < SEP_BOOT_ROM_MEM_BASE_ADDR + SEP_BOOT_ROM_MEM_SIZE)) begin
+    if ((lsu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_ar_select = SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_ar_select = SEP_LSU_DEMUX_PORT_XBAR;

@@ -20,8 +20,12 @@ all: $(PARHEX)
 # behavioral SRAM responder -- matching the OCAH subsystem tb. The output is
 # gitignored (not a committed blob). Requires the rv32emc/ilp32e toolchain on PATH
 # (module load riscv-gnu-toolchain/2025.01.20-rhel-8.10).
-OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../../../..)
-KM_FW_TB := $(OCH_ROOT)/hw/comp/key_manager/tb/firmware
+# FIXME(SEP-DV): rom_main cannot build in this repository yet -- the KM tb
+# firmware tree (legacy hw/comp/key_manager/tb/firmware) was not ported; the
+# key manager now lives at hw/ip/key_manager without a tb/ directory. The 5
+# tests consuming rom_main.rom.parhex stay blocked until it is restored.
+OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
+KM_FW_TB := $(OCH_ROOT)/hw/ip/key_manager/tb/firmware
 
 rom_main:
 	$(MAKE) -C $(KM_FW_TB) clean build_production \

@@ -2,6 +2,11 @@
 //
 // abr_wrapper_key_reg -- SEP OSS DV shim for the PeakRDL-generated ABR key CSR block.
 //
+// FIXME(SEP-DV): RETIRED from the active build. The current sep_crypto.sv no
+// longer instantiates abr_wrapper_key_reg, so sep_sim_cfg.toml dropped the
+// exclude/sources swap for this shim. Kept as deferred reference only; delete
+// it (or re-wire the swap) when the ABR engine integration returns.
+//
 // WHY THIS EXISTS: main #3417 replaced the ABR DECERR placeholder with the generated
 // abr_wrapper_key_reg. That generated block does NOT build under Verilator 5.046:
 // sep_crypto.sv ties its hwif_in struct to '0, and Verilator then either (a) const-

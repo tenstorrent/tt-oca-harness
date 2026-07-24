@@ -422,6 +422,12 @@ module sep_uvm_top
         $display("[SEP OSS DV] Reset-vector TDR programmed to 0x%08x", vector);
     endtask
 
+    // FIXME(SEP-DV): the current vendored VeeR tap dropped the reset-vector TDR,
+    // so this JTAG sequence shifts into a nonexistent register and is inert. The
+    // reset vector now reaches the CPU through the wrapper's direct `rst_vec`
+    // input (connected from rst_vec_i in the DUT instantiation below). Remove
+    // this TDR machinery once the +cpu_boot flow is re-validated on the direct
+    // port. Original rationale kept below for reference:
     // The OSS top has no external JTAG client. Program RSTVEC while the primary
     // reset is asserted, before the cocotb CPU-boot flow releases reset. Poll on the
     // clock edge rather than a bare level `wait`: a cocotb (VPI)-driven rst_vec_i
@@ -444,15 +450,16 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // SEP DUT = sep_wrapper (smn_inbound driven by the flat m_axi_* external
-    // master). Real memory macros + generic efuse model + OpenTitan SPI mux are
-    // internal (no mem/efuse/spi responder buses). SPI leaves as pad ports; the
-    // reset vector is programmed via JTAG TDR (no rst_vec port).
+    // master). Real memory macros + generic efuse model are internal (no
+    // mem/efuse responder buses). SPI now leaves the wrapper as the
+    // sep_io_pkg struct pair (sep_io_spi_req_o / sep_io_spi_rsp_i); the TB
+    // bridges it to the legacy single-lane pad ports below. The reset vector
+    // is a direct rst_vec input (the vendored VeeR tap dropped the TDR).
     // ------------------------------------------------------------------
-    logic [7:0] spi_txd_w;   // wrapper SPI TX byte; bit 0 = single-lane MOSI
+    sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
     sep_wrapper #(.EXT_TRNG_NUM_AXIS(2)) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
-        .clk_ref_i                    (clk_i),
         .clk_wdt_i                    (clk_wdt_i),
         .rst_ni                       (rst_ni),
         .dbg_rstb_i                   (dbg_rstb_i),
@@ -500,6 +507,8 @@ module sep_uvm_top
         .dmi_active                   (),
 
         .sep_cpu_trace                (cpu_trace_w),
+        // Direct reset-vector input (replaces the retired JTAG reset-vector TDR).
+        .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
         // Interrupts (idle)
@@ -524,26 +533,25 @@ module sep_uvm_top
         .lcc_demote_state_1_o         (),
         .lcc_demote_state_2_o         (),
 
-        // SPI pads: single-lane host. clk->sck, txd[0]->MOSI, cs_n->CS,
-        // rxd[1]<-MISO (standard-mode SEP IO). Unused OE/IE and rebar pads open.
-        .spi_enable_o                 (),
-        .spi_clk_o                    (spi_sck_o),
-        .spi_txd_o                    (spi_txd_w),
-        .spi_cs_n_o                   (spi_cs_n_o),
-        .spi_cs_oe_n_o                (),
-        .spi_cs_ie_n_o                (),
-        .spi_clk_ie_n_o               (),
-        .spi_clk_oe_n_o               (),
-        .spi_dqs_ie_n_o               (),
-        .spi_dqs_oe_n_o               (),
-        .spi_dq_ie_n_o                (),
-        .spi_dq_oe_n_o                (),
-        .spi_rxd_i                    ({6'b0, spi_miso_i, 1'b0}),
-        .spi_rxds_i                   (1'b0),
-        .spi_mem_rebar_oepad_o        (),
-        .spi_mem_rebar_opad_o         (),
-        .spi_mem_rebar_iepad_o        (),
-        .spi_mem_rebar_ipad_i         (1'b0),
+        // SPI: quad-lane struct boundary, bridged below to the legacy
+        // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
+        // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
+        // wrapper's interrupt aggregator input, matching the pre-port routing.
+        // FIXME(SEP-DV): the 4 SPI flash tests are unverified against this
+        // struct boundary (and the retired och_sep_spi_mux_ctrl CS-release CSR);
+        // re-validate them before re-enabling SPI coverage claims.
+        .sep_io_spi_req_o             (sep_io_spi_req_w),
+        .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
+        .spi_irq_i                    (sep_io_spi_req_w.irq),
+
+        // New wrapper status/debug outputs: observability only, left open.
+        .lc_state_o                   (),
+        .feat_ctrl_o                  (),
+        .lc_sigint_err_o              (),
+        .security_disable_o           (),
+        .km_unrecoverable_err_o       (),
+        .km_recoverable_err_o         (),
+        .efuse_debug_bus_o            (),
 
         // Mailbox interrupts
         .smc_mailbox_interrupt_o      (),
@@ -573,7 +581,10 @@ module sep_uvm_top
         // External debug bus
         .ext_debug_bus_o              ()
     );
-    assign spi_mosi_o = spi_txd_w[0];
+    // Legacy single-lane SPI pad bridge (see the struct boundary note above).
+    assign spi_sck_o  = sep_io_spi_req_w.sck;
+    assign spi_cs_n_o = sep_io_spi_req_w.cs_n;
+    assign spi_mosi_o = sep_io_spi_req_w.sd[0];
 
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
@@ -658,8 +669,8 @@ module sep_uvm_top
     // on VCS / 0 on Verilator -- both wrong for KM (parity) and OTBN (SECDED),
     // whose valid power-up word is non-zero. Fill patterns + ECC/parity are ported
     // from the retired responders (shims/mem/tb_{tcm,km,otbn}_responder.sv). Array
-    // paths verified against hw/.bos/wrapper/sep/sep_ip_integration.sv and
-    // the EL2 sep_tcm_wrapper (TCM generate arms are gen_iccm_ram/gen_dccm_ram).
+    // paths verified against hw/top/sep_ip_integration.sv and the current
+    // sep_tcm_wrapper (TCM per-depth generate arms are now labeled gen_ram).
     // Backdoor writes into these DUT arrays need them public under Verilator
     // (sep_public_scope.vlt: prim_ram_1p.mem, prim_rom.mem, ram_16384x39.ram_core).
     // ------------------------------------------------------------------
@@ -682,8 +693,8 @@ module sep_uvm_top
 
     localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
 
-`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
-`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
+`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_ram.ram.ram_core
+`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_ram.ram.ram_core
 
     // Non-zero valid power-up patterns (both tools: Verilator 0-init and VCS X are
     // both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).

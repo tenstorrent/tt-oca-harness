@@ -39,9 +39,11 @@ run_modes = ["cpu"]
 # NOTE: no +skip_fuse_sense -- the ROM's rom_lifecycle_policy needs a valid
 # (differential-encoded) LC_STATE in the eFuse shadow, which only exists if the
 # real fuse-sense FSM runs. A zero OTP senses to LC_STATE_TEST_DEV (raw 0x0, valid).
+# FIXME(SEP-DV): fw/bootcode/build/ artifacts are not built in this repository
+# yet; rebuild the bootcode images before re-enabling this test.
 args = [
-  "+sep_boot_rom_hex={repo_root}/dv/oss/hw/sys/sep/dv/fw/bootcode/build/boot_rom.vmem",
-  "+sep_smc_mem_hex={repo_root}/dv/oss/hw/sys/sep/dv/fw/bootcode/build/smc_mem.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/dv/fw/bootcode/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/dv/fw/bootcode/build/smc_mem.hex",
 ]
 # TODO: once SPI is ready on the DUT, swap the SMC-SRAM path for real SPI
 # manifest boot (production ROM -> SPI manifest -> BL1 handoff).

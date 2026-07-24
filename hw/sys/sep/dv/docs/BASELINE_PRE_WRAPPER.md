@@ -1,6 +1,6 @@
 # SEP OSS DV — Pre-wrapper baseline regression
 
-Branch `3759-smu-cla-sep-cpu-debug` (== main for hw/ + dv/oss; only a fw test dir differs).
+Branch `3759-smu-cla-sep-cpu-debug` (== main for hw/ + the OSS DV tree; only a fw test dir differs).
 Reference: 07-15 Verilator `all` = 69/69 pass.
 
 ## Verilator (authoritative gate)

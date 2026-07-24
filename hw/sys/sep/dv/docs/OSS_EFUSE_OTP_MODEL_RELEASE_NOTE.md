@@ -50,9 +50,9 @@ Useful waveform signals for bring-up/debug:
 
 ## Source Files
 
-- Reference responder: `dv/oss/hw/sys/sep/dv/shims/analog/tb_sep_efuse_responder.sv`
-- OTP image helper: `dv/oss/hw/sys/sep/dv/cocotb/env/sep_efuse_image.py`
-- Testbench integration: `dv/oss/hw/sys/sep/dv/tb/tb_top.sv`
+- Reference responder: `hw/sys/sep/dv/shims/analog/tb_sep_efuse_responder.sv`
+- OTP image helper: `hw/sys/sep/dv/cocotb/env/sep_efuse_image.py`
+- Testbench integration: `hw/sys/sep/dv/tb/tb_top.sv`
 
 ## Representative Validation
 

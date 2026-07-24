@@ -113,7 +113,7 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
         # +km_rom_hex responder). fw_pass + banner are gated by SepBootScoreboard.
         assert os.path.exists(_KM_ROM_HEX), (
             f"missing KM ROM image {_KM_ROM_HEX}; run `make -C "
-            "dv/oss/hw/sys/sep/dv/cocotb/tests/km_fw`"
+            "hw/sys/sep/dv/cocotb/tests/km_fw`"
         )
         self.logger.info("coexist KM ROM image: %s", _KM_ROM_HEX)
         self.sb.expected_line = _BANNER

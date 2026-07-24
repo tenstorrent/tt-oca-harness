@@ -3,7 +3,7 @@
 
 **Date**: 2026-06-29
 **Auditor**: Claude Code (5-agent parallel audit, then synthesis)
-**Scope**: Full SEP OSS DV environment — `dv/oss/hw/sys/sep/dv/` — 38 runnable cocotb tests (+ `sep_base_test.py` base), 28 seq_lib, 19 env (agents/scoreboards/goldens), 9 shims, 8 testlists, `sep_sim_cfg.toml`, `tb/tb_top.sv`, docs/VPLANs. Audited against `AGENTS.md` (§1–12), `hw/sep/doc/*.adoc` (spec golden), and `hw/sep/` RTL.
+**Scope**: Full SEP OSS DV environment — `hw/sys/sep/dv/` — 38 runnable cocotb tests (+ `sep_base_test.py` base), 28 seq_lib, 19 env (agents/scoreboards/goldens), 9 shims, 8 testlists, `sep_sim_cfg.toml`, `tb/tb_top.sv`, docs/VPLANs. Audited against `AGENTS.md` (§1–12), `hw/sep/doc/*.adoc` (spec golden), and `hw/sep/` RTL.
 **Flow**: cocotb/PyUVM on Verilator (NOT OCAH SV-UVM) — categories adapted to that layout.
 
 ---

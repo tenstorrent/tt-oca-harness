@@ -33,7 +33,7 @@ GCC_PREFIX ?= riscv64-unknown-elf
 
 # SEP DV root (bootcode is 2 dirs deep under it: <dv>/fw/bootcode). Everything
 # this build needs lives at or below <dv> so the OSS DV tree is self-contained
-# (no reach above dv/oss). The SEP top register header (och_sep_top_reg.h) is
+# (no reach above the DV tree). The SEP top register header (och_sep_top_reg.h) is
 # vendored into include/, so no external meta/registers/c include is needed.
 DV_ROOT := $(abspath $(CURDIR)/../..)
 
