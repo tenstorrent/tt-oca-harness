@@ -1,0 +1,19 @@
+Bender.yml
+  s_0b0a51c400f7f6::t_908787425be4f8 1163-1165,1169-1170,1172-1173,1175-1176,1178-1179,1181-1182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "212a5ee5b368bdab788324516e6c120121ea58c7",
+  "prompts": {},
+  "sessions": {
+    "s_0b0a51c400f7f6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "678ceb1e-fcf0-41cf-949b-f93a4df936c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
