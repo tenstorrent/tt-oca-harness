@@ -216,7 +216,6 @@ sources:
     include_dirs:
       - hw/common/assert
       - hw/ip/efuse/rtl/svh
-      - vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
     files:
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
       - hw/common/och_prim/rtl/prim_otp_cfg_pkg.sv
@@ -234,8 +233,6 @@ sources:
     files:
       - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
   - target: any(sep, smc)
-    include_dirs:
-      - vendor/pulp-platform/idma/overlay/target/rtl/include/idma
     files:
       - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
@@ -251,8 +248,6 @@ sources:
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
   - target: sep
-    include_dirs:
-      - vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
     files:
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
   - target: smc
@@ -1165,21 +1160,24 @@ sources:
     files:
       - hw/sys/smu/rtl/smu.sv
       - hw/sys/smu/rtl/smu_axi_xbar.sv
-  # Open-source reference models and top-level example wrappers (hw/top/),
-  # opt-in via `-t oss` since they are reference integration examples, not
-  # part of the OCAH RTL deliverable. See hw/top/README.md.
-  - target: oss
+  # Reference wrappers are additive to their corresponding subsystem targets.
+  - target: any(smc_wrapper, smu_wrapper)
     files:
-      # pulp-platform AXI4 error slave (and its common_cells fifo/counter deps),
-      # used only by hw/top/sep_ip_integration.sv's AXI extension termination.
-      - vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
-      - vendor/pulp-platform/common_cells/upstream/src/counter.sv
-      - vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
       - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
       - hw/top/sep_ip_integration.sv
+  - target: sep_wrapper
+    files:
       - hw/top/sep_wrapper.sv
+  - target: any(smc_wrapper, smu_wrapper)
+    files:
       - hw/top/smc_ip_integration.sv
+  - target: smc_wrapper
+    files:
       - hw/top/smc_wrapper.sv
+  - target: smu_wrapper
+    files:
       - hw/top/smu_wrapper.sv

@@ -10,6 +10,9 @@ package:
   authors:
     - "lowRISC contributors"
 
+export_include_dirs:
+  - upstream/hw/ip/prim/rtl
+
 sources:
   - target: any(dtp, sep, smc, opentitan_smu, smu)
     files:
@@ -32,20 +35,23 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_diff_decode.sv
       - upstream/hw/ip/prim/rtl/prim_alert_sender.sv
 
-  - target: any(oss, sep, smc, opentitan_smu, smu)
+  - target: any(sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
 
-  - target: any(oss, smc)
+  - target: any(smc, sep_wrapper, smu_wrapper)
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 
-  - target: oss
+  - target: any(smc_wrapper, smu_wrapper)
     files:
       - upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
+
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
       - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
 
   # `opentitan_smu` can still be requested explicitly, but it also auto-activates
   # whenever `sep` or `smu` are requested: SEP's crypto wrappers (aes_wrapper.sv,
