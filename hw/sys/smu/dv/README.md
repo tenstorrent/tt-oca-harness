@@ -1,7 +1,7 @@
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
-Layout follows `dv/oss/hw/sys/sep/` (flow-first cocotb under `cocotb/`).
+Layout follows `hw/sys/sep/dv/` (flow-first cocotb under `cocotb/`).
 
 **Master VPLAN (P1 + P2):** [`docs/SMU_VPLAN.md`](docs/SMU_VPLAN.md)
 — P1 **24/24 VCS DONE**; P2 SMC↔DTP protocol ~14 planned; no P3/P4.
@@ -52,15 +52,15 @@ source bin/setup_env.sh
 export TMPDIR=/localdev/$USER/TMPDIR
 mkdir -p "$TMPDIR"
 
-python3 dv/oss/tools/dv/run_dv.py --dut smu --build-only
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smoke --dry-run
+python3 tools/dv/run_dv.py --dut smu --build-only
+python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
 
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smoke
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items top5
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items top10
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items phase1
+python3 tools/dv/run_dv.py --dut smu --items smoke
+python3 tools/dv/run_dv.py --dut smu --items top5
+python3 tools/dv/run_dv.py --dut smu --items top10
+python3 tools/dv/run_dv.py --dut smu --items phase1
 
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 ```
 
 Groups: `smoke`, `top5`, `top10`, `phase1`, `smc`, `dtp`, `fabric`.
@@ -83,13 +83,13 @@ replaced by the vendor-free `shims/mem/sep_tcm_wrapper.sv`.
 ### Readiness gates
 
 ```bash
-python3 dv/oss/hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
+python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
 
-python3 dv/oss/tools/dv/run_dv.py --dut smu_wrapper \
+python3 tools/dv/run_dv.py --dut smu_wrapper \
   --items smu_wrapper_elaboration_no_sep_test --stage flist
-python3 dv/oss/hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
+python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
   --phase filelist \
-  --filelist dv/oss/hw/sys/smu/dv/build/smu_wrapper_dut_compile.f
+  --filelist hw/sys/smu/dv/build/smu_wrapper_dut_compile.f
 ```
 
 ### Tests
@@ -109,17 +109,17 @@ path is tracked separately (issue #3939).
 
 ```bash
 source bin/setup_env.sh
-export TMPDIR="$PWD/dv/oss/hw/sys/smu/dv/build/TMPDIR"
+export TMPDIR="$PWD/hw/sys/smu/dv/build/TMPDIR"
 mkdir -p "$TMPDIR"
 # Firmware toolchain: riscv64-unknown-elf-* on PATH, RISCV_TOOLCHAIN, or
 # per-tool overrides (e.g. Homebrew): RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
 
 # Full baseline (both profiles compile; all four tests):
-python3 dv/oss/tools/dv/run_dv.py --dut smu_wrapper --items smoke --seed 1 \
+python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke --seed 1 \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 
 # Single test, cached model:
-python3 dv/oss/tools/dv/run_dv.py --dut smu_wrapper --items smu_sep_smoke_test \
+python3 tools/dv/run_dv.py --dut smu_wrapper --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```
 

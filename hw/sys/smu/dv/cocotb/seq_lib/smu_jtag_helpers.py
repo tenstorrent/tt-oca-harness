@@ -11,7 +11,7 @@ from cocotb.triggers import ClockCycles
 
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap
 
-# Mirrors dv/oss/hw/sys/dtp/dv/cocotb/env/{dtp_types,dtp_tap_device}.py
+# Mirrors hw/sys/dtp/dv/cocotb/env/{dtp_types,dtp_tap_device}.py
 DTP_IR_WIDTH = 6
 DTP_DEFAULT_IDCODE = 0x0000_0001
 DTP_IR_DEBUG_CONTROL = 0x18

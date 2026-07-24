@@ -21,7 +21,7 @@ from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
-# Mirrors dv/oss/hw/sys/dtp/dv/cocotb/env/{dtp_tap_device,dtp_types}.py
+# Mirrors hw/sys/dtp/dv/cocotb/env/{dtp_tap_device,dtp_types}.py
 DTP_DEFAULT_IDCODE = 0x0000_0001
 DTP_IR_WIDTH = 6
 DTP_IR_BYPASS = 0x3F

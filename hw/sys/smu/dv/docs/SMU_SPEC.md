@@ -21,7 +21,7 @@ using CSR-programmed SEP/SMC apertures.
 
 This OCAH open-source verification plan follows the working reference plans in
 `dv/smu/tb/doc/`, but scopes implementation to the public `tt-oca` repository
-using the cocotb/Verilator environment in `dv/oss/hw/sys/smu/dv/`. Standard
+using the cocotb/Verilator environment in `hw/sys/smu/dv/`. Standard
 protocol interfaces use the unified OCAH BFM packages; custom OCH protocols are
 modeled by OCAH-local BFMs when no shared wrapper exists.
 
@@ -32,7 +32,7 @@ modeled by OCAH-local BFMs when no shared wrapper exists.
 | RTL integration wrapper | `smu_wrapper` (`hw/smu/smu_wrappers/rtl/smu_wrapper.sv`) |
 | Packages | `smu_pkg` (`hw/smu/rtl/smu_pkg.sv`), `smu_axi_xbar_pkg` |
 | Repository | `tt-oca` |
-| Open-source DV location | `dv/oss/hw/sys/smu/dv/` |
+| Open-source DV location | `hw/sys/smu/dv/` |
 | Reference plans | `dv/smu/tb/doc/` |
 | Standards | AMBA AXI4/AXI4-Lite; IEEE 1149.1 (JTAG) via DTP; OCH Cross Trigger v1.0 (OCCT) via DTP; OCAC/OCS compliance mapping |
 

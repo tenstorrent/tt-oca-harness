@@ -12,8 +12,8 @@ from pathlib import Path
 
 
 DV_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = DV_ROOT.parents[5]
-OSS_DV_TOOLS = REPO_ROOT / "dv" / "oss" / "tools" / "dv"
+REPO_ROOT = DV_ROOT.parents[3]
+OSS_DV_TOOLS = REPO_ROOT / "tools" / "dv"
 
 if str(OSS_DV_TOOLS) not in sys.path:
     sys.path.insert(0, str(OSS_DV_TOOLS))
@@ -61,10 +61,9 @@ REQUIRED_SOURCES = (
 )
 
 REQUIRED_REFERENCE_ROOTS = (
-    "dv/oss/hw/sys/smc/dv",
-    "dv/oss/hw/sys/sep/dv",
-    "dv/oss/hw/common/dv/vip",
-    "hw/.bos/wrapper/smu",
+    "hw/sys/smc/dv",
+    "hw/sys/sep/dv",
+    "hw/common/dv/vip",
 )
 
 FORBIDDEN_ENV_REFERENCES = (
@@ -212,23 +211,23 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         OSS_DV_TOOLS / "check_no_vendor_paths.yaml",
         None,
     )
+    # FIXME(SMU-DV): token sets updated for the current repository layout, but
+    # the wrapper flow itself remains deferred (see smu_wrapper_sim_cfg.toml);
+    # re-validate these expectations when the wrapper migration lands.
     required_tokens = (
-        "hw/smu/rtl/smu.sv",
-        "hw/.bos/wrapper/smc/smc_ip_integration.sv",
-        "hw/.bos/wrapper/sep/sep_ip_integration.sv",
-        "dv/oss/hw/sys/smu/dv/tb/tb_wrapper_top.sv",
-        "dv/oss/hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
+        "hw/sys/smu/rtl/smu.sv",
+        "hw/top/smc_ip_integration.sv",
+        "hw/top/sep_ip_integration.sv",
+        "hw/sys/smu/dv/tb/tb_wrapper_top.sv",
+        "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
         # DV shadow of the OSS wrapper (duplicate rst_cold_n declaration fix).
-        "dv/oss/hw/sys/smu/dv/shims/wrapper/smu_wrapper.sv",
+        "hw/sys/smu/dv/shims/wrapper/smu_wrapper.sv",
     )
     forbidden_tokens = (
-        # Production wrapper and foundry TCM macros must not leak into the
-        # OSS wrapper build (Bender not(smu_oss_wrapper) + exclude_files),
-        # and the hw/.bos wrapper copy is shadowed by the DV shim.
-        "hw/smu/smu_wrappers/rtl/smu_wrapper.sv",
-        "hw/sep/sep_tcm_wrapper.sv",
-        "hw/.bos/wrapper/smu/smu_wrapper.sv",
-        "hw/.bos/wrapper/smc/smc_padring_ext.sv",
+        # The production wrapper and foundry TCM macros must not leak into the
+        # OSS wrapper build; the production copies are shadowed by DV shims.
+        "hw/top/smu_wrapper.sv",
+        "hw/sys/sep/rtl/sep_tcm_wrapper.sv",
     )
     for raw_path in filelists:
         path = raw_path if raw_path.is_absolute() else REPO_ROOT / raw_path

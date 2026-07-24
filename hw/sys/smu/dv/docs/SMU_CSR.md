@@ -26,7 +26,7 @@ the SMU-level addressing and the CSRs the SMU verification plan exercises.
 | SMC base config RDL | `hw/smc/smc_misc/data/registers/rdl/smc_base_config.rdl` |
 | SMC mailbox RDL | `axil_mailbox_smc_wrap.rdl` |
 | SEP mailbox / system CSRs | `hw/sep/sep_pkg.sv`, `sep_system_csr`, `sep_system_peripherals` |
-| DTP CSR reference | `dv/dtp/doc/DTP_CSR.md`, `dv/oss/hw/sys/dtp/dv/docs/DTP_CSR.md` |
+| DTP CSR reference | `dv/dtp/doc/DTP_CSR.md`, `hw/sys/dtp/dv/docs/DTP_CSR.md` |
 | Suspected register hazards | `dv/smu/tb/doc/smu_rtl_suspected_issues.md` |
 
 ## Part A: AXI Crossbar Apertures
@@ -110,7 +110,7 @@ DTP CSRs are reached from SMC over AXI-Lite (`smc_axil_dtp_csr` →
 
 At the SMU level, `JTAG_IC_RESET_SMC_ENABLE=1`, `JTAG_IC_RESET_SEP_ENABLE=SEP`,
 `JTAG_SEP_DBG_ENABLE=SEP`; debug resources are gated by `feat_ctrl`. See
-`dv/oss/hw/sys/dtp/dv/docs/DTP_CSR.md` for full TDR field layouts.
+`hw/sys/dtp/dv/docs/DTP_CSR.md` for full TDR field layouts.
 
 ## Part D: SEP System CSRs (`SEP=1`)
 

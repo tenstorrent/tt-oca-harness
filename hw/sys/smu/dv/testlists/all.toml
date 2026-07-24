@@ -10,6 +10,10 @@ schema_version = 1
 includes = ["smc.toml", "dtp.toml", "fabric.toml"]
 
 [[groups]]
+name = "sanity"
+tests = ["smu_no_sep_configuration_test"]
+
+[[groups]]
 name = "smoke"
 tests = [
     "smu_smc_smoke_test",

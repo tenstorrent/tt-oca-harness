@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// DV shadow of hw/.bos/wrapper/smu/smu_wrapper.sv (issue #3357 flow).
+// FIXME(SMU-DV): DEFERRED, not compiled by any active flow. This shadow was
+// built against the old repository's integration layer: it references
+// smc_ip_integration_pkg and efuse_otp_responder (both gone from this repo)
+// and the pre-rewrite smc/sep_ip_integration port interfaces (pad-level SPI
+// moved to struct ports; efuse models folded into the ip_integration
+// modules). Rework it against hw/top/{smu_wrapper,smc_ip_integration,
+// sep_ip_integration}.sv following the SEP wrapper migration before
+// re-enabling the smu_wrapper flow.
+//
+// DV shadow of the legacy wrapper smu_wrapper.sv (issue #3357 flow).
 // Identical to the hw/.bos source except that the internal
 // `logic rst_cold_n;` declaration is removed: it redeclares the ANSI output
 // port of the same name, which Verilator rejects as a duplicate declaration.

@@ -1,12 +1,18 @@
 schema_version = 1
 
-# Launch entry: selected by `--dut smu_wrapper` (registered in
-# hw/common/dv/configs/duts.toml). Issue #3357 production-wrapper baseline.
+# Deferred, not-runnable wrapper baseline (issue #3357). `smu_wrapper` is
+# intentionally NOT registered in hw/common/dv/configs/duts.toml.
 #
-# The DUT is the vendor-free hw/.bos/wrapper/smu/smu_wrapper.sv, pulled
-# through the `smu_oss_wrapper` bender target. It integrates the real SMU RTL
-# (hw/smu, SMC, DTP, and real SEP EL2 under SEP=1) with the OSS integration
-# modules and behavioral macro models — no hw/ sources are modified.
+# FIXME(SMU-DV): this flow was built against the old repository's integration
+# layer and cannot run here yet:
+#   - shims/wrapper/smu_wrapper.sv references smc_ip_integration_pkg and
+#     efuse_otp_responder, which no longer exist, and the current
+#     hw/top/{smc,sep}_ip_integration.sv interfaces were rewritten
+#     (pad-level SPI moved to struct ports).
+#   - The `smu_oss_wrapper` bender target does not exist; the current wrapper
+#     collateral is gated behind `smu_wrapper` / `any(*_wrapper, ...)` targets.
+#   - The exclude_files below reference pre-port paths and no longer match.
+# Follow the SEP wrapper migration pattern before registering this DUT.
 #
 # This flow is independent of the SEP=0 bare-`smu` catalog in smu_sim_cfg.toml;
 # both configs share this DV root and the build/runs evidence directory.
@@ -24,18 +30,18 @@ format = "toml_list"
 kind = "clean"
 paths = [
   "{run_dir}",
-  "dv/oss/hw/sys/smu/dv/build/cocotb_wrapper_no_sep",
-  "dv/oss/hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl",
-  "dv/oss/hw/sys/smu/dv/build/work_wrapper",
-  "dv/oss/hw/sys/smu/dv/build/firmware",
+  "hw/sys/smu/dv/build/cocotb_wrapper_no_sep",
+  "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl",
+  "hw/sys/smu/dv/build/work_wrapper",
+  "hw/sys/smu/dv/build/firmware",
 ]
 
 [build]
 top_module = "smu_wrapper_uvm_top"
-top_file = "dv/oss/hw/sys/smu/dv/tb/tb_wrapper_top.sv"
-filelist = "dv/oss/hw/sys/smu/dv/build/smu_wrapper_dut_compile.f"
-bender_filelist = "dv/oss/hw/sys/smu/dv/build/smu_wrapper_bender.f"
-work_dir = "dv/oss/hw/sys/smu/dv/build/work_wrapper"
+top_file = "hw/sys/smu/dv/tb/tb_wrapper_top.sv"
+filelist = "hw/sys/smu/dv/build/smu_wrapper_dut_compile.f"
+bender_filelist = "hw/sys/smu/dv/build/smu_wrapper_bender.f"
+work_dir = "hw/sys/smu/dv/build/work_wrapper"
 common_bender_targets = [
   "tech_cells_generic_exclude_deprecated",
   "tech_cells_generic_exclude_tc_sram",
@@ -55,8 +61,8 @@ bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2", "smu_oss_wrapper"]
 # Prepend SEP prim_assert shim so `include "prim_assert.sv" resolves to the
 # SYNTHESIS-gated ASSUME/COVER macros (see smu_sim_cfg.toml).
 incdirs = [
-  "dv/oss/hw/sys/sep/dv/shims/prim",
-  "dv/oss/hw/sys/smu/dv/tb",
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smu/dv/tb",
 ]
 # Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
 # not part of the OSS wrapper hierarchy — mirror the smu/sep OSS excludes.
@@ -87,22 +93,22 @@ exclude_files = [
 stubs = [
   # Verilator-compat overrides (same set as OSS SMC/SMU). Listed first;
   # -Wno-MODDUP first-wins. VCS drops stubs whose basename already exists.
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
 ]
 sources = [
-  "dv/oss/hw/sys/smu/dv/shims/bus/tb_smu_axi_responder.sv",
-  "dv/oss/hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
-  "dv/oss/hw/sys/smu/dv/shims/wrapper/smu_wrapper.sv",
-  "dv/oss/hw/sys/smu/dv/shims/wrapper/smc_padring_ext.sv",
-  "dv/oss/hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
+  "hw/sys/smu/dv/shims/bus/tb_smu_axi_responder.sv",
+  "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
+  "hw/sys/smu/dv/shims/wrapper/smu_wrapper.sv",
+  "hw/sys/smu/dv/shims/wrapper/smc_padring_ext.sv",
+  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
 ]
 
 [build.verilator]
-public_scope = "dv/oss/hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
+public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [build.options]
@@ -111,11 +117,10 @@ build_jobs = 8
 [cocotb]
 # Wrapper flow keeps its own PyUVM tree so module names stay independent of
 # the bare-smu cocotb/ catalog sharing this DV root.
-python_root = "dv/oss/hw/sys/smu/dv/cocotb_wrapper"
-test_dir = "dv/oss/hw/sys/smu/dv/cocotb_wrapper/tests"
+python_root = "hw/sys/smu/dv/cocotb_wrapper"
+test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
-  "dv/oss/hw/common/dv/vip",
-  "dv/vip/cocotb",
+  "hw/common/dv/vip",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -127,48 +132,48 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 cwd = "."
 argv = [
   "python3",
-  "dv/oss/hw/sys/smu/dv/fw/build_firmware.py",
+  "hw/sys/smu/dv/fw/build_firmware.py",
   "--target",
   "preloads",
 ]
 outputs = [
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
 ]
 
 [c_build.smc_smoke]
 cwd = "."
 argv = [
   "python3",
-  "dv/oss/hw/sys/smu/dv/fw/build_firmware.py",
+  "hw/sys/smu/dv/fw/build_firmware.py",
   "--target",
   "smu_smc_smoke",
 ]
 outputs = [
-  "dv/oss/hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
 ]
 
 [c_build.sep_smoke]
 cwd = "."
 argv = [
   "python3",
-  "dv/oss/hw/sys/smu/dv/fw/build_firmware.py",
+  "hw/sys/smu/dv/fw/build_firmware.py",
   "--target",
   "smu_sep_smoke",
 ]
 outputs = [
-  "dv/oss/hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.itcm.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.dtcm.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.sym",
-  "dv/oss/hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
-  "dv/oss/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.itcm.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.dtcm.hex",
+  "hw/sys/smu/dv/build/firmware/smu_sep_smoke/smu_sep_smoke.sym",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
 ]
 
 [run_modes.smoke]
@@ -188,7 +193,7 @@ args = ["+skip_fuse_sense"]
 
 [targets.default]
 description = "Fallback: OSS wrapper no-SEP profile"
-build_dir = "dv/oss/hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SYNTHESIS",
   "SIM",
@@ -207,7 +212,7 @@ flags = [
 
 [targets.compile_smu_chiplet_no_sep]
 description = "OSS smu_wrapper with NoSepCfg and SEP=0"
-build_dir = "dv/oss/hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SYNTHESIS",
   "SIM",
@@ -226,7 +231,7 @@ flags = [
 
 [targets.compile_smu_chiplet_sep_rtl]
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
-build_dir = "dv/oss/hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
 defines = [
   "SYNTHESIS",
   "SIM",

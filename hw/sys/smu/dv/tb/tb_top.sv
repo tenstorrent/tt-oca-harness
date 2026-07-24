@@ -514,7 +514,8 @@ module smu_uvm_top
         .xtrig_ctp_ack_out_din_en_o  (),
         .rst_primary_ref_clk_no,
         .rst_primary_smc_clk_no,
-        .rst_primary_periph_clk_no,
+        // rst_primary_periph_clk_no is no longer forwarded by the current smu
+        // top; the TB observes it hierarchically from u_smc below.
         .smu_axi_in_req_i            (smu_axi_in_req),
         .smu_axi_in_resp_o           (smu_axi_in_resp),
         .smu_axi_out_req_o           (smu_axi_out_req),
@@ -627,7 +628,6 @@ module smu_uvm_top
         .sep_extintsrc_req_i         ('0),
         .lcc_demote_state_1_o        (lcc_demote_state_1_o),
         .lcc_demote_state_2_o        (lcc_demote_state_2_o),
-        .secure_tm_o                 (),
         .sep_fuse_sense_done_o       (),
         .clk_sep_wdt_i               (clk_smu_i),
         .sep_straps_i                (sep_straps),
@@ -635,31 +635,35 @@ module smu_uvm_top
         .i3c_dat_mem_sink_o          (),
         .i3c_dct_mem_src_i           (i3c_dct_src),
         .i3c_dct_mem_sink_o          (),
-        .gated_clk_periph_i3c_o      (),
         .ext_debug_bus_i             (128'h0),
         .gpio_interrupt_o            (),
         .uart_interrupt_o            ()
     );
 
-    // WDT isolate clamp: observe pre-clamp raw + isolate; Force via TB pins
-    // (cocotb VPI cannot traverse generate named-begin; SMU Cfg uses SMC_4CORE).
-    assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    // Peripheral-domain reset: the current smu top no longer forwards SMC's
+    // rst_primary_periph_clk_no output, so observe it hierarchically.
+    assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
+
+    // WDT isolate clamp: observe pre-clamp raw + isolate; Force via TB pins.
+    // The current smc_cpu_wrapper instantiates u_smc_cpu directly (the old
+    // gen_4core_cpu generate scope was removed).
+    assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .wdt_reset_raw[0];
-    assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+    assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper
         .u_smc_cpu.cluster_boundary_isolate;
     always @(*) begin
         if (tb_force_cluster_isolate) begin
-            force u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+            force u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
                 .cluster_boundary_isolate = 1'b1;
         end else begin
-            release u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+            release u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
                 .cluster_boundary_isolate;
         end
         if (tb_force_wdt_reset_raw) begin
-            force u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wdt_reset_raw =
+            force u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wdt_reset_raw =
                 '1;
         end else begin
-            release u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wdt_reset_raw;
+            release u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wdt_reset_raw;
         end
     end
 

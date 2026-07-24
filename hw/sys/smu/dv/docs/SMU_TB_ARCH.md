@@ -14,7 +14,7 @@
 | Reference TB | `dv/smu/tb/tb_uvm` (working SMU/SMC-chiplet environment) and `dv/smu/tb/doc/` |
 
 The OCAH open-source SMU testbench follows the canonical `hw/sys/<system>/dv/`
-layout under `dv/oss/hw/sys/smu/dv/`. Unlike DTP (a single pure-cocotb PyUVM
+layout under `hw/sys/smu/dv/`. Unlike DTP (a single pure-cocotb PyUVM
 flow), the SMU verifies a subsystem that co-simulates **real SMC RTL and real SEP
 RTL** around the AXI crossbar, so its working reference environment is a hybrid
 UVM + cocotb + firmware flow driven by `ttem` and YAML. This document describes
@@ -29,7 +29,7 @@ it incrementally, using unified OCAH BFM packages for standard interfaces.
 
 ## VIP Selection Policy
 
-1. Import unified OCAH BFM wrappers from `dv/oss/hw/common/dv/vip` for standard
+1. Import unified OCAH BFM wrappers from `hw/common/dv/vip` for standard
    protocol access (JTAG, AXI/AXI-Lite).
 2. Wrap those BFMs in cocotb/PyUVM agents so tests remain sequence-based.
 3. Use OCAH-local BFMs/models for custom OCH protocols (cross-trigger, iJTAG) and
@@ -101,7 +101,7 @@ SEP PC loops.
 The OSS SMU folder uses the canonical flow-first (`cocotb/`-parented) layout:
 
 ```text
-dv/oss/hw/sys/smu/dv/
+hw/sys/smu/dv/
   docs/
     SMU_SPEC.md
     SMU_CSR.md
@@ -242,11 +242,11 @@ coverage. See `SMU_FCOV.md`.
 ## Build and Run
 
 ```bash
-python3 dv/oss/tools/dv/run_dv.py --dut smu --build-only
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smoke --dry-run
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smc
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items interop
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items all --dry-run
+python3 tools/dv/run_dv.py --dut smu --build-only
+python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
+python3 tools/dv/run_dv.py --dut smu --items smc
+python3 tools/dv/run_dv.py --dut smu --items interop
+python3 tools/dv/run_dv.py --dut smu --items all --dry-run
 ```
 
 The `smoke` group is a fast cross-block gate (SMC boot + DTP JTAG + fabric

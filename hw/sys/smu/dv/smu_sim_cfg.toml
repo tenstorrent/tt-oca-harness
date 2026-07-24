@@ -13,21 +13,19 @@ format = "toml_list"
 
 [native.stages.clean]
 kind = "clean"
-paths = ["{run_dir}", "dv/oss/hw/sys/smu/dv/build"]
+paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 
 [build]
 top_module = "smu_uvm_top"
-top_file = "dv/oss/hw/sys/smu/dv/tb/tb_top.sv"
+top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
   # Reuse the proven SMC CPU memory behavioral responders.
-  "dv/oss/hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
+  "hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
 ]
-filelist = "dv/oss/hw/sys/smu/dv/build/smu_dut_compile.f"
-bender_filelist = "dv/oss/hw/sys/smu/dv/build/smu_bender.f"
-work_dir = "dv/oss/hw/sys/smu/dv/build"
+filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
+bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
+work_dir = "hw/sys/smu/dv/build"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -46,40 +44,25 @@ bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
 # SYNTHESIS-gated ASSUME/COVER macros (upstream OT leaves ASSUME live under
 # VERILATOR and breaks on sha3pad `##[1:$]`).
 incdirs = [
-  "dv/oss/hw/sys/sep/dv/shims/prim",
-  "dv/oss/hw/sys/smu/dv/tb",
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smu/dv/tb",
 ]
-# Licensed Cadence xSPI is pulled by the sep bender graph but unused under SEP=0 /
-# OpenTitan SPI path. Mirror SEP OSS exclude so VCS stays vendor-clean.
-# Samsung GPIO/ESD + padring_dv_wrapper + SPI flash models come from the same
-# sep×simulation slice but are not in the SMU SEP=0 hierarchy — drop them so
-# Verilator is not forced to parse unsupported constructs (pmos/rmos/highz).
-exclude_files = [
-  "sep_cdns_spi_wrap.sv",
-  "cdn_ip6184_19e8_dll_phy",
-  "cdn_xspi",
-  "ln04lpp_gpio_lib_t12.v",
-  "ln04lpp_gpio_lib_t18.v",
-  "ln04lpp_esd_lib_t12.v",
-  "ln04lpp_esd_lib_t18.v",
-  "padring_dv_wrapper.sv",
-  "tt_spi_devices.sv",
-  "tt_bidir_delay.sv",
-  "meta/models/spi",
-]
+# The legacy Cadence xSPI / Samsung GPIO/ESD / padring excludes were dropped
+# with the port: this repository's tree is vendor-clean by construction and
+# none of those files exist here.
 stubs = [
   # Verilator-compat overrides (same set as OSS SMC). Listed first; -Wno-MODDUP
   # first-wins. VCS drops stubs whose basename already exists in the bender graph.
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "dv/oss/hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
 ]
 
 [build.verilator]
 # Drop cocotb global --public-flat-rw via public_scope (.vlt); keep Force/hier probes.
-public_scope = "dv/oss/hw/sys/smu/dv/smu_public_scope.vlt"
+public_scope = "hw/sys/smu/dv/smu_public_scope.vlt"
 ccache = true
 
 [build.options]
@@ -88,13 +71,12 @@ build_jobs = 8
 
 
 [cocotb]
-python_root = "dv/oss/hw/sys/smu/dv/cocotb"
-test_dir = "dv/oss/hw/sys/smu/dv/cocotb/tests"
+python_root = "hw/sys/smu/dv/cocotb"
+test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
-  "dv/oss/hw/common/dv/vip",
-  "dv/vip/cocotb",
+  "hw/common/dv/vip",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
-  "dv/oss/hw/sys/dtp/dv/cocotb",
+  "hw/sys/dtp/dv/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -122,7 +104,7 @@ args = ["+skip_fuse_sense"]
 
 [targets.default]
 description = "SMU Phase-1 SEP=0 cocotb target — primary backend is VCS"
-build_dir = "dv/oss/hw/sys/smu/dv/build/cocotb"
+build_dir = "hw/sys/smu/dv/build/cocotb"
 defines = [
   # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
   "SYNTHESIS",

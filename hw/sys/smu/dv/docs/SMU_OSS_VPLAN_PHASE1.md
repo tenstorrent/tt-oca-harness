@@ -11,7 +11,7 @@
 |-------|-------|
 | DUT | `smu` / `smu_wrapper` with **`SEP=0`** |
 | Framework | cocotb + PyUVM (`env/` + `seq_lib/` + `tests/`) |
-| Runner | `python3 dv/oss/tools/dv/run_dv.py --dut smu` |
+| Runner | `python3 tools/dv/run_dv.py --dut smu` |
 | Golden reference | `dv/smu/tb/doc/`, `testlist_smu_chiplet.yaml` |
 | Master VPLAN | `docs/SMU_VPLAN.md` (P1+P2) |
 | OUT / deferred | `testlists/deferred.toml` |
@@ -200,19 +200,19 @@ export TMPDIR=/localdev/$USER/TMPDIR
 mkdir -p "$TMPDIR"
 
 # A. Build only (flist / Verilator) — expect incremental bring-up
-python3 dv/oss/tools/dv/run_dv.py --dut smu --build-only
+python3 tools/dv/run_dv.py --dut smu --build-only
 
 # B. Inspect resolution
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smoke --dry-run
+python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
 
 # C. Staged regress
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items smoke
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items top5
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items top10
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items phase1
+python3 tools/dv/run_dv.py --dut smu --items smoke
+python3 tools/dv/run_dv.py --dut smu --items top5
+python3 tools/dv/run_dv.py --dut smu --items top10
+python3 tools/dv/run_dv.py --dut smu --items phase1
 
 # D. Commercial coverage (signoff)
-python3 dv/oss/tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 ```
 
 | Cadence | Command intent |

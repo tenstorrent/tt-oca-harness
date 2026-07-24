@@ -10,7 +10,7 @@
 | Framework | cocotb + pyuvm (`run_dv.py`) |
 | Active build | **`SEP=0` only** |
 | Primary sim | **VCS first**; Verilator after P1 green |
-| Runner | `python3 dv/oss/tools/dv/run_dv.py --dut smu` |
+| Runner | `python3 tools/dv/run_dv.py --dut smu` |
 | Reference SPEC / CSR / FCOV | `SMU_SPEC.md`, `SMU_CSR.md`, `SMU_FCOV.md` |
 | Executable P1 detail | `SMU_OSS_VPLAN_PHASE1.md`, `dv/smu/tb/doc/oss_smu_vplan.md` |
 | OUT / deferred names | `../testlists/deferred.toml` |
@@ -529,9 +529,9 @@ named check (log line format `EVIDENCE: <TOKEN>`).
 ```bash
 source bin/setup_env.sh
 export TMPDIR=/localdev/$USER/TMPDIR && mkdir -p "$TMPDIR"
-python3 dv/oss/tools/dv/run_dv.py --dut smu --tool vcs --items phase4_sep0
-python3 dv/oss/tools/dv/run_dv.py --dut smu --tool verilator --items phase4_sep0
-# After tb_top / .vlt changes: rm -rf dv/oss/hw/sys/smu/dv/build/cocotb/{vcs,verilator}
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items phase4_sep0
+python3 tools/dv/run_dv.py --dut smu --tool verilator --items phase4_sep0
+# After tb_top / .vlt changes: rm -rf hw/sys/smu/dv/build/cocotb/{vcs,verilator}
 ```
 
 ---
