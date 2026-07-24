@@ -71,10 +71,12 @@ jobs:
         run: uv sync
 
       - name: Build HTML documentation
-        # Pages nested URLs (/trm, /integrator). Drop with doc/gh-pages.mk.
+        # Pages nested URLs (/trm, /integrator, /programmer, /appnotes). Drop with doc/gh-pages.mk.
         run: |
           make ocah-doc-trm-html OCAH_DOC_SITE_URL=/trm
           make ocah-doc-integrator-html OCAH_DOC_SITE_URL=/integrator
+          make ocah-doc-programmer-html OCAH_DOC_SITE_URL=/programmer
+          make ocah-doc-appnotes-html OCAH_DOC_SITE_URL=/appnotes
 
       - name: Build PDF documentation
         run: |

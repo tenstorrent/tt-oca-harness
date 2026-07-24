@@ -20,9 +20,11 @@ OCAH_GHPAGES_DIR ?= $(OCAH_DOC_DIR)/_build/gh-pages
 # private *.pages.github.io hosts).
 OCAH_GHPAGES_TRM_URL ?= /trm
 OCAH_GHPAGES_INTEGRATOR_URL ?= /integrator
+OCAH_GHPAGES_PROGRAMMER_URL ?= /programmer
+OCAH_GHPAGES_APPNOTES_URL ?= /appnotes
 OCAH_GHPAGES_INDEX ?= $(OCAH_DOC_DIR)/gh-pages-index.html
 
-## Stage TRM + Integrator HTML under doc/_build/gh-pages/ with a landing page.
+## Stage all four products' HTML under doc/_build/gh-pages/ with a landing page.
 .PHONY: ocah-doc-stage-ghpages
 ocah-doc-stage-ghpages:
 	@test -d "$(OCAH_TRM_BUILD)/html_antora" || { \
@@ -35,16 +37,40 @@ ocah-doc-stage-ghpages:
 		echo "run: make ocah-doc-integrator-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_INTEGRATOR_URL)"; \
 		exit 1; \
 	}
+	@test -d "$(OCAH_PROGRAMMER_BUILD)/html_antora" || { \
+		echo "error: missing Programmer's Guide HTML at $(OCAH_PROGRAMMER_BUILD)/html_antora"; \
+		echo "run: make ocah-doc-programmer-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_PROGRAMMER_URL)"; \
+		exit 1; \
+	}
+	@test -d "$(OCAH_APPNOTES_BUILD)/html_antora" || { \
+		echo "error: missing Application Notes HTML at $(OCAH_APPNOTES_BUILD)/html_antora"; \
+		echo "run: make ocah-doc-appnotes-html OCAH_DOC_SITE_URL=$(OCAH_GHPAGES_APPNOTES_URL)"; \
+		exit 1; \
+	}
 	@test -f "$(OCAH_GHPAGES_INDEX)" || { echo "error: missing $(OCAH_GHPAGES_INDEX)"; exit 1; }
 	@rm -rf "$(OCAH_GHPAGES_DIR)"
-	@mkdir -p "$(OCAH_GHPAGES_DIR)/trm" "$(OCAH_GHPAGES_DIR)/integrator"
+	@mkdir -p "$(OCAH_GHPAGES_DIR)/trm" "$(OCAH_GHPAGES_DIR)/integrator" \
+		"$(OCAH_GHPAGES_DIR)/programmer" "$(OCAH_GHPAGES_DIR)/appnotes" \
+		"$(OCAH_GHPAGES_DIR)/downloads"
 	@cp -a "$(OCAH_TRM_BUILD)/html_antora/." "$(OCAH_GHPAGES_DIR)/trm/"
 	@cp -a "$(OCAH_INTEGRATOR_BUILD)/html_antora/." "$(OCAH_GHPAGES_DIR)/integrator/"
+	@cp -a "$(OCAH_PROGRAMMER_BUILD)/html_antora/." "$(OCAH_GHPAGES_DIR)/programmer/"
+	@cp -a "$(OCAH_APPNOTES_BUILD)/html_antora/." "$(OCAH_GHPAGES_DIR)/appnotes/"
 	@cp "$(OCAH_GHPAGES_INDEX)" "$(OCAH_GHPAGES_DIR)/index.html"
 	@touch "$(OCAH_GHPAGES_DIR)/.nojekyll"
+	@if [ -f "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)" ]; then \
+		cp "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	else \
+		echo "warning: TRM PDF not found at $(OCAH_TRM_DIST)/$(OCAH_TRM_PDF), skipping (Downloads link will 404 until it exists)"; \
+	fi
+	@if [ -f "$(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF)" ]; then \
+		cp "$(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	else \
+		echo "warning: Integrator Guide PDF not found at $(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF), skipping (Downloads link will 404 until it exists)"; \
+	fi
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
 
-## Build both products (with Pages site URLs), stage, and push to gh-pages.
+## Build all four products (with Pages site URLs), stage, and push to gh-pages.
 .PHONY: ocah-doc-deploy-ghpages
 ocah-doc-deploy-ghpages:
 	@command -v uv >/dev/null 2>&1 || { \
@@ -56,6 +82,10 @@ ocah-doc-deploy-ghpages:
 		ocah-doc-trm-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_TRM_URL)"
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" \
 		ocah-doc-integrator-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_INTEGRATOR_URL)"
+	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" \
+		ocah-doc-programmer-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_PROGRAMMER_URL)"
+	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" \
+		ocah-doc-appnotes-html OCAH_DOC_SITE_URL="$(OCAH_GHPAGES_APPNOTES_URL)"
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-stage-ghpages
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
 	@echo "Deployed to GitHub Pages (gh-pages branch)."
