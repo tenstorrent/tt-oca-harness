@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_clk_running_test"
+module = "smc_clk_running_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "clock", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_multi_window_test"
+module = "smc_clk_multi_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "clock", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "clock"
+tests = [
+    "smc_clk_running_test",
+    "smc_clk_multi_window_test",
+    "smc_pll_pvt_clock_config_test",
+]
