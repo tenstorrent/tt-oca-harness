@@ -1025,13 +1025,13 @@ module smc_uvm_top
 
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
-        u_dut.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+        u_dut.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
     assign tb_cpu_cluster_isolate =
-        u_dut.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.cluster_boundary_isolate;
+        u_dut.u_smc_cpu_wrapper.u_smc_cpu.cluster_boundary_isolate;
     assign tb_cpu_debug_dmactive =
-        u_dut.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactive;
+        u_dut.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
-        u_dut.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
+        u_dut.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactiveAck;
 
     // U7-2: DFD/DBS fault inject latches a deterministic capture token.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
