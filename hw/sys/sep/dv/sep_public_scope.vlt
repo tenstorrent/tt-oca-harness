@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: Apache-2.0
+`verilator_config
+// SEP cocotb/Verilator public-signal scope.
+// (Comment lines must NOT start with the word "verilator" -- the lexer would treat
+//  "// verilator ..." as a metacomment directive and fail to parse this file.)
+//
+// cocotb's runner forces a global --public-flat-rw, which marks every signal in the
+// design public. That defeats Verilator's split_var optimisation: the split_var
+// pragmas already present in the AXI fabric cells (rr_arb_tree, lzc, axi_demux) are
+// silently disabled on public signals, so Verilator cannot break the false
+// combinational ready/valid SCCs in axi_demux / axi_burst_splitter / id_fifo. The
+// result is a model-wide input-combinational (ICO) settle blow-up (~3.2M-entry Input
+// region, 951 SCCs, 2574 ICO triggers) that wedges the Verilator runtime.
+//
+// The SEP cocotb env only drives the tb top sep_uvm_top (root handle + its top-level
+// ports: clocks/reset/boot controls + the flat s_axi_* bus). The CPU-LSU splice is
+// SV-side inside the tb (the no_cpu stub drives lsu_axi_req from lsu_req_drive; the
+// LSU response is read back by hierarchical name), not a cocotb VPI access. So cocotb
+// needs public exposure of sep_uvm_top ONLY -- not the DUT fabric internals.
+//
+// Scoping public_flat_rw to sep_uvm_top (instead of the whole design) lets the fabric
+// split_var pragmas activate again: SCCs 951 -> 61, ICO Input region 3.2M -> ~160K
+// (20x), ICO triggers 2574 -> ~27, and sep_axi_smoke_test runs to completion
+// (PASS, ~130s) instead of wedging at the 1800s timeout. No DUT/fabric RTL change is
+// required.
+//
+// This file must be paired with dropping the runner's global --public-flat-rw (see
+// the repo-controlled cocotb runner wrapper in the SEP DV flow).
+public_flat_rw -module "sep_uvm_top" -var "*"
+
+// sep_wrapper DUT: tb_backdoor_mem in sep_uvm_top writes the real
+// memory macro arrays (default-fill patterns + firmware/image loads). Those XMR writes
+// no-op under Verilator unless the target array is public. These three cover all eight
+// macros: prim_ram_1p.mem = SEP SRAM + KM SRAM (inner u_mem of prim_ram_1p_adv) + OTBN
+// imem/dmem; prim_rom.mem = boot ROM + KM ROM; ram_16384x39.ram_core = ICCM (4 banks) +
+// DCCM (2 banks) inside sep_tcm_wrapper. These arrays sit outside the hot AXI
+// ready/valid cones, so exposing them does not re-arm the ICO blow-up.
+public_flat_rw -module "prim_ram_1p"  -var "mem"
+public_flat_rw -module "prim_rom"     -var "mem"
+public_flat_rw -module "ram_16384x39" -var "ram_core"
+
+// NOTE (main #3417, ABR CSR block): do NOT add an abr_wrapper_key_reg public line here
+// -- it does NOT help (it only trades one tool-v5.046 codegen bug for another). Also,
+// no comment line here may START with the word "verilator" -- the .vlt lexer treats
+// "// verilator ..." as a metacomment directive and errors out.
+//   The generated abr_wrapper_key_reg does not build under the tool (v5.046): sep_crypto
+//   ties its hwif_in struct to '0, and the tool either (a) const-folds that and emits
+//   invalid C++ ("0U.__PVT__KEY[5U]..."), or (b) if the module is public, emits a
+//   mismatched nested-struct aggregate init. Bug (a)'s only fix (public) triggers (b).
+//   RESOLVED for OSS DV by SWAPPING IN A SHIM instead: sep_sim_cfg.toml excludes the
+//   generated block and compiles shims/crypto/abr_wrapper_key_reg_stub.sv (both tools,
+//   for model parity). VCS builds the real block fine; this is the DV-side unblock.

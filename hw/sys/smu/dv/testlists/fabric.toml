@@ -1,0 +1,48 @@
+schema_version = 1
+
+# SMU Phase-1 (SEP=0) — fabric / external SMN path.
+# With SEP=0 there is no 3x3 smu_axi_xbar; coverage is SMC<->ext ID path,
+# unmapped/DECERR, SEP-OTP err-slv, ATOP reject, and global-base remap.
+# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+
+# smc_cpu_traffic_ext_axi_test is defined in smc.toml (also in fabric group).
+
+[[tests]]
+name = "smu_axi_external_port_connectivity_test"
+module = "smu_axi_external_port_connectivity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "phase1"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_axi_id_width_conversion_test"
+module = "smu_axi_id_width_conversion_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "phase1"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_axi_crossbar_error_handling_test"
+module = "smu_axi_crossbar_error_handling_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "phase1"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_smc_global_base_remap_test"
+module = "smu_smc_global_base_remap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "phase1"]
+run_modes = ["fabric"]
+
+[[tests]]
+name = "smu_axi_atomic_operation_test"
+module = "smu_axi_atomic_operation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "phase1"]
+run_modes = ["fabric"]
