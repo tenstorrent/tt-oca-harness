@@ -23,11 +23,6 @@ int main(void) {
   return 0;
 }
 
-int secondary_main(void) {
-  /* crt0 dispatches every hart here; all harts fall into the wfi idle above. */
-  return main();
-}
-
 /*
  * _exit stub so crt0/picolibc's exit() resolves at link time; never actually
  * reached since main() ends in a noreturn wfi.

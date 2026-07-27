@@ -108,12 +108,6 @@ Build the dummy ROM with its standalone Makefile:
 ```bash
 # From the repo root (OCAH_ROOT resolved automatically):
 scripts/docker-run.sh run make -C hw/sys/smc/bootrom/dummy
-
-# Or directly, if the toolchain is on PATH:
-make -C hw/sys/smc/bootrom/dummy
-
-# Override the toolchain prefix if needed:
-make -C hw/sys/smc/bootrom/dummy RISCV_TOOLCHAIN=/path/to/bin
 ```
 
 Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
