@@ -43,12 +43,22 @@ FW_TEST_LDFLAGS = \
   -march=$(FW_ARCH) -mabi=$(FW_ABI) --specs=$(FW_PICOLIBC_SPECS) -lgcc
 FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
 
+# Make the simulator-consumed ECC image the primary postprocess target. The
+# shared engine then rebuilds sidecars when the ELF or either converter changes
+# without forcing the C objects and archive to rebuild.
+FW_TEST_POSTPROCESS_PRIMARY_SUFFIX := .ecc.hex
+FW_TEST_POSTPROCESS_DEPS := \
+  $(FW_DIR)/fw.mk \
+  $(FW_DIR)/scripts/bin_to_verilog.py \
+  $(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py
+
 define FW_TEST_POSTPROCESS
 	$(OBJCOPY) -O binary $(1) "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin"
 	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 8 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex"
 	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 1 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi"
 	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).preload.hex"
 	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi_preload"
+	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 72 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).ecc.hex"
 endef
 
 include $(FW_DIR)/toolchain.mk

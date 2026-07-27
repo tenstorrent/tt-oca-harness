@@ -114,9 +114,9 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     then drop boot_stall so fuse_reset / mem-init / tile reset release samples
     the scratch (or ROM) vector.
 
-    Note: full Freedom-metal hello_world barriers on cluster-local CLINT MSIP
-    (0xC800_0000), which SEP-IN AXI cannot reach. Prefer a sync-free image
-    (e.g. assets/min_pass.ecc.hex) for the U3 contract.
+    Note: full Freedom-metal applications can barrier on cluster-local CLINT
+    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The U3 contract uses the
+    sync-free hello_world C test built by the run_dv c_compile stage.
     """
     await seq.csr_write(
         "CPU_BOOT_RESET_TIMEOUT_FORCE",
@@ -243,7 +243,7 @@ async def check_cpu_firmware_boot_contract(
         await _pulse_core_reset(seq, reset_vector)
 
     last_csr = 0
-    # min_pass is short; poll TB sideband + CSR mailbox.
+    # The boot image is short; poll TB sideband + CSR mailbox.
     for _ in range(2000):
         await ClockCycles(dut.clk_smc_i, 100)
         last_csr = await seq.csr_read(
