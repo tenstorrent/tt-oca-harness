@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <metal/cpu.h>
+
 #include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
@@ -12,6 +14,13 @@
 #define CLOCK_PERIOD_NS 10
 
 int main(void) {
+    // SRAM-mode images use -nostartfiles -e main, so every hart enters main().
+    // Only hart 0 runs the test; secondary harts park in WFI.
+    if (metal_cpu_get_current_hartid() != 0) {
+        while (true) {
+            __asm__("wfi");
+        }
+    }
 
     uint32_t uart_ctrlrs[] = {0, 1}; // indexes of UARTs used for controllers
     uint32_t num_ctrlrs = sizeof(uart_ctrlrs) / sizeof(uart_ctrlrs[0]);
