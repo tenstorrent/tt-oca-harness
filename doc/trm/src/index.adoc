@@ -25,7 +25,7 @@ This documentation is organized into the following sections:
 
 * xref:revision.adoc[Revision History] - Track major revisions and updates to the OCAH documentation
 * xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
-// * xref:getting-started.adoc[Getting Started] - Dependencies, tools, and methodology
+* xref:getting-started.adoc[Getting Started] - Dependencies, tools, and methodology
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 endif::backend-html5[]
 
@@ -33,6 +33,6 @@ ifdef::backend-pdf[]
 :imagesdir: ../assets
 include::revision.adoc[]
 include::about-ocah.adoc[leveloffset=+1]
-// include::getting-started.adoc[]
+include::getting-started.adoc[leveloffset=+1]
 include::architecture.adoc[]
 endif::backend-pdf[]

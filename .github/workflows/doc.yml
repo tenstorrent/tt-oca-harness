@@ -10,6 +10,7 @@ on:
       - 'doc/**'
       - 'hw/**/*.adoc'
       - 'hw/**/*.md'
+      - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -20,6 +21,7 @@ on:
       - 'doc/**'
       - 'hw/**/*.adoc'
       - 'hw/**/*.md'
+      - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -71,10 +73,12 @@ jobs:
         run: uv sync
 
       - name: Build HTML documentation
-        # Pages nested URLs (/trm, /integrator). Drop with doc/gh-pages.mk.
+        # Combined multi-book build (2026-07-23 architecture decision) --
+        # one Antora run produces all four books plus the native switcher.
+        # /tt-oca-harness matches this repo's plain github.io Pages URL;
+        # revisit if/when a custom domain decision is made (tracking doc).
         run: |
-          make ocah-doc-trm-html OCAH_DOC_SITE_URL=/trm
-          make ocah-doc-integrator-html OCAH_DOC_SITE_URL=/integrator
+          make ocah-doc-combined-html OCAH_DOC_SITE_URL=/tt-oca-harness
 
       - name: Build PDF documentation
         run: |
@@ -82,7 +86,10 @@ jobs:
           make ocah-doc-integrator-pdf
         continue-on-error: true
 
-      # Temporary: ghp-import → gh-pages. See doc/gh-pages.mk removal checklist.
+      # ghp-import -> gh-pages branch. The old per-product landing-page
+      # mechanism this comment used to describe is gone (2026-07-23) --
+      # see doc/gh-pages.mk. GitHub Pages via this branch is the confirmed,
+      # ongoing publish mechanism, not a placeholder to be replaced.
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

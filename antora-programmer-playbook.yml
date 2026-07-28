@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+site:
+  title: Open Chiplet Atlas Harness (OCAH) Programmer's Guide
+  url: /
+  start_page: ocah-programmer-guide::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/programmer
+      edit_url: false
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/ui-supplemental
+output:
+  dir: ./doc/programmer/_build/html_antora

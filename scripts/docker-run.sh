@@ -4,7 +4,9 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-# Usage: docker-run.sh <build|verify|run CMD...|shell|doc-html [trm|integrator]|doc-pdf [trm|integrator]|eda-run CMD...|eda-shell>
+# Usage: docker-run.sh <build|verify|run CMD...|shell|doc-html [trm|integrator|programmer|appnotes|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>
+#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what actually gets deployed, not just a local trial.
+#   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     build firmware image        verify    gcc version + multilibs
 #   run CMD   run in firmware image       shell     interactive firmware shell
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
@@ -61,9 +63,11 @@ eda_run() {
 
 doc_product_paths() {
     case "${1:-trm}" in
-        trm)        echo "doc/trm antora-trm-playbook.yml ocah-doc-trm-setup ocah-doc-trm-pdf" ;;
-        integrator) echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
-        *) echo "error: unknown doc product '$1' (expected trm or integrator)" >&2; exit 1 ;;
+        trm)         echo "doc/trm antora-trm-playbook.yml ocah-doc-trm-setup ocah-doc-trm-pdf" ;;
+        integrator)  echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
+        programmer)  echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
+        appnotes)    echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
+        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, or appnotes)" >&2; exit 1 ;;
     esac
 }
 
@@ -81,10 +85,65 @@ doc_html() {
         --attribute "basedir=${basedir}" "$playbook"
 }
 
+doc_html_all() {
+    # This IS the real combined-architecture build now (2026-07-23 decision)
+    # -- matches what CI actually deploys, not just a local trial anymore.
+    doc_setup trm
+    doc_setup integrator
+    doc_setup programmer
+    doc_setup appnotes
+    # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
+    # NOT @antora/lunr-extension (that's only added to the npx-based
+    # OCAH_ANTORA path in doc/doc.mk, which real CI uses via `make
+    # ocah-doc-combined-html` -- this direct-image path is separate and
+    # needs its own install). `npm install` here writes into the
+    # bind-mounted repo root, so it only needs to happen once per checkout
+    # (harmless to repeat). Make sure node_modules/ is gitignored.
+    "$ENGINE" run --rm -e SITE_SEARCH_PROVIDER=lunr -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora antora-playbook.yml'
+}
+
 doc_pdf() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     run_image "$DOC_PDF_IMAGE" env OCAH_DOC_REGEN_REGS=0 make "$pdf_target"
+}
+
+# doc_stage: add PDFs + .nojekyll on top of the already-built combined
+# Antora output. Deliberately pure bash, no Docker/Make/Node involved --
+# this is just file copying, so it doesn't need a container at all, and
+# avoids re-triggering the Node-based HTML build a second time (the
+# equivalent Make target is .PHONY and would always re-run it, which is
+# also how the WSL/Windows-npx path-mangling problem first surfaced).
+# Run this AFTER `doc-html all` and `doc-pdf trm`/`doc-pdf integrator`.
+doc_stage() {
+    local ghpages_dir="${OCAH_GHPAGES_DIR:-doc/_build/html_antora}"
+    local trm_dist="${OCAH_TRM_DIST:-doc/trm/dist}" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
+    local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
+
+    if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
+        echo "error: missing combined HTML output at $ghpages_dir" >&2
+        echo "run: ./scripts/docker-run.sh doc-html all" >&2
+        exit 1
+    fi
+
+    mkdir -p "$ROOT/$ghpages_dir/downloads"
+    touch "$ROOT/$ghpages_dir/.nojekyll"
+
+    if [[ -f "$ROOT/$trm_dist/$trm_pdf" ]]; then
+        cp "$ROOT/$trm_dist/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: TRM PDF not found at $trm_dist/$trm_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf trm)"
+    fi
+
+    if [[ -f "$ROOT/$integrator_dist/$integrator_pdf" ]]; then
+        cp "$ROOT/$integrator_dist/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: Integrator Guide PDF not found at $integrator_dist/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
+    fi
+
+    echo "Staged GitHub Pages tree at $ghpages_dir"
+    echo "Preview locally with: cd $ghpages_dir && python3 -m http.server 8000"
 }
 
 case "${1:-}" in
@@ -92,10 +151,11 @@ case "${1:-}" in
     verify) run riscv64-unknown-elf-gcc --version; echo ---; run riscv64-unknown-elf-gcc -print-multi-lib ;;
     run)    shift; [[ $# -gt 0 ]] || { echo "error: run requires a command" >&2; exit 1; }; run "$@" ;;
     shell)  run -it bash ;;
-    doc-html) shift; doc_html "${1:-trm}" ;;
+	doc-html) shift; [[ "${1:-trm}" == "all" ]] && doc_html_all || doc_html "${1:-trm}" ;;
     doc-pdf)  shift; doc_pdf "${1:-trm}" ;;
+    doc-stage) doc_stage ;;
     eda-run)  shift; [[ $# -gt 0 ]] || { echo "error: eda-run requires a command" >&2; exit 1; }; eda_run "$@" ;;
     eda-shell) eda_run -it bash ;;
-    ""|-h|--help|help) sed -n '2,11p' "$0" ;;
+    ""|-h|--help|help) sed -n '2,19p' "$0" ;;
     *)      echo "error: unknown command '$1'" >&2; exit 1 ;;
 esac

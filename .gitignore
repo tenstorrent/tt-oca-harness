@@ -2,8 +2,6 @@
 .bender/
 __pycache__/
 *.pyc
-# setuptools metadata from the editable ocah-dv install (uv sync --group dv).
-*.egg-info/
 
 # Optional repositories cloned by make nonfree-init
 nonfree/
@@ -51,3 +49,8 @@ doc/*/modules/ip/
 
 # Local Antora install for doc builds
 .antora-tools/
+
+# npm install target for @antora/lunr-extension (search), installed at
+# build time into the bind-mounted repo root by docker-run.sh's
+# doc-html-all path -- see scripts/docker-run.sh.
+node_modules/
