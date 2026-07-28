@@ -3,8 +3,9 @@
 
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
-driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
-test-development reference and `docs/SMC_VPLAN.md` for the verification plan.
+driven by `tools/dv/run_dv.py`. See `docs/SMC_VPLAN.md` for the verification plan,
+`docs/oss_smc_dev.md` for the porting/design plan, and
+`docs/smc_oss_execution_guide.md` for run recipes and recorded sign-off evidence.
 
 ## Two DUTs / two sim configs
 
@@ -34,7 +35,7 @@ hw/sys/smc/dv/
 ├── tb/                     # tb_top.sv, tb_wrapper_top.sv, verilator_stubs/
 ├── testlists/             # native TOML testlists (per-feature leaves + all.toml groups)
 ├── assets/                 # ROM/eFuse/shadow preload images
-├── docs/                   # VPLAN, upgrade notes, ref_test_dev.md, audit
+├── docs/                   # VPLAN, porting plan, execution guide, upgrade notes
 ├── smc_sim_cfg.toml        # bare-SMC build/filelist manifest, modes, tool flags
 └── smc_wrapper_sim_cfg.toml
 ```
@@ -58,8 +59,8 @@ multi-item-type dispatcher that per-type checks invariants, emits
 
 Tests inherit `cocotb/tests/smc_base_test.py`, which builds the env, runs the
 power-good + cold-reset bring-up, and overrides `run_scenario()`. See
-`docs/ref_test_dev.md` for the full test/sequence/scoreboard walkthrough and the
-protocol-VIP proxy pattern.
+`docs/smc_oss_execution_guide.md` §6 for the protocol-VIP pattern and the
+promotion history from CSR-only proxy to `proxy=False` evidence.
 
 ## Run
 

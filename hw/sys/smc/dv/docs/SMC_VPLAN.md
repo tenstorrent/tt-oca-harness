@@ -441,7 +441,7 @@ Project 335 tracks only the non-P0 P1 leaf set plus the later coverage-gap
 extensions under GitHub parent #2892; after P0 duplicate de-dupe and the Round
 1-5 gap-fill additions, #2892 currently has 48 P1 leaf testcase issues.
 
-> Per-test PASS/timings + run_dir evidence: see `oss_smc_dev.md`.
+> Per-test PASS/timings + run_dir evidence: see `smc_oss_execution_guide.md` §6d.
 
 ### P1 Coverage-Gap Depth Slate — Round 1 (13 New Tests)
 
@@ -784,7 +784,7 @@ telemetry packed-array pads to tb_top. A prior attempt destabilised the
 Verilator model and was reverted. Tracked as a Verilator-safe pad-lift
 refactor.
 
-> Per-test PASS/timings + run_dir evidence: see `oss_smc_dev.md` §6b.
+> Per-test PASS/timings + run_dir evidence: see `smc_oss_execution_guide.md` §6b.
 
 ### P1/P2 Migration Blocker Roadmap
 

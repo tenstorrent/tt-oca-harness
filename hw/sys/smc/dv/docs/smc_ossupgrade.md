@@ -7,7 +7,7 @@
 | Owner | minshaoho |
 | Date | 2026-07-21 |
 | Scope | `hw/sys/smc/dv/` only (OSS path; no Synopsys SVT) |
-| Related | `SMC_VPLAN.md`, `oss_smc_dev.md`, SEP refs below |
+| Related | `SMC_VPLAN.md`, `oss_smc_dev.md`, `smc_oss_execution_guide.md`, SEP refs below |
 | Aspiration (non-OSS) | `dv/smc/tb/smc_synopsys_vip_overview.md` (legacy SVT AMBA VIP) |
 
 ---
