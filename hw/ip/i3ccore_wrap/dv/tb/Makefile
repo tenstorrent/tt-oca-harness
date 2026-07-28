@@ -39,7 +39,7 @@ ifdef SEED
     export SEED
 endif
 
-# Project root - go up to tt-oca-hw root
+# Project root - go up to the repository root
 PROJECT_ROOT := $(shell cd ../../../.. && pwd)
 
 # Compilation arguments

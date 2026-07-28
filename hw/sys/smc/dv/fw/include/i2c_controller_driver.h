@@ -4,10 +4,9 @@
 /*
  * Abstract I2C controller driver interface.
  *
- * Defines the I2C_Driver vtable and supporting types.  The open weak stub
- * (i2c_controller_driver.c in hw/sys/smc/dv/fw/common/occp/) returns NULL
- * from I2C_GetDriverInstance(); a real implementation overrides it with a
- * strong symbol.
+ * Defines the I2C_Driver vtable and supporting types.  The default weak stub
+ * returns NULL from I2C_GetDriverInstance(); platform drivers override it
+ * with a strong symbol.
  */
 
 #ifndef I2C_CONTROLLER_DRIVER_H_

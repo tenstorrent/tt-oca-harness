@@ -156,7 +156,7 @@ This API abstracts the complexity of register programming, command descriptor fo
 
 - **Simulator**: VCS with FSDB support (Verdi)
 - **Python**: 3.6+ with cocotb installed
-- **Environment**: Source project environment (`source bin/setup_env.sh` from tt-oca-hw root)
+- **Environment**: Source project environment
 - **Bender**: Ensure dependencies are checked out (`bender checkout`)
 
 ### Quick Start

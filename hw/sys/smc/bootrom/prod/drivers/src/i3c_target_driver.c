@@ -1,17 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* I3C Target Driver — open-source weak stub
+/* I3C Target Driver — weak default implementation
  *
- * All symbols are marked __attribute__((weak)) so that a nonfree build can
- * supply a strong override that programs the vendor I3C IP without any
- * changes to the open-source ROM source tree.
+ * All symbols are marked __attribute__((weak)) so a platform-specific driver
+ * can override them at link time without modifying ROM sources.
  *
  * When no override is linked the stub allows the ROM to boot normally on
  * platforms that do not use I3C (init/start succeed; data methods return
  * I3C_ERR_HW so the OCCP layer skips I3C channels gracefully).
- *
- * Future open-source replacement: Chips Alliance I3C driver.
  */
 
 #include "i3c_target_driver.h"
@@ -147,7 +144,7 @@ static I3C_Status i3c_stub_receive_payload_stream(I3C_Driver *drv, uint8_t *buff
 }
 
 /* -------------------------------------------------------------------------
- * Public weak symbols — overridable by a nonfree strong-symbol file
+ * Public weak symbols — overridable by a strong-symbol platform driver
  * ---------------------------------------------------------------------- */
 
 __attribute__((weak)) void i3c_release_reset(uint8_t i3c_controller) {

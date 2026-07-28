@@ -54,8 +54,8 @@ The main application logic lives in `src/main.c` and follows a straightforward 6
 The ROM interfaces with several hardware subsystems:
 
 **I3C Target Interface** - I3C target communication is abstracted behind a weak symbol hook in `drivers/src/i3c_target_driver.c`.
-The open-source build provides a no-op stub so the ROM links and runs without any proprietary IP.
-A downstream build (e.g. the `nonfree` tree) supplies a strong-symbol override with a real I3C target driver to replace the stub at link time.
+The default stub is a no-op so the ROM links on platforms without I3C hardware.
+Link a strong-symbol driver override (via `NONFREE_DRIVER_SOURCES`) to program the vendor I3C IP.
 See `drivers/include/i3c_target_driver.h` for the interface that any replacement driver must satisfy.
 
 **Strap Configuration** - Hardware strap pins determine boot mode, chiplet role, and interface selection. See `drivers/smc_strap.*` for the complete API.

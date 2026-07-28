@@ -6,8 +6,8 @@
 
 This document describes how to run the unit tests for the OCA Log Engine Component using VCS.
 
-First, make sure you have set up the environment as described in the main `README.adoc` file of the
-`tt-oca-hw` repository:
+First, make sure you have set up the environment as described in the main `README.adoc` file at the
+repository root:
 
 ```bash
 pushd ../../../..

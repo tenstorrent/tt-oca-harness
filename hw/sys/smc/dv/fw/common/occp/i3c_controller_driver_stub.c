@@ -2,8 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Open weak stub for the I3C controller driver.
- * Usage: link this file when building without a real I3C driver.
+ * Default weak stub for the I3C controller driver.
+ * Link this file when building without a real I3C driver.
  */
 
 #include "i3c_controller_driver.h"
@@ -19,8 +19,7 @@ I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id)
 
 /*
  * Weak stubs for the low-level platform hooks declared in
- * i3c_controller_driver.h.  Real driver implementations (nonfree or future
- * open) override these with strong symbols.
+ * i3c_controller_driver.h.  Platform drivers override these with strong symbols.
  */
 __attribute__((weak))
 void i3c_release_reset(uint8_t i3c_controller)

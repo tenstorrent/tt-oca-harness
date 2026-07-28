@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Open weak stub for the I2C controller driver.
+ * Default weak stub for the I2C controller driver.
  *
  * All OCCP DV tests run in I3C mode (+BOOT_I3C); the I2C path in
  * occp_interfaces.c is never executed in simulation.  This stub satisfies

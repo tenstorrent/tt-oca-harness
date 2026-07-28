@@ -4,13 +4,8 @@
 #ifndef CLA_SANITY_SEQUENCE_H
 #define CLA_SANITY_SEQUENCE_H
 
-/* CLA sanity sequence for the cpu_traffic super-loop.
- *
- * Ported from tt-oca-hw/fw/smc/test_sequences/cla_sanity_sequence.h. Only the
- * active upstream body (three CLA functional-register reads) is kept; the rest
- * was already commented out upstream because the registers were removed. The
- * legacy SMC_CLA_*_REG_ADDR macros are migrated to the native PeakRDL
- * SMC_TOP_SMC_CLA_*_BASE_ADDR names. CLA is open IP. */
+/* CLA sanity sequence for the cpu_traffic super-loop: three CLA
+ * functional-register reads. */
 
 #include <stdint.h>
 

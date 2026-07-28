@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Standalone build for the open-source SMC DV boot ROM (dummy stub).
+# Standalone build for the SMC DV boot ROM (dummy stub).
 #
 # Built on the shared engine (compile.mk) as a "test" named dummy, linked in
 # "rom" mode. Drivers, toolchain, and post-processing come from the sibling

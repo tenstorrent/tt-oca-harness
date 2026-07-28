@@ -2,19 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Open smc_defines.h aggregator for the open SMC DV firmware tree.
+ * Convenience include for SMC DV firmware tests.
  *
- * ROM tests ported from tt-oca-hw include "smc_defines.h" which in that repo
- * is a large header providing register access helpers, console output, and
- * register address macros.
- *
- * In the open harness those helpers come from the open include tree (already
- * on FW_INCLUDES).  Register address macros are provided by the open generated
- * headers (hw/sys/smc/regs/gen/c/ and hw/ip/<name>/regs/gen/c/) and any
- * per-test #ifndef guard fallbacks.
- *
- * This shim pulls in the three open headers whose combined surface matches
- * the helpers that tt-oca-hw's smc_defines.h provided.
+ * Aggregates register access helpers, virtual console output, and
+ * scratch/postcode helpers.
  */
 
 #ifndef SMC_DEFINES_H

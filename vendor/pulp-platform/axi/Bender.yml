@@ -27,7 +27,7 @@ package:
 # not exist upstream (axi5_lite_* family, axi_hidestrb, axi_cdc_clearable, axi_spill_regs, ...).
 # The TT Bender target gating (axi_rtl / axi_simulation) is reproduced from the fork because
 # bender-targets.mk passes -t axi_rtl. The upstream test/ benches (axi_test / axi_synth_test targets)
-# are not vendored - tt-oca-hw instantiates none of them. Do NOT hand-edit the upstream/ files;
+# are not vendored - OCA instantiates none of them. Do NOT hand-edit the upstream/ files;
 # edit/regenerate the patch instead.
 #
 # overlay/scripts/fabric_gen/ and overlay/block_flow_customizations/ are TT-authored trees that
