@@ -86,15 +86,15 @@
  ********************************************************************/
 
 /* Macro to combine error code with additional data */
-#define SMC_OCCP_ERROR_WITH_DATA(base_code, data) ((base_code) | ((data) & 0xFF))
+#define SMC_OCCP_ERROR_WITH_DATA(base_code, data) ((base_code) | ((data)&0xFF))
 
 /* Macro to combine error code with nibble data in upper nibble */
-#define SMC_OCCP_ERROR_WITH_NIBBLE(base_code, nibble) ((base_code) | (((nibble) & 0xF) << 8))
+#define SMC_OCCP_ERROR_WITH_NIBBLE(base_code, nibble) ((base_code) | (((nibble)&0xF) << 8))
 
 /* Macro to extract base error code (clear additional data) */
-#define SMC_OCCP_ERROR_BASE(error_code) ((error_code) & 0xFF0)
+#define SMC_OCCP_ERROR_BASE(error_code) ((error_code)&0xFF0)
 
 /* Macro to extract additional data from error code */
-#define SMC_OCCP_ERROR_DATA(error_code) ((error_code) & 0xFF)
+#define SMC_OCCP_ERROR_DATA(error_code) ((error_code)&0xFF)
 
 #endif /* SMC_OCCP_ERROR_CODES_H */

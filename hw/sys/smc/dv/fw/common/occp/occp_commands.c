@@ -20,1480 +20,1539 @@
 static uint8_t occp_tx_buf[OCCP_MAX_PACKET_SIZE];
 
 /* ---------------------- CRC error injection helpers ---------------------- */
-static void flip_n_random_bits(uint8_t *buf, size_t len, int n)
-{
-  if (buf == NULL || len == 0 || n <= 0) return;
-  size_t total_bits = len * 8u;
-  if ((size_t)n > total_bits) n = (int)total_bits;
+static void flip_n_random_bits(uint8_t *buf, size_t len, int n) {
+    if (buf == NULL || len == 0 || n <= 0) return;
+    size_t total_bits = len * 8u;
+    if ((size_t)n > total_bits) n = (int)total_bits;
 
-  /* Select n distinct bit indices without replacement */
-  size_t selected_count = 0;
-  /* VLA for uniqueness tracking; n is small in our usages */
-  size_t selected_indices[n];
+    /* Select n distinct bit indices without replacement */
+    size_t selected_count = 0;
+    /* VLA for uniqueness tracking; n is small in our usages */
+    size_t selected_indices[n];
 
-  while (selected_count < (size_t)n) {
-    size_t bit_index = (size_t)(get_random_int() & 0x7fffffff) % total_bits;
-    int duplicate = 0;
-    for (size_t i = 0; i < selected_count; i++) {
-      if (selected_indices[i] == bit_index) { duplicate = 1; break; }
+    while (selected_count < (size_t)n) {
+        size_t bit_index = (size_t)(get_random_int() & 0x7fffffff) % total_bits;
+        int duplicate = 0;
+        for (size_t i = 0; i < selected_count; i++) {
+            if (selected_indices[i] == bit_index) {
+                duplicate = 1;
+                break;
+            }
+        }
+        if (duplicate) continue;
+        selected_indices[selected_count++] = bit_index;
     }
-    if (duplicate) continue;
-    selected_indices[selected_count++] = bit_index;
-  }
 
-  /* Flip exactly those bits */
-  for (size_t i = 0; i < selected_count; i++) {
-    size_t bit_index = selected_indices[i];
-    size_t byte_index = bit_index >> 3;            /* /8 */
-    uint8_t bit_mask = (uint8_t)(1u << (bit_index & 7u));
-    buf[byte_index] ^= bit_mask;
-  }
+    /* Flip exactly those bits */
+    for (size_t i = 0; i < selected_count; i++) {
+        size_t bit_index = selected_indices[i];
+        size_t byte_index = bit_index >> 3; /* /8 */
+        uint8_t bit_mask = (uint8_t)(1u << (bit_index & 7u));
+        buf[byte_index] ^= bit_mask;
+    }
 }
 
-static int choose_num_flips_crc8(bool detectable)
-{
-  if (detectable)
-    return 1 + (get_random_int() % 4); /* 1..4 */
-  return 5 + (get_random_int() % 4);   /* 5..8 */
+static int choose_num_flips_crc8(bool detectable) {
+    if (detectable) return 1 + (get_random_int() % 4); /* 1..4 */
+    return 5 + (get_random_int() % 4);                 /* 5..8 */
 }
 
-static int choose_num_flips_crc32(bool detectable)
-{
-  if (detectable)
-    return 1 + (get_random_int() % 6); /* 1..6 */
-  return 7 + (get_random_int() % 10);  /* 7..16 */
+static int choose_num_flips_crc32(bool detectable) {
+    if (detectable) return 1 + (get_random_int() % 6); /* 1..6 */
+    return 7 + (get_random_int() % 10);                /* 7..16 */
 }
 
-static void inject_header_errors_if_enabled(test_context_t *ctx,
-                                            uint8_t *hdr_bytes,
-                                            size_t hdr_len)
-{
-  if (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_NONE)
-    return;
+static void inject_header_errors_if_enabled(test_context_t *ctx, uint8_t *hdr_bytes,
+                                            size_t hdr_len) {
+    if (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) return;
 
-  if (ctx->header_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-    /* Flip bits only in the header CRC byte */
-    flip_n_random_bits(hdr_bytes, 1, (get_random_int() % 8 + 1));
-    simputs("OCCP: Corrupted header CRC byte\n");
-    return;
-  }
+    if (ctx->header_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+        /* Flip bits only in the header CRC byte */
+        flip_n_random_bits(hdr_bytes, 1, (get_random_int() % 8 + 1));
+        simputs("OCCP: Corrupted header CRC byte\n");
+        return;
+    }
 
-  /* Exclude the CRC byte at index 0 to cause a CRC mismatch while preserving fields */
-  if (hdr_len <= 1) return;
-  uint8_t *fields = hdr_bytes + 1;
-  size_t fields_len = hdr_len - 1;
-  bool want_detectable = (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE);
-  int flips = choose_num_flips_crc8(want_detectable);
-  flip_n_random_bits(fields, fields_len, flips);
-  simputshex16("OCCP: Injected header bit flips: ", (uint16_t)flips);
+    /* Exclude the CRC byte at index 0 to cause a CRC mismatch while preserving fields */
+    if (hdr_len <= 1) return;
+    uint8_t *fields = hdr_bytes + 1;
+    size_t fields_len = hdr_len - 1;
+    bool want_detectable = (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE);
+    int flips = choose_num_flips_crc8(want_detectable);
+    flip_n_random_bits(fields, fields_len, flips);
+    simputshex16("OCCP: Injected header bit flips: ", (uint16_t)flips);
 }
 
-static void inject_body_errors_if_enabled(test_context_t *ctx,
-                                          uint8_t *body_bytes,
-                                          size_t body_len,
-                                          bool use_crc32)
-{
-  if ((ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) || (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC))
-    return;
-  if (body_len == 0) return;
-  bool want_detectable = (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE);
-  int flips = use_crc32 ? choose_num_flips_crc32(want_detectable) : choose_num_flips_crc8(want_detectable);
-  flip_n_random_bits(body_bytes, body_len, flips);
-  simputshex16("OCCP: Injected body bit flips: ", (uint16_t)flips);
+static void inject_body_errors_if_enabled(test_context_t *ctx, uint8_t *body_bytes, size_t body_len,
+                                          bool use_crc32) {
+    if ((ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) ||
+        (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC))
+        return;
+    if (body_len == 0) return;
+    bool want_detectable = (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE);
+    int flips = use_crc32 ? choose_num_flips_crc32(want_detectable)
+                          : choose_num_flips_crc8(want_detectable);
+    flip_n_random_bits(body_bytes, body_len, flips);
+    simputshex16("OCCP: Injected body bit flips: ", (uint16_t)flips);
 }
 
 /* Send only a partial OCCP header (undersize), then expect a timeout (treated as success). */
-static int send_undersize_header_only(test_context_t *ctx, uint64_t i3c_addr, const uint8_t *hdr, size_t hdr_len)
-{
-  ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
-  if (hdr_len < 2) return OCCP_INVALID_ARG;
-  size_t short_len = (size_t)(1 + (get_random_int() % (hdr_len - 1)));
+static int send_undersize_header_only(test_context_t *ctx, uint64_t i3c_addr, const uint8_t *hdr,
+                                      size_t hdr_len) {
+    ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
+    if (hdr_len < 2) return OCCP_INVALID_ARG;
+    size_t short_len = (size_t)(1 + (get_random_int() % (hdr_len - 1)));
 
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    if (ctx->drv.i3c_drv == NULL) return OCCP_INTERFACE_ERR;
-    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t *)hdr, short_len);
-  } else {
-    if (ctx->drv.i2c_drv == NULL) return OCCP_INTERFACE_ERR;
-    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t *)hdr, short_len, ctx->timeout);
-  }
+    if (ctx->type == DRIVER_TYPE_I3C) {
+        if (ctx->drv.i3c_drv == NULL) return OCCP_INTERFACE_ERR;
+        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t *)hdr,
+                                              short_len);
+    } else {
+        if (ctx->drv.i2c_drv == NULL) return OCCP_INTERFACE_ERR;
+        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t *)hdr, short_len,
+                                                    ctx->timeout);
+    }
 
-  occp_resp_header_t resp_hdr;
-  int rc = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  ctx->exp_response_code = OCCP_ERROR_NONE;
+    occp_resp_header_t resp_hdr;
+    int rc = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    ctx->exp_response_code = OCCP_ERROR_NONE;
 
-  return (rc == OCCP_ERROR_NONE) ? OCCP_SUCCESS : rc;
+    return (rc == OCCP_ERROR_NONE) ? OCCP_SUCCESS : rc;
 }
 
-/* Send a full header followed by a partial (undersized) body; expect incomplete message handling. */
+/* Send a full header followed by a partial (undersized) body; expect incomplete message handling.
+ */
 /* send_undersize_body_after_header removed: undersize injection now sends a
  * single transaction with header and a truncated body (no CRC). */
 
 /* send_oversize_body_after_header removed: oversize injection now appends
  * extra bytes to a single TX buffer and sends in one transaction. */
 
-static int verify_resp_header_crc(const occp_resp_header_t *resp_hdr)
-{
-  const uint8_t *bytes = (const uint8_t *)resp_hdr;
-  uint8_t calc = calculate_crc8((uint8_t *)(bytes + 1), sizeof(*resp_hdr) - 1);
-  if (calc != resp_hdr->header_crc) {
-    simputshex16("OCCP: Response header CRC mismatch calc:", calc);
-    simputshex16("OCCP: Response header CRC mismatch recv:", resp_hdr->header_crc);
-    /* If test expects to allow any response (undetectable injection), do not hard fail here. */
-    return -1;
-  }
-  return 0;
+static int verify_resp_header_crc(const occp_resp_header_t *resp_hdr) {
+    const uint8_t *bytes = (const uint8_t *)resp_hdr;
+    uint8_t calc = calculate_crc8((uint8_t *)(bytes + 1), sizeof(*resp_hdr) - 1);
+    if (calc != resp_hdr->header_crc) {
+        simputshex16("OCCP: Response header CRC mismatch calc:", calc);
+        simputshex16("OCCP: Response header CRC mismatch recv:", resp_hdr->header_crc);
+        /* If test expects to allow any response (undetectable injection), do not hard fail here. */
+        return -1;
+    }
+    return 0;
 }
 
 /*
  * Read body of size 'header_len' and then read/verify CRC (not included in length).
  * On success, copies body (without CRC) into out_buf and sets *out_len.
  */
-static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr,
-                                    bool body_crc_present, uint16_t header_len,
-                                    uint8_t *out_buf, uint16_t out_buf_size,
-                                    /*out*/ uint16_t *out_len)
-{
-  simputs("OCCP: Reading body and verifying CRC\n");
-  simputshex16("OCCP: Body CRC present: ", body_crc_present);
-  simputshex16("OCCP: Header length: ", header_len);
-  if (!body_crc_present) {
-    if (header_len == 0) { *out_len = 0; return OCCP_SUCCESS; }
+static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool body_crc_present,
+                                    uint16_t header_len, uint8_t *out_buf, uint16_t out_buf_size,
+                                    /*out*/ uint16_t *out_len) {
+    simputs("OCCP: Reading body and verifying CRC\n");
+    simputshex16("OCCP: Body CRC present: ", body_crc_present);
+    simputshex16("OCCP: Header length: ", header_len);
+    if (!body_crc_present) {
+        if (header_len == 0) {
+            *out_len = 0;
+            return OCCP_SUCCESS;
+        }
+        if (header_len > out_buf_size) return OCCP_READ_UNDERFLOW;
+        if (ctx->type == DRIVER_TYPE_I3C) {
+            int status;
+            bool timeout_enabled = ctx->timeout != 0;
+            int count = timeout_enabled ? ctx->timeout : 1;
+            do {
+                status = ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, out_buf, header_len);
+                if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
+                if (timeout_enabled) count--;
+            } while ((count > 0) && (status != I3C_OK));
+            if (count == 0) {
+                return OCCP_TIMEOUT;
+            }
+        } else {
+            size_t rx_num_bytes;
+            int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(
+                ctx->drv.i2c_drv, out_buf, header_len, &rx_num_bytes, ctx->timeout);
+            if (status != I2C_OK) return OCCP_INTERFACE_ERR;
+        }
+        *out_len = header_len;
+        return OCCP_SUCCESS;
+    }
+
+    uint16_t expected_crc_size = (header_len > 14) ? 4 : 1;
     if (header_len > out_buf_size) return OCCP_READ_UNDERFLOW;
-    if (ctx->type == DRIVER_TYPE_I3C) {
-      int status;
-      bool timeout_enabled = ctx->timeout != 0;
-      int count = timeout_enabled ? ctx->timeout : 1;
-      do {
-        status = ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, out_buf, header_len);
-        if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
-        if (timeout_enabled)
-          count--;
-      } while ((count > 0) && (status != I3C_OK));
-      if (count == 0) {
-        return OCCP_TIMEOUT;
-      }
-    } else {
-      size_t rx_num_bytes;
-      int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(ctx->drv.i2c_drv, out_buf, header_len, &rx_num_bytes, ctx->timeout);
-      if (status != I2C_OK) return OCCP_INTERFACE_ERR;
+
+    uint8_t *temp_buf = occp_tx_buf;
+    uint16_t body_size = header_len + expected_crc_size;
+    if (body_size > OCCP_MAX_PACKET_SIZE) return OCCP_READ_UNDERFLOW;
+
+    simputshex16("OCCP: Reading body size ", body_size);
+    // Read exactly 'header_len' bytes first
+    if (body_size) {
+        if (ctx->type == DRIVER_TYPE_I3C) {
+            int status;
+            bool timeout_enabled = ctx->timeout != 0;
+            int count = timeout_enabled ? ctx->timeout : 1;
+            do {
+                status = ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, temp_buf, body_size);
+                if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
+                if (timeout_enabled) count--;
+            } while ((count > 0) && (status != I3C_OK));
+            if (count == 0) {
+                return OCCP_TIMEOUT;
+            }
+        } else {
+            size_t rx_num_bytes;
+            int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(
+                ctx->drv.i2c_drv, temp_buf, body_size, &rx_num_bytes, ctx->timeout);
+            if (status != I2C_OK) return OCCP_INTERFACE_ERR;
+        }
     }
-    *out_len = header_len;
+
+    // CRC comes separately after 'length' bytes
+    uint8_t crc_tail[4] = {0};
+    memcpy(crc_tail, temp_buf + header_len, expected_crc_size);
+
+    int crc_ok = 0;
+    if (expected_crc_size == 4) {
+        uint32_t crc_recv;
+        memcpy(&crc_recv, crc_tail, 4);
+        uint32_t crc_calc = calculate_crc32(temp_buf, body_size - expected_crc_size);
+        crc_ok = (crc_calc == crc_recv);
+    } else {
+        uint8_t crc_recv = crc_tail[0];
+        uint8_t crc_calc = calculate_crc8(temp_buf, body_size - expected_crc_size);
+        crc_ok = (crc_calc == crc_recv);
+    }
+    if (!crc_ok) {
+        simputs("OCCP: Body CRC mismatch\n");
+        return OCCP_ERR;
+    }
+    // strip CRC and return body
+    if ((body_size - expected_crc_size) > out_buf_size) return OCCP_READ_UNDERFLOW;
+    memcpy(out_buf, temp_buf, body_size - expected_crc_size);
+    *out_len = body_size - expected_crc_size;
     return OCCP_SUCCESS;
-  }
-
-  uint16_t expected_crc_size = (header_len > 14) ? 4 : 1;
-  if (header_len > out_buf_size) return OCCP_READ_UNDERFLOW;
-
-  uint8_t *temp_buf = occp_tx_buf;
-  uint16_t body_size = header_len + expected_crc_size;
-  if (body_size > OCCP_MAX_PACKET_SIZE) return OCCP_READ_UNDERFLOW;
-
-  simputshex16("OCCP: Reading body size ", body_size);
-  // Read exactly 'header_len' bytes first
-  if (body_size) {
-    if (ctx->type == DRIVER_TYPE_I3C) {
-      int status;
-      bool timeout_enabled = ctx->timeout != 0;
-      int count = timeout_enabled ? ctx->timeout : 1;
-      do {
-        status = ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, temp_buf, body_size);
-        if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
-        if (timeout_enabled)
-          count--;
-      } while ((count > 0) && (status != I3C_OK));
-      if (count == 0) {
-        return OCCP_TIMEOUT;
-      }
-    } else {
-      size_t rx_num_bytes;
-      int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(ctx->drv.i2c_drv, temp_buf, body_size, &rx_num_bytes, ctx->timeout);
-      if (status != I2C_OK) return OCCP_INTERFACE_ERR;
-    }
-  }
-
-  // CRC comes separately after 'length' bytes
-  uint8_t crc_tail[4] = {0};
-  memcpy(crc_tail, temp_buf + header_len, expected_crc_size);
-
-  int crc_ok = 0;
-  if (expected_crc_size == 4) {
-    uint32_t crc_recv;
-    memcpy(&crc_recv, crc_tail, 4);
-    uint32_t crc_calc = calculate_crc32(temp_buf, body_size - expected_crc_size);
-    crc_ok = (crc_calc == crc_recv);
-  } else {
-    uint8_t crc_recv = crc_tail[0];
-    uint8_t crc_calc = calculate_crc8(temp_buf, body_size - expected_crc_size);
-    crc_ok = (crc_calc == crc_recv);
-  }
-  if (!crc_ok) {
-    simputs("OCCP: Body CRC mismatch\n");
-    return OCCP_ERR;
-  }
-  // strip CRC and return body
-  if ((body_size - expected_crc_size) > out_buf_size) return OCCP_READ_UNDERFLOW;
-  memcpy(out_buf, temp_buf, body_size - expected_crc_size);
-  *out_len = body_size - expected_crc_size;
-  return OCCP_SUCCESS;
 }
 
 int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
-                            /*out*/ occp_resp_header_t *resp_hdr) {
-  /* Read header */
-  //occp_resp_header_t resp_hdr;
-  bool timeout_enabled = ctx->timeout != 0;
-  int count = timeout_enabled ? ctx->timeout : 1;
-  uint8_t* resp_hdr_ptr = (uint8_t*)resp_hdr;
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    int status;
-    simputs("OCCP: Reading response header\n");
-    do {
-      //simputshex32("bytes: ", sizeof(*resp_hdr));
-      status = ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, resp_hdr_ptr, sizeof(*resp_hdr));
-      if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED))
-        return OCCP_INTERFACE_ERR;
+                             /*out*/ occp_resp_header_t *resp_hdr) {
+    /* Read header */
+    // occp_resp_header_t resp_hdr;
+    bool timeout_enabled = ctx->timeout != 0;
+    int count = timeout_enabled ? ctx->timeout : 1;
+    uint8_t *resp_hdr_ptr = (uint8_t *)resp_hdr;
+    if (ctx->type == DRIVER_TYPE_I3C) {
+        int status;
+        simputs("OCCP: Reading response header\n");
+        do {
+            // simputshex32("bytes: ", sizeof(*resp_hdr));
+            status =
+                ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, resp_hdr_ptr, sizeof(*resp_hdr));
+            if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
 
-      if (timeout_enabled)
-        count--;
-    } while ((count > 0) && (status != I3C_OK));
-    if (count == 0) {
-      if (ctx->exp_timeout) {
-        simputs("OCCP: Received expected timeout\n");
-        return OCCP_SUCCESS;
-      }
-      return OCCP_TIMEOUT;
-    }
-  } else {
-    size_t rx_num_bytes;
-    int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(ctx->drv.i2c_drv, resp_hdr_ptr, sizeof(*resp_hdr), &rx_num_bytes, ctx->timeout);
-    if (ctx->exp_timeout && status == I2C_TIMEOUT) {
-      simputs("OCCP: Received expected timeout\n");
-      return OCCP_SUCCESS;
-    }
-    if (status != I2C_OK)
-      return OCCP_INTERFACE_ERR;
-  }
-
-  if (ctx->exp_timeout) {
-    simputs("Did not receive expected timeout\n");
-    return OCCP_ERR;
-  }
-
-  // Verify response header CRC
-  if (verify_resp_header_crc(resp_hdr) != 0) {
-    return OCCP_ERR;
-  }
-
-  if (resp_hdr->error) {
-    uint32_t error_code = 0;
-    simputs("OCCP response error\n");
-    if (resp_hdr->length == sizeof(error_code)) {
-      // Read error body and CRC (CRC8 expected)
-      uint8_t body_buf[8] = {0};
-      uint16_t body_len = 0;
-      int rc = read_body_and_verify_crc(ctx, i3c_addr, resp_hdr->body_crc_present, resp_hdr->length, body_buf, sizeof(body_buf), &body_len);
-      if (rc != OCCP_SUCCESS) return rc;
-      if (body_len != sizeof(error_code)) return OCCP_ERR;
-      memcpy(&error_code, body_buf, sizeof(error_code));
+            if (timeout_enabled) count--;
+        } while ((count > 0) && (status != I3C_OK));
+        if (count == 0) {
+            if (ctx->exp_timeout) {
+                simputs("OCCP: Received expected timeout\n");
+                return OCCP_SUCCESS;
+            }
+            return OCCP_TIMEOUT;
+        }
     } else {
-      simputs("OCCP response error: length != sizeof(error_code)\n");
-      return OCCP_ERR;
-    }
-    if (print_error_code(error_code) != 0) {
-      return OCCP_ERR;
-    }
-
-    /* Under length injection, accept Invalid_msg_len as success */
-    if (ctx->invalid_len_err_inject_enable && error_code == OCCP_INVALID_REQ_LEN) {
-      simputs("OCCP: Expected invalid length error under injection\n");
-      return OCCP_SUCCESS;
+        size_t rx_num_bytes;
+        int status = ctx->drv.i2c_drv->ctrlr_receive_data_w_timeout(
+            ctx->drv.i2c_drv, resp_hdr_ptr, sizeof(*resp_hdr), &rx_num_bytes, ctx->timeout);
+        if (ctx->exp_timeout && status == I2C_TIMEOUT) {
+            simputs("OCCP: Received expected timeout\n");
+            return OCCP_SUCCESS;
+        }
+        if (status != I2C_OK) return OCCP_INTERFACE_ERR;
     }
 
-    if (ctx->exp_response_code == OCCP_ERROR_NONE) {
-      if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE && error_code == OCCP_CORRUPT_HEADER) {
-        simputs("received expected error code: OCCP_CORRUPT_HEADER\n");
-        return OCCP_SUCCESS;
-      }
-      if (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE && error_code == OCCP_CORRUPT_DATA) {
-        simputs("received expected error code: OCCP_CORRUPT_DATA\n");
-        return OCCP_SUCCESS;
-      }
-      if (((ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE) || (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_UNDETECTABLE)) && (error_code == OCCP_UNSUPPORTED_STATUS)) {
-        simputs("received expected error code: OCCP_UNSUPPORTED_STATUS (body corruption can cause this as well)\n");
-        return OCCP_SUCCESS;
-      }
-
-      simputshex32("OCCP response error: expected none but got error: ", error_code);
-      return OCCP_ERR;
-    } else if (ctx->exp_response_code != error_code) {
-      simputshex32("OCCP response error: expected error code: ", ctx->exp_response_code);
-      simputshex32("but got: ", error_code);
-      return OCCP_ERR;
+    if (ctx->exp_timeout) {
+        simputs("Did not receive expected timeout\n");
+        return OCCP_ERR;
     }
 
-    //return OCCP_ERR;
-  } else {
-    /* Under length injection, a non-error response to an invalid-length request is a test failure */
-    if (ctx->invalid_len_err_inject_enable) {
-      simputs("OCCP: Non-error response under invalid length injection (FAIL)\n");
-      ctx->overall_result = false;
-      return OCCP_ERR;
-    }
-    if (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE || ctx->header_crc_err_inject_mode == OCCP_CORRUPT_CRC ||
-      ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE || ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-      simputs("OCCP response no error despite predicted corruption\n");
-      return OCCP_ERR;
+    // Verify response header CRC
+    if (verify_resp_header_crc(resp_hdr) != 0) {
+        return OCCP_ERR;
     }
 
-    if (ctx->exp_response_code != OCCP_ERROR_NONE) {
-      simputshex32("OCCP response error: expected error code but got none: ", ctx->exp_response_code);
-      return OCCP_ERR;
+    if (resp_hdr->error) {
+        uint32_t error_code = 0;
+        simputs("OCCP response error\n");
+        if (resp_hdr->length == sizeof(error_code)) {
+            // Read error body and CRC (CRC8 expected)
+            uint8_t body_buf[8] = {0};
+            uint16_t body_len = 0;
+            int rc =
+                read_body_and_verify_crc(ctx, i3c_addr, resp_hdr->body_crc_present,
+                                         resp_hdr->length, body_buf, sizeof(body_buf), &body_len);
+            if (rc != OCCP_SUCCESS) return rc;
+            if (body_len != sizeof(error_code)) return OCCP_ERR;
+            memcpy(&error_code, body_buf, sizeof(error_code));
+        } else {
+            simputs("OCCP response error: length != sizeof(error_code)\n");
+            return OCCP_ERR;
+        }
+        if (print_error_code(error_code) != 0) {
+            return OCCP_ERR;
+        }
+
+        /* Under length injection, accept Invalid_msg_len as success */
+        if (ctx->invalid_len_err_inject_enable && error_code == OCCP_INVALID_REQ_LEN) {
+            simputs("OCCP: Expected invalid length error under injection\n");
+            return OCCP_SUCCESS;
+        }
+
+        if (ctx->exp_response_code == OCCP_ERROR_NONE) {
+            if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE &&
+                error_code == OCCP_CORRUPT_HEADER) {
+                simputs("received expected error code: OCCP_CORRUPT_HEADER\n");
+                return OCCP_SUCCESS;
+            }
+            if (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE &&
+                error_code == OCCP_CORRUPT_DATA) {
+                simputs("received expected error code: OCCP_CORRUPT_DATA\n");
+                return OCCP_SUCCESS;
+            }
+            if (((ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE) ||
+                 (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_UNDETECTABLE)) &&
+                (error_code == OCCP_UNSUPPORTED_STATUS)) {
+                simputs("received expected error code: OCCP_UNSUPPORTED_STATUS (body corruption "
+                        "can cause this as well)\n");
+                return OCCP_SUCCESS;
+            }
+
+            simputshex32("OCCP response error: expected none but got error: ", error_code);
+            return OCCP_ERR;
+        } else if (ctx->exp_response_code != error_code) {
+            simputshex32("OCCP response error: expected error code: ", ctx->exp_response_code);
+            simputshex32("but got: ", error_code);
+            return OCCP_ERR;
+        }
+
+        // return OCCP_ERR;
+    } else {
+        /* Under length injection, a non-error response to an invalid-length request is a test
+         * failure */
+        if (ctx->invalid_len_err_inject_enable) {
+            simputs("OCCP: Non-error response under invalid length injection (FAIL)\n");
+            ctx->overall_result = false;
+            return OCCP_ERR;
+        }
+        if (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE ||
+            ctx->header_crc_err_inject_mode == OCCP_CORRUPT_CRC ||
+            ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_DETECTABLE ||
+            ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+            simputs("OCCP response no error despite predicted corruption\n");
+            return OCCP_ERR;
+        }
+
+        if (ctx->exp_response_code != OCCP_ERROR_NONE) {
+            simputshex32("OCCP response error: expected error code but got none: ",
+                         ctx->exp_response_code);
+            return OCCP_ERR;
+        }
     }
-  }
-  simputshex16("OCCP response length: ", resp_hdr->length);
-  return OCCP_SUCCESS;
+    simputshex16("OCCP response length: ", resp_hdr->length);
+    return OCCP_SUCCESS;
 }
 
 /* ---------------- Invalid header injection (msg_id/app_id) ---------------- */
-static uint16_t choose_random_body_len_like_rw(void)
-{
-  /* Reuse write-size distribution for the dummy trailing bytes after invalid header */
-  return get_random_occp_write_size();
+static uint16_t choose_random_body_len_like_rw(void) {
+    /* Reuse write-size distribution for the dummy trailing bytes after invalid header */
+    return get_random_occp_write_size();
 }
 
-int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr)
-{
-  uint8_t app_id;
-  uint8_t msg_id;
-  static uint8_t buff[8 + 2048 + 4] = {0};
+int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
+    uint8_t app_id;
+    uint8_t msg_id;
+    static uint8_t buff[8 + 2048 + 4] = {0};
 
-  /* Decide invalid fields per ctx */
-  switch (ctx->invalid_header_inject_mode) {
+    /* Decide invalid fields per ctx */
+    switch (ctx->invalid_header_inject_mode) {
     case OCCP_INVALID_HDR_INVALID_MSGID: {
-      app_id = (uint8_t)(get_random_int() % 2); /* valid app: 0 or 1 */
-      if (app_id == 0) {
-        msg_id = (uint8_t)(4 + (get_random_int() % 252));
-      } else {
-        msg_id = (uint8_t)(4 + (get_random_int() % 253));
-      }
-      break;
+        app_id = (uint8_t)(get_random_int() % 2); /* valid app: 0 or 1 */
+        if (app_id == 0) {
+            msg_id = (uint8_t)(4 + (get_random_int() % 252));
+        } else {
+            msg_id = (uint8_t)(4 + (get_random_int() % 253));
+        }
+        break;
     }
     case OCCP_INVALID_HDR_INVALID_APPID: {
-      app_id = (uint8_t)(2 + (get_random_int() % 254)); /* invalid app */
-      msg_id = (uint8_t)(get_random_int() % 4); /* valid msg for base/boot */
-      break;
+        app_id = (uint8_t)(2 + (get_random_int() % 254)); /* invalid app */
+        msg_id = (uint8_t)(get_random_int() % 4);         /* valid msg for base/boot */
+        break;
     }
     case OCCP_INVALID_HDR_INVALID_BOTH: {
-      app_id = (uint8_t)(2 + (get_random_int() % 254));
-      msg_id = (uint8_t)(4 + (get_random_int() % 252));
-      break;
+        app_id = (uint8_t)(2 + (get_random_int() % 254));
+        msg_id = (uint8_t)(4 + (get_random_int() % 252));
+        break;
     }
     default: {
-      /* If NONE, default to invalid msg_id to exercise path */
-      app_id = (uint8_t)(get_random_int() % 2);
-      msg_id = (uint8_t)((app_id == 0) ? (4 + (get_random_int() % 252)) : (3 + (get_random_int() % 253)));
-      break;
+        /* If NONE, default to invalid msg_id to exercise path */
+        app_id = (uint8_t)(get_random_int() % 2);
+        msg_id = (uint8_t)((app_id == 0) ? (4 + (get_random_int() % 252))
+                                         : (3 + (get_random_int() % 253)));
+        break;
     }
-  }
-
-  uint16_t body_len = choose_random_body_len_like_rw();
-  bool has_body_crc = (get_random_int() % 2) == 0; /* random presence */
-
-  occp_req_header_word_t hdr_word;
-  hdr_word.app_id = app_id;
-  hdr_word.msg_id = msg_id;
-  hdr_word.flags = 0;
-  hdr_word.length = (uint16_t)(body_len & 0x7FF);
-  occp_req_header_t hdr;
-  hdr.body_crc_present = has_body_crc;
-  hdr.reserved = 0;
-  hdr.header_word = hdr_word;
-  hdr.header_crc = calculate_crc8(((uint8_t *)&hdr) + 1, sizeof(hdr) - 1);
-
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&hdr, sizeof(hdr));
-  }
-
-  /* Transmit header */
-  /* Build and send body: random bytes with optional CRC (size depends on length) */
-  for (int i = 0; i < sizeof(hdr); i++) {
-    buff[i] = ((uint8_t *)&hdr)[i];
-  }
-
-  if (body_len > 0 || has_body_crc) {
-    for (uint16_t i = 0; i < body_len; i++) buff[sizeof(hdr) + i] = (uint8_t)(get_random_int() & 0xFF);
-    int tail = 0;
-    if (has_body_crc) {
-      if (body_len > 14) {
-        uint32_t crc = calculate_crc32(buff + sizeof(hdr), body_len);
-        memcpy(buff + sizeof(hdr) + body_len, &crc, sizeof(crc));
-        tail = 4;
-      } else {
-        uint8_t crc = calculate_crc8(buff + sizeof(hdr), body_len);
-        memcpy(buff + sizeof(hdr) + body_len, &crc, sizeof(crc));
-        tail = 1;
-      }
     }
-    size_t total = sizeof(hdr) + body_len + tail;
-    if (ctx->type == DRIVER_TYPE_I3C) {
-      ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, buff, total);
-    } else {
-      ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, buff, total, ctx->timeout);
+
+    uint16_t body_len = choose_random_body_len_like_rw();
+    bool has_body_crc = (get_random_int() % 2) == 0; /* random presence */
+
+    occp_req_header_word_t hdr_word;
+    hdr_word.app_id = app_id;
+    hdr_word.msg_id = msg_id;
+    hdr_word.flags = 0;
+    hdr_word.length = (uint16_t)(body_len & 0x7FF);
+    occp_req_header_t hdr;
+    hdr.body_crc_present = has_body_crc;
+    hdr.reserved = 0;
+    hdr.header_word = hdr_word;
+    hdr.header_crc = calculate_crc8(((uint8_t *)&hdr) + 1, sizeof(hdr) - 1);
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&hdr, sizeof(hdr));
     }
-  }
 
-  switch (ctx->invalid_header_inject_mode) {
-    case OCCP_INVALID_HDR_INVALID_MSGID: ctx->exp_response_code = OCCP_INVALID_MSGID; break;
-    case OCCP_INVALID_HDR_INVALID_APPID: ctx->exp_response_code = OCCP_INVALID_APPID; break;
-    case OCCP_INVALID_HDR_INVALID_BOTH:  ctx->exp_response_code = OCCP_INVALID_APPID; break; /* AppID precedence */
-    default: ctx->exp_response_code = OCCP_INVALID_MSGID; break;
-  }
-
-  /* Read and verify error response */
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  if (retval != OCCP_ERROR_NONE) return retval;
-
-  ctx->exp_response_code = OCCP_ERROR_NONE;
-  return OCCP_SUCCESS;
-}
-
-int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr, const uint8_t *data, uint16_t byte_length)
-{
-  occp_write_header_t write_hdr;
-
-  int data_start_idx = sizeof(write_hdr);
-  int body_start = sizeof(write_hdr.header);
-  int body_length = byte_length + (data_start_idx - body_start);
-  /* Body CRC present: random unless forcing injection, in which case always present */
-  bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ? true : ((get_random_int() % 2) != 0);
-
-  /* Determine body length with independent injections */
-  uint16_t body_len = (uint16_t)body_length;
-  if (ctx->invalid_message_length_zero_inject_enable) {
-    /* Keep header body length to metadata size (12); data omitted */
-    body_len = (uint16_t)(sizeof(occp_write_header_t) - sizeof(occp_req_header_t));
-    simputs("OCCP: WRITE inject: body=12, internal write_length=0\n");
-  } else if (ctx->invalid_len_err_inject_enable) {
-    body_len = (uint16_t)(get_random_int() % 12); /* [0,11] */
-    if (body_len == 0) {
-      has_body_crc = false; /* header-only: do not advertise body CRC */
+    /* Transmit header */
+    /* Build and send body: random bytes with optional CRC (size depends on length) */
+    for (int i = 0; i < sizeof(hdr); i++) {
+        buff[i] = ((uint8_t *)&hdr)[i];
     }
-    simputshex16("OCCP: Random invalid WRITE length (0..11): ", body_len);
-  }
 
-  int crc_size = 0;
-  if (has_body_crc) {
-    crc_size = (body_len > 14) ? 4 : 1;
-  }
-
-  write_hdr.header = occp_encode_header_word(OCCP_WRITE, body_len, has_body_crc);
-  write_hdr.addr = addr;
-  write_hdr.write_length = byte_length;
-  if (ctx->invalid_message_length_zero_inject_enable) {
-    /* Force the request's internal message length to zero */
-    write_hdr.write_length = 0;
-  }
-  write_hdr.rwrite_attr = 0;
-  write_hdr.reserved = 0;
-
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&write_hdr, sizeof(write_hdr.header));
-  }
-
-  uint8_t *tx_buf = occp_tx_buf;
-  size_t header_size = sizeof(write_hdr.header);
-  memcpy(tx_buf, &write_hdr.header, header_size);
-
-  size_t total_bytes;
-  size_t meta_len = (size_t)(data_start_idx - (int)header_size);
-  size_t meta_copy_len = (body_len <= meta_len) ? body_len : meta_len;
-  if (meta_copy_len > 0) {
-    memcpy(tx_buf + header_size, ((uint8_t *)&write_hdr) + header_size, meta_copy_len);
-  }
-  size_t curr_off = header_size + meta_copy_len;
-  size_t remaining = (size_t)body_len - meta_copy_len;
-  if (remaining > 0) {
-    size_t data_copy_len = (remaining <= byte_length) ? remaining : byte_length;
-    if (data_copy_len > 0) {
-      memcpy(tx_buf + curr_off, data, data_copy_len);
-      curr_off += data_copy_len;
-      remaining -= data_copy_len;
+    if (body_len > 0 || has_body_crc) {
+        for (uint16_t i = 0; i < body_len; i++)
+            buff[sizeof(hdr) + i] = (uint8_t)(get_random_int() & 0xFF);
+        int tail = 0;
+        if (has_body_crc) {
+            if (body_len > 14) {
+                uint32_t crc = calculate_crc32(buff + sizeof(hdr), body_len);
+                memcpy(buff + sizeof(hdr) + body_len, &crc, sizeof(crc));
+                tail = 4;
+            } else {
+                uint8_t crc = calculate_crc8(buff + sizeof(hdr), body_len);
+                memcpy(buff + sizeof(hdr) + body_len, &crc, sizeof(crc));
+                tail = 1;
+            }
+        }
+        size_t total = sizeof(hdr) + body_len + tail;
+        if (ctx->type == DRIVER_TYPE_I3C) {
+            ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, buff, total);
+        } else {
+            ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, buff, total,
+                                                        ctx->timeout);
+        }
     }
-    /* Pad with random bytes if injected length exceeds available metadata + data */
-    for (size_t i = 0; i < remaining; i++) {
-      tx_buf[curr_off + i] = (uint8_t)(get_random_int() & 0xFF);
+
+    switch (ctx->invalid_header_inject_mode) {
+    case OCCP_INVALID_HDR_INVALID_MSGID:
+        ctx->exp_response_code = OCCP_INVALID_MSGID;
+        break;
+    case OCCP_INVALID_HDR_INVALID_APPID:
+        ctx->exp_response_code = OCCP_INVALID_APPID;
+        break;
+    case OCCP_INVALID_HDR_INVALID_BOTH:
+        ctx->exp_response_code = OCCP_INVALID_APPID;
+        break; /* AppID precedence */
+    default:
+        ctx->exp_response_code = OCCP_INVALID_MSGID;
+        break;
     }
-    curr_off += remaining;
-  }
 
-  /* Append CRC if requested by header flag */
-  if (has_body_crc && body_len > 0) {
-    const uint8_t *body_ptr = tx_buf + header_size;
-    if (crc_size == 4) {
-      uint32_t crc = calculate_crc32((uint8_t *)body_ptr, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-    } else {
-      uint8_t crc = calculate_crc8((uint8_t *)body_ptr, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-    }
-  }
-  total_bytes = header_size + body_len + ((has_body_crc && body_len > 0) ? crc_size : 0);
+    /* Read and verify error response */
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (retval != OCCP_ERROR_NONE) return retval;
 
-  /* Undersize body injection: just shorten total_bytes to header + short_len (no CRC) */
-  if (ctx->inject_undersize_body_err && body_len > 0) {
-    uint16_t short_len = get_random_int() % (total_bytes - header_size);
-    total_bytes = header_size + short_len;
-  }
-
-  /* Oversize body injection: append up to 64 random bytes to tx_buf */
-  if (ctx->inject_oversize_body_err) {
-    uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-    for (uint16_t i = 0; i < extra_len; i++) {
-      tx_buf[total_bytes + i] = (uint8_t)(get_random_int() & 0xFF);
-    }
-    total_bytes += extra_len;
-  }
-
-  inject_header_errors_if_enabled(ctx, tx_buf, header_size);
-  if (has_body_crc && body_len > 0) {
-    bool use_crc32 = (crc_size == 4);
-    inject_body_errors_if_enabled(ctx, tx_buf + body_start, body_len, use_crc32);
-  }
-
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    if (ctx->drv.i3c_drv == NULL) {
-      simputs("I3C driver not initialized\n");
-      return OCCP_INTERFACE_ERR;
-    }
-    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, total_bytes);
-  } else {
-    if (ctx->drv.i2c_drv == NULL) {
-      simputs("I2C driver not initialized\n");
-      return OCCP_INTERFACE_ERR;
-    }
-    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, total_bytes, ctx->timeout);
-  }
-
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  if (retval != OCCP_ERROR_NONE) {
-    return retval;
-  }
-
-  return OCCP_SUCCESS;
-}
-
-int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr, uint8_t *recv, uint16_t byte_length)
-{
-  occp_read_header_t read_hdr;
-  /* Body CRC present: random unless forcing injection, in which case always present */
-  bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ? true : ((get_random_int() % 2) == 0);
-  uint16_t body_len = (uint16_t)(sizeof(occp_read_header_t) - sizeof(occp_req_header_t));
-
-  /* Determine injected body length with independent injections */
-  uint16_t injected_len = body_len;
-  if (ctx->invalid_len_err_inject_enable) {
-    uint16_t lower;
-    if (body_len > 1) {
-      uint16_t max_lower = (uint16_t)(body_len - 1);
-      lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
-    } else {
-      lower = 1; /* fallback within bounds */
-    }
-    uint16_t upper_min = (uint16_t)(body_len + 1);
-    uint16_t upper_max = 0x100;
-    uint16_t upper = (upper_min <= upper_max) ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1))) : upper_max;
-    const uint16_t candidates[3] = {0, lower, upper};
-    injected_len = candidates[get_random_int() % 3];
-    simputshex16("OCCP: Random invalid READ length: ", injected_len);
-  }
-
-  read_hdr.header = occp_encode_header_word(OCCP_READ, body_len, has_body_crc);
-  read_hdr.addr = addr;
-  read_hdr.read_length = byte_length;
-  if (ctx->invalid_message_length_zero_inject_enable) {
-    /* Force the request's internal message length to zero */
-    read_hdr.read_length = 0;
-  }
-  read_hdr.read_attr = 0;
-
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&read_hdr, sizeof(read_hdr.header));
-  }
-
-  /* Override the length field after encoding */
-  if (ctx->invalid_len_err_inject_enable) {
-    read_hdr.header.header_word.length = injected_len & 0x7FF;
-   /* Do not force body CRC presence based on length; honor header flag */
-    /* Recalc CRC again after length change */
-    read_hdr.header.header_crc = calculate_crc8(((uint8_t *)&read_hdr.header) + 1, sizeof(read_hdr.header) - 1);
-    body_len = injected_len;
-  }
-
-  uint8_t *tx_buf = occp_tx_buf;
-  int crc_size = 0;
-  size_t tx_len;
-  size_t header_size = sizeof(read_hdr.header);
-  size_t available_body = sizeof(read_hdr) - header_size;
-  size_t copy_len = (body_len <= available_body) ? body_len : available_body;
-
-  /* Build header */
-  memcpy(tx_buf, &read_hdr.header, header_size);
-
-  /* Build body (truncate to available bytes) */
-  if (copy_len > 0) {
-    const uint8_t *body_ptr = ((const uint8_t *)&read_hdr) + header_size;
-    memcpy(tx_buf + header_size, body_ptr, copy_len);
-  }
-  /* Pad with random data if injected length exceeds struct body */
-  if (body_len > copy_len) {
-    size_t pad_len = (size_t)body_len - copy_len;
-    uint8_t *pad_ptr = tx_buf + header_size + copy_len;
-    for (size_t i = 0; i < pad_len; i++) {
-      pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
-    }
-  }
-
-  /* Append CRC if requested by header flag */
-  if (has_body_crc && body_len > 0) {
-    const uint8_t *body_start = tx_buf + header_size;
-    if (body_len > 14) {
-      uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 4;
-    } else {
-      uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 1;
-    }
-  }
-
-  /* Oversize body injection: append up to 64 random bytes to tx_buf */
-  if (ctx->inject_oversize_body_err) {
-    size_t base_len = header_size + body_len + crc_size;
-    uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-    for (uint16_t i = 0; i < extra_len; i++) {
-      tx_buf[base_len + i] = (uint8_t)(get_random_int() & 0xFF);
-    }
-    tx_len = base_len + extra_len;
-  } else if (ctx->inject_undersize_body_err && body_len > 0) {
-    uint16_t short_len = get_random_int() % (body_len + crc_size);
-    tx_len = header_size + short_len;
-  } else {
-    tx_len = header_size + body_len + crc_size;
-  }
-
-  /* Optional error injections */
-  inject_header_errors_if_enabled(ctx, tx_buf, header_size);
-  if (has_body_crc && body_len > 0) {
-    bool use_crc32 = (crc_size == 4);
-    inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
-  }
-
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    if (ctx->drv.i3c_drv == NULL) {
-      simputs("I3C driver not initialized\n");
-      return OCCP_INTERFACE_ERR;
-    }
-    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
-  } else {
-    if (ctx->drv.i2c_drv == NULL) {
-      simputs("I2C driver not initialized\n");
-      return OCCP_INTERFACE_ERR;
-    }
-    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
-  }
-
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  if (retval != OCCP_ERROR_NONE) {
-    return retval;
-  }
-  /* If we injected an unsupported status ID, an error response is expected and
-   * already validated inside occp_get_response_header() using ctx->exp_response_code.
-   * Treat that as success and reset expectation. */
-  if (ctx->unsupported_status_id_inject_enable && resp_hdr.error) {
     ctx->exp_response_code = OCCP_ERROR_NONE;
     return OCCP_SUCCESS;
-  }
-  if (ctx->exp_timeout) {
-    return OCCP_SUCCESS;
-  }
-
-  if (!resp_hdr.error) {
-    static uint8_t recv_buff[MAX_OCCP_READ_SIZE + 4];
-    uint16_t data_len = 0;
-    int rc = read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
-                                      recv_buff, sizeof(recv_buff), &data_len);
-    if (rc != OCCP_SUCCESS) return rc;
-    simputshex16("OCCP_READ verified data length: ", data_len);
-    memcpy(recv, recv_buff, data_len);
-  }
-  return OCCP_SUCCESS;
 }
 
-static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t cmd, uint32_t *statusBuff)
-{
-  bool is_status_command = false;
-  switch(cmd)
-  {
-    case OCCP_GET_VERSION:
-      simputs("Sending GET_VERSION command\n");
-      break;
-    case OCCP_GET_VERSION_BOOT:
-      simputs("Sending GET_VERSION_BOOT command\n");
-      break;
-    case OCCP_GET_OCCP_BOOT_STATUS:
-      simputs("Sending GET_OCCP_BOOT_STATUS command\n");
-      is_status_command = true;
-      break;
-    case OCCP_GET_OCCP_INTERFACE_STATUS:
-      simputs("Sending GET_OCCP_INTERFACE_STATUS command\n");
-      is_status_command = true;
-      break;
-    case OCCP_GET_OCCP_COMMAND_COUNT:
-      simputs("Sending GET_OCCP_COMMAND_COUNT command\n");
-      is_status_command = true;
-      break;
-    case OCCP_GET_OCCP_ERROR_CODE:
-      simputs("Sending GET_OCCP_ERROR_CODE command\n");
-      is_status_command = true;
-      break;
-    case OCCP_GET_SEP_STATUS:
-      simputs("Sending GET_SEP_STATUS command\n");
-      is_status_command = true;
-      break;
-    case OCCP_GET_SMC_STATUS:
-      simputs("Sending GET_SMC_STATUS command\n");
-      is_status_command = true;
-      break;
-    default:
-      simputs("Unknown command for generic status\n");
-      return OCCP_INVALID_CMD;
-  }
+int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr,
+                            const uint8_t *data, uint16_t byte_length) {
+    occp_write_header_t write_hdr;
 
-  /* Randomize body CRC presence for GET_* commands (except version) */
-  uint16_t body_len = (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) ? 0 : 2;
-  bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ? (body_len > 0) : (((get_random_int() % 2) == 0) && (body_len > 0));
+    int data_start_idx = sizeof(write_hdr);
+    int body_start = sizeof(write_hdr.header);
+    int body_length = byte_length + (data_start_idx - body_start);
+    /* Body CRC present: random unless forcing injection, in which case always present */
+    bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
+                            ? true
+                            : ((get_random_int() % 2) != 0);
 
-  /* Apply randomized invalid length injection if enabled */
-  uint16_t injected_len = body_len;
-  bool inject_len_err = ctx->invalid_len_err_inject_enable;
-  if (inject_len_err) {
-    if (body_len == 0) {
-      /* Expected 0 for GET_VERSION/GET_VERSION_BOOT; choose 1..0x7FF */
-      injected_len = (uint16_t)(1 + (get_random_int() % 0x100));
-    } else {
-      uint16_t lower;
-      if (body_len > 1) {
-        uint16_t max_lower = (uint16_t)(body_len - 1);
-        lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
-      } else {
-        lower = 1; /* fallback within bounds */
-      }
-      uint16_t upper_min = (uint16_t)(body_len + 1);
-      uint16_t upper_max = 0x7FF;
-      uint16_t upper = (upper_min <= upper_max) ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1))) : upper_max;
-      const uint16_t candidates[3] = {0, lower, upper};
-      injected_len = candidates[get_random_int() % 3];
-    }
-    simputshex16("OCCP: Random invalid GET length: ", injected_len);
-  }
-
-  occp_req_header_t header_word = occp_encode_header_word(cmd, body_len, has_body_crc);
-
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&header_word, sizeof(header_word));
-  }
-
-  /* Override the length field after encoding */
-  if (inject_len_err) {
-    header_word.header_word.length = injected_len & 0x7FF;
-    /* Recalculate header CRC with the new length */
-    header_word.header_crc = calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
-    /* Do not force body CRC presence based on length; honor header flag */
-    /* Recalc CRC again after length change */
-    header_word.header_crc = calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
-    body_len = injected_len;
-  }
-
-  inject_header_errors_if_enabled(ctx, (uint8_t *)&header_word, sizeof(header_word));
-//  if (ctx->type == DRIVER_TYPE_I3C) {
-//    /* Optional header injection for GET* header */
-//    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t*)&header_word, sizeof(header_word));
-//  } else {
-//    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t*)&header_word, sizeof(header_word), ctx->timeout);
-//  }
-  uint8_t *tx_buf = occp_tx_buf;
-
-  memcpy(tx_buf, &header_word, sizeof(header_word));
-
-  // send status ID for non-version commands
-  // values not in spec yet
-  if (cmd != OCCP_GET_VERSION && cmd != OCCP_GET_VERSION_BOOT) {
-    uint16_t status_id = 0;
-    switch (cmd) {
-      case OCCP_GET_OCCP_BOOT_STATUS:
-        status_id = 0;
-        break;
-      case OCCP_GET_OCCP_INTERFACE_STATUS:
-        status_id = 1;
-        break;
-      case OCCP_GET_OCCP_COMMAND_COUNT:
-        status_id = 2;
-        break;
-      case OCCP_GET_OCCP_ERROR_CODE:
-        status_id = 3;
-        break;
-      case OCCP_GET_SEP_STATUS:
-        status_id = 0x8000;
-        break;
-      case OCCP_GET_SMC_STATUS:
-        status_id = 0x8001;
-        break;
-      default:
-        status_id = 0;
-        break;
-    }
-
-    /* Override with unsupported status ID if injection is enabled */
-    if (ctx->unsupported_status_id_inject_enable) {
-      /* Pick a random invalid status_id not in {0,1,2,3,0x8000,0x8001} */
-      uint16_t candidate;
-      do {
-        candidate = (uint16_t)(get_random_int() & 0xFFFF);
-      } while (candidate == 0u || candidate == 1u || candidate == 2u || candidate == 3u || candidate == 0x8000u || candidate == 0x8001u);
-      status_id = candidate;
-      simputshex16("OCCP: Injecting unsupported status_id 0x", status_id);
-    }
-
-    /* Unified body path for GET_* (non-version) with random padding */
-    memset(tx_buf + sizeof(header_word), 0, body_len + 4);
-    size_t copy_size = (body_len < sizeof(status_id)) ? body_len : sizeof(status_id);
-    if (copy_size > 0) memcpy(tx_buf + sizeof(header_word), &status_id, copy_size);
-    if (body_len > copy_size) {
-      size_t pad_len = (size_t)body_len - copy_size;
-      uint8_t *pad_ptr = tx_buf + sizeof(header_word) + copy_size;
-      for (size_t i = 0; i < pad_len; i++) pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
-    }
-    int crc_size = 0;
-    if (has_body_crc && body_len > 0) {
-      if (body_len > 14) {
-        uint32_t crc = calculate_crc32(tx_buf + sizeof(header_word), body_len);
-        if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-          flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
-          simputs("OCCP: Corrupted body CRC\n");
+    /* Determine body length with independent injections */
+    uint16_t body_len = (uint16_t)body_length;
+    if (ctx->invalid_message_length_zero_inject_enable) {
+        /* Keep header body length to metadata size (12); data omitted */
+        body_len = (uint16_t)(sizeof(occp_write_header_t) - sizeof(occp_req_header_t));
+        simputs("OCCP: WRITE inject: body=12, internal write_length=0\n");
+    } else if (ctx->invalid_len_err_inject_enable) {
+        body_len = (uint16_t)(get_random_int() % 12); /* [0,11] */
+        if (body_len == 0) {
+            has_body_crc = false; /* header-only: do not advertise body CRC */
         }
-        memcpy(tx_buf + sizeof(header_word) + body_len, &crc, sizeof(crc));
-        crc_size = 4;
-      } else {
-        uint8_t crc = calculate_crc8(tx_buf + sizeof(header_word), body_len);
-        if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-          flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
-          simputs("OCCP: Corrupted body CRC\n");
-        }
-        memcpy(tx_buf + sizeof(header_word) + body_len, &crc, sizeof(crc));
-        crc_size = 1;
-      }
-    }
-    if (has_body_crc && body_len > 0) {
-      bool use_crc32 = (crc_size == 4);
-      inject_body_errors_if_enabled(ctx, tx_buf + sizeof(header_word), body_len, use_crc32);
-    }
-    size_t total = body_len + crc_size;
-
-    if (ctx->inject_oversize_body_err) {
-      /* Oversize body injection: append up to 64 random bytes to tx_buf */
-      uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-      for (uint16_t i = 0; i < extra_len; i++) {
-        tx_buf[sizeof(header_word) + total + i] = (uint8_t)(get_random_int() & 0xFF);
-      }
-      total += extra_len;
-    } else if (ctx->inject_undersize_body_err) {
-      size_t short_len = get_random_int() % total;
-      total = short_len;
+        simputshex16("OCCP: Random invalid WRITE length (0..11): ", body_len);
     }
 
-    if (ctx->type == DRIVER_TYPE_I3C) {
-      ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, sizeof(header_word) + total);
-    } else {
-      ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, sizeof(header_word) + total, ctx->timeout);
-    }
-    /* No additional send here; packet was already transmitted above. */
-  } else if (inject_len_err && body_len > 0) {
-    /* Unified body path for GET_VERSION with injected non-zero length + random padding */
-    for (uint16_t i = 0; i < body_len; i++) tx_buf[sizeof(header_word) + i] = (uint8_t)(get_random_int() & 0xFF);
     int crc_size = 0;
     if (has_body_crc) {
-      if (body_len > 14) {
-        uint32_t crc = calculate_crc32(tx_buf + sizeof(header_word), body_len);
-        memcpy(tx_buf + body_len, &crc, sizeof(crc));
-        crc_size = 4;
-      } else {
-        uint8_t crc = calculate_crc8(tx_buf + sizeof(header_word), body_len);
-        memcpy(tx_buf + body_len, &crc, sizeof(crc));
-        crc_size = 1;
-      }
+        crc_size = (body_len > 14) ? 4 : 1;
     }
-    size_t total = body_len + crc_size;
 
-    if (ctx->inject_undersize_body_err) {
-      uint16_t short_len = get_random_int() % total;
-      total = short_len;
-    } else if (ctx->inject_oversize_body_err) {
-      uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-      for (uint16_t i = 0; i < extra_len; i++) {
-        tx_buf[sizeof(header_word) + total + i] = (uint8_t)(get_random_int() & 0xFF);
-      }
-      total += extra_len;
+    write_hdr.header = occp_encode_header_word(OCCP_WRITE, body_len, has_body_crc);
+    write_hdr.addr = addr;
+    write_hdr.write_length = byte_length;
+    if (ctx->invalid_message_length_zero_inject_enable) {
+        /* Force the request's internal message length to zero */
+        write_hdr.write_length = 0;
+    }
+    write_hdr.rwrite_attr = 0;
+    write_hdr.reserved = 0;
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&write_hdr,
+                                          sizeof(write_hdr.header));
+    }
+
+    uint8_t *tx_buf = occp_tx_buf;
+    size_t header_size = sizeof(write_hdr.header);
+    memcpy(tx_buf, &write_hdr.header, header_size);
+
+    size_t total_bytes;
+    size_t meta_len = (size_t)(data_start_idx - (int)header_size);
+    size_t meta_copy_len = (body_len <= meta_len) ? body_len : meta_len;
+    if (meta_copy_len > 0) {
+        memcpy(tx_buf + header_size, ((uint8_t *)&write_hdr) + header_size, meta_copy_len);
+    }
+    size_t curr_off = header_size + meta_copy_len;
+    size_t remaining = (size_t)body_len - meta_copy_len;
+    if (remaining > 0) {
+        size_t data_copy_len = (remaining <= byte_length) ? remaining : byte_length;
+        if (data_copy_len > 0) {
+            memcpy(tx_buf + curr_off, data, data_copy_len);
+            curr_off += data_copy_len;
+            remaining -= data_copy_len;
+        }
+        /* Pad with random bytes if injected length exceeds available metadata + data */
+        for (size_t i = 0; i < remaining; i++) {
+            tx_buf[curr_off + i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        curr_off += remaining;
+    }
+
+    /* Append CRC if requested by header flag */
+    if (has_body_crc && body_len > 0) {
+        const uint8_t *body_ptr = tx_buf + header_size;
+        if (crc_size == 4) {
+            uint32_t crc = calculate_crc32((uint8_t *)body_ptr, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+        } else {
+            uint8_t crc = calculate_crc8((uint8_t *)body_ptr, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+        }
+    }
+    total_bytes = header_size + body_len + ((has_body_crc && body_len > 0) ? crc_size : 0);
+
+    /* Undersize body injection: just shorten total_bytes to header + short_len (no CRC) */
+    if (ctx->inject_undersize_body_err && body_len > 0) {
+        uint16_t short_len = get_random_int() % (total_bytes - header_size);
+        total_bytes = header_size + short_len;
+    }
+
+    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    if (ctx->inject_oversize_body_err) {
+        uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+        for (uint16_t i = 0; i < extra_len; i++) {
+            tx_buf[total_bytes + i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        total_bytes += extra_len;
+    }
+
+    inject_header_errors_if_enabled(ctx, tx_buf, header_size);
+    if (has_body_crc && body_len > 0) {
+        bool use_crc32 = (crc_size == 4);
+        inject_body_errors_if_enabled(ctx, tx_buf + body_start, body_len, use_crc32);
     }
 
     if (ctx->type == DRIVER_TYPE_I3C) {
-      ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, sizeof(header_word) + total);
+        if (ctx->drv.i3c_drv == NULL) {
+            simputs("I3C driver not initialized\n");
+            return OCCP_INTERFACE_ERR;
+        }
+        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, total_bytes);
     } else {
-      ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, sizeof(header_word) + total, ctx->timeout);
+        if (ctx->drv.i2c_drv == NULL) {
+            simputs("I2C driver not initialized\n");
+            return OCCP_INTERFACE_ERR;
+        }
+        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, total_bytes,
+                                                    ctx->timeout);
     }
-  } else {
-    // get version path
-    /* Oversize body injection on GET_VERSION: append dummy bytes and send once */
+
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (retval != OCCP_ERROR_NONE) {
+        return retval;
+    }
+
+    return OCCP_SUCCESS;
+}
+
+int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr, uint8_t *recv,
+                           uint16_t byte_length) {
+    occp_read_header_t read_hdr;
+    /* Body CRC present: random unless forcing injection, in which case always present */
+    bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
+                            ? true
+                            : ((get_random_int() % 2) == 0);
+    uint16_t body_len = (uint16_t)(sizeof(occp_read_header_t) - sizeof(occp_req_header_t));
+
+    /* Determine injected body length with independent injections */
+    uint16_t injected_len = body_len;
+    if (ctx->invalid_len_err_inject_enable) {
+        uint16_t lower;
+        if (body_len > 1) {
+            uint16_t max_lower = (uint16_t)(body_len - 1);
+            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+        } else {
+            lower = 1; /* fallback within bounds */
+        }
+        uint16_t upper_min = (uint16_t)(body_len + 1);
+        uint16_t upper_max = 0x100;
+        uint16_t upper =
+            (upper_min <= upper_max)
+                ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1)))
+                : upper_max;
+        const uint16_t candidates[3] = {0, lower, upper};
+        injected_len = candidates[get_random_int() % 3];
+        simputshex16("OCCP: Random invalid READ length: ", injected_len);
+    }
+
+    read_hdr.header = occp_encode_header_word(OCCP_READ, body_len, has_body_crc);
+    read_hdr.addr = addr;
+    read_hdr.read_length = byte_length;
+    if (ctx->invalid_message_length_zero_inject_enable) {
+        /* Force the request's internal message length to zero */
+        read_hdr.read_length = 0;
+    }
+    read_hdr.read_attr = 0;
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&read_hdr,
+                                          sizeof(read_hdr.header));
+    }
+
+    /* Override the length field after encoding */
+    if (ctx->invalid_len_err_inject_enable) {
+        read_hdr.header.header_word.length = injected_len & 0x7FF;
+        /* Do not force body CRC presence based on length; honor header flag */
+        /* Recalc CRC again after length change */
+        read_hdr.header.header_crc =
+            calculate_crc8(((uint8_t *)&read_hdr.header) + 1, sizeof(read_hdr.header) - 1);
+        body_len = injected_len;
+    }
+
+    uint8_t *tx_buf = occp_tx_buf;
+    int crc_size = 0;
+    size_t tx_len;
+    size_t header_size = sizeof(read_hdr.header);
+    size_t available_body = sizeof(read_hdr) - header_size;
+    size_t copy_len = (body_len <= available_body) ? body_len : available_body;
+
+    /* Build header */
+    memcpy(tx_buf, &read_hdr.header, header_size);
+
+    /* Build body (truncate to available bytes) */
+    if (copy_len > 0) {
+        const uint8_t *body_ptr = ((const uint8_t *)&read_hdr) + header_size;
+        memcpy(tx_buf + header_size, body_ptr, copy_len);
+    }
+    /* Pad with random data if injected length exceeds struct body */
+    if (body_len > copy_len) {
+        size_t pad_len = (size_t)body_len - copy_len;
+        uint8_t *pad_ptr = tx_buf + header_size + copy_len;
+        for (size_t i = 0; i < pad_len; i++) {
+            pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+    }
+
+    /* Append CRC if requested by header flag */
+    if (has_body_crc && body_len > 0) {
+        const uint8_t *body_start = tx_buf + header_size;
+        if (body_len > 14) {
+            uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 4;
+        } else {
+            uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 1;
+        }
+    }
+
+    /* Oversize body injection: append up to 64 random bytes to tx_buf */
     if (ctx->inject_oversize_body_err) {
-      size_t base_len = sizeof(header_word);
-      uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-      for (uint16_t i = 0; i < extra_len; i++) {
-        tx_buf[base_len + i] = (uint8_t)(get_random_int() & 0xFF);
-      }
-      if (ctx->type == DRIVER_TYPE_I3C) {
-        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, base_len + extra_len);
-      } else {
-        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, base_len + extra_len, ctx->timeout);
-      }
+        size_t base_len = header_size + body_len + crc_size;
+        uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+        for (uint16_t i = 0; i < extra_len; i++) {
+            tx_buf[base_len + i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        tx_len = base_len + extra_len;
+    } else if (ctx->inject_undersize_body_err && body_len > 0) {
+        uint16_t short_len = get_random_int() % (body_len + crc_size);
+        tx_len = header_size + short_len;
     } else {
-      if (ctx->type == DRIVER_TYPE_I3C) {
-        /* Optional header injection for GET* header */
-        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t*)&header_word, sizeof(header_word));
-      } else {
-        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t*)&header_word, sizeof(header_word), ctx->timeout);
-      }
+        tx_len = header_size + body_len + crc_size;
     }
-  }
 
-  bool expect_status_disabled = ctx->status_reporting_disabled && is_status_command;
-  occp_error_code_t prev_expected_code = ctx->exp_response_code;
-  if (expect_status_disabled) {
-    ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
-  }
-
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  if (expect_status_disabled) {
-    ctx->exp_response_code = prev_expected_code;
-  }
-  if (retval != OCCP_ERROR_NONE) {
-    return retval;
-  }
-  if (ctx->exp_timeout) {
-    return OCCP_SUCCESS;
-  }
-
-  if (expect_status_disabled) {
-    if (statusBuff != NULL) {
-      *statusBuff = 0;
+    /* Optional error injections */
+    inject_header_errors_if_enabled(ctx, tx_buf, header_size);
+    if (has_body_crc && body_len > 0) {
+        bool use_crc32 = (crc_size == 4);
+        inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
     }
-    return OCCP_SUCCESS;
-  }
 
-  if (!resp_hdr.error) {
-    /* Map legacy cmd to header-based */
-    // no direct bus reads; body is read via verified helper
-    if (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) {
-      /* Version response is 4 bytes */
-      uint8_t body_buf[16] = {0};
-      uint16_t body_len = 0;
-      int rc = read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
-                                        body_buf, sizeof(body_buf), &body_len);
-      if (rc != OCCP_SUCCESS) return rc;
-      if (body_len != 4) return OCCP_ERR;
-      memcpy(statusBuff, body_buf, 4);
-      return OCCP_SUCCESS;
+    if (ctx->type == DRIVER_TYPE_I3C) {
+        if (ctx->drv.i3c_drv == NULL) {
+            simputs("I3C driver not initialized\n");
+            return OCCP_INTERFACE_ERR;
+        }
+        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
     } else {
-      /* GET_STATUS: 4 bytes BE */
-      uint8_t body_buf[16] = {0};
-      uint16_t body_len = 0;
-      int rc = read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
-                                        body_buf, sizeof(body_buf), &body_len);
-      if (rc != OCCP_SUCCESS) return rc;
-      if (body_len != 4) return OCCP_ERR;
-      memcpy(statusBuff, body_buf, 4);
-      // TODO: investigate the new status command format given it is truncated to 16 bits now
-      //*statusBuff &= 0xFFFF;
-      return OCCP_SUCCESS;
+        if (ctx->drv.i2c_drv == NULL) {
+            simputs("I2C driver not initialized\n");
+            return OCCP_INTERFACE_ERR;
+        }
+        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
     }
-  }
-}
 
-int occp_send_get_version_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *version)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_VERSION, version);
-}
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (retval != OCCP_ERROR_NONE) {
+        return retval;
+    }
+    /* If we injected an unsupported status ID, an error response is expected and
+     * already validated inside occp_get_response_header() using ctx->exp_response_code.
+     * Treat that as success and reset expectation. */
+    if (ctx->unsupported_status_id_inject_enable && resp_hdr.error) {
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        return OCCP_SUCCESS;
+    }
+    if (ctx->exp_timeout) {
+        return OCCP_SUCCESS;
+    }
 
-int occp_send_get_version_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *version)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_VERSION_BOOT, version);
-}
-
-int occp_send_get_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  bool status_disabled = ctx->status_reporting_disabled;
-  if (status_disabled && status != NULL) {
-    *status = 0;
-  }
-
-  // call each occp get status command and concatenate the results for backwards compatibility
-  uint32_t boot_status = 0;
-  uint32_t interface_status = 0;
-  uint32_t command_count = 0;
-  uint32_t error_code = 0;
-  int retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_BOOT_STATUS, &boot_status);
-  if (retval != OCCP_SUCCESS) {
-    return retval;
-  }
-  if (!status_disabled) {
-    increment_cmd_count(ctx);
-  }
-  retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_INTERFACE_STATUS, &interface_status);
-  if (retval != OCCP_SUCCESS) {
-    return retval;
-  }
-  if (!status_disabled) {
-    increment_cmd_count(ctx);
-  }
-  retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, &error_code);
-  if (retval != OCCP_SUCCESS) {
-    return retval;
-  }
-  if (!status_disabled) {
-    increment_cmd_count(ctx);
-  }
-  // send command count last to avoid incrementing the command count after the command is sent
-  retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_COMMAND_COUNT, &command_count);
-  if (retval != OCCP_SUCCESS) {
-    return retval;
-  }
-  if (status_disabled) {
-    simputs("STATUS_RPT_DISABLE strap active; GET_STATUS family commands returned expected errors\n");
+    if (!resp_hdr.error) {
+        static uint8_t recv_buff[MAX_OCCP_READ_SIZE + 4];
+        uint16_t data_len = 0;
+        int rc = read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
+                                          recv_buff, sizeof(recv_buff), &data_len);
+        if (rc != OCCP_SUCCESS) return rc;
+        simputshex16("OCCP_READ verified data length: ", data_len);
+        memcpy(recv, recv_buff, data_len);
+    }
     return OCCP_SUCCESS;
-  }
+}
 
-  *status = ((boot_status & 0xf)) | ((interface_status & 0xf) << 4) | ((command_count & 0xff) << 8) | ((error_code & 0xff) << 16);
-  return retval;
+static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t cmd,
+                                         uint32_t *statusBuff) {
+    bool is_status_command = false;
+    switch (cmd) {
+    case OCCP_GET_VERSION:
+        simputs("Sending GET_VERSION command\n");
+        break;
+    case OCCP_GET_VERSION_BOOT:
+        simputs("Sending GET_VERSION_BOOT command\n");
+        break;
+    case OCCP_GET_OCCP_BOOT_STATUS:
+        simputs("Sending GET_OCCP_BOOT_STATUS command\n");
+        is_status_command = true;
+        break;
+    case OCCP_GET_OCCP_INTERFACE_STATUS:
+        simputs("Sending GET_OCCP_INTERFACE_STATUS command\n");
+        is_status_command = true;
+        break;
+    case OCCP_GET_OCCP_COMMAND_COUNT:
+        simputs("Sending GET_OCCP_COMMAND_COUNT command\n");
+        is_status_command = true;
+        break;
+    case OCCP_GET_OCCP_ERROR_CODE:
+        simputs("Sending GET_OCCP_ERROR_CODE command\n");
+        is_status_command = true;
+        break;
+    case OCCP_GET_SEP_STATUS:
+        simputs("Sending GET_SEP_STATUS command\n");
+        is_status_command = true;
+        break;
+    case OCCP_GET_SMC_STATUS:
+        simputs("Sending GET_SMC_STATUS command\n");
+        is_status_command = true;
+        break;
+    default:
+        simputs("Unknown command for generic status\n");
+        return OCCP_INVALID_CMD;
+    }
+
+    /* Randomize body CRC presence for GET_* commands (except version) */
+    uint16_t body_len = (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) ? 0 : 2;
+    bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
+                            ? (body_len > 0)
+                            : (((get_random_int() % 2) == 0) && (body_len > 0));
+
+    /* Apply randomized invalid length injection if enabled */
+    uint16_t injected_len = body_len;
+    bool inject_len_err = ctx->invalid_len_err_inject_enable;
+    if (inject_len_err) {
+        if (body_len == 0) {
+            /* Expected 0 for GET_VERSION/GET_VERSION_BOOT; choose 1..0x7FF */
+            injected_len = (uint16_t)(1 + (get_random_int() % 0x100));
+        } else {
+            uint16_t lower;
+            if (body_len > 1) {
+                uint16_t max_lower = (uint16_t)(body_len - 1);
+                lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+            } else {
+                lower = 1; /* fallback within bounds */
+            }
+            uint16_t upper_min = (uint16_t)(body_len + 1);
+            uint16_t upper_max = 0x7FF;
+            uint16_t upper =
+                (upper_min <= upper_max)
+                    ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1)))
+                    : upper_max;
+            const uint16_t candidates[3] = {0, lower, upper};
+            injected_len = candidates[get_random_int() % 3];
+        }
+        simputshex16("OCCP: Random invalid GET length: ", injected_len);
+    }
+
+    occp_req_header_t header_word = occp_encode_header_word(cmd, body_len, has_body_crc);
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&header_word,
+                                          sizeof(header_word));
+    }
+
+    /* Override the length field after encoding */
+    if (inject_len_err) {
+        header_word.header_word.length = injected_len & 0x7FF;
+        /* Recalculate header CRC with the new length */
+        header_word.header_crc =
+            calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
+        /* Do not force body CRC presence based on length; honor header flag */
+        /* Recalc CRC again after length change */
+        header_word.header_crc =
+            calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
+        body_len = injected_len;
+    }
+
+    inject_header_errors_if_enabled(ctx, (uint8_t *)&header_word, sizeof(header_word));
+    //  if (ctx->type == DRIVER_TYPE_I3C) {
+    //    /* Optional header injection for GET* header */
+    //    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t*)&header_word,
+    //    sizeof(header_word));
+    //  } else {
+    //    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t*)&header_word,
+    //    sizeof(header_word), ctx->timeout);
+    //  }
+    uint8_t *tx_buf = occp_tx_buf;
+
+    memcpy(tx_buf, &header_word, sizeof(header_word));
+
+    // send status ID for non-version commands
+    // values not in spec yet
+    if (cmd != OCCP_GET_VERSION && cmd != OCCP_GET_VERSION_BOOT) {
+        uint16_t status_id = 0;
+        switch (cmd) {
+        case OCCP_GET_OCCP_BOOT_STATUS:
+            status_id = 0;
+            break;
+        case OCCP_GET_OCCP_INTERFACE_STATUS:
+            status_id = 1;
+            break;
+        case OCCP_GET_OCCP_COMMAND_COUNT:
+            status_id = 2;
+            break;
+        case OCCP_GET_OCCP_ERROR_CODE:
+            status_id = 3;
+            break;
+        case OCCP_GET_SEP_STATUS:
+            status_id = 0x8000;
+            break;
+        case OCCP_GET_SMC_STATUS:
+            status_id = 0x8001;
+            break;
+        default:
+            status_id = 0;
+            break;
+        }
+
+        /* Override with unsupported status ID if injection is enabled */
+        if (ctx->unsupported_status_id_inject_enable) {
+            /* Pick a random invalid status_id not in {0,1,2,3,0x8000,0x8001} */
+            uint16_t candidate;
+            do {
+                candidate = (uint16_t)(get_random_int() & 0xFFFF);
+            } while (candidate == 0u || candidate == 1u || candidate == 2u || candidate == 3u ||
+                     candidate == 0x8000u || candidate == 0x8001u);
+            status_id = candidate;
+            simputshex16("OCCP: Injecting unsupported status_id 0x", status_id);
+        }
+
+        /* Unified body path for GET_* (non-version) with random padding */
+        memset(tx_buf + sizeof(header_word), 0, body_len + 4);
+        size_t copy_size = (body_len < sizeof(status_id)) ? body_len : sizeof(status_id);
+        if (copy_size > 0) memcpy(tx_buf + sizeof(header_word), &status_id, copy_size);
+        if (body_len > copy_size) {
+            size_t pad_len = (size_t)body_len - copy_size;
+            uint8_t *pad_ptr = tx_buf + sizeof(header_word) + copy_size;
+            for (size_t i = 0; i < pad_len; i++) pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        int crc_size = 0;
+        if (has_body_crc && body_len > 0) {
+            if (body_len > 14) {
+                uint32_t crc = calculate_crc32(tx_buf + sizeof(header_word), body_len);
+                if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                    flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
+                    simputs("OCCP: Corrupted body CRC\n");
+                }
+                memcpy(tx_buf + sizeof(header_word) + body_len, &crc, sizeof(crc));
+                crc_size = 4;
+            } else {
+                uint8_t crc = calculate_crc8(tx_buf + sizeof(header_word), body_len);
+                if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                    flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
+                    simputs("OCCP: Corrupted body CRC\n");
+                }
+                memcpy(tx_buf + sizeof(header_word) + body_len, &crc, sizeof(crc));
+                crc_size = 1;
+            }
+        }
+        if (has_body_crc && body_len > 0) {
+            bool use_crc32 = (crc_size == 4);
+            inject_body_errors_if_enabled(ctx, tx_buf + sizeof(header_word), body_len, use_crc32);
+        }
+        size_t total = body_len + crc_size;
+
+        if (ctx->inject_oversize_body_err) {
+            /* Oversize body injection: append up to 64 random bytes to tx_buf */
+            uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+            for (uint16_t i = 0; i < extra_len; i++) {
+                tx_buf[sizeof(header_word) + total + i] = (uint8_t)(get_random_int() & 0xFF);
+            }
+            total += extra_len;
+        } else if (ctx->inject_undersize_body_err) {
+            size_t short_len = get_random_int() % total;
+            total = short_len;
+        }
+
+        if (ctx->type == DRIVER_TYPE_I3C) {
+            ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf,
+                                                  sizeof(header_word) + total);
+        } else {
+            ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf,
+                                                        sizeof(header_word) + total, ctx->timeout);
+        }
+        /* No additional send here; packet was already transmitted above. */
+    } else if (inject_len_err && body_len > 0) {
+        /* Unified body path for GET_VERSION with injected non-zero length + random padding */
+        for (uint16_t i = 0; i < body_len; i++)
+            tx_buf[sizeof(header_word) + i] = (uint8_t)(get_random_int() & 0xFF);
+        int crc_size = 0;
+        if (has_body_crc) {
+            if (body_len > 14) {
+                uint32_t crc = calculate_crc32(tx_buf + sizeof(header_word), body_len);
+                memcpy(tx_buf + body_len, &crc, sizeof(crc));
+                crc_size = 4;
+            } else {
+                uint8_t crc = calculate_crc8(tx_buf + sizeof(header_word), body_len);
+                memcpy(tx_buf + body_len, &crc, sizeof(crc));
+                crc_size = 1;
+            }
+        }
+        size_t total = body_len + crc_size;
+
+        if (ctx->inject_undersize_body_err) {
+            uint16_t short_len = get_random_int() % total;
+            total = short_len;
+        } else if (ctx->inject_oversize_body_err) {
+            uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+            for (uint16_t i = 0; i < extra_len; i++) {
+                tx_buf[sizeof(header_word) + total + i] = (uint8_t)(get_random_int() & 0xFF);
+            }
+            total += extra_len;
+        }
+
+        if (ctx->type == DRIVER_TYPE_I3C) {
+            ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf,
+                                                  sizeof(header_word) + total);
+        } else {
+            ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf,
+                                                        sizeof(header_word) + total, ctx->timeout);
+        }
+    } else {
+        // get version path
+        /* Oversize body injection on GET_VERSION: append dummy bytes and send once */
+        if (ctx->inject_oversize_body_err) {
+            size_t base_len = sizeof(header_word);
+            uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+            for (uint16_t i = 0; i < extra_len; i++) {
+                tx_buf[base_len + i] = (uint8_t)(get_random_int() & 0xFF);
+            }
+            if (ctx->type == DRIVER_TYPE_I3C) {
+                ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf,
+                                                      base_len + extra_len);
+            } else {
+                ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf,
+                                                            base_len + extra_len, ctx->timeout);
+            }
+        } else {
+            if (ctx->type == DRIVER_TYPE_I3C) {
+                /* Optional header injection for GET* header */
+                ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr,
+                                                      (uint8_t *)&header_word, sizeof(header_word));
+            } else {
+                ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(
+                    ctx->drv.i2c_drv, (uint8_t *)&header_word, sizeof(header_word), ctx->timeout);
+            }
+        }
+    }
+
+    bool expect_status_disabled = ctx->status_reporting_disabled && is_status_command;
+    occp_error_code_t prev_expected_code = ctx->exp_response_code;
+    if (expect_status_disabled) {
+        ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
+    }
+
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (expect_status_disabled) {
+        ctx->exp_response_code = prev_expected_code;
+    }
+    if (retval != OCCP_ERROR_NONE) {
+        return retval;
+    }
+    if (ctx->exp_timeout) {
+        return OCCP_SUCCESS;
+    }
+
+    if (expect_status_disabled) {
+        if (statusBuff != NULL) {
+            *statusBuff = 0;
+        }
+        return OCCP_SUCCESS;
+    }
+
+    if (!resp_hdr.error) {
+        /* Map legacy cmd to header-based */
+        // no direct bus reads; body is read via verified helper
+        if (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) {
+            /* Version response is 4 bytes */
+            uint8_t body_buf[16] = {0};
+            uint16_t body_len = 0;
+            int rc =
+                read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
+                                         body_buf, sizeof(body_buf), &body_len);
+            if (rc != OCCP_SUCCESS) return rc;
+            if (body_len != 4) return OCCP_ERR;
+            memcpy(statusBuff, body_buf, 4);
+            return OCCP_SUCCESS;
+        } else {
+            /* GET_STATUS: 4 bytes BE */
+            uint8_t body_buf[16] = {0};
+            uint16_t body_len = 0;
+            int rc =
+                read_body_and_verify_crc(ctx, i3c_addr, resp_hdr.body_crc_present, resp_hdr.length,
+                                         body_buf, sizeof(body_buf), &body_len);
+            if (rc != OCCP_SUCCESS) return rc;
+            if (body_len != 4) return OCCP_ERR;
+            memcpy(statusBuff, body_buf, 4);
+            // TODO: investigate the new status command format given it is truncated to 16 bits now
+            //*statusBuff &= 0xFFFF;
+            return OCCP_SUCCESS;
+        }
+    }
+}
+
+int occp_send_get_version_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *version) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_VERSION, version);
+}
+
+int occp_send_get_version_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *version) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_VERSION_BOOT, version);
+}
+
+int occp_send_get_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status) {
+    bool status_disabled = ctx->status_reporting_disabled;
+    if (status_disabled && status != NULL) {
+        *status = 0;
+    }
+
+    // call each occp get status command and concatenate the results for backwards compatibility
+    uint32_t boot_status = 0;
+    uint32_t interface_status = 0;
+    uint32_t command_count = 0;
+    uint32_t error_code = 0;
+    int retval =
+        occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_BOOT_STATUS, &boot_status);
+    if (retval != OCCP_SUCCESS) {
+        return retval;
+    }
+    if (!status_disabled) {
+        increment_cmd_count(ctx);
+    }
+    retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_INTERFACE_STATUS,
+                                           &interface_status);
+    if (retval != OCCP_SUCCESS) {
+        return retval;
+    }
+    if (!status_disabled) {
+        increment_cmd_count(ctx);
+    }
+    retval = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, &error_code);
+    if (retval != OCCP_SUCCESS) {
+        return retval;
+    }
+    if (!status_disabled) {
+        increment_cmd_count(ctx);
+    }
+    // send command count last to avoid incrementing the command count after the command is sent
+    retval =
+        occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_COMMAND_COUNT, &command_count);
+    if (retval != OCCP_SUCCESS) {
+        return retval;
+    }
+    if (status_disabled) {
+        simputs("STATUS_RPT_DISABLE strap active; GET_STATUS family commands returned expected "
+                "errors\n");
+        return OCCP_SUCCESS;
+    }
+
+    *status = ((boot_status & 0xf)) | ((interface_status & 0xf) << 4) |
+              ((command_count & 0xff) << 8) | ((error_code & 0xff) << 16);
+    return retval;
 }
 
 static sep_ring_buffer_model_t sep_ring_buffer_model_ctx = {0};
 static bool sep_ring_buffer_model_initialized = false;
 
-static sep_ring_buffer_model_t *get_sep_ring_buffer_model(void)
-{
-  if (!sep_ring_buffer_model_initialized) {
-    sep_ring_buffer_model_init(&sep_ring_buffer_model_ctx);
-    sep_ring_buffer_model_initialized = true;
-  }
+static sep_ring_buffer_model_t *get_sep_ring_buffer_model(void) {
+    if (!sep_ring_buffer_model_initialized) {
+        sep_ring_buffer_model_init(&sep_ring_buffer_model_ctx);
+        sep_ring_buffer_model_initialized = true;
+    }
 
-  return &sep_ring_buffer_model_ctx;
+    return &sep_ring_buffer_model_ctx;
 }
 
-static bool occp_should_validate_sep_ring_buffer(const test_context_t *ctx)
-{
-  if (ctx == NULL) {
+static bool occp_should_validate_sep_ring_buffer(const test_context_t *ctx) {
+    if (ctx == NULL) {
+        return true;
+    }
+
+    if (ctx->exp_timeout) {
+        return false;
+    }
+
+    if (ctx->exp_response_code != OCCP_ERROR_NONE) {
+        return false;
+    }
+
+    if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) {
+        return false;
+    }
+
+    if (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) {
+        return false;
+    }
+
+    if (ctx->invalid_header_inject_mode != OCCP_INVALID_HDR_INJECT_NONE) {
+        return false;
+    }
+
+    if (ctx->invalid_len_err_inject_enable || ctx->inject_undersize_header_err ||
+        ctx->inject_undersize_body_err || ctx->inject_oversize_body_err ||
+        ctx->invalid_message_length_zero_inject_enable) {
+        return false;
+    }
+
+    if (ctx->unsupported_status_id_inject_enable) {
+        return false;
+    }
+
+    if (ctx->status_reporting_disabled) {
+        return false;
+    }
+
     return true;
-  }
-
-  if (ctx->exp_timeout) {
-    return false;
-  }
-
-  if (ctx->exp_response_code != OCCP_ERROR_NONE) {
-    return false;
-  }
-
-  if (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) {
-    return false;
-  }
-
-  if (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) {
-    return false;
-  }
-
-  if (ctx->invalid_header_inject_mode != OCCP_INVALID_HDR_INJECT_NONE) {
-    return false;
-  }
-
-  if (ctx->invalid_len_err_inject_enable ||
-      ctx->inject_undersize_header_err ||
-      ctx->inject_undersize_body_err ||
-      ctx->inject_oversize_body_err ||
-      ctx->invalid_message_length_zero_inject_enable) {
-    return false;
-  }
-
-  if (ctx->unsupported_status_id_inject_enable) {
-    return false;
-  }
-
-  if (ctx->status_reporting_disabled) {
-    return false;
-  }
-
-  return true;
 }
 
-int occp_send_get_sep_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  sep_ring_buffer_model_t *model = get_sep_ring_buffer_model();
-  bool validate = occp_should_validate_sep_ring_buffer(ctx);
-  bool expect_empty;
-  uint32_t expected_value = 0;
+int occp_send_get_sep_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status) {
+    sep_ring_buffer_model_t *model = get_sep_ring_buffer_model();
+    bool validate = occp_should_validate_sep_ring_buffer(ctx);
+    bool expect_empty;
+    uint32_t expected_value = 0;
 
-  sep_ring_buffer_guard_set();
+    sep_ring_buffer_guard_set();
 
-  expect_empty = sep_ring_buffer_model_empty(model);
-  if (validate && !expect_empty) {
-    expected_value = sep_ring_buffer_model_peek(model);
-  }
-
-  int result = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_SEP_STATUS, status);
-
-  sep_ring_buffer_guard_clear();
-
-  if (result != OCCP_SUCCESS) {
-    return result;
-  }
-
-  if (!validate) {
-    return OCCP_SUCCESS;
-  }
-
-  if (expect_empty) {
-    if (*status != 0) {
-      simputs("SEP ring buffer guard: expected empty entry but received data\n");
-      simputshex32("  Unexpected value: 0x", *status);
-      return OCCP_ERR;
+    expect_empty = sep_ring_buffer_model_empty(model);
+    if (validate && !expect_empty) {
+        expected_value = sep_ring_buffer_model_peek(model);
     }
-    return OCCP_SUCCESS;
-  }
 
-  if (*status != expected_value) {
-    simputs("SEP ring buffer mismatch detected\n");
-    simputshex32("  Expected: 0x", expected_value);
-    simputshex32("  Actual:   0x", *status);
-    return OCCP_ERR;
-  } else {
-    simputs("SEP ring buffer match\n");
-  }
+    int result = occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_SEP_STATUS, status);
 
-  sep_ring_buffer_model_pop(model);
-  return OCCP_SUCCESS;
-}
+    sep_ring_buffer_guard_clear();
 
-int occp_send_get_smc_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_SMC_STATUS, status);
-}
+    if (result != OCCP_SUCCESS) {
+        return result;
+    }
 
-int occp_send_get_occp_boot_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_BOOT_STATUS, status);
-}
+    if (!validate) {
+        return OCCP_SUCCESS;
+    }
 
-int occp_send_get_occp_interface_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_INTERFACE_STATUS, status);
-}
+    if (expect_empty) {
+        if (*status != 0) {
+            simputs("SEP ring buffer guard: expected empty entry but received data\n");
+            simputshex32("  Unexpected value: 0x", *status);
+            return OCCP_ERR;
+        }
+        return OCCP_SUCCESS;
+    }
 
-int occp_send_get_occp_command_count_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_COMMAND_COUNT, status);
-}
-
-int occp_send_get_occp_error_code_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status)
-{
-  return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
-}
-
-int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr)
-{
-  occp_exec_header_t exec_hdr;
-  bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ? true : ((get_random_int() % 2) == 0);
-  uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
-
-  /* Apply randomized invalid length injection if enabled */
-  uint16_t injected_len = body_len;
-  bool inject_len_err = ctx->invalid_len_err_inject_enable;
-  if (inject_len_err) {
-    uint16_t lower;
-    if (body_len > 1) {
-      uint16_t max_lower = (uint16_t)(body_len - 1);
-      lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+    if (*status != expected_value) {
+        simputs("SEP ring buffer mismatch detected\n");
+        simputshex32("  Expected: 0x", expected_value);
+        simputshex32("  Actual:   0x", *status);
+        return OCCP_ERR;
     } else {
-      lower = 1; /* fallback within bounds */
+        simputs("SEP ring buffer match\n");
     }
-    uint16_t upper_min = (uint16_t)(body_len + 1);
-    uint16_t upper_max = 0x100;
-    uint16_t upper = (upper_min <= upper_max) ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1))) : upper_max;
-    const uint16_t candidates[3] = {0, lower, upper};
-    injected_len = candidates[get_random_int() % 3];
-    simputshex16("OCCP: Random invalid JUMP length: ", injected_len);
-  }
 
-  exec_hdr.header = occp_encode_header_word(OCCP_JUMP, body_len, has_body_crc);
-  exec_hdr.start_addr = addr;
-  // TODO: what are these?
-  exec_hdr.cpu_id = 0;
-  exec_hdr.reserved = 0;
-  exec_hdr.addr_attr = 0;
+    sep_ring_buffer_model_pop(model);
+    return OCCP_SUCCESS;
+}
 
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&exec_hdr, sizeof(exec_hdr.header));
-  }
+int occp_send_get_smc_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_SMC_STATUS, status);
+}
 
-  /* Override the length field after encoding */
-  if (inject_len_err) {
-    exec_hdr.header.header_word.length = injected_len & 0x7FF;
-    /* Recalculate header CRC with the new length */
-    exec_hdr.header.header_crc = calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
-    /* Do not force body CRC presence based on length; honor header flag */
-    /* Recalc CRC again after length change */
-    exec_hdr.header.header_crc = calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
-    body_len = injected_len;
-  }
+int occp_send_get_occp_boot_status_command(test_context_t *ctx, uint64_t i3c_addr,
+                                           uint32_t *status) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_BOOT_STATUS, status);
+}
 
-  uint8_t *tx_buf = occp_tx_buf;
-  int crc_size = 0;
-  size_t tx_len;
-  size_t header_size = sizeof(exec_hdr.header);
-  size_t available_body = sizeof(exec_hdr) - header_size;
-  size_t copy_len = (body_len <= available_body) ? body_len : available_body;
+int occp_send_get_occp_interface_status_command(test_context_t *ctx, uint64_t i3c_addr,
+                                                uint32_t *status) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_INTERFACE_STATUS, status);
+}
 
-  /* Build header */
-  memcpy(tx_buf, &exec_hdr.header, header_size);
+int occp_send_get_occp_command_count_command(test_context_t *ctx, uint64_t i3c_addr,
+                                             uint32_t *status) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_COMMAND_COUNT, status);
+}
 
-  /* Build body (truncate to available bytes) */
-  if (copy_len > 0) {
-    const uint8_t *body_ptr = ((const uint8_t *)&exec_hdr) + header_size;
-    memcpy(tx_buf + header_size, body_ptr, copy_len);
-  }
-  /* Pad with random data if injected length exceeds struct body */
-  if (body_len > copy_len) {
-    size_t pad_len = (size_t)body_len - copy_len;
-    uint8_t *pad_ptr = tx_buf + header_size + copy_len;
-    for (size_t i = 0; i < pad_len; i++) {
-      pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+int occp_send_get_occp_error_code_command(test_context_t *ctx, uint64_t i3c_addr,
+                                          uint32_t *status) {
+    return occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_ERROR_CODE, status);
+}
+
+int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr) {
+    occp_exec_header_t exec_hdr;
+    bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
+                            ? true
+                            : ((get_random_int() % 2) == 0);
+    uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
+
+    /* Apply randomized invalid length injection if enabled */
+    uint16_t injected_len = body_len;
+    bool inject_len_err = ctx->invalid_len_err_inject_enable;
+    if (inject_len_err) {
+        uint16_t lower;
+        if (body_len > 1) {
+            uint16_t max_lower = (uint16_t)(body_len - 1);
+            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+        } else {
+            lower = 1; /* fallback within bounds */
+        }
+        uint16_t upper_min = (uint16_t)(body_len + 1);
+        uint16_t upper_max = 0x100;
+        uint16_t upper =
+            (upper_min <= upper_max)
+                ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1)))
+                : upper_max;
+        const uint16_t candidates[3] = {0, lower, upper};
+        injected_len = candidates[get_random_int() % 3];
+        simputshex16("OCCP: Random invalid JUMP length: ", injected_len);
     }
-  }
 
-  /* Append CRC if requested by header flag */
-  if (has_body_crc && body_len > 0) {
-    const uint8_t *body_start = tx_buf + header_size;
-    if (body_len > 14) {
-      uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 4;
+    exec_hdr.header = occp_encode_header_word(OCCP_JUMP, body_len, has_body_crc);
+    exec_hdr.start_addr = addr;
+    // TODO: what are these?
+    exec_hdr.cpu_id = 0;
+    exec_hdr.reserved = 0;
+    exec_hdr.addr_attr = 0;
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&exec_hdr,
+                                          sizeof(exec_hdr.header));
+    }
+
+    /* Override the length field after encoding */
+    if (inject_len_err) {
+        exec_hdr.header.header_word.length = injected_len & 0x7FF;
+        /* Recalculate header CRC with the new length */
+        exec_hdr.header.header_crc =
+            calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
+        /* Do not force body CRC presence based on length; honor header flag */
+        /* Recalc CRC again after length change */
+        exec_hdr.header.header_crc =
+            calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
+        body_len = injected_len;
+    }
+
+    uint8_t *tx_buf = occp_tx_buf;
+    int crc_size = 0;
+    size_t tx_len;
+    size_t header_size = sizeof(exec_hdr.header);
+    size_t available_body = sizeof(exec_hdr) - header_size;
+    size_t copy_len = (body_len <= available_body) ? body_len : available_body;
+
+    /* Build header */
+    memcpy(tx_buf, &exec_hdr.header, header_size);
+
+    /* Build body (truncate to available bytes) */
+    if (copy_len > 0) {
+        const uint8_t *body_ptr = ((const uint8_t *)&exec_hdr) + header_size;
+        memcpy(tx_buf + header_size, body_ptr, copy_len);
+    }
+    /* Pad with random data if injected length exceeds struct body */
+    if (body_len > copy_len) {
+        size_t pad_len = (size_t)body_len - copy_len;
+        uint8_t *pad_ptr = tx_buf + header_size + copy_len;
+        for (size_t i = 0; i < pad_len; i++) {
+            pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+    }
+
+    /* Append CRC if requested by header flag */
+    if (has_body_crc && body_len > 0) {
+        const uint8_t *body_start = tx_buf + header_size;
+        if (body_len > 14) {
+            uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 4;
+        } else {
+            uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 1;
+        }
+    }
+
+    /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
+    /* Optional error injections */
+    inject_header_errors_if_enabled(ctx, tx_buf, header_size);
+    if (has_body_crc && body_len > 0) {
+        bool use_crc32 = (crc_size == 4);
+        inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
+    }
+
+    if (ctx->inject_undersize_body_err && body_len > 0) {
+        uint16_t short_len = get_random_int() % (body_len + crc_size);
+        tx_len = header_size + short_len;
     } else {
-      uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 1;
+        tx_len = header_size + body_len + crc_size;
     }
-  }
 
-  /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
-  /* Optional error injections */
-  inject_header_errors_if_enabled(ctx, tx_buf, header_size);
-  if (has_body_crc && body_len > 0) {
-    bool use_crc32 = (crc_size == 4);
-    inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
-  }
-
-  if (ctx->inject_undersize_body_err && body_len > 0) {
-    uint16_t short_len = get_random_int() % (body_len + crc_size);
-    tx_len = header_size + short_len;
-  } else {
-    tx_len = header_size + body_len + crc_size;
-  }
-
-  /* Oversize body injection: append up to 64 random bytes to tx_buf */
-  if (ctx->inject_oversize_body_err) {
-    uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-    for (uint16_t i = 0; i < extra_len; i++) {
-      tx_buf[tx_len + i] = (uint8_t)(get_random_int() & 0xFF);
+    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    if (ctx->inject_oversize_body_err) {
+        uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+        for (uint16_t i = 0; i < extra_len; i++) {
+            tx_buf[tx_len + i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        tx_len += extra_len;
     }
-    tx_len += extra_len;
-  }
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
-  } else {
-    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
-  }
+    if (ctx->type == DRIVER_TYPE_I3C) {
+        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
+    } else {
+        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
+    }
 
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
-  if (retval != OCCP_ERROR_NONE) {
-    return retval;
-  }
-  return OCCP_SUCCESS;
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (retval != OCCP_ERROR_NONE) {
+        return retval;
+    }
+    return OCCP_SUCCESS;
 }
 
 int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr) {
 
-  occp_exec_header_t exec_hdr;
-  bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ? true : ((get_random_int() % 2) == 0);
-  uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
+    occp_exec_header_t exec_hdr;
+    bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
+                            ? true
+                            : ((get_random_int() % 2) == 0);
+    uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
 
-  /* Apply randomized invalid length injection if enabled */
-  uint16_t injected_len = body_len;
-  bool inject_len_err = ctx->invalid_len_err_inject_enable;
-  if (inject_len_err) {
-    uint16_t lower;
-    if (body_len > 1) {
-      uint16_t max_lower = (uint16_t)(body_len - 1);
-      lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+    /* Apply randomized invalid length injection if enabled */
+    uint16_t injected_len = body_len;
+    bool inject_len_err = ctx->invalid_len_err_inject_enable;
+    if (inject_len_err) {
+        uint16_t lower;
+        if (body_len > 1) {
+            uint16_t max_lower = (uint16_t)(body_len - 1);
+            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+        } else {
+            lower = 1; /* fallback within bounds */
+        }
+        uint16_t upper_min = (uint16_t)(body_len + 1);
+        uint16_t upper_max = 0x100;
+        uint16_t upper =
+            (upper_min <= upper_max)
+                ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1)))
+                : upper_max;
+        const uint16_t candidates[3] = {0, lower, upper};
+        injected_len = candidates[get_random_int() % 3];
+        simputshex16("OCCP: Random invalid VALIDATE_BOOT length: ", injected_len);
+    }
+
+    exec_hdr.header = occp_encode_header_word(OCCP_VALIDATE_BOOT, body_len, has_body_crc);
+    exec_hdr.start_addr = addr;
+    exec_hdr.cpu_id = 0;
+    exec_hdr.reserved = 0;
+    exec_hdr.addr_attr = 0;
+
+    if (ctx->inject_undersize_header_err) {
+        return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&exec_hdr,
+                                          sizeof(exec_hdr.header));
+    }
+
+    /* Override the length field after encoding */
+    if (inject_len_err) {
+        exec_hdr.header.header_word.length = injected_len & 0x7FF;
+        /* Recalculate header CRC with the new length */
+        exec_hdr.header.header_crc =
+            calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
+        /* Do not force body CRC presence based on length; honor header flag */
+        /* Recalc CRC again after length change */
+        exec_hdr.header.header_crc =
+            calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
+        body_len = injected_len;
+    }
+
+    uint8_t *tx_buf = occp_tx_buf;
+    int crc_size = 0;
+    size_t tx_len;
+    size_t header_size = sizeof(exec_hdr.header);
+    size_t available_body = sizeof(exec_hdr) - header_size;
+    size_t copy_len = (body_len <= available_body) ? body_len : available_body;
+
+    /* Build header */
+    memcpy(tx_buf, &exec_hdr.header, header_size);
+
+    /* Build body (truncate to available bytes) */
+    if (copy_len > 0) {
+        const uint8_t *body_ptr = ((const uint8_t *)&exec_hdr) + header_size;
+        memcpy(tx_buf + header_size, body_ptr, copy_len);
+    }
+    /* Pad with random data if injected length exceeds struct body */
+    if (body_len > copy_len) {
+        size_t pad_len = (size_t)body_len - copy_len;
+        uint8_t *pad_ptr = tx_buf + header_size + copy_len;
+        for (size_t i = 0; i < pad_len; i++) {
+            pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+    }
+
+    /* Append CRC if requested by header flag */
+    if (has_body_crc && body_len > 0) {
+        const uint8_t *body_start = tx_buf + header_size;
+        if (body_len > 14) {
+            uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 4;
+        } else {
+            uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
+            if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
+                flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
+                simputs("OCCP: Corrupted body CRC\n");
+            }
+            memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
+            crc_size = 1;
+        }
+    }
+
+    /* Optional error injections */
+    inject_header_errors_if_enabled(ctx, tx_buf, header_size);
+    if (has_body_crc && body_len > 0) {
+        bool use_crc32 = (crc_size == 4);
+        inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
+    }
+
+    /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
+    if (ctx->inject_undersize_body_err && body_len > 0) {
+        uint16_t short_len = get_random_int() % (body_len + crc_size);
+        tx_len = header_size + short_len;
     } else {
-      lower = 1; /* fallback within bounds */
+        tx_len = header_size + body_len + crc_size;
     }
-    uint16_t upper_min = (uint16_t)(body_len + 1);
-    uint16_t upper_max = 0x100;
-    uint16_t upper = (upper_min <= upper_max) ? (uint16_t)(upper_min + (get_random_int() % (upper_max - upper_min + 1))) : upper_max;
-    const uint16_t candidates[3] = {0, lower, upper};
-    injected_len = candidates[get_random_int() % 3];
-    simputshex16("OCCP: Random invalid VALIDATE_BOOT length: ", injected_len);
-  }
 
-  exec_hdr.header = occp_encode_header_word(OCCP_VALIDATE_BOOT, body_len, has_body_crc);
-  exec_hdr.start_addr = addr;
-  exec_hdr.cpu_id = 0;
-  exec_hdr.reserved = 0;
-  exec_hdr.addr_attr = 0;
-
-  if (ctx->inject_undersize_header_err) {
-    return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&exec_hdr, sizeof(exec_hdr.header));
-  }
-
-  /* Override the length field after encoding */
-  if (inject_len_err) {
-    exec_hdr.header.header_word.length = injected_len & 0x7FF;
-    /* Recalculate header CRC with the new length */
-    exec_hdr.header.header_crc = calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
-    /* Do not force body CRC presence based on length; honor header flag */
-    /* Recalc CRC again after length change */
-    exec_hdr.header.header_crc = calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
-    body_len = injected_len;
-  }
-
-  uint8_t *tx_buf = occp_tx_buf;
-  int crc_size = 0;
-  size_t tx_len;
-  size_t header_size = sizeof(exec_hdr.header);
-  size_t available_body = sizeof(exec_hdr) - header_size;
-  size_t copy_len = (body_len <= available_body) ? body_len : available_body;
-
-  /* Build header */
-  memcpy(tx_buf, &exec_hdr.header, header_size);
-
-  /* Build body (truncate to available bytes) */
-  if (copy_len > 0) {
-    const uint8_t *body_ptr = ((const uint8_t *)&exec_hdr) + header_size;
-    memcpy(tx_buf + header_size, body_ptr, copy_len);
-  }
-  /* Pad with random data if injected length exceeds struct body */
-  if (body_len > copy_len) {
-    size_t pad_len = (size_t)body_len - copy_len;
-    uint8_t *pad_ptr = tx_buf + header_size + copy_len;
-    for (size_t i = 0; i < pad_len; i++) {
-      pad_ptr[i] = (uint8_t)(get_random_int() & 0xFF);
+    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    if (ctx->inject_oversize_body_err) {
+        uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
+        for (uint16_t i = 0; i < extra_len; i++) {
+            tx_buf[tx_len + i] = (uint8_t)(get_random_int() & 0xFF);
+        }
+        tx_len += extra_len;
     }
-  }
 
-  /* Append CRC if requested by header flag */
-  if (has_body_crc && body_len > 0) {
-    const uint8_t *body_start = tx_buf + header_size;
-    if (body_len > 14) {
-      uint32_t crc = calculate_crc32((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 32 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 4;
+    if (ctx->type == DRIVER_TYPE_I3C) {
+        ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
     } else {
-      uint8_t crc = calculate_crc8((uint8_t *)body_start, body_len);
-      if (ctx->body_crc_err_inject_mode == OCCP_CORRUPT_CRC) {
-        flip_n_random_bits((uint8_t *)&crc, sizeof(crc), (get_random_int() % 8 + 1));
-        simputs("OCCP: Corrupted body CRC\n");
-      }
-      memcpy(tx_buf + header_size + body_len, &crc, sizeof(crc));
-      crc_size = 1;
+        ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
     }
-  }
 
-  /* Optional error injections */
-  inject_header_errors_if_enabled(ctx, tx_buf, header_size);
-  if (has_body_crc && body_len > 0) {
-    bool use_crc32 = (crc_size == 4);
-    inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
-  }
-
-  /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
-  if (ctx->inject_undersize_body_err && body_len > 0) {
-    uint16_t short_len = get_random_int() % (body_len + crc_size);
-    tx_len = header_size + short_len;
-  } else {
-    tx_len = header_size + body_len + crc_size;
-  }
-
-  /* Oversize body injection: append up to 64 random bytes to tx_buf */
-  if (ctx->inject_oversize_body_err) {
-    uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
-    for (uint16_t i = 0; i < extra_len; i++) {
-      tx_buf[tx_len + i] = (uint8_t)(get_random_int() & 0xFF);
+    occp_resp_header_t resp_hdr;
+    int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
+    if (retval != OCCP_ERROR_NONE) {
+        return retval;
     }
-    tx_len += extra_len;
-  }
-
-  if (ctx->type == DRIVER_TYPE_I3C) {
-    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, tx_buf, tx_len);
-  } else {
-    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf, tx_len, ctx->timeout);
-  }
-
-  occp_resp_header_t resp_hdr;
-  int retval = occp_get_response_header(ctx, i3c_addr ,&resp_hdr);
-  if (retval != OCCP_ERROR_NONE) {
-    return retval;
-  }
-  return OCCP_SUCCESS;
+    return OCCP_SUCCESS;
 }
 
 void increment_cmd_count(test_context_t *ctx) {
@@ -1501,53 +1560,54 @@ void increment_cmd_count(test_context_t *ctx) {
     ctx->cmd_count %= 256;
 }
 
-void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_interface_status, int exp_boot_status) {
-  if (ctx->status_reporting_disabled) {
-    simputs("STATUS_RPT_DISABLE strap active; skipping OCCP status verification\n");
-    return;
-  }
+void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_interface_status,
+                            int exp_boot_status) {
+    if (ctx->status_reporting_disabled) {
+        simputs("STATUS_RPT_DISABLE strap active; skipping OCCP status verification\n");
+        return;
+    }
 
-  /* Avoid snprintf to reduce printf pulls in ROM. Use targeted simputs logging. */
-  uint16_t actual_error = (status_data >> 16) & 0xFF;
-  int has_error = 0;
-  simputshex32("Status Data: ", status_data);
-//  if (actual_error != ctx->exp_occp_last_error) {
-//      simputs("GET_STATUS: FAIL - Last OCCP error mismatch ");
-//      simputshex16("exp=0x", (uint16_t)ctx->exp_occp_last_error);
-//      simputshex16(" got=0x", (uint16_t)actual_error);
-//      simputs("\n");
-//      ctx->overall_result = false;
-//      has_error = 1;
-//  }
-  uint8_t actual_cmd_count = (status_data >> 8) & 0xFF;
-  if (actual_cmd_count != ctx->cmd_count) {
-      simputs("GET_STATUS: FAIL - Command count mismatch ");
-      simputshex16("exp=0x", (uint16_t)ctx->cmd_count);
-      simputshex16(" got=0x", (uint16_t)actual_cmd_count);
-      simputs("\n");
-      ctx->overall_result = false;
-      has_error = 1;
-  }
-  uint8_t actual_interface_status = (status_data >> 4) & 0xF;
-  if (actual_interface_status != exp_interface_status) {
-      simputs("GET_STATUS: FAIL - Interface status mismatch ");
-      simputshex16("exp=0x", (uint16_t)exp_interface_status);
-      simputshex16(" got=0x", (uint16_t)actual_interface_status);
-      simputs("\n");
-      ctx->overall_result = false;
-      has_error = 1;
-  }
-  uint8_t actual_boot_status = (status_data) & 0xF;
-  //if (actual_boot_status != exp_boot_status) {
-  // TODO: uncomment this when occp boot status is implemented
-      /* Boot status mismatch detailed print disabled to avoid printf pulls */
-//      simputs(err_msg);
-//      ctx->overall_result = false;
-//      has_error = 1;
-  //}
-  if (has_error == 0) {
-    simputs("GET_STATUS: PASS\n");
-  }
+    /* Avoid snprintf to reduce printf pulls in ROM. Use targeted simputs logging. */
+    uint16_t actual_error = (status_data >> 16) & 0xFF;
+    int has_error = 0;
+    simputshex32("Status Data: ", status_data);
+    //  if (actual_error != ctx->exp_occp_last_error) {
+    //      simputs("GET_STATUS: FAIL - Last OCCP error mismatch ");
+    //      simputshex16("exp=0x", (uint16_t)ctx->exp_occp_last_error);
+    //      simputshex16(" got=0x", (uint16_t)actual_error);
+    //      simputs("\n");
+    //      ctx->overall_result = false;
+    //      has_error = 1;
+    //  }
+    uint8_t actual_cmd_count = (status_data >> 8) & 0xFF;
+    if (actual_cmd_count != ctx->cmd_count) {
+        simputs("GET_STATUS: FAIL - Command count mismatch ");
+        simputshex16("exp=0x", (uint16_t)ctx->cmd_count);
+        simputshex16(" got=0x", (uint16_t)actual_cmd_count);
+        simputs("\n");
+        ctx->overall_result = false;
+        has_error = 1;
+    }
+    uint8_t actual_interface_status = (status_data >> 4) & 0xF;
+    if (actual_interface_status != exp_interface_status) {
+        simputs("GET_STATUS: FAIL - Interface status mismatch ");
+        simputshex16("exp=0x", (uint16_t)exp_interface_status);
+        simputshex16(" got=0x", (uint16_t)actual_interface_status);
+        simputs("\n");
+        ctx->overall_result = false;
+        has_error = 1;
+    }
+    uint8_t actual_boot_status = (status_data)&0xF;
+    // if (actual_boot_status != exp_boot_status) {
+    //  TODO: uncomment this when occp boot status is implemented
+    /* Boot status mismatch detailed print disabled to avoid printf pulls */
+    //      simputs(err_msg);
+    //      ctx->overall_result = false;
+    //      has_error = 1;
+    //}
+    if (has_error == 0) {
+        simputs("GET_STATUS: PASS\n");
+    }
 }
 
 uint16_t get_random_occp_write_size(void) {
@@ -1591,7 +1651,8 @@ uint16_t get_random_occp_read_size(void) {
 void send_random_occp_write(test_context_t *ctx, uint64_t addr_range) {
     uint16_t len = get_random_occp_write_size();
     // for now stick to 4 byte aligned addresses
-    uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+    uint64_t random_addr =
+        ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
     static uint8_t write_data[MAX_OCCP_WRITE_SIZE];
     for (int j = 0; j < len; j++) {
         write_data[j] = get_random_int() & 0xFF;
@@ -1641,9 +1702,10 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
 
         // Pick a random offset and length within the bounds of the scoreboard entry
         // ensure the read offset is 4 byte aligned
-        uint8_t read_offset = (entry->len > 1) ? ((get_random_int() % (entry->len -1)) & 0xfffffffffffffffc) : 0;
+        uint8_t read_offset =
+            (entry->len > 1) ? ((get_random_int() % (entry->len - 1)) & 0xfffffffffffffffc) : 0;
         uint8_t max_read_len = entry->len - read_offset;
-        uint8_t read_len = (max_read_len > 1) ? ((get_random_int() % (max_read_len -1)) + 1) : 1;
+        uint8_t read_len = (max_read_len > 1) ? ((get_random_int() % (max_read_len - 1)) + 1) : 1;
 
         uint64_t read_addr = entry->address + read_offset;
         static uint8_t recv_data[MAX_OCCP_READ_SIZE] = {0};
@@ -1664,29 +1726,30 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
                 return;
             }
 
-            bool check_scoreboard_data = (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
-                                         (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
-                                         (ctx->inject_undersize_header_err == false) &&
-                                         (ctx->inject_undersize_body_err == false) &&
-                                         (ctx->inject_oversize_body_err == false) &&
-                                         (ctx->invalid_len_err_inject_enable == false);
+            bool check_scoreboard_data =
+                (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
+                (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
+                (ctx->inject_undersize_header_err == false) &&
+                (ctx->inject_undersize_body_err == false) &&
+                (ctx->inject_oversize_body_err == false) &&
+                (ctx->invalid_len_err_inject_enable == false);
             if (check_scoreboard_data) {
-              if (memcmp(recv_data, entry->data + read_offset, read_len) == 0) {
-                simputs("Scoreboard READ data verification PASSED.\n");
-              } else {
-                simputs("Scoreboard READ data verification FAILED.\n");
-                simputs("Expected: ");
-                for (int i = 0; i < read_len; i++) {
-                    simputshex16("0x", entry->data[read_offset + i]);
+                if (memcmp(recv_data, entry->data + read_offset, read_len) == 0) {
+                    simputs("Scoreboard READ data verification PASSED.\n");
+                } else {
+                    simputs("Scoreboard READ data verification FAILED.\n");
+                    simputs("Expected: ");
+                    for (int i = 0; i < read_len; i++) {
+                        simputshex16("0x", entry->data[read_offset + i]);
+                    }
+                    simputs("\nActual: ");
+                    for (int i = 0; i < read_len; i++) {
+                        simputshex16("0x", recv_data[i]);
+                    }
+                    ctx->overall_result = false;
                 }
-                simputs("\nActual: ");
-                for (int i = 0; i < read_len; i++) {
-                    simputshex16("0x", recv_data[i]);
-                }
-                ctx->overall_result = false;
-              }
             } else {
-              simputs("Scoreboard READ data verification skipped due to body CRC injection.\n");
+                simputs("Scoreboard READ data verification skipped due to body CRC injection.\n");
             }
         } else {
             if (ctx->invalid_len_err_inject_enable) {
@@ -1699,7 +1762,8 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
     } else {
         // Perform a read from a random address (no verification possible)
         uint16_t len = get_random_occp_read_size();
-        uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+        uint64_t random_addr =
+            ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
         static uint8_t recv_data[MAX_OCCP_READ_SIZE];
         simputs("Random READ: len=");
         simputshex16("", len);
@@ -1713,254 +1777,273 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
         } else {
             if (ctx->invalid_len_err_inject_enable) {
                 simputs("Random READ command errored under length injection (expected)\n");
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("Random READ command errored under length injection (expected)\n");
-        } else {
-          simputs("Random READ command failed\n");
-          ctx->overall_result = false;
-        }
-      }
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("Random READ command errored under length injection (expected)\n");
+                } else {
+                    simputs("Random READ command failed\n");
+                    ctx->overall_result = false;
+                }
+            }
         }
     }
 }
 
 void execute_random_commands(test_context_t *ctx, int num_commands) {
 
-  uint64_t addr_range = ctx->test_upper_addr_bound - ctx->test_base_addr;
-  // TODO: audit these values OCCP spec
-  int exp_interface_status = 0x1;
-  int exp_boot_status = 0x5;
-  int exp_occp_version_major = 1;
-  int exp_occp_version_minor = 0;
-  int exp_occp_version_patch = 0;
-  int exp_occp_version = exp_occp_version_major | exp_occp_version_minor << 8 | exp_occp_version_patch << 16;
+    uint64_t addr_range = ctx->test_upper_addr_bound - ctx->test_base_addr;
+    // TODO: audit these values OCCP spec
+    int exp_interface_status = 0x1;
+    int exp_boot_status = 0x5;
+    int exp_occp_version_major = 1;
+    int exp_occp_version_minor = 0;
+    int exp_occp_version_patch = 0;
+    int exp_occp_version =
+        exp_occp_version_major | exp_occp_version_minor << 8 | exp_occp_version_patch << 16;
 
-  for (int i = 0; i < num_commands; i++) {
-    /* If invalid header injection is enabled, send an invalid header instead of a normal command */
-    if (ctx->invalid_header_inject_mode != OCCP_INVALID_HDR_INJECT_NONE) {
-      int rc_invalid = occp_send_invalid_header_command(ctx, ctx->slave_addr);
-      if (rc_invalid != OCCP_SUCCESS) {
-        simputs("Invalid header send failed\n");
-        ctx->overall_result = false;
-      }
-      increment_cmd_count(ctx);
-      continue;
+    for (int i = 0; i < num_commands; i++) {
+        /* If invalid header injection is enabled, send an invalid header instead of a normal
+         * command */
+        if (ctx->invalid_header_inject_mode != OCCP_INVALID_HDR_INJECT_NONE) {
+            int rc_invalid = occp_send_invalid_header_command(ctx, ctx->slave_addr);
+            if (rc_invalid != OCCP_SUCCESS) {
+                simputs("Invalid header send failed\n");
+                ctx->overall_result = false;
+            }
+            increment_cmd_count(ctx);
+            continue;
+        }
+        // weight towards reads and writes (similar to occp_random_test)
+        uint8_t is_status_cmd = get_random_int() % 10 < 3 ? 1 : 0;
+        int retval;
+        uint32_t status_data = 0;
+        bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE) ||
+                                (ctx->invalid_len_err_inject_enable) ||
+                                (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ||
+                                (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) ||
+                                (ctx->inject_undersize_header_err) ||
+                                (ctx->inject_undersize_body_err) || (ctx->inject_oversize_body_err);
+
+        occp_command_t command_selected = (is_status_cmd)
+                                              ? (get_random_int() % 8)
+                                              : ((get_random_int() % 2) ? OCCP_READ : OCCP_WRITE);
+
+        // re-balance probabilities for status_reporting_disabled, a 6% overall chance of injecting
+        // unsupported status command should get coverage without the risk of accidental unlatch
+        if (ctx->status_reporting_disabled && is_status_cmd)
+            command_selected = ((get_random_int() % 10) < 2) ? (get_random_int() % 2)
+                                                             : ((get_random_int() % 6) + 2);
+
+        // need to avoid get_version commands for body corruption and undersize body injection
+        if (((ctx->inject_undersize_body_err) ||
+             (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)) &&
+            is_status_cmd) {
+            command_selected = get_random_int() % 6 + 2;
+        }
+
+        if (command_selected == OCCP_GET_VERSION || command_selected == OCCP_GET_VERSION_BOOT) {
+            int version;
+            if (command_selected == OCCP_GET_VERSION) {
+                retval = occp_send_get_version_command(ctx, ctx->slave_addr, &version);
+            } else {
+                retval = occp_send_get_version_boot_command(ctx, ctx->slave_addr, &version);
+            }
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_VERSION command timed out as expected\n");
+                    return;
+                }
+                if (!error_inject_enb) {
+                    simputshex32("OCCP Version: ", version);
+                    if (version != exp_occp_version) {
+                        simputs("OCCP Version mismatch\n");
+                        simputshex32("Expected: ", exp_occp_version);
+                        simputshex32("Actual: ", version);
+                        ctx->overall_result = false;
+                    }
+                }
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_VERSION command errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_VERSION command failed\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_STATUS) {
+            retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_STATUS command timed out as expected\n");
+                    return;
+                }
+                if (!error_inject_enb && !ctx->status_reporting_disabled)
+                    check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_STATUS errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_STATUS: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_SEP_STATUS) {
+            retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_SEP_STATUS command timed out as expected\n");
+                    return;
+                }
+                if (ctx->status_reporting_disabled) {
+                    simputs("GET_SEP_STATUS: STATUS_RPT_DISABLE strap active (expected error "
+                            "response)\n");
+                } else {
+                    simputshex32("SEP Status: ", status_data);
+                    simputs("GET_SEP_STATUS: PASS\n");
+                }
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_SEP_STATUS errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_SEP_STATUS: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_SMC_STATUS) {
+            retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_SMC_STATUS command timed out as expected\n");
+                    return;
+                }
+                if (ctx->status_reporting_disabled) {
+                    simputs("GET_SMC_STATUS: STATUS_RPT_DISABLE strap active (expected error "
+                            "response)\n");
+                } else {
+                    simputshex32("SMC Status: ", status_data);
+                    simputs("GET_SMC_STATUS: PASS\n");
+                }
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_SMC_STATUS errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_SMC_STATUS: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_OCCP_BOOT_STATUS) {
+            retval = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_OCCP_BOOT_STATUS command timed out as expected\n");
+                    return;
+                }
+                // TODO: what is this expected to be?
+                //        if ((status_data & 0xF) != exp_boot_status) {
+                //          simputs("GET_OCCP_BOOT_STATUS: FAIL\n");
+                //          simputshex32("Expected: ", exp_boot_status);
+                //          simputshex32("Actual: ", status_data);
+                //          ctx->overall_result = false;
+                //        }
+                simputs("GET_OCCP_BOOT_STATUS: PASS\n");
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_OCCP_BOOT_STATUS errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_OCCP_BOOT_STATUS: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_OCCP_COMMAND_COUNT) {
+            retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_OCCP_COMMAND_COUNT command timed out as expected\n");
+                    return;
+                }
+                if (!error_inject_enb && !ctx->status_reporting_disabled &&
+                    ((status_data & 0xFF) != ctx->cmd_count)) {
+                    simputs("GET_OCCP_COMMAND_COUNT: FAIL\n");
+                    simputshex32("Expected: ", ctx->cmd_count);
+                    simputshex32("Actual: ", status_data);
+                    ctx->overall_result = false;
+                } else {
+                    simputs("GET_OCCP_COMMAND_COUNT: PASS\n");
+                }
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_OCCP_COMMAND_COUNT errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_OCCP_COMMAND_COUNT: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_OCCP_INTERFACE_STATUS) {
+            bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
+            retval =
+                occp_send_get_occp_interface_status_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_OCCP_INTERFACE_STATUS command timed out as expected\n");
+                    return;
+                }
+                //        if (!error_inject_enb && ((status_data & 0xF) != exp_interface_status)) {
+                //          simputs("GET_OCCP_INTERFACE_STATUS: FAIL\n");
+                //          simputshex32("Expected: ", exp_interface_status);
+                //          simputshex32("Actual: ", status_data);
+                //          ctx->overall_result = false;
+                //        } else {
+                //          simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
+                //        }
+                simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs(
+                        "GET_OCCP_INTERFACE_STATUS errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_OCCP_INTERFACE_STATUS: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_GET_OCCP_ERROR_CODE) {
+            bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
+            retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status_data);
+            if (retval == OCCP_SUCCESS) {
+                if (ctx->exp_timeout) {
+                    simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
+                    return;
+                }
+                //        if (!error_inject_enb && ((status_data & 0xFF) !=
+                //        ctx->exp_occp_last_error)) {
+                //          simputs("GET_OCCP_ERROR_CODE: FAIL\n");
+                //          simputshex32("Expected: ", ctx->exp_occp_last_error);
+                //          simputshex32("Actual: ", status_data);
+                //          ctx->overall_result = false;
+                //        } else {
+                simputs("GET_OCCP_ERROR_CODE: PASS\n");
+                //}
+            } else {
+                if (ctx->invalid_len_err_inject_enable) {
+                    simputs("GET_OCCP_ERROR_CODE errored under length injection (expected)\n");
+                } else {
+                    simputs("GET_OCCP_ERROR_CODE: FAIL\n");
+                    ctx->overall_result = false;
+                }
+            }
+        } else if (command_selected == OCCP_READ) {
+            send_random_occp_read(ctx, addr_range);
+        } else if (command_selected == OCCP_WRITE) {
+            send_random_occp_write(ctx, addr_range);
+        }
+        if (!ctx->inject_undersize_header_err) increment_cmd_count(ctx);
     }
-    // weight towards reads and writes (similar to occp_random_test)
-    uint8_t is_status_cmd = get_random_int() % 10 < 3 ? 1 : 0;
-    int retval;
-    uint32_t status_data = 0;
-    bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE) || (ctx->invalid_len_err_inject_enable) || (ctx->header_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) || (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE) || (ctx->inject_undersize_header_err) || (ctx->inject_undersize_body_err) || (ctx->inject_oversize_body_err);
-
-    occp_command_t command_selected = (is_status_cmd) ? (get_random_int() % 8) : ((get_random_int() % 2) ? OCCP_READ : OCCP_WRITE);
-
-    // re-balance probabilities for status_reporting_disabled, a 6% overall chance of injecting unsupported status command should get coverage without the risk of accidental unlatch
-    if (ctx->status_reporting_disabled && is_status_cmd)
-      command_selected = ((get_random_int() % 10) < 2) ? (get_random_int() % 2) : ((get_random_int() % 6) + 2);
-
-    // need to avoid get_version commands for body corruption and undersize body injection
-    if (((ctx->inject_undersize_body_err) || (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)) && is_status_cmd) {
-      command_selected = get_random_int() % 6 + 2;
-    }
-
-    if (command_selected == OCCP_GET_VERSION || command_selected == OCCP_GET_VERSION_BOOT) {
-      int version;
-      if (command_selected == OCCP_GET_VERSION) {
-        retval = occp_send_get_version_command(ctx, ctx->slave_addr, &version);
-      } else {
-        retval = occp_send_get_version_boot_command(ctx, ctx->slave_addr, &version);
-      }
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_VERSION command timed out as expected\n");
-          return;
-        }
-        if (!error_inject_enb) {
-          simputshex32("OCCP Version: ", version);
-          if (version != exp_occp_version) {
-            simputs("OCCP Version mismatch\n");
-            simputshex32("Expected: ", exp_occp_version);
-            simputshex32("Actual: ", version);
-            ctx->overall_result = false;
-          }
-        }
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_VERSION command errored under length injection (expected)\n");
-        } else {
-          simputs("GET_VERSION command failed\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_STATUS) {
-      retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_STATUS command timed out as expected\n");
-          return;
-        }
-        if (!error_inject_enb && !ctx->status_reporting_disabled)
-          check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_STATUS errored under length injection (expected)\n");
-        } else {
-          simputs("GET_STATUS: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_SEP_STATUS) {
-      retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_SEP_STATUS command timed out as expected\n");
-          return;
-        }
-        if (ctx->status_reporting_disabled) {
-          simputs("GET_SEP_STATUS: STATUS_RPT_DISABLE strap active (expected error response)\n");
-        } else {
-          simputshex32("SEP Status: ", status_data);
-          simputs("GET_SEP_STATUS: PASS\n");
-        }
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_SEP_STATUS errored under length injection (expected)\n");
-        } else {
-          simputs("GET_SEP_STATUS: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_SMC_STATUS) {
-      retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_SMC_STATUS command timed out as expected\n");
-          return;
-        }
-        if (ctx->status_reporting_disabled) {
-          simputs("GET_SMC_STATUS: STATUS_RPT_DISABLE strap active (expected error response)\n");
-        } else {
-          simputshex32("SMC Status: ", status_data);
-          simputs("GET_SMC_STATUS: PASS\n");
-        }
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_SMC_STATUS errored under length injection (expected)\n");
-        } else {
-          simputs("GET_SMC_STATUS: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_OCCP_BOOT_STATUS) {
-      retval = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_OCCP_BOOT_STATUS command timed out as expected\n");
-          return;
-        }
-        // TODO: what is this expected to be?
-//        if ((status_data & 0xF) != exp_boot_status) {
-//          simputs("GET_OCCP_BOOT_STATUS: FAIL\n");
-//          simputshex32("Expected: ", exp_boot_status);
-//          simputshex32("Actual: ", status_data);
-//          ctx->overall_result = false;
-//        }
-        simputs("GET_OCCP_BOOT_STATUS: PASS\n");
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_OCCP_BOOT_STATUS errored under length injection (expected)\n");
-        } else {
-          simputs("GET_OCCP_BOOT_STATUS: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_OCCP_COMMAND_COUNT) {
-      retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_OCCP_COMMAND_COUNT command timed out as expected\n");
-          return;
-        }
-        if (!error_inject_enb && !ctx->status_reporting_disabled && ((status_data & 0xFF) != ctx->cmd_count)) {
-          simputs("GET_OCCP_COMMAND_COUNT: FAIL\n");
-          simputshex32("Expected: ", ctx->cmd_count);
-          simputshex32("Actual: ", status_data);
-          ctx->overall_result = false;
-        } else {
-          simputs("GET_OCCP_COMMAND_COUNT: PASS\n");
-        }
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_OCCP_COMMAND_COUNT errored under length injection (expected)\n");
-        } else {
-          simputs("GET_OCCP_COMMAND_COUNT: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_OCCP_INTERFACE_STATUS) {
-      bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
-      retval = occp_send_get_occp_interface_status_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_OCCP_INTERFACE_STATUS command timed out as expected\n");
-          return;
-        }
-//        if (!error_inject_enb && ((status_data & 0xF) != exp_interface_status)) {
-//          simputs("GET_OCCP_INTERFACE_STATUS: FAIL\n");
-//          simputshex32("Expected: ", exp_interface_status);
-//          simputshex32("Actual: ", status_data);
-//          ctx->overall_result = false;
-//        } else {
-//          simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
-//        }
-        simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_OCCP_INTERFACE_STATUS errored under length injection (expected)\n");
-        } else {
-          simputs("GET_OCCP_INTERFACE_STATUS: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_GET_OCCP_ERROR_CODE) {
-      bool error_inject_enb = (ctx->exp_response_code != OCCP_ERROR_NONE);
-      retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status_data);
-      if (retval == OCCP_SUCCESS) {
-        if (ctx->exp_timeout) {
-          simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
-          return;
-        }
-//        if (!error_inject_enb && ((status_data & 0xFF) != ctx->exp_occp_last_error)) {
-//          simputs("GET_OCCP_ERROR_CODE: FAIL\n");
-//          simputshex32("Expected: ", ctx->exp_occp_last_error);
-//          simputshex32("Actual: ", status_data);
-//          ctx->overall_result = false;
-//        } else {
-        simputs("GET_OCCP_ERROR_CODE: PASS\n");
-        //}
-      } else {
-        if (ctx->invalid_len_err_inject_enable) {
-          simputs("GET_OCCP_ERROR_CODE errored under length injection (expected)\n");
-        } else {
-          simputs("GET_OCCP_ERROR_CODE: FAIL\n");
-          ctx->overall_result = false;
-        }
-      }
-    } else if (command_selected == OCCP_READ) {
-      send_random_occp_read(ctx, addr_range);
-    } else if (command_selected == OCCP_WRITE) {
-      send_random_occp_write(ctx, addr_range);
-    }
-    if (!ctx->inject_undersize_header_err)
-      increment_cmd_count(ctx);
-  }
 }
 
 void send_max_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     uint16_t len = MAX_OCCP_WRITE_SIZE;
     // Ensure the write does not go out of the specified memory range
-    uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+    uint64_t random_addr =
+        ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
     static uint8_t write_data[MAX_OCCP_WRITE_SIZE];
     for (int j = 0; j < len; j++) {
         write_data[j] = get_random_int() & 0xFF;
@@ -2039,7 +2122,8 @@ void send_max_size_occp_read(test_context_t *ctx, uint64_t addr_range) {
     if (!read_from_scoreboard) {
         // Perform a read from a random address (no verification possible)
         uint16_t len = MAX_OCCP_READ_SIZE;
-        uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+        uint64_t random_addr =
+            ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
         static uint8_t recv_data[MAX_OCCP_READ_SIZE];
         simputs("Random READ: len=");
         simputshex16("", len);
@@ -2073,7 +2157,8 @@ void execute_max_size_rw_commands(test_context_t *ctx, int num_commands) {
 void send_min_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     uint16_t len = 1;
     // Ensure the write does not go out of the specified memory range
-    uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+    uint64_t random_addr =
+        ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
     uint8_t write_data[1];
     for (int j = 0; j < len; j++) {
         write_data[j] = get_random_int() & 0xFF;
@@ -2145,7 +2230,8 @@ void send_min_size_occp_read(test_context_t *ctx, uint64_t addr_range) {
     } else {
         // Perform a read from a random address (no verification possible)
         uint16_t len = 1;
-        uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
+        uint64_t random_addr =
+            ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
         uint8_t recv_data[1];
         simputs("Random READ: len=");
         simputshex16("", len);
@@ -2184,52 +2270,50 @@ void execute_min_size_rw_commands(test_context_t *ctx, int num_commands) {
 /* OCCP_STATUS_MATCH_SMC_ERROR_BASE, compare only the error base (mask 0xFF0). */
 /* Returns true on match, false otherwise.                                     */
 /* -------------------------------------------------------------------------- */
-bool occp_status_matches_expected(uint32_t status_value,
-                                  occp_fw_id_t expected_fw_id,
+bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_fw_id,
                                   occp_status_msg_type_t expected_msg_type,
-                                  uint16_t expected_status_data,
-                                  bool match_full_status_data)
-{
-  uint8_t actual_msg_type = (uint8_t)((status_value >> 24) & 0xFF);
-  uint8_t actual_fw_id = (uint8_t)((status_value >> 16) & 0xFF);
-  uint16_t actual_value = (uint16_t)(status_value & 0xFFFF);
+                                  uint16_t expected_status_data, bool match_full_status_data) {
+    uint8_t actual_msg_type = (uint8_t)((status_value >> 24) & 0xFF);
+    uint8_t actual_fw_id = (uint8_t)((status_value >> 16) & 0xFF);
+    uint16_t actual_value = (uint16_t)(status_value & 0xFFFF);
 
-  if (actual_msg_type != (uint8_t)expected_msg_type) return false;
-  if (actual_fw_id != (uint8_t)expected_fw_id) return false;
+    if (actual_msg_type != (uint8_t)expected_msg_type) return false;
+    if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
-
-  /* For SMC BL0 error messages, apply spec-defined matching granularity:
-   * - Some errors use upper nibblesk wih 0x1FF per spe)
-   * - Some use lower nibble (mask wit 0xFF0)
-   * - Others have no nibble data (match full 12-bit class within 16-bit)
-   */
-  if (expected_fw_id == OCCP_FW_ID_SMC_BL0 && expected_msg_type == OCCP_STATUS_MSG_ERROR && !match_full_status_data) {
-    switch (expected_status_data) {
-      uint16_t masked_expected, masked_actual;
-      case OCCP_SPEC_ERROR_READ_ACCESS_DENIED:
-      case OCCP_SPEC_ERROR_WRITE_ACCESS_DENIED:
-        masked_actual = (uint16_t)(actual_value & 0x1FF);
-        masked_expected = (uint16_t)(expected_status_data & 0x1FF);
-        return (masked_actual == masked_expected);
-      case OCCP_SPEC_ERROR_CMD_FAILED:
-        masked_actual = (uint16_t)(actual_value & 0xFF0);
-        masked_expected = (uint16_t)(expected_status_data & 0xFF0);
-        return (masked_actual == masked_expected);
-      case OCCP_SPEC_ERROR_CMD_UNKNOWN:
-        masked_actual = (uint16_t)(actual_value & 0xF01);
-        masked_expected = (uint16_t)(expected_status_data & 0xF01);
-        return (masked_actual == masked_expected);
-      default:
-        return (actual_value == expected_status_data);
+    /* For SMC BL0 error messages, apply spec-defined matching granularity:
+     * - Some errors use upper nibblesk wih 0x1FF per spe)
+     * - Some use lower nibble (mask wit 0xFF0)
+     * - Others have no nibble data (match full 12-bit class within 16-bit)
+     */
+    if (expected_fw_id == OCCP_FW_ID_SMC_BL0 && expected_msg_type == OCCP_STATUS_MSG_ERROR &&
+        !match_full_status_data) {
+        switch (expected_status_data) {
+            uint16_t masked_expected, masked_actual;
+        case OCCP_SPEC_ERROR_READ_ACCESS_DENIED:
+        case OCCP_SPEC_ERROR_WRITE_ACCESS_DENIED:
+            masked_actual = (uint16_t)(actual_value & 0x1FF);
+            masked_expected = (uint16_t)(expected_status_data & 0x1FF);
+            return (masked_actual == masked_expected);
+        case OCCP_SPEC_ERROR_CMD_FAILED:
+            masked_actual = (uint16_t)(actual_value & 0xFF0);
+            masked_expected = (uint16_t)(expected_status_data & 0xFF0);
+            return (masked_actual == masked_expected);
+        case OCCP_SPEC_ERROR_CMD_UNKNOWN:
+            masked_actual = (uint16_t)(actual_value & 0xF01);
+            masked_expected = (uint16_t)(expected_status_data & 0xF01);
+            return (masked_actual == masked_expected);
+        default:
+            return (actual_value == expected_status_data);
+        }
     }
-  }
-  return (actual_value == expected_status_data);
+    return (actual_value == expected_status_data);
 }
 
 bool occp_is_smc_error_code(uint32_t status_value) {
-  uint8_t actual_msg_type = (uint8_t)((status_value >> 24) & 0xFF);
-  uint8_t actual_fw_id = (uint8_t)((status_value >> 16) & 0xFF);
-  uint16_t actual_value = (uint16_t)(status_value & 0xFFFF);
+    uint8_t actual_msg_type = (uint8_t)((status_value >> 24) & 0xFF);
+    uint8_t actual_fw_id = (uint8_t)((status_value >> 16) & 0xFF);
+    uint16_t actual_value = (uint16_t)(status_value & 0xFFFF);
 
-  return ((actual_msg_type == OCCP_STATUS_MSG_ERROR) && (actual_fw_id == OCCP_FW_ID_SMC_BL0) && ((actual_value & 0xF00) != 0));
+    return ((actual_msg_type == OCCP_STATUS_MSG_ERROR) && (actual_fw_id == OCCP_FW_ID_SMC_BL0) &&
+            ((actual_value & 0xF00) != 0));
 }

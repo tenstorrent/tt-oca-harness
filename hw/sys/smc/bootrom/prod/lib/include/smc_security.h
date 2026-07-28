@@ -30,9 +30,9 @@
 #define SMC_LC_STATE_IS_PROD(lc_state) ((lc_state) == SMC_LC_STATE_PROD)
 #define SMC_LC_STATE_IS_PROD_END(lc_state) ((lc_state) == SMC_LC_STATE_PROD_END)
 #define SMC_LC_STATE_IS_RMA_SOP(lc_state) \
-    (((lc_state) & SMC_LC_STATE_RMA_SOP_MASK) == SMC_LC_STATE_RMA_SOP_VALUE)
+    (((lc_state)&SMC_LC_STATE_RMA_SOP_MASK) == SMC_LC_STATE_RMA_SOP_VALUE)
 #define SMC_LC_STATE_IS_RMA_CHIPLET(lc_state) \
-    (((lc_state) & SMC_LC_STATE_RMA_CHIPLET_MASK) == SMC_LC_STATE_RMA_CHIPLET_VALUE)
+    (((lc_state)&SMC_LC_STATE_RMA_CHIPLET_MASK) == SMC_LC_STATE_RMA_CHIPLET_VALUE)
 #define SMC_LC_STATE_IS_INVALID(lc_state) \
     (!(SMC_LC_STATE_IS_TEST_DEV(lc_state) || SMC_LC_STATE_IS_PROD(lc_state) || \
        SMC_LC_STATE_IS_PROD_END(lc_state) || SMC_LC_STATE_IS_RMA_SOP(lc_state) || \

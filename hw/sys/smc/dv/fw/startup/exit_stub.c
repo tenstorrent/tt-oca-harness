@@ -10,8 +10,7 @@
 
 #include <stdint.h>
 
-__attribute__((noreturn)) void _exit(int code)
-{
+__attribute__((noreturn)) void _exit(int code) {
     (void)code;
     while (1) {
         __asm__ volatile("wfi");

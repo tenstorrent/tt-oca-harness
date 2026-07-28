@@ -16,11 +16,11 @@
  * reset vector pointed at SRAM_BASE, so the cores re-boot into that image.
  */
 int main(void) {
-  /* Writes TEST_ROM_PASS (0x77777777) to scratch_0 so the testbench's
-     init_and_reset() ROM-wait completes, then spins in wfi forever. */
-  test_rom_pass(0);
+    /* Writes TEST_ROM_PASS (0x77777777) to scratch_0 so the testbench's
+       init_and_reset() ROM-wait completes, then spins in wfi forever. */
+    test_rom_pass(0);
 
-  return 0;
+    return 0;
 }
 
 /*
@@ -28,6 +28,6 @@ int main(void) {
  * reached since main() ends in a noreturn wfi.
  */
 __attribute__((noreturn)) void _exit(int code) {
-  (void)code;
-  for (;;) asm volatile("wfi");
+    (void)code;
+    for (;;) asm volatile("wfi");
 }

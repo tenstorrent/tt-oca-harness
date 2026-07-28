@@ -15,8 +15,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "virt_console.h"    /* simputs, simputshex32, simputshex64, simputsint */
-#include "smc_reg_access.h"  /* read_reg, write_reg, read_reg_64, write64_reg  */
-#include "smc_cpu_ctrl.h"    /* write_scratch, read_scratch, write_postcode     */
+#include "virt_console.h"   /* simputs, simputshex32, simputshex64, simputsint */
+#include "smc_reg_access.h" /* read_reg, write_reg, read_reg_64, write64_reg  */
+#include "smc_cpu_ctrl.h"   /* write_scratch, read_scratch, write_postcode     */
 
 #endif /* SMC_DEFINES_H */

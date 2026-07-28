@@ -28,28 +28,24 @@
 #define READ_STRETCH_SETTLE_CYCLES 256
 #define POLL_TIMEOUT 10000
 
-static void i2c_wrapper_enable(uint32_t idx, bool controller_mode)
-{
+static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
 
-    i2c_ctrl__I2C_CTRL_t ctrl = { .w = 0 };
+    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1;
     ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
     write_reg(wrapper_addr, ctrl.w);
 }
 
-static i2c__STATUS_t get_i2c_status(uint32_t idx)
-{
+static i2c__STATUS_t get_i2c_status(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    i2c__STATUS_t status = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+    i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     return status;
 }
 
-static int wait_for_target_idle(uint32_t idx)
-{
+static int wait_for_target_idle(uint32_t idx) {
     for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
         if (i2c_target_is_idle(idx)) {
             return I2C_OK;
@@ -62,8 +58,7 @@ static int wait_for_target_idle(uint32_t idx)
     return I2C_ERROR_TIMEOUT;
 }
 
-static int clear_controller_events_and_wait(uint32_t idx)
-{
+static int clear_controller_events_and_wait(uint32_t idx) {
     i2c_clear_controller_events(idx, 0xFFFFFFFF);
 
     for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
@@ -80,8 +75,7 @@ static int clear_controller_events_and_wait(uint32_t idx)
     return I2C_ERROR_TIMEOUT;
 }
 
-static int clear_target_events_and_wait(uint32_t idx)
-{
+static int clear_target_events_and_wait(uint32_t idx) {
     i2c_clear_target_events(idx, 0xFFFFFFFF);
 
     for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
@@ -98,15 +92,12 @@ static int clear_target_events_and_wait(uint32_t idx)
     return I2C_ERROR_TIMEOUT;
 }
 
-static void get_test_timing(i2c_timing_config_t *timing)
-{
-    i2c_timing_physical_t physical_params = {
-        .speed = I2C_SPEED_STANDARD,
-        .clock_period_nanos = 10,
-        .sda_rise_nanos = 300,
-        .sda_fall_nanos = 100,
-        .scl_period_nanos = 0
-    };
+static void get_test_timing(i2c_timing_config_t *timing) {
+    i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
+                                             .clock_period_nanos = 10,
+                                             .sda_rise_nanos = 300,
+                                             .sda_fall_nanos = 100,
+                                             .scl_period_nanos = 0};
 
     int ret = i2c_compute_timing_from_physical(&physical_params, timing);
     if (ret != I2C_OK) {
@@ -114,22 +105,17 @@ static void get_test_timing(i2c_timing_config_t *timing)
     }
 }
 
-static int init_controller(void)
-{
+static int init_controller(void) {
     i2c_timing_config_t timing;
     get_test_timing(&timing);
 
-    i2c_controller_config_t controller_cfg = {
-        .timing = timing,
-        .fifo = {
-            .rx_thresh = I2C_DEFAULT_RX_THRESH,
-            .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
-            .tx_thresh = 0,
-            .acq_thresh = 0
-        },
-        .enable_interrupts = false,
-        .timeout_cycles = READ_STRETCH_TIMEOUT_CYCLES
-    };
+    i2c_controller_config_t controller_cfg = {.timing = timing,
+                                              .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
+                                                       .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
+                                                       .tx_thresh = 0,
+                                                       .acq_thresh = 0},
+                                              .enable_interrupts = false,
+                                              .timeout_cycles = READ_STRETCH_TIMEOUT_CYCLES};
 
     int ret = i2c_controller_init(CONTROLLER_IDX, &controller_cfg);
     if (ret != I2C_OK) {
@@ -140,29 +126,24 @@ static int init_controller(void)
     return I2C_OK;
 }
 
-static int init_target(void)
-{
+static int init_target(void) {
     int ret;
     i2c_timing_config_t timing;
     get_test_timing(&timing);
 
-    i2c_target_config_t target_cfg = {
-        .address0 = TARGET_ADDR,
-        .mask0 = 0x7F,
-        .address1 = 0,
-        .mask1 = 0,
-        .timing = timing,
-        .fifo = {
-            .tx_thresh = I2C_DEFAULT_TX_THRESH,
-            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
-            .rx_thresh = 0,
-            .fmt_thresh = 0
-        },
-        .enable_interrupts = false,
-        .ack_ctrl_mode = false,
-        .tx_stretch_ctrl = false,
-        .timeout_cycles = 0
-    };
+    i2c_target_config_t target_cfg = {.address0 = TARGET_ADDR,
+                                      .mask0 = 0x7F,
+                                      .address1 = 0,
+                                      .mask1 = 0,
+                                      .timing = timing,
+                                      .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                               .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                               .rx_thresh = 0,
+                                               .fmt_thresh = 0},
+                                      .enable_interrupts = false,
+                                      .ack_ctrl_mode = false,
+                                      .tx_stretch_ctrl = false,
+                                      .timeout_cycles = 0};
 
     ret = i2c_target_init(TARGET_IDX, &target_cfg);
     if (ret != I2C_OK) {
@@ -171,17 +152,18 @@ static int init_target(void)
 
     uint32_t target_base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t target_ctrl = {
-        .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-    };
+        .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                     SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     target_ctrl.f.ACQ_START_STOP_EN = 1;
-    write_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), target_ctrl.w);
+    write_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              target_ctrl.w);
 
     i2c_reset_fifos(TARGET_IDX, false, false, true, true);
     return I2C_OK;
 }
 
-static int init_i2c_pair(void)
-{
+static int init_i2c_pair(void) {
     int ret;
 
     i2c_wrapper_enable(TARGET_IDX, false);
@@ -195,15 +177,14 @@ static int init_i2c_pair(void)
     return init_controller();
 }
 
-static int wait_for_controller_fmt_space(uint32_t idx, uint32_t required_space)
-{
+static int wait_for_controller_fmt_space(uint32_t idx, uint32_t required_space) {
     uint32_t base = i2c_get_base(idx);
 
     write_scratch(1, 0x00000021);
     for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
         i2c__HOST_FIFO_STATUS_t fifo_status = {
-            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))
-        };
+            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
         if ((64u - fifo_status.f.FMTLVL) >= required_space) {
             write_scratch(1, 0x00000022);
@@ -215,20 +196,21 @@ static int wait_for_controller_fmt_space(uint32_t idx, uint32_t required_space)
     return I2C_ERROR_TIMEOUT;
 }
 
-static int enqueue_controller_read_one_byte(void)
-{
+static int enqueue_controller_read_one_byte(void) {
     uint32_t base = i2c_get_base(CONTROLLER_IDX);
     int ret = wait_for_controller_fmt_space(CONTROLLER_IDX, 2);
     if (ret != I2C_OK) {
         return ret;
     }
 
-    i2c__FDATA_t fdata = { .w = 0 };
+    i2c__FDATA_t fdata = {.w = 0};
     fdata.f.FBYTE = (TARGET_ADDR << 1) | 0x1;
     fdata.f.START = 1;
     fdata.f.READB = 0;
     write_scratch(1, 0x00000023);
-    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              fdata.w);
 
     fdata.w = 0;
     fdata.f.FBYTE = 1;
@@ -236,14 +218,15 @@ static int enqueue_controller_read_one_byte(void)
     fdata.f.RCONT = 0;
     fdata.f.STOP = 1;
     write_scratch(1, 0x00000024);
-    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)), fdata.w);
+    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              fdata.w);
 
     write_scratch(1, 0x00000025);
     return I2C_OK;
 }
 
-static int trigger_read_timeout(void)
-{
+static int trigger_read_timeout(void) {
     int ret;
 
     simputs("  Controller issuing READ while target TX FIFO is empty...\n");
@@ -262,8 +245,7 @@ static int trigger_read_timeout(void)
     return I2C_OK;
 }
 
-static int recover_after_read_timeout(void)
-{
+static int recover_after_read_timeout(void) {
     int ret;
 
     simputs("  Disabling target to release TX stretch...\n");
@@ -317,10 +299,9 @@ static int recover_after_read_timeout(void)
     return I2C_OK;
 }
 
-static int send_and_check_verify_write(void)
-{
+static int send_and_check_verify_write(void) {
     uint8_t expected[VERIFY_WRITE_LEN];
-    uint8_t received[VERIFY_WRITE_LEN + 4] = { 0 };
+    uint8_t received[VERIFY_WRITE_LEN + 4] = {0};
     uint32_t received_len = 0;
 
     for (uint32_t i = 0; i < VERIFY_WRITE_LEN; i++) {
@@ -328,15 +309,15 @@ static int send_and_check_verify_write(void)
     }
 
     simputs("  Controller sending 16-byte verification write...\n");
-    int ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR,
-                                                        expected, VERIFY_WRITE_LEN);
+    int ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, expected,
+                                                        VERIFY_WRITE_LEN);
     if (ret != I2C_OK) {
         simputs("  ERROR: Verification write enqueue failed\n");
         return ret;
     }
 
-    ret = i2c_target_receive_transaction(TARGET_IDX, received, sizeof(received),
-                                         &received_len, POLL_TIMEOUT);
+    ret = i2c_target_receive_transaction(TARGET_IDX, received, sizeof(received), &received_len,
+                                         POLL_TIMEOUT);
     if (ret != I2C_OK) {
         simputs("  ERROR: Target receive failed for verification write\n");
         return ret;
@@ -372,8 +353,7 @@ static int send_and_check_verify_write(void)
     return I2C_OK;
 }
 
-int main(void)
-{
+int main(void) {
     int ret;
 
     simputs("\n");
