@@ -855,7 +855,6 @@ module smc_peripherals #() (
 		.locked_field_access_interrupt_o (locked_field_access_interrupt)
 	);
 
-	// In grendel, fuse_reset_n goes through jtag override first and second rstbypass, and then pipe stages
 	prim_pipe_stages #(
 		.WIDTH(1),
 		.NUM_STAGES(16)

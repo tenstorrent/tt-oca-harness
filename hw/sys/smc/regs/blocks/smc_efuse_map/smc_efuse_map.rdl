@@ -219,7 +219,7 @@ addrmap smc_efuse_map {
             hw = r;
             desc = "Chiplet ID stored in fuse, divided into 8 words and defined as follows:
                     [1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;
-                    [3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID, e.g. Athena/Quasar/…​;
+                    [3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;
                     [4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);
                     [5]: Chiplet User Group ID;
                     [7:6]: Reserved for extension.";
@@ -236,7 +236,7 @@ addrmap smc_efuse_map {
             desc = "Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:
                     [1:0]: Serial number of the package;
                     [2]: Package Design Version, e.g. A1Q1/…​;
-                    [3]: Package Design ID, e.g. Grendel;
+                    [3]: Package Design ID;
                     [4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);
                     [5]: Package User Group ID;
                     [7:6]: Reserved for extension";

@@ -839,11 +839,11 @@ module sep
         .sep_ext_to_smc_axi_resp_i        (sep_ext_to_smc_axi_resp_i),
 
         // Address Remap Interface
-        .local_masters_remap_debug_o      (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
+        .local_masters_remap_debug_o      (/* UNUSED */), // TODO: Connected to o_sep_debug?
 
         // Filter Interface
-        .outbound_filter_debug_o          (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
-        .inbound_filter_debug_o           (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
+        .outbound_filter_debug_o          (/* UNUSED */), // TODO: Connected to o_sep_debug?
+        .inbound_filter_debug_o           (/* UNUSED */), // TODO: Connected to o_sep_debug?
 
         // Mailbox Interface
         .mailbox_inbound_interrupt_o      (smc_mailbox_interrupt_o),

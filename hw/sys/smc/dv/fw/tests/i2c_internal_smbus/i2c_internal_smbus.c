@@ -355,10 +355,6 @@ int main(void) {
     //-------------//
     // RESET & PLL //
     //-------------//
-
-    // Note: peripherals_out_of_reset() is no longer available (commented out in smc_io.h)
-    // Peripherals are now managed by hardware reset controller
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C Internal SMBus Alert Test         ##\n");
@@ -371,8 +367,6 @@ int main(void) {
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
 
-    // Note: peripherals_out_of_reset() and program_clocks_quasar()
-    // are not needed in this environment (handled by testbench)
     simputs("  System ready\n");
 
     write_scratch(1, 0x00000011);

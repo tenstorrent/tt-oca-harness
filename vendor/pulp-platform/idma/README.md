@@ -19,10 +19,6 @@ source and keep TT's generated RTL as overlay collateral (see below).
   stays under `hw/comp/idma_wrapper/data/registers/`.
 - `Bender.yml`, `patches/`, this `README.md` — hand-authored at the package root.
 
-The hand-authored `Bender.yml` is a slimmed manifest exposing only the `idma_rtl`
-set OCA compiles; the fork's project-specific `tt_custom`/DFC tree, project
-bender targets, and the `tt_tensix_common` dependency are intentionally dropped.
-
 ## Patches
 
 The TT delta — all in-place edits to upstream files (no new modules) — is split

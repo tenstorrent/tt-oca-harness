@@ -284,8 +284,6 @@ int main(void) {
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
 
-    // Note: peripherals_out_of_reset() and program_clocks_quasar()
-    // are not needed in this environment (handled by testbench)
     simputs("  System ready\n");
 
     write_scratch(1, 0x00000011);
