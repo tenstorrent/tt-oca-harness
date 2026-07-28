@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: Apache-2.0
+"""DTP SMC fabric debug AXI UVM agent.
+
+Wraps the unified OCAH AXI RAM BFM as the memory responder on the JTAG2AXI
+bridge's AXI4 manager port (flattened to `m_axi_*` in tb_top), and exposes
+backdoor access for the scoreboard / sequences.
+"""
+
+from __future__ import annotations
+
+import cocotb
+from pyuvm import ConfigDB, uvm_agent
+
+from ocah_axi_vip import OcahAxiRam
+
+from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
+
+
+class DtpAxiAgent(uvm_agent):
+    def build_phase(self) -> None:
+        self.cfg = ConfigDB().get(self, "", "cfg")
+        self.axi_ram: OcahAxiRam | None = None
+        self.smc_otp_axil_ram = None
+        self.sep_otp_axil_ram = None
+
+    async def run_phase(self) -> None:
+        dut = cocotb.top
+        self.axi_ram = OcahAxiRam.from_prefix(
+            dut,
+            "m_axi",
+            dut.clk_i,
+            dut.rst_n_i,
+            reset_active_level=False,
+            size=self.cfg.axi_mem_size,
+            id_width=2,
+            addr_width=56,
+            data_width=64,
+            strb_width=8,
+        )
+        # Publish for backdoor checks once the memory model exists.
+        self.cfg.axi_ram = DtpFaultOcahAxiRam(self.axi_ram)
+        self.smc_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+            dut,
+            "smc_otp_axil",
+            dut.clk_i,
+            dut.rst_n_i,
+            reset_active_level=False,
+            size=self.cfg.otp_axil_mem_size,
+        )
+        self.sep_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+            dut,
+            "sep_otp_axil",
+            dut.clk_i,
+            dut.rst_n_i,
+            reset_active_level=False,
+            size=self.cfg.otp_axil_mem_size,
+        )
+        self.cfg.smc_otp_axil_ram = self.smc_otp_axil_ram
+        self.cfg.sep_otp_axil_ram = self.sep_otp_axil_ram
+        self.cfg.jtag2axi_responders = {
+            "smc_axi": self.cfg.axi_ram,
+            "smc_otp": self.smc_otp_axil_ram,
+            "sep_otp": self.sep_otp_axil_ram,
+        }
+        self.logger.info("OCAH AXI RAM responder ready (%d bytes)", self.cfg.axi_mem_size)
+        self.logger.info(
+            "OTP AXI-Lite RAM responders ready (%d bytes each)",
+            self.cfg.otp_axil_mem_size,
+        )
+
+    def backdoor_read64(self, addr: int) -> int:
+        """Little-endian 64-bit backdoor read from the AXI memory."""
+        return int.from_bytes(self.axi_ram.read(addr, 8), "little")

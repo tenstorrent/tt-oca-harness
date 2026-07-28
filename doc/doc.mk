@@ -18,6 +18,8 @@ OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
 OCAH_CSV_TO_ADOC := python3 $(OCAH_ROOT)/tools/doc/csvadoc.py
 OCAH_DOC_REGEN_REGS ?= 1
+# Optional Antora --url override (nested publish paths, e.g. /trm).
+OCAH_DOC_SITE_URL ?=
 
 # Reuse the reg flow's per-block adoc accessor over every block (regs.mk filters
 # OCAH_REGEN_REG_ADOC by TARGET; docs want all blocks). Depending on these would
@@ -45,6 +47,8 @@ endif
 # Product makefrags.
 -include $(OCAH_DOC_DIR)/trm/doc.mk
 -include $(OCAH_DOC_DIR)/integrator/doc.mk
+# Temporary GitHub Pages publish (see removal checklist in that file).
+-include $(OCAH_DOC_DIR)/gh-pages.mk
 
 ## Compatibility aliases: default doc-* targets build the TRM.
 .PHONY: ocah-doc-setup ocah-doc-html ocah-doc-pdf ocah-doc-serve ocah-doc-clean
@@ -52,7 +56,7 @@ ocah-doc-setup: ocah-doc-trm-setup
 ocah-doc-html: ocah-doc-trm-html
 ocah-doc-pdf: ocah-doc-trm-pdf
 ocah-doc-serve: ocah-doc-trm-serve
-ocah-doc-clean: ocah-doc-trm-clean
+ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean
 
 OCAH_PHONY += \
   ocah-doc-reg-setup \

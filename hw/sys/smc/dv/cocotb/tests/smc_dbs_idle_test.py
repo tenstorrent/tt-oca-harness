@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+"""GitHub Project P0 alias for DBS/DFD/ECC diagnostic precheck."""
+
+from __future__ import annotations
+
+import pyuvm
+from env.smc_protocol_vip_item import SmcProtocolVipKind
+from smc_base_test import smc_base_test
+from seq_lib.smc_diagnostic_vip_utils import check_diagnostic_observability
+from seq_lib.smc_ecc_dfd_dbs_sanity_test_seq import smc_ecc_dfd_dbs_sanity_test_seq
+
+
+@pyuvm.test()
+class smc_dbs_idle_test(smc_base_test):
+    """Run the DBS/DFD/ECC proxy scenario tracked by the P0 project issue."""
+
+    auto_protocol_vip = False
+
+    async def run_scenario(self) -> None:
+        seq = smc_ecc_dfd_dbs_sanity_test_seq("dbs_idle_seq")
+        await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        await check_diagnostic_observability()
+        await self.record_protocol_vip(
+            SmcProtocolVipKind.DIAGNOSTIC,
+            type(self).__name__,
+            csr_accesses=seq.accesses,
+            proxy=True,
+            details="DBS idle diagnostic CSR surface and bounded fault observability checked",
+        )

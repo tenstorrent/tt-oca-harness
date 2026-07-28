@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+"""DTP open-source JTAG IDCODE field test.
+
+Reads and verifies the IEEE 1149.1 IDCODE register on the primary TAP through
+the unified OCAH JTAG BFM.
+"""
+
+import pyuvm
+
+from dtp_base_test import dtp_base_test
+from seq_lib.dtp_jtag_idcode_test_seq import dtp_jtag_idcode_test_seq
+
+
+@pyuvm.test()
+class dtp_jtag_idcode_test(dtp_base_test):
+    """Run looped IDCODE scenarios with deterministic random preconditioning."""
+
+    async def run_scenario(self) -> None:
+        await self.start_looped_seq(
+            dtp_jtag_idcode_test_seq,
+            "jtag_idcode_seq",
+            specific_env="DTP_IDCODE_TEST_LOOPS",
+            default_loops=8,
+            read_loops=self.env_int("DTP_IDCODE_READS_PER_LOOP", 4),
+        )

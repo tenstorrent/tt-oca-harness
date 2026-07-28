@@ -1,0 +1,281 @@
+# DTP OCAH Open-Source Functional Coverage Plan
+
+## Overview
+
+This document defines functional coverage intent for the OCAH open-source DTP
+testbench. It mirrors the coverage categories from the working reference model in
+`dv/dtp/doc/DTP_FCOV.md`, adapted for the public PyUVM/Verilator flow.
+
+Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
+The OCAH open-source path should therefore use Python-side coverage/observation counters in
+the PyUVM environment for public CI, while SV covergroups, assertion coverage,
+and full code coverage are collected with commercial simulators.
+
+| Field | Value |
+|-------|-------|
+| Reference SPEC | `DTP_SPEC.md` |
+| Reference VPLAN | `DTP_VPLAN.md` |
+| Reference full FCOV | `dv/dtp/doc/DTP_FCOV.md` |
+| Open-source framework | PyUVM on cocotb |
+| Open-source simulator | Verilator |
+
+## Coverage Goals
+
+| Metric | Target | Open-Source Collection Path |
+|--------|--------|---------------------|
+| Functional coverage | 100% of selected scenario coverage intent | Python-side counters/coverage in `env/` |
+| Line/branch/FSM/condition coverage | Collected for signoff in commercial flow | VCS/Xcelium coverage databases |
+| Toggle coverage | 95% target in commercial flow | VCS/Xcelium coverage databases |
+| Assertion coverage | 100% of enabled assertions | Commercial flow |
+
+## Coverage Summary
+
+| Category | Covergroup / Coverage Model | Collection Notes |
+|----------|-----------------------------|------------------|
+| TAP reset and IDCODE | `tap_smoke_cg` | Directed by `dtp_sanity_test`, `dtp_jtag_idcode_test`, and reset-focused Basic JTAG tests |
+| JTAG instruction decode | `jtag_instruction_cg` | Basic JTAG instruction-decode sampling |
+| TAP state traversal | `tap_state_cg` | Smoke and reset traversal coverage |
+| JTAG2AXI single operations | `jtag2axi_single_op_cg` | Directed read/write SUCCESS coverage |
+| JTAG2AXI responses | `jtag2axi_response_cg` | SUCCESS, SLVERR, DECERR, and BUSY_OR_FULL response bins |
+| JTAG2AXI series/backpressure/CDC | `jtag2axi_robustness_cg` | Series, backpressure, CDC clear, and reset-abort bins |
+| OTP bridges | `otp_jtag2axi_cg` | SMC OTP and SEP OTP JTAG2AXI bins |
+| TMP and IC_RESET TDRs | `tmp_ic_reset_cg` | Python-side checks in `debug_tdr` |
+| Debug control | `debug_control_cg` | Python-side checks in `debug_tdr` |
+| Capability TDRs | `caps_tdr_cg` | Python-side checks in `debug_tdr` |
+| STAP / 3DCR | `stap_3dcr_cg` | Scan-routing and lifecycle bins |
+| iJTAG SIBs | `ijtag_sib_cg` | IEEE 1687 SIB selection bins |
+| Cross-trigger CTP | `ctp_cg` | Requires functional CTP CSR behavior in the selected simulator |
+| Cross-trigger CTM | `ctm_cg` | Requires functional CTM CSR behavior in the selected simulator |
+| Lifecycle security | `lifecycle_gating_cg` | Directed lifecycle feature-control bins |
+
+## Coverage Definitions
+
+### `tap_smoke_cg`
+
+**Description**: Covers basic TAP bring-up and IDCODE access.
+
+| Coverpoint | Bins |
+|------------|------|
+| TAP reset source | TRST, TMS-to-TLR |
+| IDCODE read | power-up/TLR default, explicit IDCODE instruction |
+| IDCODE marker | marker bit `1`, invalid marker observed |
+
+Coverage observations include TAP FSM bring-up through `dtp_sanity_test`, IDCODE
+marker checking through `dtp_jtag_idcode_test`, and TRST/POR/TLR reset coverage
+through the Basic JTAG reset tests.
+
+### `jtag_instruction_cg`
+
+**Description**: Covers the 6-bit instruction space and instruction categories.
+
+| Coverpoint | Bins |
+|------------|------|
+| Opcode | All 64 IR values |
+| Category | mandatory, optional, debug, IEEE 1838, iJTAG, JTAG2AXI, reserved, undefined |
+| Disabled behavior | enabled instruction, disabled instruction to BYPASS, undefined to BYPASS |
+
+The open-source Basic JTAG sequences sample instruction decode through the
+flattened `jtag_ptap_inst_decoded` observable after Update-IR. Standard JTAG
+driving uses `ocah_jtag_vip`.
+
+### `tap_state_cg`
+
+**Description**: Covers TAP FSM states and valid TMS transitions.
+
+| Coverpoint | Bins |
+|------------|------|
+| TAP state | All 16 IEEE 1149.1 states |
+| TMS transition | All legal `(state, tms) -> next_state` arcs |
+| Reset reachability | TRST from active states, 5 TMS=1 from active states |
+
+### `jtag2axi_single_op_cg`
+
+**Description**: Covers single-operation JTAG2AXI TDR use.
+
+| Coverpoint | Bins |
+|------------|------|
+| Target | SMC fabric, SMC OTP, SEP OTP |
+| Operation | NOP, READ, WRITE |
+| Size | Byte widths supported by the target |
+| WSTRB | none, single byte, partial, all bytes |
+| Address class | aligned, unaligned if supported, boundary, unmapped |
+
+SMC fabric READ and WRITE scenarios sample SUCCESS response status.
+
+### `jtag2axi_response_cg`
+
+**Description**: Covers completion status and recovery behavior.
+
+| Coverpoint | Bins |
+|------------|------|
+| Response status | SUCCESS, SLVERR, DECERR, BUSY_OR_FULL |
+| Poll count | immediate, short wait, long wait |
+| Recovery | next NOP, next read/write after error, reset abort |
+
+### `jtag2axi_robustness_cg`
+
+**Description**: Covers series operations, backpressure, and CDC clear/abort
+paths from the working reference plan.
+
+| Coverpoint | Bins |
+|------------|------|
+| Series mode | INCR, NO_INCR, WITH_ERROR_STATUS |
+| Channel skew | AW-before-W, W-before-AW, read response held |
+| Reset timing | idle, request issued, data phase, response wait |
+| CDC recovery | clear, isolate, back-to-back reset |
+
+### `tmp_ic_reset_cg`
+
+**Description**: Covers TMP_STATUS and IC_RESET debug TDR behavior.
+
+| Coverpoint | Bins |
+|------------|------|
+| TMP persistence | reset/off, CLAMP_HOLD/on, chip-reset preserved, BYPASS_ESCAPE release |
+| TMP read shift value | zero, preserve value, all 2-bit values |
+| BYPASS escape | unarmed, armed, BYPASS double-load escape observed |
+| IC_RESET slice | SMC, SEP, External |
+| IC_RESET override | override disabled, override enabled, reset asserted, reset deasserted |
+| IC_RESET hold | reset_hold=0 TLR preserve, reset_hold=1 TLR default restore, TRST default restore |
+| IC_RESET pattern source | deterministic per-slice, seeded random enable/control pattern |
+
+These bins are sampled through `dtp_jtag_tmp_status_*` and
+`dtp_jtag_ic_reset_test`. Coverage is sampled through decoded log/assertion helpers
+in `dtp_base_test_seq.py` and flattened IC_RESET outputs from `tb_top.sv`.
+
+### `debug_control_cg`
+
+**Description**: Covers DEBUG_CONTROL TDR fields and associated outputs.
+
+| Coverpoint | Bins |
+|------------|------|
+| Boot stall | all four override/stall combinations |
+| Boot-stall interaction | standalone, with JTAG clock stop, with CLA clock stop enable, with both |
+| JTAG clock stop | asserted, deasserted |
+| CLA clock stop enable | disabled, enabled |
+| CLA clock stop readback | no request, one request, multiple requests |
+| Clock-stop request source | no request, each single request bit, multi-request masks, seeded random masks |
+| Clock-stop output | JTAG-only, CLA-only, combined, released |
+
+These bins are sampled through `dtp_dbg_ctrl_clk_stop_*` and
+`dtp_dbg_ctrl_boot_stall_test`. `stop_clks_o` checking polls across
+synchronizer/output latency.
+
+### `caps_tdr_cg`
+
+**Description**: Covers read-only DTP capability TDR behavior.
+
+| Coverpoint | Bins |
+|------------|------|
+| CAPS register | JTAG_CAPS, SMC_JTAG2AXI_CAPS, SMC_OTP_JTAG2AXI_CAPS, SEP_OTP_JTAG2AXI_CAPS |
+| JTAG_CAPS fields | XTRIG counts, STAP/debug enables, IC_RESET counts, instruction enables, OCH version |
+| JTAG2AXI bus type | AXI4 SMC fabric, AXI4-Lite SMC OTP, AXI4-Lite SEP OTP |
+| JTAG2AXI geometry | address width, data width, read pipeline depth, write pipeline depth |
+| Read stability | repeated reads stable |
+| Read-only write attempt | all-zero, all-one, alternating, deterministic random |
+| Instruction switch side effect | read after IDCODE, read after BYPASS |
+
+These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
+`dtp_dbg_*_jtag2axi_caps_test` sequences.
+
+### `stap_3dcr_cg`
+
+**Description**: Covers IEEE 1838 STAP/3DCR behavior.
+
+| Coverpoint | Bins |
+|------------|------|
+| STAP type | I/O, SMC, SEP, extra |
+| 3DCR fields | select, TMS hold, config hold |
+| Chain behavior | SIB open, SIB closed, selected STAP in scan path |
+| Security state | enabled, gated |
+
+### `ijtag_sib_cg`
+
+**Description**: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Debug Forensics Dump) chains.
+
+| Coverpoint | Bins |
+|------------|------|
+| SIB pattern | All DFD/DFT-secure/DFT-nonsecure on/off combinations |
+| Instrument access | DFD, DFT secure, DFT non-secure |
+| Security gating | enabled, gated by each relevant `feat_ctrl_i` bit |
+
+### `ctp_cg`
+
+**Description**: Covers CTP external protocol behavior.
+
+| Coverpoint | Bins |
+|------------|------|
+| Mode | wire-OR, point-to-point |
+| Inversion | normal, inverted |
+| Stretch | min, mid, max |
+| P2P state | idle, request phase, acknowledge phase, reset recovery |
+
+### `ctm_cg`
+
+**Description**: Covers CTM source-to-destination routing.
+
+| Coverpoint | Bins |
+|------------|------|
+| Source type | CTP, internal CT |
+| Destination type | CTP, internal CT |
+| Routing fanout | none, single destination, multicast |
+| Source index | all configured source ports (26 default: 16 CTP + 10 internal CT) |
+| Destination index | all configured destination ports (26 default) |
+
+### `lifecycle_gating_cg`
+
+**Description**: Covers enable-polarity lifecycle feature-control gating (`1 = enabled`, `0 = gated`).
+
+| Coverpoint | Bins |
+|------------|------|
+| `sip_debug` | enabled=1, gated=0 |
+| `soc_debug` | enabled=1, gated=0 |
+| `sep_debug` | enabled=1, gated=0 |
+| `ap_debug` | enabled=1, gated=0 |
+| `fuse_test` | enabled=1, gated=0 |
+| Feature under gate | STAP, iJTAG, SMC JTAG2AXI, SMC OTP JTAG2AXI, SEP OTP JTAG2AXI |
+
+## VPLAN to FCOV Traceability
+
+| VPLAN Test / Group | Coverage |
+|--------------------|----------|
+| `dtp_sanity_test` | `tap_smoke_cg`, partial `tap_state_cg` |
+| `basic_jtag` group | `tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR/iJTAG loopback observations |
+| `dtp_jtag2axi_smc_axi_wr_test` | `jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write |
+| `dtp_jtag2axi_smc_axi_rd_test` | `jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read |
+| JTAG instruction scenarios | `jtag_instruction_cg`, `tap_state_cg` |
+| `debug_tdr` group | `tmp_ic_reset_cg`, `debug_control_cg`, `caps_tdr_cg`, `jtag_instruction_cg` |
+| JTAG2AXI robustness scenarios | `jtag2axi_robustness_cg`, `jtag2axi_response_cg` |
+| STAP / 3DCR scenarios | `stap_3dcr_cg`, `lifecycle_gating_cg` |
+| iJTAG scenarios | `ijtag_sib_cg`, `lifecycle_gating_cg` |
+| CTP / CTM scenarios | `ctp_cg`, `ctm_cg` |
+
+## Collection Strategy
+
+| Flow | Strategy |
+|------|----------|
+| Verilator open-source CI | Python-side counters or coverage library in PyUVM agents/scoreboard |
+| Commercial simulation | SV covergroups under commercial-only filelist or `ifndef VERILATOR` guard |
+| Code coverage | VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage |
+| Closure triage | Add directed tests for reachable holes; use waiver/UNR review for structurally unreachable paths |
+
+Python-side sampling should happen at transaction boundaries: completed IR scan,
+completed DR scan, completed JTAG2AXI response, CTP/CTM event, and lifecycle
+configuration change.
+
+## Exclusions and Limitations
+
+| Item | Reason |
+|------|--------|
+| SV covergroups in Verilator | Unsupported by the tool |
+| CTP/CTM CSR functional bins in Verilator flows that use CSR stubs | Generated CSR behavior is unavailable |
+| Static parameter toggles | Compile-time constants; not meaningful runtime coverage |
+| Legacy non-public VIP internals | Replaced by public VIP or OCAH-local DTP BFMs in the open-source flow |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 1.0 | 2026-06-09 | DV Team | OCAH open-source functional coverage plan aligned with DTP reference coverage and Verilator constraints |
+| 1.1 | 2026-06-14 | DV Team | Annotated iJTAG SIB chains (DFT Secure/Non-Secure/DFD) and the CTM 26-port default per the OCAH design spec |
+| 1.2 | 2026-06-15 | DV Team | Added Basic JTAG instruction/reset Python-side coverage notes and flattened DTP observables |
+| 1.3 | 2026-06-22 | DV Team | Added debug TDR coverage notes for TMP/IC_RESET, DEBUG_CONTROL, and CAPS checks in `debug_tdr` |

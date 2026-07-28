@@ -1,0 +1,123 @@
+schema_version = 1
+
+# Deferred, not-runnable wrapper baseline. `smc_wrapper` is intentionally not
+# registered in hw/common/dv/configs/duts.toml: its wrapper API, Bender targets,
+# and SEP prim shim have not been ported to the current repository.
+#
+# Independent of the bare-`smc` catalog in smc_sim_cfg.toml; both configs share
+# this DV root and the build/runs evidence directory.
+name = "smc_wrapper"
+profile = "native-cocotb"
+description = "OSS-example smc_wrapper pad-level cocotb baseline"
+default_tool = "vcs"
+tools = ["vcs", "verilator", "xcelium"]
+
+[testlist]
+path = "testlists/wrapper.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = [
+  "{run_dir}",
+  "hw/sys/smc/dv/build/cocotb_wrapper",
+  "hw/sys/smc/dv/build/work_wrapper",
+]
+
+[build]
+top_module = "smc_wrapper_uvm_top"
+top_file = "hw/sys/smc/dv/tb/tb_wrapper_top.sv"
+filelist = "hw/sys/smc/dv/build/smc_wrapper_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/smc_wrapper_bender.f"
+work_dir = "hw/sys/smc/dv/build/work_wrapper"
+common_bender_targets = [
+  "tech_cells_generic_exclude_deprecated",
+  "tech_cells_generic_exclude_tc_sram",
+  "axi_rtl",
+  "apb_rtl",
+  "common_cells_rtl",
+  "common_cell_sync_shim",
+  "idma_rtl",
+  "register_interface_l1",
+]
+# smc + smu_oss_wrapper pulls OSS models/integration; smc_wrapper adds
+# smc_wrapper.sv; open_source_dv_files supplies OSS efuse_bank_model.
+# `simulation` is omitted (same rationale as smu_wrapper).
+bender_targets = ["smc", "smu_oss_wrapper", "smc_wrapper", "open_source_dv_files"]
+# Prepend SEP prim_assert shim so `include "prim_assert.sv"` resolves to the
+# SYNTHESIS-gated ASSERT macros (same as smu_wrapper); otherwise VCS emits
+# time-0 prim_rom noXOnCsI $error that the result parser treats as FAIL.
+incdirs = [
+  # FIXME(SMC-DV): this SEP prim shim is not present in the current repository.
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smc/dv/tb",
+]
+exclude_files = [
+  # Shadowed by shims/wrapper/smc_padring_ext.sv (ASSIGNIN fix).
+  "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
+  # Not instantiated by smc_wrapper; avoid SEP package / SMU wrapper compile.
+  "hw/oss-example/wrapper/smu/smu_wrapper.sv",
+  "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
+  # Bender.lock still resolves Package(i3c-core) to stale deps/i3c-core while
+  # the smc target also lists vendor/chipsalliance/i3c-core (post #3934 rebase
+  # with rlt_mem_*). Drop the stale deps tree so i3c_pkg matches i3c_wrapper.
+  "deps/i3c-core",
+]
+stubs = [
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
+  # Avoid Verilator 5.046 C++ struct redefinition across parameterized
+  # gpio_shim / gpio_ctrl_reg specializations (VCS keeps real RTL).
+  "hw/sys/smc/dv/tb/verilator_stubs/gpio_macro_wrapper.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/input_gpio_macro_wrapper.sv",
+]
+sources = [
+  "hw/sys/smc/dv/shims/mem/tb_smc_output_mem_responder.sv",
+  "hw/sys/smc/dv/shims/wrapper/smc_padring_ext.sv",
+]
+
+[build.verilator]
+# Drop cocotb's global --public-flat-rw (see stages.cocotb_public_scope);
+# otherwise gpio_macro_wrapper parameterized instances collide in generated C++.
+public_scope = "hw/sys/smc/dv/tb/smc_wrapper_public_scope.vlt"
+# Legacy unused key kept for grep/docs continuity with bare smc_sim_cfg.
+disable_public_flat_rw = true
+low_mem_make = true
+ccache = true
+
+[build.options]
+build_jobs = 8
+
+[cocotb]
+python_root = "hw/sys/smc/dv/cocotb_wrapper"
+test_dir = "hw/sys/smc/dv/cocotb_wrapper/tests"
+python_paths = [
+  "hw/common/dv/vip",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Pad-level smc_wrapper elaboration / reset smoke"
+timeout_sec = 1800
+args = ["+skip_fuse_sense"]
+
+[targets.default]
+description = "OSS smc_wrapper cocotb target"
+build_dir = "hw/sys/smc/dv/build/cocotb_wrapper"
+defines = [
+  "SYNTHESIS",
+  "SIM",
+]
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+]

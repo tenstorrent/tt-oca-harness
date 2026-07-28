@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+"""SMC OSS P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs."""
+
+from __future__ import annotations
+
+import pyuvm
+
+from env.smc_protocol_vip_item import SmcProtocolVipKind
+from smc_base_test import smc_base_test
+from seq_lib.smc_filter_field_sweep_test_seq import smc_filter_field_sweep_test_seq
+
+
+@pyuvm.test()
+class smc_filter_field_sweep_test(smc_base_test):
+    """P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs."""
+
+    auto_protocol_vip = False
+
+    async def run_scenario(self) -> None:
+        seq = smc_filter_field_sweep_test_seq("smc_filter_field_sweep_test_seq")
+        await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        await self.record_protocol_vip(
+            SmcProtocolVipKind.OUTPUT_FABRIC,
+            type(self).__name__,
+            csr_accesses=seq.accesses,
+            proxy=False,
+            details="P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs",
+        )

@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Backdoor shadow-readout checker for the SEP eFuse OSS flow.
+
+Reads the sensed shadow-register array directly via the top-level
+``efuse_shadow_probe_o`` (a top-level port driven by an XMR in tb_top) and compares each word against
+the golden ``SepEfuseImage``. This is the default, fast (no-AXI) data-comparison
+path -- it catches sense-load bugs. The AXI front-door checker
+(``sep_efuse_shadow_check_seq``) additionally exercises the real read datapath
+and is kept for a single test.
+"""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
+import cocotb
+
+from env.sep_efuse_image import SepEfuseImage, WORD_BITS, WORD_MASK
+
+
+def check_efuse_shadow_backdoor(
+    logger,
+    image: SepEfuseImage,
+    *,
+    fields: Optional[List[str]] = None,
+    dut=None,
+) -> None:
+    """Compare the backdoor-read shadow array against the golden image.
+
+    Raises AssertionError (failing the test) if any word mismatches, mirroring
+    the front-door scoreboard's fail-on-error semantics.
+    """
+    if dut is None:
+        dut = cocotb.top
+    # Fast path: fully-resolved array -> one int. If any bit is X/Z, fall back to
+    # a per-word read so a mismatch names the *word* that is unresolved instead
+    # of collapsing the whole 8192-bit vector into one opaque failure.
+    try:
+        sensed = int(dut.efuse_shadow_probe_o.value)
+
+        def read_word(i: int):
+            return (sensed >> (WORD_BITS * i)) & WORD_MASK
+    except ValueError:
+        bits = str(dut.efuse_shadow_probe_o.value)  # MSB-first, NumEfuseBits chars
+        nbits = len(bits)
+
+        def read_word(i: int):
+            chunk = bits[nbits - WORD_BITS * (i + 1): nbits - WORD_BITS * i]
+            if "x" in chunk.lower() or "z" in chunk.lower():
+                return None  # unresolved
+            return int(chunk, 2)
+
+    field_names = fields if fields is not None else image.check_fields()
+    errors: List[str] = []
+    checked = 0
+    for name in field_names:
+        fld = SepEfuseImage.field(name)
+        for k in range(fld.n_words):
+            widx = fld.word + k
+            got = read_word(widx)
+            exp = image.shadow_word(widx)
+            checked += 1
+            if got is None:
+                errors.append(f"{name}[{k}] word{widx}: sensed X/Z (expected 0x{exp:08x})")
+            elif got != exp:
+                errors.append(
+                    f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}"
+                )
+    for e in errors:
+        logger.error("EFUSE BACKDOOR FAIL: %s", e)
+    logger.info("eFuse backdoor check: %d words, %d error(s)", checked, len(errors))
+    assert not errors, (
+        f"eFuse backdoor shadow check found {len(errors)} mismatch(es): "
+        + "; ".join(errors[:8])
+    )

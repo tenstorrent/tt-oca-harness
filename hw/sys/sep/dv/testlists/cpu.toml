@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Daily regression policy: run `./run.sh no_cpu --regress ...` and
+# `./run.sh cpu --regress ...` separately. Tests with run_modes=["no_cpu"]
+# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
+# full-CPU default model.
+
+[[tests]]
+name = "sep_hello_world_test"
+module = "cpu.sep_hello_world_test"
+firmware = "hello_world"
+seed = 1
+timeout_sec = 3600
+tags = ["smoke", "boot", "cpu"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ROM non-secure boot (OCAH sep_rom_non_secure_boot_test): the CPU boots the REAL
+# production Boot ROM (fw/bootcode) from ROM_BASE and runs the full non-secure
+# manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
+# into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
+# NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
+# OpenTitan Quad spi_host, not the Cadence xSPI octal controller the ROM drives),
+# so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
+# behavioral SMC responder (SEP_SMC_MEM_MODEL). See sep-rom-non-secure-boot-design.md.
+name = "sep_rom_non_secure_boot_test"
+module = "cpu.sep_rom_non_secure_boot_test"
+target = "rom_boot"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+# Boot ROM + manifest/BL1 images, both built entirely from source in the OSS
+# tree by fw/bootcode/Makefile (prod ROM copy + tt-boot-manifest packer; no
+# internal prebuilt blob). {repo_root} is expanded before backend dispatch so
+# the paths stay portable (independent-repo clean, no absolute/user paths).
+# NOTE: no +skip_fuse_sense -- the ROM's rom_lifecycle_policy needs a valid
+# (differential-encoded) LC_STATE in the eFuse shadow, which only exists if the
+# real fuse-sense FSM runs. A zero OTP senses to LC_STATE_TEST_DEV (raw 0x0, valid).
+# FIXME(SEP-DV): fw/bootcode/build/ artifacts are not built in this repository
+# yet; rebuild the bootcode images before re-enabling this test.
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/dv/fw/bootcode/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/dv/fw/bootcode/build/smc_mem.hex",
+]
+# TODO: once SPI is ready on the DUT, swap the SMC-SRAM path for real SPI
+# manifest boot (production ROM -> SPI manifest -> BL1 handoff).
+
+[[tests]]
+name = "sep_dma_hash_test"
+module = "cpu.sep_dma_hash_test"
+firmware = "dma_hash_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Mailbox -> PIC -> CPU ISR delivery (OCAH sep_mailbox_plic_test): a mailbox write
+# raises sep_internal_interrupts[0] -> VeeR EL2 PIC source 1 -> CPU MEIP -> ISR;
+# proves the PIC claim id == source 1, ISR-before-timeout, and the IRQS/IRQP RW1C
+# clear. cpu run mode; +skip_fuse_sense. CPU complex (the PIC lives inside the core).
+name = "sep_mailbox_plic_test"
+module = "cpu.sep_mailbox_plic_test"
+firmware = "mailbox_plic_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "mailbox", "interrupt", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# NMI mechanism (OCAH sep_nmi_sanity_test): EL2 firmware verifies the NMI
+# trampoline alignment, SEP_NMI_VEC default/writeback/sticky-lock, and that a WDT
+# bark fires the NMI -> registered handler (sep.sv nmi_int = intr_wdog_timer_bark,
+# nmi_vec from the SEP_NMI_VEC CSR; all internal to bare sep). cpu run mode;
+# +skip_fuse_sense (no OTP/eFuse data is read). CPU complex (NMI is a CPU trap path).
+name = "sep_nmi_sanity_test"
+module = "cpu.sep_nmi_sanity_test"
+firmware = "nmi_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["nmi", "wdt", "interrupt", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Multi-source PIC source-id map + ISR delivery (OCAH fw otbn_plic_test + system
+# sep_irq_connectivity_test). EL2 firmware registers PIC ISRs for three IPs and
+# proves the source->PIC-id map (mailbox[0]=src1, OTBN-done=src28, CSRNG-cmd-done
+# =src22; id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
+# + one-hot isolation + no re-fire storm. mailbox via a real FIFO push; OTBN/CSRNG
+# via INTR_TEST (both released at SW_RESET_N=0x1E, clocked first). cpu run mode;
+# +skip_fuse_sense (no OTP read). CPU complex (the PIC lives inside the core).
+name = "sep_pic_irq_source_map_delivery_test"
+module = "cpu.sep_pic_irq_source_map_delivery_test"
+firmware = "pic_irq_source_map_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure-DMA basic breadth (OCAH uvm_tests/dma reg_rw/reg_reset/cfg_regwen/
+# range_regwen/addr_fixed/addr_wrap/addr_combo/mem_copy/err_opcode). EL2 firmware
+# drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
+# values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
+# FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
+# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Distinct
+# from the Phase-1 DMA trio (hash/contention/spi-rx). cpu run mode;
+# +skip_fuse_sense (no OTP read). DMA & data movement (cpu-fw bucket).
+name = "sep_dma_basic_test"
+module = "cpu.sep_dma_basic_test"
+firmware = "dma_basic_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "dma", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# CPU debug-reset domain isolation (OCAH clock reset_assertion_deassertion +
+# jtag_clock_independence). Pulses the EL2 debugger reset dbg_rstb_i (now a
+# controllable tb_top input -- was hardwired to rst_ni) with rst_ni held
+# released and proves sep_reset_n + sep_cpu_reset_n stay released (debug reset
+# is domain-isolated); a wdt_rst_ni contrast proves the observable is live so the
+# isolation check is non-vacuous. no_cpu; +skip_fuse_sense (reset-observable only,
+# no AXI/OTP). CPU complex.
+name = "sep_cpu_dbg_reset_independence_test"
+module = "cpu.sep_cpu_dbg_reset_independence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "debug", "cpu", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Warm/cold reset scratch-bank domain partition (OCAH
+# sep_clock_uvm_warm_reset_vs_cold_reset_test). A warm reset
+# (wdt_rst_ni low -> sep_cpu_reset_n) clears the WARM scratch bank (0x1080_2080)
+# but the COLD bank (0x1080_2000) survives; only a cold reset (rst_ni) clears
+# both. Reaches the banks over the CPU-LSU AXI splice and cross-checks the cold
+# bank against the scratch_cold_probe_o tap. no_cpu; +skip_fuse_sense (the reset
+# stimulus is the wdt_rst_ni_i/rst_ni primary inputs, no OTP read). CPU complex.
+name = "sep_warm_cold_reset_scratch_test"
+module = "cpu.sep_warm_cold_reset_scratch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "scratch", "cpu", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# CPU IFU/LSU local-alias-remap (OCAH sep_cpu_ifu_lsu_alias_remap_matrix_test,
+# , edge E12). EL2 firmware programs the alias window
+# (SEP_LOCAL_BASE=0xC000_0000/REGION_SIZE=0x4000_0000) and proves the CPU-side
+# IFU + LSU local-alias-remap (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric
+# access to 0xD000_xxxx remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode --
+# the no_cpu AXI splice is post-remap and would bypass E12. +skip_fuse_sense (the
+# alias remap does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
+name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
+module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
+firmware = "cpu_alias_remap_test"
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "alias", "remap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

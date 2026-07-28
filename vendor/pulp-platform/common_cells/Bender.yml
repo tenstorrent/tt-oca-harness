@@ -38,6 +38,11 @@ sources:
 
   - upstream/src/cf_math_pkg.sv
 
+  - target: any(sep_wrapper, smu_wrapper, all(common_cells_rtl, not(all(xilinx, vivado_ipx))))
+    files:
+      - upstream/src/fifo_v3.sv
+      - upstream/src/counter.sv
+
   - target: common_cells_rtl
     files:
 
@@ -69,7 +74,6 @@ sources:
       - upstream/src/ecc_pkg.sv
       - upstream/src/edge_propagator_tx.sv
       - upstream/src/exp_backoff.sv
-      - upstream/src/fifo_v3.sv
       - upstream/src/gray_to_binary.sv
       - upstream/src/heaviside.sv
       - upstream/src/isochronous_4phase_handshake.sv
@@ -117,7 +121,6 @@ sources:
       - upstream/src/cb_filter.sv
       - upstream/src/cdc_fifo_2phase.sv
       # - upstream/src/clk_mux_glitch_free.sv  # Plan B prune: dead clk/reset cell (see clk_int_div note)
-      - upstream/src/counter.sv
       - upstream/src/ecc_decode.sv
       - upstream/src/ecc_encode.sv
       # - upstream/src/edge_detect.sv  # Plan B prune: dead clk/reset cell (instantiates sync_wedge)

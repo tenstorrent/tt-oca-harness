@@ -101,7 +101,6 @@ sources:
     - upstream/src/axi_cdc.sv
     - upstream/src/axi_cdc_clearable.sv
     - upstream/src/axi_demux.sv
-    - upstream/src/axi_err_slv.sv
     - upstream/src/axi_dw_converter.sv
     - upstream/src/axi_from_mem.sv
     - upstream/src/axi_id_serialize.sv
@@ -130,6 +129,10 @@ sources:
     - upstream/src/axi5_lite_xbar.sv
     - upstream/src/axi5_lite_xbar_brcst.sv
     - upstream/src/axi_hidestrb.sv
+
+  - target: any(axi_rtl, sep_wrapper, smu_wrapper)
+    files:
+      - upstream/src/axi_err_slv.sv
 
   - target: axi_simulation
     files:

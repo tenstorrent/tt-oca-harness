@@ -1,0 +1,289 @@
+# SPDX-License-Identifier: Apache-2.0
+"""SMC fabric JTAG2AXI write-side scenarios for GH issue #3210."""
+
+from __future__ import annotations
+
+from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, DtpJtagInstr, pack_single_op
+
+from .dtp_jtag2axi_base_test_seq import AXI_MEM_SIZE, dtp_jtag2axi_base_test_seq
+
+DEFAULT_AXI_ADDR = 0x40
+DEFAULT_AXI_DATA = 0x0123_4567_89AB_CDEF
+AXI_BEAT_BYTES = 8
+
+
+class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
+    """Run one focused SMC fabric JTAG2AXI write-side scenario.
+
+    Each scenario is organized as reset/setup, stimulus, observe/check, cleanup,
+    and summary. Random choices are made from the deterministic sequence RNG so
+    failures can be replayed with the runner seed.
+    """
+
+    def __init__(
+        self,
+        name: str = "dtp_jtag2axi_smc_axi_wr_test_seq",
+        *,
+        scenario: str = "single_write",
+        scenario_seed: int | None = None,
+        random_count: int = 5,
+    ) -> None:
+        super().__init__(name, scenario_seed=scenario_seed, random_count=random_count)
+        self.scenario = scenario
+        self.status = DtpJtag2AxiStatus.SUCCESS
+        self.operation_count = 0
+
+    def directed_cases(self) -> list[tuple[int, int, int, int]]:
+        """Return deterministic address, size, data, wstrb cases.
+
+        Covers all legal SMC fabric single-op SIZE encodings and a walking byte-lane
+        pattern. Addresses are spaced by 0x40 to avoid accidental overlap.
+        """
+        cases = []
+        for idx, size in enumerate((0, 1, 2, 3)):
+            addr = DEFAULT_AXI_ADDR + (idx * 0x40)
+            data = (DEFAULT_AXI_DATA ^ (0x1111_1111_1111_1111 * idx)) & self.data_mask(size)
+            wstrb = self.full_wstrb(size)
+            cases.append((addr, size, data, wstrb))
+        cases.append((DEFAULT_AXI_ADDR + 0x140, 3, 0xA5A5_5A5A_C3C3_3C3C, 0x55))
+        cases.append((DEFAULT_AXI_ADDR + 0x180, 3, 0x5A5A_A5A5_3C3C_C3C3, 0xAA))
+        return cases
+
+    async def run_single_write(self) -> None:
+        self.log_banner("SMC_AXI_SINGLE_OP Directed Write")
+        await self.reset_tap()
+        self.log_step(1, "Run deterministic size and strobe sweep")
+        cases = self.directed_cases()
+        for idx, (addr, size, data, wstrb) in enumerate(cases, start=1):
+            self.log_iteration(
+                idx,
+                len(cases),
+                "single write addr=0x%08x size=%d data=0x%x wstrb=0x%02x",
+                addr,
+                size,
+                data,
+                wstrb,
+            )
+            item = await self.write_single_and_check(
+                addr,
+                data,
+                size=size,
+                wstrb=wstrb,
+                context=f"single_write#{idx}",
+            )
+            self.status = item.status
+            self.operation_count += 1
+
+    async def run_single_write_data_verify(self) -> None:
+        self.log_banner("SMC_AXI_SINGLE_OP Write With Readback")
+        await self.reset_tap()
+        self.log_step(1, "Write non-trivial data, then read it back through JTAG2AXI")
+        addr = DEFAULT_AXI_ADDR + 0x200
+        data = 0xD00D_F00D_CAFE_BEEF
+        write_item = await self.write_single_and_check(
+            addr,
+            data,
+            size=3,
+            wstrb=0xFF,
+            context="write_readback.write",
+        )
+        read_item = await self.read_single_and_check(
+            addr,
+            data,
+            size=3,
+            context="write_readback.read",
+        )
+        self.status = (
+            read_item.status
+            if read_item.status != DtpJtag2AxiStatus.SUCCESS
+            else write_item.status
+        )
+        self.operation_count += 2
+
+    async def run_series_write_incr(self) -> None:
+        self.log_banner("SMC_AXI_SERIES_DATA_INCR Write Sweep")
+        await self.reset_tap()
+        rng = self.rng("series_write_incr")
+        size = 3
+        stride = self.size_bytes(size)
+        beats = max(2, min(self.random_count, 6))
+        base = self.random_aligned_addr(rng, size) & ~0x3F
+        self.log_step(1, "Program SERIES_CTRL for incrementing writes")
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size)
+        for idx in range(beats):
+            addr = base + (idx * stride)
+            data = rng.getrandbits(64) & self.data_mask(size)
+            self.log_iteration(
+                idx + 1,
+                beats,
+                "series incr write addr=0x%08x data=0x%x",
+                addr,
+                data,
+            )
+            before = await self.axi_activity_counts()
+            await self.series_data_incr(data, size=size, back_to_rti=True)
+            await self.wait_for_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"series_incr.axi#{idx}",
+            )
+            observed = self.read_mem_int(addr, size)
+            self.assert_equal(f"series_incr.mem#{idx}", observed, data, f"addr=0x{addr:x}")
+            self.operation_count += 1
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
+        self.assert_equal("series_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal("series_incr.addr_after", addr_after, base + (beats * stride))
+        self.status = status
+
+    async def run_series_write_no_incr(self) -> None:
+        self.log_banner("SMC_AXI_SERIES_DATA_NO_INCR Write Sweep")
+        await self.reset_tap()
+        rng = self.rng("series_write_no_incr")
+        size = 3
+        beats = max(2, min(self.random_count, 6))
+        addr = self.random_aligned_addr(rng, size)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, addr, size=size)
+        last_data = 0
+        for idx in range(beats):
+            last_data = rng.getrandbits(64) & self.data_mask(size)
+            self.log_iteration(
+                idx + 1,
+                beats,
+                "series no-incr write addr=0x%08x data=0x%x",
+                addr,
+                last_data,
+            )
+            before = await self.axi_activity_counts()
+            await self.series_data_no_incr(last_data, size=size, back_to_rti=True)
+            await self.wait_for_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"series_no_incr.axi#{idx}",
+            )
+            self.assert_equal(f"series_no_incr.mem#{idx}", self.read_mem_int(addr, size), last_data)
+            self.operation_count += 1
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
+        self.assert_equal("series_no_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal("series_no_incr.addr_after", addr_after, addr)
+        self.status = status
+
+    async def run_series_write_incr_with_error(self) -> None:
+        self.log_banner("SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS Write Mode")
+        await self.reset_tap()
+        rng = self.rng("series_write_with_status")
+        size = 3
+        stride = self.size_bytes(size)
+        base = self.random_aligned_addr(rng, size) & ~0x3F
+        increments = [1, 0, 1, 1]
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, back_to_rti=True)
+        expected_addr = base
+        for idx, inc in enumerate(increments, start=1):
+            data = rng.getrandbits(64) & self.data_mask(size)
+            self.log_iteration(
+                idx,
+                len(increments),
+                "with-status write addr=0x%08x inc=%d data=0x%x",
+                expected_addr,
+                inc,
+                data,
+            )
+            before = await self.axi_activity_counts()
+            await self.series_data_with_status(data, size=size, increment=inc, back_to_rti=True)
+            await self.wait_for_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"series_status.axi#{idx}",
+            )
+            self.assert_equal(
+                f"series_status.mem#{idx}",
+                self.read_mem_int(expected_addr, size),
+                data,
+            )
+            expected_addr += stride if inc else 0
+            self.operation_count += 1
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
+        self.assert_equal("series_status.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal("series_status.addr_after", addr_after, expected_addr)
+        self.status = status
+
+    async def run_random_ops(self) -> None:
+        self.log_banner("SMC_AXI_SINGLE_OP Randomized Writes")
+        await self.reset_tap()
+        rng = self.rng("random_write_ops")
+        for idx in range(1, self.random_count + 1):
+            size = rng.choice([0, 1, 2, 3])
+            addr = self.random_aligned_addr(rng, size)
+            data = rng.getrandbits(64) & self.data_mask(size)
+            wstrb = rng.randint(1, self.full_wstrb(size))
+            self.log_iteration(
+                idx,
+                self.random_count,
+                "random write addr=0x%08x size=%d data=0x%x wstrb=0x%02x",
+                addr,
+                size,
+                data,
+                wstrb,
+            )
+            item = await self.write_single_and_check(
+                addr,
+                data,
+                size=size,
+                wstrb=wstrb,
+                context=f"random_write#{idx}",
+            )
+            self.status = item.status
+            self.operation_count += 1
+
+    async def run_write_security_gating(self) -> None:
+        self.log_banner("SMC_AXI_SINGLE_OP Write Security Gating")
+        await self.reset_tap()
+        addr = DEFAULT_AXI_ADDR + 0x300
+        data = 0xFACE_CAFE_1234_5678
+        self.log_step(1, "Establish baseline write and AXI activity")
+        before = await self.axi_activity_counts()
+        await self.write_single_and_check(addr, data, context="gate.baseline")
+        await self.expect_smc_axi_activity(before=before, read=False, context="gate.baseline")
+
+        for idx, bit_name in enumerate(("ap_debug", "soc_debug"), start=1):
+            self.log_step(idx + 1, "Gate SMC fabric write with %s", bit_name)
+            await self.set_lifecycle(**{bit_name: 0})
+            raw = pack_single_op(DtpJtag2AxiOp.WRITE, addr + (idx * AXI_BEAT_BYTES), data)
+            await self.load_ir(DtpJtagInstr.SMC_AXI_SINGLE_OP, back_to_rti=True)
+            await self.shift_dr(raw, 132, back_to_rti=True)
+            await self.expect_no_smc_axi_activity(8, context=f"gate.{bit_name}.no_axi")
+            await self.clear_lifecycle()
+            before = await self.axi_activity_counts()
+            item = await self.write_single_and_check(
+                addr + (idx * 0x40),
+                data ^ idx,
+                context=f"gate.{bit_name}.restore",
+            )
+            await self.expect_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"gate.{bit_name}.restore",
+            )
+            self.status = item.status
+            self.operation_count += 1
+
+    async def body(self) -> None:
+        await self.clear_lifecycle()
+        scenarios = {
+            "single_write": self.run_single_write,
+            "single_write_data_verify": self.run_single_write_data_verify,
+            "series_write_incr": self.run_series_write_incr,
+            "series_write_no_incr": self.run_series_write_no_incr,
+            "series_write_incr_with_error": self.run_series_write_incr_with_error,
+            "random_ops": self.run_random_ops,
+            "write_security_gating": self.run_write_security_gating,
+        }
+        if self.scenario not in scenarios:
+            raise ValueError(f"unknown write-side JTAG2AXI scenario {self.scenario!r}")
+        await scenarios[self.scenario]()
+        await self.clear_lifecycle()
+        self.log_summary(
+            "SMC fabric write-side scenario complete",
+            scenario=self.scenario,
+            operations=self.operation_count,
+            status=DtpJtag2AxiStatus(self.status).name,
+        )

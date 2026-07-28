@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_cold_reset_test"
+module = "smc_cold_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "reset", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_powergood_glitch_test"
+module = "smc_powergood_glitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cold_reset_repeated_test"
+module = "smc_cold_reset_repeated_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_recovery_matrix_test"
+module = "smc_reset_recovery_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "reset", "canonical", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "reset"
+tests = [
+    "smc_cold_reset_test",
+    "smc_powergood_glitch_test",
+    "smc_cold_reset_repeated_test",
+    "smc_reset_recovery_matrix_test",
+]

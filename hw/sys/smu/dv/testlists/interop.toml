@@ -1,0 +1,7 @@
+schema_version = 1
+
+# DEPRECATED as an active include — Phase-1 is SEP=0 only; interop is SEP=1 track.
+# Names live in testlists/deferred.toml. See docs/SMU_OSS_VPLAN_PHASE1.md §9.
+# Do not add this file to testlists/all.toml includes.
+
+includes = []

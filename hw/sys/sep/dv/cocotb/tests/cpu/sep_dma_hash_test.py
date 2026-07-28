@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+"""SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
+
+OSS port of the OCAH ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the
+dma_hash firmware, which programs the Secure DMA to copy a buffer with the
+inline SHA-256 engine, waits for the DMA-done interrupt through the VeeR PIC
+(WFI + ISR), and self-checks the hardware digest against a software SHA-256, the
+copied data, and the DMA error code. Interconnect edges E7 (DMA + inline SHA)
+and E10 (DMA-done IRQ -> PIC -> CPU -> ISR).
+
+Like the OCAH test this is firmware-self-checking: the firmware returns its
+error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
+the 0x8000_0000 mailbox, which the boot scoreboard gates on (so a digest/data
+mismatch inside the firmware surfaces as fw_pass=False). The scoreboard also
+checks the firmware banner and that the core actually executed out of ICCM.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pyuvm
+
+from sep_base_test import sep_base_test
+from env.sep_boot_scoreboard import SepBootScoreboard
+
+_DV_ROOT = str(Path(__file__).resolve().parents[3])
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "dma_hash_test")
+_ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
+_DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
+
+_ICCM_BASE = 0xC000_0000
+# DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
+# early-exits on fw_done, so this is just an upper bound.
+_MAX_RUN_CYCLES = 3_000_000
+_NO_BOOT_CYCLES = 80_000
+_PROGRESS_EVERY = 5_000
+_BANNER = "SEP DMA SHA-256 test"
+
+
+@pyuvm.test()
+class sep_dma_hash_test(sep_base_test):
+    """Boot VeeR EL2 and run the Secure-DMA inline SHA-256 firmware."""
+
+    build_env = False
+
+    def build_phase(self) -> None:
+        super().build_phase()
+        self.sb = SepBootScoreboard("sb", self)
+
+    async def run_scenario(self) -> None:
+        # Override the boot scoreboard's expected banner here (after its own
+        # build_phase, which resets it to the hello_world default).
+        self.sb.expected_line = _BANNER
+        await self.boot_firmware(
+            self.sb, _ITCM_HEX, _DTCM_HEX,
+            rst_vec=_ICCM_BASE >> 1,
+            max_run_cycles=_MAX_RUN_CYCLES,
+            no_boot_cycles=_NO_BOOT_CYCLES,
+            progress_every=_PROGRESS_EVERY,
+        )

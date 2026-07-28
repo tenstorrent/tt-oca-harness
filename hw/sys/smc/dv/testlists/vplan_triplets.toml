@@ -1,0 +1,336 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+[[tests]]
+name = "smc_axi_error_response_depth_test"
+module = "smc_axi_error_response_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "local_axi_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_fabric_wr_rd_responder_test"
+module = "smc_output_fabric_wr_rd_responder_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "fabric_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_fabric_slverr_inject_test"
+module = "smc_output_fabric_slverr_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "fabric_depth", "u1_2_slverr", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_event_irq_test"
+module = "smc_mailbox_event_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "mailbox_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_p1_rdwr_protocol_test"
+module = "smc_i2c_p1_rdwr_protocol_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_error_fifo_depth_test"
+module = "smc_i2c_error_fifo_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i3c_oca_write_read_sanity_test"
+module = "smc_i3c_oca_write_read_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i3c_ibi_ccc_depth_test"
+module = "smc_i3c_ibi_ccc_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_chiplet_reg_jtag_test"
+module = "smc_chiplet_reg_jtag_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "jtag_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_jtag_lc_negative_test"
+module = "smc_efuse_jtag_lc_negative_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "jtag_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_jtag_lc_access_matrix_test"
+module = "smc_efuse_jtag_lc_access_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "jtag_depth", "p2_phase_b", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_permission_boundary_test"
+module = "smc_efuse_permission_boundary_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_pll_dvfs_depth_test"
+module = "smc_pll_dvfs_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_static_cg_sanity_test"
+module = "smc_static_cg_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_strap_sanity_test"
+module = "smc_gpio_strap_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "gpio_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_external_interrupts_test"
+module = "smc_external_interrupts_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "gpio_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_error_boundary_test"
+module = "smc_uart_log_engine_error_boundary_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_uart_log", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "octs_sanity_test"
+module = "octs_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "sideband_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_sanity_test"
+module = "smc_zeroer_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "zeroer_dma_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_sanity_test"
+module = "smc_dma_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "zeroer_dma_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_sanity_test"
+module = "smc_dfd_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "diagnostic_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ecc_lint_pint_depth_test"
+module = "smc_cpu_ecc_lint_pint_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "diagnostic_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_sanity_test"
+module = "smc_cpu_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "cpu_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_firmware_boot_test"
+module = "smc_cpu_firmware_boot_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "vplan_gap", "cpu_depth", "u3_fw_boot", "pyuvm"]
+run_modes = ["smoke"]
+# FIXME(SMC-DV): stage the named assets in each run directory before enabling
+# this firmware test. min_pass.ecc.hex is not currently checked in.
+# +skip_fuse_sense: skip eFuse sense wait.
+# +smc_hold_cpu_boot: keep pad60 boot_stall from t=0 until the sequence
+# programs RESET_VECTOR then releases (prevents ROM fetch before revector).
+# min_pass.ecc.hex: sync-free RV64 stub (writes 0xACAFACA1 to SCRATCH0).
+# Full Freedom-metal hello_world hangs on cluster-local CLINT MSIP barrier.
+args = [
+    "+skip_fuse_sense",
+    "+smc_hold_cpu_boot",
+    "+smc_shadow_reg_preload=default_efuse_shadow_reg.preload",
+    "+smc_scratch_ram_hex=min_pass.ecc.hex",
+]
+
+[[tests]]
+name = "smc_occp_sanity_secure_error_test"
+module = "smc_occp_sanity_secure_error_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "vplan_gap", "cpu_depth", "p2_phase_c", "u7_secure", "pyuvm"]
+run_modes = ["smoke"]
+args = [
+    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
+    "+smc_efuse_hex=smc_efuse_default.hex",
+    "+smc_efuse_prog_fail_count=1",
+]
+
+[[tests]]
+name = "smc_efuse_otp_burn_shadow_test"
+module = "smc_efuse_otp_burn_shadow_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "vplan_gap", "p2_phase_c", "u7_otp", "pyuvm"]
+run_modes = ["smoke"]
+args = [
+    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
+    "+smc_efuse_hex=smc_efuse_default.hex",
+    "+smc_efuse_prog_fail_count=1",
+]
+
+[[tests]]
+name = "smc_ecc_fault_inject_test"
+module = "smc_ecc_fault_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "smc_dfd_dbs_fault_inject_test"
+module = "smc_dfd_dbs_fault_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "p2_phase_b", "u7_dfd", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+skip_fuse_sense"]
+
+[[groups]]
+name = "vplan_gaps"
+tests = [
+    "smc_axi_error_response_depth_test",
+    "smc_output_fabric_wr_rd_responder_test",
+    "smc_output_fabric_slverr_inject_test",
+    "smc_mailbox_event_irq_test",
+    "smc_i2c_p1_rdwr_protocol_test",
+    "smc_i2c_error_fifo_depth_test",
+    "smc_i3c_oca_write_read_sanity_test",
+    "smc_i3c_ibi_ccc_depth_test",
+    "smc_chiplet_reg_jtag_test",
+    "smc_efuse_jtag_lc_negative_test",
+    "smc_efuse_permission_boundary_test",
+    "smc_pll_dvfs_depth_test",
+    "smc_static_cg_sanity_test",
+    "smc_gpio_strap_sanity_test",
+    "smc_external_interrupts_test",
+    "smc_uart_log_engine_error_boundary_test",
+    "octs_sanity_test",
+    "smc_zeroer_sanity_test",
+    "smc_dma_sanity_test",
+    "smc_dfd_sanity_test",
+    "smc_cpu_ecc_lint_pint_depth_test",
+    "smc_cpu_sanity_test",
+    "smc_cpu_firmware_boot_test",
+    "smc_occp_sanity_secure_error_test",
+    "smc_efuse_otp_burn_shadow_test",
+    "smc_ecc_fault_inject_test",
+    "smc_dfd_dbs_fault_inject_test",
+]
+
+[[groups]]
+name = "vplan_triplets"
+tests = [
+    "smc_reset_recovery_matrix_test",
+    "smc_multi_reset_csr_persistence_test",
+    "smc_flr_sanity_test",
+    "smc_register_sanity_test",
+    "smc_default_reg_rd_test",
+    "smc_register_boundary_depth_test",
+    "smc_local_fabric_csr_depth_test",
+    "smc_axi_error_response_depth_test",
+    "smc_input_output_fabric_wr_rd_test",
+    "smc_output_filter_remap_security_test",
+    "smc_output_fabric_wr_rd_responder_test",
+    "smc_output_fabric_slverr_inject_test",
+    "smc_mailbox_irq_test",
+    "smc_mailbox_data_error_test",
+    "smc_mailbox_event_irq_test",
+    "smc_i2c_master_target_test",
+    "smc_i2c_p1_rdwr_protocol_test",
+    "smc_i2c_error_fifo_depth_test",
+    "smc_i3c_to_fabric_test",
+    "smc_i3c_oca_write_read_sanity_test",
+    "smc_i3c_ibi_ccc_depth_test",
+    "smc_ijtag_basic_test",
+    "smc_chiplet_reg_jtag_test",
+    "smc_efuse_jtag_lc_negative_test",
+    "smc_efuse_otp_clock_test",
+    "smc_efuse_otp_clock_config_depth_test",
+    "smc_efuse_permission_boundary_test",
+    "smc_pll_pvt_clock_config_test",
+    "smc_pll_dvfs_depth_test",
+    "smc_static_cg_sanity_test",
+    "smc_gpio_irq_active_test",
+    "smc_gpio_strap_sanity_test",
+    "smc_external_interrupts_test",
+    "smc_uart_spi_log_engine_test",
+    "smc_uart_log_engine_reg_rw_test",
+    "smc_uart_log_engine_error_boundary_test",
+    "smc_sideband_protocol_smoke_test",
+    "octs_sanity_test",
+    "smc_avsbus_sanity_test",
+    "smc_zeroer_dma_timeout_test",
+    "smc_zeroer_sanity_test",
+    "smc_dma_sanity_test",
+    "smc_ecc_dfd_dbs_sanity_test",
+    "smc_dfd_sanity_test",
+    "smc_cpu_ecc_lint_pint_depth_test",
+    "smc_cpu_to_sep_axi_test",
+    "smc_cpu_sanity_test",
+    "smc_occp_sanity_secure_error_test",
+]

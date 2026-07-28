@@ -73,10 +73,10 @@ timing adaptation and eFuse bank initialization.
 
 ifdef::backend-html5[]
 ++++
-include::partial$efuse/dv/shims/regs/gen/html/efuse_shim_ctrl.html[]
+include::partial$efuse/dv/models/regs/gen/html/efuse_shim_ctrl.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../dv/shims/regs/gen/adoc/efuse_shim_ctrl.adoc[]
+include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[]
 endif::backend-pdf[]

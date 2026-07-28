@@ -36,9 +36,9 @@ OCAH_REG_SIBLING_RDL_FILES := $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_sibli
 # overlay/regs/<ip>/regs layout the block globs above discover), plus the regs-root
 # siblings.
 OCAH_REG_STANDALONE_RDL_FILES ?= \
-  $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/shims/regs/*.rdl) \
-  $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs/*.rdl) \
-  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs/*.rdl) \
+  $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/models/regs/*.rdl) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs/*.rdl) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/*.rdl) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/*.rdl) \
   $(OCAH_REG_SIBLING_RDL_FILES)
 OCAH_EXTRA_REG_RDL_FILES ?=
@@ -101,9 +101,9 @@ OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/blocks/*) \
   $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/include) \
-  $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/shims/regs) \
-  $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/shims/regs) \
-  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/shims/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/models/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs) \
+  $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl) \

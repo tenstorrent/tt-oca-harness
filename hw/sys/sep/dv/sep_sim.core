@@ -1,0 +1,111 @@
+CAPI=2:
+# SPDX-License-Identifier: Apache-2.0
+# Optional FuseSoC/CAPI-2 view of the SEP OSS sim target. The native OSS flow
+# (tools/dv/run_dv.py) builds from sep_sim_cfg.toml [build].bender_targets and
+# does NOT parse this file; it exists only for an external FuseSoC consumer.
+name: "ocah:dv:sep_sim:0.1"
+description: "SEP OSS cocotb/Verilator simulation target"
+
+filesets:
+  files_rtl:
+    depend:
+      - ocah:subsystem:sep
+
+  # sep_wrapper DUT + its IP-integration models: real memory macros, the generic
+  # eFuse bank model + shim, and the OpenTitan-only SPI mux register block. This is
+  # the SEP subset of hw/.bos/filelists/oss_wrapper_sources.f, in dependency
+  # order (packages first). Compiled after files_rtl so the sep subsystem packages
+  # (sep_pkg/sep_crypto_pkg/sep_efuse_pkg/...) are already declared. These module
+  # names are NOT gated behind the tt_sep_dv_files/sep_wrapper bender targets, so they
+  # do not collide with the real hw/sep/sep_{wrapper,ip_integration}.sv.
+  files_wrapper_models:
+    files:
+      - ../../../../../../hw/.bos/models/efuse/efuse_shim_ctrl_reg_pkg.sv
+      - ../../../../../../hw/.bos/models/efuse/efuse_bank_reg_pkg.sv
+      - ../../../../../../hw/.bos/models/efuse/efuse_shim_ctrl_reg.sv
+      - ../../../../../../hw/.bos/models/efuse/efuse_bank_reg.sv
+      - ../../../../../../hw/.bos/models/efuse/efuse_interface_shim.sv
+      - ../../../../../../hw/.bos/models/efuse/efuse_bank_model.sv
+      - ../../../../../../hw/.bos/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv
+      - ../../../../../../hw/.bos/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv
+      - ../../../../../../hw/.bos/wrapper/sep/sep_ip_integration.sv
+      - ../../../../../../hw/.bos/wrapper/sep/sep_wrapper.sv
+    file_type: systemVerilogSource
+
+  # TB sources compiled alongside tb_top. The bare-sep memory/eFuse behavioral
+  # responders (shims/mem/*, shims/analog/tb_sep_efuse_responder.sv) were RETIRED
+  # when the DUT moved to sep_wrapper — their memory content is now backed by the
+  # real macros (see files_wrapper_models) + tb_backdoor_mem inside tb_top.sv.
+  files_dv:
+    files:
+      - tb/tb_top.sv
+      - tb/sep_outbound_mbx.sv
+      - shims/prim/prim_sync2.sv
+    file_type: systemVerilogSource
+
+  files_tests:
+    files:
+      - cocotb/dv_sim_prestage.py
+      - cocotb/env/__init__.py
+      - cocotb/env/sep_env.py
+      - cocotb/env/sep_env_cfg.py
+      - cocotb/env/sep_axi_agent.py
+      - cocotb/env/sep_scoreboard.py
+      - cocotb/env/sep_boot_scoreboard.py
+      - cocotb/env/sep_efuse_image.py
+      - cocotb/seq_lib/__init__.py
+      - cocotb/seq_lib/sep_axi_smoke_seq.py
+      - cocotb/seq_lib/sep_address_map_seq.py
+      - cocotb/seq_lib/sep_efuse_backdoor_check.py
+      - cocotb/seq_lib/sep_efuse_direct_read_seq.py
+      - cocotb/seq_lib/sep_efuse_otp_program_seq.py
+      - cocotb/seq_lib/sep_efuse_shadow_check_seq.py
+      - cocotb/seq_lib/sep_km_mem_smoke_seq.py
+      - cocotb/seq_lib/sep_otbn_mem_smoke_seq.py
+      - cocotb/seq_lib/sep_sram_smoke_seq.py
+      - cocotb/tests/__init__.py
+      - cocotb/tests/sep_base_test.py
+      - cocotb/tests/cpu/__init__.py
+      - cocotb/tests/cpu/sep_boot_rom_smoke_test.py
+      - cocotb/tests/cpu/sep_hello_world_test.py
+      - cocotb/tests/efuse/__init__.py
+      - cocotb/tests/efuse/sep_efuse_image_test.py
+      - cocotb/tests/efuse/sep_efuse_sense_test.py
+      - cocotb/tests/km/__init__.py
+      - cocotb/tests/km/sep_km_mem_smoke_test.py
+      - cocotb/tests/otbn/__init__.py
+      - cocotb/tests/otbn/sep_otbn_mem_smoke_test.py
+      - cocotb/tests/spi/__init__.py
+      - cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py
+      - cocotb/tests/sram/__init__.py
+      - cocotb/tests/sram/sep_sram_smoke_test.py
+      - cocotb/tests/system/__init__.py
+      - cocotb/tests/system/sep_axi_smoke_test.py
+      - cocotb/tests/system/sep_address_map_test.py
+      - cocotb/tests/sep_boot_rom.hex
+      - cocotb/tests/km_rom.parhex
+      - tb/efuse_preloads/sep_efuse_default.hex
+      - testlists/all.toml
+      - testlists/crypto.toml
+      - testlists/cpu.toml
+      - testlists/efuse_lcc.toml
+      - testlists/km.toml
+      - testlists/spi.toml
+      - testlists/memory.toml
+      - testlists/system.toml
+    file_type: pythonSource
+
+targets:
+  sim: &sim_target
+    description: "Build and run the SEP OSS cocotb smoke environment"
+    toplevel: sep_uvm_top
+    filesets:
+      - files_rtl
+      - files_wrapper_models
+      - files_dv
+      - files_tests
+    default_tool: verilator
+
+  lint:
+    <<: *sim_target
+    description: "Lint the SEP OSS simulation target"

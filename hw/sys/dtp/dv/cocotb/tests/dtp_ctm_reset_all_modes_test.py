@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+"""DTP VPLAN scenario `dtp_ctm_reset_all_modes_test`."""
+
+import pyuvm
+
+from dtp_base_test import dtp_base_test
+from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
+
+
+@pyuvm.test()
+class dtp_ctm_reset_all_modes_test(dtp_base_test):
+    async def run_scenario(self) -> None:
+        await self.start_looped_seq(
+            dtp_xtrig_base_test_seq,
+            "ctm_reset_all_modes",
+            scenario="ctm_reset_all_modes",
+            specific_env="DTP_CTM_RESET_ALL_MODES_TEST_LOOPS",
+            group_env="DTP_XTRIG_TEST_LOOPS",
+        )
