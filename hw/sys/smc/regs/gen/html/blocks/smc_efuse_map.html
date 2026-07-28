@@ -61,7 +61,7 @@
 <h3 id="CHIPLET_ID">CHIPLET_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>chiplet_id_value</td><td>RW</td><td>0x0</td><td>Chiplet ID stored in fuse, divided into 8 words and defined as follows:<br>[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;<br>[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID​;<br>[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);<br>[5]: Chiplet User Group ID;<br>[7:6]: Reserved for extension.</td></tr>
+<tr><td>255:0</td><td>chiplet_id_value</td><td>RW</td><td>0x0</td><td>Chiplet ID stored in fuse, divided into 8 words and defined as follows:<br>[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;<br>[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;<br>[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);<br>[5]: Chiplet User Group ID;<br>[7:6]: Reserved for extension.</td></tr>
 </table>
 <h3 id="PACKAGE_ID">PACKAGE_ID</h3>
 <table>
