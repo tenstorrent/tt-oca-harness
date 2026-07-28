@@ -16,11 +16,10 @@ smc_ring_buffer_t *smc_status_buffer = (smc_ring_buffer_t *)SMC_STATUS_BUFFER_AD
 smc_ring_buffer_t *sep_status_buffer = (smc_ring_buffer_t *)SEP_STATUS_BUFFER_ADDR;
 
 /* Helper to create status message */
-static inline uint32_t create_status_msg(uint32_t fw_id, uint32_t msg_type, uint32_t msg_value)
-{
-    //msg_type = 0x1 informational, 0x8 warning ,0xf error
-    //fw_id = 0x01 SEP_BL0, 0x02 SEP_BL1, 0x03 SMC_BL0
-    //msg_value = 16-bit value specific to msg_type
+static inline uint32_t create_status_msg(uint32_t fw_id, uint32_t msg_type, uint32_t msg_value) {
+    // msg_type = 0x1 informational, 0x8 warning ,0xf error
+    // fw_id = 0x01 SEP_BL0, 0x02 SEP_BL1, 0x03 SMC_BL0
+    // msg_value = 16-bit value specific to msg_type
     return ((msg_type & 0xFF) << 24) | ((fw_id & 0xFF) << 16) | (msg_value & 0xFFFF);
 }
 
@@ -28,8 +27,7 @@ static inline uint32_t create_status_msg(uint32_t fw_id, uint32_t msg_type, uint
  * Status reporting API
  */
 
-bool smc_status_init(void)
-{
+bool smc_status_init(void) {
     /* Initialize SMC status buffer */
     smc_ring_buffer_init(smc_status_buffer);
 
@@ -46,18 +44,15 @@ bool smc_status_init(void)
     return true;
 }
 
-void smc_status_report(uint32_t msg_type, uint32_t msg_value)
-{
+void smc_status_report(uint32_t msg_type, uint32_t msg_value) {
     uint32_t message = create_status_msg(SMC_STATUS_FW_ID_SMC, msg_type, msg_value);
     smc_ring_buffer_write(smc_status_buffer, message);
 }
 
-bool smc_status_read(uint32_t *message)
-{
+bool smc_status_read(uint32_t *message) {
     return smc_ring_buffer_read(smc_status_buffer, message) == SMC_RING_BUFFER_OK;
 }
 
-bool sep_status_read(uint32_t *message)
-{
+bool sep_status_read(uint32_t *message) {
     return smc_ring_buffer_read(sep_status_buffer, message) == SMC_RING_BUFFER_OK;
 }

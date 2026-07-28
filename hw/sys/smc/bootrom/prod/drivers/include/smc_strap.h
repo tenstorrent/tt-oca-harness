@@ -14,12 +14,10 @@
  * Holds all parsed strap values for easy access throughout the ROM code.
  * Initialize once at boot and use throughout the firmware.
  */
-typedef struct
-{
+typedef struct {
     /* Raw strap register values */
     uint32_t straps_lo_raw;
     uint32_t straps_hi_raw;
-
 
     /* Parsed strap flags (boolean values) */
     uint8_t bypass_sram_repair;     /* 1 = Bypass the memory repair process */
@@ -64,7 +62,6 @@ const smc_strap_config_t *smc_strap_get_config(void);
  * @return 1 if SRAM auto-zero is disabled, 0 otherwise
  */
 uint8_t smc_strap_is_sram_auto_zero_disabled(void);
-
 
 /**
  * Returns the value of the chip ID [3:0] bits from straps.

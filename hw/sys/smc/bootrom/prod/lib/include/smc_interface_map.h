@@ -14,19 +14,19 @@
  * Indicates which communication interfaces are enabled based on device mode
  */
 typedef struct {
-    uint8_t i2c0_enabled;       /* 1 = I2C interface 0 is enabled */
-    uint8_t i2c1_enabled;       /* 1 = I2C interface 1 is enabled */
-    uint8_t i3c0_enabled;       /* 1 = I3C interface 0 is enabled */
-    uint8_t i3c1_enabled;       /* 1 = I3C interface 1 is enabled */
-    uint8_t i3c2_enabled;       /* 1 = I3C interface 2 is enabled */
-    uint8_t i3c3_enabled;       /* 1 = I3C interface 3 is enabled */
-    //TODO: Add 13C 4
-    uint8_t _reserved[3];       /* Padding for future expansion */
+    uint8_t i2c0_enabled; /* 1 = I2C interface 0 is enabled */
+    uint8_t i2c1_enabled; /* 1 = I2C interface 1 is enabled */
+    uint8_t i3c0_enabled; /* 1 = I3C interface 0 is enabled */
+    uint8_t i3c1_enabled; /* 1 = I3C interface 1 is enabled */
+    uint8_t i3c2_enabled; /* 1 = I3C interface 2 is enabled */
+    uint8_t i3c3_enabled; /* 1 = I3C interface 3 is enabled */
+    // TODO: Add 13C 4
+    uint8_t _reserved[3]; /* Padding for future expansion */
 } smc_interface_map_t;
 
 /**
  * Initialize the interface map based on current device operating mode
- * 
+ *
  * Current implementation enables all supported interfaces uniformly:
  * - I2C0: Enabled (all chiplets)
  * - I2C1: Enabled (all chiplets)
@@ -34,15 +34,15 @@ typedef struct {
  * - I3C1: Enabled (all chiplets)
  * - I3C2: Reserved/disabled
  * - I3C3: Enabled (all chiplets)
- * 
- * Note: Interface configuration differentiation based on PRIMARY_CHIPLET 
- * strap and other boot mode controls will be implemented to support the 
+ *
+ * Note: Interface configuration differentiation based on PRIMARY_CHIPLET
+ * strap and other boot mode controls will be implemented to support the
  * full chiplet coordination model in BL#1 and beyond (per prod_rom spec).
  */
 int smc_interface_map_init(void);
 
 /* Get the current interface map */
-const smc_interface_map_t* smc_interface_map_get(void);
+const smc_interface_map_t *smc_interface_map_get(void);
 
 /**
  * Get a bitmask of all enabled interfaces
@@ -61,6 +61,5 @@ uint8_t smc_interface_map_is_initialized(void);
  * @return 1 if any I3C interface is enabled, 0 otherwise
  */
 uint8_t smc_interface_map_has_i3c_enabled(void);
-
 
 #endif /* SMC_INTERFACE_MAP_H */

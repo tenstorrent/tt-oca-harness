@@ -17,11 +17,11 @@ void metal_fini(void) {
 }
 
 void metal_init_run(void) __attribute__((weak));
-void metal_init_run(void) { 
-    metal_init(); 
+void metal_init_run(void) {
+    metal_init();
 }
 
 void metal_fini_run(void) __attribute__((weak));
-void metal_fini_run(void) { 
-    metal_fini(); 
+void metal_fini_run(void) {
+    metal_fini();
 }

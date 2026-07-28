@@ -17,7 +17,9 @@
  * Boot Sequence Status Codes (0x010-0x05F)
  ********************************************************************/
 #define SMC_STATUS_ROM_STARTED 0x001 /* ROM started */
-#define SMC_STATUS_BOOT_START 0x010  /* Boot sequence started / Config read (OR with strap status) */
+#define SMC_STATUS_BOOT_START \
+    0x010 /* Boot sequence started / Config read (OR with strap status) \
+           */
 /*Removing SMC_STATUS_CONFIG_LOADED, there is no configuration to be loaded for SMC ROM*/
 #define SMC_STATUS_RECOVERY_MODE 0x020       /* Recovery mode detected */
 #define SMC_STATUS_PRIMARY_MODE 0x021        /* Primary mode detected */
@@ -36,36 +38,46 @@
 /* Bus/Command Errors (0x100-0x11F) */
 #define SMC_OCCP_ERROR_CMD_READ 0x100    /* Command read error from bus */
 #define SMC_OCCP_ERROR_CMD_UNKNOWN 0x101 /* Unknown command (OR with command word in low byte) */
-#define SMC_OCCP_ERROR_CMD_FAILED 0x110  /* Command execution failed (OR with error code in low nibble) */
+#define SMC_OCCP_ERROR_CMD_FAILED \
+    0x110 /* Command execution failed (OR with error code in low nibble) */
 #define SMC_OCCP_ERROR_CMD_READ 0x100    /* Command read error from bus */
 #define SMC_OCCP_ERROR_CMD_UNKNOWN 0x101 /* Unknown command (OR with command word in low byte) */
-#define SMC_OCCP_ERROR_CMD_FAILED 0x110  /* Command execution failed (OR with error code in low nibble) */
+#define SMC_OCCP_ERROR_CMD_FAILED \
+    0x110 /* Command execution failed (OR with error code in low nibble) */
 
 /* READ Command Errors (0x120-0x12F) */
-#define SMC_OCCP_ERROR_READ_OVERFLOW 0x120      /* READ buffer overflow (size exceeds maximum) */
-#define SMC_OCCP_ERROR_READ_ACCESS_DENIED 0x121 /* READ access denied (OR with access violation code in upper nibble) */
-#define SMC_OCCP_ERROR_READ_OVERFLOW 0x120      /* READ buffer overflow (size exceeds maximum) */
-#define SMC_OCCP_ERROR_READ_ACCESS_DENIED 0x121 /* READ access denied (OR with access violation code in upper nibble) */
+#define SMC_OCCP_ERROR_READ_OVERFLOW 0x120 /* READ buffer overflow (size exceeds maximum) */
+#define SMC_OCCP_ERROR_READ_ACCESS_DENIED \
+    0x121 /* READ access denied (OR with access violation code in upper nibble) */
+#define SMC_OCCP_ERROR_READ_OVERFLOW 0x120 /* READ buffer overflow (size exceeds maximum) */
+#define SMC_OCCP_ERROR_READ_ACCESS_DENIED \
+    0x121 /* READ access denied (OR with access violation code in upper nibble) */
 
 /* WRITE Command Errors (0x130-0x13F) */
-#define SMC_OCCP_ERROR_WRITE_OVERFLOW 0x130      /* WRITE buffer overflow (size exceeds maximum) */
-#define SMC_OCCP_ERROR_WRITE_ACCESS_DENIED 0x131 /* WRITE access denied (OR with access violation code in upper nibble) */
-#define SMC_OCCP_ERROR_WRITE_OVERFLOW 0x130      /* WRITE buffer overflow (size exceeds maximum) */
-#define SMC_OCCP_ERROR_WRITE_ACCESS_DENIED 0x131 /* WRITE access denied (OR with access violation code in upper nibble) */
+#define SMC_OCCP_ERROR_WRITE_OVERFLOW 0x130 /* WRITE buffer overflow (size exceeds maximum) */
+#define SMC_OCCP_ERROR_WRITE_ACCESS_DENIED \
+    0x131 /* WRITE access denied (OR with access violation code in upper nibble) */
+#define SMC_OCCP_ERROR_WRITE_OVERFLOW 0x130 /* WRITE buffer overflow (size exceeds maximum) */
+#define SMC_OCCP_ERROR_WRITE_ACCESS_DENIED \
+    0x131 /* WRITE access denied (OR with access violation code in upper nibble) */
 
 /* Security Violation Errors (0x140-0x14F) */
-#define SMC_OCCP_ERROR_VALIDATE_SECURITY 0x140       /* VALIDATE_BOOT command access validation error */
-#define SMC_OCCP_ERROR_VALIDATE_ADDRESS_FAILED 0x141 /* VALIDATE_BOOT command address validation error */
-#define SMC_OCCP_ERROR_VALIDATE_SECURITY 0x140       /* VALIDATE_BOOT command access validation error */
-#define SMC_OCCP_ERROR_VALIDATE_ADDRESS_FAILED 0x141 /* VALIDATE_BOOT command address validation error */
+#define SMC_OCCP_ERROR_VALIDATE_SECURITY 0x140 /* VALIDATE_BOOT command access validation error */
+#define SMC_OCCP_ERROR_VALIDATE_ADDRESS_FAILED \
+    0x141                                      /* VALIDATE_BOOT command address validation error */
+#define SMC_OCCP_ERROR_VALIDATE_SECURITY 0x140 /* VALIDATE_BOOT command access validation error */
+#define SMC_OCCP_ERROR_VALIDATE_ADDRESS_FAILED \
+    0x141 /* VALIDATE_BOOT command address validation error */
 
 /*********************************************************************
  * OCCP JUMP Command Codes (0x200-0x20F)
  ********************************************************************/
-#define SMC_OCCP_STATUS_JUMP_EXECUTED 0x200   /* JUMP executed (OR with address bits [23:16] in low byte) */
+#define SMC_OCCP_STATUS_JUMP_EXECUTED \
+    0x200 /* JUMP executed (OR with address bits [23:16] in low byte) */
 #define SMC_OCCP_ERROR_JUMP_SECURITY 0x201    /* JUMP blocked due to security violation */
 #define SMC_OCCP_ERROR_JUMP_READ_FAILED 0x202 /* JUMP failed due to read error */
-#define SMC_OCCP_STATUS_JUMP_EXECUTED 0x200   /* JUMP executed (OR with address bits [23:16] in low byte) */
+#define SMC_OCCP_STATUS_JUMP_EXECUTED \
+    0x200 /* JUMP executed (OR with address bits [23:16] in low byte) */
 #define SMC_OCCP_ERROR_JUMP_SECURITY 0x201    /* JUMP blocked due to security violation */
 #define SMC_OCCP_ERROR_JUMP_READ_FAILED 0x202 /* JUMP failed due to read error */
 

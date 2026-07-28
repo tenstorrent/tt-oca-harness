@@ -37,9 +37,11 @@ typedef struct I2C_Driver I2C_Driver;
 struct I2C_Driver {
     void (*release_reset)(uint8_t i2c_id);
     I2C_Status (*init_target)(I2C_Driver *drv, uint8_t i2c_addr);
-    I2C_Status (*read_target)(I2C_Driver *drv, const uint8_t *tx_buf, size_t tx_buf_len, uint32_t timeout);
-    I2C_Status (*write_target)(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len, size_t *bytes_received,
-                               uint32_t timeout, bool expect_start_det, bool expect_stop_det);
+    I2C_Status (*read_target)(I2C_Driver *drv, const uint8_t *tx_buf, size_t tx_buf_len,
+                              uint32_t timeout);
+    I2C_Status (*write_target)(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len,
+                               size_t *bytes_received, uint32_t timeout, bool expect_start_det,
+                               bool expect_stop_det);
     uint32_t (*check_rx_fifo)(I2C_Driver *drv);
 
     struct {
@@ -57,5 +59,4 @@ I2C_Status write_target(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len, siz
                         uint32_t timeout, bool expect_start_det, bool expect_stop_det);
 uint32_t check_rx_fifo(I2C_Driver *drv);
 
-
-#endif  //
+#endif //

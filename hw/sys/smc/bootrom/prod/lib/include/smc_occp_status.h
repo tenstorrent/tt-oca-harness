@@ -33,8 +33,7 @@
 #define OCCP_STATUS_RESERVED_MASK 0xFF000000
 
 /* Boot Status Values */
-typedef enum
-{
+typedef enum {
     OCCP_BOOT_STATUS_INIT = 0x0,            /* Hardware initialization */
     OCCP_BOOT_STATUS_STRAP_READ = 0x1,      /* Reading straps and fuses */
     OCCP_BOOT_STATUS_INTERFACE_SETUP = 0x2, /* Setting up I2C/I3C interface */
@@ -45,16 +44,14 @@ typedef enum
 } occp_boot_status_t;
 
 /* Interface Status Values */
-typedef enum
-{
+typedef enum {
     OCCP_INTERFACE_STATUS_DISABLED = 0x0, /* Interface disabled */
     OCCP_INTERFACE_STATUS_READY = 0x1,    /* I2C/I3C ready */
     OCCP_INTERFACE_STATUS_ERROR = 0xF     /* Interface error */
 } occp_interface_status_t;
 
 /* Error Code Values */
-typedef enum
-{
+typedef enum {
     OCCP_ERROR_NONE = 0x00,                 /* No error */
     OCCP_ERROR_INVALID_COMMAND = 0x01,      /* Invalid command received */
     OCCP_ERROR_ACCESS_VIOLATION = 0x02,     /* Memory access violation */

@@ -51,6 +51,6 @@ uint8_t smc_pll_get_chiplet_type(void);
  * @param result PLL result code
  * @return String representation of the result code
  */
-const char* smc_pll_result_to_string(smc_pll_result_t result);
+const char *smc_pll_result_to_string(smc_pll_result_t result);
 
 #endif /* SMC_PLL_H */

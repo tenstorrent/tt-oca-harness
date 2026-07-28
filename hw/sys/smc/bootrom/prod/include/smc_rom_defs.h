@@ -21,8 +21,8 @@
  * Register Address Definitions
  * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-#define SMC_STRAPS_LO_REG_ADDR 0xC0002090 /* RESET_UNIT_STRAPS_LO_REG_ADDR */
-#define SMC_STRAPS_HI_REG_ADDR 0xC0002094 /* RESET_UNIT_STRAPS_HI_REG_ADDR */
+#define SMC_STRAPS_LO_REG_ADDR 0xC0002090            /* RESET_UNIT_STRAPS_LO_REG_ADDR */
+#define SMC_STRAPS_HI_REG_ADDR 0xC0002094            /* RESET_UNIT_STRAPS_HI_REG_ADDR */
 #define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR 0xC000BAFC /* SMC_EFUSE_MAP_RESERVED_0__REG_ADDR */
 #define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR 0xC000BB04 /* SMC_EFUSE_MAP_RESERVED_2__REG_ADDR */
 
@@ -44,16 +44,17 @@
 #define SMC_AUX_CHIPLET_ID 3
 
 /**
- * TODO: These definitions have come from the boot scratch document but currently collide with BOOT_RECOVERY_BIT and STATUS_RPT_DISABLE_BIT which should be moving.
+ * TODO: These definitions have come from the boot scratch document but currently collide with
+ * BOOT_RECOVERY_BIT and STATUS_RPT_DISABLE_BIT which should be moving.
  */
 #define SMC_STRAP_CHIP_ID_1 55
 #define SMC_STRAP_CHIP_ID_0 57
 
-#define SMC_STRAP_MEM_BIST_BYPASS_BIT 54 /* In HI register */
-#define SMC_STRAP_BOOT_RECOVERY_BIT 55 /* In HI register */
-#define SMC_STRAP_BL0_PLLCLK_BIT 56    /* In HI register - enables PLL configuration */
+#define SMC_STRAP_MEM_BIST_BYPASS_BIT 54    /* In HI register */
+#define SMC_STRAP_BOOT_RECOVERY_BIT 55      /* In HI register */
+#define SMC_STRAP_BL0_PLLCLK_BIT 56         /* In HI register - enables PLL configuration */
 #define SMC_STRAP_STATUS_RPT_DISABLE_BIT 21 /* In LO register - Disable status reporting */
-#define SMC_STRAP_ROTATE_UPDATE_BIT 61 /* In HI register */
+#define SMC_STRAP_ROTATE_UPDATE_BIT 61      /* In HI register */
 
 /* Strap bit masks */
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK (1U << SMC_STRAP_MEM_REPAIR_BYPASS_BIT)
@@ -80,8 +81,8 @@
  */
 #define SMC_I3C_0_SCL_GPIO 27
 #define SMC_I3C_0_SDA_GPIO 28
-#define SMC_I3C_1_SCL_GPIO 66  /* unbonded */
-#define SMC_I3C_1_SDA_GPIO 67  /* unbonded */
+#define SMC_I3C_1_SCL_GPIO 66 /* unbonded */
+#define SMC_I3C_1_SDA_GPIO 67 /* unbonded */
 #define SMC_I3C_2_SCL_GPIO 29
 #define SMC_I3C_2_SDA_GPIO 30
 #define SMC_I3C_3_SCL_GPIO 31
@@ -98,8 +99,8 @@
 
 /* Observation GPIOs routed via the GPIO 2nd HW function override in
  * smc_ip_integration (hw2_ovrd must be set for the function to reach the pad). */
-#define SMC_CAT_THERM_GPIO    52  /* thermal trip output (active low) */
-#define SMC_PVT_CLK_OBS_GPIO  57  /* PVT RO clock observation */
+#define SMC_CAT_THERM_GPIO 52   /* thermal trip output (active low) */
+#define SMC_PVT_CLK_OBS_GPIO 57 /* PVT RO clock observation */
 
 #define SMC_STATUS_GPIO 61 /* GPIO used for reset status reporting */
 #define MAX_GPIO_COUNT 71  /* Maximum number of GPIOs supported */
@@ -107,21 +108,24 @@
 /*
  * SRAM Definitions
  */
-#define SMC_SRAM_BASE 0xC0060000 /* SPM_MEMORY_MEM_BASE_ADDR - physical SRAM start */
-#define SMC_SRAM_SIZE (1024 * 1024)   /* 1 MB total SRAM size */
+#define SMC_SRAM_BASE 0xC0060000    /* SPM_MEMORY_MEM_BASE_ADDR - physical SRAM start */
+#define SMC_SRAM_SIZE (1024 * 1024) /* 1 MB total SRAM size */
 
 /* ROM-owned memory regions (protected from OCCP access) */
-#define SMC_ROM_DATA_BASE 0xC0060000   /* ROM .data section start */
-#define SMC_ROM_STACK_END 0xC0066400   /* ROM stack end + safety margin (high watermark 23.7KB based on tests, allocating 25KB) */
+#define SMC_ROM_DATA_BASE 0xC0060000 /* ROM .data section start */
+#define SMC_ROM_STACK_END \
+    0xC0066400 /* ROM stack end + safety margin (high watermark 23.7KB based on tests, allocating \
+                  25KB) */
 
 /* OCCP-accessible SRAM region (starts after ROM-owned regions) */
-#define SMC_SRAM_BASE_ADDR SMC_ROM_STACK_END /* OCCP accessible SRAM base - starts after ROM sections */
+#define SMC_SRAM_BASE_ADDR \
+    SMC_ROM_STACK_END /* OCCP accessible SRAM base - starts after ROM sections */
 #define SMC_SRAM_STACK_LIMIT_ADDR (SMC_SRAM_BASE + SMC_SRAM_SIZE) /* End of physical SRAM */
 
 /* SEP Safe SRAM Region (for SEP scratchpad operations)
  * This is the region SEP can safely use without interfering with SMC ROM operations */
-#define SEP_SAFE_SRAM_START SMC_SRAM_BASE_ADDR                  /* Start: 0xC0066400 */
-#define SEP_SAFE_SRAM_END 0xC015B000                                 /* End: just before status buffers*/
+#define SEP_SAFE_SRAM_START SMC_SRAM_BASE_ADDR /* Start: 0xC0066400 */
+#define SEP_SAFE_SRAM_END 0xC015B000           /* End: just before status buffers*/
 #define SEP_SAFE_SRAM_SIZE (SEP_SAFE_SRAM_END - SEP_SAFE_SRAM_START) /* ~987 KB */
 
 /*
@@ -129,13 +133,16 @@
  * For SMC/SEP coordination per SMC ROM Boot Architecture Specification
  */
 #define SMC_SCRATCH_BASE_ADDR 0xC0039080 /* SMC_CPU_CTRL_SCRATCH_0__REG_ADDR */
-#define SMC_SCRATCH_MANIFEST_ADDR 8        /* Manifest address handoff to SEP (stored as offset from SMC_SRAM_BASE) */
-#define SMC_SCRATCH_SMC_STATUS_TO_SEP 9    /* SMC Status to SEP coordination */
-#define SMC_SCRATCH_STATUS_BUFFER_ADDR 11  /* Status reporting structure address (stored as offset from SMC_SRAM_BASE) */
-#define SMC_SCRATCH_SEP_SAFE_SRAM_START 13 /* SEP safe SRAM start address (stored as offset from SMC_SRAM_BASE) */
-#define SMC_SCRATCH_SEP_SAFE_SRAM_SIZE 14  /* SEP safe SRAM size in bytes */
-#define SMC_SCRATCH_MBIST_FAILURE 10       /* MBIST failure register value */
-#define SMC_SCRATCH_MBIST_STATUS 15        /* MBIST/memory repair status for early boot diagnostics */
+#define SMC_SCRATCH_MANIFEST_ADDR \
+    8 /* Manifest address handoff to SEP (stored as offset from SMC_SRAM_BASE) */
+#define SMC_SCRATCH_SMC_STATUS_TO_SEP 9 /* SMC Status to SEP coordination */
+#define SMC_SCRATCH_STATUS_BUFFER_ADDR \
+    11 /* Status reporting structure address (stored as offset from SMC_SRAM_BASE) */
+#define SMC_SCRATCH_SEP_SAFE_SRAM_START \
+    13 /* SEP safe SRAM start address (stored as offset from SMC_SRAM_BASE) */
+#define SMC_SCRATCH_SEP_SAFE_SRAM_SIZE 14 /* SEP safe SRAM size in bytes */
+#define SMC_SCRATCH_MBIST_FAILURE 10      /* MBIST failure register value */
+#define SMC_SCRATCH_MBIST_STATUS 15 /* MBIST/memory repair status for early boot diagnostics */
 
 /* DFX_CTRL_STATUS bit masks */
 #define DFT_STATUS_MEM_REPAIR_DONE_MASK 0x1
