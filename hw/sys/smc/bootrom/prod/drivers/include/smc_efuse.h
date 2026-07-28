@@ -15,17 +15,17 @@
  */
 typedef struct {
     /* CHIPLET_ID fuse data (256-bit, but we only need the low 32 bits for I3C address) */
-    uint32_t chiplet_id;        /* Low 7 bits used as I3C device address */
+    uint32_t chiplet_id; /* Low 7 bits used as I3C device address */
 
     /* SOP_TOPOLOGY serial number */
-    uint32_t serial_number;     /* Package serial number */
+    uint32_t serial_number; /* Package serial number */
 
     /* I2C/I3C ID configuration */
-    uint32_t i3c_id_0;     /* I2C/I3C ID slot 0 */
-    uint32_t i3c_id_1;     /* I2C/I3C ID slot 1 */
-    uint32_t i3c_id_3;     /* I2C/I3C ID slot 3 */
-    uint32_t i2c_id_0;     /* I2C ID slot 0 */
-    uint32_t i2c_id_1;     /* I2C ID slot 0*/
+    uint32_t i3c_id_0;          /* I2C/I3C ID slot 0 */
+    uint32_t i3c_id_1;          /* I2C/I3C ID slot 1 */
+    uint32_t i3c_id_3;          /* I2C/I3C ID slot 3 */
+    uint32_t i2c_id_0;          /* I2C ID slot 0 */
+    uint32_t i2c_id_1;          /* I2C ID slot 0*/
     uint32_t transport_timeout; /* Transport timeout value from efuse */
 } smc_efuse_config_t;
 
@@ -39,7 +39,7 @@ int smc_efuse_init(void);
  * Get the efuse configuration structure
  * @return Pointer to efuse config structure (NULL if not initialized)
  */
-const smc_efuse_config_t* smc_efuse_get_config(void);
+const smc_efuse_config_t *smc_efuse_get_config(void);
 
 /**
  * Get the chiplet ID from efuse (for I3C addressing)

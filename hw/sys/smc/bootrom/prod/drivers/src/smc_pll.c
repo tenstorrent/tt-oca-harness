@@ -18,9 +18,7 @@ static smc_pll_result_t configure_pll_clock(void);
 /**
  * Initialize PLL configuration based on straps and chiplet type
  */
-__attribute__((weak))
-smc_pll_result_t smc_pll_init(void)
-{
+__attribute__((weak)) smc_pll_result_t smc_pll_init(void) {
     simputs("[PLL] Initializing PLL configuration\n");
 
     /* Configure PLL clocks */
@@ -34,21 +32,19 @@ smc_pll_result_t smc_pll_init(void)
     return SMC_PLL_SUCCESS;
 }
 
-
 /**
  * Convert PLL result code to string for debugging
  */
-const char* smc_pll_result_to_string(smc_pll_result_t result)
-{
+const char *smc_pll_result_to_string(smc_pll_result_t result) {
     switch (result) {
-        case SMC_PLL_SUCCESS:
-            return "SUCCESS";
-        case SMC_PLL_ERROR_CONFIG_FAILED:
-            return "CONFIG_FAILED";
-        case SMC_PLL_ERROR_LOCK_TIMEOUT:
-            return "LOCK_TIMEOUT";
-        default:
-            return "UNKNOWN";
+    case SMC_PLL_SUCCESS:
+        return "SUCCESS";
+    case SMC_PLL_ERROR_CONFIG_FAILED:
+        return "CONFIG_FAILED";
+    case SMC_PLL_ERROR_LOCK_TIMEOUT:
+        return "LOCK_TIMEOUT";
+    default:
+        return "UNKNOWN";
     }
 }
 
@@ -59,8 +55,7 @@ const char* smc_pll_result_to_string(smc_pll_result_t result)
  * configure the required PLL clock domains and switch the relevant clock muxes
  * to the PLL sources.
  */
-static smc_pll_result_t configure_pll_clock(void)
-{
+static smc_pll_result_t configure_pll_clock(void) {
     simputs("[PLL] PLL clock configuration stub\n");
 
     return SMC_PLL_SUCCESS;

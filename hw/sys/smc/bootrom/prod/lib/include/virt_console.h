@@ -22,13 +22,30 @@ void simputshex32(const char *msg, uint32_t val);
 void simputshex64(const char *msg, uint64_t val);
 #else
 /* Production builds: No-op implementations */
-static inline void simputs(const char *str) { (void)str; }
-static inline void simputhex16(uint16_t val) { (void)val; }
-static inline void simputhex32(uint32_t val) { (void)val; }
-static inline void simputhex64(const uint64_t val) { (void)val; }
-static inline void simputshex16(const char *msg, uint16_t val) { (void)msg; (void)val; }
-static inline void simputshex32(const char *msg, uint32_t val) { (void)msg; (void)val; }
-static inline void simputshex64(const char *msg, uint64_t val) { (void)msg; (void)val; }
+static inline void simputs(const char *str) {
+    (void)str;
+}
+static inline void simputhex16(uint16_t val) {
+    (void)val;
+}
+static inline void simputhex32(uint32_t val) {
+    (void)val;
+}
+static inline void simputhex64(const uint64_t val) {
+    (void)val;
+}
+static inline void simputshex16(const char *msg, uint16_t val) {
+    (void)msg;
+    (void)val;
+}
+static inline void simputshex32(const char *msg, uint32_t val) {
+    (void)msg;
+    (void)val;
+}
+static inline void simputshex64(const char *msg, uint64_t val) {
+    (void)msg;
+    (void)val;
+}
 #endif
 
 #endif /* VIRT_CONSOLE_H */

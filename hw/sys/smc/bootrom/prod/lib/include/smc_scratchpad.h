@@ -35,7 +35,8 @@
 #define SMC_SCRATCHPAD_SIM_FAIL_CODE 0xffffffff /* SIM: Test fail code */
 
 /* Error codes for invalid address handling */
-#define SMC_SCRATCHPAD_INVALID_OFFSET 0xFFFFFFFF /* Invalid offset marker for address validation failures */
+#define SMC_SCRATCHPAD_INVALID_OFFSET \
+    0xFFFFFFFF /* Invalid offset marker for address validation failures */
 
 /*
  * SMC Status to SEP (Scratch Register 9) Bitfield Definitions
@@ -90,8 +91,8 @@ void smc_scratchpad_signal_status_buffer_ready(void);
 void smc_scratchpad_set_mbist_failure(uint32_t mbist_value);
 
 /**
- * Set SEP safe SRAM region information for SEP scratchpad operations (stores start as offset from SMC_SRAM_BASE)
- * Uses separate scratch registers for simplified SEP consumption
+ * Set SEP safe SRAM region information for SEP scratchpad operations (stores start as offset from
+ * SMC_SRAM_BASE) Uses separate scratch registers for simplified SEP consumption
  * @param start_addr Starting address of safe SRAM region for SEP (must be within SRAM bounds)
  * @param size Size of safe SRAM region in bytes
  * @note Validates address range; writes 0xFFFFFFFF and size 0 on invalid address

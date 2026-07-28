@@ -17,8 +17,7 @@ static smc_efuse_config_t g_smc_efuse = {0};
 static uint8_t g_efuse_initialized = 0;
 
 /* Initialize the efuse driver and read essential fuse data */
-int smc_efuse_init(void)
-{
+int smc_efuse_init(void) {
     uint32_t chiplet_id_reg[8] = {0}; /* 256-bit register = 8 x 32-bit words */
     uint32_t sop_topology_reg = 0;
     int i;
@@ -27,8 +26,7 @@ int smc_efuse_init(void)
     g_smc_efuse = (smc_efuse_config_t){0};
 
     /* Read CHIPLET_ID (256-bit register, but we only need the first 32 bits) */
-    for (i = 0; i < 8; i++)
-    {
+    for (i = 0; i < 8; i++) {
         chiplet_id_reg[i] = read_reg(SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR + (i * 4));
     }
     /* We only care about the low 32 bits for I3C addressing */
@@ -40,11 +38,16 @@ int smc_efuse_init(void)
 
     /* Read I2C/I3C ID configuration */
     // need two separate reads since it is not 64 bit aligned
-    g_smc_efuse.i3c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR) | ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR + 4)) << 32);
-    g_smc_efuse.i3c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR) | ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR + 4)) << 32);
-    g_smc_efuse.i3c_id_3 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR) | ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR + 4)) << 32);
-    g_smc_efuse.i2c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR) | ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4)) << 32);
-    g_smc_efuse.i2c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR) | ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR + 4)) << 32);
+    g_smc_efuse.i3c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR) |
+                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR + 4)) << 32);
+    g_smc_efuse.i3c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR) |
+                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR + 4)) << 32);
+    g_smc_efuse.i3c_id_3 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR) |
+                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR + 4)) << 32);
+    g_smc_efuse.i2c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR) |
+                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4)) << 32);
+    g_smc_efuse.i2c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR) |
+                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR + 4)) << 32);
 
     g_smc_efuse.transport_timeout = read_reg(SMC_EFUSE_MAP_RESERVED_1__REG_ADDR); // 32 bit register
 
@@ -57,10 +60,8 @@ int smc_efuse_init(void)
 /**
  * Get the efuse configuration structure
  */
-const smc_efuse_config_t *smc_efuse_get_config(void)
-{
-    if (!g_efuse_initialized)
-    {
+const smc_efuse_config_t *smc_efuse_get_config(void) {
+    if (!g_efuse_initialized) {
         return NULL;
     }
     return &g_smc_efuse;
@@ -69,16 +70,14 @@ const smc_efuse_config_t *smc_efuse_get_config(void)
 /**
  * Get the chiplet ID from efuse
  */
-uint32_t smc_efuse_get_chiplet_id(void)
-{
+uint32_t smc_efuse_get_chiplet_id(void) {
     return g_smc_efuse.chiplet_id;
 }
 
 /**
  * Get the I3C device address from chiplet ID efuse
  */
-uint8_t smc_efuse_get_i3c_address(void)
-{
+uint8_t smc_efuse_get_i3c_address(void) {
     /* I3C device address is the low 7 bits of chiplet ID */
     return (uint8_t)(g_smc_efuse.chiplet_id & 0x7F);
 }
@@ -86,18 +85,15 @@ uint8_t smc_efuse_get_i3c_address(void)
 /**
  * Get the serial number from SOP topology efuse
  */
-uint32_t smc_efuse_get_serial_number(void)
-{
+uint32_t smc_efuse_get_serial_number(void) {
     return g_smc_efuse.serial_number;
 }
 
 /**
  * Get I2C/I3C ID configuration
  */
-uint64_t smc_efuse_get_i2c_i3c_id(uint8_t slot_id)
-{
-    switch (slot_id)
-    {
+uint64_t smc_efuse_get_i2c_i3c_id(uint8_t slot_id) {
+    switch (slot_id) {
     case 0:
         return g_smc_efuse.i3c_id_0;
     case 1:
@@ -122,7 +118,6 @@ uint64_t smc_efuse_get_i2c_i3c_id(uint8_t slot_id)
     }
 }
 
-uint32_t smc_efuse_get_transport_timeout(void)
-{
+uint32_t smc_efuse_get_transport_timeout(void) {
     return g_smc_efuse.transport_timeout;
 }

@@ -16,9 +16,9 @@
 #define BOOT_VERSION_PATCH 0 // Boot version is set to 1.0.0 for ROM 1.0.0
 
 // Maximum size for read/write operations
-// OCCP buffer size is set to 256 -1 for 0 based indexing. This is set independent of the underlying transport layer MTU.
-// For I2C the FIFO depth is 8bytes.
-// The I3C controller uses a 32-entry FIFO with 4-byte words, providing 128 bytes total capacity for data transfers
+// OCCP buffer size is set to 256 -1 for 0 based indexing. This is set independent of the underlying
+// transport layer MTU. For I2C the FIFO depth is 8bytes. The I3C controller uses a 32-entry FIFO
+// with 4-byte words, providing 128 bytes total capacity for data transfers
 #define OCCP_MAX_MSG_SIZE 2047
 
 #define WRITE_HEADER_LENGTH 12
@@ -28,8 +28,11 @@
 #define GET_VER_HEADER_LENGTH 0
 #define GET_STAT_HEADER_LENGTH 2
 
-#define OCCP_MAX_WR_SIZE (OCCP_MAX_MSG_SIZE - WRITE_HEADER_LENGTH) // Max read/write size accounting for header and CRC
-#define OCCP_MAX_RD_SIZE OCCP_MAX_MSG_SIZE                         // Max read size is same as max message size, there are no other fields in the read data response Body
+#define OCCP_MAX_WR_SIZE \
+    (OCCP_MAX_MSG_SIZE - WRITE_HEADER_LENGTH) // Max read/write size accounting for header and CRC
+#define OCCP_MAX_RD_SIZE \
+    OCCP_MAX_MSG_SIZE // Max read size is same as max message size, there are no other fields in the
+                      // read data response Body
 
 // Maximum count in 64-bit units to prevent integer overflow
 #define OCCP_MAX_COUNT_64BIT_UNITS (OCCP_MAX_RD_SIZE / 8)
@@ -75,15 +78,13 @@ void occp_process(void);
 void smc_occp_force_unlatch(void);
 
 // OCCP command header changes from occp spec 0.6
-typedef enum
-{
+typedef enum {
     Base = 0x0,
     Boot = 0x1,
 } OccpAppId;
 
 // Base Application Message IDs
-typedef enum
-{
+typedef enum {
     GetVersion_base = 0x0,
     GetStatus = 0x1,
     WriteData = 0x2,
@@ -92,8 +93,7 @@ typedef enum
 } Occp_BaseMsgID;
 
 // Boot Application Message IDs
-typedef enum
-{
+typedef enum {
     GetVersion_boot = 0x0,
     ExecuteImage = 0x1,
     AuthenticateImage = 0x2,
@@ -106,12 +106,13 @@ typedef enum
 /**
  * 0x1: Invalid_Appid
  *   The message contained an AppID that is not recognized or supported by the target.
- *   This can occur if the initiating device attempts to use an application that the target does not support.
+ *   This can occur if the initiating device attempts to use an application that the target does not
+ * support.
  *
  * 0x2: Invalid_Msgid
  *   The message contained a MsgID that is not recognized or supported by the target.
- *   This may happen if the initiating device tries to use a message that the target does not support,
- *   or if the MsgID is not valid for the given AppID.
+ *   This may happen if the initiating device tries to use a message that the target does not
+ * support, or if the MsgID is not valid for the given AppID.
  *
  * 0x3: Invalid_header
  *   The message length is not valid or the header is malformed.
@@ -122,44 +123,50 @@ typedef enum
  *   Reserved (not described in the specification).
  *
  * 0x5: Corrupt_Data
- *   The data in the message fails the integrity check defined in the OCCP transport binding (Section 5.2.4).
+ *   The data in the message fails the integrity check defined in the OCCP transport binding
+ * (Section 5.2.4).
  *
  * 0x6: Invalid_Address
  *   The address provided in the request is not valid.
  *
  * 0x7: Unsupported_StatusID
  *   The status ID passed in the get_status request is not supported by the target.
- *   Some applications may not support returning a status, so requesting status from those applications will return this error.
+ *   Some applications may not support returning a status, so requesting status from those
+ * applications will return this error.
  *
  * 0x8: Invalid_Request_Length
  *   The length of the message is not valid for the given AppID, MsgID, and request arguments.
- *   For example, in a write_data request, the length in the header and the length in the request arguments do not match.
+ *   For example, in a write_data request, the length in the header and the length in the request
+ * arguments do not match.
  *
  * 0x9: Invalid_Request
  *   The request is malformed or contains invalid arguments.
  */
-{
-    Invalid_Appid = 0x1,          // 0x1: Invalid AppID
-    Invalid_Msgid = 0x2,          // 0x2: Invalid MsgID
-    Invalid_header = 0x3,         // 0x3: Invalid header
-    Corrupt_header = 0x4,         // 0x4: Reserved (not described)
-    Corrupt_Data = 0x5,           // 0x5: Corrupt data
-    Invalid_Address = 0x6,        // 0x6: Invalid address
-    Unsupported_StatusID = 0x7,   // 0x7: Unsupported status ID
-    Invalid_Request_Length = 0x8, // 0x8: Invalid request length
-    Invalid_Request = 0x9,        // 0x9: Invalid request
-    NoErr = 0xF,                  // Marker for no error
+{ Invalid_Appid = 0x1,          // 0x1: Invalid AppID
+  Invalid_Msgid = 0x2,          // 0x2: Invalid MsgID
+  Invalid_header = 0x3,         // 0x3: Invalid header
+  Corrupt_header = 0x4,         // 0x4: Reserved (not described)
+  Corrupt_Data = 0x5,           // 0x5: Corrupt data
+  Invalid_Address = 0x6,        // 0x6: Invalid address
+  Unsupported_StatusID = 0x7,   // 0x7: Unsupported status ID
+  Invalid_Request_Length = 0x8, // 0x8: Invalid request length
+  Invalid_Request = 0x9,        // 0x9: Invalid request
+  NoErr = 0xF,                  // Marker for no error
 
-    // Transport layer errors
-    Incomplete_msg = 0x10000, // 0x10000: Incomplete OCCP message. The I3C transaction did not contain a complete OCCP message. Reported when OCCP header message length is shorter than I3C transaction length.
-    Oversize_msg = 0x10001,   // 0x10001: Oversized transaction. The I3C transaction is larger than the OCCP message it contains. Reported when OCCP header message length is longer than I3C transaction length.
-    Transport_crc = 0x10002,  // 0x10002: Transport CRC error. The transport CRC of the transaction failed. Doesnt apply for I3C/I2C as it has no CRC.
-    // 0x10003 - 0x1FFFF: Reserved for future transport layer errors
+  // Transport layer errors
+  Incomplete_msg = 0x10000, // 0x10000: Incomplete OCCP message. The I3C transaction did not contain
+                            // a complete OCCP message. Reported when OCCP header message length is
+                            // shorter than I3C transaction length.
+  Oversize_msg = 0x10001,  // 0x10001: Oversized transaction. The I3C transaction is larger than the
+                           // OCCP message it contains. Reported when OCCP header message length is
+                           // longer than I3C transaction length.
+  Transport_crc = 0x10002, // 0x10002: Transport CRC error. The transport CRC of the transaction
+                           // failed. Doesnt apply for I3C/I2C as it has no CRC.
+                           // 0x10003 - 0x1FFFF: Reserved for future transport layer errors
 } Occp_ErrMsgID;
 
 // OCCP occp_header (common for all messages)
-typedef struct
-{
+typedef struct {
     uint8_t app_id;       // 0-7
     uint8_t msg_id;       // 8-15
     uint8_t flags : 4;    // 16-19
@@ -167,8 +174,7 @@ typedef struct
     uint16_t length : 11; // 21-31
 } __attribute__((packed)) occp_header;
 
-typedef struct
-{
+typedef struct {
     uint8_t hdr_crc : 8;       // 0-7
     bool body_crc_present : 1; // 8
     uint32_t i3c_flags : 23;   // 9-31 Reserved for future use
@@ -176,8 +182,7 @@ typedef struct
     occp_header hdr;
 } __attribute__((packed)) packet_header;
 
-typedef struct
-{
+typedef struct {
     uint8_t hdr_crc : 8;       // 0-7
     bool body_crc_present : 1; // 8
     uint32_t i3c_flags : 23;   // 9-31 Reserved for future use
@@ -188,8 +193,7 @@ typedef struct
     uint8_t body_crc : 8; // 96-103
 } __attribute__((packed)) get_status_response;
 
-typedef struct
-{
+typedef struct {
     uint8_t hdr_crc : 8;       // 0-7
     bool body_crc_present : 1; // 8
     uint32_t i3c_flags : 23;   // 9-31 Reserved for future use
@@ -202,8 +206,7 @@ typedef struct
     uint8_t body_crc : 8;
 } __attribute__((packed)) get_version_response;
 
-typedef struct
-{
+typedef struct {
     uint8_t hdr_crc : 8;       // 0-7
     bool body_crc_present : 1; // 8
     uint32_t i3c_flags : 23;   // 9-31 Reserved for future use
@@ -214,8 +217,7 @@ typedef struct
     uint8_t body_crc : 8;   // 96-103
 } __attribute__((packed)) error_response;
 
-typedef struct
-{
+typedef struct {
     uint8_t hdr_crc : 8;       // 0-7
     bool body_crc_present : 1; // 8
     uint32_t i3c_flags : 23;   // 9-31 Reserved for future use

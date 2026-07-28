@@ -32,8 +32,7 @@ Opcodes:
 
 static void write_scratch2(uint32_t val) {
     static uint32_t prev_val = 0;
-    if (val == prev_val)
-        val ^= 1; // Toggle the lowest bit if same as previous
+    if (val == prev_val) val ^= 1; // Toggle the lowest bit if same as previous
     write_scratch(2, val);
     prev_val = val;
 }
@@ -52,8 +51,7 @@ void simputs(const char *str) {
         }
     }
     // If there's a partially filled payload, write it out
-    if (offset != 1)
-        write_scratch2(val);
+    if (offset != 1) write_scratch2(val);
 }
 
 static inline void _simputhex16(const uint16_t hexval) {

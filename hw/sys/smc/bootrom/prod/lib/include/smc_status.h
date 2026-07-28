@@ -19,10 +19,10 @@
  */
 
 /* Firmware ID definitions */
-#define SMC_STATUS_FW_ID_SEP_BL0  0x1
-#define SMC_STATUS_FW_ID_SEP_BL1  0x2
-#define SMC_STATUS_FW_ID_SMC_BL0  0x3
-#define SMC_STATUS_FW_ID_SMC_BL1  0x4
+#define SMC_STATUS_FW_ID_SEP_BL0 0x1
+#define SMC_STATUS_FW_ID_SEP_BL1 0x2
+#define SMC_STATUS_FW_ID_SMC_BL0 0x3
+#define SMC_STATUS_FW_ID_SMC_BL1 0x4
 
 /* Legacy alias for backward compatibility */
 #define SMC_STATUS_FW_ID_SMC SMC_STATUS_FW_ID_SMC_BL0
@@ -38,8 +38,9 @@
 #define SMC_SRAM_END (SMC_SRAM_BASE + SMC_SRAM_SIZE)
 
 /* Ring buffers at the very end of SRAM */
-#define SEP_STATUS_BUFFER_ADDR (SMC_SRAM_END - sizeof(smc_ring_buffer_t))           /* Last 512 bytes */
-#define SMC_STATUS_BUFFER_ADDR (SEP_STATUS_BUFFER_ADDR - sizeof(smc_ring_buffer_t)) /* Before SEP buffer */
+#define SEP_STATUS_BUFFER_ADDR (SMC_SRAM_END - sizeof(smc_ring_buffer_t)) /* Last 512 bytes */
+#define SMC_STATUS_BUFFER_ADDR \
+    (SEP_STATUS_BUFFER_ADDR - sizeof(smc_ring_buffer_t)) /* Before SEP buffer */
 
 /*
  * Global status buffers
