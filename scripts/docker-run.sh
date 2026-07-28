@@ -5,9 +5,9 @@
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
 # Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator]|doc-pdf [trm|integrator]|eda-run CMD...|eda-shell>
-#   build     (re)build firmware image + publish to shared tarball cache
-#   ensure    make firmware image available (local -> cache -> build); auto-run
-#             by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   build     (re)build firmware image
+#   ensure    build firmware image if missing or stale; auto-run by
+#             run/run-here/shell/verify, so bare `run` works on a fresh host
 #   verify    gcc version + multilibs      shell     interactive firmware shell
 #   run CMD   run in firmware image
 #   run-here  like run, but mount the repo at its host path (for CMDs that use
@@ -15,8 +15,6 @@
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
 # Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
-#      OCAH_DOCKER_CACHE_DIR   shared tarball cache dir for the firmware image
-#                               (default: /proj_soc_scratch_ps/socinfra/ocah-docker-cache)
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
@@ -38,12 +36,10 @@ EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 
 # Firmware image provisioning. The ocah-toolchain image is built locally and
 # published to no registry, so bare `run` on a fresh host would try (and fail)
-# to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
-# registry/internet access at job time - a built image is cached as a tarball on
-# shared storage, keyed by the Dockerfile hash. Hosts reuse a matching local
-# image, else load the tarball, else build once and publish it for the rest.
+# to pull it; ensure_image builds it on demand instead. The image carries the
+# Dockerfile hash as a label so an edited Dockerfile forces a rebuild rather
+# than silently reusing a stale toolchain.
 DOCKER_CTX="${ROOT}/tools/docker"
-DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-/proj_soc_scratch_ps/socinfra/ocah-docker-cache}"
 
 if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
@@ -108,46 +104,24 @@ if [[ "$ENGINE" == podman ]]; then UIDGID="${OCAH_DOCKER_UIDGID-}"
 else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=(); [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
-# Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
+# Short hash of the Dockerfile; a change forces a rebuild.
 image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
-image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 
-# Build the firmware image (labeled with the Dockerfile hash) and publish it to
-# the shared tarball cache when that storage is writable. A publish failure is
-# a warning, not a build failure.
+# Build the firmware image, labeled with the Dockerfile hash.
 build_image() {
-    local hash; hash="$(image_hash)"
-    "$ENGINE" build --label "ocah.dockerfile.sha=${hash}" -t "$IMAGE" "$DOCKER_CTX"
-    local tar; tar="$(image_cache_tar)"
-    if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
-        local tmp="${tar}.$$.tmp"
-        if "$ENGINE" save -o "$tmp" "$IMAGE" 2>/dev/null && mv -f "$tmp" "$tar" 2>/dev/null; then
-            echo "docker-run: published image cache $tar" >&2
-        else
-            rm -f "$tmp" 2>/dev/null || true
-            echo "docker-run: warning: could not publish image cache to $tar" >&2
-        fi
-    else
-        echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
-    fi
+    "$ENGINE" build --label "ocah.dockerfile.sha=$(image_hash)" -t "$IMAGE" "$DOCKER_CTX"
 }
 
-# Ensure $IMAGE is available locally: reuse a matching local image (verified by
-# the Dockerfile-hash label), else load the shared tarball cache, else build and
-# publish. Use `build` to force a rebuild regardless of what is already present.
+# Ensure $IMAGE is available locally: reuse the local image when its
+# Dockerfile-hash label matches, else build it. Use `build` to force a rebuild
+# regardless of what is already present.
 ensure_image() {
     local hash tar
     hash="$(image_hash)"
     if [ "$("$ENGINE" image inspect --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
         return 0
     fi
-    tar="$(image_cache_tar)"
-    if [ -r "$tar" ]; then
-        echo "docker-run: loading $IMAGE from cache $tar" >&2
-        "$ENGINE" load -i "$tar"
-        return 0
-    fi
-    echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
+    echo "docker-run: $IMAGE (hash $hash) absent or stale; building" >&2
     build_image
 }
 
