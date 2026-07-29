@@ -10,4 +10,3 @@ Verilator. VCS ignores this list.
 | `prim_sync2.sv` / `prim_sync3.sv` | Init-zero CDC flops for Verilator |
 | `smc_dfx_ctrl_status_wrap.sv` | DFX wrap Verilator-safe |
 | `smc_subsystem_resets.sv` / `smc_cool_reset_wrap.sv` / `smc_reset_unit.sv` | Reset-path Verilator overrides |
-| `gpio_macro_wrapper.sv` / `input_gpio_macro_wrapper.sv` | Optional FOSS pad stubs (SMU padring DV may use) |

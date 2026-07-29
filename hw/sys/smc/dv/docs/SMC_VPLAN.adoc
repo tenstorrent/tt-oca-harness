@@ -12,20 +12,26 @@ SMC OSS Verification Plan
 Overview
 ~~~~~~~~
 
-*Design Under Test*: `smc`
+*Design Under Test*: `smc_wrapper` (`hw/top/smc_wrapper.sv` =
+`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`)
 
-*Public testbench top*: `hw/sys/smc/dv/tb/tb_top.sv`
+*Public testbench top*: `hw/sys/smc/dv/tb/tb_top.sv` (`smc_uvm_top`)
 
 *Test framework*: cocotb + PyUVM, using the DTP/SEP three-layer pattern:
 `env/`, `seq_lib/`, and `tests/`.
 
-*Sim config*: `hw/sys/smc/dv/smc_sim_cfg.toml` (`--dut smc`)
+*Sim config*: `hw/sys/smc/dv/smc_sim_cfg.toml` (`--dut smc` only)
+
+*Boundary responders under this DUT*:
+
+* PLL / PVT — `pll_wrap` / `pvt_wrap` inside `smc_ip_integration` (OKAY + 0)
+* GPIO_CTRL / AXIL extension — integration `prim_axi_lite_err_slv` (DECERR + 0)
+* DTP CSR — TB `u_dtp_csr_err_slv` (DECERR + default `0xBADCAB1E`)
+* I3C CSR windows — in-RTL `i3ccore_stub` (SLVERR + `0xBADCAB1E`)
 
 This plan describes *what* the SMC OSS DV suite verifies, at what
-granularity, and against which RTL. It intentionally does *not* describe
-execution status, run history, session-specific evidence, or open
-engineering questions — those live in the development log at
-`hw/sys/smcoss_smc_dev.md`.
+granularity, and against which RTL. Older rows that still say "bare-smc
+DECERR PLL/PVT terminators" are superseded by the bullets above.
 
 The suite is organised in three tiers:
 
@@ -189,63 +195,44 @@ encode/decode + reset-invariant scoreboard
 External peripheral-macro boundary responders (bus terminators)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-smc drives four dedicated AXI-Lite master ports out to external hard
-macros on the peripheral AXI-Lite xbar. In the OSS bench each is
-terminated by a DECERR *boundary responder* (`prim_axi_lite_err_slv`,
-returns `0xBADCAB1E`) wired in `tb/tb_top.sv` and observed through the
-per-port `tb_axil_*_active` signals.
+`smc` drives four dedicated AXI-Lite master ports on the peripheral
+AXI-Lite xbar. Under `smc_wrapper`, PLL/PVT/extension are absorbed by
+`smc_ip_integration`; only DTP CSR remains a TB-side terminator.
+Per-port `tb_axil_*_active` still observes traffic (XMR into `u_dut.u_smc`
+where needed).
 
 [width="100%",cols="18%,25%,18%,19%,20%",options="header",]
 |=======================================================================
-|Macro window |Address (periph xbar) |smc master port |Bench terminator
+|Macro window |Address (periph xbar) |smc master port |Responder
 |SEP_IN reachable?
 |PLL |0xC000_3000 (size 0x1000) |`axil_pll_req_o/resp_i`
-|`u_pll_macro_model` |Yes
+|`pll_wrap` (OKAY+0) |Yes
 
 |PVT |0xC000_7000 (size 0x1000) |`axil_pvt_req_o/resp_i`
-|`u_pvt_macro_model` |Yes
+|`pvt_wrap` (OKAY+0) |Yes
 
 |DTP CSR |0xC000_F000 (size 0x0800) |`axil_dtp_csr_req_o/resp_i`
-|`u_dtp_csr_macro_model` |*No — local-xbar hole (see note)*
+|TB `u_dtp_csr_err_slv` (DECERR+`0xBADCAB1E`) |Yes
 
 |Peripheral extension |0xC040_0000 (size 0x400000)
-|`axil_extension_req_o/resp_i` |`u_extension_macro_model` |Yes
+|`axil_extension_req_o/resp_i` |integration err_slv (DECERR+0) |Yes
 |=======================================================================
 
-______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-*Finding — DTP CSR is not reachable from SEP_IN.* The periph AXI-Lite
-xbar defines a `dtp_csr` rule at 0xC000_F000–0xF7FF (idx 12), but the
-upstream `smc_local_xbar` `periph_reg` window only forwards
-`periph_main = [0xC000_2000, 0xC000_E800)` (base 0x2000 + size 0xC800).
-The range 0xC000_F000..0xF7FF is an *unmapped hole*
-(`local_reg.dft_ctrl` only starts at 0xC000_F800), so a SEP_IN access to
-the DTP CSR window decode-errors in the local xbar and never reaches the
-external `axil_dtp_csr_req_o` port. The `axi_err_slv` inside the
-crossbar answers reads with the same `0xBADCAB1E` value as the bench
-boundary responder, so data alone cannot tell them apart — only
-`tb_axil_dtp_csr_active` (which stays 0) proves the request never routed
-out. `smc_macro_axil_routing_test` asserts this explicitly (DECERR
-upstream + dtp port idle). The external DTP CSR port is therefore dead
-for the SEP_IN / system / local_in masters in this address map;
-exercising it would require a master reaching it through another window
-(out of the current OSS scope).
-______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+____________________________________________________________________
+*Note — DTP CSR is SEP_IN-reachable.* The local-xbar `periph_main`
+window extends through `0xC000_F800`, so SEP_IN traffic reaches the
+`axil_dtp_csr` wrapper boundary and the TB err_slv. `smc_macro_axil_routing_test`
+asserts the matching `tb_axil_dtp_csr_active` pulse plus DECERR/`0xBADCAB1E`.
+____________________________________________________________________
 
-_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-*Defense scope (IMPORTANT — not a functional macro model).* These
-terminators only complete the AXI-Lite handshake at the SMC boundary.
-They *do not* reproduce any macro function (PLL locking/clock config,
-PVT sensing, DTP trace, extension Cadence-I3C behaviour) nor register
-read/write data semantics. Their sole purpose is to let SMC’s _own_
-responsibility be positively verified: address decode, routing to the
-correct master port, mutual window isolation, and response-handshake
-completion (see `smc_macro_axil_routing_test`). Before these terminators
-existed, reads to these windows simply hung with no responder and the
-only ``check'' was `tb_axil_*_active == 0` (idle), which could not tell
-a correct route from a mis-route or a silent drop. Macro-internal
-behaviour is *out of SMC unit-verification scope* and is owned by each
-macro’s IP-level DV.
-_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+____________________________________________________________________
+*Defense scope (IMPORTANT — not a functional macro model).* Integration
+and TB terminators only complete the AXI-Lite handshake. They *do not*
+reproduce macro function (PLL lock, PVT sensing, DTP trace, Cadence-I3C).
+Their purpose is SMC decode/route/isolation/handshake verification
+(`smc_macro_axil_routing_test`). Macro-internal behaviour is owned by
+each macro’s IP-level DV.
+____________________________________________________________________
 
 ________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 *Scope caveat for the CSR ``sweep'' tests that target these windows.*
@@ -311,13 +298,10 @@ DTMCS.version=0x1 → RISC-V Debug Spec 0.13.
 * AVSBus sideband controller at 0xC0008000; OCTS system timer at
 0xC000E000; telemetry receivers at 0xC000D000–0xC000D2FF.
 * UART / SPI / log-engine cluster at 0xC000A000 (`smc_uart_wrap`).
-* eFuse/OTP behavioral model under `hw/sys/smc/dv/models/analog/` plus
-PLL/PVT wraps under `models/`. External macro windows
-(PLL/PVT/DTP/extension) leave SMC on dedicated AXI-Lite master ports; the
-OSS bench terminates them with DECERR boundary responders so SMC
-decode/route/handshake is verified (`smc_macro_axil_routing_test`).
-Macro-internal function is out of scope (see ``External peripheral-macro
-boundary responders'' above).
+* eFuse/OTP and PLL/PVT wraps live inside `smc_ip_integration` /
+`smc_wrapper`. Macro decode/route/handshake is verified by
+`smc_macro_axil_routing_test` (see ``External peripheral-macro boundary
+responders'' above). Macro-internal function is out of scope.
 
 [[smc-register-interface-sep_in-axi-base-0xc000_0000]]
 SMC Register Interface (SEP_IN AXI, base 0xC000_0000)

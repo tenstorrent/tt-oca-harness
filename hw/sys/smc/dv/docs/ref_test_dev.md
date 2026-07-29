@@ -12,33 +12,22 @@ SMC and SEP differ, this doc describes **SMC** and notes the SEP contrast.
   and models are Python.
 - **Verilator** is the functional backend; VCS/Xcelium run the same cocotb tests
   for coverage. Driven by `tools/dv/run_dv.py`.
-- **Two DUTs / two configs** (independent catalogs sharing this DV root):
-  - `--dut smc` → `smc_sim_cfg.toml`, top `smc_uvm_top` (`tb/tb_top.sv`), env
-    `cocotb/`. The primary DV surface (~130 tests). Memory / eFuse are backed by
-    TB behavioral models (`models/mem/*.sv`, `models/analog/*.sv`).
-  - `--dut smc` → `smc_sim_cfg.toml`, top `smc_uvm_top` (`tb/tb_top.sv`)
-    instantiating `smc_wrapper`. eFuse
-    / GPIO pads fold into wrapper RTL (SEP `sep_wrapper` direction); CPU mem
-    ports remain external until absorbed.
-
-The two envs have separate `smc_base_test` and `SmcEnvCfg` with different
-bring-up and cfg fields — do not merge them.
+- **Single DUT**: `--dut smc` → `smc_sim_cfg.toml`, top `smc_uvm_top`
+  (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`. PLL/PVT/eFuse/pads/
+  CPU mem live inside the wrapper; TB still provides SYS_OUT AXI + I3C DAT/DCT
+  responders and a DTP CSR err_slv.
 
 ## Directory layout
 
 ```
 hw/sys/smc/dv/
-├── cocotb/                 # bare-SMC PyUVM env
-│   ├── env/                #   agents, monitors, scoreboard, memory model, env cfg
-│   ├── seq_lib/            #   sequences + protocol VIP/BFM helpers
-│   ├── tests/              #   @pyuvm.test() entries + smc_base_test.py
-│   └── wrapper/            # smc_wrapper flavor (own base_test + env_cfg + seq_lib)
-├── models/{mem,analog,wrapper,regs}/  # behavioral / sim stand-ins
+├── cocotb/                 # PyUVM env / seq_lib / tests
+├── models/{mem,regs}/      # TB responders + pll/pvt PeakRDL wraps
 ├── tb/                     # tb_top.sv, verilator_stubs/
-├── testlists/              # per-feature TOML leaves + all.toml (groups)
+├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
 ├── smc_sim_cfg.toml        # sole launch config (tb_top → smc_wrapper)
-└── docs/                   # SMC_VPLAN.adoc + notes
+└── docs/                   # SMC_VPLAN.adoc + this guide
 ```
 
 ## The three-layer test structure
@@ -100,14 +89,15 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
         await self.csr_read("VERSION_LO", 0xC000_0000, expected=0x000100A0)
         await self.csr_write_readback("SCRATCH", 0xC001_0040, 0xDEAD_BEEF)
         # Negative path: window must return an error response (not OKAY/wedge).
-        await self.csr_read_err_signature("I3C_STUB", 0xC000_A000)  # asserts 0xBADCAB1E
+        await self.csr_read_err_signature("I3C_STUB", 0xC000_A000)  # SLVERR+0xBADCAB1E
+        await self.csr_read_decerr_zero("GPIO_CTRL_0", 0xC000_4440)  # integration err_slv
 ```
 
 Key `SmcCsrSeq` helpers: `csr_read(expected=)`, `csr_write`,
 `csr_write_readback`, `csr_read_many`, `csr_read_err_signature` /
-`csr_read_expect_error` (strict negative), `csr_read_allow_error` (tolerant),
-`csr_read_bounded` (tolerates DECERR **and** timeout), `assert_all_reachable` /
-`assert_reachable_or_gated` (non-vacuous reachability gates).
+`csr_read_decerr_zero` / `csr_read_expect_error` (strict negative),
+`csr_read_allow_error` (tolerant), `csr_read_bounded` (tolerates DECERR **and**
+timeout), `assert_all_reachable` / `assert_reachable_or_gated`.
 
 `smc_base_test_seq` is the minimal, agent-agnostic base for non-CSR sequences
 (gpio/clk/reset/irq item types), dispatched via `_OneShot` (below).
@@ -198,8 +188,6 @@ tags = ["smoke", "csr"]
 run_modes = ["smoke"]
 ```
 
-The `smc_wrapper` catalog is `testlists/wrapper.toml` (independent of `all.toml`).
-
 ## How to run
 
 ```bash
@@ -232,4 +220,4 @@ Verilator on PATH, C++20 toolchain (g++ ≥10) for the model build.
   wrongly-OKAY blocked access fails structurally, not just in a sequence assert.
 - **Golden-value traceability**: prefer RDL-cited reset values over
   golden==observed regression-locks; where a value is not RDL-traceable, label it
-  a regression-lock with its real source (see `smcoss_audit.md`, finding F1).
+  a regression-lock with its real source.

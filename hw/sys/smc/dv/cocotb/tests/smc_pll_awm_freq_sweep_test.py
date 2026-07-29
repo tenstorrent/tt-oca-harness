@@ -25,7 +25,7 @@ class smc_pll_awm_freq_sweep_test(smc_base_test):
             csr_accesses=seq.accesses,
             proxy=True,
             details=(
-                "CSR/DECERR window sweep: PLL AWM FREQUENCY + CGM x 2 AWMs "
-                "(no functional PLL model; U5 policy)"
+                "CSR window sweep: PLL AWM FREQUENCY + CGM x 2 AWMs "
+                "(pll_wrap OKAY+0 under smc_wrapper)"
             ),
         )

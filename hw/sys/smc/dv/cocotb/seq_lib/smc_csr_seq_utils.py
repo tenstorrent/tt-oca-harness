@@ -68,10 +68,9 @@ class SmcCsrSeq(smc_base_test_seq):
         """Read a window intentionally terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
-        0xBADCAB1E signature. This is a real, non-vacuous gate -- it fails if the
-        fabric mis-routes, if the window starts returning real data (e.g. the
-        stubbed block gets integrated), or if the signature changes. Stronger
-        than csr_read_allow_error, which merely tolerates any response."""
+        0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
+        Used for TB-side terminators (e.g. DTP CSR) and in-RTL stubs that keep
+        that signature (e.g. ``i3ccore_stub``)."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -97,18 +96,43 @@ class SmcCsrSeq(smc_base_test_seq):
         self, regs: list[tuple[str, int, int | None]]
     ) -> None:
         """Deterministic error-signature sweep over a reg table (see
-        csr_read_err_signature). Replaces the tolerant csr_read_many_allow_error
-        for windows that consistently return the 0xBADCAB1E error signature."""
+        csr_read_err_signature)."""
         for name, addr, _expected in regs:
             await self.csr_read_err_signature(name, addr)
 
+    async def csr_read_decerr_zero(self, name: str, addr: int, length: int = 4) -> int:
+        """Read a window terminated by DECERR + zero data (smc_ip_integration
+        gpio_ctrl / axil_extension err_slv with RESP_DATA='0)."""
+        mask = (1 << (length * 8)) - 1
+        item = SmcSysAxiItem(f"rd_{name}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = addr
+        item.length = length
+        item.allow_error = True
+        item.expect_error = True
+        item.expected = 0
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code is not None and item.resp_code > 1, (
+            f"{name} @ 0x{addr:08x}: expected DECERR/SLVERR, "
+            f"got resp={item.resp_code} (rdata=0x{item.rdata:x})"
+        )
+        got = item.rdata & mask
+        assert got == 0, (
+            f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
+        )
+        return item.rdata
+
+    async def csr_read_many_decerr_zero(
+        self, regs: list[tuple[str, int, int | None]]
+    ) -> None:
+        for name, addr, _expected in regs:
+            await self.csr_read_decerr_zero(name, addr)
+
     async def csr_read_expect_error(self, name: str, addr: int, length: int = 4) -> int:
         """Read a window that deterministically returns an AXI error response
-        (SLVERR/DECERR) but drives data=0 (i.e. an error slave without the
-        0xBADCAB1E signature). Asserts the access completes with an error
-        response -- fails if the window starts returning OKAY (the block became
-        reachable) -- without asserting a data value it does not provide.
-        Stronger than csr_read_allow_error, which tolerates any response."""
+        (SLVERR/DECERR) without asserting a data signature."""
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr

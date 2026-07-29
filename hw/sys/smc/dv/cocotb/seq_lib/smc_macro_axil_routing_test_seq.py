@@ -2,8 +2,8 @@
 """One bounded SEP_IN read used by the macro AXI-Lite routing test.
 
 Issues a single real CSR read to a peripheral-xbar macro window and captures
-the response fields so the test can assert routing/decode plus the DECERR
-macro-model answer.
+the response fields so the test can assert routing/decode plus the
+per-window expected response (OKAY or DECERR).
 """
 
 from __future__ import annotations

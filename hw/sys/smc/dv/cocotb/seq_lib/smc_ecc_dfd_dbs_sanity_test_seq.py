@@ -15,7 +15,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 #     at 0xC000_F808/F810 and reset 0x0. The observed 0xC000_0000/0x0100_0000
 #     are the cluster black-box "magic" constants. Kept as reachability
 #     regression-locks pending OWNER REVIEW of the intended addresses.
-#     [audit: F1 C2, see smcoss_audit.md -- do not re-baseline silently]
+#     Do not re-baseline silently if RDL reset values change.
 DIAGNOSTIC_READS = [
     ("CHIP_CONFIG_RAS_BANK_INFO", 0xC000_2910, 0x0),
     ("NDMRESET_PROCESS", 0xC000_2A04, 0x0),

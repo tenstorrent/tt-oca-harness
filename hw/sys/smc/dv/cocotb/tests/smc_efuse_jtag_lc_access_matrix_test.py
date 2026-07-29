@@ -22,8 +22,7 @@ asserts the block/allow outcome against the RTL-derived matrix:
     including the identity-read exception.
 
 This is the regression that catches a lifecycle-gating polarity/decode error
-on the SMC side (the SMC analog of the DTP ``feat_ctrl`` polarity class of bug,
-issue #3538).
+on the SMC side (same class of bug as DTP ``feat_ctrl`` polarity mistakes).
 """
 
 from __future__ import annotations

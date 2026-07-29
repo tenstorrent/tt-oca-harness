@@ -6,8 +6,8 @@
 // smc_cpu_mem_integration). File name is tb_top.sv / module smc_uvm_top so
 // `--dut smc` + smc_sim_cfg.toml is the single launch entry.
 //
-// Cocotb port surface matches the historical bare-smc TB so the shared SmcEnv
-// catalog runs unchanged. Hierarchical XMRs into the core use u_dut.u_smc.*.
+// Cocotb port surface keeps the SmcEnv catalog pin names. Hierarchical XMRs
+// into the core use u_dut.u_smc.*.
 //
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros and eFuse live inside
 // smc_ip_integration; only DTP CSR remains a TB-side DECERR terminator.
@@ -446,8 +446,7 @@ module smc_uvm_top
     i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
     i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
 
-    // Direct smc_wrapper boundary ports (unlike bare smc, these three are
-    // real top-level outputs on smc_wrapper -- no XMR needed).
+    // Direct smc_wrapper boundary ports (top-level outputs -- no XMR needed).
     logic sync_irq;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0]    gpio_interrupt;
     logic [smc_config_pkg::NUM_UART-1:0]   uart_interrupt;
@@ -479,7 +478,7 @@ module smc_uvm_top
     // SCL/SDA to GPIO pads 37/38. Released lines resolve high; either the DUT
     // or cocotb side may pull a line low. `u_smc_peripherals` now sits one
     // level deeper (u_dut.u_smc.u_smc_peripherals) since u_dut is
-    // smc_wrapper, not bare smc.
+    // smc_wrapper.
     assign tb_i2c0_scl_dut_low = !u_dut.u_smc.u_smc_peripherals.i2c_scl_o[0];
     assign tb_i2c0_sda_dut_low = !u_dut.u_smc.u_smc_peripherals.i2c_sda_o[0];
     assign tb_i2c0_scl = !(tb_i2c0_scl_dut_low || tb_i2c0_scl_ext_low);
@@ -838,8 +837,7 @@ module smc_uvm_top
     // ------------------------------------------------------------------
     // DTP CSR boundary responder (bus terminator). smc_wrapper still
     // exposes axil_dtp_csr_req_o/resp_i directly (DTP hard macro is not
-    // absorbed by smc_ip_integration), so it is terminated here exactly
-    // like bare tb_top's u_dtp_csr_macro_model.
+    // absorbed by smc_ip_integration).
     // ------------------------------------------------------------------
     prim_axi_lite_err_slv #(
         .AXI_ADDR_WIDTH(32),
@@ -856,12 +854,10 @@ module smc_uvm_top
     // ------------------------------------------------------------------
     // DUT: smc_wrapper (smc + smc_ip_integration + smc_cpu_mem_integration).
     //
-    // Ports absorbed by smc_ip_integration and NOT present on this boundary
-    // (compare against bare tb_top's `smc u_dut` instance above the diff):
+    // Ports absorbed by smc_ip_integration and NOT present on this boundary:
     // axil_pll_*, axil_pvt_*, axil_req_gpio_ctrl_*, axil_extension_*,
     // efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
-    // pad2core_en_o, core2pad_en_o (all replaced by internal smc_wrapper
-    // nets, ultimately reaching the physical gpio_pad_io bus).
+    // pad2core_en_o, core2pad_en_o (internal smc_wrapper nets → gpio_pad_io).
     // CPU ROM/scratch/L1$ are absorbed by smc_cpu_mem_integration.
     // ------------------------------------------------------------------
     smc_wrapper u_dut (
