@@ -355,24 +355,6 @@ module smu_wrapper_uvm_top (
         .noc_m_telemetry_atdata_i ('0),
         .noc_n_telemetry_atvalid_i(1'b0),
         .noc_n_telemetry_atdata_i ('0),
-        .spi_enable_i          (1'b0),
-        .spi_clk_i             (1'b0),
-        .spi_txd_i             ('0),
-        .spi_cs_n_i            (1'b1),
-        .spi_cs_oe_n_i         (1'b1),
-        .spi_cs_ie_n_i         (1'b1),
-        .spi_clk_ie_n_i        (1'b1),
-        .spi_clk_oe_n_i        (1'b1),
-        .spi_dqs_ie_n_i        (1'b1),
-        .spi_dqs_oe_n_i        (1'b1),
-        .spi_dq_ie_n_i         ('1),
-        .spi_dq_oe_n_i         ('1),
-        .spi_rxd_o(),
-        .spi_rxds_o(),
-        .spi_mem_rebar_oepad_i (1'b0),
-        .spi_mem_rebar_opad_i  (1'b0),
-        .spi_mem_rebar_iepad_i (1'b0),
-        .spi_mem_rebar_ipad_o(),
         .cat_therm_i           (1'b0),
         .tile_event_i_pvt      ('0),
         .droop_event_i         ('0),
@@ -389,11 +371,7 @@ module smu_wrapper_uvm_top (
         .lcc_demote_state_2_o(),
         .secure_tm_o(),
         .sep_fuse_sense_done_o,
-        .sep_extintsrc_req_i   ('0),
-        .i3c_dat_mem_src_i     ('0),
-        .i3c_dat_mem_sink_o(),
-        .i3c_dct_mem_src_i     ('0),
-        .i3c_dct_mem_sink_o()
+        .sep_extintsrc_req_i   ('0)
     );
 
 endmodule : smu_wrapper_uvm_top
