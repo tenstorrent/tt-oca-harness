@@ -6,6 +6,10 @@ schema_version = 1
 # Result-reporting policy: docs/SMU_VPLAN.md §13.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
+# SIGNOFF NOTE: wrapper `all` / `smoke` is the production-wrapper merge-gate
+# only. It is NOT a substitute for bare `--dut smu --items sep0_all`.
+# Shared name `smu_smc_smoke_test` must be tagged WRAPPER vs BARE in logs.
+#
 # Commercial mirror (oca_smu chiplet testlist YAML naming):
 #   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
 #   Manual_SMU_Blocked_SEP_Exec_Regression = needs real SEP fetch/retire (#3582)

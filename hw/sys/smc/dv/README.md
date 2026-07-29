@@ -7,6 +7,18 @@ driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
 test-development reference and `docs/SMC_VPLAN.adoc` for the verification plan
 (AsciiDoc for TRM integration under `docs/trm`).
 
+**Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
+I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
+demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
+— not reportable as feature PASS. Green `smc_i3c_to_fabric_test` is
+**stub-signature only** (fabric → `i3ccore_stub` SLVERR). Checklist:
+[`../doc/dv_hack_cleanup_checklist.md`](../doc/dv_hack_cleanup_checklist.md).
+
+**`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
+call sites need a one-line rationale comment at the call (what hangs without
+it, and why that is still a real DUT path). Inventory: `smc_*_utils.py` /
+cluster helpers — do not add silently in PRs.
+
 ## Single DUT
 
 **Launch entry: `--dut smc_wrapper`** (registered in

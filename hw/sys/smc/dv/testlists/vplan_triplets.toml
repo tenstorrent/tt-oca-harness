@@ -200,14 +200,8 @@ tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+skip_fuse_sense"]
 
-[[tests]]
-name = "smc_dfd_dbs_fault_inject_test"
-module = "smc_dfd_dbs_fault_inject_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "p2_phase_b", "u7_dfd", "pyuvm"]
-run_modes = ["smoke"]
-args = ["+skip_fuse_sense"]
+# smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
+# Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
 
 [[groups]]
 name = "vplan_gaps"
@@ -233,7 +227,6 @@ tests = [
     "smc_occp_sanity_secure_error_test",
     "smc_efuse_otp_burn_shadow_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
 ]
 
 [[groups]]

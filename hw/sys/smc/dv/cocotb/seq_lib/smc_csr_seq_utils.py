@@ -173,6 +173,8 @@ class SmcCsrSeq(smc_base_test_seq):
         item.addr = addr
         item.length = length
         item.allow_error = True
+        # allow_timeout: helper for unreachable CSR windows; caller must score
+        # timeouts/accesses (second evidence). Default csr_read stays strict.
         item.allow_timeout = True
         item.timeout_ns = timeout_ns
         await self.start_item(item)
@@ -195,7 +197,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
-        item.allow_timeout = True
+        item.allow_timeout = True  # intentional: assert timed_out below
         item.timeout_ns = timeout_ns
         await self.start_item(item)
         await self.finish_item(item)

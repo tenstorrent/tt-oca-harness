@@ -107,57 +107,57 @@ tags = ["deferred", "sep", "sep_probe"]
 [[tests]]
 name = "smu_sep_wdt_reset_to_smc_test"
 module = "smu_sep_wdt_reset_to_smc_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_spi_bridge_test"
 module = "smu_sep_spi_bridge_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_axi_extension_decode_test"
 module = "smu_sep_axi_extension_decode_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_external_irq_test"
 module = "smu_sep_external_irq_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_alias_mailbox_interrupt_probe_test"
 module = "smu_sep_alias_mailbox_interrupt_probe_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_ext_axi_combined_probe_test"
 module = "smu_sep_ext_axi_combined_probe_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_km_otbn_memory_test"
 module = "smu_sep_km_otbn_memory_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_debug_bus_test"
 module = "smu_sep_debug_bus_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_fuse_sense_handshake_test"
 module = "smu_fuse_sense_handshake_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_lifecycle_security_handoff_test"
 module = "smu_lifecycle_security_handoff_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_feat_ctrl_monitor_test"
 module = "smu_feat_ctrl_monitor_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 # --- New / updated commercial SEP stream (2026-07 mid) — catalog only ---
 [[tests]]
@@ -228,17 +228,17 @@ tags = ["deferred", "sep", "sep_probe"]
 [[tests]]
 name = "smu_sep_memory_integrity_test"
 module = "smu_sep_memory_integrity_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_otbn_execute_flow_probe_test"
 module = "smu_sep_otbn_execute_flow_probe_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
 name = "smu_sep_interrupt_error_recovery_matrix_test"
 module = "smu_sep_interrupt_error_recovery_matrix_test"
-tags = ["deferred", "sep", "sep_probe"]
+tags = ["deferred", "sep", "sep_probe", "interop"]
 
 # ----- Real SMC/SEP interop -----
 # BLOCKER (commercial Manual_SMU_Blocked_SEP_Exec + OSS):
@@ -336,88 +336,13 @@ module = "smc_sep_bidirectional_test"
 tags = ["deferred", "interop", "modeled"]
 
 [[tests]]
-name = "smu_interop_negative_recovery_test"
-module = "smu_interop_negative_recovery_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
 name = "smu_dtp_sep_debug_enhanced_test"
 module = "smu_dtp_sep_debug_enhanced_test"
 tags = ["deferred", "interop"]
 
 [[tests]]
-name = "smu_sep_wdt_reset_to_smc_test"
-module = "smu_sep_wdt_reset_to_smc_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_spi_bridge_test"
-module = "smu_sep_spi_bridge_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_lifecycle_security_handoff_test"
-module = "smu_lifecycle_security_handoff_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_fuse_sense_handshake_test"
-module = "smu_fuse_sense_handshake_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_memory_integrity_test"
-module = "smu_sep_memory_integrity_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_axi_extension_decode_test"
-module = "smu_sep_axi_extension_decode_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_ext_axi_combined_probe_test"
-module = "smu_sep_ext_axi_combined_probe_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_alias_mailbox_interrupt_probe_test"
-module = "smu_sep_alias_mailbox_interrupt_probe_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_otbn_execute_flow_probe_test"
-module = "smu_sep_otbn_execute_flow_probe_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_interrupt_error_recovery_matrix_test"
-module = "smu_sep_interrupt_error_recovery_matrix_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_interop_functional_coverage_bins_test"
-module = "smu_interop_functional_coverage_bins_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
 name = "smu_xtrig_protocol_monitor_test"
 module = "smu_xtrig_protocol_monitor_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_km_otbn_memory_test"
-module = "smu_sep_km_otbn_memory_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_external_irq_test"
-module = "smu_sep_external_irq_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_sep_debug_bus_test"
-module = "smu_sep_debug_bus_test"
 tags = ["deferred", "interop"]
 
 [[tests]]
@@ -438,11 +363,6 @@ tags = ["deferred", "interop"]
 [[tests]]
 name = "smc_sep_stress_test"
 module = "smc_sep_stress_test"
-tags = ["deferred", "interop"]
-
-[[tests]]
-name = "smu_feat_ctrl_monitor_test"
-module = "smu_feat_ctrl_monitor_test"
 tags = ["deferred", "interop"]
 
 [[tests]]
@@ -473,7 +393,7 @@ tags = ["deferred", "fabric"]
 [[tests]]
 name = "smu_fabric_smc_dtp_cross_domain_test"
 module = "smu_fabric_smc_dtp_cross_domain_test"
-tags = ["deferred", "fabric"]
+tags = ["deferred", "fabric", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]
 name = "smu_axi_xbar_structure_test"
@@ -807,11 +727,6 @@ tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 [[tests]]
 name = "smu_dtp_otp_smc_complete_rw_test"
 module = "smu_dtp_otp_smc_complete_rw_test"
-tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
-
-[[tests]]
-name = "smu_fabric_smc_dtp_cross_domain_test"
-module = "smu_fabric_smc_dtp_cross_domain_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]

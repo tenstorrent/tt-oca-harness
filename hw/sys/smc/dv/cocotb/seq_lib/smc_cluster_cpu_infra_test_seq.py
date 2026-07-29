@@ -59,6 +59,8 @@ class smc_cluster_cpu_infra_test_seq(SmcCsrSeq):
         item.addr = addr
         item.length = 4
         item.allow_error = True
+        # allow_timeout: no-deadlock probe — second evidence = timeouts counter +
+        # every probe returning (see body gate). Not a soft PASS on success path.
         item.allow_timeout = True
         item.timeout_ns = 300
         await self.start_item(item)

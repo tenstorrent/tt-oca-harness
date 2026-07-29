@@ -1,8 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-"""I3C-to-fabric smoke over real SEP_IN AXI.
+"""I3C-window → fabric decode smoke (stub-aware).
 
 Toggles the I3C CSR clock-gate control, restores it, then proves the I3C
-wrapper CSR window decodes by reading HCI_VERSION.
+wrapper CSR window is decoded by reading HCI_VERSION.
+
+HONESTY (2026-07-29): product RTL instantiates ``i3ccore_stub`` → expected
+completion is **SLVERR + 0xBADCAB1E**, not OpenTitan I3C protocol. This test
+defends fabric decode / stub err-slv signature — **not** CCC/IBI / real core.
+See ``hw/sys/smc/doc/dv_hack_cleanup_checklist.md`` Phase 2.1.
 """
 
 from __future__ import annotations

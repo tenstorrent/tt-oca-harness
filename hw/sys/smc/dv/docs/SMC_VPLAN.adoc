@@ -237,33 +237,32 @@ ____________________________________________________________________
 ________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 *Scope caveat for the CSR ``sweep'' tests that target these windows.*
 Several P1 coverage-gap tests enumerate distinct register/sub-block
-_addresses_ inside the PLL / PVT / extension macro windows. Because
-those windows are DECERR bus terminators (above), *every enumerated
-address returns the identical `0xBADCAB1E` DECERR* — the tests therefore
-only prove the addresses complete a bounded handshake, and do *not* read
-or distinguish any per-register content. The address decode/route itself
-is already proven once by `smc_macro_axil_routing_test` (S13a); the
-per-address enumeration in these sweeps adds transaction count, *not
-register-level coverage*. Affected tests (treat as
-_reachability/bounded_, not register-coverage):
+_addresses_ inside the PLL / PVT / extension macro windows. PLL/PVT
+windows are *adopter placeholders* (`pll_wrap` / `pvt_wrap`: OKAY + 0);
+extension remains DECERR. Enumerated addresses therefore prove
+bounded handshake only — *not* clock programming, PVT sensing, or
+per-register content. Those PLL/PVT protocol tests live in
+`deferred.toml` (`rtl_placeholder`) and must not be reported as feature
+PASS. Decode/route itself is covered by `smc_macro_axil_routing_test`
+(S13a). Affected (treat as _reachability/bounded_):
 
 [width="100%",cols="13%,15%,43%,29%",options="header",]
 |=======================================================================
 |Test |Window |Addresses enumerated |Real coverage
-|`smc_pll_cgm_awm_config_test` |PLL 0xC000_3xxx |4 CGM/AWM |4× bounded
-DECERR
+|`smc_pll_cgm_awm_config_test` |PLL 0xC000_3xxx |4 CGM/AWM |4× OKAY+0
+(deferred)
 
 |`smc_pll_awm_freq_sweep_test` |PLL 0xC000_3xxx |18 AWM FREQ/CGM
-sub-blocks |18× bounded DECERR
+sub-blocks |18× OKAY+0 (deferred)
 
 |`smc_pvt_analog_sensor_test` (PVT part) |PVT 0xC000_7xxx |combined +
-temp (6 of 9 reads) |6× bounded DECERR
+temp (6 of 9 reads) |6× OKAY+0 (deferred)
 
-|`smc_pvt_droop_test` |PVT 0xC000_7xxx |10 droop regs |10× bounded
-DECERR
+|`smc_pvt_droop_test` |PVT 0xC000_7xxx |10 droop regs |10× OKAY+0
+(deferred)
 
 |`smc_cdns_i3c_axil_test` |extension 0xC040_xxxx |6 wraps × (base+CTRL)
-|12× bounded DECERR
+|12× bounded DECERR (deferred)
 |=======================================================================
 
 Genuine register-level coverage of these macros is owned by each macro’s
@@ -290,8 +289,10 @@ RIRQT / IRQEN / IRQS registers.
 * I2C peripherals (`hw/comp/i2c/` × 4) — clock-gate observable on
 `tb_i2c_cg_en` / `tb_i2c_debug_lo`; I2C0 SDA/SCL lifted to tb_top
 split-port pads (`tb_i2c0_scl/sda` + `tb_i2c0_*_ext_low`).
-* I3C peripherals (`hw/ip/oca_i3c_wrap/` × 4) at 0xC0005000–0xC0005FFF,
-HCI_VERSION = 0x120; I3C0 SDA/SCL lifted to tb_top split-port pads.
+* I3C CSR windows — product instantiates `i3ccore_stub` (SLVERR +
+`0xBADCAB1E`); *not* OpenTitan HCI_VERSION=0x120. Green
+`smc_i3c_to_fabric_test` proves fabric decode + stub err-slv signature
+only. CCC/IBI / real core → deferred until core swap.
 * CPU JTAG pins (`tb_cpu_jtag_tck/tms/tdi/tdo/reset`) lifted to tb_top;
 IDCODE = 0x10CA0555 (JEP106 straps mfr=0x2AA, part=0x0CA0, ver=0x1);
 DTMCS.version=0x1 → RISC-V Debug Spec 0.13.
@@ -338,8 +339,8 @@ cool reset, cleared on cold)
 |`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |RO |Cluster count for NDM reset
 broadcast
 
-|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C wrapper HCI version; *must
-equal 0x120*
+|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C CSR window (stub); *expect
+SLVERR + `0xBADCAB1E`* until real I3C core lands
 
 |`AVS_READBACK` |0xC000_8004 |RO |AVSBus master readback
 
@@ -593,24 +594,19 @@ ver=0x1)[ ] (VIP) DTMCS version[3:0] *asserted* = 0x1 (RISC-V Debug Spec
 UVM_ERROR |`CHIP_CONFIG_VERSION_LO` (0xC000_2900)`SCRATCH_COLD_1`
 (0xC000_2804)`tb_cpu_jtag_tck/tms/tdi/tdo/reset` (tb pads)
 
-|TC_SMC_P0_011 |*smc_i3c_to_fabric_test* |P0 |I3C wrapper CSR
-reachability + clock-gate enable/restore + HCI_VERSION read; optional
-real SDR write loopback via `cocotbext-i3c` controller/target when the
-VIP is bound. |1. Read `CLOCK_GATE_CONTROL` (0xC001_0030) — snapshot
-`V0`2. Write `CLOCK_GATE_CONTROL = V0 \| (1<<9)` (enable I3C clock)3.
-Readback verify I3C bit set4. Restore `CLOCK_GATE_CONTROL = V0`5. Read
-`I3C0_HCI_VERSION` (0xC000_5000), expect **0x120**6. (VIP)
-`SmcI3cSlaveVip` binds via `get_or_bind_i3c_slave`;
-`i3c_directed_sdr_write_proof()` drives START + RSVD + ADDR(0x50) +
-payload(0x90) through `tb_i3c0_*` pins with wired-AND polarity adapter7.
-Target log emits `TARGET:::Performing write at 0, data: [90]` |[ ]
-`CLOCK_GATE_CONTROL` snapshot readable[ ] I3C clock-gate bit toggle +
-readback OK[ ] `CLOCK_GATE_CONTROL` restored to `V0`[ ]
-`I3C0_HCI_VERSION` = 0x120[ ] `reads == 4` (2 CLOCK_GATE_CONTROL reads +
-1 verify readback + 1 HCI_VERSION)[ ] (VIP) `TARGET:::Performing write`
-event count ≥ 1 in both simulators[ ] No UVM_ERROR |`CLOCK_GATE_CONTROL`
-(0xC001_0030)`I3C0_HCI_VERSION` (0xC000_5000)`tb_i3c0_scl` /
-`tb_i3c0_sda` (tb pads)`tb_i3c0_*_ext_low` (tb pull-low pads)
+|TC_SMC_P0_011 |*smc_i3c_to_fabric_test* |P0 |I3C *window* fabric decode
++ clock-gate enable/restore + **stub** SLVERR signature (not real I3C
+protocol). Optional pin VIP bind is non-gating. |1. Read
+`CLOCK_GATE_CONTROL` (0xC001_0018) — snapshot `V0`2. Write
+`CLOCK_GATE_CONTROL = V0 \| (1<<9)` (enable I3C clock)3. Readback verify
+I3C bit set4. Restore `CLOCK_GATE_CONTROL = V0`5. Read `I3C0_HCI_VERSION`
+(0xC000_5000) with `allow_error`, expect **SLVERR + `0xBADCAB1E`**
+(`i3ccore_stub`)6. (VIP, non-gating) optional `cocotbext-i3c` bind on
+`tb_i3c0_*` |[ ] `CLOCK_GATE_CONTROL` snapshot readable[ ] I3C
+clock-gate bit toggle + readback OK[ ] `CLOCK_GATE_CONTROL` restored to
+`V0`[ ] Window read completes with SLVERR + `0xBADCAB1E`[ ] `reads == 4`
+[ ] No UVM_ERROR |`CLOCK_GATE_CONTROL` (0xC001_0018)`I3C0_HCI_VERSION`
+(0xC000_5000)`tb_i3c0_scl` / `tb_i3c0_sda` (tb pads)
 
 |TC_SMC_P0_012 |*smc_efuse_otp_clock_test* |P0 |eFuse/OTP observability
 via chip-config field readbacks + clock-gate stability precheck across
@@ -755,10 +751,9 @@ exists
 |Merge legacy RD/WR, NACK, FIFO, timeout/stretch into two dense protocol
 tests after I2C BFM/VIP
 
-|I3C |`smc_i3c_to_fabric_test`; `smc_i3c_oca_write_read_sanity_test`;
-`smc_i3c_ibi_ccc_depth_test` |P0/P1 |Keep HCI_VERSION/clock-gate
-precheck; combine IBI, broadcast, CCC, and max-length depth after
-protocol model
+|I3C |`smc_i3c_to_fabric_test` (stub SLVERR signature);
+CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→`i3ccore_stub`
+only; reopen HCI_VERSION=0x120 / CCC/IBI after real core swap
 
 |iJTAG / JTAG / DFT |`smc_ijtag_basic_test`;
 `smc_chiplet_reg_jtag_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
@@ -772,12 +767,11 @@ clock CSR programming; permission/boundary tests wait for safe CSR
 classification
 
 |PLL / PVT / clock control |`smc_pll_pvt_clock_config_test`;
-`smc_pll_dvfs_depth_test` (*PLL-window reachability only — no DVFS
-operation is performed*; reuses the clock-config seq);
-`smc_static_cg_sanity_test` (real clock-gating check) |P0/P1 |PLL/PVT
-windows are DECERR bus terminators in the OSS bench (no macro model), so
-no PLL/PVT status or DVFS is observable here; genuine clock-gating
-coverage comes only from `smc_static_cg_sanity_test`
+`smc_pll_dvfs_depth_test` (*deferred* — OKAY+0 placeholder, not clock
+programming); `smc_static_cg_sanity_test` (real clock-gating check)
+|P0/P1 |PLL/PVT wraps are adopter placeholders (OKAY+0); do *not* claim
+clock programmed / DVFS PASS. Genuine clock-gating coverage comes only
+from `smc_static_cg_sanity_test`
 
 |GPIO / external interrupt / PLIC |`smc_gpio_irq_active_test`;
 `smc_gpio_strap_sanity_test`; `smc_external_interrupts_test` |P0/P1
@@ -1330,13 +1324,13 @@ instance CSR reads OKAY[ ] Per-instance ID / config decode[ ]
 `accesses == 3` (bounded)[ ] No UVM_ERROR |I2C_WRAP I2C_1 (0xC000_9200),
 I2C_2 (0xC000_9400), I2C_CTRL (0xC000_9E00)
 
-|TC_SMC_P1CG_03 |*smc_i3c_wrap_extended_test* |P1 |Read HCI_VERSION +
-PRESENT_STATE of OCA_I3C_WRAP 3/4/5. |1. Read I3C_WRAP_3 HCI_VERSION
-(0xC000_5F00), expect 0x1202. Read I3C_WRAP_4 HCI_VERSION (0xC000_6400),
-expect 0x1203. Read I3C_WRAP_5 HCI_VERSION (0xC000_6900), expect 0x120
-|[ ] All 3 HCI_VERSION reads == 0x120[ ] `accesses == 3`[ ] No UVM_ERROR
-|`OCA_I3C_WRAP_3/4/5_HCI_VERSION` (0xC000_5F00 / 0xC000_6400 /
-0xC000_6900)
+|TC_SMC_P1CG_03 |*smc_i3c_wrap_extended_test* |P1 |*Deferred /
+stub-era*: OCA_I3C_WRAP 3/4/5 windows currently terminate via
+`i3ccore_stub` (SLVERR + `0xBADCAB1E`), not HCI_VERSION=0x120. Reopen
+when real core lands. |1–3. Read wrap 3/4/5 bases
+(0xC000_5F00 / 0xC000_6400 / 0xC000_6900) with `allow_error`; expect
+stub signature |[ ] Each window SLVERR + `0xBADCAB1E` (stub) — *not*
+feature PASS for real I3C |`OCA_I3C_WRAP_3/4/5` bases
 
 |TC_SMC_P1CG_04 |*smc_efuse_map_read_test* |P1 |Read a sample of
 `SMC_EFUSE_MAP` fields (0xC000_B000) directly. |1. Read EFUSE_MAP entry
@@ -1523,9 +1517,10 @@ transaction |A
 hooks* *CLEARED* (`tb_cpu_ecc_inject_*` on scratch bank0)
 |*IMPLEMENTED*: `smc_ecc_fault_inject_test` — SBE/DBE + recovery |B
 
-|P2-8 |`dfd_dbs_fault_inject` |[line-through]*DFD/DBS fault source*
-*CLEARED* (`tb_dfd_fault_inject` / `tb_dbs_capture_*`) |*IMPLEMENTED*:
-`smc_dfd_dbs_fault_inject_test` |B
+|P2-8 |`dfd_dbs_fault_inject` |TB token `0xDB5C_AFE1` on
+`tb_dfd_fault_inject` — *not* `smc_dfd_wrap` / `hw/ip/dfd` |*DEFERRED*
+(`tb_glue` / `not_dut_rtl`): `smc_dfd_dbs_fault_inject_test` in
+`deferred.toml`; reopen when real DFD path is exercised |B
 
 |P2-9 |`jtag_dmi_access` |Firmware boot (P2-1) prerequisite
 |*IMPLEMENTED*: `smc_jtag_dmi_smoke_test` (dmstatus.version==2) |B

@@ -118,7 +118,7 @@ OUT names may remain in `deferred.toml` / Appendix A — **not** part of P1–P4
 | CTN wire-OR may force `dst_ack=0` | Do not require impossible level handshake |
 | CTN CSR relative `[0,0x300)` | Abs `0xC000F000` never reaches DTP: **local xbar periph ends `0xC000E800`** (hole). P1 DECERR is local-xbar, not CTN. |
 | OTP bank may be TB-tied | Completing OTP needs responder / shadow |
-| `feat_ctrl` tied `'0` under SEP=0 | Force OK if gate decision still proven |
+| `feat_ctrl` tied `'0` under SEP=0 | **OUT** Force ungating — use real LCC (`needs_real_lcc`) |
 
 Scratch: `export TMPDIR=/localdev/$USER/TMPDIR && mkdir -p "$TMPDIR"`.
 
@@ -291,7 +291,7 @@ no-SEP zeros.
 | OTP complete + err_slv | Child I2C/GPIO/crypto |
 | CTM four-phase / CLA loop | Scan / shim / telemetry |
 | Filter program → OKAY | Commercial toggle % |
-| feat_ctrl matrix (Force OK) | Real LCC #3538 enforce |
+| feat_ctrl matrix (Force **removed**) | Real LCC #3538 enforce |
 
 ### 6.2 Tests + pass contracts
 

@@ -11,6 +11,14 @@ schema_version = 1
 #                        axil_dtp_csr_resp. NOT an SMU gap (smu.sv wires DTP).
 #   rtl_placeholder    — exercises pll/pvt OKAY wraps only (adopter IP pending)
 #   fake_bfm           — Python fake BFM retired
+#   tb_glue / not_dut_rtl — TB-only demo (e.g. hardcoded capture token); not DUT RTL
+
+[[tests]]
+name = "smc_dfd_dbs_fault_inject_test"
+module = "smc_dfd_dbs_fault_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["deferred", "tb_glue", "not_dut_rtl"]
 
 [[tests]]
 name = "smc_i3c_ccc_ibi_full_test"
@@ -103,4 +111,5 @@ tests = [
   "smc_pvt_analog_sensor_test",
   "smc_pll_awm_freq_sweep_test",
   "smc_pvt_droop_test",
+  "smc_dfd_dbs_fault_inject_test",
 ]

@@ -32,6 +32,7 @@ class smu_smc_smoke_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
+        self.logger.info("DUT_TAG=BARE smu_smc_smoke_test under --dut smu SEP=0")
 
         sb.expect_eq("rst_primary_smc_clk_no", int(dut.rst_primary_smc_clk_no.value), 1, evidence="RST_PRIMARY_SMC_1")
         sb.expect_eq(

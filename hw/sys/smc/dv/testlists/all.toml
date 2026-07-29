@@ -217,7 +217,7 @@ name = "p2_phase_b"
 tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
+    # smc_dfd_dbs_fault_inject_test → deferred.toml (tb_glue; not DUT DFD RTL)
     "smc_jtag_dmi_smoke_test",
 ]
 
@@ -228,7 +228,7 @@ tests = [
     "smc_efuse_otp_burn_shadow_test",
     "smc_occp_sanity_secure_error_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
+    # smc_dfd_dbs_fault_inject_test → deferred (tb_glue)
     "smc_uart_loopback_test",
     "smc_smbus_pmbus_test",
 ]

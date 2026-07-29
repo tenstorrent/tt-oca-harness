@@ -95,6 +95,8 @@ python_paths = [
   "dv/vip/cocotb",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
+  # Raise-stub deferred bodies (importable if someone runs deferred items).
+  "hw/sys/smu/dv/cocotb/tests_deferred",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

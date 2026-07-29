@@ -30,6 +30,8 @@ class smc_macro_axil_read_seq(smc_base_test_seq):
         item.addr = self.addr
         item.length = 4
         # Tolerate DECERR and timeout; the test asserts the exact outcome.
+        # allow_timeout: macro AXIL may hang when TB leaves resp idle (deferred
+        # needs_dtp_csr_sub / rtl_placeholder); second evidence = resp_code/rdata assert.
         item.allow_error = True
         item.allow_timeout = True
         item.timeout_ns = self.timeout_ns

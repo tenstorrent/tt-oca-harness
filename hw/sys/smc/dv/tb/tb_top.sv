@@ -1135,7 +1135,9 @@ module smc_uvm_top
     assign tb_cpu_debug_dmactive_ack =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactiveAck;
 
-    // U7-2: DFD/DBS fault inject latches a deterministic capture token.
+    // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
+    // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.
+    // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
     always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
@@ -1144,7 +1146,7 @@ module smc_uvm_top
             tb_dbs_capture_data  <= '0;
         end else if (tb_dfd_fault_inject) begin
             tb_dbs_capture_valid <= 1'b1;
-            tb_dbs_capture_data  <= 32'hDB5C_AFE1;
+            tb_dbs_capture_data  <= 32'hDB5C_AFE1;  // TB token, not DUT DFD
         end
     end
 

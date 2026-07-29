@@ -25,7 +25,10 @@ class SmuSmcSmokeSeq:
         max_cycles = int(os.environ.get("SMU_SMC_BOOT_MAX_CYCLES", "2000000"), 0)
         heartbeat = max(1, max_cycles // 20)
         self.log.info("=" * 70)
-        self.log.info("TEST: SMC firmware boot under production smu_wrapper SEP=0")
+        self.log.info(
+            "DUT_TAG=WRAPPER TEST: SMC firmware boot under production "
+            "smu_wrapper SEP=0"
+        )
         self.log.info("=" * 70)
         self.log.info(
             "Bring-up evidence: fuse_sense_done=%d fuse_reset_n_delayed=%d "
