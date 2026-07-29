@@ -225,26 +225,6 @@ module smu_wrapper #(
     input logic       noc_n_telemetry_atvalid_i,
     input logic [7:0] noc_n_telemetry_atdata_i,
 
-    // SPI
-    input  wire       spi_enable_i,
-    input  wire       spi_clk_i,
-    input  wire [7:0] spi_txd_i,
-    input  wire       spi_cs_n_i,
-    input  wire       spi_cs_oe_n_i,
-    input  wire       spi_cs_ie_n_i,
-    input  wire       spi_clk_ie_n_i,
-    input  wire       spi_clk_oe_n_i,
-    input  wire       spi_dqs_ie_n_i,
-    input  wire       spi_dqs_oe_n_i,
-    input  wire [7:0] spi_dq_ie_n_i,
-    input  wire [7:0] spi_dq_oe_n_i,
-    output wire [7:0] spi_rxd_o,
-    output wire       spi_rxds_o,
-    input  wire       spi_mem_rebar_oepad_i,
-    input  wire       spi_mem_rebar_opad_i,
-    input  wire       spi_mem_rebar_iepad_i,
-    output wire       spi_mem_rebar_ipad_o,
-
     // PVT
     input wire              cat_therm_i,
     input logic [63:0][7:0] tile_event_i_pvt,
@@ -280,13 +260,7 @@ module smu_wrapper #(
     output logic  sep_fuse_sense_done_o,
 
     // SEP external interrupts
-    input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]  sep_extintsrc_req_i,
-
-    // I3C DAT/DCT memory interfaces
-    input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src_i,
-    output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,
-    input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src_i,
-    output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o
+    input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]  sep_extintsrc_req_i
 );
 
     /////////////////////////
@@ -472,7 +446,6 @@ module smu_wrapper #(
     logic                        sep_spi_mem_rebar_ipad;
 
     // Cross Trigger Port GPIO signals (from SMU to smc_ip_integration)
-    // TODO: Connect to smc_ip_integration when ready
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_req_out_dout;
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_en;
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_req_out_din;
@@ -490,11 +463,6 @@ module smu_wrapper #(
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_ack_out_din;
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en;
 
-    // CTP input tie-offs (until connected to smc_ip_integration)
-    assign xtrig_ctp_req_out_din = '0;
-    assign xtrig_ctp_req_in_din = '0;
-    assign xtrig_ctp_ack_in_din = '0;
-    assign xtrig_ctp_ack_out_din = '0;
 
     // CPU Memory Signals
     chipyard_4core_mem_pkg::rom_req_t              rom_intf_req;
@@ -613,7 +581,7 @@ module smu_wrapper #(
         // Clock Stop Request Interface
         .xtrig_clk_stop_req_i                   (xtrig_clk_stop_req_i),
 
-        // Cross Trigger Port GPIO Interface (internal signals - TODO: connect to smc_ip_integration)
+        // Cross Trigger Port GPIO Interface (to smc_ip_integration GPIO override plane)
         .xtrig_ctp_req_out_dout_o               (xtrig_ctp_req_out_dout),
         .xtrig_ctp_req_out_dout_en_o            (xtrig_ctp_req_out_dout_en),
         .xtrig_ctp_req_out_din_i                (xtrig_ctp_req_out_din),
@@ -859,6 +827,9 @@ module smu_wrapper #(
     );
 
     smc_ip_integration #(
+        // The DTP fixes its CTP count as a localparam, so the integration's CTP
+        // count must follow it or the ct_* connections mismatch (16 vs default 20).
+        .XTRIG_NUM_CTP(dtp_pkg::DEFAULT_NUM_CTP),
         .NUM_CGMS(NUM_CGMS),
         .NUM_AWMS(NUM_AWMS),
         .NUM_USED_CGM_CLOCKS(NUM_USED_CGM_CLOCKS),
@@ -929,26 +900,25 @@ module smu_wrapper #(
         .core2pad_en_i(core2pad_en),
 
         // Cross trigger interface (from DTP to drive GPIOs)
-        // TODO: Wire to DTP cross-trigger when xtrig pad routing is implemented
-        .ct_req_out_dout_i('0),
-        .ct_req_out_dout_en_i('0),
-        .ct_req_out_din_o(),
-        .ct_req_out_din_en_i('0),
+        .ct_req_out_dout_i(xtrig_ctp_req_out_dout),
+        .ct_req_out_dout_en_i(xtrig_ctp_req_out_dout_en),
+        .ct_req_out_din_o(xtrig_ctp_req_out_din),
+        .ct_req_out_din_en_i(xtrig_ctp_req_out_din_en),
 
-        .ct_req_in_dout_i('0),
-        .ct_req_in_dout_en_i('0),
-        .ct_req_in_din_o(),
-        .ct_req_in_din_en_i('0),
+        .ct_req_in_dout_i(xtrig_ctp_req_in_dout),
+        .ct_req_in_dout_en_i(xtrig_ctp_req_in_dout_en),
+        .ct_req_in_din_o(xtrig_ctp_req_in_din),
+        .ct_req_in_din_en_i(xtrig_ctp_req_in_din_en),
 
-        .ct_ack_in_dout_i('0),
-        .ct_ack_in_dout_en_i('0),
-        .ct_ack_in_din_o(),
-        .ct_ack_in_din_en_i('0),
+        .ct_ack_in_dout_i(xtrig_ctp_ack_in_dout),
+        .ct_ack_in_dout_en_i(xtrig_ctp_ack_in_dout_en),
+        .ct_ack_in_din_o(xtrig_ctp_ack_in_din),
+        .ct_ack_in_din_en_i(xtrig_ctp_ack_in_din_en),
 
-        .ct_ack_out_dout_i('0),
-        .ct_ack_out_dout_en_i('0),
-        .ct_ack_out_din_o(),
-        .ct_ack_out_din_en_i('0),
+        .ct_ack_out_dout_i(xtrig_ctp_ack_out_dout),
+        .ct_ack_out_dout_en_i(xtrig_ctp_ack_out_dout_en),
+        .ct_ack_out_din_o(xtrig_ctp_ack_out_din),
+        .ct_ack_out_din_en_i(xtrig_ctp_ack_out_din_en),
 
         // CAT THERM (routed to GPIO pad via 2nd HW function override)
         .cat_therm_i(cat_therm_i),
