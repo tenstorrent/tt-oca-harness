@@ -96,14 +96,9 @@ exclude_files = [
   "deps/i3c-core",
 ]
 stubs = [
-  # Verilator-compat overrides (same set as OSS SMC/SMU). Listed first;
-  # -Wno-MODDUP first-wins. VCS drops stubs whose basename already exists.
+  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
 ]
 sources = [
   "hw/sys/smu/dv/shims/bus/tb_smu_axi_responder.sv",

@@ -19,8 +19,8 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # Reuse the proven SMC CPU memory behavioral responders.
-  "hw/sys/smc/dv/models/mem/tb_smc_cpu_mem_responder.sv",
+  # Bare-SMU CPU memory behavioral responder (SMC wrapper absorbs CPU mem).
+  "hw/sys/smu/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
@@ -70,13 +70,9 @@ exclude_files = [
   "deps/i3c-core",
 ]
 stubs = [
-  # Verilator-compat overrides (same set as OSS SMC). Listed first; -Wno-MODDUP
-  # first-wins. VCS drops stubs whose basename already exists in the bender graph.
+  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 
 [build.verilator]

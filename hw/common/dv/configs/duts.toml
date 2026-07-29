@@ -14,8 +14,10 @@
 
 schema_version = 1
 
-# SMC: convention `--dut smc` -> hw/sys/smc/dv/smc_sim_cfg.toml
-# (tb_top instantiates smc_wrapper; no separate smc_wrapper DUT alias).
+# SMC production-wrapper baseline (shares hw/sys/smc/dv; no bare `--dut smc`).
+[duts.smc_wrapper]
+root = "hw/sys/smc/dv"
+sim_cfg = "hw/sys/smc/dv/smc_wrapper_sim_cfg.toml"
 
 # SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
 # but uses smu_wrapper_sim_cfg.toml).

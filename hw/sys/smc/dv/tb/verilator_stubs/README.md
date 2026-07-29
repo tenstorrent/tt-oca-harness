@@ -1,12 +1,15 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Module overrides listed in `smc_sim_cfg.toml` `[build].stubs` **ahead of** the
-Bender filelist so that with `-Wno-MODDUP` the first definition wins under
-Verilator. VCS ignores this list.
+Listed in `smc_wrapper_sim_cfg.toml` `[build].stubs` ahead of the Bender
+filelist so `-Wno-MODDUP` first-wins under Verilator. VCS ignores this list.
+
+**Only tooling shims are allowed here** — never override a product module
+(`smc_reset_*`, `smc_dfx_*`, etc.).
 
 | Stub | Role |
 |------|------|
-| `prim_sync2.sv` / `prim_sync3.sv` | Init-zero CDC flops for Verilator |
-| `smc_dfx_ctrl_status_wrap.sv` | DFX wrap Verilator-safe |
-| `smc_subsystem_resets.sv` / `smc_cool_reset_wrap.sv` / `smc_reset_unit.sv` | Reset-path Verilator overrides |
+| `prim_sync2.sv` / `prim_sync3.sv` | OSS `prim_flop_*sync` port remap + X-init (product `och_prim` still uses private `.i_CK` ports; see README B2) |
+
+Historical PeakRDL nested-struct Verilator codegen issues (B1) are worked
+around via `disable_public_flat_rw` + `smc_public_scope.vlt`, not module stubs.

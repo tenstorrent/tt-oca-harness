@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared PyUVM base test for SMC OSS (`--dut smc`, DUT = smc_wrapper).
+"""Shared PyUVM base test for SMC OSS (`--dut smc_wrapper`).
 
 Builds `SmcEnv`, runs power-good + cold-reset bring-up, and delegates scenario
 work to `run_scenario()`.

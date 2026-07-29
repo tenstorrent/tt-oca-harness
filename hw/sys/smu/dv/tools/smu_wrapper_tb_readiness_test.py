@@ -42,8 +42,6 @@ REQUIRED_SOURCES = (
     "tb/smu_wrapper_public_scope.vlt",
     "shims/bus/tb_smu_axi_responder.sv",
     "shims/mem/sep_tcm_wrapper.sv",
-    "shims/wrapper/smu_wrapper.sv",
-    "shims/wrapper/smc_padring_ext.sv",
     "fw/build_firmware.py",
     "fw/tests/smu_smc_smoke/main.c",
     "fw/tests/smu_sep_arm/main.c",
@@ -64,7 +62,7 @@ REQUIRED_REFERENCE_ROOTS = (
     "hw/sys/smc/dv",
     "hw/sys/sep/dv",
     "hw/common/dv/vip",
-    "hw/.bos/wrapper/smu",
+    "hw/top",
 )
 
 FORBIDDEN_ENV_REFERENCES = (
@@ -213,22 +211,18 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         None,
     )
     required_tokens = (
-        "hw/smu/rtl/smu.sv",
-        "hw/.bos/wrapper/smc/smc_ip_integration.sv",
-        "hw/.bos/wrapper/sep/sep_ip_integration.sv",
+        "hw/sys/smu/rtl/smu.sv",
+        "hw/top/smu_wrapper.sv",
+        "hw/top/smc_ip_integration.sv",
+        "hw/top/sep_ip_integration.sv",
         "hw/sys/smu/dv/tb/tb_wrapper_top.sv",
         "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
-        # DV shadow of the OSS wrapper (duplicate rst_cold_n declaration fix).
-        "hw/sys/smu/dv/shims/wrapper/smu_wrapper.sv",
     )
     forbidden_tokens = (
-        # Production wrapper and foundry TCM macros must not leak into the
-        # OSS wrapper build (Bender not(smu_oss_wrapper) + exclude_files),
-        # and the hw/.bos wrapper copy is shadowed by the DV shim.
-        "hw/smu/smu_wrappers/rtl/smu_wrapper.sv",
+        # Foundry TCM macros and obsolete DV wrapper shadows must not appear.
         "hw/sep/sep_tcm_wrapper.sv",
-        "hw/.bos/wrapper/smu/smu_wrapper.sv",
-        "hw/.bos/wrapper/smc/smc_padring_ext.sv",
+        "hw/sys/smu/dv/shims/wrapper/",
+        "hw/.bos/wrapper/",
     )
     for raw_path in filelists:
         path = raw_path if raw_path.is_absolute() else REPO_ROOT / raw_path

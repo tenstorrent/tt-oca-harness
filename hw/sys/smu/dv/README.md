@@ -29,11 +29,11 @@ smu_<scenario>_test
 | `testlists/all.toml` | Phase-1 includes only (`smc`/`dtp`/`fabric`) |
 | `testlists/deferred.toml` | Non-Phase-1 inventory (not default-included) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
-| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline (#3357) |
-| `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — OSS `smu_wrapper` harness |
+| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
+| `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | Wrapper-baseline PyUVM tests |
-| `testlists/wrapper.toml` | Wrapper baseline catalog (4 tests) |
-| `shims/`, `fw/`, `tools/` | Wrapper shims, smoke firmware, readiness gate |
+| `testlists/wrapper.toml` | Wrapper baseline catalog |
+| `shims/{bus,mem}/`, `fw/`, `tools/` | TB responders, OSS TCM stand-in, firmware, readiness |
 
 ## BFM Policy
 
@@ -65,20 +65,20 @@ python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 
 Groups: `smoke`, `top5`, `top10`, `phase1`, `smc`, `dtp`, `fabric`.
 
-## Production-wrapper baseline (`--dut smu_wrapper`, issue #3357)
+## Production-wrapper baseline (`--dut smu_wrapper`)
 
-A second sim config in this DV root builds the vendor-free OSS SMU wrapper
-(`hw/.bos/wrapper/smu/smu_wrapper.sv` via the `smu_oss_wrapper` bender
-target) with two compile profiles:
+A second sim config in this DV root builds `hw/top/smu_wrapper.sv` (via the
+`smu_wrapper` Bender target) with two compile profiles:
 
 - `compile_smu_chiplet_no_sep`: wrapper with `NoSepCfg`, `SEP=0`.
 - `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
   real SEP EL2 CPU.
 
-No `hw/` sources are modified. Two hw/.bos files with
-Verilator-blocking bugs are shadowed by fixed copies under `shims/wrapper/`
-(see the file headers), and the foundry `sep_tcm_wrapper` macro wrapper is
-replaced by the vendor-free `shims/mem/sep_tcm_wrapper.sv`.
+The foundry `sep_tcm_wrapper` is replaced by the vendor-free
+`shims/mem/sep_tcm_wrapper.sv` (exclude_files + sources). There are **no**
+DV shadows that override product wrapper / SMC reset / DFX modules.
+Verilator tooling shims (`prim_sync2/3`) are shared from
+`hw/sys/smc/dv/tb/verilator_stubs/` (see SMC README B1/B2).
 
 ### Readiness gates
 
@@ -103,7 +103,7 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 
 The SEP smoke is a boot-readiness anchor mirroring the internal
 `smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI
-path is tracked separately (issue #3939).
+path is tracked separately.
 
 ### Running
 
