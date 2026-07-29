@@ -10,8 +10,7 @@
 #             run/run-here/shell/verify, so bare `run` works on a fresh host
 #   verify    gcc version + multilibs      shell     interactive firmware shell
 #   run CMD   run in firmware image
-#   run-here  like run, but mount the repo at its host path (for CMDs that use
-#             absolute host paths, e.g. the TTEM `make -C $OCH_ROOT ...` cgen flow)
+#   run-here  like run, but mount the repo at its host path
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
 # Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
@@ -138,9 +137,7 @@ run() {
 }
 
 # Like run, but mount the repo at its own host-absolute path (see
-# run_image_1to1) so commands that reference absolute host paths - such as the
-# TTEM cgen flow's `make -C $OCH_ROOT -f ocah.mk ...` - resolve inside the
-# container. Uses the firmware image.
+# run_image_1to1) so commands that reference absolute host paths
 run_here() {
     ensure_image
     run_image_1to1 "$IMAGE" "$@"
