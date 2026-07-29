@@ -4,7 +4,7 @@
 // Do not start this comment with the word "verilator" — that token is reserved
 // for Verilator pragmas (BADVLTPRAGMA).
 //
-// Listed ahead of Bender in smc_wrapper_sim_cfg.toml [build].stubs with
+// Optional FOSS pad stub (SMU padring DV). Not in smc_sim_cfg.toml stubs;
 // -Wno-MODDUP first-wins. This is NOT a CPU-core stub and is NOT used to skip
 // Rocket/Chipyard compile. It replaces the real gpio_macro_wrapper for FOSS
 // builds only: the RTL instantiates parameterized gpio_shim / PeakRDL

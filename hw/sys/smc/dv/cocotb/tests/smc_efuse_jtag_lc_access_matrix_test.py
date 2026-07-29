@@ -141,7 +141,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         exp_prod = 0 if force_sigint else (1 if raw in (LC_PROD, LC_RMA_SIP, 0x3) else 0)
         exp_raw = 0 if force_sigint else raw
         try:
-            efw = dut.u_dut.u_smc_peripherals.u_smc_efuse_wrapper
+            efw = dut.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper
             got_raw = int(efw.lc_state_smc_raw.value)
             got_sigint = int(efw.lc_sigint_err.value)
             got_prod = int(efw.is_prod_or_rma_sip.value)

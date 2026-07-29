@@ -16,8 +16,8 @@ SMC and SEP differ, this doc describes **SMC** and notes the SEP contrast.
   - `--dut smc` → `smc_sim_cfg.toml`, top `smc_uvm_top` (`tb/tb_top.sv`), env
     `cocotb/`. The primary DV surface (~130 tests). Memory / eFuse are backed by
     TB behavioral models (`models/mem/*.sv`, `models/analog/*.sv`).
-  - `--dut smc_wrapper` → `smc_wrapper_sim_cfg.toml`, top `smc_wrapper_uvm_top`
-    (`tb/tb_wrapper_top.sv`), env `cocotb/wrapper/`. A pad-level baseline; eFuse
+  - `--dut smc` → `smc_sim_cfg.toml`, top `smc_uvm_top` (`tb/tb_top.sv`)
+    instantiating `smc_wrapper`. eFuse
     / GPIO pads fold into wrapper RTL (SEP `sep_wrapper` direction); CPU mem
     ports remain external until absorbed.
 
@@ -34,10 +34,10 @@ hw/sys/smc/dv/
 │   ├── tests/              #   @pyuvm.test() entries + smc_base_test.py
 │   └── wrapper/            # smc_wrapper flavor (own base_test + env_cfg + seq_lib)
 ├── models/{mem,analog,wrapper,regs}/  # behavioral / sim stand-ins
-├── tb/                     # tb_top.sv, tb_wrapper_top.sv, verilator_stubs/
+├── tb/                     # tb_top.sv, verilator_stubs/
 ├── testlists/              # per-feature TOML leaves + all.toml (groups)
 ├── assets/                 # ROM/eFuse/shadow preload images
-├── smc_sim_cfg.toml        # bare-SMC manifest;  smc_wrapper_sim_cfg.toml
+├── smc_sim_cfg.toml        # sole launch config (tb_top → smc_wrapper)
 └── docs/                   # SMC_VPLAN.adoc + notes
 ```
 
@@ -208,7 +208,7 @@ python3 $PY --dut smc --items smc_canonical_smoke_test --stage flist --stage sim
 python3 $PY --dut smc --items all --tag smoke --stage sim
 python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
 python3 $PY --dut smc --items all --stage sim --regress
-python3 $PY --dut smc_wrapper --items all
+python3 $PY --dut smc --items all
 ```
 
 Prereqs: Python 3.11+ with the OSS DV BFM installed

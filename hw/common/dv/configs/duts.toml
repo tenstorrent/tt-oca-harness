@@ -7,23 +7,18 @@
 #
 # Register only DUTs whose sim config exists: every registered entry is loaded and validated
 # before any run or diagnostic, so a stale entry blocks all flows. Conventional DUTs
-# (e.g. SMC/SEP/SMU) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
+# (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
 # Non-conventional aliases — such as `smu_wrapper` sharing hw/sys/smu/dv with a separate sim
-# config for the production-wrapper baseline flow (issue #3357) — must be registered here
-# when their configs are added.
+# config for the production-wrapper baseline flow — must be registered here when their
+# configs are added.
 
 schema_version = 1
 
-# Official SMC OSS entry: pad-level smc_wrapper baseline (shares hw/sys/smc/dv
-# with bare `smc`, but uses smc_wrapper_sim_cfg.toml). Prefer
-# `--dut smc_wrapper` for smoke / regress; `--dut smc` remains a secondary
-# bare-core path for TB-stub experiments.
-[duts.smc_wrapper]
-root = "hw/sys/smc/dv"
-sim_cfg = "hw/sys/smc/dv/smc_wrapper_sim_cfg.toml"
+# SMC: convention `--dut smc` -> hw/sys/smc/dv/smc_sim_cfg.toml
+# (tb_top instantiates smc_wrapper; no separate smc_wrapper DUT alias).
 
 # SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
-# but uses smu_wrapper_sim_cfg.toml). Issue #3357.
+# but uses smu_wrapper_sim_cfg.toml).
 [duts.smu_wrapper]
 root = "hw/sys/smu/dv"
 sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"

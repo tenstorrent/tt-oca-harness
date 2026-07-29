@@ -1,11 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""SMC OSS PyUVM base test (bare-`smc` DUT).
+"""Shared PyUVM base test for SMC OSS (`--dut smc`, DUT = smc_wrapper).
 
-Intentionally separate from the smc_wrapper base test
-(`cocotb/wrapper/tests/smc_wrapper_base_test.py`) and `SmcWrapperEnvCfg`: the
-two DUTs have different bring-up (this one: power-good + cold reset; the
-wrapper: the power-good-glitch sequence) and different env cfg fields. Do not
-merge them into one class.
+Builds `SmcEnv`, runs power-good + cold-reset bring-up, and delegates scenario
+work to `run_scenario()`.
 """
 
 from __future__ import annotations

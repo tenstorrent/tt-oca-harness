@@ -1,8 +1,0 @@
-`verilator_config
-// Scope cocotb public access to the TB top only. Global --public-flat-rw
-// explodes gpio_macro_wrapper parameterized instances into colliding C++
-// types (Vtop_gpio_macro_wrapper__Iz31_Uz31 vs Ez31) under Verilator 5.046.
-public_flat_rw -module "smc_wrapper_uvm_top" -var "*"
-// SEP-aligned CPU mem: backdoor $readmemh into prim_* arrays.
-public_flat_rw -module "prim_rom" -var "mem"
-public_flat_rw -module "prim_ram_1p" -var "mem"

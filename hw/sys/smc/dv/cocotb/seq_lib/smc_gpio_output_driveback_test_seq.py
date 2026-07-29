@@ -7,7 +7,7 @@ outputs actually follow the CSR programming.
 The tb_top ``tb_gpio_core2pad_*`` observables are OR-reductions over the whole
 ``core2pad_o`` pad bus (which also carries idle-high LSIO pads such as UART TX),
 so they cannot isolate a single GPIO wrap. Instead this sequence reads the full
-top-level ``u_dut.core2pad_o`` / ``core2pad_en_o`` vectors and isolates wrap 0
+``u_dut.u_smc.core2pad_o`` / ``core2pad_en_o`` vectors and isolates wrap 0
 by *delta*: only wrap 0 is programmed, so exactly one output-enable bit must
 change, and that bit's value must track the register. This is self-locating (no
 hard-coded pad index) and does not depend on the OR aggregates.
@@ -59,10 +59,10 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             return int(bits, 2) if bits else 0
 
     def _en_vec(self, dut) -> int:
-        return self._resolve_int(dut.u_dut.core2pad_en_o)
+        return self._resolve_int(dut.u_dut.u_smc.core2pad_en_o)
 
     def _val_vec(self, dut) -> int:
-        return self._resolve_int(dut.u_dut.core2pad_o)
+        return self._resolve_int(dut.u_dut.u_smc.core2pad_o)
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -72,7 +72,7 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         # resolvable; the single-bit wrap-0 delta below is the real gate (and a
         # driven bit stuck at X would resolve to 0 and trip those asserts).
         await ClockCycles(dut.clk_smc_i, 4)
-        width = len(dut.u_dut.core2pad_en_o.value)
+        width = len(dut.u_dut.u_smc.core2pad_en_o.value)
         mask = (1 << width) - 1
         base_en = self._en_vec(dut)
 

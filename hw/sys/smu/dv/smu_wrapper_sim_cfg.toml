@@ -1,7 +1,7 @@
 schema_version = 1
 
 # Launch entry: selected by `--dut smu_wrapper` (registered in
-# hw/common/dv/configs/duts.toml). Issue #3357 production-wrapper baseline.
+# hw/common/dv/configs/duts.toml). Production-wrapper baseline.
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
@@ -12,7 +12,7 @@ schema_version = 1
 # share this DV root and the build/runs evidence directory.
 name = "smu_wrapper"
 profile = "native-cocotb"
-description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke (#3357)"
+description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
 

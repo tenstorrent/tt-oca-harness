@@ -1,5 +1,10 @@
 # OSS SMC RTL Instantiation Notes
 
+## Status (single DUT)
+
+SMC OSS DV now uses a **single** `--dut smc` entry: `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` via `smc_sim_cfg.toml`. There is no `smc_wrapper` DUT alias and no `tb_wrapper_top.sv`. Sections below that describe dual-DUT migration are historical.
+
+
 Source context: `hw/oss-example`, `hw/sys/smc/dv`, `hw/sys/smu/dv` (`--dut smu_wrapper`).
 Purpose: document how OSS uses RTL, how `hw/oss-example` relates to the SMC DV sandbox, and how to modify the OSS SMC environment to instantiate `smc_wrapper`.
 
