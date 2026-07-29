@@ -32,17 +32,20 @@ class smu_smc_smoke_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
+        self.logger.info("DUT_TAG=BARE smu_smc_smoke_test under --dut smu SEP=0")
 
-        sb.expect_eq("rst_primary_smc_clk_no", int(dut.rst_primary_smc_clk_no.value), 1)
+        sb.expect_eq("rst_primary_smc_clk_no", int(dut.rst_primary_smc_clk_no.value), 1, evidence="RST_PRIMARY_SMC_1")
         sb.expect_eq(
             "rst_cold_stable_ref_clk_no",
             int(dut.rst_cold_stable_ref_clk_no.value),
             1,
+            evidence="RST_COLD_STABLE_1",
         )
         sb.expect_eq(
             "smc_global_base_o reset",
             int(dut.smc_global_base_o.value),
             SMC_GLOBAL_BASE_RESET,
+            evidence="AXI_GLOBAL_BASE",
         )
         sb.expect_eq(
             "smc_region_size_o reset",
@@ -65,6 +68,7 @@ class smu_smc_smoke_test(smu_base_test):
             "SYS_IN filter DECERR on VERSION_LO (BlockByDefault)",
             resp,
             AxiResp.DECERR,
+            evidence="AXI_SMOKE_DECERR",
         )
         # Re-read: same DECERR (path stable, not a one-shot glitch).
         value2, resp2 = await axi_read32_resp(master, SMC_VERSION_LO_ADDR)

@@ -40,15 +40,16 @@ class smu_base_test(uvm_test):
     async def run_phase(self) -> None:
         self.raise_objection()
         try:
+            tc = self.get_type_name()
+            self.env.scoreboard.bind_testcase(tc)
             await self.bring_up()
             await self.run_scenario()
+            self.env.scoreboard.prove_mapped_features()
             self._scenario_ran = True
             # Hit scenario-intent FCOV bins before scoreboard check_phase.
-            n = self.env.scoreboard.fcov.hit_for_test(self.get_type_name())
+            n = self.env.scoreboard.fcov.hit_for_test(tc)
             if n:
-                self.logger.info(
-                    "FCOV: auto-hit %d bin(s) for %s", n, self.get_type_name()
-                )
+                self.logger.info("FCOV: auto-hit %d bin(s) for %s", n, tc)
         finally:
             self.drop_objection()
 
@@ -92,10 +93,10 @@ class smu_base_test(uvm_test):
             dut.tb_tel_atvalid.value = 0
         if hasattr(dut, "tb_tel_afready"):
             dut.tb_tel_afready.value = 0
-        if hasattr(dut, "tb_force_wdt_reset_raw"):
-            dut.tb_force_wdt_reset_raw.value = 0
-        if hasattr(dut, "tb_force_cluster_isolate"):
-            dut.tb_force_cluster_isolate.value = 0
+        if hasattr(dut, "tb_wdt_reset_raw"):
+            pass  # observe-only; Force inject pins removed
+        if hasattr(dut, "tb_cluster_boundary_isolate"):
+            pass
         # Idle AXI
         for name in (
             "s_axi_awvalid", "s_axi_wvalid", "s_axi_bready",

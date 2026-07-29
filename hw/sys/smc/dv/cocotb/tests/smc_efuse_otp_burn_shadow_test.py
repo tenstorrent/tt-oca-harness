@@ -25,5 +25,5 @@ class smc_efuse_otp_burn_shadow_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="OTP sense+shadow+burn/fail via tb_smc_efuse_responder",
+            details="OTP sense+shadow+burn/fail via efuse_bank_model",
         )

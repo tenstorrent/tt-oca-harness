@@ -12,7 +12,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # EXCEPTION (regression-lock, NOT RDL-traceable): UART_MSR=0x11 -- every MSR
 # field's RDL reset is 0x0; the 0x11 (DCTS|CTS) is driven by the tied modem-
 # status HW inputs (cts_ni ...), so it locks observed HW behaviour, not a spec
-# reset.  [audit: F1 common-mode, see smcoss_audit.md]
+# reset.
 UART_LOG_READS = [
     ("UART_LOG_ENGINE_CTRL", 0xC000_A000, 0x0),
     ("UART_IIR", 0xC000_A108, 0x1),

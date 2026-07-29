@@ -35,17 +35,25 @@ class smu_clock_stop_coordination_test(smu_base_test):
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        sb.expect_eq("dtp_stop_clks idle", int(dut.dtp_stop_clks_o.value), 0)
+        sb.expect_eq("dtp_stop_clks idle", int(dut.dtp_stop_clks_o.value), 0, evidence="CLA_CLK_STOP_LOOP")
         sb.expect_eq(
             "dtp_cla_clock_stop_en idle", int(dut.dtp_cla_clock_stop_en.value), 0
         )
 
         # CLA enable bit alone must appear on hierarchical observe.
+        # CLA fb path (dtp_xtrig_clk_stop_req[0]) stays 0 without real CLA halt —
+        # that is observe of the product glue, not Force inject.
         val_cla = pack_debug_control(cla_clock_stop_en=1)
         await jtag.write("DEBUG_CONTROL", val_cla)
         await ClockCycles(dut.clk_smu_i, 8)
         sb.expect_eq(
             "cla_clock_stop_en asserted", int(dut.dtp_cla_clock_stop_en.value), 1
+        )
+        sb.expect_eq(
+            "CLA fb bit[0] idle without halt",
+            int(dut.u_dut.dtp_xtrig_clk_stop_req.value) & 0x1,
+            0,
+            evidence="CLA_CLK_STOP_LOOP",
         )
         rb = await jtag.read("DEBUG_CONTROL", shift_value=val_cla)
         sb.expect_eq("DEBUG_CONTROL CLA readback", int(rb) & 0xF, val_cla & 0xF)

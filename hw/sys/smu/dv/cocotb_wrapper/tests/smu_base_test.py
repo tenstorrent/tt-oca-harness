@@ -31,9 +31,11 @@ class smu_base_test(uvm_test):
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
     @staticmethod
-    def read_int(signal, name: str) -> int:
+    def read_int(signal, name: str, *, allow_xz: bool = False) -> int:
         value = signal.value
         if hasattr(value, "is_resolvable") and not value.is_resolvable:
+            if allow_xz:
+                return 0
             raise AssertionError(f"{name} contains X/Z: {value}")
         return int(value)
 
@@ -108,7 +110,9 @@ class smu_base_test(uvm_test):
 
         self.logger.info("Step 3: release cold reset and wait for resolved outputs")
         dut.rst_cold_ni.value = 1
-        await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_cycles)
+        # Extra settle so the TB JTAG TCK reload (after TRST rise) can clear
+        # IC_RESET TDR overrides before observers sample fuse/primary reset.
+        await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_cycles + 40)
         self.post_release_sep_reset = self.read_int(
             dut.sep_reset_n_o, "sep_reset_n_o after cold reset"
         )

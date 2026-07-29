@@ -234,11 +234,13 @@ module jtag_ptap
     // Any-slice enable drives TAP-level IC_RESET instruction decode and CAPS reporting.
     localparam bit IC_RESET_ENABLE = IC_RESET_SMC_ENABLE | IC_RESET_SEP_ENABLE | IC_RESET_EXT_ENABLE;
 
-    assign smc_jtag2axi_security_disable = feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug;
-    assign smc_otp_jtag2axi_security_disable = feat_ctrl_i.fuse_test || feat_ctrl_i.soc_debug ||
-                                               feat_ctrl_i.ap_debug;
-    assign sep_otp_jtag2axi_security_disable = feat_ctrl_i.fuse_test || feat_ctrl_i.sep_debug ||
-                                               feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug;
+    // Enable-polarity feat_ctrl: any required enable low asserts security_disable
+    // (matches DTP_VPLAN / smu_dtp_feat_ctrl_gate_matrix_test golden).
+    assign smc_jtag2axi_security_disable = !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug;
+    assign smc_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug ||
+                                               !feat_ctrl_i.ap_debug;
+    assign sep_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug ||
+                                               !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug;
 
     //--------------------------------------------------------------------------
     // JTAG TAP Controller Instance

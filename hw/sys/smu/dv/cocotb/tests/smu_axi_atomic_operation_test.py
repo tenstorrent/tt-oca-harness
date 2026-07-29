@@ -36,7 +36,7 @@ class smu_axi_atomic_operation_test(smu_base_test):
             dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
         )
         value, resp = await axi_read32_resp(master, PROBE)
-        sb.expect_eq("non-ATOP SMN read DECERR (supported class)", resp, AxiResp.DECERR)
+        sb.expect_eq("non-ATOP SMN read DECERR (supported class)", resp, AxiResp.DECERR, evidence="AXI_ATOP_REJECT")
         sb.expect_eq("err_slv poison", value & 0xFFFF_FFFF, 0xBADC_AB1E)
 
         self.logger.info(

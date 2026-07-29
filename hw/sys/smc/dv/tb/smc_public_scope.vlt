@@ -1,0 +1,7 @@
+`verilator_config
+// Scope cocotb public access to the TB top only. Global --public-flat-rw
+// explodes gpio hierarchy under Verilator 5.046.
+public_flat_rw -module "smc_uvm_top" -var "*"
+// SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
+public_flat_rw -module "prim_rom" -var "mem"
+public_flat_rw -module "prim_ram_1p" -var "mem"

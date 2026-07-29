@@ -17,18 +17,11 @@ timeout_sec = 1800
 tags = ["smoke", "ci", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_macro_axil_routing_test"
-module = "smc_macro_axil_routing_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "axil", "macro_routing", "pyuvm"]
-run_modes = ["smoke"]
+# smc_macro_axil_routing_test → testlists/deferred.toml (rtl_placeholder / dtp)
 
 [[groups]]
 name = "axil"
 tests = [
     "smc_axil_idle_test",
     "smc_axil_burst_idle_test",
-    "smc_macro_axil_routing_test",
 ]

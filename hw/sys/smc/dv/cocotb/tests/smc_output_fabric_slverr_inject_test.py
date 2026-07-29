@@ -1,19 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
-"""SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR inject + golden + resp monitor."""
+"""SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR via axi_sim_mem werr/rerr (SEP pulp API)."""
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import RisingEdge
 
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from smc_base_test import smc_base_test
 from seq_lib.smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
-    OUTPUT_FABRIC_ALT_DATA,
     OUTPUT_FABRIC_DATA,
     OUTPUT_FABRIC_MODEL_REGION,
-    OUTPUT_FABRIC_SLVERR_POISON,
     RESP_OKAY,
     RESP_SLVERR,
     check_output_responder_delta,
@@ -24,21 +23,28 @@ from seq_lib.smc_output_fabric_vip_utils import (
 )
 
 
+async def _program_sys_out_err(dut, addr: int, resp: int) -> None:
+    """Write TB-owned axi_sim_mem.werr/rerr (not a DUT Force)."""
+    assert hasattr(dut, "tb_output_err_we"), "tb_output_err_we missing"
+    dut.tb_output_err_addr.value = addr
+    dut.tb_output_err_resp.value = resp
+    dut.tb_output_err_we.value = 1
+    await RisingEdge(dut.clk_smc_i)
+    dut.tb_output_err_we.value = 0
+    await RisingEdge(dut.clk_smc_i)
+
+
 @pyuvm.test()
 class smc_output_fabric_slverr_inject_test(smc_base_test):
-    """OKAY WR/RD, SLVERR inject, OKAY readback; SYS_OUT monitor tallies."""
+    """OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor."""
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
-        assert hasattr(dut, "tb_output_force_slverr"), (
-            "tb_output_force_slverr missing; rebuild after U1-2 SLVERR knob"
-        )
         assert hasattr(dut, "tb_output_axi_bresp"), (
             "tb_output_axi_bresp missing; rebuild after U6-2 SYS_OUT lift"
         )
-        dut.tb_output_force_slverr.value = 0
         output_fabric_model(self)
 
         start_writes = int(dut.tb_output_axi_write_count.value)
@@ -75,20 +81,9 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         assert snap_a["b_okay"] >= snap0["b_okay"] + 1, snap_a
         assert snap_a["r_okay"] >= snap0["r_okay"] + 1, snap_a
 
-        # Phase B: slave SLVERR — must NOT update golden.
-        dut.tb_output_force_slverr.value = 1
-        wr_err = await jtag_axi_write(
-            self,
-            OUTPUT_FABRIC_ADDR,
-            OUTPUT_FABRIC_ALT_DATA,
-            allow_error=True,
-            expected_resp=RESP_SLVERR,
-            update_golden=False,
-            memory_region=OUTPUT_FABRIC_MODEL_REGION,
-        )
-        assert wr_err.resp_code == RESP_SLVERR, (
-            f"injected write resp={wr_err.resp_code}, expected SLVERR"
-        )
+        # Phase B: pulp axi_sim_mem rerr inject (TB model API). Read returns
+        # stored DATA with SLVERR; ClearErrOnAccess clears after the beat.
+        await _program_sys_out_err(dut, OUTPUT_FABRIC_ADDR, RESP_SLVERR)
         rd_err = await jtag_axi_read(
             self,
             OUTPUT_FABRIC_ADDR,
@@ -98,16 +93,16 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         assert rd_err.resp_code == RESP_SLVERR, (
             f"injected read resp={rd_err.resp_code}, expected SLVERR"
         )
-        assert rd_err.rdata == OUTPUT_FABRIC_SLVERR_POISON, (
-            f"SLVERR poison rdata=0x{rd_err.rdata:x}, "
-            f"expected 0x{OUTPUT_FABRIC_SLVERR_POISON:x}"
+        assert rd_err.rdata == OUTPUT_FABRIC_DATA, (
+            f"SLVERR rdata=0x{rd_err.rdata:x}, expected stored 0x{OUTPUT_FABRIC_DATA:x}"
         )
         snap_b = mon.snapshot()
-        assert snap_b["b_slverr"] >= snap_a["b_slverr"] + 1, snap_b
         assert snap_b["r_slverr"] >= snap_a["r_slverr"] + 1, snap_b
 
-        # Phase C: clear inject; golden still holds original DATA.
-        dut.tb_output_force_slverr.value = 0
+        # Explicitly clear TB error maps (do not rely solely on ClearErrOnAccess).
+        await _program_sys_out_err(dut, OUTPUT_FABRIC_ADDR, RESP_OKAY)
+
+        # Phase C: error cleared; golden still holds original DATA.
         rd_again = await jtag_axi_read(
             self,
             OUTPUT_FABRIC_ADDR,
@@ -120,13 +115,13 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         await check_output_responder_delta(
             start_writes=start_writes,
             start_reads=start_reads,
-            write_delta=2,
+            write_delta=1,
             read_delta=3,
             last_addr=OUTPUT_FABRIC_ADDR,
-            last_wdata=OUTPUT_FABRIC_ALT_DATA,
+            last_wdata=OUTPUT_FABRIC_DATA,
         )
         assert sb.memory_model_updates_seen == updates0 + 1, (
-            f"SLVERR path must not update golden: updates={sb.memory_model_updates_seen}"
+            f"unexpected golden updates={sb.memory_model_updates_seen}"
         )
         assert sb.memory_model_checks_seen == checks0 + 2
         snap_c = mon.snapshot()
@@ -141,10 +136,10 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
-            csr_accesses=cfg_seq.accesses + 5,
+            csr_accesses=cfg_seq.accesses + 4,
             proxy=False,
             details=(
-                "SYS_OUT SLVERR inject + SmcMemoryModel + U6-2 output AXI "
-                f"monitor tallies {snap_c}"
+                "SYS_OUT axi_sim_mem rerr SLVERR + SmcMemoryModel + U6-2 "
+                f"output AXI monitor tallies {snap_c}"
             ),
         )

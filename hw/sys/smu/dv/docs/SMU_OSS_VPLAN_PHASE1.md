@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SMU OSS VPLAN — Phase 1 (SEP=0 density-first)
 
-> **Phase 1 — DONE (SEP=0 density, 24/24 VCS).** Executable detail for the
-> P1 slice of the master plan in [`SMU_VPLAN.md`](SMU_VPLAN.md) (v2.0 P1+P2).
-> P2 SMC↔DTP deepeners are planned in that same file (§6); not in this doc.
+> **Phase 1 — live green (policy 2026-07-29i):** `phase1` **14/14** Verilator
+> (no Force / no TB placeholder). Historical Force-era 24/24 VCS enrollment is
+> **superseded** — see [`SMU_VPLAN.md`](SMU_VPLAN.md) and
+> Force / LCC / CTM-Force names → `testlists/deferred.toml`.
 >
 > **SEP=1 / interop / 3×3 xbar** = OUT (Appendix A / `deferred.toml`).
 

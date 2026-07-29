@@ -68,10 +68,9 @@ class SmcCsrSeq(smc_base_test_seq):
         """Read a window intentionally terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
-        0xBADCAB1E signature. This is a real, non-vacuous gate -- it fails if the
-        fabric mis-routes, if the window starts returning real data (e.g. the
-        stubbed block gets integrated), or if the signature changes. Stronger
-        than csr_read_allow_error, which merely tolerates any response."""
+        0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
+        Used for TB-side terminators (e.g. DTP CSR) and in-RTL stubs that keep
+        that signature (e.g. ``i3ccore_stub``)."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -97,18 +96,43 @@ class SmcCsrSeq(smc_base_test_seq):
         self, regs: list[tuple[str, int, int | None]]
     ) -> None:
         """Deterministic error-signature sweep over a reg table (see
-        csr_read_err_signature). Replaces the tolerant csr_read_many_allow_error
-        for windows that consistently return the 0xBADCAB1E error signature."""
+        csr_read_err_signature)."""
         for name, addr, _expected in regs:
             await self.csr_read_err_signature(name, addr)
 
+    async def csr_read_decerr_zero(self, name: str, addr: int, length: int = 4) -> int:
+        """Read a window terminated by DECERR + zero data (smc_ip_integration
+        gpio_ctrl / axil_extension err_slv with RESP_DATA='0)."""
+        mask = (1 << (length * 8)) - 1
+        item = SmcSysAxiItem(f"rd_{name}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = addr
+        item.length = length
+        item.allow_error = True
+        item.expect_error = True
+        item.expected = 0
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code is not None and item.resp_code > 1, (
+            f"{name} @ 0x{addr:08x}: expected DECERR/SLVERR, "
+            f"got resp={item.resp_code} (rdata=0x{item.rdata:x})"
+        )
+        got = item.rdata & mask
+        assert got == 0, (
+            f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
+        )
+        return item.rdata
+
+    async def csr_read_many_decerr_zero(
+        self, regs: list[tuple[str, int, int | None]]
+    ) -> None:
+        for name, addr, _expected in regs:
+            await self.csr_read_decerr_zero(name, addr)
+
     async def csr_read_expect_error(self, name: str, addr: int, length: int = 4) -> int:
         """Read a window that deterministically returns an AXI error response
-        (SLVERR/DECERR) but drives data=0 (i.e. an error slave without the
-        0xBADCAB1E signature). Asserts the access completes with an error
-        response -- fails if the window starts returning OKAY (the block became
-        reachable) -- without asserting a data value it does not provide.
-        Stronger than csr_read_allow_error, which tolerates any response."""
+        (SLVERR/DECERR) without asserting a data signature."""
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
@@ -149,6 +173,8 @@ class SmcCsrSeq(smc_base_test_seq):
         item.addr = addr
         item.length = length
         item.allow_error = True
+        # allow_timeout: helper for unreachable CSR windows; caller must score
+        # timeouts/accesses (second evidence). Default csr_read stays strict.
         item.allow_timeout = True
         item.timeout_ns = timeout_ns
         await self.start_item(item)
@@ -171,7 +197,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
-        item.allow_timeout = True
+        item.allow_timeout = True  # intentional: assert timed_out below
         item.timeout_ns = timeout_ns
         await self.start_item(item)
         await self.finish_item(item)
@@ -204,6 +230,71 @@ class SmcCsrSeq(smc_base_test_seq):
         cocotb.log.info("%s: DUT-driven scl=%d sda=%d", name, scl, sda)
         assert scl == exp_scl, f"{name}: DUT-driven SCL={scl}, expected {exp_scl}"
         assert sda == exp_sda, f"{name}: DUT-driven SDA={sda}, expected {exp_sda}"
+
+    # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
+    _GPIO_INTF0_DATA_CTRL = 0xC000_4000
+    _GPIO_INTF_STRIDE = 0x10
+    _I2C0_SCL_PAD = 37
+    _GPIO_LSIO_SELECT = 1 << 17
+
+    async def _arm_i2c0_gpio_lsio(self, label: str) -> None:
+        """Force I2C0 pad mux onto LSIO via GPIO DATA_CTRL.lsio_select.
+
+        Verilator codegen of ``i2c_wrap``'s ``MAX_NUM_I2CS`` always_comb writes
+        OOB and then zeros ``i2c_en_o`` / ``i2c_controller_mode_en_o``, so the
+        CDC'd ``i2c_enable_smc_clk`` never rises and GPIO holds ``scl_i/sda_i``
+        at 0. Software ``lsio_select`` is the supported override (same as
+        gpio_intf.rdl) and restores pad sense without touching RTL.
+        """
+        for pad in range(self._I2C0_SCL_PAD, self._I2C0_SCL_PAD + 4):
+            addr = self._GPIO_INTF0_DATA_CTRL + pad * self._GPIO_INTF_STRIDE
+            cur = await self.csr_read(f"{label}_GPIO{pad}_SAVE", addr)
+            await self.csr_write(
+                f"{label}_GPIO{pad}_LSIO",
+                addr,
+                cur | self._GPIO_LSIO_SELECT,
+            )
+
+    async def wait_i2c0_lsio_ready(self, label: str = "I2C0_LSIO") -> None:
+        """Wait until I2C0 pad sense tracks the OD bus (host can leave idle).
+
+        When LSIO is inactive, gpio forces ``i2c_scl_i/sda_i`` to 0 even if the
+        TB OD bus is high — the OpenTitan host then waits forever for SCL
+        release (HOSTIDLE / FMT stuck).
+        """
+        dut = cocotb.top
+        await self._arm_i2c0_gpio_lsio(label)
+        if not hasattr(dut, "tb_i2c0_scl_i"):
+            await ClockCycles(dut.clk_smc_i, 64)
+            return
+        for _ in range(2000):
+            bus_scl = int(dut.tb_i2c0_scl.value)
+            scl_i = int(dut.tb_i2c0_scl_i.value)
+            en = (
+                int(dut.tb_i2c0_enable.value)
+                if hasattr(dut, "tb_i2c0_enable")
+                else -1
+            )
+            # Sense path is what the host needs; enable may stay 0 on Verilator
+            # (i2c_wrap OOB wipe) even after WRAP I2C_EN=1 + GPIO lsio_select.
+            if bus_scl == 1 and scl_i == 1:
+                cocotb.log.info(
+                    "%s ready: bus_scl=1 scl_i=1 enable=%s", label, en
+                )
+                return
+            await ClockCycles(dut.clk_smc_i, 4)
+        en = (
+            int(dut.tb_i2c0_enable.value)
+            if hasattr(dut, "tb_i2c0_enable")
+            else -1
+        )
+        raise AssertionError(
+            f"{label}: I2C0 LSIO sense not ready "
+            f"(en={en} "
+            f"bus_scl={int(dut.tb_i2c0_scl.value)} "
+            f"scl_i={int(dut.tb_i2c0_scl_i.value)} "
+            f"sda_i={int(dut.tb_i2c0_sda_i.value)})"
+        )
 
     async def prove_dut_i2c0_pins(self) -> None:
         """Real, model-free DUT gate: enable the DUT I2C0 controller over SEP_IN

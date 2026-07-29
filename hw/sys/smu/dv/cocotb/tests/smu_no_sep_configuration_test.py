@@ -23,7 +23,7 @@ class smu_no_sep_configuration_test(smu_base_test):
         # Primary SEP=0 evidence from SMU_SPEC / smu.sv gen_no_sep tie-offs.
         sep_base = int(dut.sep_global_base_o.value)
         sep_size = int(dut.sep_region_size_o.value)
-        sb.expect_eq("sep_global_base_o==0 (SEP=0)", sep_base, 0)
+        sb.expect_eq("sep_global_base_o==0 (SEP=0)", sep_base, 0, evidence="NO_SEP_CFG")
         sb.expect_eq("sep_region_size_o==0 (SEP=0)", sep_size, 0)
 
         # Cold/primary resets must be released (known, not X).
