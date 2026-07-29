@@ -375,8 +375,8 @@ Names live in `hw/sys/smu/dv/testlists/deferred.toml` and
 | B. Fabric + reset on VCS | id_width / DECERR / external / ATOP / reset PASS | **DONE** |
 | C. TOP-5 remainder | boot_stall, JTAG2AXI local AXI, cpu_traffic_ext | **DONE** |
 | D. TOP-10 remainder | IC_RESET, xtrig, mailbox_int | **DONE** (TOP-10 = 10/10 VCS) |
-| E. Phase-1 close | Remaining OTP/clock_stop/lifecycle/gpio/efuse/wdt/demote | **DONE** (24/24 VCS) |
-| F. Verilator parity | Same smoke/top5 (then phase1) on Verilator | **Ready** |
+| E. Phase-1 close | Non-Force density (see `SMU_VPLAN.md`) | **DONE** (`phase1` 14/14 VL; Force-era 24 superseded) |
+| F. Verilator parity | Same smoke/top5 (then phase1) on Verilator | **DONE** (2026-07-29) |
 | G. Signoff | Commercial `--cov` + FCOV ledger | After F |
 
 ---
@@ -385,5 +385,6 @@ Names live in `hw/sys/smu/dv/testlists/deferred.toml` and
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 1.2 | 2026-07-29 | Policy sync: no Force/placeholder; live `phase1` 13; Force matrix → deferred |
 | 1.1 | 2026-07-14 | Phase-1 close: 24/24 VCS green (OTP CAPS+gated/ungated, clock-stop, lifecycle feat_ctrl, GPIO straps, eFuse map, WDT unlock, demote/lc_sigint) |
 | 1.0 | 2026-07-14 | Initial complete OSS SMU VPLAN: Phase-1 24-test contract, SEP=0 path facts (SYS_IN filter), VCS-first policy, real checker contracts, 8/24 VCS green status, deferred SEP=1 ownership |

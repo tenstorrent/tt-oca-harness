@@ -10,8 +10,9 @@
 // into the core use u_dut.u_smc.*.
 //
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros and eFuse live inside
-// smc_ip_integration; only DTP CSR remains a TB-side DECERR terminator.
-// CPU ROM/scratch/L1$ are absorbed via smc_cpu_mem_integration.
+// smc_ip_integration. DTP CSR and I3C DAT/DCT remain smc_wrapper boundary
+// ports (resp/mem idle — no TB placeholder; smc_wrapper-only DTP CSR gap —
+// SMU wires DTP internally). CPU ROM/scratch/L1$ via smc_cpu_mem_integration.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
 // at the end of the port list for the thin elaboration smoke.
@@ -351,12 +352,9 @@ module smc_uvm_top
     output logic [31:0] tb_efuse_programmed_word0 /*verilator public_flat_rw*/,
     output logic [smc_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_probe_o /*verilator public_flat_rw*/,
 
-    // P2-15 lifecycle-gated eFuse JTAG access-control hooks.
-    // lc_state drive: 4-bit raw state + force-sigint. tb_top builds the
-    // differential pair {diff_n, diff_p} = {~raw, raw} (valid, sigint=0)
-    // or {raw, raw} (equal => integrity error, sigint=1) for lc_state_i.
-    input  wire logic [3:0] tb_lc_state_raw /*verilator public_flat_rw*/,
-    input  wire logic       tb_lc_state_force_sigint /*verilator public_flat_rw*/,
+    // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /
+    // no TB encode helper — tests pack complementary or illegal encodings.
+    input  wire logic [2*smc_pkg::LC_STATE_WIDTH-1:0] tb_lc_state /*verilator public_flat_rw*/,
 
     // JTAG-side eFuse AXI-Lite master (cocotbext-axi AxiLiteMaster, prefix ej_axi)
     // into smc.axil_smc_otp_jtag_req_i (SMC-OTP JTAG access-control path).
@@ -619,7 +617,7 @@ module smc_uvm_top
     assign sep_axi_in_req.aw.qos    = s_axi_awqos;
     assign sep_axi_in_req.aw.region = s_axi_awregion;
     assign sep_axi_in_req.aw.user   = s_axi_awuser;
-    // Force ATOP=0 on all AXI ingresses; the outbound filter's err_slv is
+    // Pack ATOP=0 on all AXI ingresses; the outbound filter's err_slv is
     // built with `.ATOPs(1'b0)` and its `assume` on `atop == '0 fires a
     // fatal on Xcelium when the field is left X-propagating.
     assign sep_axi_in_req.aw.atop   = '0;
@@ -868,16 +866,10 @@ module smc_uvm_top
     assign tb_output_axi_wvalid  = output_axi_req.w_valid;
     assign tb_output_axi_wready  = output_axi_resp.w_ready;
 
-    // P2-15 lc_state differential drive. lc_state_i = {diff_n, diff_p}: the
-    // decoder returns diff_p as the raw value and flags sigint when diff_n is
-    // not the bitwise complement of diff_p. Default (raw=0, no force) yields
-    // valid TEST_DEV so tests that do not touch this path are unaffected.
-    logic [smc_pkg::LC_STATE_WIDTH-1:0]     lc_state_raw_drv;
-    logic [2*smc_pkg::LC_STATE_WIDTH-1:0]   lc_state_drv;
-    assign lc_state_raw_drv = tb_lc_state_raw[smc_pkg::LC_STATE_WIDTH-1:0];
-    assign lc_state_drv     = tb_lc_state_force_sigint ?
-                                {lc_state_raw_drv,  lc_state_raw_drv} :
-                                {~lc_state_raw_drv, lc_state_raw_drv};
+    // Product lc_state_i = {diff_n, diff_p}. Default idle is packed by
+    // smc_base_test as complementary TEST_DEV ({~0, 0}).
+    logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_drv;
+    assign lc_state_drv = tb_lc_state;
 
     // P2-15 JTAG-side eFuse AXI-Lite master pack/unpack.
     smc_axil_32_32_req_t  ej_axi_req;
@@ -925,21 +917,11 @@ module smc_uvm_top
     assign tb_cpu_ecc_inject_fire_count = ecc_inject_fire_count_q;
 
     // ------------------------------------------------------------------
-    // DTP CSR boundary responder (bus terminator). smc_wrapper still
-    // exposes axil_dtp_csr_req_o/resp_i directly (DTP hard macro is not
-    // absorbed by smc_ip_integration).
+    // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
+    // placeholder). resp idle until a legal subordinate exists. Not an
+    // SMU gap — smu.sv already connects SMC axil_dtp_csr to DTP.
     // ------------------------------------------------------------------
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH(32),
-        .AXI_DATA_WIDTH(32),
-        .axil_req_t (smc_axil_32_32_req_t),
-        .axil_resp_t(smc_axil_32_32_resp_t)
-    ) u_dtp_csr_err_slv (
-        .clk_i      (clk_smc_i),
-        .rst_ni     (rst_primary_smc_clk_no),
-        .axil_req_i (axil_dtp_csr_req),
-        .axil_resp_o(axil_dtp_csr_resp)
-    );
+    assign axil_dtp_csr_resp = '0;
 
     // ------------------------------------------------------------------
     // DUT: smc_wrapper (smc + smc_ip_integration + smc_cpu_mem_integration).
@@ -1093,48 +1075,10 @@ module smc_uvm_top
         .efuse_debug_bus_o          ()
     );
 
-    // I3C DAT/DCT: prim_ram_1p in TB (SEP backdoor-mem posture). Product RTL
-    // still exposes these as wrapper ports — no smc_ip_integration change.
-    // Depth follows i3c_pkg address widths (same as former tb responder).
-    for (genvar i3c_idx = 0; i3c_idx < smc_config_pkg::NUM_I3C; i3c_idx++) begin : gen_i3c_mem
-        prim_ram_1p #(
-            .Depth(1 << i3c_pkg::DatAw),
-            .Width(64),
-            .DataBitsPerMask(32)
-        ) u_dat (
-            .clk_i              (clk_smc_i),
-            .rst_ni             (rst_cold_ni),
-            .req_i              (i3c_dat_mem_sink[i3c_idx].req),
-            .write_i            (i3c_dat_mem_sink[i3c_idx].write),
-            .addr_i             (i3c_dat_mem_sink[i3c_idx].addr),
-            .wdata_i            (i3c_dat_mem_sink[i3c_idx].wdata),
-            .wmask_i            (i3c_dat_mem_sink[i3c_idx].wmask),
-            .rdata_o            (i3c_dat_mem_src[i3c_idx].rdata),
-            .cfg_i              ('0),
-            .cfg_rsp_o          ()
-        );
-        assign i3c_dat_mem_src[i3c_idx].rvalid = 1'b0;
-        assign i3c_dat_mem_src[i3c_idx].rerror = '0;
-
-        prim_ram_1p #(
-            .Depth(1 << i3c_pkg::DctAw),
-            .Width(128),
-            .DataBitsPerMask(32)
-        ) u_dct (
-            .clk_i              (clk_smc_i),
-            .rst_ni             (rst_cold_ni),
-            .req_i              (i3c_dct_mem_sink[i3c_idx].req),
-            .write_i            (i3c_dct_mem_sink[i3c_idx].write),
-            .addr_i             (i3c_dct_mem_sink[i3c_idx].addr),
-            .wdata_i            (i3c_dct_mem_sink[i3c_idx].wdata),
-            .wmask_i            (i3c_dct_mem_sink[i3c_idx].wmask),
-            .rdata_o            (i3c_dct_mem_src[i3c_idx].rdata),
-            .cfg_i              ('0),
-            .cfg_rsp_o          ()
-        );
-        assign i3c_dct_mem_src[i3c_idx].rvalid = 1'b0;
-        assign i3c_dct_mem_src[i3c_idx].rerror = '0;
-    end
+    // I3C DAT/DCT: NO TB prim_ram (policy: no mem placeholder). Ports idle;
+    // I3C tests that need DAT/DCT are deferred until real macros exist.
+    assign i3c_dat_mem_src = '0;
+    assign i3c_dct_mem_src = '0;
 
     // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
     // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).

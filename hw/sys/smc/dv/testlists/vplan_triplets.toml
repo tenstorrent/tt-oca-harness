@@ -73,21 +73,7 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_pll_dvfs_depth_test"
-module = "smc_pll_dvfs_depth_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_static_cg_sanity_test"
-module = "smc_static_cg_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pll_dvfs_depth_test / smc_static_cg_sanity_test → deferred.toml (rtl_placeholder)
 
 [[tests]]
 name = "smc_gpio_strap_sanity_test"
@@ -234,8 +220,6 @@ tests = [
     "smc_i2c_error_fifo_depth_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_permission_boundary_test",
-    "smc_pll_dvfs_depth_test",
-    "smc_static_cg_sanity_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",
     "smc_uart_log_engine_error_boundary_test",
@@ -279,9 +263,6 @@ tests = [
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_permission_boundary_test",
-    "smc_pll_pvt_clock_config_test",
-    "smc_pll_dvfs_depth_test",
-    "smc_static_cg_sanity_test",
     "smc_gpio_irq_active_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",

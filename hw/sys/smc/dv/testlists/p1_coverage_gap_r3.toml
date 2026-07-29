@@ -28,13 +28,7 @@ timeout_sec = 1800
 tags = ["ci", "p1_coverage_gap", "p1_coverage_gap_r3", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_pll_awm_freq_sweep_test"
-module = "smc_pll_awm_freq_sweep_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "p1_coverage_gap", "p1_coverage_gap_r3", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pll_awm_freq_sweep_test → testlists/deferred.toml (rtl_placeholder)
 
 [[groups]]
 name = "p1_coverage_gap_r3"
@@ -42,5 +36,4 @@ tests = [
     "smc_gpio_intf_full_sweep_test",
     "smc_mailbox_field_sweep_test",
     "smc_filter_field_sweep_test",
-    "smc_pll_awm_freq_sweep_test",
 ]

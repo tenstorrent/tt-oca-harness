@@ -93,10 +93,10 @@ class smu_base_test(uvm_test):
             dut.tb_tel_atvalid.value = 0
         if hasattr(dut, "tb_tel_afready"):
             dut.tb_tel_afready.value = 0
-        if hasattr(dut, "tb_force_wdt_reset_raw"):
-            dut.tb_force_wdt_reset_raw.value = 0
-        if hasattr(dut, "tb_force_cluster_isolate"):
-            dut.tb_force_cluster_isolate.value = 0
+        if hasattr(dut, "tb_wdt_reset_raw"):
+            pass  # observe-only; Force inject pins removed
+        if hasattr(dut, "tb_cluster_boundary_isolate"):
+            pass
         # Idle AXI
         for name in (
             "s_axi_awvalid", "s_axi_wvalid", "s_axi_bready",

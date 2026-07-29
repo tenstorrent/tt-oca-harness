@@ -4,12 +4,12 @@ OCAH open-source DV testbench for the **SMU (System Management Unit)**.
 Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 
 **Master VPLAN (P1 + P2):** [`docs/SMU_VPLAN.md`](docs/SMU_VPLAN.md)
-— P1 **24/24 VCS DONE**; P2 SMC↔DTP protocol ~14 planned; no P3/P4.
+— live green `phase1` **14**, `sep0_all` **19** (no Force; product-pin CTM).
 
 **P1 executable detail:** [`docs/SMU_OSS_VPLAN_PHASE1.md`](docs/SMU_OSS_VPLAN_PHASE1.md)
 (`smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1`).
 
-**OUT / deferred** (SEP=1 / interop / toggle): [`testlists/deferred.toml`](testlists/deferred.toml)
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml)
 + `SMU_VPLAN.md` Appendix A.
 
 ```
@@ -33,7 +33,7 @@ smu_<scenario>_test
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | Wrapper-baseline PyUVM tests |
 | `testlists/wrapper.toml` | Wrapper baseline catalog |
-| `shims/mem/`, `fw/`, `tools/` | OSS TCM stand-in, firmware, readiness |
+| `fw/`, `tools/` | Firmware, readiness |
 
 ## BFM Policy
 
@@ -74,10 +74,11 @@ A second sim config in this DV root builds `hw/top/smu_wrapper.sv` (via the
 - `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
   real SEP EL2 CPU.
 
-The foundry `sep_tcm_wrapper` is replaced by the vendor-free
-`shims/mem/sep_tcm_wrapper.sv` (exclude_files + sources). There are **no**
-DV shadows that override product wrapper / SMC reset / DFX modules.
-Verilator tooling shims (`prim_sync2/3`) are shared from
+OSS already ships `hw/sys/sep/rtl/sep_tcm_wrapper.sv` (Bender). The DV TCM
+shim was **removed** (no placeholder). SEP=1 wrapper elab/smoke stay in
+`sep_tcm_deferred` until foundry `ram_*` ICCM/DCCM cells exist (the sim-cfg
+exclude of `hw/sep/sep_tcm_wrapper.sv` is a stale path). Verilator tooling
+shims (`prim_sync2/3`) are shared from
 `hw/sys/smc/dv/tb/verilator_stubs/` (see SMC README B1/B2).
 
 ### Readiness gates

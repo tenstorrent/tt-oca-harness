@@ -15,23 +15,29 @@
 | Executable P1 detail | `SMU_OSS_VPLAN_PHASE1.md`, `dv/smu/tb/doc/oss_smu_vplan.md` |
 | OUT / deferred names | `../testlists/deferred.toml` |
 
-> **Canonical program:** **SEP=0 P1+P2+P3** = **55** tests (`sep0_all`) — **closed**.
-> **P4-SEP0** deepen + glue = **7** (`phase4_sep0`); full rollup `sep0_p4_all` = **62**.
-> **SEP=1 / Appendix A** still OUT. This file is the single master VPLAN for OSS SMU DV.
+> **Canonical program (policy 2026-07-29):** no DUT Force / no TB placeholder.
+> Live green surface: `phase1` **14**, `sep0_all` **19**, `phase4_sep0` **2**,
+> `sep0_p4_all` **19** (see `testlists/all.toml`). Force / LCC / hier-AXIL /
+> CTM-Force names live in `testlists/deferred.toml` (`needs_real_lcc` /
+> `needs_real_stimulus`) — see `testlists/deferred.toml`.
+> Historical ledger rows below that still say PASS for Force-era tests are
+> **stale** until rewritten; do not report them as current green.
+> **SEP=1 / Appendix A** still OUT. This file is the master VPLAN for OSS SMU DV.
 > Satellite notes (`SMU_OSS_COMPLETE_TESTPLAN.md`, `SMU_OSS_VPLAN_P1_P2.md`)
 > redirect here.
 
 | Phase | Content | Count | Status |
 |-------|---------|-------|--------|
-| **P0/P1** | SEP=0 density (smoke ⊂ top5 ⊂ top10 ⊂ phase1) | 24 | **24/24 VCS DONE (2026-07-14)** |
-| **P2** | SMC↔DTP protocol closure (I1–I12) | **15** | **15/15 VCS + Verilator DONE (2026-07-15)** |
-| **P3** | SEP=0 **corner / race / illegal / G4** on I1–I12 + SMN | **16** | **16/16 VCS + Verilator DONE (2026-07-17)** |
-| **P4** | SEP=0 deepen + glue remainder (secure_tm / WDT clamp / macro / OCTS / SS / BSR / ATB) | **7** | **7/7 VCS + Verilator DONE (2026-07-20; honesty re-verify)** |
-| — | P1+P2 enrollment | **39** | **DONE** |
-| — | **SEP=0 enrolled total** (`sep0_all`) | **55** | **55/55 VCS + Verilator PASS (2026-07-17)** |
-| — | **SEP=0 + P4** (`sep0_p4_all`) | **62** | enrolled rollup; **full 62/62 not signed** — gate is `phase4_sep0` 7/7 |
+| **P0/P1** | SEP=0 density without Force (smoke ⊂ top5 ⊂ top10 ⊂ phase1) | **14** | **14/14 Verilator PASS (2026-07-29i)** |
+| **P2 deepeners** | boot-stall / IC_RESET (non-Force) | **2** enrolled | green under `sep0_all` |
+| **P3 corner** | dual-domain illegal + stall vs IC_RESET | **2** enrolled | green under `sep0_all` |
+| **P4** | SS IC_RESET + BSR EXTEST only | **2** | enrolled (`phase4_sep0`) |
+| — | Force / LCC / CTM-Force / OTP-Force / WDT-Force matrix | OUT | `deferred.toml` |
+| — | P1+P2+P3 historical 55 Force-era enrollment | **superseded** | see cleanup log |
+| — | **SEP=0 enrolled total** (`sep0_all`) | **19** | **19/19 Verilator (2026-07-29i)** |
+| — | **SEP=0 + P4** (`sep0_p4_all`) | **19** | enrolled rollup |
 
-**Status ledger:** full testplan + testcase matrix → **§12**.
+**Status ledger:** full testplan + testcase matrix → **§12** (historical Force PASS rows are stale).
 
 ---
 
@@ -551,10 +557,14 @@ python3 tools/dv/run_dv.py --dut smu --tool verilator --items phase4_sep0
 **Honest progress:** SEP=0 P1+P2+P3 **closed** (`sep0_all` 55/55). P4-SEP0 deepen+glue **closed** on `phase4_sep0` 7/7 (re-verified after vacuity fixes). Appendix A / SEP=1 remain OUT.
 
 Notes (honest caveats, not vacuous PASS):
-- I2b: SEP OTP JTAG bridge absent (`JTAG_SEP_DBG_ENABLE=0`); hier AXIL proves err_slv DECERR/poison; frontdoor AXIL idle.
-- I11a: WDOGIP0 CSR check only (isolate clamps WDT rst export without CPU bring-up); IRQ/PLIC OUT.
-- I11b: Force-pulse `wdt_second_timeout_o` into reset unit (same isolate limit); proves scratch domain split. Verilator uses the real `smc_reset_unit` (no DV product-module stub).
-- Verilator: JTAG2AXI ungating via packed `feat_ctrl` Force + Force-shadow RMW (continuous `security_disable` non-forceable without `.vlt`); AXI-Lite / `jtag_smc_reset_ctrl` use flat packed bit helpers.
+- Policy 2026-07-29: **no DUT Force / no TB placeholder**. Force-era deepeners
+  (JTAG2AXI ungating, WDT Force pulse, hier AXIL, CTM Force, secure_tm Force)
+  are **OUT** in `testlists/deferred.toml` until real LCC / legal pins exist.
+  Tracker: `testlists/deferred.toml`.
+- I2b / I11b / P4 secure_tm / P4 WDT clamp: deferred (`needs_real_lcc` /
+  `needs_real_stimulus`); do not report historical Force PASS as current.
+- Live green: frontdoor JTAG / SMN / observe-only demote+lc_state / boot-stall /
+  IC_RESET / BSR EXTEST (see `testlists/all.toml`).
 - FCOV: `SMU_FCOV.md` v1.2 + `smu_fcov.py` P1–P3 bins enrolled; commercial SV covergroups still optional.
 - aidv Skill-1: `SMU_FEATURE_LIST.md` draft + scoreboard check tokens — **designer approval still pending** (checker list not signed off).
 
@@ -564,6 +574,7 @@ Notes (honest caveats, not vacuous PASS):
 - Claim P1 OTP/xtrig as full protocol closure
 - Fake SEP=1 interop under SEP=0 BFMs
 - Vacuous PASS on remap-only / Force-only without contrast
+- Re-enroll Force helpers or TB placeholders to inflate green counts
 
 ### Execution sequence
 
@@ -577,11 +588,14 @@ Notes (honest caveats, not vacuous PASS):
 
 ---
 
-## 12. Status ledger (canonical — 2026-07-20)
+## 12. Status ledger (canonical — 2026-07-20; policy sync 2026-07-29)
 
 > Single place for **testplan document status** + **enrolled testcase status**.
-> Executable groups: `sep0_all` (55), `phase4_sep0` (7), `sep0_p4_all` (62).
-> OUT names stay in Appendix A / `deferred.toml`.
+> **Current executable groups** (`testlists/all.toml`, 2026-07-29): `sep0_all`
+> **17**, `phase4_sep0` **2**, `sep0_p4_all` **19**. Force / LCC / hier /
+> CTM-Force names are in `deferred.toml` — **not** reportable as PASS.
+> The historical Force-era table rows below are marked **DEFERRED** (not green).
+> OUT names also stay in Appendix A / `deferred.toml`.
 > Latest signoff: VCS/VL `sep0_all` **55/55** (2026-07-17); VCS/VL `phase4_sep0` **7/7** (2026-07-20 honesty re-verify).
 
 ### 12.1 Testplan / document inventory
@@ -628,66 +642,67 @@ Notes (honest caveats, not vacuous PASS):
 | P1 | S2 | `smu_dtp_jtag_smoke_test` | dtp | G3 | PASS | PASS |
 | P1 | S3 | `smu_no_sep_configuration_test` | smc | G3 | PASS | PASS |
 | P1 | 2 | `smu_dft_dtp_boot_stall_test` | dtp | G3 | PASS | PASS |
-| P1 | 3 | `smu_dtp_dtm_local_axi_test` | dtp | G3 | PASS | PASS |
-| P1 | 4 | `smc_cpu_traffic_ext_axi_test` | fabric | G3 | PASS | PASS |
+| P1 | 3 | `smu_dtp_dtm_local_axi_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P1 | 4 | `smc_cpu_traffic_ext_axi_test` | fabric | G3 | DEFERRED | DEFERRED |
 | P1 | 5 | `smu_axi_id_width_conversion_test` | fabric | G3 | PASS | PASS |
 | P1 | 6 | `smu_axi_crossbar_error_handling_test` | fabric | G3 | PASS | PASS |
 | P1 | 7 | `smu_jtag_reset_override_test` | dtp | G3 | PASS | PASS |
-| P1 | 8 | `smu_cross_trigger_matrix_test` | dtp | G1/G2 | PASS | PASS |
+| P1 | 8 | `smu_cross_trigger_matrix_test` | dtp | G1/G2 | DEFERRED | DEFERRED |
 | P1 | 9 | `smc_reset_ctrl_test` | smc | G3 | PASS | PASS |
-| P1 | 10 | `smc_mailbox_int_test` | smc | G3 | PASS | PASS |
-| P1 | 11 | `smu_dtp_otp_debug_access_test` | dtp | G2 | PASS | PASS |
+| P1 | 10 | `smc_mailbox_int_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 11 | `smu_dtp_otp_debug_access_test` | dtp | G2 | DEFERRED | DEFERRED |
 | P1 | 12 | `smu_clock_stop_coordination_test` | dtp | G2 | PASS | PASS |
-| P1 | 13 | `smu_lifecycle_debug_policy_test` | dtp | G2 | PASS | PASS |
-| P1 | 14 | `smu_smc_dtp_jtag2axi_security_test` | dtp | G3 | PASS | PASS |
+| P1 | 13 | `smu_lifecycle_debug_policy_test` | dtp | G2 | DEFERRED | DEFERRED |
+| P1 | 14 | `smu_smc_dtp_jtag2axi_security_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P1 | 15 | `smu_dft_gpio_boot_stall_test` | dtp | G3 | PASS | PASS |
-| P1 | 16 | `smc_gpio_strap_sanity_test` | smc | G3 | PASS | PASS |
-| P1 | 17 | `smc_efuse_reg_sanity_test` | smc | G3 | PASS | PASS |
-| P1 | 18 | `smc_wdt_sanity_test` | smc | G3 light | PASS | PASS |
+| P1 | 16 | `smc_gpio_strap_sanity_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 17 | `smc_efuse_reg_sanity_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 18 | `smc_wdt_sanity_test` | smc | G3 light | DEFERRED | DEFERRED |
 | P1 | 19 | `smc_security_demote_pm_test` | smc | G2 | PASS | PASS |
 | P1 | 20 | `smu_axi_external_port_connectivity_test` | fabric | G3 | PASS | PASS |
-| P1 | 21 | `smu_smc_global_base_remap_test` | fabric | G3 | PASS | PASS |
+| P1 | 21 | `smu_smc_global_base_remap_test` | fabric | G3 | DEFERRED | DEFERRED |
 | P1 | 22 | `smu_axi_atomic_operation_test` | fabric | G3 | PASS | PASS |
-| P2 | I8a | `smu_dtp_csr_access_test` | dtp | G3 | PASS | PASS |
-| P2 | I2a | `smu_dtp_otp_smc_complete_rw_test` | dtp | G3 | PASS | PASS |
-| P2 | I6a | `smu_dtp_clock_stop_smc_cla_loop_test` | dtp | G3 | PASS | PASS |
-| P2 | I7a | `smu_xtrig_ctm_four_phase_test` | dtp | G3 | PASS | PASS |
-| P2 | I10a | `smu_sys_in_filter_program_jtag_test` | dtp | G3 | PASS | PASS |
-| P2 | I1a | `smu_dtp_jtag2axi_smc_rw_matrix_test` | dtp | G3 | PASS | PASS |
-| P2 | I1b | `smu_dtp_jtag2axi_smc_error_path_test` | dtp | G3 | PASS | PASS |
-| P2 | I2b | `smu_dtp_otp_sep0_err_slv_test` | dtp | G3 | PASS | PASS |
+| P2 | I8a | `smu_dtp_csr_access_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I2a | `smu_dtp_otp_smc_complete_rw_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I6a | `smu_dtp_clock_stop_smc_cla_loop_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I7a | `smu_xtrig_ctm_four_phase_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I10a | `smu_sys_in_filter_program_jtag_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I1a | `smu_dtp_jtag2axi_smc_rw_matrix_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I1b | `smu_dtp_jtag2axi_smc_error_path_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I2b | `smu_dtp_otp_sep0_err_slv_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P2 | I3a | `smu_boot_stall_jtag_cold_reset_matrix_test` | dtp | G3 | PASS | PASS |
 | P2 | I5a | `smu_ic_reset_smc_multi_domain_test` | dtp | G3 | PASS | PASS |
-| P2 | I7b | `smu_dtp_xtrigger_smc_cla_test` | dtp | G3 | PASS | PASS |
-| P2 | I8b | `smu_fabric_smc_dtp_cross_domain_test` | dtp | G3 | PASS | PASS |
-| P2 | I9a | `smu_dtp_feat_ctrl_gate_matrix_test` | dtp | G3 | PASS | PASS |
-| P2 | I11a | `smc_wdt_timeout_irq_test` | smc | G3 | PASS | PASS |
-| P2 | I11b | `smc_reset_unit_wdt_scratch_test` | smc | G3 | PASS | PASS |
-| P3 | H2b | `smu_sys_in_filter_window_edge_test` | dtp | G3 | PASS | PASS |
-| P3 | H2c | `smu_sys_in_filter_reprogram_shrink_test` | dtp | G3 | PASS | PASS |
-| P3 | H2a | `smu_dtp_jtag2axi_wstrb_partial_sticky_test` | dtp | G3 | PASS | PASS |
-| P3 | H1b | `smu_dtp_jtag2axi_back_to_back_error_ok_test` | dtp | G3 | PASS | PASS |
-| P3 | H4b | `smu_feat_ctrl_partial_bit_corner_test` | dtp | G3 | PASS | PASS |
+| P2 | I7b | `smu_dtp_xtrigger_smc_cla_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I8b | `smu_fabric_smc_dtp_cross_domain_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I9a | `smu_dtp_feat_ctrl_gate_matrix_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I11a | `smc_wdt_timeout_irq_test` | smc | G3 | DEFERRED | DEFERRED |
+| P2 | I11b | `smc_reset_unit_wdt_scratch_test` | smc | G3 | DEFERRED | DEFERRED |
+| P3 | H2b | `smu_sys_in_filter_window_edge_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H2c | `smu_sys_in_filter_reprogram_shrink_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H2a | `smu_dtp_jtag2axi_wstrb_partial_sticky_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H1b | `smu_dtp_jtag2axi_back_to_back_error_ok_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H4b | `smu_feat_ctrl_partial_bit_corner_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P3 | H5a | `smu_ic_reset_dual_domain_illegal_test` | dtp | G3 | PASS | PASS |
 | P3 | H5b | `smu_boot_stall_vs_ic_reset_priority_test` | dtp | G3 | PASS | PASS |
-| P3 | H1c | `smu_xtrig_ctm_illegal_phase_test` | dtp | G3 | PASS | PASS |
-| P3 | H6a | `smu_cla_and_xtrig_concurrent_test` | dtp | G3 | PASS | PASS |
-| P3 | H6b | `smu_clock_stop_jtag_vs_cla_fb_race_test` | dtp | G3 | PASS | PASS |
-| P3 | H5c | `smc_wdt_scratch_double_pulse_test` | smc | G3 | PASS | PASS |
-| P3 | H1a | `smu_dtp_jtag2axi_abort_mid_op_test` | dtp | G3 | PASS | PASS |
-| P3 | H4a | `smu_feat_ctrl_flip_mid_jtag2axi_test` | dtp | G3 | PASS | PASS |
-| P3 | H3a | `smu_jtag2axi_vs_smn_same_csr_race_test` | dtp | G4 | PASS | PASS |
-| P3 | H3b | `smu_otp_vs_fabric_map_race_test` | dtp | G4 | PASS | PASS |
-| P3 | H3c | `smu_hier_ctn_vs_jtag2axi_concurrent_test` | dtp | G4 | PASS | PASS |
-| P4 | D1 | `smc_efuse_secure_tm_force_test` | smc | G3 | PASS | PASS |
-| P4 | D2 | `smc_wdt_ip0_isolate_clamp_test` | smc | G3 | PASS | PASS |
-| P4 | G1 | `smu_macro_axil_pll_pvt_route_test` | smc | G3 | PASS | PASS |
-| P4 | G2 | `smu_octs_timer_count_csr_test` | smc | G3 | PASS | PASS |
+| P3 | H1c | `smu_xtrig_ctm_illegal_phase_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H6a | `smu_cla_and_xtrig_concurrent_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H6b | `smu_clock_stop_jtag_vs_cla_fb_race_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H5c | `smc_wdt_scratch_double_pulse_test` | smc | G3 | DEFERRED | DEFERRED |
+| P3 | H1a | `smu_dtp_jtag2axi_abort_mid_op_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H4a | `smu_feat_ctrl_flip_mid_jtag2axi_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H3a | `smu_jtag2axi_vs_smn_same_csr_race_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P3 | H3b | `smu_otp_vs_fabric_map_race_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P3 | H3c | `smu_hier_ctn_vs_jtag2axi_concurrent_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P4 | D1 | `smc_efuse_secure_tm_force_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | D2 | `smc_wdt_ip0_isolate_clamp_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | G1 | `smu_macro_axil_pll_pvt_route_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | G2 | `smu_octs_timer_count_csr_test` | smc | G3 | DEFERRED | DEFERRED |
 | P4 | G3 | `smu_ic_reset_ss_domain_matrix_test` | dtp | G3 | PASS | PASS |
 | P4 | G4 | `smu_dtp_bsr_extest_loopback_test` | dtp | G2 | PASS | PASS |
-| P4 | G5 | `smu_telemetry_atb_handshake_test` | smc | G2+ | PASS | PASS |
+| P4 | G5 | `smu_telemetry_atb_handshake_test` | smc | G2+ | DEFERRED | DEFERRED |
 
-**Totals:** `sep0_all` 55 · `phase4_sep0` 7 · `sep0_p4_all` 62 · P4 VCS/VL **7/7 PASS**.
+**Totals (current, 2026-07-29i):** `sep0_all` **19** · `phase4_sep0` **2** ·
+`sep0_p4_all` **19**. Historical Force-era 55/62 rollup is **superseded**.
 
 ### 12.4 OUT / deferred (not enrolled — do not promote into SEP=0)
 
@@ -699,15 +714,14 @@ Notes (honest caveats, not vacuous PASS):
 | Toggle / wrapper | `smu_wrapper_*_toggle_*`, signal_path, JTAG2AXI signal toggle | §A.4 |
 | Child / FW depth | ROM scratch / CPU bring-up, `smc_cpu_sanity`, PLIC, I2C/GPIO mux | §A.5 / CHILD |
 | Glue still OUT | cool pin, memrepair sticky, `ss_reset_complete`, dual OCTS, ext IRQ, trace | P4 remainder |
-| Security E2E #3538 | Real LCC → feat_ctrl → gated txn | OUT (Force matrix is enrolled) |
+| Security E2E #3538 | Real LCC → feat_ctrl → gated txn | OUT (`needs_real_lcc`; Force matrix **removed**) |
+| Force / hier / CTM inject | WDT Force, secure_tm Force, feat_ctrl Force, CTM/CLA Force | `needs_real_lcc` / `needs_real_stimulus` |
 
-### 12.5 Honest caveats (unchanged)
+### 12.5 Honest caveats (policy 2026-07-29)
 
-- I2b: SEP OTP JTAG bridge absent under SEP=0; err_slv DECERR/poison via hier AXIL.
-- I11a: WDOGIP0 CSR check only; IRQ/PLIC delivery OUT without CPU bring-up.
-- I11b: Force/stub second-timeout → scratch domain split; not full ChipYard WDT export.
-- P4 secure_tm: Force hier `secure_tm_i` → `is_secure_tm_blocked_o` 0→1 — **not** pin/`secure_tm_o`; SMC LOCKS is W1S / no lock[3] so **not** LOCKS evidence.
-- P4 WDT clamp: WDOGIP0 ∧ TB Force isolate/raw contrast (clamp pin=0 vs passthrough pin=1) — **not** PLIC delivery.
+- No DUT Force / no TB placeholder — see `testlists/deferred.toml`.
+- I2b / I11b / P4 secure_tm / P4 WDT clamp / CTM Force suite: **deferred** (raise stubs).
+- `smc_security_demote_pm_test`: observe-only demote + default lc_state (Force sigint inject deferred).
 - P4 EXTEST: TB scan loopback + one-hot decode — **not** functional pad BSR / SEP STAP.
 - Skill-1: `SMU_FEATURE_LIST.md` designer approval still **pending**.
 

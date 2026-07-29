@@ -78,7 +78,7 @@ stubs = [
 ]
 
 [build.verilator]
-# Drop cocotb global --public-flat-rw via public_scope (.vlt); keep Force/hier probes.
+# Drop cocotb global --public-flat-rw via public_scope (.vlt); observe-only hier.
 public_scope = "hw/sys/smu/dv/smu_public_scope.vlt"
 ccache = true
 

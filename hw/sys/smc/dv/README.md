@@ -21,10 +21,10 @@ Bare `--dut smc` is not supported.
 | TB top | `smc_uvm_top` (`tb/tb_top.sv`) |
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
-| testlist | `testlists/all.toml` |
+| testlist | `testlists/all.toml` (deferred: `testlists/deferred.toml`, not included) |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| still in TB | SYS_OUT=`axi_sim_mem` + I3C `prim_ram_1p` (in `tb_top`) + DTP err_slv |
+| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR / I3C DAT ports **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 

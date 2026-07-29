@@ -6,7 +6,7 @@ schema_version = 1
 # Result-reporting policy: docs/SMU_VPLAN.md §13.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
-# Commercial mirror (oca_smu `testlist_smu_chiplet.yaml`):
+# Commercial mirror (oca_smu chiplet testlist YAML naming):
 #   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
 #   Manual_SMU_Blocked_SEP_Exec_Regression = needs real SEP fetch/retire (#3582)
 #
@@ -83,12 +83,11 @@ args = [
   "+sep_dtcm_hex=smu_sep_smoke.dtcm.hex",
 ]
 
-# Merge-gate smoke: no SEP CPU execution required (align commercial green SEP gate).
+# Merge-gate smoke: no SEP CPU (SEP=1 deferred until foundry ram_* for TCM).
 [[groups]]
 name = "smoke"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_smc_smoke_test",
 ]
 
@@ -96,16 +95,23 @@ tests = [
 name = "build_smoke"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
-# Default `--items all` for smu_wrapper — green surface only.
+# Default `--items all` for smu_wrapper — green surface only (no SEP=1 TCM hack).
 [[groups]]
 name = "all"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_smc_smoke_test",
+]
+
+# Quarantine: needs foundry ram_* (OSS sep_tcm_wrapper present; DV shim
+# removed) and/or SEP IFU (#3582).
+[[groups]]
+name = "sep_tcm_deferred"
+tests = [
+  "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_sep_smoke_test",
 ]
 
 # Quarantine: real SEP firmware boot / retire (oca_smu Blocked_SEP_Exec).
@@ -120,7 +126,7 @@ tests = [
 name = "all_with_sep_exec"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_smc_smoke_test",
+  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_sep_smoke_test",
 ]

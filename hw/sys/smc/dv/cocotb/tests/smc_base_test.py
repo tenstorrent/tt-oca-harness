@@ -204,9 +204,9 @@ class smc_base_test(uvm_test):
             dut.tb_gpio_ext_drive_value.value = 0
         if hasattr(dut, "tb_uart0_rx_ext_drive"):
             dut.tb_uart0_rx_ext_drive.value = 1  # UART idle-high
-        if hasattr(dut, "tb_lc_state_raw"):
-            dut.tb_lc_state_raw.value = 0
-            dut.tb_lc_state_force_sigint.value = 0
+        # Product lc_state_i idle = complementary TEST_DEV ({~0, 0} = 0xF0).
+        if hasattr(dut, "tb_lc_state"):
+            dut.tb_lc_state.value = 0xF0
         # SPI octal pads (U2-1): idle-safe — enable off, CS deasserted, OE/IE
         # negated high (pads not driving). OcahSpiFlash adapter is U2-2.
         if hasattr(dut, "tb_spi_enable"):

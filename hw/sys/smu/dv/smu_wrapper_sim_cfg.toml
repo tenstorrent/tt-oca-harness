@@ -73,10 +73,9 @@ incdirs = [
 ]
 # Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
 # not part of the OSS wrapper hierarchy — mirror the smu/sep OSS excludes.
-# hw/sep/sep_tcm_wrapper.sv wraps foundry RAM macros; the DV shim
-# shims/mem/sep_tcm_wrapper.sv below provides the same module vendor-free.
-# ABR key CSR shim swap retired (mirror sep_sim_cfg): sep_crypto no longer
-# instantiates abr_wrapper_key_reg.
+# Stale foundry path keep-listed (file absent in OSS tree). Real SEP=1 TCM
+# blocker is foundry ram_* cells inside hw/sys/sep/rtl/sep_tcm_wrapper.sv.
+# DV sep_tcm_wrapper shim REMOVED (policy: no placeholder).
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -97,15 +96,12 @@ exclude_files = [
 ]
 stubs = [
   # Tooling shims only (OSS prim port / X-init). No product-module overrides.
-  # Shared with SMC: X-init fork of SEP prim_sync2 (SEP wraps prim_flop_2sync
-  # without X-init; SMC/SMU LSIO needs clean reset-less sync).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # SEP rom_boot / SMC SYS_OUT posture: pulp axi_sim_mem (axi_simulation).
+  # pulp axi_sim_mem: SEP-standard VIP for SMN outbound (not a custom placeholder).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
-  "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
   # SEP=1 key_manager pulls picorv32; Bender package files are not always
   # on the smu_wrapper closure — mirror sep_sim_cfg.toml.
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",

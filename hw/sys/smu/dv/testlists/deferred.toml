@@ -599,7 +599,7 @@ tags = ["deferred", "dtp", "depth"]
 [[tests]]
 name = "smu_dtp_xtrigger_smc_cla_test"
 module = "smu_dtp_xtrigger_smc_cla_test"
-tags = ["deferred", "dtp", "depth"]
+tags = ["deferred", "needs_real_stimulus", "no_force"]
 
 [[tests]]
 name = "smu_dtp_clock_stop_smc_cla_test"
@@ -697,3 +697,221 @@ tags = ["deferred", "dtp", "sep1"]
 name = "smu_dtp_sep_ic_reset_hold_test"
 module = "smu_dtp_sep_ic_reset_hold_test"
 tags = ["deferred", "dtp", "sep1"]
+
+# ----- Policy 2026-07-29: no Force / no TB placeholder -----
+# BLOCKER: needs_real_lcc + sep1 — SEP=0 ties sep_feat_ctrl='0' (gen_no_sep);
+# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl (#3538). No Force.
+# Do not enroll in sep0_all / phase1.
+
+
+[[tests]]
+name = "smc_cpu_traffic_ext_axi_test"
+module = "smc_cpu_traffic_ext_axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_efuse_reg_sanity_test"
+module = "smc_efuse_reg_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_efuse_secure_tm_force_test"
+module = "smc_efuse_secure_tm_force_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_gpio_strap_sanity_test"
+module = "smc_gpio_strap_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_mailbox_int_test"
+module = "smc_mailbox_int_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_reset_unit_wdt_scratch_test"
+module = "smc_reset_unit_wdt_scratch_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_sanity_test"
+module = "smc_wdt_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_scratch_double_pulse_test"
+module = "smc_wdt_scratch_double_pulse_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_timeout_irq_test"
+module = "smc_wdt_timeout_irq_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_cross_trigger_matrix_test"
+module = "smu_cross_trigger_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_csr_access_test"
+module = "smu_dtp_csr_access_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_dtm_local_axi_test"
+module = "smu_dtp_dtm_local_axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_feat_ctrl_gate_matrix_test"
+module = "smu_dtp_feat_ctrl_gate_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_abort_mid_op_test"
+module = "smu_dtp_jtag2axi_abort_mid_op_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+module = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_error_path_test"
+module = "smu_dtp_jtag2axi_smc_error_path_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+module = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_debug_access_test"
+module = "smu_dtp_otp_debug_access_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_sep0_err_slv_test"
+module = "smu_dtp_otp_sep0_err_slv_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_smc_complete_rw_test"
+module = "smu_dtp_otp_smc_complete_rw_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_fabric_smc_dtp_cross_domain_test"
+module = "smu_fabric_smc_dtp_cross_domain_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_feat_ctrl_flip_mid_jtag2axi_test"
+module = "smu_feat_ctrl_flip_mid_jtag2axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_feat_ctrl_partial_bit_corner_test"
+module = "smu_feat_ctrl_partial_bit_corner_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
+module = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_jtag2axi_vs_smn_same_csr_race_test"
+module = "smu_jtag2axi_vs_smn_same_csr_race_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_lifecycle_debug_policy_test"
+module = "smu_lifecycle_debug_policy_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_macro_axil_pll_pvt_route_test"
+module = "smu_macro_axil_pll_pvt_route_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_octs_timer_count_csr_test"
+module = "smu_octs_timer_count_csr_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_otp_vs_fabric_map_race_test"
+module = "smu_otp_vs_fabric_map_race_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_smc_dtp_jtag2axi_security_test"
+module = "smu_smc_dtp_jtag2axi_security_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_smc_global_base_remap_test"
+module = "smu_smc_global_base_remap_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_program_jtag_test"
+module = "smu_sys_in_filter_program_jtag_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_reprogram_shrink_test"
+module = "smu_sys_in_filter_reprogram_shrink_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_window_edge_test"
+module = "smu_sys_in_filter_window_edge_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_telemetry_atb_handshake_test"
+module = "smu_telemetry_atb_handshake_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+# ----- Policy 2026-07-29d/h: pin / stimulus gaps (not missing glue RTL) -----
+# BLOCKER: needs_real_stimulus — no product pin / frontdoor for CLA fb / CTM
+# handshake / WDT pre-clamp inject. Bodies raise; do not enroll in sep0_all.
+# §5.2.
+
+[[tests]]
+name = "smc_wdt_ip0_isolate_clamp_test"
+module = "smc_wdt_ip0_isolate_clamp_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_dtp_clock_stop_smc_cla_loop_test"
+module = "smu_dtp_clock_stop_smc_cla_loop_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+# smu_xtrig_ctm_remap_test + pin-only illegal → enrolled (dtp.toml / sep0_all)
+[[tests]]
+name = "smu_xtrig_ctm_four_phase_test"
+module = "smu_xtrig_ctm_four_phase_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_cla_and_xtrig_concurrent_test"
+module = "smu_cla_and_xtrig_concurrent_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_clock_stop_jtag_vs_cla_fb_race_test"
+module = "smu_clock_stop_jtag_vs_cla_fb_race_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+

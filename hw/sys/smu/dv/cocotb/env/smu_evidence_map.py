@@ -40,6 +40,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_clock_stop_coordination_test": [
         ("CHK-CLA-LOOP", "CLA_CLK_STOP_LOOP", "clock-stop coordination observed"),
     ],
+    "smu_xtrig_ctm_remap_test": [
+        ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
+    ],
     "smu_dtp_otp_debug_access_test": [
         ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP debug access status path"),
     ],

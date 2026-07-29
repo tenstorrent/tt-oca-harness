@@ -3,13 +3,15 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Optional
 
 import cocotb
-from cocotb.handle import Force, Release
 from cocotb.triggers import ClockCycles
 
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap
+
+# Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
+# SEP=0 ties sep_feat_ctrl='0'; Force-based helpers were removed.
 
 # Mirrors hw/sys/dtp/dv/cocotb/env/{dtp_types,dtp_tap_device}.py
 DTP_IR_WIDTH = 6
@@ -92,46 +94,6 @@ def pack_ic_reset_ports(
         bit = 2 + 2 * int(idx)
         value = (value & ~(1 << bit)) | ((ctrl & 0x1) << bit)
     return value & SMU_IC_RESET_DEFAULT
-
-# SEP=0 ties feat_ctrl to 0 -> JTAG2AXI gated (enable-polarity:
-# security_disable = !soc_debug || !ap_debug). Prefer forcing the computed
-# security_disable net (continuous assign of feat_ctrl may ignore Force on fields).
-_SECURITY_DISABLE_CANDIDATES = (
-    "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable",
-    "u_dut.u_dtp.u_jtag_ptap.smc_jtag2axi_security_disable",
-)
-_OTP_SECURITY_DISABLE_CANDIDATES = (
-    "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable",
-    "u_dut.u_dtp.u_jtag_ptap.smc_otp_jtag2axi_security_disable",
-)
-_SEP_OTP_SECURITY_DISABLE_CANDIDATES = (
-    "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.sep_otp_jtag2axi_security_disable",
-    "u_dut.u_dtp.u_jtag_ptap.sep_otp_jtag2axi_security_disable",
-)
-_FEAT_CTRL_CANDIDATES = (
-    "u_dut.sep_feat_ctrl.soc_debug",
-    "u_dut.sep_feat_ctrl.ap_debug",
-    "u_dut.u_dtp.feat_ctrl_i.soc_debug",
-    "u_dut.u_dtp.feat_ctrl_i.ap_debug",
-)
-_OTP_FEAT_CTRL_CANDIDATES = (
-    "u_dut.sep_feat_ctrl.fuse_test",
-    "u_dut.sep_feat_ctrl.soc_debug",
-    "u_dut.sep_feat_ctrl.ap_debug",
-    "u_dut.u_dtp.feat_ctrl_i.fuse_test",
-    "u_dut.u_dtp.feat_ctrl_i.soc_debug",
-    "u_dut.u_dtp.feat_ctrl_i.ap_debug",
-)
-_SEP_OTP_FEAT_CTRL_CANDIDATES = (
-    "u_dut.sep_feat_ctrl.fuse_test",
-    "u_dut.sep_feat_ctrl.sep_debug",
-    "u_dut.sep_feat_ctrl.soc_debug",
-    "u_dut.sep_feat_ctrl.ap_debug",
-    "u_dut.u_dtp.feat_ctrl_i.fuse_test",
-    "u_dut.u_dtp.feat_ctrl_i.sep_debug",
-    "u_dut.u_dtp.feat_ctrl_i.soc_debug",
-    "u_dut.u_dtp.feat_ctrl_i.ap_debug",
-)
 
 
 def pack_debug_control(
@@ -235,191 +197,6 @@ def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagTap:
     return jtag
 
 
-def _resolve_path(dut, path: str):
-    node = dut
-    for part in path.split("."):
-        if not hasattr(node, part):
-            return None
-        node = getattr(node, part)
-    return node
-
-
-def _force_security_disable(dut, candidates, value: int, logger=None) -> list:
-    """Force security_disable nets; verify readback (Verilator rejects continuous)."""
-    forced = []
-    for path in candidates:
-        handle = _resolve_path(dut, path)
-        if handle is None:
-            continue
-        try:
-            handle.value = Force(int(value) & 1)
-            if int(handle.value) != (int(value) & 1):
-                if logger is not None:
-                    logger.debug(
-                        "Force %s ignored (readback mismatch); skip", path
-                    )
-                continue
-            forced.append(handle)
-            if logger is not None:
-                logger.info("Forced %s = %d", path, int(value) & 1)
-        except Exception as exc:  # noqa: BLE001
-            if logger is not None:
-                logger.debug("Could not force %s: %s", path, exc)
-    return forced
-
-
-def force_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
-    """Ungate SMC fabric JTAG2AXI under SEP=0 (feat_ctrl tied off).
-
-    Prefer Force on security_disable=0 (marked forceable in smu_public_scope.vlt).
-    Fall back to feat_ctrl soc_debug+ap_debug=1 (enable polarity).
-    """
-    forced = _force_security_disable(
-        dut, _SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    if forced:
-        return forced
-
-    try:
-        return force_feat_ctrl_bits(
-            dut, {"soc_debug": 1, "ap_debug": 1}, logger
-        )
-    except AssertionError:
-        pass
-
-    raise AssertionError(
-        "Could not Force smc_jtag2axi_security_disable=0 or feat_ctrl enables"
-    )
-
-
-def force_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
-    """Force-gate SMC fabric JTAG2AXI (security_disable=1 or clear feat_ctrl)."""
-    forced = _force_security_disable(
-        dut, _SECURITY_DISABLE_CANDIDATES, 1, logger
-    )
-    if forced:
-        return forced
-
-    try:
-        return force_feat_ctrl_bits(
-            dut, {"soc_debug": 0, "ap_debug": 0}, logger
-        )
-    except AssertionError:
-        pass
-
-    raise AssertionError(
-        "Could not Force smc_jtag2axi_security_disable=1 or feat_ctrl clear"
-    )
-
-
-def force_otp_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
-    """Ungate SMC OTP and fabric JTAG2AXI under SEP=0.
-
-    OTP and fabric use distinct ``security_disable`` nets. Cross-path MAP
-    checks (OTP write + fabric read) need both open. Prefer Force on those
-    nets; fall back to feat_ctrl fuse+soc+ap=1 (opens both via enable polarity).
-    """
-    forced: list = []
-    otp = _force_security_disable(
-        dut, _OTP_SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    fab = _force_security_disable(
-        dut, _SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    forced.extend(otp)
-    forced.extend(fab)
-    if otp and fab:
-        return forced
-
-    try:
-        return force_feat_ctrl_bits(
-            dut,
-            {"fuse_test": 1, "soc_debug": 1, "ap_debug": 1},
-            logger,
-        )
-    except AssertionError:
-        pass
-
-    raise AssertionError(
-        "Could not Force OTP+fabric security_disable=0 or OTP feat_ctrl enables"
-    )
-
-
-def force_otp_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
-    """Force-gate SMC OTP-over-JTAG by asserting security_disable=1.
-
-    RTL golden: security_disable = !fuse_test || !soc_debug || !ap_debug.
-    Clearing fuse_test alone also gates OTP while leaving fabric (soc&ap) ungated
-    when those bits stay 1 — needed when OTP and fabric share one packed word.
-    """
-    forced = _force_security_disable(
-        dut, _OTP_SECURITY_DISABLE_CANDIDATES, 1, logger
-    )
-    if forced:
-        return forced
-
-    try:
-        return force_feat_ctrl_bits(dut, {"fuse_test": 0}, logger)
-    except AssertionError:
-        pass
-
-    raise AssertionError(
-        "Could not Force smc_otp_jtag2axi_security_disable=1 or OTP fuse_test clear"
-    )
-
-
-def force_sep_otp_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
-    """Force-enable SEP OTP-over-JTAG path (security_disable=0 or feat bits=1)."""
-    try:
-        return force_feat_ctrl_bits(
-            dut,
-            {
-                "fuse_test": 1,
-                "sep_debug": 1,
-                "soc_debug": 1,
-                "ap_debug": 1,
-            },
-            logger,
-        )
-    except AssertionError:
-        pass
-
-    forced = _force_security_disable(
-        dut, _SEP_OTP_SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    if forced:
-        return forced
-    raise AssertionError(
-        "Could not Force SEP OTP feat_ctrl or sep_otp_jtag2axi_security_disable=0"
-    )
-
-
-def force_sep_otp_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
-    """Force-gate SEP OTP-over-JTAG (clear feat_ctrl or security_disable=1)."""
-    try:
-        return force_feat_ctrl_bits(
-            dut,
-            {
-                "fuse_test": 0,
-                "sep_debug": 0,
-                "soc_debug": 0,
-                "ap_debug": 0,
-            },
-            logger,
-        )
-    except AssertionError:
-        pass
-
-    forced = _force_security_disable(
-        dut, _SEP_OTP_SECURITY_DISABLE_CANDIDATES, 1, logger
-    )
-    if forced:
-        return forced
-    raise AssertionError(
-        "Could not Force SEP OTP feat_ctrl clear or sep_otp_jtag2axi_security_disable=1"
-    )
-
-
 # jtag_smc_reset_ctrl_t packed [135:0]: ovrd[135:68] | val[67:0]
 # Within ovrd/val LSB: fuse, warm, cool, cold, then ss_cold[31:0], ss_warm[31:0].
 _SMC_RESET_CTRL_BITS = {
@@ -478,111 +255,6 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
         group = "ovrd" if leaf.endswith("_ovrd") else "val"
         return int(getattr(getattr(ctrl, group), leaf).value) & 1
     return (int(ctrl.value) >> _SMC_RESET_CTRL_BITS[leaf]) & 1
-
-
-# Bit positions in sep_efuse_map_lc_disable_reg_t (packed, MSB-first → bit0 = sep_debug).
-_FEAT_CTRL_BIT_POS = {
-    "sep_debug": 0,
-    "soc_debug": 1,
-    "ap_debug": 2,
-    "ap_trace": 3,
-    "sip_debug": 4,
-    "fuse_test": 32,
-}
-
-_FEAT_CTRL_PACKED_PATHS = (
-    "u_dut.sep_feat_ctrl",
-    "u_dut.u_dtp.feat_ctrl_i",
-    "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.feat_ctrl_i",
-)
-
-# Verilator Force readback returns the continuous (tied-off) value, not the
-# Forced word. Keep a path-keyed shadow so sequential Force calls RMW correctly.
-_FEAT_CTRL_FORCE_SHADOW: dict[str, int] = {}
-
-
-def force_feat_ctrl_bits(dut, bit_values: dict, logger=None) -> list:
-    """Force selected sep_feat_ctrl / feat_ctrl_i leaf bits.
-
-    bit_values maps leaf name -> 0/1, e.g. {"soc_debug": 0, "ap_debug": 1}.
-
-    VCS exposes packed-struct leaves as hierarchical handles. Verilator exposes
-    the whole 64-bit packed word only — fall back to Force on the word with
-    known bit positions from sep_efuse_map_lc_disable_reg_t. Packed Forces are
-    RMW'd via `_FEAT_CTRL_FORCE_SHADOW` (readback under Force is unreliable).
-    """
-    forced = []
-    prefixes = (
-        "u_dut.sep_feat_ctrl.",
-        "u_dut.u_dtp.feat_ctrl_i.",
-        "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.feat_ctrl_i.",
-    )
-    leaf_ok = True
-    for leaf, val in bit_values.items():
-        hit = False
-        for prefix in prefixes:
-            path = prefix + leaf
-            handle = _resolve_path(dut, path)
-            if handle is None:
-                continue
-            try:
-                handle.value = Force(int(val) & 1)
-                forced.append(handle)
-                hit = True
-                if logger is not None:
-                    logger.info("Forced %s = %d", path, int(val) & 1)
-                break
-            except Exception as exc:  # noqa: BLE001
-                if logger is not None:
-                    logger.debug("Could not force %s: %s", path, exc)
-        if not hit:
-            leaf_ok = False
-            break
-    if leaf_ok and forced:
-        return forced
-
-    # Verilator / packed-word fallback: RMW via Force shadow (not handle readback).
-    packed_forced = []
-    for path in _FEAT_CTRL_PACKED_PATHS:
-        handle = _resolve_path(dut, path)
-        if handle is None:
-            continue
-        try:
-            word = int(_FEAT_CTRL_FORCE_SHADOW.get(path, 0))
-            for leaf, val in bit_values.items():
-                if leaf not in _FEAT_CTRL_BIT_POS:
-                    raise AssertionError(
-                        f"Unknown feat_ctrl leaf for packed Force: {leaf}"
-                    )
-                bit = _FEAT_CTRL_BIT_POS[leaf]
-                if int(val) & 1:
-                    word |= 1 << bit
-                else:
-                    word &= ~(1 << bit)
-            handle.value = Force(word)
-            _FEAT_CTRL_FORCE_SHADOW[path] = word
-            packed_forced.append(handle)
-            if logger is not None:
-                logger.info(
-                    "Forced packed %s = 0x%x (Verilator shadow RMW)", path, word
-                )
-        except Exception as exc:  # noqa: BLE001
-            if logger is not None:
-                logger.debug("Could not force packed %s: %s", path, exc)
-    if not packed_forced:
-        missing = ",".join(bit_values.keys())
-        raise AssertionError(f"Could not Force feat_ctrl bits ({missing})")
-    return packed_forced
-
-
-def release_forced(handles: Iterable) -> None:
-    for handle in handles:
-        try:
-            handle.value = Release()
-        except Exception:
-            pass
-    # Packed Force shadow is invalid after Release (net returns to continuous).
-    _FEAT_CTRL_FORCE_SHADOW.clear()
 
 
 def pack_otp_single_op(

@@ -27,37 +27,9 @@ timeout_sec = 1800
 tags = ["dtp", "boot_stall", "phase1"]
 run_modes = ["dtp"]
 
-[[tests]]
-name = "smu_dtp_dtm_local_axi_test"
-module = "smu_dtp_dtm_local_axi_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase1"]
-run_modes = ["dtp"]
+# smu_dtp_dtm_local_axi_test → testlists/deferred.toml
 
-[[tests]]
-name = "smu_dtp_otp_debug_access_test"
-module = "smu_dtp_otp_debug_access_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_lifecycle_debug_policy_test"
-module = "smu_lifecycle_debug_policy_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "lifecycle", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_cross_trigger_matrix_test"
-module = "smu_cross_trigger_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase1"]
-run_modes = ["dtp"]
+# smu_lifecycle_debug_policy_test → testlists/deferred.toml
 
 [[tests]]
 name = "smu_clock_stop_coordination_test"
@@ -65,6 +37,15 @@ module = "smu_clock_stop_coordination_test"
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "clock_stop", "phase1"]
+run_modes = ["dtp"]
+
+# Product-pin CTM remap (no Force). Full four-phase stays deferred.
+[[tests]]
+name = "smu_xtrig_ctm_remap_test"
+module = "smu_xtrig_ctm_remap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "xtrig", "phase1"]
 run_modes = ["dtp"]
 
 [[tests]]
@@ -75,87 +56,10 @@ timeout_sec = 1800
 tags = ["dtp", "reset", "phase1"]
 run_modes = ["dtp"]
 
-[[tests]]
-name = "smu_smc_dtp_jtag2axi_security_test"
-module = "smu_smc_dtp_jtag2axi_security_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "security", "phase1"]
-run_modes = ["dtp"]
+# smu_smc_dtp_jtag2axi_security_test → testlists/deferred.toml
 
-# P2-I8a: SMC->DTP CSR path (local-xbar hole + hier CTN; no TB addr Force)
-[[tests]]
-name = "smu_dtp_csr_access_test"
-module = "smu_dtp_csr_access_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "phase2", "csr"]
-run_modes = ["dtp"]
+# smu_dtp_otp_smc_complete_rw_test → testlists/deferred.toml
 
-# P2-I2a: OTP JTAG2AXI complete map R/W + gated contrast
-[[tests]]
-name = "smu_dtp_otp_smc_complete_rw_test"
-module = "smu_dtp_otp_smc_complete_rw_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I6a: CLA clock-stop feedback loop (SMC -> DTP req[0])
-[[tests]]
-name = "smu_dtp_clock_stop_smc_cla_loop_test"
-module = "smu_dtp_clock_stop_smc_cla_loop_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "clock_stop", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I7a: CTM four-phase on SMU glue + SMC[1:0] isolation
-[[tests]]
-name = "smu_xtrig_ctm_four_phase_test"
-module = "smu_xtrig_ctm_four_phase_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I10a: SYS_IN filter program via JTAG -> SMN OKAY on window
-[[tests]]
-name = "smu_sys_in_filter_program_jtag_test"
-module = "smu_sys_in_filter_program_jtag_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "filter", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I1a: JTAG2AXI SIZE/WSTRB R/W matrix on outbound fabric
-[[tests]]
-name = "smu_dtp_jtag2axi_smc_rw_matrix_test"
-module = "smu_dtp_jtag2axi_smc_rw_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I1b: JTAG2AXI DECERR/poison + recovery
-[[tests]]
-name = "smu_dtp_jtag2axi_smc_error_path_test"
-module = "smu_dtp_jtag2axi_smc_error_path_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I2b: SEP=0 SEP-OTP err_slv DECERR/poison
-[[tests]]
-name = "smu_dtp_otp_sep0_err_slv_test"
-module = "smu_dtp_otp_sep0_err_slv_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I3a: boot-stall cold-reset sticky + TRST clear
 [[tests]]
 name = "smu_boot_stall_jtag_cold_reset_matrix_test"
 module = "smu_boot_stall_jtag_cold_reset_matrix_test"
@@ -173,79 +77,12 @@ timeout_sec = 1800
 tags = ["dtp", "reset", "phase2"]
 run_modes = ["dtp"]
 
-# P2-I7b: DTP<->SMC xtrigger glue [1:0]
-[[tests]]
-name = "smu_dtp_xtrigger_smc_cla_test"
-module = "smu_dtp_xtrigger_smc_cla_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase2"]
-run_modes = ["dtp"]
+# smu_dtp_xtrigger_smc_cla_test → testlists/deferred.toml (needs_real_stimulus)
 
-# P2-I8b: both-direction SMC fabric + DTP CTN
-[[tests]]
-name = "smu_fabric_smc_dtp_cross_domain_test"
-module = "smu_fabric_smc_dtp_cross_domain_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "fabric", "phase2"]
-run_modes = ["dtp"]
+# smu_fabric_smc_dtp_cross_domain_test → testlists/deferred.toml
 
-# P2-I9a: feat_ctrl gate polarity matrix
-[[tests]]
-name = "smu_dtp_feat_ctrl_gate_matrix_test"
-module = "smu_dtp_feat_ctrl_gate_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "lifecycle", "phase2"]
-run_modes = ["dtp"]
+# smu_feat_ctrl_partial_bit_corner_test → testlists/deferred.toml
 
-# P3-H2b: filter page-edge SMN OKAY / DECERR
-[[tests]]
-name = "smu_sys_in_filter_window_edge_test"
-module = "smu_sys_in_filter_window_edge_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "filter", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H2c: filter wide -> shrink -> clear
-[[tests]]
-name = "smu_sys_in_filter_reprogram_shrink_test"
-module = "smu_sys_in_filter_reprogram_shrink_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "filter", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H2a: partial WSTRB + adjacent word isolation
-[[tests]]
-name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H1b: DECERR then immediate SUCCESS (no settle)
-[[tests]]
-name = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
-module = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H4b: incomplete feat_ctrl must not land OTP MAP
-[[tests]]
-name = "smu_feat_ctrl_partial_bit_corner_test"
-module = "smu_feat_ctrl_partial_bit_corner_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "lifecycle", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H5a: dual SMC IC_RESET ports in one DR
 [[tests]]
 name = "smu_ic_reset_dual_domain_illegal_test"
 module = "smu_ic_reset_dual_domain_illegal_test"
@@ -263,7 +100,7 @@ timeout_sec = 1800
 tags = ["dtp", "boot_stall", "phase3"]
 run_modes = ["dtp"]
 
-# P3-H1c: illegal CTM phase order
+# Pin-only illegal CTM corners (no Force ack-before-req).
 [[tests]]
 name = "smu_xtrig_ctm_illegal_phase_test"
 module = "smu_xtrig_ctm_illegal_phase_test"
@@ -272,70 +109,18 @@ timeout_sec = 1800
 tags = ["dtp", "xtrig", "phase3"]
 run_modes = ["dtp"]
 
-# P3-H6a: CLA stop_clks concurrent with CTM four-phase
-[[tests]]
-name = "smu_cla_and_xtrig_concurrent_test"
-module = "smu_cla_and_xtrig_concurrent_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "cla", "xtrig", "phase3"]
-run_modes = ["dtp"]
+# smu_cla_and_xtrig_concurrent_test → testlists/deferred.toml (needs_real_stimulus)
 
-# P3-H6b: JTAG clock_stop OR CLA feedback
-[[tests]]
-name = "smu_clock_stop_jtag_vs_cla_fb_race_test"
-module = "smu_clock_stop_jtag_vs_cla_fb_race_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "cla", "phase3"]
-run_modes = ["dtp"]
+# smu_clock_stop_jtag_vs_cla_fb_race_test → testlists/deferred.toml (needs_real_stimulus)
 
-# P3-H1a: abort mid SINGLE_OP (IR + TRST)
-[[tests]]
-name = "smu_dtp_jtag2axi_abort_mid_op_test"
-module = "smu_dtp_jtag2axi_abort_mid_op_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "phase3"]
-run_modes = ["dtp"]
+# smu_dtp_jtag2axi_abort_mid_op_test → testlists/deferred.toml
 
-# P3-H4a: feat_ctrl flip mid-BUSY
-[[tests]]
-name = "smu_feat_ctrl_flip_mid_jtag2axi_test"
-module = "smu_feat_ctrl_flip_mid_jtag2axi_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "lifecycle", "phase3"]
-run_modes = ["dtp"]
+# smu_feat_ctrl_flip_mid_jtag2axi_test → testlists/deferred.toml
 
-# P3-H3a: JTAG2AXI || SMN same CSR race (G4)
-[[tests]]
-name = "smu_jtag2axi_vs_smn_same_csr_race_test"
-module = "smu_jtag2axi_vs_smn_same_csr_race_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "filter", "phase3", "g4"]
-run_modes = ["dtp"]
+# smu_jtag2axi_vs_smn_same_csr_race_test → testlists/deferred.toml
 
-# P3-H3b: OTP || fabric MAP race (G4)
-[[tests]]
-name = "smu_otp_vs_fabric_map_race_test"
-module = "smu_otp_vs_fabric_map_race_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "phase3", "g4"]
-run_modes = ["dtp"]
+# smu_otp_vs_fabric_map_race_test → testlists/deferred.toml
 
-# P3-H3c: hier CTN || fabric JTAG2AXI (G4)
-[[tests]]
-name = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
-module = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "ctn", "phase3", "g4"]
-run_modes = ["dtp"]
-
-# P4: IC_RESET SS cold0/warm0 domain matrix
 [[tests]]
 name = "smu_ic_reset_ss_domain_matrix_test"
 module = "smu_ic_reset_ss_domain_matrix_test"

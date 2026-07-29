@@ -187,7 +187,7 @@ module smu_wrapper_uvm_top (
     assign sep_pc_o =
         sep_reset_n ? sep_cpu_trace.trace_rv_i_address_ip : '0;
 
-    // Force-keep SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
+    // Observe SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
     // compile never resolves gen_sep hierarchy XMRs.
 `ifndef SMU_NO_SEP
     assign sep_cla_custom_o =
@@ -308,10 +308,7 @@ module smu_wrapper_uvm_top (
         end
     end
 
-    // SEP TCM write activity from the vendor-free sep_tcm_wrapper shim.
-    // TCM write-count probes: Verilator does not retain unused shim observe
-    // ports for SV XMR. Elaboration does not need these; sep_smoke (blocked
-    // #3582) can reintroduce a bind/export when IFU bring-up lands.
+    // SEP TCM write-count probes deferred (DV sep_tcm_wrapper shim removed).
     assign sep_iccm_write_count_o = '0;
     assign sep_dccm_write_count_o = '0;
 

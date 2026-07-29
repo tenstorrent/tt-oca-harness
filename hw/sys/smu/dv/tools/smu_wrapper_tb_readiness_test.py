@@ -12,8 +12,14 @@ from pathlib import Path
 
 
 DV_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = DV_ROOT.parents[5]
-OSS_DV_TOOLS = REPO_ROOT / "dv" / "oss" / "tools" / "dv"
+# dv/ -> smu/ -> sys/ -> hw/ -> repo
+REPO_ROOT = DV_ROOT.parents[3]
+# Prefer in-tree tools/dv (OSS); fall back to legacy dv/oss path if present.
+_OSS_CANDIDATES = (
+    REPO_ROOT / "tools" / "dv",
+    REPO_ROOT / "dv" / "oss" / "tools" / "dv",
+)
+OSS_DV_TOOLS = next((p for p in _OSS_CANDIDATES if p.is_dir()), _OSS_CANDIDATES[0])
 
 if str(OSS_DV_TOOLS) not in sys.path:
     sys.path.insert(0, str(OSS_DV_TOOLS))
@@ -35,12 +41,16 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_NO_SEP,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
+# Green merge-gate smoke (no SEP=1 / no TCM shim).
+EXPECTED_SMOKE_GROUP = {
+    "smu_wrapper_elaboration_no_sep_test",
+    "smu_smc_smoke_test",
+}
 
 REQUIRED_SOURCES = (
     SIM_CFG,
     "tb/tb_wrapper_top.sv",
     "tb/smu_wrapper_public_scope.vlt",
-    "shims/mem/sep_tcm_wrapper.sv",
     "fw/build_firmware.py",
     "fw/tests/smu_smc_smoke/main.c",
     "fw/tests/smu_sep_arm/main.c",
@@ -158,9 +168,9 @@ def check_sources(result: Readiness) -> None:
         str(value) for value in config.get("build", {}).get("bender_targets", [])
     ]
     result.record(
-        "dut:smu_oss_wrapper_bender_target",
-        "smu_oss_wrapper" in bender_targets,
-        "selected" if "smu_oss_wrapper" in bender_targets else "not selected",
+        "dut:smu_wrapper_bender_target",
+        "smu_wrapper" in bender_targets,
+        "selected" if "smu_wrapper" in bender_targets else "not selected",
     )
 
     catalog_path = DV_ROOT / CATALOG
@@ -175,7 +185,7 @@ def check_sources(result: Readiness) -> None:
                 else "missing from catalog"
             )
             result.record(f"catalog:{test_name}", passed, detail)
-        expected_group = set(SMOKE_TESTS)
+        expected_group = EXPECTED_SMOKE_GROUP
         smoke_group = set(groups.get("smoke", []))
         result.record(
             "catalog:smoke_group",
@@ -215,13 +225,17 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         "hw/top/smc_ip_integration.sv",
         "hw/top/sep_ip_integration.sv",
         "hw/sys/smu/dv/tb/tb_wrapper_top.sv",
-        "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
+        # pulp axi_sim_mem (SEP VIP) — not a custom DV mem shim
+        "axi_sim_mem.sv",
     )
     forbidden_tokens = (
-        # Foundry TCM macros and obsolete DV wrapper shadows must not appear.
+        # Stale foundry path + retired DV TCM shim must not appear.
+        # (OSS TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv; blocker is ram_*.)
         "hw/sep/sep_tcm_wrapper.sv",
+        "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/wrapper/",
         "hw/.bos/wrapper/",
+        "tb_smu_axi_responder",
     )
     for raw_path in filelists:
         path = raw_path if raw_path.is_absolute() else REPO_ROOT / raw_path

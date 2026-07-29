@@ -175,6 +175,10 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("reset_clock_cg", "clock_stop", "cla_loop"),
         ("xtrig_cg", "cla", "clk_stop_fb"),
     ],
+    "smu_xtrig_ctm_remap_test": [
+        ("xtrig_cg", "ctm", "remap_p1"),
+        ("xtrig_cg", "ctm", "smc_bits_clean"),
+    ],
     "smu_xtrig_ctm_four_phase_test": [
         ("xtrig_cg", "ctm", "four_phase"),
     ],

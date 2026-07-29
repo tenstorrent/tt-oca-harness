@@ -2,7 +2,8 @@
 //
 // SMU OSS cocotb top — Phase-1 SEP=0.
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
-// cocotb BFMs, and terminates macro/memory boundaries with OSS responders.
+// cocotb BFMs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
+// terminators); pulp axi_sim_mem terminates outbound SMN.
 //
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
@@ -82,9 +83,7 @@ module smu_uvm_top
 
     // WDT first-timeout pin observe (ChipYard rst export; clamped under isolate)
     output logic tb_wdt_first_timeout /*verilator public_flat_rw*/,
-    // Pre-clamp WDT rst inject/observe (VPI cannot enter generate named begin)
-    input  wire logic tb_force_wdt_reset_raw /*verilator public_flat_rw*/,
-    input  wire logic tb_force_cluster_isolate /*verilator public_flat_rw*/,
+    // Pre-clamp observe only (no TB Force inject — policy: real RTL / fail test)
     output logic      tb_wdt_reset_raw /*verilator public_flat_rw*/,
     output logic      tb_cluster_boundary_isolate /*verilator public_flat_rw*/,
 
@@ -383,35 +382,19 @@ module smu_uvm_top
         .scratch0_inject_fire_o ()
     );
 
-    // Macro boundary DECERR responders
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
-        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
-    ) u_pll_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
-                 .axil_req_i(axil_pll_req), .axil_resp_o(axil_pll_resp));
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
-        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
-    ) u_pvt_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
-                 .axil_req_i(axil_pvt_req), .axil_resp_o(axil_pvt_resp));
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
-        .axil_req_t(smc_axil_32_32_req_t), .axil_resp_t(smc_axil_32_32_resp_t)
-    ) u_ext_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
-                 .axil_req_i(axil_ext_req), .axil_resp_o(axil_ext_resp));
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(32),
-        .axil_req_t(gpio_pkg::gpio_axil_req_t), .axil_resp_t(gpio_pkg::gpio_axil_resp_t)
-    ) u_gpio_err (.clk_i(clk_smu_i), .rst_ni(rst_primary_smc_clk_no),
-                  .axil_req_i(axil_gpio_ctrl_req), .axil_resp_o(axil_gpio_ctrl_resp));
-
-    // Per-macro AXI-Lite activity for routing / isolation checkers.
+    // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —
+    // no TB err_slv placeholder; macro/PLL/PVT tests deferred until real IP.
     assign tb_axil_pll_active =
         axil_pll_req.aw_valid | axil_pll_req.w_valid | axil_pll_req.ar_valid;
     assign tb_axil_pvt_active =
         axil_pvt_req.aw_valid | axil_pvt_req.w_valid | axil_pvt_req.ar_valid;
     assign tb_axil_extension_active =
         axil_ext_req.aw_valid | axil_ext_req.w_valid | axil_ext_req.ar_valid;
+    // Leave axil_*_resp undriven (no TB terminator hack).
+    assign axil_pll_resp       = '0;
+    assign axil_pvt_resp       = '0;
+    assign axil_ext_resp       = '0;
+    assign axil_gpio_ctrl_resp = '0;
 
     // ------------------------------------------------------------------
     // DUT: smu with SEP=0
@@ -613,28 +596,11 @@ module smu_uvm_top
     // rst_primary_periph_clk_no output, so observe it hierarchically.
     assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
 
-    // WDT isolate clamp: observe pre-clamp raw + isolate; Force via TB pins.
-    // The current smc_cpu_wrapper instantiates u_smc_cpu directly (the old
-    // gen_4core_cpu generate scope was removed).
+    // WDT isolate clamp: observe only (no SV Force — inject pin removed).
     assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .wdt_reset_raw[0];
     assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper
         .u_smc_cpu.cluster_boundary_isolate;
-    always @(*) begin
-        if (tb_force_cluster_isolate) begin
-            force u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-                .cluster_boundary_isolate = 1'b1;
-        end else begin
-            release u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-                .cluster_boundary_isolate;
-        end
-        if (tb_force_wdt_reset_raw) begin
-            force u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wdt_reset_raw =
-                '1;
-        end else begin
-            release u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wdt_reset_raw;
-        end
-    end
 
     // Hierarchical observe of DTP boot-stall / CLA clock-stop (no hw/ edit).
     assign jtag_boot_stall_ovrd = u_dut.boot_stall_jtag_ovrd;

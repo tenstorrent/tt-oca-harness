@@ -7,16 +7,9 @@ schema_version = 1
 # DFT_CTRL timeout-proxy test removed: it depended on deleted DV DFX stub /
 # bare-smc decode semantics, not smc_wrapper production RTL.
 
-[[tests]]
-name = "smc_pvt_droop_test"
-module = "smc_pvt_droop_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "p1_coverage_gap", "p1_coverage_gap_r5", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pvt_droop_test → testlists/deferred.toml (rtl_placeholder)
 
 [[groups]]
 name = "p1_coverage_gap_r5"
 tests = [
-    "smc_pvt_droop_test",
 ]
