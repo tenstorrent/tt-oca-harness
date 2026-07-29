@@ -2,9 +2,10 @@
 """SMC OSS PyUVM base test (bare-`smc` DUT).
 
 Intentionally separate from the smc_wrapper base test
-(`cocotb_wrapper/tests/smc_base_test.py`) and its own `SmcEnvCfg`: the two DUTs
-have different bring-up (this one: power-good + cold reset; the wrapper: the
-power-good-glitch sequence) and different env cfg fields. Do not merge them.
+(`cocotb/wrapper/tests/smc_wrapper_base_test.py`) and `SmcWrapperEnvCfg`: the
+two DUTs have different bring-up (this one: power-good + cold reset; the
+wrapper: the power-good-glitch sequence) and different env cfg fields. Do not
+merge them into one class.
 """
 
 from __future__ import annotations

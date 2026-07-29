@@ -59,7 +59,7 @@ class smu_xtrig_ctm_illegal_phase_test(smu_base_test):
         # ------------------------------------------------------------------
         # 1) ack-before-req (illegal): Force ack with req=0
         # ------------------------------------------------------------------
-        sb.expect_eq("idle dest req", (int(dtp_dst_req.value) >> 2) & 0xFF, 0)
+        sb.expect_eq("idle dest req", (int(dtp_dst_req.value) >> 2) & 0xFF, 0, evidence="XT_ILLEGAL_PHASE")
         sb.expect_eq("idle TB ack", _u8(dut.xtrig_ctm_dst_ack.value), 0)
 
         dtp_dst_ack.value = Force(PAT_A << 2)

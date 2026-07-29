@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// DV shadow of hw/oss-example/wrapper/smc/smc_padring_ext.sv (issue #3357
-// flow). Identical to the hw/oss-example source except that the refclk /
+// DV behavioral shadow under models/wrapper/ of
+// hw/oss-example/wrapper/smc/smc_padring_ext.sv (issue #3357 flow).
+// Identical to the hw/oss-example source except that the refclk /
 // reset / powergood input pads are modeled as transparent connections:
 // the original drives prim_pad_wrapper inout_io from input-only ports,
 // which Verilator rejects (ASSIGNIN). The sim config excludes the

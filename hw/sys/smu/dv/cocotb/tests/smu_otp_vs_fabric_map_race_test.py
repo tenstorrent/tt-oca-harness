@@ -106,7 +106,7 @@ class smu_otp_vs_fabric_map_race_test(smu_base_test):
                 wstrb=0xF,
                 size=SMC_DBG_AXSIZE_4B,
             )
-            sb.expect_eq("overlap fabric write status", st_f, J2A_STATUS_SUCCESS)
+            sb.expect_eq("overlap fabric write status", st_f, J2A_STATUS_SUCCESS, evidence="RACE_OTP_FABRIC")
             st_o = await _poll_otp_status(jtag)
             sb.expect_true(
                 f"overlap OTP completed (st={st_o})",

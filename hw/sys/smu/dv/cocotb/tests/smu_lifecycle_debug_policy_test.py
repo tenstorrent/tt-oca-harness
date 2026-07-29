@@ -44,7 +44,7 @@ class smu_lifecycle_debug_policy_test(smu_base_test):
         await self.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        sb.expect_eq("SEP=0 lc_state_o", int(dut.lc_state_o.value) & 0xFF, SEP0_LC_STATE)
+        sb.expect_eq("SEP=0 lc_state_o", int(dut.lc_state_o.value) & 0xFF, SEP0_LC_STATE, evidence="FEAT_FAB_DENY")
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()

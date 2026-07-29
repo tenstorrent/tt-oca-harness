@@ -52,7 +52,7 @@ class smc_efuse_reg_sanity_test(smu_base_test):
                 await jtag.step_tms(0)
 
             st0, map0 = await jtag2axi_single_read(jtag, EFUSE_MAP_0)
-            sb.expect_eq("EFUSE_MAP_0 status", st0, J2A_STATUS_SUCCESS)
+            sb.expect_eq("EFUSE_MAP_0 status", st0, J2A_STATUS_SUCCESS, evidence="SMC_EFUSE_CSR_OK")
             st1, map4 = await jtag2axi_single_read(jtag, EFUSE_MAP_4)
             sb.expect_eq("EFUSE_MAP_4 status", st1, J2A_STATUS_SUCCESS)
             st2, iface = await jtag2axi_single_read(jtag, EFUSE_INTERFACE_CTRL)

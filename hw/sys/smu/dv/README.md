@@ -1,7 +1,7 @@
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
-Layout follows `hw/sys/sep/dv/` (flow-first cocotb under `cocotb/`).
+Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 
 **Master VPLAN (P1 + P2):** [`docs/SMU_VPLAN.md`](docs/SMU_VPLAN.md)
 — P1 **24/24 VCS DONE**; P2 SMC↔DTP protocol ~14 planned; no P3/P4.

@@ -41,7 +41,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
             "fuse_reset high after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
-        )
+        evidence="STALL_COLD_STICKY")
 
         stall = dut.gpio_boot_stall_drive_i
 
@@ -66,7 +66,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
             "fuse_reset gated by GPIO boot-stall",
             int(dut.fuse_reset_n_delayed_o.value),
             0,
-        )
+        evidence="STALL_REASSERT_STICKY")
 
         stall.value = 0
         await ClockCycles(dut.clk_smu_i, 128)

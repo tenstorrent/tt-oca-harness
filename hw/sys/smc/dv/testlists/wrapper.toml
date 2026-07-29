@@ -1,7 +1,7 @@
 schema_version = 1
 
-# Deferred smc_wrapper catalog. The wrapper DUT is intentionally unregistered
-# until its current RTL API and build targets are ported.
+# OSS-example smc_wrapper catalog, run via `run_dv.py --dut smc_wrapper`.
+# Independent of the bare-smc all.toml catalog.
 
 [[tests]]
 name = "smc_wrapper_elaboration_test"
@@ -12,11 +12,9 @@ timeout_sec = 600
 tags = ["build", "smoke", "wrapper"]
 run_modes = ["smoke"]
 args = [
-  # FIXME(SMC-DV): restore and stage these wrapper assets in each run directory
-  # before re-enabling the wrapper flow.
-  "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+smc_shadow_reg_preload=default_efuse_shadow_reg.preload",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]

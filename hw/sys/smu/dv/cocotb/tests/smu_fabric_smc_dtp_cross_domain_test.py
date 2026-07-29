@@ -60,12 +60,12 @@ class smu_fabric_smc_dtp_cross_domain_test(smu_base_test):
 
             # Direction A: DTP JTAG2AXI -> SMC CSR
             st, rdata = await jtag2axi_single_read(jtag, SMC_VERSION_LO_ADDR)
-            sb.expect_eq("A VERSION_LO status", st, J2A_STATUS_SUCCESS)
+            sb.expect_eq("A VERSION_LO status", st, J2A_STATUS_SUCCESS, evidence="XDOM_VERSION_OK")
             sb.expect_eq(
                 "A VERSION_LO data",
                 int(rdata) & 0xFFFF_FFFF,
                 VERSION_LO_EXPECT,
-            )
+            evidence="XDOM_CTN_OK")
 
             # Abs DTP hole still DECERR
             st_abs, _ = await jtag2axi_single_read(

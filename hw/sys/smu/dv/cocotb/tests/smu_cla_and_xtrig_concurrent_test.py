@@ -85,7 +85,7 @@ class smu_cla_and_xtrig_concurrent_test(smu_base_test):
         try:
             for _ in range(8):
                 await RisingEdge(dut.clk_smu_i)
-            sb.expect_eq("stop_clks before CTM", int(dut.dtp_stop_clks_o.value), 1)
+            sb.expect_eq("stop_clks before CTM", int(dut.dtp_stop_clks_o.value), 1, evidence="CLA_CTM_CONCURRENT")
             rb0 = await jtag.read("DEBUG_CONTROL", shift_value=val_en)
             sb.expect_eq(
                 "DEBUG bit4 before CTM",

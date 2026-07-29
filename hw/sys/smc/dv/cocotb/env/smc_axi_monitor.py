@@ -63,10 +63,9 @@ class SmcAxiMonitor(uvm_component):
         #     0xC000_F800 by #3765), which is DECERR-terminated by the bench
         #     boundary responder like PLL/PVT/extension.
         # GPIO_CTRL / REFCLK (0xC000_4440..0xC000_5000) is U5 RW-stubbed and
-        # must return OKAY — not listed here. The real I3C CSR windows live at
-        # 0xC003_A000+ (stride 0x1000) and return the i3ccore_stub SLVERR
-        # signature (SLVERR is not flagged here); the old 0xC000_5000 I3C alias
-        # is now an unmapped hole and must NOT be accessed.
+        # must return OKAY — not listed here. I3C wraps live at 0xC000_5000
+        # (i3ccore_stub → SLVERR, which is not flagged here). Stale catalog
+        # addresses around 0xC003_A000 are unmapped holes (DECERR expected).
         # These ranges are seeded as EXPECTED so DECERR on them is tallied but
         # not flagged; DECERR anywhere else (a mapped internal CSR that should
         # answer OKAY) is still a hard error. Tests may add ad-hoc expected
@@ -75,6 +74,7 @@ class SmcAxiMonitor(uvm_component):
             (0xC000_3000, 0xC000_4000),  # PLL macro boundary responder
             (0xC000_7000, 0xC000_8000),  # PVT macro boundary responder
             (0xC000_F000, 0xC000_F800),  # DTP CSR (unmapped local-xbar hole)
+            (0xC003_A000, 0xC004_0000),  # stale I3C catalog hole (DECERR)
             (0xC040_0000, 0xC080_0000),  # peripheral extension boundary responder
         ]
         self.expected_decerr_addrs: set[int] = set()

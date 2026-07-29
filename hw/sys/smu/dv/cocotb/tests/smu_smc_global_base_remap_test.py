@@ -47,7 +47,7 @@ class smu_smc_global_base_remap_test(smu_base_test):
             "default smc_global_base_o",
             int(dut.smc_global_base_o.value) & 0xFFFF_FFFF_FFFF_FFFF,
             DEFAULT_BASE,
-        )
+        evidence="AXI_GLOBAL_BASE")
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()

@@ -38,7 +38,7 @@ class smu_axi_external_port_connectivity_test(smu_base_test):
             dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
         )
         _, resp = await axi_read32_resp(master, PROBE)
-        sb.expect_eq("SMN read completes with DECERR", resp, AxiResp.DECERR)
+        sb.expect_eq("SMN read completes with DECERR", resp, AxiResp.DECERR, evidence="AXI_ID_WIDTH_OK")
 
         # Write also completes (filter isolate -> BRESP DECERR inside master).
         try:

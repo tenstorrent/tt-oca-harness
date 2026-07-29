@@ -33,6 +33,9 @@ module smc_uvm_top
     output logic       tb_i2c0_sda_dut_low /*verilator public_flat_rw*/,
     // I2C0 SMBALERT# (pad 39): active-low; pullup-high when DUT OE released.
     output logic       tb_i2c0_smbalert /*verilator public_flat_rw*/,
+    output logic       tb_i2c0_enable /*verilator public_flat_rw*/,
+    output logic       tb_i2c0_scl_i /*verilator public_flat_rw*/,
+    output logic       tb_i2c0_sda_i /*verilator public_flat_rw*/,
     input  wire logic  tb_i3c0_scl_ext_low /*verilator public_flat_rw*/,
     input  wire logic  tb_i3c0_sda_ext_low /*verilator public_flat_rw*/,
     output logic       tb_i3c0_scl /*verilator public_flat_rw*/,
@@ -475,6 +478,9 @@ module smc_uvm_top
     assign tb_i2c0_sda_dut_low = !u_dut.u_smc_peripherals.i2c_sda_o[0];
     assign tb_i2c0_scl = !(tb_i2c0_scl_dut_low || tb_i2c0_scl_ext_low);
     assign tb_i2c0_sda = !(tb_i2c0_sda_dut_low || tb_i2c0_sda_ext_low);
+    assign tb_i2c0_enable = u_dut.u_smc_peripherals.i2c_enable_smc_clk[0];
+    assign tb_i2c0_scl_i  = u_dut.u_smc_peripherals.i2c_scl_i[0];
+    assign tb_i2c0_sda_i  = u_dut.u_smc_peripherals.i2c_sda_i[0];
     assign tb_i3c0_scl_dut_low = u_dut.u_smc_peripherals.i3c_scl_oe_to_pad[0] &&
                                   !u_dut.u_smc_peripherals.i3c_scl_to_pad[0];
     assign tb_i3c0_sda_dut_low = u_dut.u_smc_peripherals.i3c_sda_oe_to_pad[0] &&
@@ -678,8 +684,9 @@ module smc_uvm_top
     assign jtag_axi_rvalid           = jtag_axi_in_resp.r_valid;
     assign jtag_axi_in_req.r_ready   = jtag_axi_rready;
 
-    // Output-fabric AXI memory responder (U1-1/U1-2): SEP-style shim with
-    // optional +smc_output_hex preload and programmable SLVERR inject.
+    // Output-fabric AXI memory responder (U1-1/U1-2): TB boundary slave
+    // (SEP outbound posture) with prim_ram_1p storage, +smc_output_hex
+    // backdoor, and programmable SLVERR inject.
     tb_smc_output_mem_responder u_output_mem (
         .clk_i          (clk_smc_i),
         .rst_ni         (rst_cold_ni),
@@ -740,23 +747,40 @@ module smc_uvm_top
     assign ej_axi_rvalid       = ej_axi_resp.r_valid;
     assign ej_axi_req.r_ready  = ej_axi_rready;
 
-    // CPU ROM/scratch/cache memory responders. These are the SMC equivalent of
-    // the OSS memory-shim style and keep the bare SMC CPU memory ports driven.
-    tb_smc_cpu_mem_responder u_cpu_mem (
-        .clk_i                 (clk_smc_i),
-        .rst_ni                (rst_cold_ni),
-        .rom_req_i             (smc_rom_req),
-        .rom_rsp_o             (smc_rom_rsp),
-        .scratch_ram_req_i     (smc_scratch_ram_req),
-        .scratch_ram_rsp_o     (smc_scratch_ram_rsp),
-        .l1_icache_tag_req_i   (smc_l1_icache_tag_req),
-        .l1_icache_tag_rsp_o   (smc_l1_icache_tag_rsp),
-        .l1_icache_data_req_i  (smc_l1_icache_data_req),
-        .l1_icache_data_rsp_o  (smc_l1_icache_data_rsp),
-        .l1_dcache_tag_req_i   (smc_l1_dcache_tag_req),
-        .l1_dcache_tag_rsp_o   (smc_l1_dcache_tag_rsp),
-        .l1_dcache_data_req_i  (smc_l1_dcache_data_req),
-        .l1_dcache_data_rsp_o  (smc_l1_dcache_data_rsp),
+    // CPU ROM/scratch/L1$: same prim_rom / prim_ram_1p macros as smc_wrapper
+    // (smc_cpu_mem_integration -> OCAH4CORECluster_mems). Images backdoor into
+    // prim_*.mem (+smc_rom_hex / +smc_scratch_ram_hex / +rom_hex).
+    logic        cpu_scratch0_inject_fire;
+    logic        ecc_probe_fire;
+    logic [31:0] ecc_inject_fire_count_q;
+
+    assign ecc_probe_fire = tb_cpu_ecc_inject_probe &&
+        (tb_cpu_ecc_inject_sbe || tb_cpu_ecc_inject_dbe);
+
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            ecc_inject_fire_count_q <= '0;
+        end else if (cpu_scratch0_inject_fire || ecc_probe_fire) begin
+            ecc_inject_fire_count_q <= ecc_inject_fire_count_q + 32'd1;
+        end
+    end
+    assign tb_cpu_ecc_inject_fire_count = ecc_inject_fire_count_q;
+
+    smc_cpu_mem_integration u_cpu_mem (
+        .clk_i                     (clk_smc_i),
+        .rst_ni                    (rst_cold_ni),
+        .rom_req_i                 (smc_rom_req),
+        .rom_rsp_o                 (smc_rom_rsp),
+        .scratch_ram_req_i         (smc_scratch_ram_req),
+        .scratch_ram_rsp_o         (smc_scratch_ram_rsp),
+        .l1_icache_tag_req_i       (smc_l1_icache_tag_req),
+        .l1_icache_tag_rsp_o       (smc_l1_icache_tag_rsp),
+        .l1_icache_data_req_i      (smc_l1_icache_data_req),
+        .l1_icache_data_rsp_o      (smc_l1_icache_data_rsp),
+        .l1_dcache_tag_req_i       (smc_l1_dcache_tag_req),
+        .l1_dcache_tag_rsp_o       (smc_l1_dcache_tag_rsp),
+        .l1_dcache_data_req_i      (smc_l1_dcache_data_req),
+        .l1_dcache_data_rsp_o      (smc_l1_dcache_data_rsp),
         .rom_read_count_o          (tb_cpu_rom_read_count),
         .scratch_ram_read_count_o  (tb_cpu_scratch_read_count),
         .scratch_ram_write_count_o (tb_cpu_scratch_write_count),
@@ -765,8 +789,7 @@ module smc_uvm_top
         .dcache_data_write_count_o (tb_cpu_dcache_write_count),
         .ecc_inject_sbe_i          (tb_cpu_ecc_inject_sbe),
         .ecc_inject_dbe_i          (tb_cpu_ecc_inject_dbe),
-        .ecc_inject_probe_i        (tb_cpu_ecc_inject_probe),
-        .ecc_inject_fire_count_o   (tb_cpu_ecc_inject_fire_count)
+        .scratch0_inject_fire_o    (cpu_scratch0_inject_fire)
     );
 
     smc u_dut (
@@ -890,16 +913,15 @@ module smc_uvm_top
         .i3c_dct_mem_sink_o(i3c_dct_mem_sink)
     );
 
-    // Reset-sanity does not exercise the I3C controller memories. Keep the
-    // responses deterministic so unrelated I3C state cannot introduce Xs.
-    //
-    // FIXME(SMC-DV): replace these DAT/DCT tie-offs with a functional
-    // behavioral memory after the current I3C interface and Bender source
-    // closure are agreed. Do not reintroduce the obsolete RLT interface.
-    for (genvar i3c_idx = 0; i3c_idx < smc_config_pkg::NUM_I3C; i3c_idx++) begin : gen_i3c_mem_tieoff
-        assign i3c_dat_mem_src[i3c_idx] = '0;
-        assign i3c_dct_mem_src[i3c_idx] = '0;
-    end
+    // I3C DAT/DCT: prim_ram_1p via tb_smc_i3c_mem_responder (SEP-aligned).
+    tb_smc_i3c_mem_responder u_i3c_mem (
+        .clk_i           (clk_smc_i),
+        .rst_ni          (rst_cold_ni),
+        .dat_mem_sink_i  (i3c_dat_mem_sink),
+        .dat_mem_src_o   (i3c_dat_mem_src),
+        .dct_mem_sink_i  (i3c_dct_mem_sink),
+        .dct_mem_src_o   (i3c_dct_mem_src)
+    );
 
     // ------------------------------------------------------------------
     // External peripheral-macro boundary responders (bus terminators).
@@ -967,38 +989,72 @@ module smc_uvm_top
         .axil_resp_o(axil_extension_resp)
     );
 
-    // Adopter padring GPIO control-plane RW stub (U5). Terminates the
-    // smc_padring primary-demux "external" branch (GPIO_CTRL_* /
-    // GPIO_REFCLK_CTRL @ 0xC000_4440+). Sparse OKAY storage only — not real
-    // padring function. PLL/PVT/extension remain DECERR terminators.
-    tb_smc_gpio_ctrl_rw_stub u_gpio_ctrl_rw_stub (
+    // GPIO control-plane AXI-Lite: DECERR terminator (same as smc_ip_integration).
+    // Functional pad/CSR coverage lives on --dut smc_wrapper.
+    prim_axi_lite_err_slv #(
+        .AXI_ADDR_WIDTH (gpio_pkg::ADDR_WIDTH),
+        .AXI_DATA_WIDTH (gpio_pkg::DATA_WIDTH),
+        .axil_req_t     (gpio_pkg::gpio_axil_req_t),
+        .axil_resp_t    (gpio_pkg::gpio_axil_resp_t)
+    ) u_gpio_ctrl_err_slv (
         .clk_i      (clk_smc_i),
         .rst_ni     (rst_primary_smc_clk_no),
         .axil_req_i (axil_gpio_ctrl_req),
         .axil_resp_o(axil_gpio_ctrl_resp)
     );
 
-    // U7-5: SEP-style eFuse/OTP behavioral responder (768x32 sticky-OR).
-    // Replaces the DECERR bank terminator + combinational fuse-cmd ACK.
-    logic [31:0] efuse_prog_fail_seed;
-    tb_smc_efuse_responder u_efuse (
-        .clk_i               (clk_smc_i),
-        .rst_ni              (rst_cold_ni),
-        .bank_ctrl_req_i     (axil_efuse_bank_req),
-        .bank_ctrl_resp_o    (axil_efuse_bank_resp),
-        .fuse_command_req_i  (efuse_cmd_req),
-        .fuse_command_resp_o (efuse_cmd_resp),
-        .prog_fail_seed_ext_i(efuse_prog_fail_seed),
-        .otp_word0_o         (tb_efuse_otp_word0),
-        .programmed_word0_o  (tb_efuse_programmed_word0)
+    // eFuse: same OSS bank/shim as smc_ip_integration (no TB-local responder).
+    smc_efuse_apb_req_t  efuse_model_otp_req;
+    smc_efuse_apb_resp_t efuse_model_otp_resp;
+
+    efuse_interface_shim #(
+        .SHADOW_REG_BITS      (smc_efuse_pkg::SHADOW_REG_BITS),
+        .addr_t               (smc_pkg::smc_axi_lite_32_addr_t),
+        .data_t               (smc_pkg::smc_axi_lite_32_data_t),
+        .efuse_axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+        .efuse_axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+        .efuse_apb_req_t      (smc_pkg::smc_efuse_apb_req_t),
+        .efuse_apb_resp_t     (smc_pkg::smc_efuse_apb_resp_t),
+        .efuse_addr_byte_t    (smc_efuse_pkg::efuse_addr_byte_t),
+        .efuse_data_t         (smc_efuse_pkg::efuse_data_t),
+        .efuse_word_counter_t (smc_efuse_pkg::efuse_word_counter_t),
+        .fuse_command_req_t   (smc_efuse_pkg::fuse_command_req_t),
+        .fuse_command_resp_t  (smc_efuse_pkg::fuse_command_resp_t)
+    ) u_efuse_interface_shim (
+        .clk_i  (clk_smc_i),
+        .rst_ni (rst_primary_smc_clk_no),
+        .fuse_bank_ctrl_req_i  (axil_efuse_bank_req),
+        .fuse_bank_ctrl_resp_o (axil_efuse_bank_resp),
+        .fuse_command_req_i    (efuse_cmd_req),
+        .fuse_command_resp_o   (efuse_cmd_resp),
+        .efuse_model_otp_req_o  (efuse_model_otp_req),
+        .efuse_model_otp_resp_i (efuse_model_otp_resp),
+        .debug_bus_o ()
     );
-    assign efuse_prog_fail_seed = 32'h1bad_f00d;
+
+    efuse_bank_model #(
+        .NumFuseByteWidth (smc_efuse_pkg::NumFuseByteWidth),
+        .IsSmcInstance    (1'b1),
+        .efuse_apb_req_t  (smc_pkg::smc_efuse_apb_req_t),
+        .efuse_apb_resp_t (smc_pkg::smc_efuse_apb_resp_t)
+    ) u_efuse_bank_model (
+        .clk_i  (clk_smc_i),
+        .rst_ni (rst_primary_smc_clk_no),
+        .apb_req_i  (efuse_model_otp_req),
+        .apb_resp_o (efuse_model_otp_resp),
+        .hwif_out ()
+    );
 
     // Sense-done + sensed shadow probe (XMR into controller shadow regs).
     assign tb_fuse_sense_done = u_dut.fuse_sense_done_o;
     assign efuse_shadow_probe_o =
         u_dut.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
             .u_efuse_shadow_regs.shadow_efuse_o;
+    // Bank storage probe (programmed/OTP collapse into the same regfile).
+    assign tb_efuse_otp_word0 =
+        u_efuse_bank_model.u_efuse_bank_reg
+            .field_storage.EFUSE_BANK_REG[0].dout.value;
+    assign tb_efuse_programmed_word0 = tb_efuse_otp_word0;
 
     assign tb_i2c_debug_lo  = u_dut.i2c_debug[0];
     assign tb_i2c_cg_en     = u_dut.cg_ctrl_i2c_cg_en;

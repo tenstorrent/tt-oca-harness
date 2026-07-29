@@ -2,7 +2,7 @@
 schema_version = 1
 
 # P1 Coverage-Gap Depth Slate — Round 2 (Multi-instance depth).
-# See `docs/SMC_VPLAN.md` §P1 Coverage-Gap Depth Slate — Round 2.
+# See `docs/SMC_VPLAN.adoc` §P1 Coverage-Gap Depth Slate — Round 2.
 
 [[tests]]
 name = "smc_mailbox_multi_instance_test"

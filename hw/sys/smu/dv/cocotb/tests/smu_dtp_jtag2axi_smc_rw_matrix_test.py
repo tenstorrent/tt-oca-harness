@@ -97,7 +97,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test(smu_base_test):
                 (OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, "OUTBOUND0_FILTER_CONFIG"),
             ):
                 st, _ = await jtag2axi_single_write(jtag, addr, data)
-                sb.expect_eq(f"filter program {name}", st, J2A_STATUS_SUCCESS)
+                sb.expect_eq(f"filter program {name}", st, J2A_STATUS_SUCCESS, evidence="J2A_RW_MATRIX_OK")
 
             # --- 1) SIZE sweep: write + readback ---
             for idx, size in enumerate((0, 1, 2, 3)):

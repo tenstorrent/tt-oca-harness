@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared PyUVM base test for the OSS smc_wrapper environment."""
+"""Shared PyUVM base test for the OSS smc_wrapper environment.
+
+Nested under ``cocotb/wrapper/`` so the wrapper smoke catalog lives beside the
+bare-SMC tree without sharing ``SmcEnv`` / bare bring-up. ``python_root`` in
+``smc_wrapper_sim_cfg.toml`` points here, so imports stay local to this flavor.
+"""
 
 from __future__ import annotations
 
@@ -13,18 +18,19 @@ from cocotb.triggers import ClockCycles
 from pyuvm import ConfigDB, uvm_test
 
 
-_COCOTB_ROOT = Path(__file__).resolve().parents[1]
-_OSS_HW_ROOT = Path(__file__).resolve().parents[5]
-for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
+# tests/ -> wrapper/ -> cocotb/ -> dv/ -> smc/ -> sys/ -> hw/
+_WRAPPER_ROOT = Path(__file__).resolve().parents[1]
+_OSS_HW_ROOT = Path(__file__).resolve().parents[6]
+for _path in (_WRAPPER_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
     _path_text = str(_path)
     if _path_text not in sys.path:
         sys.path.insert(0, _path_text)
 
-from env.smc_env_cfg import SmcEnvCfg  # noqa: E402
+from env.smc_wrapper_env_cfg import SmcWrapperEnvCfg  # noqa: E402
 
 
-class smc_base_test(uvm_test):
-    """Clock/reset bring-up and scenario hook shared by every SMC wrapper test."""
+class smc_wrapper_base_test(uvm_test):
+    """Clock/reset bring-up and scenario hook for every SMC wrapper test."""
 
     @staticmethod
     def random_seed() -> int:
@@ -38,7 +44,7 @@ class smc_base_test(uvm_test):
         return int(value)
 
     def build_phase(self) -> None:
-        self.cfg = SmcEnvCfg("cfg")
+        self.cfg = SmcWrapperEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.logger.info(

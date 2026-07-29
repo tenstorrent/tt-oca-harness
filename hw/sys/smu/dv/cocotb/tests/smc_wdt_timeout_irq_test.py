@@ -64,7 +64,7 @@ class smc_wdt_timeout_irq_test(smu_base_test):
                 await jtag.step_tms(0)
 
             st_u = await wdt_unlock(jtag)
-            sb.expect_eq("WDT unlock status", st_u, J2A_STATUS_SUCCESS)
+            sb.expect_eq("WDT unlock status", st_u, J2A_STATUS_SUCCESS, evidence="WDT_WDOGIP0")
 
             st_c, _ = await jtag2axi_single_write(
                 jtag,

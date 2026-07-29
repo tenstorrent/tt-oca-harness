@@ -83,7 +83,7 @@ class smu_feat_ctrl_partial_bit_corner_test(smu_base_test):
                     f"shadow unchanged after incomplete {label}",
                     after,
                     before,
-                )
+                evidence="FEAT_PARTIAL_DENY")
                 sb.expect_true(
                     f"incomplete {label} did not land pattern",
                     after != pat,

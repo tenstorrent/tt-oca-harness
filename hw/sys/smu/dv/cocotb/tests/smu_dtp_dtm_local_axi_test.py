@@ -52,7 +52,7 @@ class smu_dtp_dtm_local_axi_test(smu_base_test):
                 await jtag.step_tms(0)
 
             caps = await jtag.read("SMC_JTAG2AXI_CAPS")
-            sb.expect_true("SMC_JTAG2AXI_CAPS non-zero", int(caps) != 0)
+            sb.expect_true("SMC_JTAG2AXI_CAPS non-zero", int(caps) != 0, evidence="J2A_RW_MATRIX_OK")
 
             # CSR read proves JTAG2AXI -> SMC local fabric completes (not BUSY forever).
             status_r, rdata = await jtag2axi_single_read(jtag, SMC_VERSION_LO_ADDR)

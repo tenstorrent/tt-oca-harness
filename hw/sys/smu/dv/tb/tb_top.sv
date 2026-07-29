@@ -710,17 +710,22 @@ module smu_uvm_top
     assign tb_dtp_csr_aw_addr  = u_dut.smc_axil_dtp_csr_req.aw.addr;
     assign tb_dtp_csr_ar_addr  = u_dut.smc_axil_dtp_csr_req.ar.addr;
 
+    // When remap is off, do not touch the packed AXIL req at all. Continuous
+    // force/release on addr bit-slices under Verilator can glitch valids and
+    // AW-lock the CTN axi_lite_xbar (idle aw_ready/w_ready stuck at 0).
     for (genvar gi = 11; gi < 32; gi++) begin : gen_dtp_csr_addr_remap
         always @(*) begin
-            if (smu_dtp_csr_addr_remap_en && u_dut.smc_axil_dtp_csr_req.aw_valid) begin
-                force u_dut.smc_axil_dtp_csr_req.aw.addr[gi] = 1'b0;
-            end else begin
-                release u_dut.smc_axil_dtp_csr_req.aw.addr[gi];
-            end
-            if (smu_dtp_csr_addr_remap_en && u_dut.smc_axil_dtp_csr_req.ar_valid) begin
-                force u_dut.smc_axil_dtp_csr_req.ar.addr[gi] = 1'b0;
-            end else begin
-                release u_dut.smc_axil_dtp_csr_req.ar.addr[gi];
+            if (smu_dtp_csr_addr_remap_en) begin
+                if (u_dut.smc_axil_dtp_csr_req.aw_valid) begin
+                    force u_dut.smc_axil_dtp_csr_req.aw.addr[gi] = 1'b0;
+                end else begin
+                    release u_dut.smc_axil_dtp_csr_req.aw.addr[gi];
+                end
+                if (u_dut.smc_axil_dtp_csr_req.ar_valid) begin
+                    force u_dut.smc_axil_dtp_csr_req.ar.addr[gi] = 1'b0;
+                end else begin
+                    release u_dut.smc_axil_dtp_csr_req.ar.addr[gi];
+                end
             end
         end
     end

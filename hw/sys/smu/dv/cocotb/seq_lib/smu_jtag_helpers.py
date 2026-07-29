@@ -93,7 +93,8 @@ def pack_ic_reset_ports(
         value = (value & ~(1 << bit)) | ((ctrl & 0x1) << bit)
     return value & SMU_IC_RESET_DEFAULT
 
-# SEP=0 ties sep_feat_ctrl to 0 -> JTAG2AXI gated. Prefer forcing the computed
+# SEP=0 ties feat_ctrl to 0 -> JTAG2AXI gated (enable-polarity:
+# security_disable = !soc_debug || !ap_debug). Prefer forcing the computed
 # security_disable net (continuous assign of feat_ctrl may ignore Force on fields).
 _SECURITY_DISABLE_CANDIDATES = (
     "u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable",
@@ -270,9 +271,15 @@ def _force_security_disable(dut, candidates, value: int, logger=None) -> list:
 def force_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
     """Ungate SMC fabric JTAG2AXI under SEP=0 (feat_ctrl tied off).
 
-    Prefer feat_ctrl Force (Verilator-safe with forceable). Do not trust a bare
-    Force on continuous security_disable — VPI may ERROR without raising.
+    Prefer Force on security_disable=0 (marked forceable in smu_public_scope.vlt).
+    Fall back to feat_ctrl soc_debug+ap_debug=1 (enable polarity).
     """
+    forced = _force_security_disable(
+        dut, _SECURITY_DISABLE_CANDIDATES, 0, logger
+    )
+    if forced:
+        return forced
+
     try:
         return force_feat_ctrl_bits(
             dut, {"soc_debug": 1, "ap_debug": 1}, logger
@@ -280,19 +287,19 @@ def force_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
     except AssertionError:
         pass
 
-    forced = _force_security_disable(
-        dut, _SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    if forced:
-        return forced
-
     raise AssertionError(
-        "Could not Force feat_ctrl enables or smc_jtag2axi_security_disable=0"
+        "Could not Force smc_jtag2axi_security_disable=0 or feat_ctrl enables"
     )
 
 
 def force_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
-    """Force-gate SMC fabric JTAG2AXI (clear feat_ctrl or security_disable=1)."""
+    """Force-gate SMC fabric JTAG2AXI (security_disable=1 or clear feat_ctrl)."""
+    forced = _force_security_disable(
+        dut, _SECURITY_DISABLE_CANDIDATES, 1, logger
+    )
+    if forced:
+        return forced
+
     try:
         return force_feat_ctrl_bits(
             dut, {"soc_debug": 0, "ap_debug": 0}, logger
@@ -300,19 +307,30 @@ def force_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
     except AssertionError:
         pass
 
-    forced = _force_security_disable(
-        dut, _SECURITY_DISABLE_CANDIDATES, 1, logger
-    )
-    if forced:
-        return forced
-
     raise AssertionError(
-        "Could not Force feat_ctrl clear or smc_jtag2axi_security_disable=1"
+        "Could not Force smc_jtag2axi_security_disable=1 or feat_ctrl clear"
     )
 
 
 def force_otp_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
-    """Ungate SMC OTP-over-JTAG under SEP=0 (needs fuse_test|soc_debug|ap_debug)."""
+    """Ungate SMC OTP and fabric JTAG2AXI under SEP=0.
+
+    OTP and fabric use distinct ``security_disable`` nets. Cross-path MAP
+    checks (OTP write + fabric read) need both open. Prefer Force on those
+    nets; fall back to feat_ctrl fuse+soc+ap=1 (opens both via enable polarity).
+    """
+    forced: list = []
+    otp = _force_security_disable(
+        dut, _OTP_SECURITY_DISABLE_CANDIDATES, 0, logger
+    )
+    fab = _force_security_disable(
+        dut, _SECURITY_DISABLE_CANDIDATES, 0, logger
+    )
+    forced.extend(otp)
+    forced.extend(fab)
+    if otp and fab:
+        return forced
+
     try:
         return force_feat_ctrl_bits(
             dut,
@@ -322,37 +340,31 @@ def force_otp_jtag2axi_lifecycle_enable(dut, logger=None) -> list:
     except AssertionError:
         pass
 
-    forced = _force_security_disable(
-        dut, _OTP_SECURITY_DISABLE_CANDIDATES, 0, logger
-    )
-    if forced:
-        return forced
-
     raise AssertionError(
-        "Could not Force OTP feat_ctrl enables or smc_otp_jtag2axi_security_disable=0"
+        "Could not Force OTP+fabric security_disable=0 or OTP feat_ctrl enables"
     )
 
 
 def force_otp_jtag2axi_lifecycle_disable(dut, logger=None) -> list:
-    """Force-gate SMC OTP-over-JTAG by clearing fuse_test only.
+    """Force-gate SMC OTP-over-JTAG by asserting security_disable=1.
 
-    RTL: security_disable = !fuse_test || !soc_debug || !ap_debug.
-    Clearing fuse_test alone gates OTP while leaving fabric (soc|ap) ungated —
-    needed when OTP and fabric Forces share one Verilator packed word.
+    RTL golden: security_disable = !fuse_test || !soc_debug || !ap_debug.
+    Clearing fuse_test alone also gates OTP while leaving fabric (soc&ap) ungated
+    when those bits stay 1 — needed when OTP and fabric share one packed word.
     """
-    try:
-        return force_feat_ctrl_bits(dut, {"fuse_test": 0}, logger)
-    except AssertionError:
-        pass
-
     forced = _force_security_disable(
         dut, _OTP_SECURITY_DISABLE_CANDIDATES, 1, logger
     )
     if forced:
         return forced
 
+    try:
+        return force_feat_ctrl_bits(dut, {"fuse_test": 0}, logger)
+    except AssertionError:
+        pass
+
     raise AssertionError(
-        "Could not Force OTP fuse_test clear or smc_otp_jtag2axi_security_disable=1"
+        "Could not Force smc_otp_jtag2axi_security_disable=1 or OTP fuse_test clear"
     )
 
 

@@ -600,8 +600,9 @@ Notes (honest caveats, not vacuous PASS):
 | **§13 (this file)** | Result-reporting policy (scenario + checks) | Active |
 | `../testlists/all.toml` | Runnable groups (`smoke`…`sep0_p4_all`) | Active |
 | `../testlists/{smc,dtp,fabric}.toml` | Enrolled test entries | Active (**62** unique) |
-| `../testlists/deferred.toml` | OUT / SEP=1 / toggle / child names + blocker banners | Reference only (**84** names); never reportable as passing |
-| `../testlists/{sep,interop}.toml` | SEP=1 / interop placeholders | OUT (not in `all.toml`) |
+| `../testlists/deferred.toml` | OUT / SEP=1 / toggle / child names + blocker banners | Reference only (**~107** unique names); never reportable as passing |
+| `../testlists/{sep,interop}.toml` | SEP=1 / interop **catalog groups** (probe vs blocked-exec) | OUT (not in `all.toml`); names in `deferred.toml` |
+| `../testlists/wrapper.toml` | `--dut smu_wrapper`: green `all` = elab+SMC; `sep_exec_blocked` holds `smu_sep_smoke` | Wrapper merge-gate; SEP exec not reportable |
 | `cocotb/env/smu_fcov.py` | Python FCOV ledger hits | Active |
 | Internal `oca_smu/.../smu_all_testplan.md` | Legacy full SMU universe | **External reference**; not OSS exit gate |
 
@@ -617,7 +618,7 @@ Notes (honest caveats, not vacuous PASS):
 | **`sep0_p4_all`** | **62** | enrolled (not full run) | enrolled (not full run) | sep0_all + phase4_sep0 |
 | `phase2` | 39 | PASS (subset of sep0) | PASS | phase1+phase2_smc_dtp |
 | `phase3` | 31 | PASS | PASS (P2+P3) | phase2_smc_dtp+phase3_corner |
-| `deferred` / Appendix A | 84 names | N/A | N/A | SEP=1 / interop / toggle / CHILD — **OUT** |
+| `deferred` / Appendix A | ~107 unique names | N/A | N/A | SEP=1 / interop / toggle / CHILD — **OUT** |
 
 ### 12.3 Enrolled testcase matrix (`sep0_all`)
 
@@ -769,20 +770,75 @@ group → VPLAN row (§12.3 ID or §4 `IF-*`).
 
 ## Appendix A — OUT / deferred universe (reference only)
 
-Not part of P1/P2 exit. Names retained for later programs / `deferred.toml`.
+Not part of P1–P4 exit. Names retained for later programs / `deferred.toml`.
+**Commercial sync (2026-07-23):** inventory aligned to
+`oca_smu/dv/smu/tb` (`testlist_smu_chiplet.yaml`, `SMU_INTEROP_VPLAN.md`,
+`SMU_DV_CLEANUP_PLAN.md` §27). Catalog groups:
+`testlists/sep.toml`, `testlists/interop.toml` (not in `all.toml`).
+**Legacy tree sync (2026-07-28):** `os_oca/dv/smu/tb` Jul mid adds audited —
+bodies **not** enrolled; names + disposition in **§A.7** / `deferred.toml`.
 
-### A.1 SMU-level SEP (needs `SEP=1`)
+### A.0 Commercial gate mapping (oca_smu → OSS)
+
+| Commercial regression | Intent | OSS home |
+|----------------------|--------|----------|
+| `SMU_Dev_with_SEP_Regression` | Probe / connectivity; **no** SEP CPU exec | `sep.toml` → `sep_probe`; `deferred.toml` tag `sep_probe` |
+| `Manual_SMU_Blocked_SEP_Exec_Regression` | Needs real SEP fetch/retire | `sep.toml` → `sep_exec_blocked`; wrapper `sep_exec_blocked` |
+| `SMU_Dev_without_SEP` / nightly | SEP=0 green | `all.toml` `sep0_*` (already enrolled) |
+
+**#3582 blocker (shared):** `mpc_reset_run_req` invert + `dbg_rstb→powergood_stable`
+landed; CLA fw half is `{1,4}` (not `{1,2,4}`). **Residual:** SEP CPU can be
+fully released (`mpc_reset_run=1`, clocks, resets) yet **IFU never asserts
+boot-ROM req** (`boot_rom_reqs=0`, `halt=X`, `pc=0`). OSS
+`--dut smu_wrapper` `smu_sep_smoke_test` reproduces this (2026-07-23).
+
+**OSS wrapper merge-gate:** `wrapper.toml` `all` / `smoke` = elaboration +
+`smu_smc_smoke` only. `smu_sep_smoke_test` is **quarantined** under
+`sep_exec_blocked` / `all_with_sep_exec` — not reportable as PASS (§13).
+
+### A.1 SMU-level SEP — blocked execution (`blocked_sep_exec`)
+
+Needs `compile_smu_chiplet_sep_rtl` **and** first-instruction retire:
 
 `smu_sep_smoke_test`, `smu_sep_sanity_test`, `smu_sep_spi_test`,
 `smu_sep_modules_test`, `smu_sep_dma_test`, `smu_sep_efuse_test`,
 `smu_sep_wdt(_strict)_test`, `smu_sep_aes(_strict)_test`,
-`smu_sep_otbn(_strict)_test`, `smu_sep_smc_xbar_programmable_addr_test`, …
+`smu_sep_otbn(_strict)_test`,
+`smu_cla_sep_cpu_debug_control_test` (**new**, SEP_SMU_022 CLA action map).
+
+### A.1b SMU-level SEP — probe / connectivity (`sep_probe`)
+
+Commercial green SEP gate (no retire required). Catalogued for OSS handoff;
+**not** enrolled until wrapper scoreboards exist:
+
+`smu_sep_smc_xbar_programmable_addr_test`, `smu_sep_wdt_reset_to_smc_test`,
+`smu_sep_spi_bridge_test`, `smu_sep_axi_extension_decode_test`,
+`smu_sep_external_irq_test`, `smu_sep_alias_mailbox_interrupt_probe_test`,
+`smu_sep_ext_axi_combined_probe_test`, `smu_sep_km_otbn_memory_test`,
+`smu_sep_debug_bus_test`, `smu_fuse_sense_handshake_test`,
+`smu_lifecycle_security_handoff_test`, `smu_feat_ctrl_monitor_test`,
+`smu_sep_filter_{rule_matrix,skip_wire}_test`,
+`smu_sep_ap_stee_{output_remap,remap_region_matrix}_test`,
+`smu_sep_outbound_demux_{decode,full_decode}_test`,
+`smu_sep_smc_{alias_remap_consistency,egress_unfiltered,addr_route_bug}_test`,
+`smu_sep_spi_mux_ctrl_wire_test`, `smu_sep_wdt_cdc_path_test`,
+`smu_ic_reset_sep_ext_slice_test`, `smu_sep_memory_integrity_test`,
+`smu_sep_otbn_execute_flow_probe_test`,
+`smu_sep_interrupt_error_recovery_matrix_test`.
 
 ### A.2 SMC/SEP interop
 
-`smc_sep_interoperability(_strict)_test`, `smc_sep_xbar(_strict)_test`,
-`smu_bidirect(_strict)_test`, `smu_smc_stall_sep_test`, modeled `smc_sep_*`,
-follow-up probes (`smu_dtp_sep_debug_enhanced_test`, fuse-sense, SPI bridge, …).
+**Real (blocked_sep_exec):** `smc_sep_interoperability(_strict)_test`,
+`smc_sep_xbar(_strict)_test`, `smu_bidirect(_strict)_test`,
+`smu_smc_stall_sep_test` (**updated**, SEP_SMU_004 CLA stall/release handshake).
+
+**Modeled BFM:** `smc_sep_{interaction,multi_cmd,service_req,error_recovery,
+seq_validation,notification,fw_request,bidirectional}_test`.
+
+**Other:** `smu_interop_negative_recovery_test`,
+`smu_interop_functional_coverage_bins_test`,
+`smu_dtp_sep_debug_enhanced_test`, `smu_dtp_sep_stap_reset_smoke_test`,
+`smu_dtp_sep_ic_reset_hold_test` (legacy P3; SEP=1).
 
 ### A.3 Fabric SEP=1
 
@@ -792,7 +848,8 @@ performance / structure / ID stress beyond SEP=0 slice.
 ### A.4 Toggle / wrapper coverage (commercial)
 
 `smu_wrapper_*_toggle_test`, `smu_u_smc_interface_toggle_test`,
-`smu_signal_path_verification_test`, `smu_dtp_jtag2axi_signal_toggle_test`.
+`smu_signal_path_verification_test`, `smu_dtp_jtag2axi_signal_toggle_test`,
+`smu_wrapper_pin_matrix` (helper; toggle-as-pass **OUT**).
 
 ### A.5 Child / dual reference
 
@@ -802,11 +859,35 @@ SMC dual_* / master-BFM references — not SMU signoff.
 
 | Domain | Anchor (P1/P2 or OUT) |
 |--------|------------------------|
-| Foundations / Boot | smoke, no_sep; SEP smoke = OUT |
+| Foundations / Boot | smoke, no_sep; SEP smoke = OUT (`sep_exec_blocked`) |
 | Debug / DTP | jtag, stall, OTP, JTAG2AXI, P2 deepeners |
 | Addressing | fabric SEP=0 slice; 3×3 = OUT |
 | Security | demote, lifecycle; #3538 E2E = OUT |
 | Protocols | xtrig P1/P2; OCTS dual = OUT |
+| SEP CLA / interop | OUT until #3582 IFU fix (`stall_sep`, `cla_sep_cpu_debug`) |
+
+### A.7 Legacy `os_oca/dv/smu/tb` Jul-2026 adds (catalog only)
+
+Source: `os_oca` commits around `#3909` / `#3926` / `#3966` / `#3971` /
+`#3973` and P3 expand `e84dfe55d` (`smu_p3_feature_list.md` /
+`smu_all_testplan.md`). **Do not enroll** into `all.toml` / `sep0_*`.
+Disposition:
+
+| Legacy name | OSS disposition | Enrolled near-relative (if any) |
+|-------------|-----------------|----------------------------------|
+| `smu_ctm_channel_matrix_test` | **superseded** | `smu_cross_trigger_matrix_test`, `smu_xtrig_ctm_four_phase_test`, `smu_xtrig_ctm_illegal_phase_test` |
+| `smu_dtp_feat_ctrl_gated_jtag2axi_test` | **superseded** | `smu_dtp_feat_ctrl_gate_matrix_test`, `smu_feat_ctrl_*` |
+| `smu_dtp_feat_ctrl_gated_stap_test` | **superseded** / SEP=1 STAP | gate_matrix (J2A); STAP remains OUT |
+| `smc_efuse_secure_tm_test` | **superseded** | `smc_efuse_secure_tm_force_test` (P4) |
+| `smu_wrapper_pin_matrix` | **OUT** toggle | wrapper elab + `smu_smc_smoke` |
+| `smu_dtp_dual_cpu_{bringup,jtag2axi}_test` | **blocked_sep_exec** | none (needs real SEP + pad TB) |
+| `smu_dtp_jtag2axi_sep_otp_path_test` | **sep1** catalog | SEP=0 OTP: `smu_dtp_otp_*` / `smu_dtp_otp_sep0_err_slv_test` |
+| `smu_dtp_ptap_otp_instr_scan_test` | **sep1** catalog | same |
+| `smu_dtp_sep_ic_reset_hold_test` | **sep1** catalog | SEP=0 IC_RESET: `smu_ic_reset_*` |
+| `smu_sep_smoke` / `smc_sep_{xbar,interoperability}` / `stall_sep` / `cla_sep_*` | already §A.1–A.2 | wrapper smoke skeleton only |
+
+**P1–P4 / `sep0_all` testplan rows:** **no change** — Jul legacy adds do not
+alter enrolled exit criteria.
 
 ---
 
@@ -850,3 +931,5 @@ Satellite detail: `SMU_OSS_VPLAN_PHASE1.md`. Stubs redirect here:
 | 2.24 | 2026-07-19 | §13 result-reporting policy (scenario exercised + failures detected + config classes + reproduce metadata); `deferred.toml` blocker banners (SEP console path, mailbox demux, IF-XT-04/IF-RST-04); DV-friendly terminology sweep (check grades, check tokens) |
 | 2.25 | 2026-07-20 | P4-SEP0 (`phase4_sep0` 7): secure_tm Force, WDT clamp, macro AXIL, OCTS, SS IC_RESET, EXTEST, ATB; VCS+VL **7/7**; FCOV v1.3 |
 | 2.26 | 2026-07-20 | P4 honesty: secure_tm→blocked_o; WDT isolate/raw clamp↔passthru contrast (TB Force gen_4core); OCTS CSR-required; EXTEST one-hot; IF-SMC-11; sep0_p4_all not full signoff; VCS+VL **7/7** |
+| 2.27 | 2026-07-23 | Sync SEP/interop catalog from `oca_smu/dv/smu/tb`: Appendix A.0–A.2 (probe vs `#3582` blocked-exec); `deferred.toml` + `sep.toml`/`interop.toml` groups; wrapper `all` drops `smu_sep_smoke` → `sep_exec_blocked`; add CLA/stall/filter/ap_stee/demux names |
+| 2.28 | 2026-07-28 | Audit `os_oca/dv/smu/tb` Jul adds vs OSS: **no enrolled body migrate**; Appendix **A.7** disposition table; `deferred.toml` catalog names; deferred count ~107 unique; P1–P4/`sep0_all` unchanged |

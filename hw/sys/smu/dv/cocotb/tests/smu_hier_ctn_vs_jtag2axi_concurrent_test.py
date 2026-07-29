@@ -91,7 +91,7 @@ class smu_hier_ctn_vs_jtag2axi_concurrent_test(smu_base_test):
             await t1
             await t2
 
-            sb.expect_eq("CTN A write OKAY", ctn_res["bresp"], AXI_OKAY)
+            sb.expect_eq("CTN A write OKAY", ctn_res["bresp"], AXI_OKAY, evidence="RACE_CTN_J2A")
             sb.expect_eq("CTN A read OKAY", ctn_res["rresp"], AXI_OKAY)
             sb.expect_eq(
                 "CTN A readback",

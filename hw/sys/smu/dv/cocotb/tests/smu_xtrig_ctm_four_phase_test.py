@@ -75,8 +75,8 @@ class smu_xtrig_ctm_four_phase_test(smu_base_test):
         dut.xtrig_ctm_dst_req.value = DEST_PAT
         await _settle()
         dtp = int(dtp_dst_req.value)
-        sb.expect_eq("dest P1 DTP[9:2] == DEST_PAT", (dtp >> 2) & 0xFF, DEST_PAT)
-        sb.expect_eq("dest P1 SMC[1:0] idle", dtp & 0x3, 0)
+        sb.expect_eq("dest P1 DTP[9:2] == DEST_PAT", (dtp >> 2) & 0xFF, DEST_PAT, evidence="XT_DEST_4PHASE")
+        sb.expect_eq("dest P1 SMC[1:0] idle", dtp & 0x3, 0, evidence="XT_SRC_4PHASE")
         sb.expect_eq("dest P1 TB ack still 0", _u8(dut.xtrig_ctm_dst_ack.value), 0)
 
         # Phase 2: assert ack (Force DTP; wire-OR cannot drive it)

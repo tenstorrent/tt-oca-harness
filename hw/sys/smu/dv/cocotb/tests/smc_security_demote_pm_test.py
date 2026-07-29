@@ -57,7 +57,7 @@ class smc_security_demote_pm_test(smu_base_test):
 
         sb.expect_eq(
             "SEP=0 lcc_demote_state_1_o", int(dut.lcc_demote_state_1_o.value) & 0x3, 0
-        )
+        , evidence="FEAT_FAB_DENY")
         sb.expect_eq(
             "SEP=0 lcc_demote_state_2_o", int(dut.lcc_demote_state_2_o.value) & 0x3, 0
         )

@@ -83,7 +83,7 @@ class smu_feat_ctrl_flip_mid_jtag2axi_test(smu_base_test):
                     busy_seen = True
                     break
                 await ClockCycles(dut.clk_smu_i, 8)
-            sb.expect_true("OTP BUSY before mid-op gate flip", busy_seen)
+            sb.expect_true("OTP BUSY before mid-op gate flip", busy_seen, evidence="FEAT_MID_OP_GATE")
 
             forced_gate = force_otp_jtag2axi_lifecycle_disable(dut, self.logger)
             await ClockCycles(dut.clk_smu_i, 16)

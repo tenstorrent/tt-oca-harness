@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// FIXME(SMU-DV): DEFERRED, not compiled by any active flow. This shadow was
-// built against the old repository's integration layer: it references
-// smc_ip_integration_pkg and efuse_otp_responder (both gone from this repo)
-// and the pre-rewrite smc/sep_ip_integration port interfaces (pad-level SPI
-// moved to struct ports; efuse models folded into the ip_integration
-// modules). Rework it against hw/top/{smu_wrapper,smc_ip_integration,
-// sep_ip_integration}.sv following the SEP wrapper migration before
-// re-enabling the smu_wrapper flow.
-//
-// DV shadow of the legacy wrapper smu_wrapper.sv (issue #3357 flow).
-// Identical to the hw/.bos source except that the internal
-// `logic rst_cold_n;` declaration is removed: it redeclares the ANSI output
-// port of the same name, which Verilator rejects as a duplicate declaration.
-// The sim config excludes the hw/.bos copy from the filelist and
-// compiles this file instead; drop this shadow once the hw fix lands.
+// DV shadow of hw/.bos/wrapper/smu/smu_wrapper.sv (issue #3357 flow).
+// Diffs vs hw/.bos (keep until upstream absorbs them):
+//   1. Drop internal `logic rst_cold_n;` (Verilator duplicate of ANSI output).
+//   2. Close SEP sidebands to u_smu like production smu_wrapper:
+//      entropy_rosc, ext_trng_* loopback, jtag_sep_reset_ctrl_o, sep_io_spi_req_o.
+//      The .bos copy left those u_smu ports unconnected and tied the
+//      integration side to '0.
+//   3. Capture sep_reset_n_o from u_smu (observe-only; .bos sep_ip_integration
+//      has no sep_reset_n_i port).
 //
 //----------------------------------------------------------
 // SMU Wrapper (OSS fork) -- OSS ip_integration + efuse OTP responders
@@ -31,6 +25,7 @@ module smu_wrapper #(
     // SEP (Secure Execution Processor) enable. Declared int unsigned (not bit) so VC
     // SpyGlass `elaborate -param SEP=0` can override it; -gfile cannot override bit-typed params.
     parameter int unsigned  SEP                   = 1,
+    parameter int unsigned  EXT_TRNG_NUM_AXIS     = 2,
 
     // Type parameter for the external IC_RESET TDR slice exposed to the SMU caller. Defaults to
     // `logic` (slice effectively unused); integrators override with a packed struct containing
@@ -395,27 +390,29 @@ module smu_wrapper #(
 
     // OT SPI IRQ (from SEP via SMU)
     logic ot_spi_irq;
-    logic cdns_spi_irq;
+    logic sep_spi_irq;
     logic spi_irq;
 
     sep_pkg::sep_32_64_6_12_axi_req_t   sep_axi_extension_req;
     sep_pkg::sep_32_64_6_12_axi_resp_t  sep_axi_extension_resp;
 
-    logic  sep_reset_n;
+    logic  sep_reset_n;     // plain SEP reset -> Cadence xSPI wrap
+    logic  sep_cpu_reset_n; // sep_reset_n & WDT reset -> memories / CPU
     logic [15:0] smc_efuse_debug_bus_o;
     logic [15:0] sep_efuse_debug_bus_o;
 
-    sep_pkg::jtag_sep_reset_ctrl_t      jtag_sep_reset_ctrl;
-    sep_pkg::sep_32_32_axil_req_t       sep_ext_trng_axil_req;
-    sep_crypto_pkg::ext_trng_axis_rsp_t sep_ext_trng_axis_rsp [2];
+    // External TRNG loopback + JTAG SEP reset: u_smu <-> sep_ip_integration
+    // (mirrors production hw/smu/smu_wrappers/rtl/smu_wrapper.sv).
+    sep_pkg::sep_32_32_axil_req_t        ext_trng_axil_req;
+    sep_pkg::sep_32_32_axil_resp_t       ext_trng_axil_resp;
+    sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
+    sep_crypto_pkg::ext_trng_axis_rsp_t  ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
+    logic                                ext_trng_irq;
+    logic                                ext_trng_alarm;
+    sep_pkg::jtag_sep_reset_ctrl_t       jtag_sep_reset_ctrl;
 
-    assign smc_efuse_debug_bus_o = '0;
-    assign sep_efuse_debug_bus_o = '0;
     // Observe-only passthrough; SMC uses internal axil_extension_resp from I3C stub
     assign smc_axil_extension_req_o = axil_extension_req;
-    assign jtag_sep_reset_ctrl     = '0;
-    assign sep_ext_trng_axil_req   = '0;
-    assign sep_ext_trng_axis_rsp   = '{default: '0};
 
     // SEP CPU trace: currently unused in SMU integration (no consumer connected)
     sep_pkg::sep_cpu_trace_t  sep_cpu_trace;
@@ -463,7 +460,6 @@ module smu_wrapper #(
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_ack_out_din;
     logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en;
 
-
     // CPU Memory Signals
     chipyard_4core_mem_pkg::rom_req_t              rom_intf_req;
     chipyard_4core_mem_pkg::rom_rsp_t              rom_intf_rsp;
@@ -487,6 +483,9 @@ module smu_wrapper #(
     i3c_pkg::dat_mem_sink_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
     i3c_pkg::dct_mem_src_t   [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
     i3c_pkg::dct_mem_sink_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
+    logic gated_clk_periph_i3c;
+    i3c_pkg::rlt_mem_src_t   [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
+    i3c_pkg::rlt_mem_sink_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
     // Debug signals
     logic [127:0] ext_debug_bus;
@@ -504,9 +503,10 @@ module smu_wrapper #(
     end
 
     smu #(
-        .Cfg             (Cfg),
-        .SEP             (SEP),
-        .ic_reset_ext_t  (ic_reset_ext_t)
+        .Cfg               (Cfg),
+        .SEP               (SEP),
+        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
+        .ic_reset_ext_t    (ic_reset_ext_t)
     ) u_smu (
         // Clock and Reset
         .clk_smu_i                              (smc_clk),
@@ -760,6 +760,17 @@ module smu_wrapper #(
         .sep_crypto_pka_dmem_sram_req_o         (sep_crypto_pka_dmem_sram_req),
         .sep_crypto_pka_dmem_sram_rsp_i         (sep_crypto_pka_dmem_sram_rsp),
 
+        // SEP sidebands closed to sep_ip_integration (production parity).
+        .entropy_rosc_sample_clk_i              (ref_clk_vdd_sys_dfx_i),
+        .ext_trng_axil_req_o                    (ext_trng_axil_req),
+        .ext_trng_axil_resp_i                   (ext_trng_axil_resp),
+        .ext_trng_axis_req_i                    (ext_trng_axis_req),
+        .ext_trng_axis_rsp_o                    (ext_trng_axis_rsp),
+        .ext_trng_irq_i                         (ext_trng_irq),
+        .ext_trng_alarm_i                       (ext_trng_alarm),
+        .jtag_sep_reset_ctrl_o                  (jtag_sep_reset_ctrl),
+        .sep_io_spi_req_o                       (sep_io_spi_req),
+
         .sep_km_rom_mem_req_o                   (sep_km_rom_mem_req),
         .sep_km_rom_mem_rsp_i                   (sep_km_rom_mem_rsp),
         .sep_km_sram_mem_req_o                  (sep_km_sram_mem_req),
@@ -773,6 +784,7 @@ module smu_wrapper #(
         .sep_axi_extension_resp_i               (sep_axi_extension_resp),
 
         .sep_reset_n_o                          (sep_reset_n),
+        .sep_cpu_reset_n_o                      (sep_cpu_reset_n),
 
         .sep_cpu_trace_o                        (sep_cpu_trace),
 
@@ -792,6 +804,9 @@ module smu_wrapper #(
         .i3c_dat_mem_sink_o                     (i3c_dat_mem_sink),
         .i3c_dct_mem_src_i                      (i3c_dct_mem_src),
         .i3c_dct_mem_sink_o                     (i3c_dct_mem_sink),
+        .gated_clk_periph_i3c_o                 (gated_clk_periph_i3c),
+        .i3c_rlt_mem_src_i                      (i3c_rlt_mem_src),
+        .i3c_rlt_mem_sink_o                     (i3c_rlt_mem_sink),
 
         // Debug bus
         .ext_debug_bus_i                        (ext_debug_bus),
@@ -803,28 +818,6 @@ module smu_wrapper #(
     ////////////////////////////////////////////
     // IP Integration Module (3rd Party IP)  //
     ////////////////////////////////////////////
-
-    // OSS efuse OTP responders (controller in u_smu → responder, not ip_integration)
-    efuse_otp_responder #(
-        .NumFuseWordsParam    (smc_efuse_pkg::NumFuseWords),
-        .NumFuseWordWidthParam (smc_efuse_pkg::NumFuseWordWidth),
-        .NumFuseBitsWidthParam (smc_efuse_pkg::NumFuseBitsWidth),
-        .IsSmcInstance        (1'b1),
-        .bank_ctrl_req_t      (smc_pkg::smc_axil_32_32_req_t),
-        .bank_ctrl_resp_t     (smc_pkg::smc_axil_32_32_resp_t),
-        .fuse_command_req_t   (smc_efuse_pkg::fuse_command_req_t),
-        .fuse_command_resp_t  (smc_efuse_pkg::fuse_command_resp_t),
-        .efuse_data_t         (smc_efuse_pkg::efuse_data_t),
-        .efuse_addr_bit_t     (smc_efuse_pkg::efuse_addr_bit_t),
-        .efuse_word_counter_t (smc_efuse_pkg::efuse_word_counter_t)
-    ) u_smc_efuse_responder (
-        .clk_i               (smc_clk),
-        .rst_ni              (rst_primary_smc_clk_n),
-        .bank_ctrl_req_i     (smc_efuse_bank_ctrl_req),
-        .bank_ctrl_resp_o    (smc_efuse_bank_ctrl_resp),
-        .fuse_command_req_i  (smc_efuse_shim_command_req),
-        .fuse_command_resp_o (smc_efuse_shim_command_resp)
-    );
 
     smc_ip_integration #(
         // The DTP fixes its CTP count as a localparam, so the integration's CTP
@@ -838,6 +831,7 @@ module smu_wrapper #(
         // Clocks
         .smc_clk(smc_clk),
         .periph_clk(periph_clk),
+        .gated_clk_periph_i3c_i(gated_clk_periph_i3c),
         .ref_clk_vdd_sys(ref_clk_vdd_sys),
         .ref_clk_vdd_sys_dfx_i(ref_clk_vdd_sys_dfx_i),
 
@@ -867,11 +861,15 @@ module smu_wrapper #(
         .axil_req_gpio_ctrl(axil_req_gpio_ctrl),
         .axil_resp_gpio_ctrl(axil_resp_gpio_ctrl),
 
-        // AXI-Lite from AXIL Extension to OSS I3C stub (Cadence IP removed)
-        .axil_cdni3c_req(axil_extension_req),
-        .axil_cdni3c_resp(axil_extension_resp),
+        // AXI-Lite from AXIL Extension to OSS I3C stub
+        .axil_i3c_req(axil_extension_req),
+        .axil_i3c_resp(axil_extension_resp),
 
         // Efuse interfaces from SMC
+        .efuse_bank_ctrl_req(smc_efuse_bank_ctrl_req),
+        .efuse_bank_ctrl_resp(smc_efuse_bank_ctrl_resp),
+        .efuse_shim_command_req(smc_efuse_shim_command_req),
+        .efuse_shim_command_resp(smc_efuse_shim_command_resp),
         .shadow_regs(smc_shadow_regs),
 
         // Memory interfaces from SMC
@@ -1027,7 +1025,11 @@ module smu_wrapper #(
         .i3c_dat_mem_sink_i(i3c_dat_mem_sink),
         .i3c_dat_mem_src_o(i3c_dat_mem_src),
         .i3c_dct_mem_sink_i(i3c_dct_mem_sink),
-        .i3c_dct_mem_src_o(i3c_dct_mem_src)
+        .i3c_dct_mem_src_o(i3c_dct_mem_src),
+        .i3c_rlt_mem_sink_i(i3c_rlt_mem_sink),
+        .i3c_rlt_mem_src_o(i3c_rlt_mem_src),
+
+        .efuse_debug_bus_o(smc_efuse_debug_bus_o)
     );
 
     assign powergood_o = powergood;
@@ -1042,33 +1044,15 @@ module smu_wrapper #(
         assign lcc_demote_state_1_o = lcc_demote_state_1;
         assign lcc_demote_state_2_o = lcc_demote_state_2;
 
-
-        efuse_otp_responder #(
-            .NumFuseWordsParam    (sep_efuse_pkg::NumFuseWords),
-            .NumFuseWordWidthParam (sep_efuse_pkg::NumFuseWordWidth),
-            .NumFuseBitsWidthParam (sep_efuse_pkg::NumFuseBitsWidth),
-            .IsSmcInstance        (1'b0),
-            .bank_ctrl_req_t      (sep_efuse_pkg::efuse_axil_req_t),
-            .bank_ctrl_resp_t     (sep_efuse_pkg::efuse_axil_resp_t),
-            .fuse_command_req_t   (sep_efuse_pkg::fuse_command_req_t),
-            .fuse_command_resp_t  (sep_efuse_pkg::fuse_command_resp_t),
-            .efuse_data_t         (sep_efuse_pkg::efuse_data_t),
-            .efuse_addr_bit_t     (sep_efuse_pkg::efuse_addr_bit_t),
-            .efuse_word_counter_t (sep_efuse_pkg::efuse_word_counter_t)
-        ) u_sep_efuse_responder (
-        .clk_i               (smc_clk),
-        .rst_ni              (rst_primary_smc_clk_n),
-            .bank_ctrl_req_i     (sep_efuse_bank_ctrl_req),
-            .bank_ctrl_resp_o    (sep_efuse_bank_ctrl_resp),
-            .fuse_command_req_i  (sep_efuse_shim_command_req),
-            .fuse_command_resp_o (sep_efuse_shim_command_resp)
-        );
-
-        sep_ip_integration u_sep_ip_integration (
+        sep_ip_integration #(
+            .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS)
+        ) u_sep_ip_integration (
             .clk_i                          (smc_clk),
             .rst_ni                         (rst_primary_smc_clk_n),
 
-            .sep_reset_n_i                  (sep_reset_n),
+            // .bos sep_ip_integration has no sep_reset_n_i (production does);
+            // only sep_cpu_reset_n_i resets memories / ROM in this fork.
+            .sep_cpu_reset_n_i              (sep_cpu_reset_n),
 
             .test_en_i                      (test_en_i),
             .scan_rst_ni                    (scan_rst_ni),
@@ -1080,6 +1064,10 @@ module smu_wrapper #(
             .sep_cpu_tcm_req                (sep_cpu_tcm_req),
             .sep_cpu_tcm_rsp                (sep_cpu_tcm_rsp),
 
+            .efuse_bank_ctrl_req            (sep_efuse_bank_ctrl_req),
+            .efuse_bank_ctrl_resp           (sep_efuse_bank_ctrl_resp),
+            .efuse_shim_command_req         (sep_efuse_shim_command_req),
+            .efuse_shim_command_resp        (sep_efuse_shim_command_resp),
             .shadow_regs                    ('0),  // TODO: wire SEP efuse shadow regs if needed
 
             .sep_io_spi_req_i               (sep_io_spi_req),
@@ -1104,7 +1092,7 @@ module smu_wrapper #(
             .spi_mem_rebar_iepad_o          (sep_spi_mem_rebar_iepad),
             .spi_mem_rebar_ipad_i           (sep_spi_mem_rebar_ipad),
 
-            .spi_irq_o                      (cdns_spi_irq),
+            .spi_irq_o                      (sep_spi_irq),
 
             .axi_extension_axi_req_i        (sep_axi_extension_req),
             .axi_extension_axi_resp_o       (sep_axi_extension_resp),
@@ -1114,20 +1102,22 @@ module smu_wrapper #(
             .km_sram_mem_req_i              (sep_km_sram_mem_req),
             .km_sram_mem_rsp_o              (sep_km_sram_mem_rsp),
 
-            .jtag_sep_reset_ctrl_i          (jtag_sep_reset_ctrl),
+            // OTBN/PKA external SRAM + JTAG SEP reset + TRNG loopback from u_smu.
             .otbn_imem_sram_req_i           (sep_crypto_pka_imem_sram_req),
             .otbn_imem_sram_rsp_o           (sep_crypto_pka_imem_sram_rsp),
             .otbn_dmem_sram_req_i           (sep_crypto_pka_dmem_sram_req),
             .otbn_dmem_sram_rsp_o           (sep_crypto_pka_dmem_sram_rsp),
-            .ext_trng_axil_req_i            (sep_ext_trng_axil_req),
-            .ext_trng_axil_resp_o           (),
-            .ext_trng_axis_req_o            (),
-            .ext_trng_axis_rsp_i            (sep_ext_trng_axis_rsp),
-            .ext_trng_irq_o                 (),
-            .ext_trng_alarm_o               ()
+            .jtag_sep_reset_ctrl_i          (jtag_sep_reset_ctrl),
+            .ext_trng_axil_req_i            (ext_trng_axil_req),
+            .ext_trng_axil_resp_o           (ext_trng_axil_resp),
+            .ext_trng_axis_req_o            (ext_trng_axis_req),
+            .ext_trng_axis_rsp_i            (ext_trng_axis_rsp),
+            .ext_trng_irq_o                 (ext_trng_irq),
+            .ext_trng_alarm_o               (ext_trng_alarm),
+            .efuse_debug_bus_o              (sep_efuse_debug_bus_o)
         );
 
-        assign spi_irq = sep_spi_enable ? cdns_spi_irq : ot_spi_irq;
+        assign spi_irq = sep_spi_enable ? sep_spi_irq : ot_spi_irq;
 
     end else begin : gen_no_sep_ip
 
@@ -1163,10 +1153,16 @@ module smu_wrapper #(
         assign sep_efuse_shim_command_resp = '0;
         assign sep_crypto_pka_imem_sram_rsp = '0;
         assign sep_crypto_pka_dmem_sram_rsp = '0;
+        // No TRNG source when sep_ip_integration absent; tie nets u_smu consumes.
+        assign ext_trng_axil_resp = '0;
+        assign ext_trng_axis_req  = '{default: '0};
+        assign ext_trng_irq       = 1'b0;
+        assign ext_trng_alarm     = 1'b0;
         assign sep_km_rom_mem_rsp        = '0;
         assign sep_km_sram_mem_rsp       = '0;
         assign sep_io_spi_rsp            = '0;
         assign sep_axi_extension_resp    = '0;
+        assign sep_efuse_debug_bus_o     = '0;
     end
 
     // smc_ip_integration uses lcc_demote from external inputs when Sep=0,

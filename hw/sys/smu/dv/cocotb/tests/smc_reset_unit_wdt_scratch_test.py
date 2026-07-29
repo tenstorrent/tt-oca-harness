@@ -65,7 +65,7 @@ class smc_reset_unit_wdt_scratch_test(smu_base_test):
                 (SCRATCH_COLD_WARM, PAT_WARM, "cold_warm"),
             ):
                 st, _ = await jtag2axi_single_write(jtag, addr, pat)
-                sb.expect_eq(f"scratch {name} write", st, J2A_STATUS_SUCCESS)
+                sb.expect_eq(f"scratch {name} write", st, J2A_STATUS_SUCCESS, evidence="WDT_SCRATCH_DOMAIN")
                 st_r, rb = await jtag2axi_single_read(jtag, addr)
                 sb.expect_eq(f"scratch {name} read status", st_r, J2A_STATUS_SUCCESS)
                 sb.expect_eq(

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-// OSS DV stub override for the FOSS simulator; see gpio_macro_wrapper.sv.
+//
+// FOSS-simulator stub override for the input GPIO macro (wrapper DUT).
+// Same rationale as gpio_macro_wrapper.sv — see tb/verilator_stubs/README.md.
+// Not a CPU-core stub; VCS keeps the real RTL.
 module input_gpio_macro_wrapper
 #(
     parameter logic INPUT_BY_DEFAULT = 1'b1,

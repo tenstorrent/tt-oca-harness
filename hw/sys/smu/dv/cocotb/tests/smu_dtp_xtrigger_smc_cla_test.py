@@ -53,7 +53,7 @@ class smu_dtp_xtrigger_smc_cla_test(smu_base_test):
             await RisingEdge(dut.clk_smu_i)
 
         # Baseline: ack[1:0] hardwired 0.
-        sb.expect_eq("src_ack[1:0] idle hardwire", int(dtp_src_ack.value) & 0x3, 0)
+        sb.expect_eq("src_ack[1:0] idle hardwire", int(dtp_src_ack.value) & 0x3, 0, evidence="XT_SMC_GLUE")
 
         # --- DTP src_req[1:0] -> SMC ss_i ---
         for pat in (PAT_A, PAT_B, PAT_AB):
@@ -66,7 +66,7 @@ class smu_dtp_xtrigger_smc_cla_test(smu_base_test):
                     f"smc_xtrigger_ss_i == {pat:#x}",
                     int(smc_ss_i.value) & 0x3,
                     pat & 0x3,
-                )
+                evidence="XT_ACK_HARDWIRE_0")
                 sb.expect_eq(
                     f"src_ack[1:0] still 0 (pat={pat:#x})",
                     int(dtp_src_ack.value) & 0x3,

@@ -24,6 +24,47 @@ class SmuSepSmokeSeq:
         self.dut = cocotb.top
         self.log = test.logger
 
+    def _hier_int(self, path: str, default: int = -1) -> int:
+        """Best-effort XMR read for bring-up diagnosis (missing → default)."""
+        node = self.dut
+        try:
+            for part in path.split("."):
+                node = getattr(node, part)
+            return self.test.read_int(node, path, allow_xz=True)
+        except Exception:
+            return default
+
+    def _probe_str(self, signal) -> str:
+        value = signal.value
+        if hasattr(value, "is_resolvable") and not value.is_resolvable:
+            return f"X({value})"
+        return str(int(value))
+
+    def _log_sep_run_gate(self, tag: str) -> None:
+        self.log.info(
+            "SEP run-gate %s: cla=%s halt=%s dbg_mode=%s "
+            "mpc_reset_run=%s mpc_dbg_run=%s cpu_run=%s boot_rom_reqs=%s "
+            "cpu_rst_n=%s dbg_rstb=%s sep_rst_n=%s cpu_clk_cnt=%s "
+            "at_release_valid=%s mpc_at_release=%s mpc_xz_at_release=%s "
+            "cla_at_release=%s",
+            tag,
+            self._probe_str(self.dut.sep_cla_custom_o),
+            self._probe_str(self.dut.sep_halt_status_o),
+            self._probe_str(self.dut.sep_debug_mode_o),
+            self._probe_str(self.dut.sep_mpc_reset_run_o),
+            self._probe_str(self.dut.sep_mpc_debug_run_o),
+            self._probe_str(self.dut.sep_cpu_run_req_o),
+            self._probe_str(self.dut.sep_boot_rom_req_count_o),
+            self._probe_str(self.dut.sep_cpu_rst_ni_o),
+            self._probe_str(self.dut.sep_dbg_rstb_o),
+            self._probe_str(self.dut.sep_mod_rst_ni_o),
+            self._probe_str(self.dut.sep_cpu_clk_count_o),
+            self._probe_str(self.dut.sep_rungate_at_release_valid_o),
+            self._probe_str(self.dut.sep_mpc_reset_run_at_release_o),
+            self._probe_str(self.dut.sep_mpc_xz_at_release_o),
+            self._probe_str(self.dut.sep_cla_at_release_o),
+        )
+
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_BOOT_MAX_CYCLES", "3000000"), 0)
         heartbeat = max(1, max_cycles // 30)
@@ -46,12 +87,17 @@ class SmuSepSmokeSeq:
 
         for cycle in range(max_cycles):
             await RisingEdge(self.dut.clk_smu_i)
-            sep_reset = self.test.read_int(self.dut.sep_reset_n_o, "sep_reset_n_o")
-            sep_fuse = self.test.read_int(
-                self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o"
+            # SEP EL2 trace/PC stay X until the CPU leaves reset; treat as 0.
+            sep_reset = self.test.read_int(
+                self.dut.sep_reset_n_o, "sep_reset_n_o", allow_xz=True
             )
-            valid = self.test.read_int(self.dut.sep_trace_valid_o, "sep_trace_valid_o")
-            pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o")
+            sep_fuse = self.test.read_int(
+                self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o", allow_xz=True
+            )
+            valid = self.test.read_int(
+                self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
+            )
+            pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
             self.sb.sample_status(reset_n=sep_reset, fuse_done=sep_fuse)
             self.sb.sample_arm(
                 self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o")
@@ -59,20 +105,30 @@ class SmuSepSmokeSeq:
             self.sb.sample_trace(valid, pc)
             self.sb.sample_windows(
                 boot_rom_seen=self.test.read_int(
-                    self.dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o"
+                    self.dut.sep_boot_rom_fetch_seen_o,
+                    "sep_boot_rom_fetch_seen_o",
+                    allow_xz=True,
                 ),
                 iccm_seen=self.test.read_int(
-                    self.dut.sep_iccm_fetch_seen_o, "sep_iccm_fetch_seen_o"
+                    self.dut.sep_iccm_fetch_seen_o,
+                    "sep_iccm_fetch_seen_o",
+                    allow_xz=True,
                 ),
             )
             self.sb.sample_dccm(
                 self.test.read_int(
-                    self.dut.sep_dccm_write_count_o, "sep_dccm_write_count_o"
+                    self.dut.sep_dccm_write_count_o,
+                    "sep_dccm_write_count_o",
+                    allow_xz=True,
                 )
             )
 
-            if self.test.read_int(self.dut.fw_char_valid_o, "fw_char_valid_o"):
-                char = self.test.read_int(self.dut.fw_char_o, "fw_char_o")
+            if self.test.read_int(
+                self.dut.fw_char_valid_o, "fw_char_valid_o", allow_xz=True
+            ):
+                char = self.test.read_int(
+                    self.dut.fw_char_o, "fw_char_o", allow_xz=True
+                )
                 self.sb.sample_char(char)
 
             if self.sb.boot_ready():
@@ -122,11 +178,20 @@ class SmuSepSmokeSeq:
                     smc_pass,
                     axi_writes,
                 )
-            if cycle == 100_000 and self.sb.trace_count == 0:
-                raise AssertionError(
-                    "SEP retired no instructions in 100000 cycles: "
-                    f"reset={sep_reset} fuse={sep_fuse} pc=0x{pc:08x}"
-                )
+                self._log_sep_run_gate(f"heartbeat@{cycle}")
+            # SMC arm (CLA) releases SEP; watch for retires only after that.
+            if sep_reset and self.sb.smc_arm_seen and self.sb.trace_count == 0:
+                self._post_arm_idle = getattr(self, "_post_arm_idle", 0) + 1
+                if self._post_arm_idle == 1:
+                    self._log_sep_run_gate("arm_seen")
+                if self._post_arm_idle >= 100_000:
+                    self._log_sep_run_gate("post_arm_timeout")
+                    raise AssertionError(
+                        "SEP retired no instructions within 100000 cycles after "
+                        f"SMC arm: reset={sep_reset} fuse={sep_fuse} pc=0x{pc:08x}"
+                    )
+            else:
+                self._post_arm_idle = 0
         observed_pcs = ", ".join(f"0x{pc:08x}" for pc in sorted(self.sb.pcs))
         raise AssertionError(
             f"SEP boot-readiness timeout after {max_cycles} cycles: "

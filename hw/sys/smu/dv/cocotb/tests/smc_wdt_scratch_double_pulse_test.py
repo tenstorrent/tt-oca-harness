@@ -68,7 +68,7 @@ class smc_wdt_scratch_double_pulse_test(smu_base_test):
                 await jtag.step_tms(0)
 
             st, _ = await jtag2axi_single_write(jtag, SCRATCH_COLD, PAT_COLD)
-            sb.expect_eq("cold seed write", st, J2A_STATUS_SUCCESS)
+            sb.expect_eq("cold seed write", st, J2A_STATUS_SUCCESS, evidence="WDT_DOUBLE_PULSE")
             st, _ = await jtag2axi_single_write(jtag, SCRATCH_COLD_WARM, PAT_WARM1)
             sb.expect_eq("warm1 seed write", st, J2A_STATUS_SUCCESS)
 

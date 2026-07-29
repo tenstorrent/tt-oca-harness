@@ -20,12 +20,14 @@ top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
   # Reuse the proven SMC CPU memory behavioral responders.
-  "hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
+  "hw/sys/smc/dv/models/mem/tb_smc_cpu_mem_responder.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
 work_dir = "hw/sys/smu/dv/build"
 common_bender_targets = [
+  "tech_cells_generic_exclude_deprecated",
+  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -47,9 +49,26 @@ incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
 ]
-# The legacy Cadence xSPI / Samsung GPIO/ESD / padring excludes were dropped
-# with the port: this repository's tree is vendor-clean by construction and
-# none of those files exist here.
+# Licensed Cadence xSPI is pulled by the sep bender graph but unused under SEP=0 /
+# OpenTitan SPI path. Mirror SEP OSS exclude so VCS stays vendor-clean.
+# Samsung GPIO/ESD + padring_dv_wrapper + SPI flash models come from the same
+# sep×simulation slice but are not in the SMU SEP=0 hierarchy — drop them so
+# Verilator is not forced to parse unsupported constructs (pmos/rmos/highz).
+exclude_files = [
+  "sep_cdns_spi_wrap.sv",
+  "cdn_ip6184_19e8_dll_phy",
+  "cdn_xspi",
+  "ln04lpp_gpio_lib_t12.v",
+  "ln04lpp_gpio_lib_t18.v",
+  "ln04lpp_esd_lib_t12.v",
+  "ln04lpp_esd_lib_t18.v",
+  "padring_dv_wrapper.sv",
+  "tt_spi_devices.sv",
+  "tt_bidir_delay.sv",
+  "meta/models/spi",
+  # Mirror OSS SMC i3c-core rebase: drop stale deps/i3c-core vs vendor upstream.
+  "deps/i3c-core",
+]
 stubs = [
   # Verilator-compat overrides (same set as OSS SMC). Listed first; -Wno-MODDUP
   # first-wins. VCS drops stubs whose basename already exists in the bender graph.
@@ -75,6 +94,7 @@ python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
+  "dv/vip/cocotb",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
 ]

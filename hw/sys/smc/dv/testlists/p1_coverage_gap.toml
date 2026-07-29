@@ -2,7 +2,7 @@
 schema_version = 1
 
 # P1 Coverage-Gap Depth Slate — 13 new tests that close the RTL vs
-# testplan coverage gap identified in `docs/SMC_VPLAN.md` §P1
+# testplan coverage gap identified in `docs/SMC_VPLAN.adoc` §P1
 # Coverage-Gap Depth Slate. All are pure inbound AXI CSR reads / bounded
 # write-readback; no new VIP / BFM / firmware needed. Runnable on both
 # Xcelium 25.03.001 and Verilator 5.046 via `SmcSysAxiAgent`.

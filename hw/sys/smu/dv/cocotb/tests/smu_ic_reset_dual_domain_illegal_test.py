@@ -73,7 +73,7 @@ class smu_ic_reset_dual_domain_illegal_test(smu_base_test):
                 f"idle {ovrd_name}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name),
                 0,
-            )
+            evidence="IC_RESET_DUAL_PACK")
 
         for label, ports in _PAIRS:
             enable = {p: 0 for p in ports}

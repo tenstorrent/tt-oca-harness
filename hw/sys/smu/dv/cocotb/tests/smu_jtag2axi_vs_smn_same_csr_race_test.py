@@ -89,7 +89,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test(smu_base_test):
                 wstrb=0xF,
                 size=SMC_DBG_AXSIZE_4B,
             )
-            sb.expect_eq("pre-race scratch clear", st0, J2A_STATUS_SUCCESS)
+            sb.expect_eq("pre-race scratch clear", st0, J2A_STATUS_SUCCESS, evidence="RACE_J2A_SMN")
 
             j_result: dict = {}
             s_result: dict = {}

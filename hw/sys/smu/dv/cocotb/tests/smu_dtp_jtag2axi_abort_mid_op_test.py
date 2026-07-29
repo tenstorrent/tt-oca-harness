@@ -80,7 +80,7 @@ class smu_dtp_jtag2axi_abort_mid_op_test(smu_base_test):
                     busy_seen = True
                     break
                 await ClockCycles(dut.clk_smu_i, 8)
-            sb.expect_true("OTP mid-op BUSY before abort", busy_seen)
+            sb.expect_true("OTP mid-op BUSY before abort", busy_seen, evidence="J2A_ABORT_RECOVER")
 
             # Mid-BUSY IR change to IDCODE (abort scan path).
             idc = await jtag.read("IDCODE", shift_value=0)

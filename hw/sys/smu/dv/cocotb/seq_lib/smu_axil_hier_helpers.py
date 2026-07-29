@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Hierarchical AXI-Lite single-beat helpers (Force/Release on packed req).
 
-Used when frontdoor decode cannot reach a subordinate (e.g. local-xbar hole
-before DTP CSR) but the SMU glue net and CTN RTL still need protocol checks.
-
-VCS exposes AXI-Lite packed structs as hierarchical field handles. Verilator
-exposes a flat packed word (AXI_LITE_TYPEDEF_REQ_T / RESP_T) — use bit maps.
+Verilator notes:
+  - Prefer packed-word Force (forceable net); keep an RMW shadow.
+  - Force with an explicit 111-bit LogicArray so VforceEn covers all bits
+    (narrow int Forces can leak continuous-driver bits into upper words).
+  - CTN NO_LATENCY demux: idle aw_ready often 0; idle ar_ready often 1.
+  - Hold valids until the response beat (r_valid / b_valid); do not drop
+    AR on the first ar_ready sample (false idle ready before DUT sees valid).
 """
 
 from __future__ import annotations
@@ -13,9 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 from cocotb.handle import Force, Release
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import FallingEdge, RisingEdge
+from cocotb.types import LogicArray, Range
 
-# AXI-Lite 32/32 req packed MSB-first, width 111 → [110:0]
 _AXIL_REQ_BITS = {
     "aw_addr": (110, 79),
     "aw_prot": (78, 76),
@@ -29,8 +31,8 @@ _AXIL_REQ_BITS = {
     "ar_valid": (1, 1),
     "r_ready": (0, 0),
 }
+_AXIL_REQ_WIDTH = 111
 
-# AXI-Lite 32/32 resp packed MSB-first, width 41 → [40:0]
 _AXIL_RESP_BITS = {
     "aw_ready": (40, 40),
     "w_ready": (39, 39),
@@ -42,12 +44,27 @@ _AXIL_RESP_BITS = {
     "r_valid": (0, 0),
 }
 
+_AXIL_REQ_FORCE_SHADOW: dict[int, int] = {}
+
+
+def _packed_width(handle: Any) -> int | None:
+    try:
+        return len(handle.value)
+    except Exception:
+        return None
+
 
 def _is_hier_req(req: Any) -> bool:
+    width = _packed_width(req)
+    if width is not None and width >= 100:
+        return False
     return hasattr(req, "aw_valid")
 
 
 def _is_hier_resp(resp: Any) -> bool:
+    width = _packed_width(resp)
+    if width is not None and width >= 32:
+        return False
     return hasattr(resp, "aw_ready")
 
 
@@ -62,7 +79,6 @@ def _bit_set(word: int, hi: int, lo: int, val: int) -> int:
 
 
 def axil_req_get(req: Any, field: str) -> int:
-    """Read one AXI-Lite req field (hierarchical or packed)."""
     if _is_hier_req(req):
         if field == "aw_addr":
             return int(req.aw.addr.value) & 0xFFFFFFFF
@@ -78,11 +94,13 @@ def axil_req_get(req: Any, field: str) -> int:
             return int(req.ar.prot.value)
         return int(getattr(req, field).value)
     hi, lo = _AXIL_REQ_BITS[field]
+    key = id(req)
+    if key in _AXIL_REQ_FORCE_SHADOW:
+        return _bit_get(_AXIL_REQ_FORCE_SHADOW[key], hi, lo)
     return _bit_get(int(req.value), hi, lo)
 
 
 def axil_resp_get(resp: Any, field: str) -> int:
-    """Read one AXI-Lite resp field (hierarchical or packed)."""
     if _is_hier_resp(resp):
         if field == "b_resp":
             return int(resp.b.resp.value)
@@ -114,15 +132,16 @@ def _force_req_fields(req: Any, updates: dict[str, int]) -> None:
                 getattr(req, field).value = Force(val)
         return
 
-    word = 0
-    try:
-        word = int(req.value)
-    except Exception:
-        word = 0
+    key = id(req)
+    word = int(_AXIL_REQ_FORCE_SHADOW.get(key, 0))
     for field, val in updates.items():
         hi, lo = _AXIL_REQ_BITS[field]
         word = _bit_set(word, hi, lo, val)
-    req.value = Force(word)
+    # Full-width Force so Verilator VforceEn covers bits [110:0].
+    req.value = Force(
+        LogicArray.from_unsigned(word & ((1 << _AXIL_REQ_WIDTH) - 1), Range(110, 0))
+    )
+    _AXIL_REQ_FORCE_SHADOW[key] = word
 
 
 async def axil_hier_write32(
@@ -135,7 +154,11 @@ async def axil_hier_write32(
     wstrb: int = 0xF,
     timeout_cycles: int = 64,
 ) -> int:
-    """Issue one AXI-Lite write; return bresp (0=OKAY)."""
+    """Issue one AXI-Lite write; return bresp (0=OKAY).
+
+    Hold AW+W until b_valid. CTM PeakRDL needs both channels; CTN demux
+    accepts AW into its W-select FIFO then W.
+    """
     _force_req_fields(
         req,
         {
@@ -146,7 +169,6 @@ async def axil_hier_write32(
             "r_ready": 1,
         },
     )
-
     await RisingEdge(clk)
     _force_req_fields(
         req,
@@ -157,37 +179,45 @@ async def axil_hier_write32(
             "w_data": data & 0xFFFFFFFF,
             "w_strb": wstrb & 0xF,
             "w_valid": 1,
+            "ar_valid": 0,
             "b_ready": 1,
             "r_ready": 1,
-            "ar_valid": 0,
         },
     )
 
     aw_done = w_done = False
     for _ in range(timeout_cycles):
-        await RisingEdge(clk)
-        if (not aw_done) and axil_req_get(req, "aw_valid") and axil_resp_get(resp, "aw_ready"):
-            _force_req_fields(req, {"aw_valid": 0})
+        await FallingEdge(clk)
+        if (not aw_done) and axil_req_get(req, "aw_valid") and axil_resp_get(
+            resp, "aw_ready"
+        ):
             aw_done = True
-        if (not w_done) and axil_req_get(req, "w_valid") and axil_resp_get(resp, "w_ready"):
-            _force_req_fields(req, {"w_valid": 0})
+        if (not w_done) and axil_req_get(req, "w_valid") and axil_resp_get(
+            resp, "w_ready"
+        ):
             w_done = True
-        if aw_done and w_done:
-            break
-    else:
-        _release_req(req)
-        raise TimeoutError("AXI-Lite write address/data handshake timeout")
-
-    for _ in range(timeout_cycles):
-        await RisingEdge(clk)
         if axil_resp_get(resp, "b_valid"):
             bresp = axil_resp_get(resp, "b_resp")
-            _force_req_fields(req, {"b_ready": 1})
+            await RisingEdge(clk)
+            _force_req_fields(req, {"aw_valid": 0, "w_valid": 0, "b_ready": 1})
             await RisingEdge(clk)
             _release_req(req)
             return bresp
+        if aw_done and w_done:
+            # Drop valids after both channels accepted; keep b_ready for B.
+            await RisingEdge(clk)
+            _force_req_fields(req, {"aw_valid": 0, "w_valid": 0, "b_ready": 1})
+            for _ in range(timeout_cycles):
+                await FallingEdge(clk)
+                if axil_resp_get(resp, "b_valid"):
+                    bresp = axil_resp_get(resp, "b_resp")
+                    await RisingEdge(clk)
+                    _release_req(req)
+                    return bresp
+            break
+
     _release_req(req)
-    raise TimeoutError("AXI-Lite write response timeout")
+    raise TimeoutError("AXI-Lite write handshake/response timeout")
 
 
 async def axil_hier_read32(
@@ -198,7 +228,10 @@ async def axil_hier_read32(
     *,
     timeout_cycles: int = 64,
 ) -> tuple[int, int]:
-    """Issue one AXI-Lite read; return (rresp, rdata)."""
+    """Issue one AXI-Lite read; return (rresp, rdata).
+
+    Hold ar_valid until r_valid — do not retire AR on the first idle ar_ready.
+    """
     _force_req_fields(
         req,
         {
@@ -209,7 +242,6 @@ async def axil_hier_read32(
             "r_ready": 1,
         },
     )
-
     await RisingEdge(clk)
     _force_req_fields(
         req,
@@ -225,29 +257,23 @@ async def axil_hier_read32(
     )
 
     for _ in range(timeout_cycles):
-        await RisingEdge(clk)
-        if axil_req_get(req, "ar_valid") and axil_resp_get(resp, "ar_ready"):
-            _force_req_fields(req, {"ar_valid": 0})
-            break
-    else:
-        _release_req(req)
-        raise TimeoutError("AXI-Lite read address handshake timeout")
-
-    for _ in range(timeout_cycles):
-        await RisingEdge(clk)
+        await FallingEdge(clk)
         if axil_resp_get(resp, "r_valid"):
             rresp = axil_resp_get(resp, "r_resp")
             rdata = axil_resp_get(resp, "r_data") & 0xFFFFFFFF
-            _force_req_fields(req, {"r_ready": 1})
+            await RisingEdge(clk)
+            _force_req_fields(req, {"ar_valid": 0, "r_ready": 1})
             await RisingEdge(clk)
             _release_req(req)
             return rresp, rdata
+
     _release_req(req)
     raise TimeoutError("AXI-Lite read response timeout")
 
 
 def _release_req(req: Any) -> None:
     if not _is_hier_req(req):
+        _AXIL_REQ_FORCE_SHADOW.pop(id(req), None)
         try:
             req.value = Release()
         except Exception:

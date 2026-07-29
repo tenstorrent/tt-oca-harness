@@ -35,14 +35,17 @@ module sep_tcm_wrapper
     logic [7:0] itcm_buf [ICCM_BYTES];
     logic [7:0] dtcm_buf [DCCM_BYTES];
 
-    // Boot evidence counters, hierarchically probed from the TB top.
+    // Boot evidence counters (for future bind/export; elaboration does not XMR).
     int unsigned iccm_write_count;
     int unsigned dccm_write_count;
 
     wire tcm_clk = tcm_req_i.clk;
 
-    for (genvar bank = 0; bank < IB; bank++) begin : gen_iccm
-        always_ff @(posedge tcm_clk) begin
+    // Use plain always (not always_ff): VCS ICPD rejects multiple always_ff /
+    // initial drivers on the same unpacked array (shared across gen banks +
+    // $readmemh preload tasks). Verilator accepts either form.
+    always @(posedge tcm_clk) begin
+        for (int bank = 0; bank < IB; bank++) begin
             if (tcm_req_i.iccm_clken[bank] && tcm_req_i.iccm_wren_bank[bank]) begin
                 iccm_mem[bank][tcm_req_i.iccm_addr_bank[bank]] <=
                     {
@@ -55,12 +58,7 @@ module sep_tcm_wrapper
                 iccm_q[bank] <= iccm_mem[bank][tcm_req_i.iccm_addr_bank[bank]];
             end
         end
-        assign tcm_rsp_o.iccm_bank_dout[bank] = iccm_q[bank][31:0];
-        assign tcm_rsp_o.iccm_bank_ecc[bank] = iccm_q[bank][IW-1:32];
-    end
-
-    for (genvar bank = 0; bank < DB; bank++) begin : gen_dccm
-        always_ff @(posedge tcm_clk) begin
+        for (int bank = 0; bank < DB; bank++) begin
             if (tcm_req_i.dccm_clken[bank] && tcm_req_i.dccm_wren_bank[bank]) begin
                 dccm_mem[bank][tcm_req_i.dccm_addr_bank[bank]] <=
                     {
@@ -73,6 +71,14 @@ module sep_tcm_wrapper
                 dccm_q[bank] <= dccm_mem[bank][tcm_req_i.dccm_addr_bank[bank]];
             end
         end
+    end
+
+    for (genvar bank = 0; bank < IB; bank++) begin : gen_iccm
+        assign tcm_rsp_o.iccm_bank_dout[bank] = iccm_q[bank][31:0];
+        assign tcm_rsp_o.iccm_bank_ecc[bank] = iccm_q[bank][IW-1:32];
+    end
+
+    for (genvar bank = 0; bank < DB; bank++) begin : gen_dccm
         assign tcm_rsp_o.dccm_bank_dout[bank] =
             dccm_q[bank][pt.DCCM_DATA_WIDTH-1:0];
         assign tcm_rsp_o.dccm_bank_ecc[bank] =

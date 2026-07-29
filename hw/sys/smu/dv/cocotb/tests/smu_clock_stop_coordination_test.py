@@ -35,7 +35,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        sb.expect_eq("dtp_stop_clks idle", int(dut.dtp_stop_clks_o.value), 0)
+        sb.expect_eq("dtp_stop_clks idle", int(dut.dtp_stop_clks_o.value), 0, evidence="CLA_CLK_STOP_LOOP")
         sb.expect_eq(
             "dtp_cla_clock_stop_en idle", int(dut.dtp_cla_clock_stop_en.value), 0
         )

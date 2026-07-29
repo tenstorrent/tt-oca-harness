@@ -59,7 +59,7 @@ class smu_ic_reset_smc_multi_domain_test(smu_base_test):
                 f"idle {ovrd_name}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name),
                 0,
-            )
+            evidence="IC_RESET_DOMAIN_EXCL")
 
         for port, ovrd_name, val_name in _DOMAINS:
             pattern = pack_ic_reset_ports(

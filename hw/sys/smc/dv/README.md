@@ -4,40 +4,53 @@
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
 driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
-test-development reference and `docs/SMC_VPLAN.md` for the verification plan.
+test-development reference and `docs/SMC_VPLAN.adoc` for the verification plan
+(AsciiDoc for TRM integration under `docs/trm`).
 
 ## Two DUTs / two sim configs
 
-| | bare SMC | SMC wrapper |
+**Official entry: `--dut smc_wrapper`.** Bare `--dut smc` is secondary (TB stubs
+for macros the wrapper absorbs).
+
+| | **SMC wrapper (primary)** | bare SMC (secondary) |
 |---|---|---|
-| select | `--dut smc` | `--dut smc_wrapper` |
-| config | `smc_sim_cfg.toml` | `smc_wrapper_sim_cfg.toml` |
-| TB top | `smc_uvm_top` (`tb/tb_top.sv`) | `smc_wrapper_uvm_top` (`tb/tb_wrapper_top.sv`) |
-| env | `cocotb/` (full PyUVM env) | `cocotb_wrapper/` (pad-level baseline) |
-| memory | TB responder shims (`shims/mem/*.sv`) | wrapper RTL integration models |
+| select | `--dut smc_wrapper` | `--dut smc` |
+| config | `smc_wrapper_sim_cfg.toml` | `smc_sim_cfg.toml` |
+| TB top | `smc_wrapper_uvm_top` (`tb/tb_wrapper_top.sv`) | `smc_uvm_top` (`tb/tb_top.sv`) |
+| DUT | `smc_wrapper` (`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`) | `smc` |
+| cocotb | `cocotb/` (`SmcEnv`) | same |
+| testlist | `testlists/all.toml` (`smoke` = 37) | same |
+| macros | inside `smc_ip_integration` (pll_wrap/pvt_wrap/efuse/pads) | PLL/PVT/ext/GPIO-ctrl DECERR; eFuse = shared bank/shim |
+| CPU mem | absorbed: `smc_cpu_mem_integration` | TB: same integration |
+| still in TB | output AXI + I3C DAT/DCT + DTP err_slv | output AXI + I3C DAT/DCT + eFuse bank/shim + DTP/PLL/PVT DECERR |
 
-The bare-`smc` catalog is the primary DV surface (large PyUVM env, ~130 tests).
-The `smc_wrapper` catalog is deferred and intentionally unregistered: its
-wrapper API, Bender targets, and SEP prim shim still need porting to the current
-repository before its elaboration test can run.
+Both DUTs share the bare `SmcEnv` smoke catalog. `cocotb/wrapper/` keeps a
+thin pad-level elaboration sequence (alias ports on `tb_wrapper_top`).
 
-## Layout
+## Layout (aligned with DTP / SEP)
 
 ```
 hw/sys/smc/dv/
 ├── cocotb/                 # bare-SMC PyUVM env
 │   ├── env/                #   agents, monitors, scoreboard, memory model, env cfg
 │   ├── seq_lib/            #   sequences + protocol VIP/BFM helpers (*_vip_utils, *_vip.py)
-│   └── tests/              #   @pyuvm.test() entries + smc_base_test.py
-├── cocotb_wrapper/         # smc_wrapper PyUVM env (separate base_test + env_cfg)
-├── shims/                  # TB behavioral responders (mem/analog) + wrapper padring
+│   ├── tests/              #   @pyuvm.test() entries + smc_base_test.py
+│   └── wrapper/            #   smc_wrapper pad-level flavor (own base_test + env_cfg)
+├── models/                 # behavioral / sim stand-ins (mem, analog, PLL/PVT, padring)
 ├── tb/                     # tb_top.sv, tb_wrapper_top.sv, verilator_stubs/
-├── testlists/             # native TOML testlists (per-feature leaves + all.toml groups)
+├── testlists/              # native TOML testlists (per-feature leaves + all.toml groups)
 ├── assets/                 # ROM/eFuse/shadow preload images
-├── docs/                   # VPLAN, upgrade notes, ref_test_dev.md, audit
+├── docs/                   # VPLAN (.adoc), upgrade notes, ref_test_dev.md
 ├── smc_sim_cfg.toml        # bare-SMC build/filelist manifest, modes, tool flags
 └── smc_wrapper_sim_cfg.toml
 ```
+
+Taxonomy (shared across SMC / DTP / SEP):
+
+- **vip/** — protocol agents only under `hw/common/dv/vip/ocah_*_vip/`
+- **models/** — DUT-local behavioral / reference / sim stand-ins
+- **tb/verilator_stubs/** — Verilator-only module overrides (see that README)
+- **shim** — design-owned RTL bridges stay in the RTL / top tree, not under `dv/`
 
 ## Environment shape (bare SMC)
 
@@ -65,11 +78,13 @@ protocol-VIP proxy pattern.
 
 ```bash
 PY=tools/dv/run_dv.py
-python3 $PY --dut smc --items smc_cold_reset_test --tool verilator
-python3 $PY --dut smc --items smc_canonical_smoke_test --stage flist --stage sim
-python3 $PY --dut smc --items all --tag smoke --stage sim       # smoke subset
-python3 $PY --dut smc --items all --tag smoke --tool vcs --cov  # coverage on VCS
-python3 $PY --dut smc --items all --stage sim --regress         # full regression
+# Primary entry (smc_wrapper + shared smoke)
+python3 $PY --dut smc_wrapper --items smoke --tool verilator
+python3 $PY --dut smc_wrapper --items smc_canonical_smoke_test --stage flist --stage sim
+python3 $PY --dut smc_wrapper --items all --stage sim --regress
+# Secondary bare-smc path (TB macro stubs)
+python3 $PY --dut smc --items smoke --tool verilator
+python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
 ```
 
 PASS/FAIL is classified by the global parser registry
@@ -77,6 +92,34 @@ PASS/FAIL is classified by the global parser registry
 evidence from `results.xml`; a clean simulator exit alone is not enough.
 
 The shared OSS runner uses Bender to generate the SMC RTL filelist, then appends
-the TB top and the local memory-responder/stub sources listed in the sim cfg.
+the TB top and the local `models/` + `tb/verilator_stubs/` sources listed in the
+sim cfg.
 The public filelist is vendor-clean (verify with
-`tools/dv/check_no_vendor_paths.py --filelist hw/sys/smc/dv/build/smc_bender.f --target smc`).
+`tools/dv/check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`).
+
+## Smoke parity (`--items smoke`, 37 tests)
+
+Bare and wrapper share the same catalog. Verilator baseline (primary = wrapper):
+
+| DUT | Result | Notes |
+|---|---|---|
+| `--dut smc_wrapper` | **37/37** | official entry |
+| `--dut smc` | 37/37 (target) | secondary; same catalog |
+
+I2C note: Verilator codegen of `i2c_wrap`'s `MAX_NUM_I2CS` always_comb can zero
+`i2c_en_o`; sequences force GPIO `DATA_CTRL.lsio_select` on I2C0 pads so
+`scl_i`/`sda_i` track the OD bus. I3C smoke uses HCI base `0xC000_5000`
+(stub `0xBADCAB1E`), not the unmapped `0xC003_A000` hole.
+
+Wrapper-specific notes:
+- PLL/PVT windows return OKAY+0 from `pll_wrap`/`pvt_wrap` inside
+  `smc_ip_integration` (bare TB used DECERR `0xBADCAB1E`); smoke sequences
+  accept either signature as reachability proof.
+- CPU ROM/scratch/L1$ use `OCAH4CORECluster_mems` (`prim_rom` /
+  `prim_ram_1p`, same macros as SEP) with time-zero backdoor into `.mem` on
+  both bare (TB-instantiated integration) and wrapper.
+- SYS_OUT stays a TB `tb_smc_output_mem_responder` (SEP outbound posture) with
+  `prim_ram_1p` storage; I3C DAT/DCT use `tb_smc_i3c_mem_responder`.
+- Bare TB no longer ships local mem/efuse responders: CPU uses
+  `smc_cpu_mem_integration`, eFuse uses shared `efuse_bank_model`, GPIO-ctrl
+  is DECERR (same as `smc_ip_integration`).

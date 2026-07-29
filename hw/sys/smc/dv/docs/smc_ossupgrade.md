@@ -7,7 +7,7 @@
 | Owner | minshaoho |
 | Date | 2026-07-21 |
 | Scope | `hw/sys/smc/dv/` only (OSS path; no Synopsys SVT) |
-| Related | `SMC_VPLAN.md`, `oss_smc_dev.md`, SEP refs below |
+| Related | `SMC_VPLAN.adoc`, `oss_smc_dev.md`, SEP refs below |
 | Aspiration (non-OSS) | `dv/smc/tb/smc_synopsys_vip_overview.md` (legacy SVT AMBA VIP) |
 
 ---
@@ -25,7 +25,7 @@ bench to a **SEP-parity (then better) peripheral BFM / memory-model environment*
    Xcelium.
 4. VPLAN claims match what the TB can actually defend (no hollow “Done”).
 
-**Promotion rule (same as `SMC_VPLAN.md` P2):** a work item is Done only when
+**Promotion rule (same as `SMC_VPLAN.adoc` P2):** a work item is Done only when
 the blocker is cleared **and** the owning test PASSes on **both** simulators.
 
 ---
@@ -45,7 +45,7 @@ OSS SMC (CSR + pin VIP + DECERR) ██████░░░░░░  ~45–55%
 | Asset | Location | Honest capability |
 |-------|----------|-------------------|
 | Active AXI masters (SEP_IN / SYS_IN / JTAG / eFuse AXIL) | `tb/tb_top.sv` + `cocotb/env/smc_*_axi_agent.py` | Real CSR/fabric stimulus |
-| CPU ROM/scratch/cache responder | `shims/mem/tb_smc_cpu_mem_responder.sv` | Banks exist; FW image still gated |
+| CPU ROM/scratch/cache | `smc_cpu_mem_integration` (`prim_*`) | Absorbed; no TB-local responder |
 | Output-fabric mini RAM | `tb_top` `output_mem` | OKAY slave for DMA/zeroer/filter |
 | Python golden store | `cocotb/env/smc_memory_model.py` | TB-local only; not DUT backdoor |
 | Pin VIP wrappers | I2C / I3C / UART / CPU JTAG via `ocah_*_vip` | Pin smoke / partial protocol |
@@ -112,7 +112,7 @@ cocotb / PyUVM  (agents · BFMs · goldens · scoreboards)
 
 | ID | Task | Deliverable | Done when |
 |----|------|-------------|-----------|
-| U0-1 | VPLAN / testlist audit of hollow P2-A names | Updated `SMC_VPLAN.md` rows for SPI/UART/sideband/I3C CCC | Claims say reachability / pin-smoke / deferred where true |
+| U0-1 | VPLAN / testlist audit of hollow P2-A names | Updated `SMC_VPLAN.adoc` rows for SPI/UART/sideband/I3C CCC | Claims say reachability / pin-smoke / deferred where true |
 | U0-2 | Tag tests: `reachability` vs `protocol` vs `firmware` | Optional tags in testlists | `--tag protocol` does not include DECERR sweeps |
 | U0-3 | Keep S13a / boundary-responder scope language | Already in VPLAN | No regression of wording |
 
@@ -127,7 +127,7 @@ functional responder, not a hang or silent drop.
 
 | ID | Task | Deliverable | SEP reference | Done when |
 |----|------|-------------|---------------|-----------|
-| U1-1 | Enlarge / parameterize output-fabric RAM | `shims/mem/tb_smc_output_mem_responder.sv` (or expand `output_mem`) with `+smc_output_hex` | `tb_sep_sram_responder.sv` | DMA/zeroer/filter tests preload + golden match |
+| U1-1 | Enlarge / parameterize output-fabric RAM | `models/mem/tb_smc_output_mem_responder.sv` (or expand `output_mem`) with `+smc_output_hex` | `tb_sep_sram_responder.sv` | DMA/zeroer/filter tests preload + golden match |
 | U1-2 | SYS_OUT / external AXI slave model | Cocotb or SV responder with OKAY/SLVERR inject knobs | `sep_outbound_mbx.sv` | At least one directed WR/RD + inject-error test PASS both sims |
 | U1-3 | Wire Python `SmcMemoryModel` as golden only | Doc + scoreboard hooks | SEP goldens | No claim of DUT backdoor |
 | U1-4 | CPU mem responder FW preload path | Document `+smc_rom_hex`, default smoke image | SEP `+cpu_boot` / TCM | One FW smoke can load without manual hacks |
@@ -244,7 +244,7 @@ reachability and point to S13a.
 | DTP CSR | **No** (local-xbar hole) | Assert idle + upstream DECERR | Needs map/master change outside OSS unit scope |
 | GPIO_CTRL | Partial / DECERR today | Prefer RW stub for CSR sweeps | — |
 
-Update this table when a model lands; sync `SMC_VPLAN.md` Defense scope.
+Update this table when a model lands; sync `SMC_VPLAN.adoc` Defense scope.
 
 ---
 
@@ -331,12 +331,13 @@ SEP-parity milestone ≈ end of **U3** (~1–2 months).
 ```
 hw/sys/smc/dv/
 ├── docs/
-│   ├── SMC_VPLAN.md              # sync defense scope + P2 promotion
+│   ├── SMC_VPLAN.adoc            # sync defense scope + P2 promotion (AsciiDoc)
 │   └── smc_ossupgrade.md         # this roadmap
-├── tb/tb_top.sv                  # pad lifts, responder instances
-├── shims/
-│   ├── mem/                      # expand: output, optional SPM, …
-│   └── analog/                   # future: eFuse responder (SEP pattern)
+├── tb/tb_top.sv                  # pad lifts, model instances
+├── models/
+│   ├── mem/                      # CPU / output / I3C / gpio-ctrl stand-ins
+│   ├── analog/                   # eFuse/OTP behavioral model (bare SMC)
+│   └── wrapper/                  # padring ASSIGNIN shadow
 ├── cocotb/
 │   ├── env/                      # agents, goldens, monitors
 │   ├── seq_lib/                  # real BFM sequences
@@ -357,13 +358,13 @@ Shared VIP reuse: `hw/common/dv/vip/` (`ocah_axi_vip`, `ocah_spi_vip`,
 | Shared `build/cocotb/verilator` races across sessions | Serialize rebuilds; document exclusive use |
 | Cadence / hard-macro models unavailable in OSS | Keep DECERR + IP-DV ownership; do not fake content |
 | I3C VIP CCC/IBI upstream bugs | Document deferral; SDR remains; track VIP fix |
-| FW image / toolchain not OSS-safe | Minimal bare-metal PASS image under `hw/sys/smc/dv/assets` |
+| FW image / toolchain not OSS-safe | Minimal bare-metal PASS image under `dv/oss` |
 
 ---
 
 ## 12. Immediate next actions (start here)
 
-1. **U0-1** — Mark P2-A hollow claims in `SMC_VPLAN.md` / test docstrings (SPI loopback, sideband fake BFM, I3C CCC name).
+1. **U0-1** — Mark P2-A hollow claims in `SMC_VPLAN.adoc` / test docstrings (SPI loopback, sideband fake BFM, I3C CCC name).
 2. **U1-1** — Extract / enlarge output-fabric memory responder with hex preload (SEP SRAM pattern).
 3. **U2-1** — Spike SPI pad lift on Verilator (build-only), then bind `OcahSpiFlash`.
 4. **U3-1** — Identify minimal SMC FW PASS image + `+smc_rom_hex` recipe.
@@ -400,7 +401,7 @@ fixes in TB/code and record evidence here.
 
 | Item | Detail |
 |------|--------|
-| New shim | `shims/mem/tb_smc_output_mem_responder.sv` |
+| New shim | `models/mem/tb_smc_output_mem_responder.sv` |
 | Features | Byte-strobe AXI OKAY slave; counters; `+smc_output_hex=<path>` preload; mem retained across reset |
 | `tb_top.sv` | Inline `output_mem` always_ff removed; instantiates `u_output_mem` |
 | `smc_sim_cfg.toml` | Added shim to `build.sources` |
@@ -441,8 +442,9 @@ U1/U2 change was stopped; smoke re-targeted to VCS.
 Recipe:
 
 ```bash
+source bin/setup_env.sh && source bin/setup_env.sh
 export TMPDIR=/localdev/$USER/TMPDIR; mkdir -p "$TMPDIR"
-python3 tools/dv/run_dv.py --dut smc --tool vcs --rebuild \
+/usr/bin/python3.11 tools/dv/run_dv.py --dut smc --tool vcs --rebuild \
   --items smc_cold_reset_test smc_output_fabric_wr_rd_responder_test
 ```
 
@@ -708,8 +710,8 @@ stub. PLL/PVT/extension remain DECERR (policy unchanged for those windows).
 
 | Item | Detail |
 |------|--------|
-| Shim | `shims/mem/tb_smc_gpio_ctrl_rw_stub.sv` @ `0xC000_4440` base |
-| TB | `tb_top.u_gpio_ctrl_rw_stub` on `axil_gpio_ctrl_*` |
+| Terminator | `prim_axi_lite_err_slv` DECERR @ `0xC000_4440` base |
+| TB | `tb_top.u_gpio_ctrl_err_slv` on `axil_gpio_ctrl_*` |
 | Tests | `smc_gpio_ctrl_full_sweep_test`: 68× unique WR→RD; `smc_gpio_refclk_ctrl_test`: 2× WR→RD |
 | Monitor | Removed `(0xC000_4440, 0xC000_5000)` from `expected_decerr_ranges` |
 | Honesty | OKAY storage only — **not** real padring pinmux / REFCLK analog |
@@ -795,16 +797,16 @@ Proof logs (VCS): `SMBALERT# asserted` → `ARA OK: reply=0x20; SMBALERT# cleare
 
 ### 2026-07-21 — Must-catch wave (W1–W3) VCS PASS
 
-Closed the Must-gap plan items under `hw/sys/smc/dv/` (no DUT RTL changes):
+Closed the Must-gap plan items under `hw/sys/smc/dv/` (no `hw/` RTL):
 
 | Item | Deliverable | Evidence |
 |------|-------------|----------|
 | W1-a P2-1 FW boot | Keep `min_pass.ecc.hex` contract; promote P2-1 | VCS PASS `smc_cpu_firmware_boot_test` in `.../20260721_150000__vcs__must_catch_w1w2` |
-| W1-b P2-6 OTP | `shims/analog/tb_smc_efuse_responder.sv` + `smc_efuse_otp_burn_shadow_test` | VCS PASS `.../20260721_150527__vcs__multi` (sense+fail+burn; needs `program_enable`) |
-| W1-c UART env | Historical run used `cocotbext-uart==0.1.4`; current shared uv ownership is deferred | VCS PASS `smc_uart_loopback_test` in must_catch run |
+| W1-b P2-6 OTP | `efuse_bank_model` + `smc_efuse_otp_burn_shadow_test` | sense+fail+burn via shared OSS bank |
+| W1-c UART env | uv-managed runner (`cocotbext-uart`) | VCS PASS `smc_uart_loopback_test` in must_catch run |
 | W2-a P2-2 OCCP | Retire scratch proxy → OTP program-fail + EFUSE_MAP signature | VCS PASS `smc_occp_sanity_secure_error_test` (`proxy=False`) |
 | W2-b/c P2-7/8 | `tb_cpu_ecc_inject_*` + `tb_dfd_fault_inject` / `tb_dbs_capture_*` | VCS PASS `smc_ecc_fault_inject_test`, `smc_dfd_dbs_fault_inject_test` |
-| W3 P2-11 + honesty | Linear16 helpers + VPLAN P2 table update | VCS PASS `smc_smbus_pmbus_test`; `SMC_VPLAN.md` P2 rows promoted |
+| W3 P2-11 + honesty | Linear16 helpers + VPLAN P2 table update | VCS PASS `smc_smbus_pmbus_test`; `SMC_VPLAN.adoc` P2 rows promoted |
 
 **must_catch_w1w2 group (VCS): 7/7 PASS** after program_enable fix  
 `hw/sys/smc/dv/build/runs/20260721_150000__vcs__must_catch_w1w2` + efuse/occp rerun `20260721_150527__vcs__multi`.

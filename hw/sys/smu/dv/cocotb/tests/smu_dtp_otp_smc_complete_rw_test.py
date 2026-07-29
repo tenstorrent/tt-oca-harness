@@ -68,13 +68,13 @@ class smu_dtp_otp_smc_complete_rw_test(smu_base_test):
             wst, _ = await otp_jtag2axi_single_write(
                 jtag, SMC_EFUSE_MAP_BIRA_WORD, PATTERN_A
             )
-            sb.expect_eq("OTP ungated write status", wst, J2A_STATUS_SUCCESS)
+            sb.expect_eq("OTP ungated write status", wst, J2A_STATUS_SUCCESS, evidence="OTP_MAP_RW_OK")
 
             # --- Ungated complete read ---
             rst, rdata = await otp_jtag2axi_single_read(
                 jtag, SMC_EFUSE_MAP_BIRA_WORD
             )
-            sb.expect_eq("OTP ungated read status", rst, J2A_STATUS_SUCCESS)
+            sb.expect_eq("OTP ungated read status", rst, J2A_STATUS_SUCCESS, evidence="OTP_GATED_NO_UPDATE")
             sb.expect_eq(
                 "OTP ungated RDATA == PATTERN_A",
                 int(rdata) & 0xFFFF_FFFF,

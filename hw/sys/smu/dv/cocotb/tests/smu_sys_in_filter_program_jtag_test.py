@@ -73,7 +73,7 @@ class smu_sys_in_filter_program_jtag_test(smu_base_test):
             "pre-program SMN VERSION_LO DECERR",
             pre_resp,
             AxiResp.DECERR,
-        )
+        evidence="AXI_FILTER_OKAY")
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()

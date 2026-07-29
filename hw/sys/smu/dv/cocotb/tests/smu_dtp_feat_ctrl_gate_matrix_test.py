@@ -119,22 +119,22 @@ class smu_dtp_feat_ctrl_gate_matrix_test(smu_base_test):
                     f"fabric disable soc={soc} ap={ap}",
                     fab_dis,
                     golden_fab_dis,
-                )
+                evidence="FEAT_NET_GOLDEN")
                 sb.expect_eq(
                     f"otp disable soc={soc} ap={ap} fuse={fuse}",
                     otp_dis,
                     golden_otp_dis,
-                )
+                evidence="FEAT_FAB_ALLOW")
                 sb.expect_eq(
                     f"fab_allow flag vs golden soc={soc} ap={ap}",
                     int(fab_allow),
                     int(not golden_fab_dis),
-                )
+                evidence="FEAT_FAB_DENY")
                 sb.expect_eq(
                     f"otp_allow flag vs golden fuse={fuse}",
                     int(otp_allow),
                     int(not golden_otp_dis),
-                )
+                evidence="FEAT_OTP_ALLOW")
 
                 # --- Fabric VERSION_LO ---
                 if fab_allow:
@@ -145,7 +145,7 @@ class smu_dtp_feat_ctrl_gate_matrix_test(smu_base_test):
                         f"VERSION_LO allow status soc={soc} ap={ap}",
                         st,
                         J2A_STATUS_SUCCESS,
-                    )
+                    evidence="FEAT_OTP_DENY")
                     sb.expect_eq(
                         f"VERSION_LO allow data soc={soc} ap={ap}",
                         int(rdata) & 0xFFFF_FFFF,

@@ -77,7 +77,7 @@ class smu_cross_trigger_matrix_test(smu_base_test):
             dut.xtrig_ctm_dst_req.value = pat
             await _sample_after_edge()
             dtp = int(dtp_dst_req.value)
-            sb.expect_eq(f"dst_req bit{bit} -> DTP[9:2]", (dtp >> 2) & 0xFF, pat)
+            sb.expect_eq(f"dst_req bit{bit} -> DTP[9:2]", (dtp >> 2) & 0xFF, pat, evidence="XT_DEST_4PHASE")
             sb.expect_eq(f"dst_req bit{bit} SMC[1:0] idle", dtp & 0x3, 0)
         dut.xtrig_ctm_dst_req.value = 0xA5
         await _sample_after_edge()

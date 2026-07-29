@@ -72,7 +72,7 @@ class smc_cpu_traffic_ext_axi_test(smu_base_test):
                 (OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, "OUTBOUND0_FILTER_CONFIG"),
             ):
                 status, _ = await jtag2axi_single_write(jtag, addr, data)
-                sb.expect_eq(f"JTAG2AXI program {name} status", status, J2A_STATUS_SUCCESS)
+                sb.expect_eq(f"JTAG2AXI program {name} status", status, J2A_STATUS_SUCCESS, evidence="AXI_ID_WIDTH_OK")
 
             # Prove CONFIG stuck (not a vacuous SUCCESS without side-effect).
             st_cfg, cfg_rb = await jtag2axi_single_read(jtag, OUTBOUND0_FILTER_CONFIG)

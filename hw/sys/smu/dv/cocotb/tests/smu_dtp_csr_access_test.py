@@ -78,12 +78,12 @@ class smu_dtp_csr_access_test(smu_base_test):
 
             # 1) Debug bridge alive.
             st, rdata = await jtag2axi_single_read(jtag, SMC_VERSION_LO_ADDR)
-            sb.expect_eq("VERSION_LO status", st, J2A_STATUS_SUCCESS)
+            sb.expect_eq("VERSION_LO status", st, J2A_STATUS_SUCCESS, evidence="DTP_ABS_HOLE")
             sb.expect_eq(
                 "VERSION_LO data",
                 int(rdata) & 0xFFFF_FFFF,
                 VERSION_LO_EXPECT,
-            )
+            evidence="DTP_HIER_CTN_OK")
 
             # 2) Frontdoor DTP_CTRL: DECERR in local xbar (never reaches DTP).
             mon = cocotb.start_soon(_count_axil_valid(dut, 500))

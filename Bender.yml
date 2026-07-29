@@ -1177,7 +1177,11 @@ sources:
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:
+      - hw/top/smc_cpu_mem_integration.sv
       - hw/top/smc_wrapper.sv
   - target: smu_wrapper
     files:
+      # Same CPU ROM/scratch/L1$ macros as smc_wrapper; TB attaches them to the
+      # passthrough rom_intf_* ports (smc_ip_integration stays SMU-safe).
+      - hw/top/smc_cpu_mem_integration.sv
       - hw/top/smu_wrapper.sv

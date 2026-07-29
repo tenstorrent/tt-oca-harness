@@ -73,7 +73,7 @@ class smu_dtp_otp_debug_access_test(smu_base_test):
             "SMC_OTP_JTAG2AXI_CAPS encoding",
             int(caps) & ((1 << 14) - 1),
             DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
-        )
+        evidence="OTP_MAP_RW_OK")
 
         # --- Gated: update ignored -> must leave BUSY quickly ---
         forced_dis = force_otp_jtag2axi_lifecycle_disable(dut, self.logger)

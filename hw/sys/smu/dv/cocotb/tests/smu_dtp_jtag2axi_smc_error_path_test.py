@@ -69,10 +69,10 @@ class smu_dtp_jtag2axi_smc_error_path_test(smu_base_test):
 
             # Bridge alive before errors.
             st0, r0 = await jtag2axi_single_read(jtag, SMC_VERSION_LO_ADDR)
-            sb.expect_eq("pre VERSION_LO status", st0, J2A_STATUS_SUCCESS)
+            sb.expect_eq("pre VERSION_LO status", st0, J2A_STATUS_SUCCESS, evidence="J2A_DECERR_POISON")
             sb.expect_eq(
                 "pre VERSION_LO data", int(r0) & 0xFFFF_FFFF, VERSION_LO_EXPECT
-            )
+            , evidence="J2A_RECOVERY_OK")
 
             for addr in ERR_ADDRS:
                 st_r, rdata = await jtag2axi_single_read(jtag, addr)

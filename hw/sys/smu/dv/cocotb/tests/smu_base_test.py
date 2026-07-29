@@ -40,15 +40,16 @@ class smu_base_test(uvm_test):
     async def run_phase(self) -> None:
         self.raise_objection()
         try:
+            tc = self.get_type_name()
+            self.env.scoreboard.bind_testcase(tc)
             await self.bring_up()
             await self.run_scenario()
+            self.env.scoreboard.prove_mapped_features()
             self._scenario_ran = True
             # Hit scenario-intent FCOV bins before scoreboard check_phase.
-            n = self.env.scoreboard.fcov.hit_for_test(self.get_type_name())
+            n = self.env.scoreboard.fcov.hit_for_test(tc)
             if n:
-                self.logger.info(
-                    "FCOV: auto-hit %d bin(s) for %s", n, self.get_type_name()
-                )
+                self.logger.info("FCOV: auto-hit %d bin(s) for %s", n, tc)
         finally:
             self.drop_objection()
 

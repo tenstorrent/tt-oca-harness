@@ -61,7 +61,7 @@ class smu_smc_dtp_jtag2axi_security_test(smu_base_test):
             VERSION_LO_EXPECT,
             data_bits=32,
             success_status=J2A_STATUS_SUCCESS,
-        )
+        evidence="FEAT_FAB_ALLOW")
 
         forced_en = force_jtag2axi_lifecycle_enable(dut, self.logger)
         try:
@@ -71,7 +71,7 @@ class smu_smc_dtp_jtag2axi_security_test(smu_base_test):
             st_ok, rdata = await jtag2axi_single_read(
                 jtag, SMC_VERSION_LO_ADDR, require_complete=True
             )
-            sb.expect_eq("JTAG2AXI ungated VERSION_LO status", st_ok, J2A_STATUS_SUCCESS)
+            sb.expect_eq("JTAG2AXI ungated VERSION_LO status", st_ok, J2A_STATUS_SUCCESS, evidence="FEAT_FAB_DENY")
             sb.expect_eq(
                 "JTAG2AXI ungated VERSION_LO data",
                 int(rdata) & 0xFFFF_FFFF,

@@ -33,10 +33,9 @@ except Exception as _exc:  # noqa: BLE001 - optional at import time
 CLOCK_GATE_CONTROL = 0xC001_0018
 I3C_CG_EN = 1 << 9
 
-# OCA_I3C_WRAP_0 CSR base moved to 0xC003_A000 (git d36a40bdb "reduce space for
-# gpio to 0x1000, move location of I3C"; stride 0x1000 per instance). The old
-# 0xC000_5000 window is now an unmapped periph-xbar hole that DECERRs.
-I3C0_HCI_VERSION = 0xC003_A000
+# OCA_I3C_WRAP_0 CSR base (smc_addrmap_pkg / periph xbar): 0xC000_5000.
+# RTL currently instantiates i3ccore_stub → SLVERR + 0xBADCAB1E (not a hang).
+I3C0_HCI_VERSION = 0xC000_5000
 
 
 class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
@@ -86,14 +85,17 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
                           self.clock_gate_value)
         await self._read("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
                          expected=self.clock_gate_value)
-        # The I3C CSR window is currently stubbed in RTL (smc_peripherals
-        # instantiates i3ccore_stub -- "TODO: stub i3c out until the updated
-        # open-source controller is integrated"), which completes the access
-        # with SLVERR/0xBADCAB1E. Prove the fabric decodes/routes to the I3C
-        # window (no hang) via an error-tolerant read; the real HCI_VERSION
-        # (0x120) value check returns once the open-source core is integrated.
-        await self._read("I3C0_HCI_VERSION", I3C0_HCI_VERSION, allow_error=True)
+        # i3ccore_stub terminates with SLVERR/0xBADCAB1E. Prove the periph xbar
+        # routes the I3C window (no hang); value check returns once the real
+        # open-source core replaces the stub.
+        rdata = await self._read(
+            "I3C0_HCI_VERSION", I3C0_HCI_VERSION, allow_error=True
+        )
         assert self.reads == 4, "expected clock-gate checks plus one I3C CSR read"
+        assert (rdata & 0xFFFF_FFFF) == 0xBADCAB1E, (
+            f"I3C stub signature mismatch: got 0x{rdata & 0xFFFF_FFFF:08X}, "
+            f"expected 0xBADCAB1E"
+        )
 
         if _I3C_PROTOCOL_VIP_AVAILABLE:
             # Extra (non-gating) protocol traffic. Only claim "proof complete"

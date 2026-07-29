@@ -27,6 +27,20 @@ class SmuSmcSmokeSeq:
         self.log.info("=" * 70)
         self.log.info("TEST: SMC firmware boot under production smu_wrapper SEP=0")
         self.log.info("=" * 70)
+        self.log.info(
+            "Bring-up evidence: fuse_sense_done=%d fuse_reset_n_delayed=%d "
+            "rst_primary=%d init_mem_done=%d rst_cold_n=%d powergood=%d",
+            self.test.read_int(self.dut.fuse_sense_done_o, "fuse_sense_done_o"),
+            self.test.read_int(
+                self.dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
+            ),
+            self.test.read_int(
+                self.dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o"
+            ),
+            self.test.read_int(self.dut.init_mem_done_o, "init_mem_done_o"),
+            self.test.read_int(self.dut.rst_cold_n_o, "rst_cold_n_o"),
+            self.test.read_int(self.dut.powergood_o, "powergood_o"),
+        )
 
         assert self.test.pre_release_sep_reset == 1, (
             "no-SEP profile must tie SEP reset high during cold reset: "

@@ -57,7 +57,7 @@ class smc_wdt_sanity_test(smu_base_test):
                 await jtag.step_tms(0)
 
             st_c, cmp0 = await jtag2axi_single_read(jtag, WDT_CMP)
-            sb.expect_eq("WDT_CMP default status", st_c, J2A_STATUS_SUCCESS)
+            sb.expect_eq("WDT_CMP default status", st_c, J2A_STATUS_SUCCESS, evidence="WDT_UNLOCK_OK")
             sb.expect_eq(
                 "WDT_CMP default", int(cmp0) & 0xFFFF, CMP_DEFAULT
             )

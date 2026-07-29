@@ -123,6 +123,7 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
         await self.csr_write(
             "I2C0_WRAP_TARGET_SMBUS", I2C0_WRAP_CTRL, I2C_WRAP_TARGET_SMBUS
         )
+        await self.wait_i2c0_lsio_ready("I2C0_ALERT_ARA_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
         await self.csr_write(
@@ -150,35 +151,23 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
         assert self.alert_asserted, "SMBALERT# (pad39) did not go low after CTRL write"
         cocotb.log.info("SMBALERT# asserted (tb_i2c0_smbalert=0)")
 
-        sim_name = (cocotb.SIM_NAME or "").lower()
-        if "verilator" in sim_name:
-            cocotb.log.info(
-                "SMBus ARA bus proof skipped on Verilator "
-                "(wall-clock bound; VCS is the byte-level authority)."
-            )
-            # Still clear alert via SW deassert so pad returns high.
-            await self.csr_write("I2C0_SMBUS_CTRL_CLEAR", I2C0_SMBUS_CTRL, 0)
-            self.alert_cleared = await self._wait_smbalert(expect_low=False)
-            self.observed_bytes = self.expected_bytes  # pad-only path
-            self.ara_ok = True
-        else:
-            master = SmcI2cMasterVip(speed=100_000, name="smc_smbus_ara_master")
-            resp = await master.smbus_query_ara()
-            self.observed_bytes = bytes([resp & 0xFF])
-            assert resp == _ARA_REPLY, (
-                f"ARA reply mismatch: got 0x{resp:02X}, expected 0x{_ARA_REPLY:02X}"
-            )
-            self.ara_ok = True
-            self.alert_cleared = await self._wait_smbalert(
-                expect_low=False, timeout_us=5000
-            )
-            assert self.alert_cleared, (
-                "SMBALERT# stayed low after ARA (expected hwclr)"
-            )
-            cocotb.log.info(
-                "ARA OK: reply=0x%02X; SMBALERT# cleared on pad39",
-                resp,
-            )
+        master = SmcI2cMasterVip(speed=100_000, name="smc_smbus_ara_master")
+        resp = await master.smbus_query_ara()
+        self.observed_bytes = bytes([resp & 0xFF])
+        assert resp == _ARA_REPLY, (
+            f"ARA reply mismatch: got 0x{resp:02X}, expected 0x{_ARA_REPLY:02X}"
+        )
+        self.ara_ok = True
+        self.alert_cleared = await self._wait_smbalert(
+            expect_low=False, timeout_us=5000
+        )
+        assert self.alert_cleared, (
+            "SMBALERT# stayed low after ARA (expected hwclr)"
+        )
+        cocotb.log.info(
+            "ARA OK: reply=0x%02X; SMBALERT# cleared on pad39",
+            resp,
+        )
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

@@ -58,7 +58,7 @@ class smc_mailbox_int_test(smu_base_test):
                 await jtag.step_tms(0)
 
             st, cg0 = await jtag2axi_single_read(jtag, CLOCK_GATE_CONTROL)
-            sb.expect_eq("CG read status", st, J2A_STATUS_SUCCESS)
+            sb.expect_eq("CG read status", st, J2A_STATUS_SUCCESS, evidence="SMC_MBOX_IRQ")
             cg_en = int(cg0) | MAILBOX_CG_EN
             st, _ = await jtag2axi_single_write(jtag, CLOCK_GATE_CONTROL, cg_en)
             sb.expect_eq("CG enable write status", st, J2A_STATUS_SUCCESS)

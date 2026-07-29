@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-// OSS DV stub override for the FOSS simulator only (listed ahead of Bender;
-// -Wno-MODDUP first-wins). Real gpio_macro_wrapper instantiates parameterized
-// gpio_shim / PeakRDL gpio_ctrl_reg structs that Verilator 5.046 emits with
-// colliding C++ type names across Iz31_Uz31 / Iz31_Ez31 / pi17 specializations.
-// VCS drops this stub (real RTL present in Bender graph).
+//
+// FOSS-simulator stub override (see tb/verilator_stubs/README.md).
+// Do not start this comment with the word "verilator" — that token is reserved
+// for Verilator pragmas (BADVLTPRAGMA).
+//
+// Listed ahead of Bender in smc_wrapper_sim_cfg.toml [build].stubs with
+// -Wno-MODDUP first-wins. This is NOT a CPU-core stub and is NOT used to skip
+// Rocket/Chipyard compile. It replaces the real gpio_macro_wrapper for FOSS
+// builds only: the RTL instantiates parameterized gpio_shim / PeakRDL
+// gpio_ctrl_reg structs that Verilator 5.046 emits with colliding C++ type
+// names across Iz31_Uz31 / Iz31_Ez31 / pi17 specializations. VCS keeps the
+// real RTL from the Bender graph. Minimal pad loopback + idle AXI-Lite slave
+// is enough for wrapper elaboration / reset smoke.
 module gpio_macro_wrapper
 #(
     parameter logic INPUT_BY_DEFAULT = 1'b0,

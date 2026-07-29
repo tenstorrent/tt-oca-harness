@@ -70,7 +70,7 @@ class smu_clock_stop_jtag_vs_cla_fb_race_test(smu_base_test):
         val_jtag = pack_debug_control(jtag_clock_stop=1, cla_clock_stop_en=1)
         await jtag.write("DEBUG_CONTROL", val_jtag)
         await ClockCycles(dut.clk_smu_i, 16)
-        sb.expect_eq("stop_clks from JTAG alone", int(dut.dtp_stop_clks_o.value), 1)
+        sb.expect_eq("stop_clks from JTAG alone", int(dut.dtp_stop_clks_o.value), 1, evidence="CLOCK_STOP_OR")
         rb0 = await jtag.read("DEBUG_CONTROL", shift_value=val_jtag)
         sb.expect_eq(
             "DEBUG bit3 JTAG stop",

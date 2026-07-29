@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Behavioral, Verilator-safe stub for the SMC DFX control status wrap.
+// See tb/verilator_stubs/README.md for the Verilator-only override policy.
 //
 // The real wrapper (hw/smc/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv) uses
 // dfx_ctrl_status_reg_pkg::dfx_ctrl_status__in_t, whose nested PeakRDL struct

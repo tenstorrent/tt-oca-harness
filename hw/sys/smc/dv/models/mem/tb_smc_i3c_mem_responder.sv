@@ -1,15 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Behavioral DAT/DCT/RLT memories for bare-smc OSS TB (I3C rebase #3934).
-// Mirrors hw/oss-example/wrapper/smc/smc_ip_integration.sv gen_i3c_dat_dct_memory
-// so smc.i3c_*_mem_* ports are not left floating (X) under CONTROLLER_SUPPORT=1.
-//
-// FIXME(SMC-DV): this deferred model is intentionally not compiled by
-// smc_sim_cfg.toml. It uses the old RLT interface, undefined DAT_DEPTH/DCT_DEPTH
-// macros, and RAM dependencies that are not part of the current SMC source
-// closure. Rewrite it against the current DAT/DCT-only RTL before enabling
-// functional I3C memory tests. Reset sanity uses deterministic tie-offs in
-// tb_top.sv meanwhile.
+// DAT/DCT memories for SMC OSS TB (I3C rebase #3934).
+// Uses prim_ram_1p (SEP-aligned macros). RLT is obsolete on the current SMC
+// boundary and is intentionally not modeled here.
 
 `timescale 1ps/1fs
 
@@ -24,14 +17,16 @@ module tb_smc_i3c_mem_responder
     input  dat_mem_sink_t [NUM_I3C-1:0] dat_mem_sink_i,
     output dat_mem_src_t  [NUM_I3C-1:0] dat_mem_src_o,
     input  dct_mem_sink_t [NUM_I3C-1:0] dct_mem_sink_i,
-    output dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src_o,
-    input  rlt_mem_sink_t [NUM_I3C-1:0] rlt_mem_sink_i,
-    output rlt_mem_src_t  [NUM_I3C-1:0] rlt_mem_src_o
+    output dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src_o
 );
+
+    // Depth follows i3c_pkg address widths (same as hw/ip/i3ccore_wrap DV TB).
+    localparam int unsigned DAT_DEPTH = 1 << DatAw;
+    localparam int unsigned DCT_DEPTH = 1 << DctAw;
 
     for (genvar i3c_idx = 0; i3c_idx < NUM_I3C; i3c_idx++) begin : gen_i3c_mem
         prim_ram_1p #(
-            .Depth(`DAT_DEPTH),
+            .Depth(DAT_DEPTH),
             .Width(64),
             .DataBitsPerMask(32)
         ) u_dat (
@@ -50,7 +45,7 @@ module tb_smc_i3c_mem_responder
         assign dat_mem_src_o[i3c_idx].rerror = '0;
 
         prim_ram_1p #(
-            .Depth(`DCT_DEPTH),
+            .Depth(DCT_DEPTH),
             .Width(128),
             .DataBitsPerMask(32)
         ) u_dct (
@@ -67,28 +62,6 @@ module tb_smc_i3c_mem_responder
         );
         assign dct_mem_src_o[i3c_idx].rvalid = 1'b0;
         assign dct_mem_src_o[i3c_idx].rerror = '0;
-
-        prim_ram_2p #(
-            .Depth(128),
-            .Width(DatAw)
-        ) u_rlt (
-            .clk_a_i  (clk_i),
-            .clk_b_i  (clk_i),
-            .a_req_i  (rlt_mem_sink_i[i3c_idx].a_req),
-            .a_write_i(rlt_mem_sink_i[i3c_idx].a_write),
-            .a_addr_i (rlt_mem_sink_i[i3c_idx].a_addr),
-            .a_wdata_i(rlt_mem_sink_i[i3c_idx].a_wdata),
-            .a_wmask_i(rlt_mem_sink_i[i3c_idx].a_wmask),
-            .a_rdata_o(rlt_mem_src_o[i3c_idx].a_rdata),
-            .b_req_i  (rlt_mem_sink_i[i3c_idx].b_req),
-            .b_write_i(rlt_mem_sink_i[i3c_idx].b_write),
-            .b_addr_i (rlt_mem_sink_i[i3c_idx].b_addr),
-            .b_wdata_i(rlt_mem_sink_i[i3c_idx].b_wdata),
-            .b_wmask_i(rlt_mem_sink_i[i3c_idx].b_wmask),
-            .b_rdata_o(rlt_mem_src_o[i3c_idx].b_rdata),
-            .cfg_i    ('0),
-            .cfg_rsp_o()
-        );
     end
 
 endmodule : tb_smc_i3c_mem_responder

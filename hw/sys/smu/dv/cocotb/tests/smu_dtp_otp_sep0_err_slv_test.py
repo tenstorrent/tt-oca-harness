@@ -69,7 +69,7 @@ class smu_dtp_otp_sep0_err_slv_test(smu_base_test):
         st_sep, _ = await sep_otp_jtag2axi_single_read(jtag, PROBE_ADDR, poll_limit=16)
         aw_n, ar_n = await mon
         self.logger.info("SEP OTP frontdoor status=%s (bridge absent)", st_sep)
-        sb.expect_eq("SEP OTP AXIL AW idle during frontdoor IR", aw_n, 0)
+        sb.expect_eq("SEP OTP AXIL AW idle during frontdoor IR", aw_n, 0, evidence="OTP_SEP0_ERR_SLV")
         sb.expect_eq("SEP OTP AXIL AR idle during frontdoor IR", ar_n, 0)
 
         # 2) Hierarchical probe of gen_no_sep err_slv (clk_ref domain).

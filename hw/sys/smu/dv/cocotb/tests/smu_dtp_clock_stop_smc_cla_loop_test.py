@@ -78,7 +78,7 @@ class smu_dtp_clock_stop_smc_cla_loop_test(smu_base_test):
         await jtag.write("DEBUG_CONTROL", val_en)
         await ClockCycles(dut.clk_smu_i, 8)
 
-        sb.expect_eq("cla_clock_stop_en asserted", int(dut.dtp_cla_clock_stop_en.value), 1)
+        sb.expect_eq("cla_clock_stop_en asserted", int(dut.dtp_cla_clock_stop_en.value), 1, evidence="CLA_CLK_STOP_LOOP")
         sb.expect_eq("stop_clks idle with en-only", int(dut.dtp_stop_clks_o.value), 0)
         sb.expect_eq("SMC feedback idle with en-only", int(fb.value), 0)
         sb.expect_eq("DTP clk_stop_req[0] idle", int(dtp_req.value) & 0x1, 0)

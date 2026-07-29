@@ -56,7 +56,7 @@ class smu_sys_in_filter_reprogram_shrink_test(smu_base_test):
 
         # Baseline: unprogrammed BlockByDefault.
         _, pre = await axi_read32_resp(master, SMC_VERSION_LO_ADDR)
-        sb.expect_eq("pre-program VERSION_LO DECERR", pre, AxiResp.DECERR)
+        sb.expect_eq("pre-program VERSION_LO DECERR", pre, AxiResp.DECERR, evidence="AXI_FILTER_OKAY")
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()

@@ -60,7 +60,7 @@ class smc_gpio_strap_sanity_test(smu_base_test):
             st1, hi0 = await jtag2axi_single_read(
                 jtag, STRAPS_HI_ADDR, require_complete=True
             )
-            sb.expect_eq("STRAPS_LO idle status", st0, J2A_STATUS_SUCCESS)
+            sb.expect_eq("STRAPS_LO idle status", st0, J2A_STATUS_SUCCESS, evidence="SMC_STRAP_OK")
             sb.expect_eq("STRAPS_HI idle status", st1, J2A_STATUS_SUCCESS)
             sb.expect_eq("STRAPS_LO idle", int(lo0) & 0xFFFF_FFFF, 0)
             sb.expect_eq("STRAPS_HI idle", int(hi0) & 0xFFFF_FFFF, 0)

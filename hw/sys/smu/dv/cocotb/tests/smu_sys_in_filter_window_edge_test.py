@@ -74,7 +74,7 @@ class smu_sys_in_filter_window_edge_test(smu_base_test):
 
         # Inside page — known CSRs.
         data_v, resp_v = await axi_read32_resp(master, SMC_VERSION_LO_ADDR)
-        sb.expect_eq("edge VERSION_LO OKAY", resp_v, AxiResp.OKAY)
+        sb.expect_eq("edge VERSION_LO OKAY", resp_v, AxiResp.OKAY, evidence="AXI_FILTER_OKAY")
         sb.expect_eq(
             "edge VERSION_LO data",
             int(data_v) & 0xFFFF_FFFF,

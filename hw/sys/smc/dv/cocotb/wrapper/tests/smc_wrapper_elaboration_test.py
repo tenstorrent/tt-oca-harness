@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import pyuvm
 
-from smc_base_test import smc_base_test
+from smc_wrapper_base_test import smc_wrapper_base_test
 from seq_lib.smc_wrapper_elaboration_seq import SmcWrapperElaborationSeq
 
 
 @pyuvm.test()
-class smc_wrapper_elaboration_test(smc_base_test):
+class smc_wrapper_elaboration_test(smc_wrapper_base_test):
     """Verify pad-level powergood / cold-reset propagation on smc_wrapper."""
 
     async def run_scenario(self) -> None:

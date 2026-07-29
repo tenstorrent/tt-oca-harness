@@ -1129,6 +1129,6 @@ module smc_peripherals #() (
 	assign gpio_interrupt_o = gpio_interrupt;
 	assign uart_interrupt_o = uart_irq_periph_clk;
 
-	assign rst_primary_periph_clk_n_o = rst_primary_periph_clk_n;
+	assign rst_primary_periph_clk_no = rst_primary_periph_clk_n;
 
 endmodule

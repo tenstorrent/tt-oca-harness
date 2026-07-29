@@ -18,14 +18,16 @@ paths = ["{run_dir}", "hw/sys/smc/dv/build"]
 # Native build is driven by the Bender/filelist keys below; .core files are external-only.
 top_module = "smc_uvm_top"
 top_file = "hw/sys/smc/dv/tb/tb_top.sv"
-# Extra tb sources compiled alongside tb_top. This follows the OSS
-# memory-shim pattern and provides behavioral responders for bare SMC CPU
-# ROM/scratch/cache memory ports.
+# Extra tb sources compiled alongside tb_top. Behavioral stand-ins live under
+# models/ (aligned with DTP/SEP taxonomy: vip in common, models DUT-local,
+# stubs in tb/verilator_stubs). Bare SMC uses the same CPU prim macros as
+# smc_wrapper via smc_cpu_mem_integration; eFuse uses the shared
+# efuse_interface_shim + efuse_bank_model (Bender smc target); GPIO-ctrl
+# is a DECERR terminator (same as smc_ip_integration).
 sources = [
-  "hw/sys/smc/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
-  "hw/sys/smc/dv/shims/mem/tb_smc_output_mem_responder.sv",
-  "hw/sys/smc/dv/shims/mem/tb_smc_gpio_ctrl_rw_stub.sv",
-  "hw/sys/smc/dv/shims/analog/tb_smc_efuse_responder.sv",
+  "hw/top/smc_cpu_mem_integration.sv",
+  "hw/sys/smc/dv/models/mem/tb_smc_output_mem_responder.sv",
+  "hw/sys/smc/dv/models/mem/tb_smc_i3c_mem_responder.sv",
 ]
 filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
@@ -48,10 +50,12 @@ incdirs = ["hw/sys/smc/dv/tb"]
 exclude_files = [
   "deps/i3c-core",
 ]
-# FIXME(transition): `stubs` is a transitional Verilator-compat override set, listed ahead of the
-# bender filelist (-Wno-MODDUP first-wins). Remove once these shims are no longer needed upstream.
+# Verilator-only module overrides listed ahead of the Bender filelist
+# (-Wno-MODDUP first-wins). See tb/verilator_stubs/README.md. Not used by VCS.
 stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  # SYNC_STAGES=3 path (i2c_enable -> LSIO); same init-zero rationale as sync2.
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
@@ -63,6 +67,7 @@ stubs = [
 # access. Avoid cocotb's default public-flat model because it expands the SMC
 # GPIO filter hierarchy into a very large generated C++ model.
 disable_public_flat_rw = true
+public_scope = "hw/sys/smc/dv/tb/smc_public_scope.vlt"
 # Compile generated C++ serially and without optimization to avoid OOM kills on
 # large SMC CPU/peripheral objects.
 low_mem_make = true
@@ -82,10 +87,15 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [run_modes.smoke]
 description = "Minimal public reset smoke for contributor bring-up"
 timeout_sec = 1800
-# The reset-sanity milestone uses the eFuse responder's deterministic zero
-# initialization. Tests that require a particular lifecycle or programmed OTP
-# state must provide a validated, repository-local image explicitly.
-args = []
+# Default OTP image so fuse-sense completes (~5.5 us) and releases warm reset
+# (SCRATCH_COLD_WARM_*). {repo_root} is expanded before sim launch (cwd is
+# attempt_*/make, so repo-relative paths alone would not resolve).
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+  # Satisfy OCAH4CORECluster_rom_ext (+rom_hex) under +define+SIM; FW tests
+  # may override via +smc_rom_hex backdoor into the same prim_rom.mem.
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 # OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
@@ -95,6 +105,7 @@ build_dir = "hw/sys/smc/dv/build/cocotb"   # per-tool subdir appended: cocotb/<t
 defines = [
   # SYNTHESIS no-ops assertion/cover blocks that Verilator cannot parse.
   "SYNTHESIS",
+  "SIM",
 ]
 
 [targets.default.tools.verilator]

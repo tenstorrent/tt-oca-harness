@@ -85,7 +85,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test(smu_base_test):
                 (OUTBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "OUTBOUND0_CONFIG"),
             ):
                 st, _ = await jtag2axi_single_write(jtag, addr, data)
-                sb.expect_eq(f"filter {name}", st, J2A_STATUS_SUCCESS)
+                sb.expect_eq(f"filter {name}", st, J2A_STATUS_SUCCESS, evidence="J2A_WSTRB_NEIGHBOR")
 
             # Seed A and neighbor B (full strobes).
             for addr, seed, name in (
