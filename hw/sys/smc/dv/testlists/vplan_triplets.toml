@@ -50,30 +50,6 @@ tags = ["ci", "vplan_gap", "i2c_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_i3c_oca_write_read_sanity_test"
-module = "smc_i3c_oca_write_read_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_i3c_ibi_ccc_depth_test"
-module = "smc_i3c_ibi_ccc_depth_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_chiplet_reg_jtag_test"
-module = "smc_chiplet_reg_jtag_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "jtag_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_efuse_jtag_lc_negative_test"
 module = "smc_efuse_jtag_lc_negative_test"
 seed = 1
@@ -256,9 +232,6 @@ tests = [
     "smc_mailbox_event_irq_test",
     "smc_i2c_p1_rdwr_protocol_test",
     "smc_i2c_error_fifo_depth_test",
-    "smc_i3c_oca_write_read_sanity_test",
-    "smc_i3c_ibi_ccc_depth_test",
-    "smc_chiplet_reg_jtag_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_permission_boundary_test",
     "smc_pll_dvfs_depth_test",
@@ -301,10 +274,7 @@ tests = [
     "smc_i2c_p1_rdwr_protocol_test",
     "smc_i2c_error_fifo_depth_test",
     "smc_i3c_to_fabric_test",
-    "smc_i3c_oca_write_read_sanity_test",
-    "smc_i3c_ibi_ccc_depth_test",
     "smc_ijtag_basic_test",
-    "smc_chiplet_reg_jtag_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",

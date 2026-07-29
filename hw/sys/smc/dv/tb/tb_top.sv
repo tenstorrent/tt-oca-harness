@@ -126,6 +126,10 @@ module smc_uvm_top
     output logic tb_gpio_core2pad_any /*verilator public_flat_rw*/,
     output logic tb_gpio_core2pad_en_any /*verilator public_flat_rw*/,
     output logic tb_gpio_pad2core_en_any /*verilator public_flat_rw*/,
+    // Full pad buses from real smc RTL (smc_wrapper.u_smc). Cocotb cannot XMR
+    // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
+    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_core2pad_o /*verilator public_flat_rw*/,
+    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_core2pad_en_o /*verilator public_flat_rw*/,
 
     // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
     // Mirrors the legacy SMC DV inbound AXI path for real CSR/fabric traffic.
@@ -288,12 +292,16 @@ module smc_uvm_top
     output logic tb_axil_efuse_bank_active /*verilator public_flat_rw*/,
     output logic tb_axil_any_master_active /*verilator public_flat_rw*/,
 
-    // Output-fabric responder observability + U1-2 SLVERR inject knob.
+    // Output-fabric observability (U6-2). SLVERR uses axi_sim_mem werr/rerr
+    // (pulp API), not a DUT Force / starve knob.
     output logic [31:0] tb_output_axi_write_count /*verilator public_flat_rw*/,
     output logic [31:0] tb_output_axi_read_count /*verilator public_flat_rw*/,
     output logic [55:0] tb_output_axi_last_addr /*verilator public_flat_rw*/,
     output logic [63:0] tb_output_axi_last_wdata /*verilator public_flat_rw*/,
-    input  wire logic   tb_output_force_slverr /*verilator public_flat_rw*/,
+    // Program TB-owned axi_sim_mem.werr/rerr (byte addr); not a DUT Force.
+    input  wire logic        tb_output_err_we /*verilator public_flat_rw*/,
+    input  wire logic [55:0] tb_output_err_addr /*verilator public_flat_rw*/,
+    input  wire logic [1:0]  tb_output_err_resp /*verilator public_flat_rw*/,
     // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.
     output logic        tb_output_axi_bvalid /*verilator public_flat_rw*/,
     output logic        tb_output_axi_bready /*verilator public_flat_rw*/,
@@ -307,6 +315,9 @@ module smc_uvm_top
     output logic [55:0] tb_output_axi_araddr /*verilator public_flat_rw*/,
     output logic        tb_output_axi_arvalid /*verilator public_flat_rw*/,
     output logic        tb_output_axi_arready /*verilator public_flat_rw*/,
+    output logic [63:0] tb_output_axi_wdata /*verilator public_flat_rw*/,
+    output logic        tb_output_axi_wvalid /*verilator public_flat_rw*/,
+    output logic        tb_output_axi_wready /*verilator public_flat_rw*/,
 
     // CPU memory responder observability for firmware boot tests.
     output logic [31:0] tb_cpu_rom_read_count /*verilator public_flat_rw*/,
@@ -750,21 +761,97 @@ module smc_uvm_top
     assign jtag_axi_rvalid           = jtag_axi_in_resp.r_valid;
     assign jtag_axi_in_req.r_ready   = jtag_axi_rready;
 
-    // Output-fabric AXI memory responder (U1-1/U1-2): SEP-style shim with
-    // optional +smc_output_hex preload and programmable SLVERR inject.
-    tb_smc_output_mem_responder u_output_mem (
-        .clk_i          (clk_smc_i),
-        .rst_ni         (rst_cold_ni),
-        .axi_req_i      (output_axi_req),
-        .axi_resp_o     (output_axi_resp),
-        .force_slverr_i (tb_output_force_slverr),
-        .write_count_o  (tb_output_axi_write_count),
-        .read_count_o   (tb_output_axi_read_count),
-        .last_addr_o    (tb_output_axi_last_addr),
-        .last_wdata_o   (tb_output_axi_last_wdata)
+    // ------------------------------------------------------------------
+    // SYS_OUT AXI slave — same posture as SEP tb_top rom_boot `u_smc_mem`:
+    // pulp axi_sim_mem on the boundary, optional $readmemh preload, no Force,
+    // no custom DV mem module. ApplDelay/AcqDelay match SEP Verilator floor.
+    // ------------------------------------------------------------------
+    smc_sys_out_56_64_8_12_axi_req_t  [0:0] output_mem_req;
+    smc_sys_out_56_64_8_12_axi_resp_t [0:0] output_mem_resp;
+
+    assign output_mem_req[0] = output_axi_req;
+    assign output_axi_resp   = output_mem_resp[0];
+
+    // SMC smc_clk floor is 4ns (env_cfg); keep ApplDelay < AcqDelay < 4ns.
+    axi_sim_mem #(
+        .AddrWidth         (56),
+        .DataWidth         (64),
+        .IdWidth           (8),
+        .UserWidth         (12),
+        .NumPorts          (1),
+        .axi_req_t         (smc_sys_out_56_64_8_12_axi_req_t),
+        .axi_rsp_t         (smc_sys_out_56_64_8_12_axi_resp_t),
+        .WarnUninitialized (1'b0),
+        .UninitializedData ("zeros"),
+        .ClearErrOnAccess  (1'b1),
+        .ApplDelay         (1ns),
+        .AcqDelay          (2ns)
+    ) u_output_mem (
+        .clk_i     (clk_smc_i),
+        .rst_ni    (rst_cold_ni),
+        .axi_req_i (output_mem_req),
+        .axi_rsp_o (output_mem_resp)
     );
 
-    // U6-2: lift SYS_OUT AXI response / address handshakes for cocotb monitor.
+    string smc_output_hex_path;
+    initial begin
+        #1;
+        if ($value$plusargs("smc_output_hex=%s", smc_output_hex_path)) begin
+            $readmemh(smc_output_hex_path, u_output_mem.mem);
+            $display("[smc_uvm_top] SYS_OUT mem preloaded from %s",
+                     smc_output_hex_path);
+        end
+    end
+
+    // Program TB-owned axi_sim_mem error maps (pulp werr/rerr API — not DUT Force).
+    // Require strict 1'b1 so undriven X at time-0 does not spam the maps.
+    always_ff @(posedge clk_smc_i) begin
+        if (tb_output_err_we === 1'b1) begin
+            for (int unsigned b = 0; b < 8; b++) begin
+                u_output_mem.werr[tb_output_err_addr + b] = tb_output_err_resp;
+                u_output_mem.rerr[tb_output_err_addr + b] = tb_output_err_resp;
+            end
+        end
+    end
+
+    // Observability: SEP KM-style beat counts on lifted SYS_OUT wires.
+    logic [55:0] output_aw_addr_q;
+    logic [63:0] output_w_data_q;
+    logic [55:0] output_ar_addr_q;
+
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            output_aw_addr_q          <= '0;
+            output_w_data_q           <= '0;
+            output_ar_addr_q          <= '0;
+            tb_output_axi_write_count <= '0;
+            tb_output_axi_read_count  <= '0;
+            tb_output_axi_last_addr   <= '0;
+            tb_output_axi_last_wdata  <= '0;
+        end else begin
+            if (output_axi_req.aw_valid && output_axi_resp.aw_ready) begin
+                output_aw_addr_q <= output_axi_req.aw.addr;
+            end
+            if (output_axi_req.w_valid && output_axi_resp.w_ready) begin
+                output_w_data_q <= output_axi_req.w.data;
+            end
+            if (output_axi_req.ar_valid && output_axi_resp.ar_ready) begin
+                output_ar_addr_q <= output_axi_req.ar.addr;
+            end
+            if (output_axi_resp.b_valid && output_axi_req.b_ready) begin
+                tb_output_axi_write_count <= tb_output_axi_write_count + 32'd1;
+                tb_output_axi_last_addr   <= output_aw_addr_q;
+                tb_output_axi_last_wdata  <= output_w_data_q;
+            end
+            if (output_axi_resp.r_valid && output_axi_req.r_ready &&
+                    output_axi_resp.r.last) begin
+                tb_output_axi_read_count <= tb_output_axi_read_count + 32'd1;
+                tb_output_axi_last_addr  <= output_ar_addr_q;
+            end
+        end
+    end
+
+    // U6-2: lift SYS_OUT AXI for SmcOutputAxiMonitor (SEP-style observe ports).
     assign tb_output_axi_bvalid  = output_axi_resp.b_valid;
     assign tb_output_axi_bready  = output_axi_req.b_ready;
     assign tb_output_axi_bresp   = output_axi_resp.b.resp;
@@ -777,6 +864,9 @@ module smc_uvm_top
     assign tb_output_axi_araddr  = output_axi_req.ar.addr;
     assign tb_output_axi_arvalid = output_axi_req.ar_valid;
     assign tb_output_axi_arready = output_axi_resp.ar_ready;
+    assign tb_output_axi_wdata   = output_axi_req.w.data;
+    assign tb_output_axi_wvalid  = output_axi_req.w_valid;
+    assign tb_output_axi_wready  = output_axi_resp.w_ready;
 
     // P2-15 lc_state differential drive. lc_state_i = {diff_n, diff_p}: the
     // decoder returns diff_p as the raw value and flags sigint when diff_n is
@@ -1003,15 +1093,48 @@ module smc_uvm_top
         .efuse_debug_bus_o          ()
     );
 
-    // I3C DAT/DCT: prim_ram_1p via tb_smc_i3c_mem_responder (SEP-aligned).
-    tb_smc_i3c_mem_responder u_i3c_mem (
-        .clk_i           (clk_smc_i),
-        .rst_ni          (rst_cold_ni),
-        .dat_mem_sink_i  (i3c_dat_mem_sink),
-        .dat_mem_src_o   (i3c_dat_mem_src),
-        .dct_mem_sink_i  (i3c_dct_mem_sink),
-        .dct_mem_src_o   (i3c_dct_mem_src)
-    );
+    // I3C DAT/DCT: prim_ram_1p in TB (SEP backdoor-mem posture). Product RTL
+    // still exposes these as wrapper ports — no smc_ip_integration change.
+    // Depth follows i3c_pkg address widths (same as former tb responder).
+    for (genvar i3c_idx = 0; i3c_idx < smc_config_pkg::NUM_I3C; i3c_idx++) begin : gen_i3c_mem
+        prim_ram_1p #(
+            .Depth(1 << i3c_pkg::DatAw),
+            .Width(64),
+            .DataBitsPerMask(32)
+        ) u_dat (
+            .clk_i              (clk_smc_i),
+            .rst_ni             (rst_cold_ni),
+            .req_i              (i3c_dat_mem_sink[i3c_idx].req),
+            .write_i            (i3c_dat_mem_sink[i3c_idx].write),
+            .addr_i             (i3c_dat_mem_sink[i3c_idx].addr),
+            .wdata_i            (i3c_dat_mem_sink[i3c_idx].wdata),
+            .wmask_i            (i3c_dat_mem_sink[i3c_idx].wmask),
+            .rdata_o            (i3c_dat_mem_src[i3c_idx].rdata),
+            .cfg_i              ('0),
+            .cfg_rsp_o          ()
+        );
+        assign i3c_dat_mem_src[i3c_idx].rvalid = 1'b0;
+        assign i3c_dat_mem_src[i3c_idx].rerror = '0;
+
+        prim_ram_1p #(
+            .Depth(1 << i3c_pkg::DctAw),
+            .Width(128),
+            .DataBitsPerMask(32)
+        ) u_dct (
+            .clk_i              (clk_smc_i),
+            .rst_ni             (rst_cold_ni),
+            .req_i              (i3c_dct_mem_sink[i3c_idx].req),
+            .write_i            (i3c_dct_mem_sink[i3c_idx].write),
+            .addr_i             (i3c_dct_mem_sink[i3c_idx].addr),
+            .wdata_i            (i3c_dct_mem_sink[i3c_idx].wdata),
+            .wmask_i            (i3c_dct_mem_sink[i3c_idx].wmask),
+            .rdata_o            (i3c_dct_mem_src[i3c_idx].rdata),
+            .cfg_i              ('0),
+            .cfg_rsp_o          ()
+        );
+        assign i3c_dct_mem_src[i3c_idx].rvalid = 1'b0;
+        assign i3c_dct_mem_src[i3c_idx].rerror = '0;
+    end
 
     // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
     // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).
@@ -1041,12 +1164,16 @@ module smc_uvm_top
     assign tb_gpio_core2pad_any    = |u_dut.u_smc.core2pad_o;
     assign tb_gpio_core2pad_en_any = |u_dut.u_smc.core2pad_en_o;
     assign tb_gpio_pad2core_en_any = |u_dut.u_smc.pad2core_en_o;
+    assign tb_core2pad_o           = u_dut.u_smc.core2pad_o;
+    assign tb_core2pad_en_o        = u_dut.u_smc.core2pad_en_o;
 
     // Per-interface idle observability -- drives Batch B per-module sanity
-    // tests. DTP is still a direct smc_wrapper boundary port (local wire);
-    // PLL/PVT/extension/eFuse-bank are absorbed into smc_ip_integration, so
-    // they are sampled via XMR into smc's own (still-existing) master ports.
-    assign tb_axil_dtp_csr_active    = axil_dtp_csr_req.aw_valid | axil_dtp_csr_req.w_valid | axil_dtp_csr_req.ar_valid;
+    // tests. Sample all four external-macro masters from real smc ports so
+    // the active pulse is visible even when a wrapper/TB wire does not track
+    // the same cycle as the cocotb latch (PLL/PVT/extension already did this).
+    assign tb_axil_dtp_csr_active    = u_dut.u_smc.axil_dtp_csr_req_o.aw_valid
+                                     | u_dut.u_smc.axil_dtp_csr_req_o.w_valid
+                                     | u_dut.u_smc.axil_dtp_csr_req_o.ar_valid;
     assign tb_axil_pll_active        = u_dut.u_smc.axil_pll_req_o.aw_valid | u_dut.u_smc.axil_pll_req_o.w_valid | u_dut.u_smc.axil_pll_req_o.ar_valid;
     assign tb_axil_pvt_active        = u_dut.u_smc.axil_pvt_req_o.aw_valid | u_dut.u_smc.axil_pvt_req_o.w_valid | u_dut.u_smc.axil_pvt_req_o.ar_valid;
     assign tb_axil_extension_active  = u_dut.u_smc.axil_extension_req_o.aw_valid | u_dut.u_smc.axil_extension_req_o.w_valid | u_dut.u_smc.axil_extension_req_o.ar_valid;

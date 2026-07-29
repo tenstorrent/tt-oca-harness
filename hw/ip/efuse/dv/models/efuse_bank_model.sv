@@ -128,31 +128,60 @@ efuse_bank_reg u_efuse_bank_reg (
     .hwif_out(hwif_out)
 );
 
-// Sim-only OTP image preload, deposited into the register storage at time 0
-// so fuse data is valid before the first clock edge. Not reset-gated:
-// programmed fuses persist through warm reset. $readmemh cannot target the
-// unpacked struct array directly, hence the scratch array. Image selected by
-// +smc_efuse_hex / +sep_efuse_hex (default out/sep_efuse.hex).
+// Sim-only OTP image. PeakRDL `efuse_bank_reg` clears dout on every async
+// reset, so a time-0 deposit is wiped by the TB cold-reset pulse. Keep a
+// persistent OTP array and re-deposit it on each rising `rst_ni`. Successful
+// PROGRAM writes also update the persistent array (W1S) so warm reset keeps
+// burned bits. Image selected by +smc_efuse_hex / +sep_efuse_hex.
+logic [31:0] otp_preload_mem [1024];
+logic        otp_preload_valid;
+logic        apb_wr_access;
+logic [9:0]  apb_wr_idx;
+
 initial begin
     string img;
-    logic [31:0] otp_preload_mem [1024];
+    otp_preload_valid = 1'b0;
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
     if (IsSmcInstance) begin
         if ($value$plusargs("smc_efuse_hex=%s", img)) begin
             $readmemh(img, otp_preload_mem);
+            otp_preload_valid = 1'b1;
             $display("[efuse_bank_model:SMC] loaded %s", img);
         end
     end else begin
         if ($value$plusargs("sep_efuse_hex=%s", img)) begin
             $readmemh(img, otp_preload_mem);
+            otp_preload_valid = 1'b1;
             $display("[efuse_bank_model:SEP] loaded %s", img);
         end else begin
             $readmemh("out/sep_efuse.hex", otp_preload_mem);
+            otp_preload_valid = 1'b1;
             $display("[efuse_bank_model:SEP] loaded out/sep_efuse.hex");
         end
     end
-    for (int unsigned i = 0; i < 1024; i++) begin
-        u_efuse_bank_reg.field_storage.EFUSE_BANK_REG[i].dout.value = otp_preload_mem[i];
+end
+
+// Re-apply after reset release (blocking, same timestep as rst_ni rise).
+always @(posedge rst_ni) begin
+    if (otp_preload_valid) begin
+        for (int unsigned i = 0; i < 1024; i++) begin
+            u_efuse_bank_reg.field_storage.EFUSE_BANK_REG[i].dout.value =
+                otp_preload_mem[i];
+        end
+    end
+end
+
+// Mirror successful bank writes into the persistent OTP image (W1S).
+assign apb_wr_access = apb_req_i.psel & apb_req_i.penable & apb_req_i.pwrite
+                     & apb_resp_o.pready & ~prog_fail_act;
+assign apb_wr_idx = apb_req_i.paddr[NumFuseByteWidth-1:2];
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+        // persistent OTP image is not reset
+    end else if (apb_wr_access) begin
+        otp_preload_mem[apb_wr_idx] <=
+            otp_preload_mem[apb_wr_idx] | apb_req_i.pwdata;
     end
 end
 

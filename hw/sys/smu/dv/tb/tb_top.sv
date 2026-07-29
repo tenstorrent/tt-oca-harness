@@ -214,75 +214,38 @@ module smu_uvm_top
     assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
     assign smu_axi_in_req.r_ready   = s_axi_rready;
 
-    // Simple AXI memory responder on smu_axi_out (external SMN manager)
-    localparam int unsigned OUT_MEM_WORDS = 1024;
-    logic [63:0] out_mem [0:OUT_MEM_WORDS-1];
-    logic        out_aw_pending, out_w_pending;
-    logic [9:0]  out_aw_id_q;
-    logic [55:0] out_aw_addr_q;
-    logic [63:0] out_w_data_q;
-    logic [7:0]  out_w_strb_q;
-    logic [11:0] out_w_user_q;
+    // External SMN AXI slave — pulp axi_sim_mem (SEP/SMC posture).
+    smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
+    smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
 
-    assign smu_axi_out_resp.aw_ready = !smu_axi_out_resp.b_valid && !out_aw_pending;
-    assign smu_axi_out_resp.w_ready  = !smu_axi_out_resp.b_valid && !out_w_pending;
-    assign smu_axi_out_resp.ar_ready = !smu_axi_out_resp.r_valid;
+    assign axi_out_mem_req[0] = smu_axi_out_req;
+    assign smu_axi_out_resp   = axi_out_mem_resp[0];
+
+    axi_sim_mem #(
+        .AddrWidth         (56),
+        .DataWidth         (64),
+        .IdWidth           (10),
+        .UserWidth         (12),
+        .NumPorts          (1),
+        .axi_req_t         (smu_axi_xbar_pkg::axi_out_req_t),
+        .axi_rsp_t         (smu_axi_xbar_pkg::axi_out_resp_t),
+        .WarnUninitialized (1'b0),
+        .UninitializedData ("zeros"),
+        .ClearErrOnAccess  (1'b1),
+        .ApplDelay         (1ns),
+        .AcqDelay          (3ns)
+    ) u_axi_out_mem (
+        .clk_i     (clk_smu_i),
+        .rst_ni    (rst_cold_ni),
+        .axi_req_i (axi_out_mem_req),
+        .axi_rsp_o (axi_out_mem_resp)
+    );
 
     always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
-            out_aw_pending <= 1'b0;
-            out_w_pending  <= 1'b0;
-            out_aw_id_q    <= '0;
-            out_aw_addr_q  <= '0;
-            out_w_data_q   <= '0;
-            out_w_strb_q   <= '0;
-            out_w_user_q   <= '0;
-            smu_axi_out_resp.b       <= '0;
-            smu_axi_out_resp.b_valid <= 1'b0;
-            smu_axi_out_resp.r       <= '0;
-            smu_axi_out_resp.r_valid <= 1'b0;
+        if (!rst_cold_ni)
             smu_axi_out_awvalid_count <= '0;
-            for (int unsigned i = 0; i < OUT_MEM_WORDS; i++) out_mem[i] <= '0;
-        end else begin
-            if (smu_axi_out_req.aw_valid && smu_axi_out_resp.aw_ready) begin
-                smu_axi_out_awvalid_count <= smu_axi_out_awvalid_count + 32'd1;
-            end
-            if (smu_axi_out_resp.b_valid && smu_axi_out_req.b_ready)
-                smu_axi_out_resp.b_valid <= 1'b0;
-            if (smu_axi_out_resp.r_valid && smu_axi_out_req.r_ready)
-                smu_axi_out_resp.r_valid <= 1'b0;
-            if (smu_axi_out_req.aw_valid && smu_axi_out_resp.aw_ready) begin
-                out_aw_pending <= 1'b1;
-                out_aw_id_q    <= smu_axi_out_req.aw.id;
-                out_aw_addr_q  <= smu_axi_out_req.aw.addr;
-            end
-            if (smu_axi_out_req.w_valid && smu_axi_out_resp.w_ready) begin
-                out_w_pending <= 1'b1;
-                out_w_data_q  <= smu_axi_out_req.w.data;
-                out_w_strb_q  <= smu_axi_out_req.w.strb;
-                out_w_user_q  <= smu_axi_out_req.w.user;
-            end
-            if (!smu_axi_out_resp.b_valid && out_aw_pending && out_w_pending) begin
-                smu_axi_out_resp.b.id    <= out_aw_id_q;
-                smu_axi_out_resp.b.resp  <= 2'b00;
-                smu_axi_out_resp.b.user  <= out_w_user_q;
-                smu_axi_out_resp.b_valid <= 1'b1;
-                out_aw_pending <= 1'b0;
-                out_w_pending  <= 1'b0;
-                for (int unsigned i = 0; i < 8; i++) begin
-                    if (out_w_strb_q[i])
-                        out_mem[out_aw_addr_q[12:3]][8*i +: 8] <= out_w_data_q[8*i +: 8];
-                end
-            end
-            if (smu_axi_out_req.ar_valid && smu_axi_out_resp.ar_ready && !smu_axi_out_resp.r_valid) begin
-                smu_axi_out_resp.r.id   <= smu_axi_out_req.ar.id;
-                smu_axi_out_resp.r.data <= out_mem[smu_axi_out_req.ar.addr[12:3]];
-                smu_axi_out_resp.r.resp <= 2'b00;
-                smu_axi_out_resp.r.last <= 1'b1;
-                smu_axi_out_resp.r.user <= '0;
-                smu_axi_out_resp.r_valid <= 1'b1;
-            end
-        end
+        else if (smu_axi_out_req.aw_valid && smu_axi_out_resp.aw_ready)
+            smu_axi_out_awvalid_count <= smu_axi_out_awvalid_count + 32'd1;
     end
 
     always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
@@ -393,8 +356,8 @@ module smu_uvm_top
     assign jtag_ptap_state           = 32'(ptap_state);
     assign jtag_ptap_inst_decoded    = 32'(ptap_inst);
 
-    // CPU memory responder (same shim as SMC OSS)
-    tb_smc_cpu_mem_responder u_cpu_mem (
+    // CPU ROM/scratch/L1$ — same macros as smc_wrapper / smu_wrapper TB.
+    smc_cpu_mem_integration u_smc_cpu_mem (
         .clk_i   (clk_smu_i),
         .rst_ni  (rst_cold_ni),
         .rom_req_i (smc_rom_req),
@@ -411,7 +374,13 @@ module smu_uvm_top
         .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp),
         .rom_read_count_o (),
         .scratch_ram_read_count_o (),
-        .scratch_ram_write_count_o ()
+        .scratch_ram_write_count_o (),
+        .dcache_data_write_count_o (),
+        .fw_mailbox_o (),
+        .fw_mailbox_valid_o (),
+        .ecc_inject_sbe_i (1'b0),
+        .ecc_inject_dbe_i (1'b0),
+        .scratch0_inject_fire_o ()
     );
 
     // Macro boundary DECERR responders
@@ -682,52 +651,5 @@ module smu_uvm_top
     assign pad2core = core2pad |
         ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
          << 60);
-
-    // ------------------------------------------------------------------
-    // Optional SoC-glue model: zero DTP_CTRL abs base bits on SMC->DTP AXIL.
-    // CTN map is relative [0, 0x2B0). SMC periph xbar forwards 0xC000_F000+.
-    // Enable with +smu_dtp_csr_addr_remap (P2-I8a). Leave off for P1 tests that
-    // treat absolute 0xC000_F000 DECERR as positive decode evidence.
-    // Force only addr[31:11]=0 (idempotent; avoids force a=a&mask loops).
-    // ------------------------------------------------------------------
-    logic smu_dtp_csr_addr_remap_en;
-    initial begin
-        smu_dtp_csr_addr_remap_en = 1'b0;
-        if ($test$plusargs("smu_dtp_csr_addr_remap")) begin
-            smu_dtp_csr_addr_remap_en = 1'b1;
-            $display("%t [TB] +smu_dtp_csr_addr_remap: zero DTP CSR AXIL addr[31:11]",
-                     $time);
-        end
-    end
-
-    // Observe for debug / scoreboard non-vacuity (always present).
-    logic        tb_dtp_csr_aw_valid;
-    logic        tb_dtp_csr_ar_valid;
-    logic [31:0] tb_dtp_csr_aw_addr;
-    logic [31:0] tb_dtp_csr_ar_addr;
-    assign tb_dtp_csr_aw_valid = u_dut.smc_axil_dtp_csr_req.aw_valid;
-    assign tb_dtp_csr_ar_valid = u_dut.smc_axil_dtp_csr_req.ar_valid;
-    assign tb_dtp_csr_aw_addr  = u_dut.smc_axil_dtp_csr_req.aw.addr;
-    assign tb_dtp_csr_ar_addr  = u_dut.smc_axil_dtp_csr_req.ar.addr;
-
-    // When remap is off, do not touch the packed AXIL req at all. Continuous
-    // force/release on addr bit-slices under Verilator can glitch valids and
-    // AW-lock the CTN axi_lite_xbar (idle aw_ready/w_ready stuck at 0).
-    for (genvar gi = 11; gi < 32; gi++) begin : gen_dtp_csr_addr_remap
-        always @(*) begin
-            if (smu_dtp_csr_addr_remap_en) begin
-                if (u_dut.smc_axil_dtp_csr_req.aw_valid) begin
-                    force u_dut.smc_axil_dtp_csr_req.aw.addr[gi] = 1'b0;
-                end else begin
-                    release u_dut.smc_axil_dtp_csr_req.aw.addr[gi];
-                end
-                if (u_dut.smc_axil_dtp_csr_req.ar_valid) begin
-                    force u_dut.smc_axil_dtp_csr_req.ar.addr[gi] = 1'b0;
-                end else begin
-                    release u_dut.smc_axil_dtp_csr_req.ar.addr[gi];
-                end
-            end
-        end
-    end
 
 endmodule : smu_uvm_top

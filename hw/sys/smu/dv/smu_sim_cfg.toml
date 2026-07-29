@@ -19,8 +19,10 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # Bare-SMU CPU memory behavioral responder (SMC wrapper absorbs CPU mem).
-  "hw/sys/smu/dv/shims/mem/tb_smc_cpu_mem_responder.sv",
+  # Same CPU mem macros as smc_wrapper / smu_wrapper (not a DV behavioral responder).
+  "hw/top/smc_cpu_mem_integration.sv",
+  # External SMN AXI: pulp axi_sim_mem (SEP/SMC posture).
+  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
@@ -101,22 +103,35 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 description = "Phase-1 smoke: SMC reset/AXI, DTP JTAG IDCODE, no-SEP config"
 timeout_sec = 1800
 # Skip OTP fuse-sense FSM so primary reset can release without a real eFuse model.
-args = ["+skip_fuse_sense"]
+# +rom_hex required by real OCAH4CORECluster_mems (smc_cpu_mem_integration).
+args = [
+  "+skip_fuse_sense",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 [run_modes.smc]
 description = "Phase-1 SMC / no-SEP wrapper tests"
 timeout_sec = 1800
-args = ["+skip_fuse_sense"]
+args = [
+  "+skip_fuse_sense",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 [run_modes.dtp]
 description = "Phase-1 DTP / JTAG / boot-stall / xtrig tests"
 timeout_sec = 1800
-args = ["+skip_fuse_sense"]
+args = [
+  "+skip_fuse_sense",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 [run_modes.fabric]
 description = "Phase-1 SEP=0 fabric: SMN port, ID-width, DECERR, remap, ATOP"
 timeout_sec = 1800
-args = ["+skip_fuse_sense"]
+args = [
+  "+skip_fuse_sense",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 [targets.default]
 description = "SMU Phase-1 SEP=0 cocotb target — primary backend is VCS"

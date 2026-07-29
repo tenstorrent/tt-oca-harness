@@ -24,7 +24,7 @@ Bare `--dut smc` is not supported.
 | testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| still in TB | output AXI + I3C DAT/DCT + DTP err_slv |
+| still in TB | SYS_OUT=`axi_sim_mem` + I3C `prim_ram_1p` (in `tb_top`) + DTP err_slv |
 
 ## Verilator stubs policy
 
@@ -42,7 +42,7 @@ Bare `--dut smc` is not supported.
 ```
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env, seq_lib, tests
-├── models/                 # TB responders + pll/pvt PeakRDL wraps
+├── models/                 # pll/pvt PeakRDL wraps (adopter placeholders)
 ├── tb/                     # tb_top.sv, verilator_stubs/
 ├── testlists/
 ├── assets/

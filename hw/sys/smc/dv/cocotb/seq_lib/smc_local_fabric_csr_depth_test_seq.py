@@ -9,6 +9,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # RDL reset constants (identical on Verilator and VCS) -> G3 spec-anchored,
 # EXCEPT MAILBOX0_OUT_STATUS (see note). Each read verifies decode + route AND
 # the reset value, not merely an OKAY response.
+# I3C HCI windows are covered by smc_i3c_to_fabric_test at 0xC000_5000 (not the
+# stale 0xC003_A000 catalog hole used by removed bare-smc DV-macro tests).
 LOCAL_FABRIC_READS = [
     ("SMC_BASE_CONFIG_GLOBAL_BASE", 0xC001_0000, 0x4000_0000),  # was mislabelled RESET_VECTOR_0
     ("CLOCK_GATE_CONTROL", 0xC001_0018, 0x1F00_0000),  # offset 0x18 (was 0x30 before HANG_DET_* added)
@@ -26,16 +28,6 @@ LOCAL_FABRIC_READS = [
     ("ZEROER_SIZE", 0xC003_8208, 0x0),
 ]
 
-# The I3C CSR windows are currently stubbed in RTL (smc_peripherals instantiates
-# i3ccore_stub -- "TODO: stub i3c out until the updated open-source controller is
-# integrated") and complete every access with SLVERR/0xBADCAB1E. They are swept
-# error-tolerantly so this test still proves the fabric decodes/routes to the I3C
-# window (no hang) without asserting a real value the stub cannot provide.
-LOCAL_FABRIC_STUBBED_READS = [
-    ("I3C0_HCI_VERSION", 0xC003_A000, None),
-    ("I3C0_HC_CAPABILITIES", 0xC003_A00C, None),
-]
-
 
 class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
     """Sample representative local-fabric CSR windows with one AXI ingress."""
@@ -45,6 +37,4 @@ class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.csr_read_many(LOCAL_FABRIC_READS)
-        await self.csr_read_many_allow_error(LOCAL_FABRIC_STUBBED_READS)
-        total = len(LOCAL_FABRIC_READS) + len(LOCAL_FABRIC_STUBBED_READS)
-        assert self.accesses == total, "local fabric CSR sweep mismatch"
+        assert self.accesses == len(LOCAL_FABRIC_READS), "local fabric CSR sweep mismatch"

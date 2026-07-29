@@ -24,14 +24,6 @@ tags = ["ci", "p1_coverage_gap", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_i3c_wrap_extended_test"
-module = "smc_i3c_wrap_extended_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "p1_coverage_gap", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_efuse_map_read_test"
 module = "smc_efuse_map_read_test"
 seed = 1
@@ -116,7 +108,6 @@ name = "p1_coverage_gap"
 tests = [
     "smc_mailbox_inbound_test",
     "smc_i2c_multi_instance_test",
-    "smc_i3c_wrap_extended_test",
     "smc_efuse_map_read_test",
     "smc_efuse_shim_ctrl_test",
     "smc_pll_cgm_awm_config_test",

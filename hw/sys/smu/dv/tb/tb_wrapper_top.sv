@@ -336,18 +336,117 @@ module smu_wrapper_uvm_top (
     end
 `endif
 
-    tb_smu_axi_responder u_external_axi_responder (
-        .clk_i          (clk_smu_i),
-        .rst_ni         (rst_cold_n_o),
-        .req_i          (smu_axi_out_req),
-        .resp_o         (smu_axi_out_resp),
-        .write_count_o  (smu_axi_out_write_count_o),
-        .read_count_o   (smu_axi_out_read_count_o),
-        .fw_done_o,
-        .fw_pass_o,
-        .fw_char_o,
-        .fw_char_valid_o
+    // ------------------------------------------------------------------
+    // External SMN AXI slave — SEP rom_boot / SMC SYS_OUT posture:
+    // pulp axi_sim_mem on the boundary (no custom DV mem module, no Force).
+    // Firmware console / PASS magic is a TB observe snoop on the same wires
+    // (SEP sep_outbound_mbx decode), not a second bus terminator.
+    // ------------------------------------------------------------------
+    localparam logic [31:0] FW_STDOUT_ADDR = 32'h8000_0000;
+    localparam logic [31:0] FW_MAGIC0      = 32'hA5A5_5A5A;
+    localparam logic [31:0] FW_MAGIC_PASS  = 32'hCAFE_BABE;
+    localparam logic [31:0] FW_MAGIC_FAIL  = 32'hDEAD_BEEF;
+
+    smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
+    smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
+
+    assign axi_out_mem_req[0] = smu_axi_out_req;
+    assign smu_axi_out_resp   = axi_out_mem_resp[0];
+
+    // smu_clk floor is 8ns (env_cfg); keep ApplDelay < AcqDelay < 8ns.
+    axi_sim_mem #(
+        .AddrWidth         (56),
+        .DataWidth         (64),
+        .IdWidth           (10),
+        .UserWidth         (12),
+        .NumPorts          (1),
+        .axi_req_t         (smu_axi_xbar_pkg::axi_out_req_t),
+        .axi_rsp_t         (smu_axi_xbar_pkg::axi_out_resp_t),
+        .WarnUninitialized (1'b0),
+        .UninitializedData ("zeros"),
+        .ClearErrOnAccess  (1'b1),
+        .ApplDelay         (1ns),
+        .AcqDelay          (3ns)
+    ) u_axi_out_mem (
+        .clk_i     (clk_smu_i),
+        .rst_ni    (rst_cold_n_o),
+        .axi_req_i (axi_out_mem_req),
+        .axi_rsp_o (axi_out_mem_resp)
     );
+
+    logic [55:0] axi_out_aw_addr_q;
+    logic        fw_magic0_seen_q;
+
+    wire axi_out_aw_fire =
+        smu_axi_out_req.aw_valid & smu_axi_out_resp.aw_ready;
+    wire axi_out_w_fire =
+        smu_axi_out_req.w_valid & smu_axi_out_resp.w_ready;
+    wire axi_out_b_fire =
+        smu_axi_out_resp.b_valid & smu_axi_out_req.b_ready;
+    wire axi_out_r_last_fire =
+        smu_axi_out_resp.r_valid & smu_axi_out_req.r_ready &
+        smu_axi_out_resp.r.last;
+    // Same-cycle AW+W: prefer live AW addr (SEP mbx cur_awaddr style).
+    wire [55:0] axi_out_cur_awaddr =
+        axi_out_aw_fire ? smu_axi_out_req.aw.addr : axi_out_aw_addr_q;
+    wire axi_out_to_stdout =
+        (axi_out_cur_awaddr[31:0] == FW_STDOUT_ADDR);
+    wire [31:0] axi_out_fw_word =
+        (smu_axi_out_req.w.strb[7:4] != 4'h0)
+            ? smu_axi_out_req.w.data[63:32]
+            : smu_axi_out_req.w.data[31:0];
+
+    always_ff @(posedge clk_smu_i or negedge rst_cold_n_o) begin
+        if (!rst_cold_n_o) begin
+            axi_out_aw_addr_q         <= '0;
+            smu_axi_out_write_count_o <= '0;
+            smu_axi_out_read_count_o  <= '0;
+            fw_done_o                 <= 1'b0;
+            fw_pass_o                 <= 1'b0;
+            fw_char_o                 <= '0;
+            fw_char_valid_o           <= 1'b0;
+            fw_magic0_seen_q          <= 1'b0;
+        end else begin
+            fw_char_valid_o <= 1'b0;
+
+            if (axi_out_aw_fire) begin
+                axi_out_aw_addr_q <= smu_axi_out_req.aw.addr;
+            end
+            if (axi_out_b_fire) begin
+                smu_axi_out_write_count_o <=
+                    smu_axi_out_write_count_o + 32'd1;
+            end
+            if (axi_out_r_last_fire) begin
+                smu_axi_out_read_count_o <=
+                    smu_axi_out_read_count_o + 32'd1;
+            end
+
+            // Firmware console / PASS magic (retired tb_smu_axi_responder /
+            // SEP sep_outbound_mbx decode) — observe only, axi_sim_mem owns resp.
+            if (axi_out_w_fire && axi_out_to_stdout) begin
+                if (smu_axi_out_req.w.strb == 8'h01) begin
+                    fw_char_o       <= smu_axi_out_req.w.data[7:0];
+                    fw_char_valid_o <= 1'b1;
+                end
+                if (smu_axi_out_req.w.strb == 8'h0F ||
+                        smu_axi_out_req.w.strb == 8'hF0) begin
+                    if (!fw_magic0_seen_q) begin
+                        fw_magic0_seen_q <= (axi_out_fw_word == FW_MAGIC0);
+                    end else if (axi_out_fw_word == FW_MAGIC_PASS) begin
+                        fw_done_o        <= 1'b1;
+                        fw_pass_o        <= 1'b1;
+                        fw_magic0_seen_q <= 1'b0;
+                    end else if (axi_out_fw_word == FW_MAGIC_FAIL) begin
+                        fw_done_o        <= 1'b1;
+                        fw_pass_o        <= 1'b0;
+                        fw_magic0_seen_q <= 1'b0;
+                    end else if (axi_out_fw_word != FW_MAGIC0) begin
+                        fw_magic0_seen_q <= 1'b0;
+                    end
+                end
+            end
+        end
+    end
 
     // CPU ROM/scratch/L1$ macros (same module smc_wrapper embeds).
     smc_cpu_mem_integration u_smc_cpu_mem (

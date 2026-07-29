@@ -57,7 +57,8 @@ class SmcAxiMonitor(uvm_component):
         # SEP_IN windows still DECERR by design:
         #   * GPIO_CTRL / POC-PBIAS (>= 0xC000_4440) → smc_ip_integration
         #     u_gpio_ctrl_err_slv (DECERR + 0),
-        #   * DTP CSR (0xC000_F000..0xF7FF) → TB u_dtp_csr_err_slv,
+        #   * DTP CSR (0xC000_F000..0xF7FF) → local xbar hole (periph_reg ends
+        #     0xC000_E800); default slave DECERR+0xBADCAB1E from SEP_IN.
         #   * AXIL extension (0xC040_0000) → u_axil_extension_err_slv,
         #   * stale catalog holes around 0xC003_A000.
         # PLL/PVT are NOT listed: pll_wrap/pvt_wrap return OKAY + 0.

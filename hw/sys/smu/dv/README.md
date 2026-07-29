@@ -33,7 +33,7 @@ smu_<scenario>_test
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | Wrapper-baseline PyUVM tests |
 | `testlists/wrapper.toml` | Wrapper baseline catalog |
-| `shims/{bus,mem}/`, `fw/`, `tools/` | TB responders, OSS TCM stand-in, firmware, readiness |
+| `shims/mem/`, `fw/`, `tools/` | OSS TCM stand-in, firmware, readiness |
 
 ## BFM Policy
 

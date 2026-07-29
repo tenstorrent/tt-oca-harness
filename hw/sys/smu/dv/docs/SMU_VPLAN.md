@@ -553,7 +553,7 @@ python3 tools/dv/run_dv.py --dut smu --tool verilator --items phase4_sep0
 Notes (honest caveats, not vacuous PASS):
 - I2b: SEP OTP JTAG bridge absent (`JTAG_SEP_DBG_ENABLE=0`); hier AXIL proves err_slv DECERR/poison; frontdoor AXIL idle.
 - I11a: WDOGIP0 CSR check only (isolate clamps WDT rst export without CPU bring-up); IRQ/PLIC OUT.
-- I11b: Force-pulse `wdt_second_timeout_o` into reset unit (same isolate limit); proves scratch domain split. Verilator uses stub `smc_reset_unit` that pulses `rst_warm`/`rst_wdt` on second-timeout.
+- I11b: Force-pulse `wdt_second_timeout_o` into reset unit (same isolate limit); proves scratch domain split. Verilator uses the real `smc_reset_unit` (no DV product-module stub).
 - Verilator: JTAG2AXI ungating via packed `feat_ctrl` Force + Force-shadow RMW (continuous `security_disable` non-forceable without `.vlt`); AXI-Lite / `jtag_smc_reset_ctrl` use flat packed bit helpers.
 - FCOV: `SMU_FCOV.md` v1.2 + `smu_fcov.py` P1–P3 bins enrolled; commercial SV covergroups still optional.
 - aidv Skill-1: `SMU_FEATURE_LIST.md` draft + scoreboard check tokens — **designer approval still pending** (checker list not signed off).

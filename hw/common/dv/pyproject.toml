@@ -21,6 +21,8 @@ dependencies = [
   # SmcI2cEepromSlave). Without it those tests fall back to a no-op stub and
   # fail with AttributeError / "cocotbext-i2c is not installed".
   "cocotbext-i2c>=0.1.2,<0.2",
+  # cocotbext-uart backs OcahUartConsole (SMC UART TX pad capture).
+  "cocotbext-uart>=0.1.4,<0.2",
 ]
 
 [tool.setuptools.packages.find]

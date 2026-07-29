@@ -7,13 +7,16 @@ reads and checks how far each window is reachable from the SEP_IN master,
 using the per-port ``tb_axil_<macro>_active`` observables plus the AXI
 response.
 
-Per-window completion under ``smc_wrapper``:
+Per-window completion under ``smc_wrapper`` (real ``smc_local_xbar`` map):
 
-* PLL / PVT — absorbed by ``smc_ip_integration`` ``pll_wrap`` / ``pvt_wrap``
-  (OKAY + 0).
-* EXTENSION — ``u_axil_extension_err_slv`` (DECERR + 0).
-* DTP CSR — still a ``smc_wrapper`` boundary port; TB ``u_dtp_csr_err_slv``
-  (DECERR + default 0xBADCAB1E).
+* PLL / PVT — ``periph_reg`` window (0xC000_2000..0xC000_E800) reaches
+  ``smc_ip_integration`` ``pll_wrap`` / ``pvt_wrap`` (OKAY + 0).
+* EXTENSION — ``periph_reg`` ext window (0xC040_0000..) →
+  ``u_axil_extension_err_slv`` (DECERR + 0).
+* DTP CSR (0xC000_F000..0xC000_F800) — present on ``smc_periph_axi_lite_xbar``
+  but **outside** the local ``periph_reg`` decode (ends 0xC000_E800). From
+  SEP_IN the access hits the local default slave (DECERR + 0xBADCAB1E) and
+  must **not** pulse ``tb_axil_dtp_csr_active``.
 
 For each routable window we prove (1) matching ``tb_axil_*_active`` pulse,
 (2) isolation from other macro ports, (3) the expected response/data.
@@ -37,10 +40,12 @@ _ROUTABLE = [
     ("PLL",       "tb_axil_pll_active",       0xC000_3000, RESP_OKAY,   0x0),
     ("PVT",       "tb_axil_pvt_active",       0xC000_7000, RESP_OKAY,   0x0),
     ("EXTENSION", "tb_axil_extension_active", 0xC040_0000, RESP_DECERR, 0x0),
-    ("DTP_CSR",   "tb_axil_dtp_csr_active",   0xC000_F000, RESP_DECERR, ERR_SLAVE_DATA),
 ]
 
-_UNROUTABLE_FROM_SEP_IN: list[tuple[str, str, int]] = []
+# Outside local periph_reg window — local default slave, no macro-port pulse.
+_UNROUTABLE_FROM_SEP_IN = [
+    ("DTP_CSR", "tb_axil_dtp_csr_active", 0xC000_F000),
+]
 
 _ALL_ACTIVE = [m[1] for m in _ROUTABLE] + [m[1] for m in _UNROUTABLE_FROM_SEP_IN]
 
@@ -122,6 +127,8 @@ class smc_macro_axil_routing_test(smc_base_test):
                 macro_name, addr, active_attr, seq.resp_code, seq.rdata & 0xFFFF_FFFF,
             )
 
+        # Outside local periph_reg (ends 0xC000_E800): SEP_IN sees local default
+        # DECERR and must not pulse any macro-port active (incl. DTP).
         for macro_name, active_attr, addr in _UNROUTABLE_FROM_SEP_IN:
             seq = await self._read_window(mon, macro_name, addr)
             assert not seq.timed_out, (
@@ -130,6 +137,10 @@ class smc_macro_axil_routing_test(smc_base_test):
             assert seq.resp_code == RESP_DECERR, (
                 f"{macro_name} read (0x{addr:08x}) resp={seq.resp_code}, "
                 f"expected DECERR({RESP_DECERR}) from the local xbar"
+            )
+            assert (seq.rdata & 0xFFFF_FFFF) == ERR_SLAVE_DATA, (
+                f"{macro_name} read (0x{addr:08x}) data=0x{seq.rdata:x}, "
+                f"expected default-slave 0x{ERR_SLAVE_DATA:08x}"
             )
             for other in _ALL_ACTIVE:
                 assert mon.latched[other] == 0, (

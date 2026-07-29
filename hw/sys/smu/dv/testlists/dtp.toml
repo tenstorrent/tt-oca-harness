@@ -83,7 +83,7 @@ timeout_sec = 1800
 tags = ["dtp", "jtag2axi", "security", "phase1"]
 run_modes = ["dtp"]
 
-# P2-I8a: SMC->DTP CSR OKAY+data (needs TB addr remap plusarg)
+# P2-I8a: SMC->DTP CSR path (local-xbar hole + hier CTN; no TB addr Force)
 [[tests]]
 name = "smu_dtp_csr_access_test"
 module = "smu_dtp_csr_access_test"

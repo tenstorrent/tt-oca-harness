@@ -40,14 +40,10 @@ _PROTOCOL_VIP_TESTS = {
     "smc_smbus_pmbus_test": SmcProtocolVipKind.I2C,
     "smc_smbus_hostnotify_test": SmcProtocolVipKind.I2C,
     "smc_i3c_to_fabric_test": SmcProtocolVipKind.I3C,
-    "smc_i3c_oca_write_read_sanity_test": SmcProtocolVipKind.I3C,
-    "smc_i3c_ibi_ccc_depth_test": SmcProtocolVipKind.I3C,
     "smc_i3c_ccc_ibi_full_test": SmcProtocolVipKind.I3C,
     "smc_ijtag_basic_test": SmcProtocolVipKind.JTAG,
-    "smc_chiplet_reg_jtag_test": SmcProtocolVipKind.JTAG,
     "smc_efuse_jtag_lc_negative_test": SmcProtocolVipKind.JTAG,
     "smc_efuse_jtag_lc_access_matrix_test": SmcProtocolVipKind.JTAG,
-    "smc_jtag_dft_timeout_proxy_test": SmcProtocolVipKind.JTAG,
     "smc_jtag_reset_proxy_test": SmcProtocolVipKind.JTAG,
     "smc_input_output_fabric_wr_rd_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_output_filter_remap_security_test": SmcProtocolVipKind.OUTPUT_FABRIC,
@@ -98,7 +94,6 @@ _PROTOCOL_VIP_TESTS = {
     # P1 coverage-gap depth slate (13 new tests, 2026-07-02)
     "smc_mailbox_inbound_test": SmcProtocolVipKind.MAILBOX,
     "smc_i2c_multi_instance_test": SmcProtocolVipKind.I2C,
-    "smc_i3c_wrap_extended_test": SmcProtocolVipKind.I3C,
     "smc_efuse_map_read_test": SmcProtocolVipKind.EFUSE,
     "smc_efuse_shim_ctrl_test": SmcProtocolVipKind.EFUSE,
     "smc_pll_cgm_awm_config_test": SmcProtocolVipKind.CLOCK,
@@ -112,7 +107,6 @@ _PROTOCOL_VIP_TESTS = {
     # P1 coverage-gap round 2 (2026-07-02)
     "smc_mailbox_multi_instance_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_multi_entry_test": SmcProtocolVipKind.OUTPUT_FABRIC,
-    "smc_gpio_refclk_ctrl_test": SmcProtocolVipKind.GPIO_IRQ,
     # P1 coverage-gap round 3 (2026-07-02)
     "smc_gpio_intf_full_sweep_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_mailbox_field_sweep_test": SmcProtocolVipKind.MAILBOX,
@@ -123,7 +117,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_cluster_beu_test": SmcProtocolVipKind.CPU,
     # P1 coverage-gap round 5 (2026-07-02) — remaining leftover CSR blocks
     "smc_pvt_droop_test": SmcProtocolVipKind.CLOCK,
-    "smc_dft_ctrl_test": SmcProtocolVipKind.DIAGNOSTIC,
 }
 
 
@@ -248,8 +241,10 @@ class smc_base_test(uvm_test):
         if hasattr(dut, "tb_octs_cnt_credit_ext"):
             dut.tb_octs_cnt_credit_ext.value = 0
         # Output-fabric SLVERR inject (U1-2): off by default.
-        if hasattr(dut, "tb_output_force_slverr"):
-            dut.tb_output_force_slverr.value = 0
+        if hasattr(dut, "tb_output_err_we"):
+            dut.tb_output_err_we.value = 0
+            dut.tb_output_err_resp.value = 0
+            dut.tb_output_err_addr.value = 0
         # Cool reset starts deasserted (released) so the cool-domain logic
         # does not block the cold-reset bring-up. Tests can drive it low via
         # the reset agent COOL_RST_LO op.

@@ -111,6 +111,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/54/02/eee07b7e0762c15f7090dd4acc7653320e995eaf9c6fd0e754c92566885d/cocotbext_jtag-0.4.0.tar.gz", hash = "sha256:3c83a0353c79c8fc360af553d8540da0dd3375bac8a2cd8803e132da84d5b09b", size = 19784, upload-time = "2026-04-10T15:03:43.938Z" }
 
 [[package]]
+name = "cocotbext-uart"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cocotb" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/14/150453a9113885a93f8be7a4f21b89e8c67f91369e808d4e16ad8ec35869/cocotbext_uart-0.1.4.tar.gz", hash = "sha256:574643c82067be5e1dd6e2e830f46b8803c07fc1f27b7f75bf25066fd6d06798", size = 7948, upload-time = "2025-09-07T18:51:30.235Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/32/351045b5ac3feb65c3b54153a20ffb882a5445297572d67752ac755791c9/cocotbext_uart-0.1.4-py3-none-any.whl", hash = "sha256:be78f266449765a1cb7877a733f796bbfdbe492e7205051c4cc413e2e0c4727f", size = 6627, upload-time = "2025-09-07T18:51:14.381Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -300,6 +312,7 @@ dependencies = [
     { name = "cocotbext-axi" },
     { name = "cocotbext-i2c" },
     { name = "cocotbext-jtag" },
+    { name = "cocotbext-uart" },
     { name = "pyuvm" },
 ]
 
@@ -309,6 +322,7 @@ requires-dist = [
     { name = "cocotbext-axi", specifier = ">=0.1.24,<0.2" },
     { name = "cocotbext-i2c", specifier = ">=0.1.2,<0.2" },
     { name = "cocotbext-jtag", specifier = ">=0.4.0,<0.5" },
+    { name = "cocotbext-uart", specifier = ">=0.1.4,<0.2" },
     { name = "pyuvm", specifier = ">=4.0.0,<5" },
 ]
 

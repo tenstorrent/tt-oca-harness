@@ -40,7 +40,6 @@ REQUIRED_SOURCES = (
     SIM_CFG,
     "tb/tb_wrapper_top.sv",
     "tb/smu_wrapper_public_scope.vlt",
-    "shims/bus/tb_smu_axi_responder.sv",
     "shims/mem/sep_tcm_wrapper.sv",
     "fw/build_firmware.py",
     "fw/tests/smu_smc_smoke/main.c",
