@@ -55,19 +55,10 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-strict-prototypes
 # Tests default to sram; opt into another mode with FW_TEST_MODE_<name> := rom.
 FW_DEFAULT_TEST_MODE := sram
-# sram: bare `main` entry via picolibc, no crt0.
-FW_TEST_LDFLAGS = \
-  $(FW_OPT) -Wl,--gc-sections -Wl,--as-needed \
-  -Wl,--defsym=__stack_size=4K -Wl,--defsym=__heap_size=2K \
-  -Wl,--no-relax -Wl,-e,main -nostartfiles \
-  -march=$(FW_ARCH) -mabi=$(FW_ABI) --specs=$(FW_PICOLIBC_SPECS) -lgcc
-FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
-
-# rom: crt0/_enter entry point; use FW_LDFLAGS (no -e,main override).
-# --whole-archive ensures crt0/entry startup code is always pulled from the
-# archive even before picolibc's exit() is resolved.
-FW_TEST_LDFLAGS_rom = $(FW_LDFLAGS)
-FW_TEST_ARCHIVE_LINK_rom = -Wl,--whole-archive "$(FW_ARCHIVE)" -Wl,--no-whole-archive
+# Both sram and rom use FW_LDFLAGS and --whole-archive (compile.mk defaults).
+# sram.ld declares ENTRY(_enter); the linker script is the only difference
+# between modes.  --whole-archive ensures entry.S/crt0.S are always pulled
+# from the archive so _enter and _start resolve before picolibc's exit().
 
 # OCCP tests run as rom-mode images (crt0 + _enter, text at ROM address).
 FW_TEST_MODE_occp_sanity := rom
