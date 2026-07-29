@@ -243,7 +243,7 @@ static void print_complete_fifo_status(uint32_t controller_idx, uint32_t target_
  * @param controller_mode true for Controller mode, false for Target mode
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1; // Enable GPIO pad mux
@@ -284,8 +284,6 @@ int main(void) {
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
 
-    // Note: peripherals_out_of_reset() and program_clocks_quasar()
-    // are not needed in this environment (handled by testbench)
     simputs("  System ready\n");
 
     write_scratch(1, 0x00000011);

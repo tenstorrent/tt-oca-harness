@@ -15,7 +15,7 @@ OCAH_REGGEN_WRAPPER ?= $(OCAH_ROOT)/tools/regs/reggen_wrapper.py
 OCAH_REGEN_REG_JOBS ?= 8
 
 # Stage-1 feature parity exceptions: these TT-owned blocks intentionally keep
-# the protocol/interface shape used by the DV/coverage-proven tt-oca-hw RTL.
+# the protocol/interface shape used by the DV/coverage-proven RTL.
 # TODO: make register protocol selection uniform in a second cleanup stage and
 # remove these per-block overrides once the RTL/reg generation contract is common.
 OCAH_REG_CPU_IF_NAME_avsbus_controller ?= apb4-flat

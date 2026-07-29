@@ -31,11 +31,15 @@ OCAH_RDL_REG_BLOCKS := $(sort $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_root_
 ocah_reg_sibling_rdls = $(filter-out $(1)/$(notdir $(patsubst %/regs,%,$(1))).rdl,$(wildcard $(1)/*.rdl))
 OCAH_REG_SIBLING_RDL_FILES := $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_sibling_rdls,$(d)))
 
-# Extra RDL files exported as standalone blocks: DV shims plus the regs-root siblings.
+# Extra RDL files exported as standalone blocks: DV shims, vendored overlay RDLs
+# (e.g. pulp-platform idma's dma_ctrl, which lives in overlay/rdl/ rather than the
+# overlay/regs/<ip>/regs layout the block globs above discover), plus the regs-root
+# siblings.
 OCAH_REG_STANDALONE_RDL_FILES ?= \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/models/regs/*.rdl) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs/*.rdl) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/*.rdl) \
+  $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/*.rdl) \
   $(OCAH_REG_SIBLING_RDL_FILES)
 OCAH_EXTRA_REG_RDL_FILES ?=
 
