@@ -3,9 +3,7 @@ schema_version = 1
 
 # P1 Coverage-Gap Depth Slate — Round 4 (previously-unreached CSR blocks).
 # See `docs/SMC_VPLAN.adoc` §P1 Coverage-Gap Depth Slate — Round 4.
-# Closes the XVISOR_REMAP + cluster-BEU gaps and extends the Cadence I3C
-# AXIL sweep to all 6 wraps (the wrap_4/wrap_5 extension lives in the
-# existing smc_cdns_i3c_axil_test under p1_coverage_gap.toml).
+# Closes the XVISOR_REMAP + cluster-BEU gaps.
 
 [[tests]]
 name = "smc_xvisor_remap_test"

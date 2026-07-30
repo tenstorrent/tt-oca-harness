@@ -103,7 +103,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_cluster_cpu_infra_test": SmcProtocolVipKind.CPU,
     "smc_pvt_analog_sensor_test": SmcProtocolVipKind.CLOCK,
     "smc_remap_cla_test": SmcProtocolVipKind.OUTPUT_FABRIC,
-    "smc_cdns_i3c_axil_test": SmcProtocolVipKind.I3C,
     # P1 coverage-gap round 2 (2026-07-02)
     "smc_mailbox_multi_instance_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_multi_entry_test": SmcProtocolVipKind.OUTPUT_FABRIC,

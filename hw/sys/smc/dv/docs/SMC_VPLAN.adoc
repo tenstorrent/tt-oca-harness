@@ -260,9 +260,6 @@ temp (6 of 9 reads) |6× OKAY+0 (deferred)
 
 |`smc_pvt_droop_test` |PVT 0xC000_7xxx |10 droop regs |10× OKAY+0
 (deferred)
-
-|`smc_cdns_i3c_axil_test` |extension 0xC040_xxxx |6 wraps × (base+CTRL)
-|12× bounded DECERR (deferred)
 |=======================================================================
 
 Genuine register-level coverage of these macros is owned by each macro’s
@@ -1088,12 +1085,6 @@ separate window.
 |P1-19 |`remap_cla` |`smc_remap_cla_test` (bundles the MMODE/CLA/ALIAS
 scenarios) |MMODE_REMAP entries 0-7 (0xC001_3000+) + CLA (0xC016_0000) +
 full sweep of ALIAS_REMAP entries 0-7 (P0/P1-4 only touch entry 0).
-
-|P1-20 |`axil_extension` |`smc_cdns_i3c_axil_test` |AXIL-extension
-Cadence I3C wraps 0-5 (0xC040_0000+, extended from 0-3 in Round 4).
-Independent from OCA_I3C at 0xC000_5000+. *DECERR-terminated extension
-macro window — reachability only, all reads DECERR, no I3C register
-content (see scope caveat / S13a).*
 |=======================================================================
 
 __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -1205,16 +1196,9 @@ round 1-3 missed.
 |P1-17+ |`cluster_cpu_infra` |`smc_cluster_beu_test` |Sweep the 4
 per-core Bus Error Units `SMC_CLUSTER_CORE0..3_BEU` (0xC801_0000 stride
 0x1000), CAUSE/ENABLE/PLIC_ENABLE per core. Previously unreached.
-
-|P1-20+ |`axil_extension` |(fix) `smc_cdns_i3c_axil_test` |Extend the
-Cadence I3C AXIL sweep from 4 -> *6* wraps (RTL has wrap_0..5; wrap_4 @
-0xC040_1000 and wrap_5 @ 0xC040_1400 were previously unreached).
-*DECERR-terminated extension macro window — reachability only, all wraps
-DECERR identically (see scope caveat / S13a).*
 |=======================================================================
 
-*Round 4 aggregate*: 2 new tests + 1 in-place extension. Testlist tag
-`p1_coverage_gap_r4`.
+*Round 4 aggregate*: 2 new tests. Testlist tag `p1_coverage_gap_r4`.
 
 [[round-4-test-cases]]
 Round 4 Test Cases
@@ -1453,20 +1437,10 @@ ALIAS_REMAP entries START/END/ATTRS. |1. For N in 0..7: read
 `ALIAS_REMAP_N_END` (+ 0x08)3. Read `ALIAS_REMAP_N_ATTRS` (+ 0x10) |[ ]
 24 reads OKAY (8 entries × 3 fields)[ ] `accesses == 24`[ ] No UVM_ERROR
 |`SMC_ALIAS_REMAP_0..7__REGION_START/END/ATTRS` (0xC001_2000 + N * 0x20)
-
-|TC_SMC_P1CG_19 |*smc_cdns_i3c_axil_test* |P1 |Bounded reachability of
-Cadence I3C AXIL-extension wrap 0-5 base + I3C_CTRL addresses (all 6
-wraps). *Inside the DECERR-terminated extension macro window — all 12
-reads DECERR identically, no I3C register content (see scope caveat /
-S13a).* |1. For N in 0..5, base = 0xC040_0000 + N * 0x400: read wrap-N
-base2. Read wrap-N I3C_CTRL (base + 0x300) |[ ] 12 reads complete (OKAY
-or bounded DECERR if AXIL-ext clock-gated)[ ] `accesses == 12`[ ]
-`timeouts <= accesses`[ ] No UVM_ERROR
-|`SMC_AXIL_EXTENSION_CDNS_I3C_WRAP_0..5` (0xC040_0000 + N * 0x400)
 |=======================================================================
 
-Note: TC_SMC_P1CG_01..TC_SMC_P1CG_19 count is 19 rows above, but the 12
-new *test files* land as follows (some test IDs bundle multiple
+Note: TC_SMC_P1CG_01..TC_SMC_P1CG_18 count is 18 rows above, but the
+bundled *test files* land as follows (some test IDs bundle multiple
 categorical reads into one test to keep file count aligned with the
 gap-fill statement — reflected in the extension table above):
 `smc_mailbox_inbound_test`, `smc_i2c_multi_instance_test`,
@@ -1476,7 +1450,9 @@ gap-fill statement — reflected in the extension table above):
 `smc_telemetry_receiver_csr_test`, `smc_cluster_cpu_infra_test` (bundles
 WDT+PLIC+CLINT), `smc_pvt_analog_sensor_test` (bundles PVT combined +
 temp + POC/PBIAS), `smc_remap_cla_test` (bundles MMODE_REMAP + CLA +
-full ALIAS sweep), plus the standalone `smc_cdns_i3c_axil_test`.
+full ALIAS sweep). Cadence I3C AXIL-extension coverage
+(`smc_cdns_i3c_axil_test` / former P1-20 / TC_SMC_P1CG_19) was removed —
+OSS has no Cadence I3C IP on that path.
 
 [[p2-test-plan-blocker-gated-categories]]
 P2 Test Plan — Blocker-Gated Categories
