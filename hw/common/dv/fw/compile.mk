@@ -32,6 +32,10 @@ ocah_fw_common_mk := 1
 #   FW_TEST_ARCHIVE_LINK        - how lib<name>.a is linked in (default: --whole-archive)
 #   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK)
 #   FW_TEST_POSTPROCESS         - macro called as $(call ...,elf_path,test_name,mode)
+#   FW_TEST_POSTPROCESS_PRIMARY_SUFFIX - primary generated sidecar suffix; when
+#                           set, postprocessing is a real target instead of an
+#                           ELF recipe side effect (e.g. .ecc.hex)
+#   FW_TEST_POSTPROCESS_DEPS - files that invalidate the primary sidecar target
 # Test discovery (canonical tests/<name>/<name>.c); a subsystem declares only
 # deltas, or opts out entirely by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>):
 #   FW_TEST_EXCLUDE_NAMES  - test dir names to skip
@@ -131,6 +135,9 @@ endif
 
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
 FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).$(call ocah_fw_test_mode,$(t)).elf)
+FW_TEST_POSTPROCESS_TARGETS := $(if $(strip $(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)), \
+  $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t)$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)))
+FW_TEST_TARGETS := $(if $(strip $(FW_TEST_POSTPROCESS_TARGETS)),$(FW_TEST_POSTPROCESS_TARGETS),$(FW_TEST_ELFS))
 
 # Let the pattern rules below find sources regardless of subdirectory.
 vpath %.c $(sort $(dir $(FW_C_SRCS) $(FW_ENTRY_SRCS)))
@@ -194,10 +201,19 @@ $(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf: $$(FW_TEST_OBJS_$(
 	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"
 	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).sym"
 	$$(SIZE) "$$@"
-	$$(call FW_TEST_POSTPROCESS,$$@,$(1),$$(FW_TEST_MODE_FOR_$(1)))
+	$$(if $$(strip $$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),,$$(call FW_TEST_POSTPROCESS,$$@,$(1),$$(FW_TEST_MODE_FOR_$(1))))
 endef
 
 $(foreach test,$(FW_TEST_NAMES),$(eval $(call ocah_fw_test_rules,$(test))))
+
+define ocah_fw_test_postprocess_rule
+$(FW_TEST_BUILD_DIR)/$(1)/$(1)$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX): $(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf $(FW_TEST_POSTPROCESS_DEPS)
+	$$(call FW_TEST_POSTPROCESS,$$<,$(1),$$(FW_TEST_MODE_FOR_$(1)))
+endef
+
+ifneq ($(strip $(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),)
+$(foreach test,$(FW_TEST_NAMES),$(eval $(call ocah_fw_test_postprocess_rule,$(test))))
+endif
 
 # Validate the test selection at parse time, but only for dv-fw-tests (TEST may
 # be set for other goals and must not break all/clean).
@@ -214,7 +230,7 @@ $(foreach t,$(FW_TEST_SELECTED),$(if $(filter $(call ocah_fw_test_mode,$(t)),$(F
 endif
 
 .PHONY: dv-fw-tests
-dv-fw-tests: $(FW_TEST_ELFS)
+dv-fw-tests: $(FW_TEST_TARGETS)
 
 .PHONY: dv-fw-test-list
 dv-fw-test-list:

@@ -64,6 +64,16 @@ FW_DEFAULT_TEST_MODE := sram
 FW_TEST_MODE_occp_sanity := rom
 FW_TEST_MODE_occp_master := rom
 
+# Make the simulator-consumed ECC image the primary postprocess target. The
+# shared engine then rebuilds sidecars when the ELF or either converter changes
+# without forcing the C objects and archive to rebuild.
+FW_TEST_POSTPROCESS_PRIMARY_SUFFIX := .ecc.hex
+FW_TEST_POSTPROCESS_DEPS := \
+  $(FW_DIR)/fw.mk \
+  $(FW_DIR)/postprocess.mk \
+  $(FW_DIR)/scripts/bin_to_verilog.py \
+  $(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py
+
 # Shared with hw/sys/smc/bootrom/dummy/Makefile.
 include $(FW_DIR)/postprocess.mk
 

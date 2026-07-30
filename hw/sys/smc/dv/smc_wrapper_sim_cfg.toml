@@ -75,6 +75,20 @@ python_paths = [
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
+[c_build.default]
+# Build the selected SMC C test and declare every time-zero preload consumed by
+# the firmware boot test. run_dv stages these basenames into the simulator cwd.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "make ocah-dv-fw-tests TARGET=smc TEST={fw_target} && cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+]
+outputs = [
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
+]
+
 [run_modes.smoke]
 description = "SMC functional smoke (smc_wrapper under tb_top)"
 timeout_sec = 1800

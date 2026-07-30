@@ -694,7 +694,7 @@ ________________________________________________________________________________
 *Execution status + signoff evidence* for `project_p0`,
 `canonical_top6`, `canonical_top10`, `canonical_top20`,
 `vplan_triplets`, and `p2_phase_a` groups is tracked in
-`hw/sys/smcoss_smc_dev.md` (§header block + §6b Sign-off), not here.
+`hw/sys/smc/dv/docs/smc_oss_execution_guide.md` (§6b Sign-off), not here.
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [[legacy-migration-selection-matrix]]
@@ -1005,7 +1005,8 @@ de-dupe and the Round 1-5 gap-fill additions, #2892 currently has 48 P1
 leaf testcase issues.
 
 _______________________________________________________________
-Per-test PASS/timings + run_dir evidence: see `oss_smc_dev.md`.
+Per-test PASS/timings + run_dir evidence: see
+`smc_oss_execution_guide.md` §6d.
 _______________________________________________________________
 
 [[p1-coverage-gap-depth-slate-round-1-13-new-tests]]
@@ -1467,7 +1468,8 @@ the blocker is cleared AND the test PASSes on both simulators.*
 |=======================================================================
 |# |P2 Category |Blocker |Promotion target |Phase
 |P2-1 |`cpu_firmware_boot` |[line-through]*OSS-safe firmware loader /
-ROM image* *CLEARED* (`min_pass.ecc.hex` + `+smc_hold_cpu_boot`;
+ROM image* *CLEARED* (`c_compile`-built `hello_world.ecc.hex` +
+`+smc_hold_cpu_boot`;
 Freedom-metal CLINT out of scope) |*IMPLEMENTED*:
 `smc_cpu_firmware_boot_test` — PASS magic `0xACAFACA1` |C
 
@@ -1720,7 +1722,8 @@ Verilator model and was reverted. Tracked as a Verilator-safe pad-lift
 refactor.
 
 ___________________________________________________________________
-Per-test PASS/timings + run_dir evidence: see `oss_smc_dev.md` §6b.
+Per-test PASS/timings + run_dir evidence: see
+`smc_oss_execution_guide.md` §6b.
 ___________________________________________________________________
 
 [[p1p2-migration-blocker-roadmap]]
