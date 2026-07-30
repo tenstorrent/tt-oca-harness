@@ -21,6 +21,12 @@ dependencies = [
   # SmcI2cEepromSlave). Without it those tests fall back to a no-op stub and
   # fail with AttributeError / "cocotbext-i2c is not installed".
   "cocotbext-i2c>=0.1.2,<0.2",
+  # cocotbext-uart is intentionally omitted here: Cycode Licenses Compliance
+  # cannot verify its PyPI MIT metadata ("License Not Detected or Verified" on
+  # hw/common/dv pyproject line with cocotbext-uart). OcahUartConsole /
+  # OcahUartMonitor import it optionally and raise OcahUartImportError with an
+  # install hint when absent. For UART pad tests install separately:
+  #   pip install 'cocotbext-uart>=0.1.4,<0.2'   # MIT
 ]
 
 [tool.setuptools.packages.find]

@@ -4,13 +4,7 @@
 #ifndef GPIO_SANITY_SEQUENCE_H
 #define GPIO_SANITY_SEQUENCE_H
 
-/* GPIO sanity sequence for the cpu_traffic super-loop.
- *
- * Ported verbatim from tt-oca-hw/fw/smc/test_sequences/gpio_sanity_sequence.h;
- * the only change is the mechanical migration of the legacy GPIO_INTF_*_reg_u
- * unions / GPIO_INTF_0__*_REG_OFFSET macros to the native PeakRDL
- * gpio_intf__*_t types and SMC_TOP_GPIO_INTF_* address macros. The GPIO block is
- * open IP, so this lives in the open SMC FW tests tree. */
+/* GPIO sanity sequence for the cpu_traffic super-loop. */
 
 #include <stdint.h>
 

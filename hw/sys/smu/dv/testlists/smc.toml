@@ -1,0 +1,56 @@
+schema_version = 1
+
+# SMU Phase-1 (SEP=0) — SMC / no-SEP stream.
+# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Universe / deferred names: testlists/deferred.toml + docs/SMU_VPLAN.md
+
+[[tests]]
+name = "smu_smc_smoke_test"
+module = "smu_smc_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "smoke", "phase1"]
+run_modes = ["smc", "smoke"]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "no_sep", "smoke", "phase1"]
+run_modes = ["smc", "smoke"]
+
+[[tests]]
+name = "smc_reset_ctrl_test"
+module = "smc_reset_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "reset", "phase1"]
+run_modes = ["smc"]
+
+# smc_mailbox_int_test → testlists/deferred.toml
+
+# smc_gpio_strap_sanity_test → testlists/deferred.toml
+
+# smc_efuse_reg_sanity_test → testlists/deferred.toml
+
+# smc_wdt_sanity_test → testlists/deferred.toml
+
+# smc_wdt_timeout_irq_test → testlists/deferred.toml
+
+[[tests]]
+name = "smc_security_demote_pm_test"
+module = "smc_security_demote_pm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "security", "phase1"]
+run_modes = ["smc"]
+
+# smc_efuse_secure_tm_force_test → testlists/deferred.toml
+
+# smc_wdt_ip0_isolate_clamp_test → testlists/deferred.toml
+
+# smu_macro_axil_pll_pvt_route_test → testlists/deferred.toml
+
+# smu_octs_timer_count_csr_test → testlists/deferred.toml
+

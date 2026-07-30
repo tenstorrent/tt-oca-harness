@@ -38,6 +38,8 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         item.addr = addr
         item.length = 4
         item.allow_error = True
+        # allow_timeout: depth probe may hit idle holes; second evidence =
+        # timeouts/accesses counters scored in body (not vacuous OKAY).
         item.allow_timeout = True
         item.timeout_ns = 500
         await self.start_item(item)

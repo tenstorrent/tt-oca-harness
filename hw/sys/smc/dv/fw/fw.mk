@@ -18,6 +18,26 @@ FW_INCLUDES := \
   -I$(FW_DIR)/include/metal/drivers \
   -I$(FW_DIR)/include/metal/smc
 
+# OCCP master BFM library sources.  Compiled into libsmc.a so that
+# occp_sanity and occp_master (rom-mode) tests link without a real I3C
+# driver.  Sram tests link against the archive too but never call these
+# functions; --gc-sections removes them from sram ELFs at link time.
+FW_C_SRCS += \
+  $(FW_DIR)/common/occp/occp_commands.c \
+  $(FW_DIR)/common/occp/occp_interfaces.c \
+  $(FW_DIR)/common/occp/status_decode.c \
+  $(FW_DIR)/common/occp/sep_ring_buffer_model.c \
+  $(FW_DIR)/common/occp/i2c_controller_driver.c \
+  $(FW_DIR)/common/occp/i3c_controller_driver_stub.c
+
+# exit_stub.c provides _exit() for rom-mode tests (crt0 → exit() → _exit();
+# ROM tests never return so it just spins in WFI).
+FW_C_SRCS += $(FW_DIR)/startup/exit_stub.c
+
+FW_INCLUDES += \
+  -I$(FW_DIR)/common/occp \
+  -I$(OCAH_ROOT)/hw/sys/smc/bootrom/prod/include
+
 # Register headers via the shared engine helper (umbrella smc.h under
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := smc
@@ -33,23 +53,19 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-implicit-int \
   -Wno-strict-prototypes
-FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/scratch_pad.ld
-# Link against picolibc like the SEP/KM flows: test images keep their own entry
-# (-Wl,-e,main) and skip crt0 (-nostartfiles), resolving libc/libm from picolibc.
-FW_TEST_LDFLAGS = \
-  $(FW_OPT) -Wl,--gc-sections -Wl,--as-needed \
-  -Wl,--defsym=__stack_size=4K -Wl,--defsym=__heap_size=2K \
-  -Wl,--no-relax -Wl,-e,main -nostartfiles \
-  -march=$(FW_ARCH) -mabi=$(FW_ABI) --specs=$(FW_PICOLIBC_SPECS) -lgcc
-FW_TEST_ARCHIVE_LINK = "$(FW_ARCHIVE)"
+# Tests default to sram; opt into another mode with FW_TEST_MODE_<name> := rom.
+FW_DEFAULT_TEST_MODE := sram
+# Both sram and rom use FW_LDFLAGS and --whole-archive (compile.mk defaults).
+# sram.ld declares ENTRY(_enter); the linker script is the only difference
+# between modes.  --whole-archive ensures entry.S/crt0.S are always pulled
+# from the archive so _enter and _start resolve before picolibc's exit().
 
-define FW_TEST_POSTPROCESS
-	$(OBJCOPY) -O binary $(1) "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin"
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 8 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex"
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).bin" --data_width 1 --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi"
-	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).hex" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).preload.hex"
-	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi" --out_file "$(FW_TEST_BUILD_DIR)/$(2)/$(2).spi_preload"
-endef
+# OCCP tests run as rom-mode images (crt0 + _enter, text at ROM address).
+FW_TEST_MODE_occp_sanity := rom
+FW_TEST_MODE_occp_master := rom
+
+# Shared with hw/sys/smc/bootrom/dummy/Makefile.
+include $(FW_DIR)/postprocess.mk
 
 include $(FW_DIR)/toolchain.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk

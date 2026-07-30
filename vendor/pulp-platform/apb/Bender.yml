@@ -6,7 +6,7 @@ package:
     - "Wolfgang Roenninger <wroennin@ethz.ch>"
 
 # Sources are vendored from upstream pulp-platform/apb into upstream/ via the `vendor_package`
-# entry in the root Bender.yml (bender vendor init). Only the four modules tt-oca-hw instantiates
+# entry in the root Bender.yml (bender vendor init). Only the four modules OCA instantiates
 # are vendored: apb_pkg, apb_intf, apb_demux and apb_cdc (apb_err_slv/apb_regs/apb_upsizer/apb_test
 # are intentionally dropped). The TT-local delta (a width-safe lint fix to apb_demux) is applied as
 # patches/0001-tt-apb-delta.patch. The apb_rtl target gating is reproduced from the fork because

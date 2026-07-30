@@ -29,7 +29,7 @@ BEU_PLIC_ENABLE_OFFSET = 0x18
 # values therefore proves per-core decode/route + reachability and locks the
 # current cluster-model behaviour against regression; it does NOT verify a
 # spec-defined reset (golden == observed). Promote to G3 once the cluster RTL /
-# RDL is integrated.  [audit: F1 common-mode, see smcoss_audit.md]
+# RDL is integrated.
 #                (CAUSE,        ENABLE,       PLIC_ENABLE)
 BEU_EXPECTED = {
     0: (0x4000_0000, 0x0100_0000, 0x1F00_0000),

@@ -15,16 +15,16 @@ automatically, so new subsystems need no dispatcher edits.
 
 There are two kinds of `fw.mk` in the tree:
 
-* `hw/common/dv/fw/fw.mk` is the open-tree DV firmware entrypoint. It owns the
+* `hw/common/dv/fw/fw.mk` is the top-level DV firmware entrypoint. It owns the
   user-visible targets (`ocah-dv-fw-libs`, `ocah-dv-fw-tests`, list and clean
   targets), discovers subsystem `dv/fw/fw.mk` files under `OCAH_ROOT`, and binds
-  that discovery to the open tree.
+  that discovery to the harness root.
 * `hw/{ip,sys}/<name>/dv/fw/fw.mk` is a subsystem build manifest. It declares
   `FW_*` inputs for one firmware target: source files, include paths, linker
   scripts, test deltas, and the subsystem `toolchain.mk`.
 
 `dispatch.mk` sits between those roles. It has no tree-specific targets and does
-not know about the open tree; it is only a small library of make functions for
+not know about a particular tree layout; it is only a small library of make functions for
 discovering `dv/fw/fw.mk` files, mapping them to subsystem names, and fanning a
 goal out to selected recursive sub-makes. Keeping that logic in `dispatch.mk`
 lets another tree reuse the same fan-out machinery while keeping its own
@@ -50,7 +50,7 @@ Each subsystem is an independent recursive sub-make with its own `toolchain.mk`,
 so the three different ISA/ABI/libc environments never share global flag state.
 
 Driver archives and discovered test ELFs both use the native PeakRDL register
-headers under each block's `regs/gen/c/` (no legacy name maps).
+headers under each block's `regs/gen/c/`.
 
 ## Toolchain contract
 

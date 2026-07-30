@@ -56,7 +56,7 @@ import re
 from typing import Callable, Dict, Any, List, Optional, Union
 
 import cocotb
-from cocotb.triggers import Timer, RisingEdge, with_timeout
+from cocotb.triggers import Timer, RisingEdge, with_timeout, SimTimeoutError
 
 __all__ = ["OcahUartConsole", "OcahUartError", "OcahUartImportError"]
 
@@ -325,10 +325,10 @@ class OcahUartConsole:
         try:
             data = await with_timeout(
                 self._sink.read(1),
-                timeout_val=t_us,
+                timeout_time=t_us,
                 timeout_unit="us",
             )
-        except cocotb.result.SimTimeoutError:
+        except SimTimeoutError:
             self._stats["timeouts"] += 1
             if self._raise_on_timeout:
                 raise OcahUartError(
@@ -364,10 +364,10 @@ class OcahUartConsole:
         try:
             data = await with_timeout(
                 self._sink.read(n),
-                timeout_val=total_timeout,
+                timeout_time=total_timeout,
                 timeout_unit="us",
             )
-        except cocotb.result.SimTimeoutError:
+        except SimTimeoutError:
             self._stats["timeouts"] += 1
             if self._raise_on_timeout:
                 raise OcahUartError(

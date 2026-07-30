@@ -74,12 +74,71 @@ classification, and rules); a dedicated user-guide page will follow.
 ## DV firmware
 
 Per-subsystem DV firmware libraries (runtime **drivers**, not tests) are built via
-`make dv-fw-libs [TARGET=key_manager|sep|smc]`. Each subsystem owns a `fw.mk` + `toolchain.mk`
-under `hw/{ip,sys}/<name>/dv/fw/` and builds as an independent recursive sub-make so the
-target CPUs (PicoRV32/KM, VeeR EL2/SEP, Rocket/SMC) never share ISA/ABI/libc flag state.
+`make dv-fw-libs [TARGET=key_manager|sep|smc]` (alias of `ocah-dv-fw-libs`). Each
+subsystem owns a `fw.mk` + `toolchain.mk` under `hw/{ip,sys}/<name>/dv/fw/` and builds
+as an independent recursive sub-make so the target CPUs (PicoRV32/KM, VeeR EL2/SEP,
+Rocket/SMC) never share ISA/ABI/libc flag state.
 
 The RISC-V toolchain is provided by the project container and selected via
 `RISCV_TOOLCHAIN`. The build flow lives in [`hw/common/dv/fw/`](hw/common/dv/fw/).
+
+### SMC DV test firmware
+
+C test images are built via the standard dispatcher:
+
+```bash
+scripts/docker-run.sh run make dv-fw-tests TARGET=smc
+scripts/docker-run.sh run make dv-fw-tests TARGET=smc TEST=version_id   # one test
+```
+
+Each subsystem's tests link against one of that subsystem's **link modes** —
+memory targets discovered from `link/modes/*.ld` (e.g. SMC: `sram`, `rom`; SEP:
+`tcm`; KM: `vrom`) — and output artifacts fold the mode into their name
+(`<test>.<mode>.elf`, e.g. `version_id.sram.elf`). A test uses its subsystem's
+default mode unless it overrides `FW_TEST_MODE_<test>`; see
+[`hw/common/dv/fw/compile.mk`](hw/common/dv/fw/compile.mk) for the full
+mechanism.
+
+Most SMC tests default to `sram` mode. The OCCP master BFM tests
+(`occp_sanity`, `occp_master`) are declared `rom`-mode in
+[`hw/sys/smc/dv/fw/fw.mk`](hw/sys/smc/dv/fw/fw.mk) because they exercise the
+I3C master path and must run from the ROM address space. They link against the
+open-source weak `I3C_GetDriverInstance` stub (returns `NULL`) so the build is
+self-contained.
+
+### SMC boot ROM
+
+`hw/sys/smc/bootrom/` holds two independent ROM firmware trees:
+
+- [`dummy/`](hw/sys/smc/bootrom/dummy/) — the lightweight DV stub used today. Its
+  only job is to boot from the ROM address (`0xc0040000`), write
+  `TEST_ROM_PASS` (`0x77777777`) to `scratch_0`, and spin in `wfi` so the
+  testbench can load real firmware into SRAM. It builds as one `rom`-mode test
+  named `dummy` (source `rom.c`) on top of the same generalized firmware engine
+  as the SMC DV tests above, reusing `hw/sys/smc/dv/fw/`'s drivers, toolchain
+  settings, and link scripts.
+- [`prod/`](hw/sys/smc/bootrom/prod/) — self-contained production boot ROM with
+  its own includes and drivers (not shared with `dv/fw/`). It implements the
+  OCCP target-side protocol and uses weak stubs so the open tree links cleanly;
+  the nonfree drivers override them at link time via `NONFREE_DRIVER_SOURCES`.
+
+Build the dummy ROM with its standalone Makefile:
+
+```bash
+# From the repo root (OCAH_ROOT resolved automatically):
+scripts/docker-run.sh run make -C hw/sys/smc/bootrom/dummy
+```
+
+Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
+`dummy.rom.elf`, `dummy.rom.bin`, `dummy.rom.hex`, plus `.preload.hex` /
+`.spi` variants from the shared SMC post-process step).
+
+Build the production ROM from the same container (self-contained Makefile, not
+the shared `compile.mk` engine):
+
+```bash
+scripts/docker-run.sh run make -C hw/sys/smc/bootrom/prod
+```
 
 ## Third-party (vendor) package imports
 

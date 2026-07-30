@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: Apache-2.0
+"""axil_mailbox interface driver (outbound aperture, CPU-LSU, TX path).
+
+Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master --
+the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. This
+is the TX-path test (OCAH ): WRITE_DATA pushes the TX FIFO; READ_DATA
+pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
+the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
+a single native 64-bit beat = one FIFO entry (a 32-bit sub-word write to WRITE_DATA
++0x04 SLVERRs; the 32->64 combine exists only on the external 32-bit-downsized
+smn_inbound path, not here). 32-bit CSRs use 4-byte beats.
+
+Register constants + the golden depth model live in env/sep_mbox_golden.py.
+"""
+
+from __future__ import annotations
+
+from env.sep_axi_agent import SepAxiOp
+from env.sep_mbox_golden import (
+    OUTBOUND_BASE, WRITE_DATA, READ_DATA, CTRL,
+    CLOCK_GATE_CTRL, CLOCK_GATE_MAILBOX,
+)
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+
+
+class SepMbox(SepAxiRegDriver):
+    """Direct-AXI axil_mailbox access on the outbound aperture (CPU-LSU master)."""
+
+    _DRIVER_TAG = "MBOX"
+
+    async def ungate_clock(self) -> None:
+        cur = await self._rd(CLOCK_GATE_CTRL)
+        await self._wr(CLOCK_GATE_CTRL, cur | CLOCK_GATE_MAILBOX)
+
+    # --- 32-bit CSRs --------------------------------------------------------
+    async def wr_csr(self, off: int, val: int) -> None:
+        await self._wr(OUTBOUND_BASE + off, val)
+
+    async def rd_csr(self, off: int) -> int:
+        return await self._rd(OUTBOUND_BASE + off)
+
+    # --- 64-bit TX FIFO push (WRITE_DATA) -----------------------------------
+    async def push64(self, value: int, *, expect_error: bool = False) -> int:
+        """Push one 64-bit entry via a single 8-byte WRITE_DATA beat. Returns the AXI
+        resp_code; expect_error tolerates the write-to-full SLVERR (caller asserts)."""
+        seq = SepAxiAccessSeq(
+            "mbox_push64", op=SepAxiOp.WRITE, addr=OUTBOUND_BASE + WRITE_DATA,
+            wdata=value, length=8, size=None, allow_unverified_write_resp=expect_error,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code
+
+    # --- RX FIFO pop (READ_DATA; empty on bare-sep -> SLVERR) ---------------
+    async def pop64(self, *, expect_error: bool = False) -> tuple[int, int]:
+        """Pop a 64-bit entry via READ_DATA. On bare-sep the RX FIFO is empty, so this
+        returns (SLVERR, 0xFEEDDEAD); expect_error tolerates that. Returns (resp, data)."""
+        seq = SepAxiAccessSeq(
+            "mbox_pop64", op=SepAxiOp.READ, addr=OUTBOUND_BASE + READ_DATA,
+            length=8, size=None, expect_error=expect_error,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.rdata
+
+    # --- FIFO control -------------------------------------------------------
+    async def flush_write(self) -> None:
+        """CTRL.wflush (bit 0) drains the TX FIFO."""
+        await self._wr(OUTBOUND_BASE + CTRL, 0x1)

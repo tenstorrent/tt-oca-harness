@@ -1,0 +1,832 @@
+schema_version = 1
+
+# Deferred / universe catalog — NOT included by testlists/all.toml.
+# Full stream narrative (OUT / deferred): docs/SMU_VPLAN.md Appendix A
+# Master P1/P2 plan: docs/SMU_VPLAN.md
+# Phase-1 executable set: docs/SMU_OSS_VPLAN_PHASE1.md
+# Result-reporting policy: docs/SMU_VPLAN.md §13
+#
+# Ownership:
+#   sep / interop / SEP=1 fabric matrix → SEP=1 colleague track
+#   depth / toggle / modeled protocol → Phase-2 or child OSS SMC/SEP TBs
+#
+# These entries preserve names for handoff; test bodies are not Phase-1 scope.
+#
+# REPORTING POLICY: nothing in this file is enrolled in testlists/all.toml,
+# is never run by the sep0_all / wrapper regressions, and MUST NOT be counted
+# or reported as a passing result. Each section banner below records the
+# blocker or plan status (`BLOCKER:` / `PLANNED:`), so blocked tests retain
+# their blocker details next to the test names.
+
+# ----- SEP=1 real SEP under SMU (mirror oca_smu yaml gates) -----
+# Commercial reference: oca_smu/dv/smu/tb/tb_uvm/yaml/testlist_smu_chiplet.yaml
+#   SMU_Dev_with_SEP_Regression          = probe / connectivity (no CPU exec)
+#   Manual_SMU_Blocked_SEP_Exec_Regression = needs SEP fetch/retire
+#
+# BLOCKER (#3582 residual, OSS wrapper 2026-07-23): at SEP CPU reset release
+# mpc_reset_run_req=1 / cla=0 / clocks run, but IFU never asserts
+# sep_boot_rom_req (boot_rom_reqs=0, o_cpu_halt_status=X, traces=0). Same
+# class as commercial cleanup disposition (SMU_DV_CLEANUP_PLAN.md §27).
+# Secondary: SEP console/pass-marker path (0x8000_0000 outbound) still stalls
+# after first retire is restored. Owner: SEP=1 / SEP boot-flow track.
+# Do not enroll blocked-exec names into all.toml / wrapper `all` until fixed.
+#
+# Tags:
+#   sep_probe     — commercial green SEP gate (connectivity / wire / decode)
+#   blocked_sep_exec — needs real SEP instruction retirement
+#   sep           — SMU-level SEP stream (either class)
+
+# --- Blocked SEP execution (Manual_SMU_Blocked_SEP_Exec_Regression) ---
+[[tests]]
+name = "smu_sep_smoke_test"
+module = "smu_sep_smoke_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_sanity_test"
+module = "smu_sep_sanity_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_spi_test"
+module = "smu_sep_spi_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_modules_test"
+module = "smu_sep_modules_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_dma_test"
+module = "smu_sep_dma_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_efuse_test"
+module = "smu_sep_efuse_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_wdt_test"
+module = "smu_sep_wdt_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_aes_test"
+module = "smu_sep_aes_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_otbn_test"
+module = "smu_sep_otbn_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_wdt_strict_test"
+module = "smu_sep_wdt_strict_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_aes_strict_test"
+module = "smu_sep_aes_strict_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_sep_otbn_strict_test"
+module = "smu_sep_otbn_strict_test"
+tags = ["deferred", "sep", "blocked_sep_exec"]
+
+# --- Probe / connectivity (SMU_Dev_with_SEP_Regression) — still OUT of OSS
+# enrollment until SEP=1 TB ports + scoreboards land; listed for handoff. ---
+[[tests]]
+name = "smu_sep_smc_xbar_programmable_addr_test"
+module = "smu_sep_smc_xbar_programmable_addr_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_wdt_reset_to_smc_test"
+module = "smu_sep_wdt_reset_to_smc_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_spi_bridge_test"
+module = "smu_sep_spi_bridge_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_axi_extension_decode_test"
+module = "smu_sep_axi_extension_decode_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_external_irq_test"
+module = "smu_sep_external_irq_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_alias_mailbox_interrupt_probe_test"
+module = "smu_sep_alias_mailbox_interrupt_probe_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_ext_axi_combined_probe_test"
+module = "smu_sep_ext_axi_combined_probe_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_km_otbn_memory_test"
+module = "smu_sep_km_otbn_memory_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_debug_bus_test"
+module = "smu_sep_debug_bus_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_fuse_sense_handshake_test"
+module = "smu_fuse_sense_handshake_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_lifecycle_security_handoff_test"
+module = "smu_lifecycle_security_handoff_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_feat_ctrl_monitor_test"
+module = "smu_feat_ctrl_monitor_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+# --- New / updated commercial SEP stream (2026-07 mid) — catalog only ---
+[[tests]]
+name = "smu_cla_sep_cpu_debug_control_test"
+module = "smu_cla_sep_cpu_debug_control_test"
+tags = ["deferred", "sep", "blocked_sep_exec", "cla"]
+
+[[tests]]
+name = "smu_sep_filter_rule_matrix_test"
+module = "smu_sep_filter_rule_matrix_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_filter_skip_wire_test"
+module = "smu_sep_filter_skip_wire_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_ap_stee_output_remap_test"
+module = "smu_sep_ap_stee_output_remap_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_ap_stee_remap_region_matrix_test"
+module = "smu_sep_ap_stee_remap_region_matrix_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_outbound_demux_decode_test"
+module = "smu_sep_outbound_demux_decode_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_outbound_demux_full_decode_test"
+module = "smu_sep_outbound_demux_full_decode_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_smc_alias_remap_consistency_test"
+module = "smu_sep_smc_alias_remap_consistency_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_smc_egress_unfiltered_test"
+module = "smu_sep_smc_egress_unfiltered_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_smc_addr_route_bug_test"
+module = "smu_sep_smc_addr_route_bug_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_spi_mux_ctrl_wire_test"
+module = "smu_sep_spi_mux_ctrl_wire_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_wdt_cdc_path_test"
+module = "smu_sep_wdt_cdc_path_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_ic_reset_sep_ext_slice_test"
+module = "smu_ic_reset_sep_ext_slice_test"
+tags = ["deferred", "sep", "sep_probe"]
+
+[[tests]]
+name = "smu_sep_memory_integrity_test"
+module = "smu_sep_memory_integrity_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_otbn_execute_flow_probe_test"
+module = "smu_sep_otbn_execute_flow_probe_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+[[tests]]
+name = "smu_sep_interrupt_error_recovery_matrix_test"
+module = "smu_sep_interrupt_error_recovery_matrix_test"
+tags = ["deferred", "sep", "sep_probe", "interop"]
+
+# ----- Real SMC/SEP interop -----
+# BLOCKER (commercial Manual_SMU_Blocked_SEP_Exec + OSS):
+#   1. #3582 SEP IFU / boot-ROM fetch (no retire) — gates all real dual-fw tests.
+#   2. SEP mailbox demux/select-to-port mapping — SMC-to-SEP mailbox AW/W can
+#      reach `sep_system_peripherals.mailbox_axil_req` but returns SLVERR /
+#      no FIFO push (sep_mailbox_b_err=1).
+#   3. SEP console/pass-marker path (0x8000_0000 outbound) after retire returns.
+# Tests tagged `modeled` use a SEP-facing BFM — classify per §13.
+# New commercial anchor: smu_smc_stall_sep_test (SEP_SMU_004 CLA halt/run),
+# smu_cla_sep_cpu_debug_control_test (SEP_SMU_022 action map) — both need exec.
+[[tests]]
+name = "smc_sep_interoperability_test"
+module = "smc_sep_interoperability_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smc_sep_xbar_test"
+module = "smc_sep_xbar_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_bidirect_test"
+module = "smu_bidirect_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smc_sep_interoperability_strict_test"
+module = "smc_sep_interoperability_strict_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smc_sep_xbar_strict_test"
+module = "smc_sep_xbar_strict_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_bidirect_strict_test"
+module = "smu_bidirect_strict_test"
+tags = ["deferred", "interop", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_smc_stall_sep_test"
+module = "smu_smc_stall_sep_test"
+tags = ["deferred", "interop", "blocked_sep_exec", "cla"]
+
+[[tests]]
+name = "smu_interop_negative_recovery_test"
+module = "smu_interop_negative_recovery_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smu_interop_functional_coverage_bins_test"
+module = "smu_interop_functional_coverage_bins_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smc_sep_interaction_test"
+module = "smc_sep_interaction_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_multi_cmd_test"
+module = "smc_sep_multi_cmd_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_service_req_test"
+module = "smc_sep_service_req_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_error_recovery_test"
+module = "smc_sep_error_recovery_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_seq_validation_test"
+module = "smc_sep_seq_validation_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_notification_test"
+module = "smc_sep_notification_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_fw_request_test"
+module = "smc_sep_fw_request_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smc_sep_bidirectional_test"
+module = "smc_sep_bidirectional_test"
+tags = ["deferred", "interop", "modeled"]
+
+[[tests]]
+name = "smu_dtp_sep_debug_enhanced_test"
+module = "smu_dtp_sep_debug_enhanced_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smu_xtrig_protocol_monitor_test"
+module = "smu_xtrig_protocol_monitor_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smu_rom_scratch_readback_test"
+module = "smu_rom_scratch_readback_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smu_rom_interop_enhanced_test"
+module = "smu_rom_interop_enhanced_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smc_sep_negative_comprehensive_test"
+module = "smc_sep_negative_comprehensive_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smc_sep_stress_test"
+module = "smc_sep_stress_test"
+tags = ["deferred", "interop"]
+
+[[tests]]
+name = "smu_memrepair_mbist_boot_reset_test"
+module = "smu_memrepair_mbist_boot_reset_test"
+tags = ["deferred", "interop"]
+
+# ----- SEP=1 fabric (3x3 xbar) -----
+# PLANNED: the full 3x3 `smu_axi_xbar` matrix needs a real SEP manager port,
+# i.e. SEP=1 bring-up (gated by the SEP console-path blocker above). SEP=0
+# fabric slice (SMC<->ext, ID width, DECERR, remap, ATOP) is already enrolled
+# in testlists/fabric.toml. Owner: SEP=1 track (docs/SMU_VPLAN.md Appendix A.3).
+[[tests]]
+name = "smu_axi_xbar_address_decode_test"
+module = "smu_axi_xbar_address_decode_test"
+tags = ["deferred", "fabric", "sep1"]
+
+[[tests]]
+name = "smu_axi_xbar_connectivity_matrix_test"
+module = "smu_axi_xbar_connectivity_matrix_test"
+tags = ["deferred", "fabric", "sep1"]
+
+[[tests]]
+name = "smu_axi_crossbar_performance_test"
+module = "smu_axi_crossbar_performance_test"
+tags = ["deferred", "fabric"]
+
+[[tests]]
+name = "smu_fabric_smc_dtp_cross_domain_test"
+module = "smu_fabric_smc_dtp_cross_domain_test"
+tags = ["deferred", "fabric", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_axi_xbar_structure_test"
+module = "smu_axi_xbar_structure_test"
+tags = ["deferred", "fabric"]
+
+[[tests]]
+name = "smu_fabric_id_remap_stress_test"
+module = "smu_fabric_id_remap_stress_test"
+tags = ["deferred", "fabric"]
+
+# ----- Phase-2 / depth / toggle (SEP=0 capable but not Phase-1 density) -----
+# PLANNED (not blocked): SEP=0-capable depth/child items deliberately outside
+# the density-first enrolled set (docs/SMU_VPLAN.md §1 scope lock). Subsystem
+# depth (I2C/GPIO mux/PLIC/crypto KAT) belongs to child OSS SMC/SEP TBs.
+# Tests tagged `coverage` are toggle sweeps — forbidden as sole pass criteria
+# (docs/SMU_VPLAN.md §1 "Check grades"); commercial-simulator-only.
+# NOTE (BLOCKED RTL, no test names here): CTP 16-port pad (IF-XT-04) and NDM
+# reset (IF-RST-04) are N/A-BLOCKED in docs/SMU_VPLAN.md §4 — RTL absent under
+# the OSS wrapper; no testcase should be written until the RTL lands.
+[[tests]]
+name = "smu_smc_cpu_traffic_smoke_test"
+module = "smu_smc_cpu_traffic_smoke_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_cpu_sanity_test"
+module = "smc_cpu_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_cpu_multicore_sanity_test"
+module = "smc_cpu_multicore_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_mailbox_sanity_test"
+module = "smc_mailbox_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_plic_sanity_test"
+module = "smc_plic_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_reset_unit_sanity_test"
+module = "smc_reset_unit_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_chiplet_sanity_test"
+module = "smc_chiplet_sanity_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_gpio_p0_int_test"
+module = "smc_gpio_p0_int_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_gpio_p0_mux_test"
+module = "smc_gpio_p0_mux_test"
+tags = ["deferred", "smc", "depth"]
+
+[[tests]]
+name = "smc_cpu_traffic_sep_axi_test"
+module = "smc_cpu_traffic_sep_axi_test"
+tags = ["deferred", "smc", "modeled"]
+
+[[tests]]
+name = "smc_cpu_traffic_sep_plus_ext_axi_test"
+module = "smc_cpu_traffic_sep_plus_ext_axi_test"
+tags = ["deferred", "smc", "modeled"]
+
+[[tests]]
+name = "smc_gpio_filter_access_sep_test"
+module = "smc_gpio_filter_access_sep_test"
+tags = ["deferred", "smc", "modeled"]
+
+[[tests]]
+name = "smu_wrapper_port_toggle_test"
+module = "smu_wrapper_port_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_wrapper_axi_toggle_test"
+module = "smu_wrapper_axi_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_wrapper_internal_toggle_test"
+module = "smu_wrapper_internal_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_wrapper_memory_toggle_test"
+module = "smu_wrapper_memory_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_u_smc_interface_toggle_test"
+module = "smu_u_smc_interface_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_signal_path_verification_test"
+module = "smu_signal_path_verification_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_dft_lifecycle_matrix_test"
+module = "smu_dft_lifecycle_matrix_test"
+tags = ["deferred", "dtp", "depth"]
+
+# smu_dtp_csr_access_test promoted to testlists/dtp.toml (P2-I8a)
+
+[[tests]]
+name = "smu_smc_dtp_jtag2axi_smoke_test"
+module = "smu_smc_dtp_jtag2axi_smoke_test"
+tags = ["deferred", "dtp", "depth"]
+
+[[tests]]
+name = "smu_dtp_xtrigger_smc_cla_test"
+module = "smu_dtp_xtrigger_smc_cla_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_dtp_clock_stop_smc_cla_test"
+module = "smu_dtp_clock_stop_smc_cla_test"
+tags = ["deferred", "dtp", "depth"]
+
+[[tests]]
+name = "smu_dtp_jtag_smc_cpu_register_test"
+module = "smu_dtp_jtag_smc_cpu_register_test"
+tags = ["deferred", "dtp", "depth"]
+
+[[tests]]
+name = "smu_dtp_sep_stap_reset_smoke_test"
+module = "smu_dtp_sep_stap_reset_smoke_test"
+tags = ["deferred", "dtp", "sep1"]
+
+[[tests]]
+name = "smu_dtp_basic_verification_test"
+module = "smu_dtp_basic_verification_test"
+tags = ["deferred", "dtp", "depth"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_signal_toggle_test"
+module = "smu_dtp_jtag2axi_signal_toggle_test"
+tags = ["deferred", "coverage"]
+
+[[tests]]
+name = "smu_jtag_chain_enhanced_test"
+module = "smu_jtag_chain_enhanced_test"
+tags = ["deferred", "dtp", "depth"]
+
+# ----- Legacy os_oca/dv/smu/tb adds (2026-07 mid) — catalog only -----
+# Source: os_oca commits #3966/#3971/#3973/#3926/#3909 + P3 expand e84dfe55d.
+# Bodies stay OUT of enrolled sep0_all: pad/SVT TB, SEP=1 dual-CPU, Force-compat,
+# or already superseded by OSS deepeners below. Do NOT report as PASS.
+#
+# SUPERSEDED (OSS enrolled near-relatives already green):
+#   smu_ctm_channel_matrix_test
+#     -> smu_cross_trigger_matrix_test / smu_xtrig_ctm_four_phase_test /
+#        smu_xtrig_ctm_illegal_phase_test
+#   smu_dtp_feat_ctrl_gated_{jtag2axi,stap}_test
+#     -> smu_dtp_feat_ctrl_gate_matrix_test / smu_feat_ctrl_*_test
+#   smc_efuse_secure_tm_test
+#     -> smc_efuse_secure_tm_force_test (P4)
+#   smu_wrapper_pin_matrix (+ toggle callers)
+#     -> OUT toggle-as-pass; wrapper baseline is elaboration + smoke
+
+[[tests]]
+name = "smu_ctm_channel_matrix_test"
+module = "smu_ctm_channel_matrix_test"
+tags = ["deferred", "dtp", "superseded"]
+
+[[tests]]
+name = "smu_dtp_feat_ctrl_gated_jtag2axi_test"
+module = "smu_dtp_feat_ctrl_gated_jtag2axi_test"
+tags = ["deferred", "dtp", "superseded"]
+
+[[tests]]
+name = "smu_dtp_feat_ctrl_gated_stap_test"
+module = "smu_dtp_feat_ctrl_gated_stap_test"
+tags = ["deferred", "dtp", "sep1", "superseded"]
+
+[[tests]]
+name = "smc_efuse_secure_tm_test"
+module = "smc_efuse_secure_tm_test"
+tags = ["deferred", "smc", "superseded"]
+
+[[tests]]
+name = "smu_wrapper_pin_matrix"
+module = "smu_wrapper_pin_matrix"
+tags = ["deferred", "coverage", "out"]
+
+# Dual-CPU / SEP-OTP / STAP — need real SEP RTL + pad JTAG bridge (legacy TB).
+[[tests]]
+name = "smu_dtp_dual_cpu_bringup_test"
+module = "smu_dtp_dual_cpu_bringup_test"
+tags = ["deferred", "dtp", "sep1", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_dtp_dual_cpu_jtag2axi_test"
+module = "smu_dtp_dual_cpu_jtag2axi_test"
+tags = ["deferred", "dtp", "sep1", "blocked_sep_exec"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_sep_otp_path_test"
+module = "smu_dtp_jtag2axi_sep_otp_path_test"
+tags = ["deferred", "dtp", "sep1"]
+
+[[tests]]
+name = "smu_dtp_ptap_otp_instr_scan_test"
+module = "smu_dtp_ptap_otp_instr_scan_test"
+tags = ["deferred", "dtp", "sep1"]
+
+[[tests]]
+name = "smu_dtp_sep_ic_reset_hold_test"
+module = "smu_dtp_sep_ic_reset_hold_test"
+tags = ["deferred", "dtp", "sep1"]
+
+# ----- Policy 2026-07-29: no Force / no TB placeholder -----
+# BLOCKER: needs_real_lcc + sep1 — SEP=0 ties sep_feat_ctrl='0' (gen_no_sep);
+# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl (#3538). No Force.
+# Do not enroll in sep0_all / phase1.
+
+
+[[tests]]
+name = "smc_cpu_traffic_ext_axi_test"
+module = "smc_cpu_traffic_ext_axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_efuse_reg_sanity_test"
+module = "smc_efuse_reg_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_efuse_secure_tm_force_test"
+module = "smc_efuse_secure_tm_force_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_gpio_strap_sanity_test"
+module = "smc_gpio_strap_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_mailbox_int_test"
+module = "smc_mailbox_int_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_reset_unit_wdt_scratch_test"
+module = "smc_reset_unit_wdt_scratch_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_sanity_test"
+module = "smc_wdt_sanity_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_scratch_double_pulse_test"
+module = "smc_wdt_scratch_double_pulse_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smc_wdt_timeout_irq_test"
+module = "smc_wdt_timeout_irq_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_cross_trigger_matrix_test"
+module = "smu_cross_trigger_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_csr_access_test"
+module = "smu_dtp_csr_access_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_dtm_local_axi_test"
+module = "smu_dtp_dtm_local_axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_feat_ctrl_gate_matrix_test"
+module = "smu_dtp_feat_ctrl_gate_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_abort_mid_op_test"
+module = "smu_dtp_jtag2axi_abort_mid_op_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+module = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_error_path_test"
+module = "smu_dtp_jtag2axi_smc_error_path_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+module = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_debug_access_test"
+module = "smu_dtp_otp_debug_access_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_sep0_err_slv_test"
+module = "smu_dtp_otp_sep0_err_slv_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_dtp_otp_smc_complete_rw_test"
+module = "smu_dtp_otp_smc_complete_rw_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_feat_ctrl_flip_mid_jtag2axi_test"
+module = "smu_feat_ctrl_flip_mid_jtag2axi_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_feat_ctrl_partial_bit_corner_test"
+module = "smu_feat_ctrl_partial_bit_corner_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
+module = "smu_hier_ctn_vs_jtag2axi_concurrent_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_jtag2axi_vs_smn_same_csr_race_test"
+module = "smu_jtag2axi_vs_smn_same_csr_race_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_lifecycle_debug_policy_test"
+module = "smu_lifecycle_debug_policy_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_macro_axil_pll_pvt_route_test"
+module = "smu_macro_axil_pll_pvt_route_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_octs_timer_count_csr_test"
+module = "smu_octs_timer_count_csr_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_otp_vs_fabric_map_race_test"
+module = "smu_otp_vs_fabric_map_race_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_smc_dtp_jtag2axi_security_test"
+module = "smu_smc_dtp_jtag2axi_security_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_smc_global_base_remap_test"
+module = "smu_smc_global_base_remap_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_program_jtag_test"
+module = "smu_sys_in_filter_program_jtag_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_reprogram_shrink_test"
+module = "smu_sys_in_filter_reprogram_shrink_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_sys_in_filter_window_edge_test"
+module = "smu_sys_in_filter_window_edge_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+[[tests]]
+name = "smu_telemetry_atb_handshake_test"
+module = "smu_telemetry_atb_handshake_test"
+tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+
+# ----- Policy 2026-07-29d/h: pin / stimulus gaps (not missing glue RTL) -----
+# BLOCKER: needs_real_stimulus — no product pin / frontdoor for CLA fb / CTM
+# handshake / WDT pre-clamp inject. Bodies raise; do not enroll in sep0_all.
+# §5.2.
+
+[[tests]]
+name = "smc_wdt_ip0_isolate_clamp_test"
+module = "smc_wdt_ip0_isolate_clamp_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_dtp_clock_stop_smc_cla_loop_test"
+module = "smu_dtp_clock_stop_smc_cla_loop_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+# smu_xtrig_ctm_remap_test + pin-only illegal → enrolled (dtp.toml / sep0_all)
+[[tests]]
+name = "smu_xtrig_ctm_four_phase_test"
+module = "smu_xtrig_ctm_four_phase_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_cla_and_xtrig_concurrent_test"
+module = "smu_cla_and_xtrig_concurrent_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+
+[[tests]]
+name = "smu_clock_stop_jtag_vs_cla_fb_race_test"
+module = "smu_clock_stop_jtag_vs_cla_fb_race_test"
+tags = ["deferred", "needs_real_stimulus", "no_force"]
+

@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Generic single-beat AXI access sequence on the SEP CPU-LSU bus.
+
+A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
+one register read/write through the SEP AXI agent without re-declaring a sequence
+each time. The result (``rdata`` / ``resp_ok``) is published on the sequence
+object after ``start_seq``.
+"""
+
+from __future__ import annotations
+
+from pyuvm import uvm_sequence
+
+from env.sep_axi_agent import SepAxiItem, SepAxiOp
+
+
+class SepAxiAccessSeq(uvm_sequence):
+    """One AXI read or write; exposes ``rdata`` and ``resp_ok`` after running."""
+
+    def __init__(
+        self,
+        name: str = "sep_axi_access",
+        *,
+        op: SepAxiOp = SepAxiOp.READ,
+        addr: int = 0,
+        wdata: int = 0,
+        length: int = 4,
+        size: int | None = None,
+        allow_unverified_write_resp: bool = False,
+        expect_error: bool = False,
+    ) -> None:
+        super().__init__(name)
+        self._op = op
+        self._addr = addr
+        self._wdata = wdata
+        self._length = length
+        self._size = size  # AXI AxSIZE encoding (2 => 4-byte beat); None => bus width
+        # Tolerate a non-OKAY write response (the caller verifies by readback). Used
+        # e.g. for a write-once-set bit whose clear-attempt is actively rejected
+        # (SLVERR) once locked -- the proof is the read-back value, not the resp.
+        self._allow_unverified_write_resp = allow_unverified_write_resp
+        # Negative-path probe: a non-OKAY response is the EXPECTED outcome (the caller
+        # asserts the exact resp_code). The scoreboard then tolerates it instead of
+        # failing, and fails a probe that wrongly returns OKAY (e.g. a read from an
+        # empty mailbox FIFO must SLVERR).
+        self._expect_error = expect_error
+        self.rdata: int = 0
+        self.resp_ok: bool = False
+        self.resp_code: int = -1
+
+    async def body(self) -> None:
+        item = SepAxiItem(self.get_name())
+        item.op = self._op
+        item.addr = self._addr
+        item.length = self._length
+        item.wdata = self._wdata
+        item.size = self._size
+        item.allow_unverified_write_resp = self._allow_unverified_write_resp
+        item.expect_error = self._expect_error
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.rdata = item.rdata
+        self.resp_ok = item.resp_ok
+        self.resp_code = item.resp_code

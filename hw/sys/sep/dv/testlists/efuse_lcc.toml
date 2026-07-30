@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Daily regression policy: run `./run.sh no_cpu --regress ...` and
+# `./run.sh cpu --regress ...` separately. Tests with run_modes=["no_cpu"]
+# select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
+# full-CPU default model.
+
+[[tests]]
+name = "sep_efuse_sense_test"
+module = "efuse.sep_efuse_sense_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "efuse", "ci"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# Pin the committed default preload (bare +sep_efuse_preload, no path) so the two
+# tests cover both sources: preload+backdoor here vs random+AXI in the image test.
+args = ["+sep_efuse_preload"]
+
+[[tests]]
+name = "sep_efuse_image_test"
+module = "efuse.sep_efuse_image_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+name = "sep_efuse_lcc_lc_state_stitch_test"
+module = "lcc.sep_efuse_lcc_lc_state_stitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "subsystem", "efuse"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+# Program-failure injection = deterministic floor + seed-driven extras:
+#   count=1   -> fail the first program attempt of every OTP bit (re-arms on each
+#               resense/reset), so the retry path runs on EVERY leaf regardless of
+#               seed -- the floor that the test's non-vacuity assert relies on.
+#   percent=30 -> after the floor, inject extra failures probabilistically; the
+#               generic efuse model's LFSR is seeded from the regression RANDOM_SEED
+#               via `+sep_efuse_prog_fail_seed={seed}` (the runlib renders {seed} into
+#               run_mode/test args), so `--regress` sweeps the injection pattern per
+#               leaf. Each retry is an independent draw, so exhausting the firmware's
+#               10-attempt budget is negligibly unlikely (0.3^10).
+# The count=1 floor keeps it from ever going vacuous even on a zero-extra seed.
+args = [
+    "+sep_efuse_prog_fail_count=1",
+    "+sep_efuse_prog_fail_percent=30",
+    "+sep_efuse_prog_fail_seed={seed}",
+]
+
+[[tests]]
+# eFuse JTAG-AXIL + EL2-CPU mux arbitration (OCAH sep_efuse_jtag_axil_el2_cpu_mux_test,
+# TEST 9.5). EL2 firmware loops eFuse-MMR traffic while cocotb drives the real
+# axil_sep_otp_jtag port (j_axi_* AxiLiteMaster) concurrently; both arbitrate at the
+# eFuse AXI-Lite mux. Real-sensed PROD image makes the JTAG path LC-restricted, so a
+# single image proves allowed-MMR coexistence AND the LC-gated shadow deny
+# (0xbadcab1e) with no backdoor force. cpu run mode + REAL fuse sense (NO
+# +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
+name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
+module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
+firmware = "efuse_jtag_el2_mux_test"
+seed = 1
+timeout_sec = 3600
+tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
+run_modes = ["cpu"]

@@ -122,19 +122,12 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
             expected_payload.hex(),
         )
 
-        sim_name = (cocotb.SIM_NAME or "").lower()
-        if "verilator" in sim_name:
-            cocotb.log.info(
-                "SMBus Host Notify DUT-target bus proof skipped on Verilator "
-                "(wall-clock bound; VCS is the byte-level authority)."
-            )
-            return
-
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write(
             "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
         )
         await self.csr_write("I2C0_WRAP_ENABLE", I2C0_WRAP_CTRL, I2C_WRAP_ENABLE)
+        await self.wait_i2c0_lsio_ready("I2C0_HOSTNOTIFY_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
         await self.csr_write(

@@ -1,12 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+default:
+  tags: [chiplet-ip]
+
 stages:
   - init
   - nonfree
 
+# Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), and manual web triggers.
+.ci_rules: &ci_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'web'
+
 init:
   stage: init
+  <<: *ci_rules
   script:
     - make ocah-nonfree-init
       OCAH_NONFREE_REMOTE="https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
@@ -14,12 +26,12 @@ init:
     paths:
       - nonfree/ci.yml
 
-# TODO: re-enable once nonfree CI is enabled
-# nonfree:
-#   stage: nonfree
-#   needs: [ init ]
-#   trigger:
-#     include:
-#       - artifact: nonfree/ci.yml
-#         job: init
-#     strategy: depend
+nonfree:
+  stage: nonfree
+  needs: [ init ]
+  <<: *ci_rules
+  trigger:
+    include:
+      - artifact: nonfree/ci.yml
+        job: init
+    strategy: depend

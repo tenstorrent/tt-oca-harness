@@ -5,11 +5,16 @@
 // Keep these typedef widths aligned with the wrapper stub port comments.
 package I3CCSR_pkg;
 
-  localparam bit CONTROLLER_SUPPORT = 1'b1;
-  localparam bit TARGET_SUPPORT = 1'b1;
+  // i3ccore_stub implements neither mode and ties off the DAT/DCT memory
+  // ports, so both stay 0 until the real controller replaces the stub.
+  localparam bit CONTROLLER_SUPPORT = 1'b0;
+  localparam bit TARGET_SUPPORT = 1'b0;
 
   localparam int unsigned I3CCSR_MIN_ADDR_WIDTH = 11;
   localparam int unsigned I3CCSR_DATA_WIDTH = 32;
+
+  localparam dat_depth = 'hf;
+  localparam dct_depth = 'hf;
 
   localparam int unsigned resp_fifo_size = 8;
   localparam int unsigned cmd_fifo_size = 8;
