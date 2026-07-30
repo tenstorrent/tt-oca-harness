@@ -21,7 +21,7 @@ from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
-# Mirrors hw/sys/dtp/dv/cocotb/env/{dtp_tap_device,dtp_types}.py
+# Mirrors dv/oss/hw/sys/dtp/dv/cocotb/env/{dtp_tap_device,dtp_types}.py
 DTP_DEFAULT_IDCODE = 0x0000_0001
 DTP_IR_WIDTH = 6
 DTP_IR_BYPASS = 0x3F
@@ -56,7 +56,7 @@ class smu_dtp_jtag_smoke_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 5)
 
         idcode = await jtag.read_idcode()
-        sb.expect_eq("DTP IDCODE", int(idcode), DTP_DEFAULT_IDCODE)
+        sb.expect_eq("DTP IDCODE", int(idcode), DTP_DEFAULT_IDCODE, evidence="JTAG_IDCODE_OK")
         sb.expect_eq("IDCODE marker lsb", int(idcode) & 0x1, 1)
 
         # BYPASS: one-bit DR delays TDI->TDO by 1 TCK (capture_bit=0 after reset).

@@ -1,15 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """SMC P2-15 — lifecycle-gated eFuse JTAG access-control matrix.
 
-Exercises the SMC-OTP JTAG access-control policy in
-``hw/smc/smc_peripherals/efuse/smc_efuse_wrapper.sv`` end-to-end using two
-tb_top hooks lifted for this test:
+Exercises the SMC-OTP JTAG access-control policy end-to-end using product
+ports only (no Force / no TB encode helper):
 
-  * ``tb_lc_state_raw`` / ``tb_lc_state_force_sigint`` drive the differential
-    ``lc_state_i`` (SEP-sourced lifecycle state) to a chosen raw value or an
-    integrity-error (non-complementary) encoding, and
-  * the ``ej_axi`` AXI-Lite master drives ``axil_smc_otp_jtag_req_i`` (the
-    JTAG-side eFuse port).
+  * ``tb_lc_state`` drives ``lc_state_i`` = {diff_n, diff_p} directly
+    (complementary encoding for valid states; equal halves for sigint), and
+  * the ``ej_axi`` AXI-Lite master drives ``axil_smc_otp_jtag_req_i``.
 
 For each lifecycle state the test issues JTAG-side eFuse reads/writes and
 asserts the block/allow outcome against the RTL-derived matrix:
@@ -20,10 +17,6 @@ asserts the block/allow outcome against the RTL-derived matrix:
   * CHIPLET_ID / PACKAGE_ID reads stay allowed in every non-sigint state; and
   * a lifecycle differential-decode integrity error blocks everything,
     including the identity-read exception.
-
-This is the regression that catches a lifecycle-gating polarity/decode error
-on the SMC side (the SMC analog of the DTP ``feat_ctrl`` polarity class of bug,
-issue #3538).
 """
 
 from __future__ import annotations
@@ -48,28 +41,28 @@ EFUSE_MAP_PACKAGE_ID = 0xC000_B028
 
 BLOCK_SIGNATURE = 0xBADCAB1E  # prim_axi_lite_err_slv RESP_DATA (wrapper override)
 
-# Raw lifecycle states (smc_efuse_wrapper decode).
+# Raw lifecycle states (smc_efuse_wrapper decode). LC_STATE_WIDTH = 4.
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP = 0x2
 LC_RMA_CHIPLET = 0x6
 LC_PROD_END = 0x8
 
-# AXI response codes. A blocked JTAG access is routed to
-# ``prim_axi_lite_err_slv`` whose ``RESP`` defaults to ``RESP_DECERR`` (the SMC
-# wrapper overrides only ``RESP_DATA=0xBADCAB1E``, not ``RESP``), so a blocked
-# transaction is a DECERR. An allowed access reaches the real eFuse controller
-# (OKAY on silicon; SLVERR on a Verilator build where the fuse macro is not
-# sensed). The read data reads back as 0xBADCAB1E on both paths in the Verilator
-# stub, so the response code -- not the data -- is the block/allow discriminator.
 RESP_OKAY = 0
 RESP_SLVERR = 2
 RESP_DECERR = 3
 
 
+def pack_lc_state(raw: int, *, sigint: bool = False) -> int:
+    """Pack product lc_state_i = {diff_n, diff_p} (WIDTH=4 each)."""
+    raw4 = int(raw) & 0xF
+    diff_n = raw4 if sigint else ((~raw4) & 0xF)
+    return ((diff_n & 0xF) << 4) | raw4
+
+
 @pyuvm.test()
 class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
-    """Drive lc_state + JTAG eFuse accesses; assert the block/allow matrix."""
+    """Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix."""
 
     auto_protocol_vip = False
 
@@ -79,8 +72,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         self.checks = 0
 
         # Idle the JTAG-side eFuse master control and start at TEST_DEV.
-        dut.tb_lc_state_raw.value = LC_TEST_DEV
-        dut.tb_lc_state_force_sigint.value = 0
+        dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
 
         self.ejm = OcahAxiLiteMaster.from_prefix(
             dut,
@@ -92,15 +84,15 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         )
         await ClockCycles(dut.clk_smc_i, 5)
 
-        # (raw, force_sigint, label): expected read-block per address class and
+        # (raw, sigint, label): expected read-block per address class and
         # expected write-block (write has no ID exception).
         matrix = [
-            (LC_TEST_DEV, 0, "TEST_DEV", False, False, False, False),
-            (LC_PROD, 0, "PROD", True, False, False, True),
-            (LC_RMA_SIP, 0, "RMA_SIP", True, False, False, True),
-            (LC_RMA_CHIPLET, 0, "RMA_CHIPLET", False, False, False, False),
-            (LC_PROD_END, 0, "PROD_END", False, False, False, False),
-            (LC_TEST_DEV, 1, "SIGINT", True, True, True, True),
+            (LC_TEST_DEV, False, "TEST_DEV", False, False, False, False),
+            (LC_PROD, False, "PROD", True, False, False, True),
+            (LC_RMA_SIP, False, "RMA_SIP", True, False, False, True),
+            (LC_RMA_CHIPLET, False, "RMA_CHIPLET", False, False, False, False),
+            (LC_PROD_END, False, "PROD_END", False, False, False, False),
+            (LC_TEST_DEV, True, "SIGINT", True, True, True, True),
         ]
 
         for (raw, sigint, label, blk_nonid, blk_chip, blk_pkg, blk_wr) in matrix:
@@ -111,7 +103,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             await self._check_write(label, EFUSE_MAP_NON_ID, blk_wr)
 
         # Restore a benign lifecycle state.
-        await self._set_lc_state(LC_TEST_DEV, 0)
+        await self._set_lc_state(LC_TEST_DEV, False)
 
         assert not self.errors, "eFuse JTAG LC access-control matrix mismatch:\n" + \
             "\n".join(self.errors)
@@ -122,26 +114,25 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             csr_accesses=self.checks,
             proxy=False,
             details=(
-                "lc_state-driven JTAG eFuse access-control matrix "
+                "lc_state_i-driven JTAG eFuse access-control matrix "
                 "(PROD/RMA_SIP block + CHIPLET_ID/PACKAGE_ID exception + "
                 "sigint lockdown), block signature 0xBADCAB1E verified"
             ),
         )
 
-    async def _set_lc_state(self, raw: int, force_sigint: int) -> None:
+    async def _set_lc_state(self, raw: int, sigint: bool) -> None:
         dut = cocotb.top
-        dut.tb_lc_state_raw.value = raw
-        dut.tb_lc_state_force_sigint.value = force_sigint
+        dut.tb_lc_state.value = pack_lc_state(raw, sigint=sigint)
         # Settle the diff decode + the access-control demux spill registers.
         await ClockCycles(dut.clk_smc_i, 20)
 
         # White-box check of the lifecycle decode itself (simulator-independent):
         # this is the signal a polarity/decode bug would corrupt.
-        exp_sigint = 1 if force_sigint else 0
-        exp_prod = 0 if force_sigint else (1 if raw in (LC_PROD, LC_RMA_SIP, 0x3) else 0)
-        exp_raw = 0 if force_sigint else raw
+        exp_sigint = 1 if sigint else 0
+        exp_prod = 0 if sigint else (1 if raw in (LC_PROD, LC_RMA_SIP, 0x3) else 0)
+        exp_raw = 0 if sigint else raw
         try:
-            efw = dut.u_dut.u_smc_peripherals.u_smc_efuse_wrapper
+            efw = dut.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper
             got_raw = int(efw.lc_state_smc_raw.value)
             got_sigint = int(efw.lc_sigint_err.value)
             got_prod = int(efw.is_prod_or_rma_sip.value)
@@ -151,7 +142,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             )
             if (got_raw, got_sigint, got_prod) != (exp_raw, exp_sigint, exp_prod):
                 self.errors.append(
-                    f"lc decode mismatch for raw=0x{raw:x} force_sigint={force_sigint}: "
+                    f"lc decode mismatch for raw=0x{raw:x} sigint={sigint}: "
                     f"got (raw=0x{got_raw:x}, sigint={got_sigint}, prod={got_prod}) "
                     f"exp (raw=0x{exp_raw:x}, sigint={exp_sigint}, prod={exp_prod})"
                 )

@@ -1,89 +1,248 @@
 # SPDX-License-Identifier: Apache-2.0
-"""SMC OSS I2C protocol VIP wrapper.
+"""SMC OSS I2C protocol VIP (clocked slave + timer master).
 
-Thin DUT-local bind of ``ocah_i2c_vip`` split-port BFMs onto SMC
-``tb_top.sv`` I2C0 pads:
+Open-drain pad model on ``tb_top.sv``:
 
-* ``tb_i2c0_sda`` / ``tb_i2c0_scl`` — resolved bus outputs (cocotb reads)
-* ``tb_i2c0_sda_ext_low`` / ``tb_i2c0_scl_ext_low`` — cocotb drives ``1`` to
-  pull low
+* ``tb_i2c0_sda`` / ``tb_i2c0_scl`` — resolved bus (read)
+* ``tb_i2c0_sda_ext_low`` / ``tb_i2c0_scl_ext_low`` — cocotb ``1`` pulls low
 
-SMBus / PMBus helpers remain on ``SmcI2cMasterVip`` because they are SMC
-test-sequence conveniences, not generic I2C BFM features.
-
-Public API
-----------
-SmcI2cEepromSlave(*, addr, size, addr_bytes, name)
-SmcI2cBusMonitor(*, name)
-SmcI2cMasterVip(*, speed, name) — plus smbus_* / pmbus_* helpers
+cocotbext-i2c Rising/FallingEdge waits on combinational OD nets miss updates on
+Verilator, so the DUT host NACKs, sets CONTROLLER_EVENTS.NACK, and freezes with
+SCL low (Idle + trans_started). This VIP avoids OD Edge waits so VCS and
+Verilator run the same bus proofs.
 """
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
+from cocotb.triggers import RisingEdge, Timer
 
-from ocah_i2c_vip import (
-    OcahI2cImportError,
-    OcahI2cSplitPortError,
-    OcahI2cSplitPortMaster,
-    OcahI2cSplitPortMemory,
-    OcahI2cSplitPortMonitor,
-)
+SmcI2cVipError = RuntimeError
 
-# Keep the historical SMC error name for existing sequences.
-SmcI2cVipError = OcahI2cSplitPortError
+# Wired-AND votes for shared ext_low nets (multiple VIP entities on one bus).
+_SDA_LOW: dict[int, set[int]] = {}
+_SCL_LOW: dict[int, set[int]] = {}
 
 
-def _i2c0_pads():
+def _pads():
     dut = cocotb.top
+    # Prefer clk_smc_i (typically 2x periph) for VIP sampling. Do not use
+    # `obj or fallback` — cocotb HierarchyObject is not bool-castable.
+    sample_clk = getattr(dut, "clk_smc_i", None)
+    if sample_clk is None:
+        sample_clk = dut.clk_periph_i
     return (
         dut.tb_i2c0_sda,
         dut.tb_i2c0_sda_ext_low,
         dut.tb_i2c0_scl,
         dut.tb_i2c0_scl_ext_low,
+        sample_clk,
     )
 
 
-class SmcI2cEepromSlave(OcahI2cSplitPortMemory):
-    """I2C EEPROM slave wired to `tb_i2c0_*` split-port signals."""
+def _set_ext_low(handle, drivers: dict[int, set[int]], owner: int, pull_low: bool) -> None:
+    key = id(handle)
+    votes = drivers.setdefault(key, set())
+    if pull_low:
+        votes.add(owner)
+    else:
+        votes.discard(owner)
+    handle.value = 1 if votes else 0
+
+
+class SmcI2cEepromSlave:
+    """Clocked I2C EEPROM slave (1-byte address pointer) on ``tb_i2c0_*``."""
 
     def __init__(
         self,
         *,
         addr: int = 0x50,
         size: int = 256,
-        addr_bytes: int = 1,  # retained for call-site compatibility; unused by BFM
+        addr_bytes: int = 1,
         name: str = "smc_i2c0_eeprom",
     ) -> None:
-        _ = addr_bytes  # historical kwarg; cocotbext I2cMemory owns addressing
-        sda, sda_o, scl, scl_o = _i2c0_pads()
-        try:
-            super().__init__(
-                sda,
-                sda_o,
-                scl,
-                scl_o,
-                addr=addr,
-                size=size,
-                name=name,
-            )
-        except OcahI2cImportError as exc:
-            raise SmcI2cVipError("cocotbext-i2c is not installed") from exc
+        _ = addr_bytes
+        self.addr = addr & 0x7F
+        self.mem = bytearray(size)
+        self.log = logging.getLogger(name)
+        sda, sda_ext, scl, scl_ext, clk = _pads()
+        self._sda = sda
+        self._sda_ext = sda_ext
+        self._scl = scl
+        self._scl_ext = scl_ext
+        self._clk = clk
+        self._id = id(self)
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
+        self._ptr = 0
+        self.starts = 0
+        self.acks = 0
+        self.stops = 0
+        self.bytes = 0
+        self.log.info("%s bound: addr=0x%02X size=%d (clocked)", name, self.addr, size)
+        self._task = cocotb.start_soon(self._run())
+
+    def preload(self, data: bytes) -> None:
+        n = min(len(data), len(self.mem))
+        self.mem[:n] = data[:n]
+
+    def read_mem(self, offset: int, length: int) -> bytes:
+        return bytes(self.mem[offset : offset + length])
+
+    def write_mem(self, offset: int, data: bytes) -> None:
+        for i, b in enumerate(data):
+            if 0 <= offset + i < len(self.mem):
+                self.mem[offset + i] = b
+
+    def _pull_sda(self, low: bool) -> None:
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, low)
+
+    def _drive_bit(self, bit: int) -> None:
+        # logical 0 → pull low; logical 1 → release
+        self._pull_sda(not bool(bit))
+
+    async def _run(self) -> None:
+        prev_scl = 1
+        prev_sda = 1
+        # idle | addr | aack | wdata | wack | rprep | rdata | rack
+        phase = "idle"
+        bit_i = 0
+        shift = 0
+        rw = 0
+        have_ptr = False
+
+        while True:
+            await RisingEdge(self._clk)
+            try:
+                scl = int(self._scl.value)
+                sda = int(self._sda.value)
+            except ValueError:
+                # X/Z: treat as released (idle-high) so START/edge detect still
+                # works under Verilator when pullups are weak/ignored.
+                scl = 1
+                sda = 1
+            rose = (not prev_scl) and scl
+            fell = prev_scl and (not scl)
+            start = prev_scl and scl and prev_sda and (not sda)
+            stop = prev_scl and scl and (not prev_sda) and sda
+
+            if start:
+                self.starts += 1
+                phase = "addr"
+                bit_i = 0
+                shift = 0
+                have_ptr = False
+                self._pull_sda(False)
+            elif stop:
+                self.stops += 1
+                phase = "idle"
+                self._pull_sda(False)
+            elif phase == "addr" and rose:
+                shift = ((shift << 1) | sda) & 0xFF
+                bit_i += 1
+                if bit_i >= 8:
+                    phase = "aack"
+                    bit_i = 0
+            elif phase == "aack" and fell:
+                addr7 = (shift >> 1) & 0x7F
+                rw = shift & 1
+                if addr7 != self.addr:
+                    self._pull_sda(False)
+                    phase = "idle"
+                else:
+                    self._pull_sda(True)  # ACK
+                    self.acks += 1
+                    phase = "rprep" if rw else "wack_hold"
+                    if rw:
+                        shift = self.mem[self._ptr % len(self.mem)]
+                        bit_i = 0
+                    else:
+                        shift = 0
+                        have_ptr = False
+                        bit_i = 0
+            elif phase == "wack_hold" and rose:
+                # Master sampled address/data ACK.
+                phase = "wack_rel"
+            elif phase == "wack_rel" and fell:
+                self._pull_sda(False)
+                phase = "wdata"
+            elif phase == "wdata" and rose:
+                shift = ((shift << 1) | sda) & 0xFF
+                bit_i += 1
+                if bit_i >= 8:
+                    phase = "wack"
+                    bit_i = 0
+            elif phase == "wack" and fell:
+                self._pull_sda(True)
+                if not have_ptr:
+                    self._ptr = shift % len(self.mem)
+                    have_ptr = True
+                else:
+                    self.mem[self._ptr % len(self.mem)] = shift
+                    self.bytes += 1
+                    self._ptr = (self._ptr + 1) % len(self.mem)
+                shift = 0
+                phase = "wack_hold"
+            elif phase == "rprep" and rose:
+                # Master sampled address ACK; prepare first data bit on fall.
+                phase = "rdata"
+                bit_i = 0
+            elif phase == "rdata" and fell:
+                if bit_i < 8:
+                    self._drive_bit((shift >> (7 - bit_i)) & 1)
+                else:
+                    self._pull_sda(False)
+                    phase = "rack"
+            elif phase == "rdata" and rose:
+                bit_i += 1
+            elif phase == "rack" and rose:
+                if sda:
+                    phase = "idle"
+                    self._pull_sda(False)
+                else:
+                    self._ptr = (self._ptr + 1) % len(self.mem)
+                    shift = self.mem[self._ptr % len(self.mem)]
+                    bit_i = 0
+                    phase = "rdata"
+
+            prev_scl = scl
+            prev_sda = sda
 
 
-class SmcI2cBusMonitor(OcahI2cSplitPortMonitor):
-    """Passive I2C observer that records SMC I2C0 bus events."""
+class SmcI2cBusMonitor:
+    """Passive START/STOP observer (never ACKs)."""
 
     def __init__(self, name: str = "smc_i2c0_monitor") -> None:
-        sda, sda_o, scl, scl_o = _i2c0_pads()
-        try:
-            super().__init__(sda, sda_o, scl, scl_o, name=name)
-        except OcahI2cImportError as exc:
-            raise SmcI2cVipError("cocotbext-i2c is not installed") from exc
+        self.log = logging.getLogger(name)
+        self.transactions: list[dict] = []
+        sda, sda_ext, scl, scl_ext, clk = _pads()
+        self._sda = sda
+        self._scl = scl
+        self._clk = clk
+        sda_ext.value = 0
+        scl_ext.value = 0
+        self.log.info("%s bound (clocked, passive)", name)
+        self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        prev_scl = 1
+        prev_sda = 1
+        while True:
+            await RisingEdge(self._clk)
+            scl = int(self._scl.value)
+            sda = int(self._sda.value)
+            if prev_scl and scl and prev_sda and (not sda):
+                self.transactions.append({"ev": "START"})
+            elif prev_scl and scl and (not prev_sda) and sda:
+                self.transactions.append({"ev": "STOP"})
+            prev_scl = scl
+            prev_sda = sda
 
 
-class SmcI2cMasterVip(OcahI2cSplitPortMaster):
-    """Active I2C master on `tb_i2c0_*`, plus SMBus/PMBus helpers."""
+class SmcI2cMasterVip:
+    """Timer bit-bang I2C master (level-based stretch wait, no OD Edge)."""
 
     def __init__(
         self,
@@ -91,26 +250,119 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
         speed: int = 100_000,
         name: str = "smc_i2c0_master",
     ) -> None:
-        sda, sda_o, scl, scl_o = _i2c0_pads()
-        try:
-            super().__init__(
-                sda,
-                sda_o,
-                scl,
-                scl_o,
-                speed=speed,
-                name=name,
-            )
-        except OcahI2cImportError as exc:
-            raise SmcI2cVipError("cocotbext-i2c is not installed") from exc
+        self.log = logging.getLogger(name)
+        self.speed = speed
+        sda, sda_ext, scl, scl_ext, _clk = _pads()
+        self._sda = sda
+        self._sda_ext = sda_ext
+        self._scl = scl
+        self._scl_ext = scl_ext
+        self._id = id(self)
+        self._bit_ns = max(1, int(1e9 / speed))
+        self._half_ns = max(1, self._bit_ns // 2)
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
+        self._active = False
+        self.log.info("%s bound: speed=%d (timer bit-bang)", name, speed)
 
-    # ------------------------------------------------------------------
-    # P2-A / P2-11: SMBus + PMBus helpers
-    # ------------------------------------------------------------------
+    def _pull_sda(self, low: bool) -> None:
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, low)
+
+    def _pull_scl(self, low: bool) -> None:
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, low)
+
+    async def _wait_scl_high(self) -> None:
+        for _ in range(100000):
+            if int(self._scl.value):
+                return
+            await Timer(self._half_ns, unit="ns")
+        raise SmcI2cVipError("SCL stayed low (stretch/timeout)")
+
+    async def send_start(self) -> None:
+        if self._active:
+            self._pull_sda(False)
+            await Timer(self._half_ns, unit="ns")
+            self._pull_scl(False)
+            await self._wait_scl_high()
+            await Timer(self._half_ns, unit="ns")
+        self._pull_sda(True)
+        await Timer(self._half_ns, unit="ns")
+        self._pull_scl(True)
+        await Timer(self._half_ns, unit="ns")
+        self._active = True
+
+    async def send_stop(self) -> None:
+        if not self._active:
+            return
+        self._pull_sda(True)
+        await Timer(self._half_ns, unit="ns")
+        self._pull_scl(False)
+        await self._wait_scl_high()
+        await Timer(self._half_ns, unit="ns")
+        self._pull_sda(False)
+        await Timer(self._half_ns, unit="ns")
+        self._active = False
+
+    async def send_bit(self, bit: int) -> None:
+        self._pull_sda(not bool(bit))
+        await Timer(self._half_ns, unit="ns")
+        self._pull_scl(False)
+        await self._wait_scl_high()
+        await Timer(self._bit_ns, unit="ns")
+        self._pull_scl(True)
+        await Timer(self._half_ns, unit="ns")
+
+    async def recv_bit(self) -> int:
+        self._pull_sda(False)
+        await Timer(self._half_ns, unit="ns")
+        self._pull_scl(False)
+        await self._wait_scl_high()
+        await Timer(self._half_ns, unit="ns")
+        val = int(self._sda.value)
+        await Timer(self._half_ns, unit="ns")
+        self._pull_scl(True)
+        await Timer(self._half_ns, unit="ns")
+        return val
+
+    async def send_byte(self, value: int) -> int:
+        for i in range(8):
+            await self.send_bit((value >> (7 - i)) & 1)
+        return await self.recv_bit()
+
+    async def recv_byte(self, ack: bool) -> int:
+        value = 0
+        for _ in range(8):
+            value = (value << 1) | await self.recv_bit()
+        await self.send_bit(0 if ack else 1)
+        return value & 0xFF
+
+    async def write(self, addr: int, data: bytes) -> None:
+        self.log.info("Write %s to device at I2C address 0x%02x", data, addr)
+        await self.send_start()
+        if await self.send_byte((addr & 0x7F) << 1):
+            await self.send_stop()
+            raise SmcI2cVipError(f"I2C write addr 0x{addr:02X} NACK")
+        for b in data:
+            if await self.send_byte(b):
+                await self.send_stop()
+                raise SmcI2cVipError(f"I2C write data NACK (addr=0x{addr:02X})")
+        await self.send_stop()
+
+    async def read(self, addr: int, count: int) -> bytes:
+        self.log.info("Read %d bytes from device at I2C address 0x%02x", count, addr)
+        await self.send_start()
+        if await self.send_byte(((addr & 0x7F) << 1) | 1):
+            await self.send_stop()
+            # Match cocotbext-i2c: address NACK → return 0xFF bytes (no raise).
+            return bytes([0xFF] * count)
+        out = bytearray()
+        for i in range(count):
+            out.append(await self.recv_byte(ack=(i != count - 1)))
+        await self.send_stop()
+        return bytes(out)
 
     @staticmethod
     def smbus_pec(addr7: int, rw: int, data: bytes) -> int:
-        """Compute SMBus PEC (CRC-8, polynomial 0x07) over an SMBus frame."""
         crc = 0
         frame = bytes([(addr7 << 1) | (rw & 1)]) + data
         for b in frame:
@@ -120,10 +372,8 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
         return crc & 0xFF
 
     async def smbus_write_with_pec(self, addr: int, data: bytes) -> int:
-        """SMBus write-byte with PEC appended. Returns the computed PEC."""
         pec = self.smbus_pec(addr, 0, data)
-        payload = bytes(data) + bytes([pec])
-        await self.write(addr, payload)
+        await self.write(addr, bytes(data) + bytes([pec]))
         self.log.info(
             "SMBus write-with-PEC: addr=0x%02X data=%s pec=0x%02X",
             addr,
@@ -133,7 +383,6 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
         return pec
 
     async def smbus_host_notify(self, target_addr7: int, data16: int) -> bytes:
-        """SMBus Host Notify (SMBus 2.0 §5.5.11) to host address 0x08."""
         host_addr = 0x08
         payload = bytes(
             [
@@ -153,9 +402,7 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
         return payload
 
     async def smbus_query_ara(self) -> int:
-        """SMBus Alert Response Address query (fixed slave 0x0C, read)."""
-        ara_slave = 0x0C
-        data = await self.read(ara_slave, 1)
+        data = await self.read(0x0C, 1)
         resp = data[0] if data else 0xFF
         self.log.info(
             "SMBus ARA (0x0C) reply=0x%02X -> slave_addr=0x%02X",
@@ -166,7 +413,6 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
 
     @staticmethod
     def pmbus_encode_linear11(value_amps: float) -> int:
-        """Encode a positive real value as PMBus Linear11."""
         if value_amps <= 0.0:
             return 0
         exp = 0
@@ -178,12 +424,10 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
             v *= 2
             exp -= 1
         mant = int(round(v)) & 0x7FF
-        e5 = exp & 0x1F
-        return ((e5 & 0x1F) << 11) | (mant & 0x7FF)
+        return ((exp & 0x1F) << 11) | (mant & 0x7FF)
 
     @staticmethod
     def pmbus_decode_linear11(word: int) -> float:
-        """Decode a PMBus Linear11 16-bit word to a real value."""
         mant = word & 0x7FF
         if mant & 0x400:
             mant -= 0x800
@@ -194,18 +438,11 @@ class SmcI2cMasterVip(OcahI2cSplitPortMaster):
 
     @staticmethod
     def pmbus_encode_linear16(value: float, exponent: int) -> int:
-        """Encode a non-negative value as PMBus Linear16 mantissa (fixed Y)."""
         if value <= 0.0:
             return 0
-        scaled = value / (2**exponent)
-        mant = int(round(scaled))
-        if mant < 0:
-            mant = 0
-        if mant > 0xFFFF:
-            mant = 0xFFFF
-        return mant & 0xFFFF
+        mant = int(round(value / (2**exponent)))
+        return max(0, min(0xFFFF, mant)) & 0xFFFF
 
     @staticmethod
     def pmbus_decode_linear16(word: int, exponent: int) -> float:
-        """Decode a PMBus Linear16 mantissa with a fixed exponent Y."""
         return (word & 0xFFFF) * (2**exponent)

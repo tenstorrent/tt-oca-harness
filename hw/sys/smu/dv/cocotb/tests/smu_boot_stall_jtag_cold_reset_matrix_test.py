@@ -43,7 +43,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             "fuse_reset after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
-        )
+        evidence="STALL_COLD_STICKY")
 
         # --- Assert stall; cold reset with TRST high (DEBUG sticky) ---
         await jtag.write(
@@ -51,8 +51,8 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
         )
         await ClockCycles(dut.clk_smu_i, 8)
-        sb.expect_eq("stall ovrd before cold", int(dut.jtag_boot_stall_ovrd.value), 1)
-        sb.expect_eq("stall val before cold", int(dut.jtag_boot_stall.value), 1)
+        sb.expect_eq("stall ovrd before cold", int(dut.jtag_boot_stall_ovrd.value), 1, evidence="STALL_TRST_CLEAR")
+        sb.expect_eq("stall val before cold", int(dut.jtag_boot_stall.value), 1, evidence="STALL_REASSERT_STICKY")
 
         self.logger.info("Cold reset with TRST held high (stall sticky)")
         dut.rst_cold_ni.value = 0

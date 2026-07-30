@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <metal/cpu.h>
+
 #include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
@@ -12,7 +14,6 @@
 #define CLOCK_PERIOD_NS 10
 
 int main(void) {
-
     uint32_t uart_ctrlrs[] = {0, 1}; // indexes of UARTs used for controllers
     uint32_t num_ctrlrs = sizeof(uart_ctrlrs) / sizeof(uart_ctrlrs[0]);
     uint32_t uart_tgts[] = {3, 2}; // indexes of UARTs used for targets

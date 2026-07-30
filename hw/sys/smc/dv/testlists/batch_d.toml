@@ -73,13 +73,7 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_pll_pvt_clock_config_test"
-module = "smc_pll_pvt_clock_config_test"
-seed = 1
-timeout_sec = 1800
-tags = ["smoke", "ci", "batch_d", "canonical_top20", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pll_pvt_clock_config_test → testlists/deferred.toml (rtl_placeholder)
 
 [[tests]]
 name = "smc_gpio_irq_active_test"
@@ -169,13 +163,7 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_uart_log", "u2_spi_pad", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_sideband_avsbus_octs_bfm_test"
-module = "smc_sideband_avsbus_octs_bfm_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_d", "depth_uart_log", "p2_phase_a", "pyuvm"]
-run_modes = ["smoke"]
+# smc_sideband_avsbus_octs_bfm_test → testlists/deferred.toml (fake_bfm)
 
 [[tests]]
 name = "smc_octs_dual_sync_test"
@@ -238,7 +226,6 @@ tests = [
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_chip_config_read_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_input_fabric_axi_wr_rd_test",
@@ -250,7 +237,6 @@ tests = [
     "smc_uart_loopback_test",
     "smc_spi_loopback_test",
     "smc_spi_pad_bfm_test",
-    "smc_sideband_avsbus_octs_bfm_test",
     "smc_octs_dual_sync_test",
     "smc_zeroer_dma_timeout_test",
     "smc_output_filter_remap_security_test",

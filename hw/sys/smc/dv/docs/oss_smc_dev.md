@@ -5,7 +5,7 @@
 |-------|-------|
 | Owner | minshaoho |
 | Scope | `hw/sys/smc/dv/cocotb/` (PyUVM-on-cocotb, DTP three-layer pattern) |
-| Related | `SMC_VPLAN.md`, `smc_oss_execution_guide.md`, `smc_ossupgrade.md` |
+| Related | `SMC_VPLAN.adoc`, `smc_oss_execution_guide.md`, `ref_test_dev.md` |
 | Source survey (non-OSS) | legacy SMC TB `dv/smc/tb/tb_uvm/` — 171 cocotb tests + 24 SV UVM tests |
 
 This is the planning half of the SMC OSS bring-up. It records the module-to-test
@@ -48,7 +48,7 @@ Already in place at the time this plan was written:
                     `test_smc_oss_reset_sanity`, `test_smc_oss_i2c_cg_sanity`
 - `tb/tb_top.sv`    clocks / reset / powergood + I2C observability outputs
 - `testlists/smoke.toml` groups: `smoke`, `i2c`, `pyuvm`
-- `smc_sim_cfg.toml` `SYNTHESIS` define present
+- `smc_wrapper_sim_cfg.toml` `SYNTHESIS` define present
 - `pyuvm 4.0.1` for Python 3.11
 
 Known blocker at that time:
@@ -198,7 +198,7 @@ testlists/
 └── cpu_traffic.toml      (Batch D CPU traffic)
 ```
 
-`smc_sim_cfg.toml [testlist].path` → `all.toml`.
+`smc_wrapper_sim_cfg.toml [testlist].path` → `all.toml`.
 
 ---
 
@@ -213,7 +213,7 @@ testlists/
 | P4 | Shared infra I8–I14 + Batch C: 8 tests | 14 | 38 |
 | P5 | Shared infra I15–I16 + Batch D: 6 tests | 17 | 55 |
 | P6 | testlist reorg + commercial sim full run | 3 | 58 |
-| P7 | docs (`SMC_TB_ARCH.md`, `SMC_VPLAN.md`) | 2 | 60 |
+| P7 | docs (`SMC_TB_ARCH.md`, `SMC_VPLAN.adoc`) | 2 | 60 |
 
 Total: ~60 person-days, single mid-level engineer.
 
@@ -236,7 +236,7 @@ Total: ~60 person-days, single mid-level engineer.
 Per testcase:
 
 - [ ] `--validate-configs` smc OK
-- [ ] `--dut smc --list` shows the new test in the right group / tag
+- [ ] `--dut smc_wrapper --list` shows the new test in the right group / tag
 - [ ] `--items <name> --tool verilator --dry-run` 4 stages PASS
 - [ ] Static import of all new `env` / `seq_lib` modules succeeds
 - [ ] `--items <name> --tool xcelium` (if licensed) live PASS
@@ -269,7 +269,7 @@ Xcelium must be on `PATH` with a license configured for your site; see
 `smc_oss_execution_guide.md` §1 for the current environment setup.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool xcelium
+python3 tools/dv/run_dv.py --dut smc_wrapper --items smc_cold_reset_test --tool xcelium
 ```
 
 ### Eleven fixes that landed the first green run

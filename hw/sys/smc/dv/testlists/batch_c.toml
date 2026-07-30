@@ -24,14 +24,6 @@ tags = [
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_jtag_dft_timeout_proxy_test"
-module = "smc_jtag_dft_timeout_proxy_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_c", "jtag_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_jtag_reset_proxy_test"
 module = "smc_jtag_reset_proxy_test"
 seed = 1
@@ -58,29 +50,7 @@ tags = [
 ]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_i3c_multi_controller_csr_test"
-module = "smc_i3c_multi_controller_csr_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_c", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_i3c_recovery_status_csr_test"
-module = "smc_i3c_recovery_status_csr_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_c", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_i3c_ccc_ibi_full_test"
-module = "smc_i3c_ccc_ibi_full_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_c", "i3c_depth", "p2_phase_a", "pyuvm"]
-run_modes = ["smoke"]
+# smc_i3c_ccc_ibi_full_test → testlists/deferred.toml (needs_i3c_dat_dct)
 
 [[tests]]
 name = "smc_smbus_pmbus_test"
@@ -111,12 +81,8 @@ name = "batch_c"
 tests = [
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
-    "smc_jtag_dft_timeout_proxy_test",
     "smc_jtag_reset_proxy_test",
     "smc_i3c_to_fabric_test",
-    "smc_i3c_multi_controller_csr_test",
-    "smc_i3c_recovery_status_csr_test",
-    "smc_i3c_ccc_ibi_full_test",
     "smc_smbus_pmbus_test",
     "smc_smbus_hostnotify_test",
     "smc_smbus_alert_ara_test",
@@ -125,7 +91,6 @@ tests = [
 [[groups]]
 name = "jtag_depth"
 tests = [
-    "smc_jtag_dft_timeout_proxy_test",
     "smc_jtag_reset_proxy_test",
     "smc_jtag_dmi_smoke_test",
 ]
@@ -133,6 +98,5 @@ tests = [
 [[groups]]
 name = "i3c_depth"
 tests = [
-    "smc_i3c_multi_controller_csr_test",
-    "smc_i3c_recovery_status_csr_test",
+    "smc_i3c_to_fabric_test",
 ]

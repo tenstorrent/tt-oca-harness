@@ -2,10 +2,10 @@
 /*
  * Key Manager firmware -- shared SRAM layout.
  *
- * Included from inside the SECTIONS{} block of KM linker scripts so test and
- * production builds keep an identical SRAM map. Before the INCLUDE, the
- * including script must define the `sram` MEMORY region (0x4000, 16 KB) and map
- * the .data load region with REGION_ALIAS("DATA_LOAD", <rom|vrom>).
+ * Included from inside the SECTIONS{} block of link/modes/vrom.ld (test) and
+ * link/km_production.ld so both builds keep an identical SRAM map. Before the
+ * INCLUDE, the including script must define the `sram` MEMORY region (0x4000,
+ * 16 KB) and map the .data load region with REGION_ALIAS("DATA_LOAD", <rom|vrom>).
  */
 
 .rom_persist ORIGIN(sram) + LENGTH(sram) - 0x200 (NOLOAD) : {

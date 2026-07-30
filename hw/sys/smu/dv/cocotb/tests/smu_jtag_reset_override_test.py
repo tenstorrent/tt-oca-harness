@@ -49,8 +49,8 @@ class smu_jtag_reset_override_test(smu_base_test):
             "IC_RESET default",
             int(default) & SMU_IC_RESET_DEFAULT,
             SMU_IC_RESET_DEFAULT,
-        )
-        sb.expect_eq("ext ovrd idle", int(dut.jtag_ic_reset_ext_ovrd.value), 0)
+        evidence="IC_RESET_DEFAULT")
+        sb.expect_eq("ext ovrd idle", int(dut.jtag_ic_reset_ext_ovrd.value), 0, evidence="IC_RESET_DOMAIN_EXCL")
         sb.expect_eq("smc ovrd idle", int(dut.jtag_ic_reset_smc_ovrd.value), 0)
 
         ext_assert = pack_ic_reset_ports(

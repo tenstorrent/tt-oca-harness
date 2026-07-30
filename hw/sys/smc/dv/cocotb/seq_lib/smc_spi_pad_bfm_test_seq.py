@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """U2-2: TB SPI host + OcahSepSpiFlash on lifted SMC SPI pads.
 
-Architecture (bare smc has no internal SPI controller):
+Architecture (smc_wrapper has no internal SPI host IP on this surface):
   * cocotb acts as the external SPI host driving ``tb_spi_*`` (controller
     inputs into smc padring mux).
   * ``OcahSepSpiFlash`` is the flash BFM; its MISO/DQ response is fed back
     through ``tb_spi_miso_ext`` -> ``tb_pad2core[0]`` -> ``tb_spi_rxd[0]``.
 
-This proves the pad-lift + BFM bind path. It is NOT a DUT SPI-IP JEDEC
-proof (no SPI host IP inside bare smc).
+This proves the pad-lift + BFM bind path, not a DUT SPI-IP JEDEC proof.
 """
 
 from __future__ import annotations

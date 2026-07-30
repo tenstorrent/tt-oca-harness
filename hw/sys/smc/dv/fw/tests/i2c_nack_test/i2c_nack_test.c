@@ -28,7 +28,7 @@ const uint8_t VIP_SLAVE_ADDR = 0x10; // VIP slave address (7-bit)
  * @brief Enable I2C Wrapper Control
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1; // Enable GPIO pad mux

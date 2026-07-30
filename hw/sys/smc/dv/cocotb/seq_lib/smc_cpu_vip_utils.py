@@ -218,12 +218,20 @@ async def check_cpu_firmware_boot_contract(
     reset_vector = (
         CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
     )
+    cocotb.log.info(
+        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x "
+        "expected_magic=0x%08x",
+        image_path,
+        "scratch" if boot_from_scratch else "rom",
+        reset_vector,
+        CPU_FW_SUCCESS_MAGIC,
+    )
 
     # Clear CSR mailbox (SEP can reach CPU_CTRL). Scratch/D$ PASS is observed
     # via tb_cpu_fw_mailbox (SEP cannot AXI to 0xC006_xxxx).
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
 
-    # Capture fetch baselines BEFORE release: I$ fill of min_pass often completes
+    # Capture fetch baselines BEFORE release: the I$ fill can complete
     # during the post-release settle window, so a post-release baseline would
     # make "scratch_reads > baseline" spuriously fail after PASS.
     baseline_rom_reads = int(dut.tb_cpu_rom_read_count.value)
@@ -266,11 +274,13 @@ async def check_cpu_firmware_boot_contract(
             scratch_writes = int(dut.tb_cpu_scratch_write_count.value)
             if boot_from_scratch:
                 assert scratch_reads > baseline_scratch_reads, (
-                    "CPU PASS without scratch fetch evidence"
+                    "CPU PASS without scratch fetch evidence: "
+                    f"baseline={baseline_scratch_reads} observed={scratch_reads}"
                 )
             else:
                 assert rom_reads > baseline_rom_reads, (
-                    "CPU PASS without ROM fetch evidence"
+                    "CPU PASS without ROM fetch evidence: "
+                    f"baseline={baseline_rom_reads} observed={rom_reads}"
                 )
             return {
                 "boot_checked": True,
@@ -297,7 +307,8 @@ async def check_cpu_firmware_boot_contract(
     isolate = int(dut.tb_cpu_cluster_isolate.value)
     raise AssertionError(
         "CPU firmware boot did not reach PASS magic: "
-        f"last_csr=0x{last_csr:08x} tb_mbox=0x{fw_mbox:08x} "
+        f"expected=0x{CPU_FW_SUCCESS_MAGIC:08x} last_csr=0x{last_csr:08x} "
+        f"tb_mbox=0x{fw_mbox:08x} "
         f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
         f"scratch_writes={scratch_writes} dcache_writes={dc_writes} "
         f"wb_pc0=0x{wb_pc0:x} isolate={isolate} image={image_path}"

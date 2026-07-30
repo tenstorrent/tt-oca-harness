@@ -53,29 +53,21 @@ class SmcAxiMonitor(uvm_component):
         self.last_araddr: int | None = None
         self.last_awaddr: int | None = None
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
-        # DECERR is normally a hard protocol failure. However, several SEP_IN
-        # address windows legitimately DECERR *by design* in the OSS bench:
-        #   * external-macro windows (PLL/PVT/extension) are terminated by DECERR
-        #     boundary responders (prim_axi_lite_err_slv in tb_top) -- no macro
-        #     model exists, so DECERR is the correct response,
-        #   * the DTP CSR window (0xC000_F000..0xF7FF) routes to the dtp_csr
-        #     external master port (local-xbar periph_main was extended to
-        #     0xC000_F800 by #3765), which is DECERR-terminated by the bench
-        #     boundary responder like PLL/PVT/extension.
-        # GPIO_CTRL / REFCLK (0xC000_4440..0xC000_5000) is U5 RW-stubbed and
-        # must return OKAY — not listed here. The real I3C CSR windows live at
-        # 0xC003_A000+ (stride 0x1000) and return the i3ccore_stub SLVERR
-        # signature (SLVERR is not flagged here); the old 0xC000_5000 I3C alias
-        # is now an unmapped hole and must NOT be accessed.
-        # These ranges are seeded as EXPECTED so DECERR on them is tallied but
-        # not flagged; DECERR anywhere else (a mapped internal CSR that should
-        # answer OKAY) is still a hard error. Tests may add ad-hoc expected
-        # addresses via ``expected_decerr_addrs`` or set ``allow_decerr``.
+        # DECERR is normally a hard protocol failure. Under smc_wrapper several
+        # SEP_IN windows still DECERR by design:
+        #   * GPIO_CTRL / POC-PBIAS (>= 0xC000_4440) → smc_ip_integration
+        #     u_gpio_ctrl_err_slv (DECERR + 0),
+        #   * DTP CSR (0xC000_F000..0xF7FF) → local xbar hole (periph_reg ends
+        #     0xC000_E800); default slave DECERR+0xBADCAB1E from SEP_IN.
+        #   * AXIL extension (0xC040_0000) → u_axil_extension_err_slv,
+        #   * stale catalog holes around 0xC003_A000.
+        # PLL/PVT are NOT listed: pll_wrap/pvt_wrap return OKAY + 0.
+        # I3C wraps (0xC000_5000) use i3ccore_stub → SLVERR (not flagged here).
         self.expected_decerr_ranges: list[tuple[int, int]] = [
-            (0xC000_3000, 0xC000_4000),  # PLL macro boundary responder
-            (0xC000_7000, 0xC000_8000),  # PVT macro boundary responder
-            (0xC000_F000, 0xC000_F800),  # DTP CSR (unmapped local-xbar hole)
-            (0xC040_0000, 0xC080_0000),  # peripheral extension boundary responder
+            (0xC000_4440, 0xC000_5000),  # GPIO_CTRL / POC-PBIAS (integration err_slv)
+            (0xC000_F000, 0xC000_F800),  # DTP CSR TB terminator
+            (0xC003_A000, 0xC004_0000),  # stale I3C catalog hole
+            (0xC040_0000, 0xC080_0000),  # peripheral extension (integration err_slv)
         ]
         self.expected_decerr_addrs: set[int] = set()
         self.allow_decerr = False

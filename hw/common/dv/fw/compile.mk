@@ -7,34 +7,42 @@ ocah_fw_common_mk := 1
 # Shared DV firmware build engine. A subsystem fw.mk sets the FW_* inputs below,
 # includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
-# Inputs a subsystem defines before including this file:
+# Required inputs:
 #   FW_NAME          - short subsystem name (e.g. key_manager, sep, smc)
 #   FW_DIR           - absolute path to the subsystem dv/fw directory
 #   FW_C_SRCS        - library C sources (no entry/main)
 #   FW_ASM_SRCS      - library .s/.S startup/helper sources
 #   FW_INCLUDES      - -I include flags
-#   FW_CFLAGS        - C compile flags (from toolchain.mk + subsystem)
-#   FW_ASFLAGS       - assembler flags (from toolchain.mk + subsystem)
-#   FW_LDFLAGS       - link flags (from toolchain.mk + subsystem)
-# Optional (enable a linked image instead of just an archive):
+#   FW_CFLAGS        - C compile flags
+#   FW_ASFLAGS       - assembler flags
+#   FW_LDFLAGS       - link flags
+# Optional, for a single linked image (FW_ELF):
 #   FW_LINKER_SCRIPT - linker script path
-#   FW_ENTRY_SRCS    - entry/main C/asm sources providing the image entry point
-# Optional (enable per-test linked images through `dv-fw-tests`):
-#   FW_TEST_LINKER_SCRIPT - linker script used for test images
-#   FW_TEST_LDFLAGS       - extra/override test link flags (defaults to FW_LDFLAGS)
-#   FW_TEST_INCLUDES      - extra test-only include flags
-#   FW_TEST_EXTRA_CFLAGS  - extra test-only C flags
-#   FW_TEST_EXTRA_ARCHIVES - optional extra archives linked after lib<name>.a
-#   FW_TEST_POSTPROCESS   - make macro called as $(call ...,elf_path,test_name)
+#   FW_ENTRY_SRCS    - entry/main sources
+# Optional, for per-test linked images via `dv-fw-tests`:
+#   FW_LINK_MODES               - link modes; auto-discovered from link/modes/*.ld
+#   FW_LINK_SCRIPT_<mode>       - linker script for <mode> (default: link/modes/<mode>.ld)
+#   FW_DEFAULT_TEST_MODE        - mode used when a test has no override
+#   FW_TEST_MODE_<name>         - per-test mode override
+#   FW_TEST_LDFLAGS             - test link flags (default: FW_LDFLAGS)
+#   FW_TEST_LDFLAGS_<mode>      - per-mode override (default: FW_TEST_LDFLAGS)
+#   FW_TEST_INCLUDES            - extra test-only include flags
+#   FW_TEST_EXTRA_CFLAGS        - extra test-only C flags
+#   FW_TEST_EXTRA_ARCHIVES      - extra archives linked after lib<name>.a
+#   FW_TEST_ARCHIVE_LINK        - how lib<name>.a is linked in (default: --whole-archive)
+#   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK)
+#   FW_TEST_POSTPROCESS         - macro called as $(call ...,elf_path,test_name,mode)
 #   FW_TEST_POSTPROCESS_PRIMARY_SUFFIX - primary generated sidecar suffix; when
-#                         set, postprocessing is a real target instead of an ELF
-#                         recipe side effect (e.g. .ecc.hex)
+#                           set, postprocessing is a real target instead of an
+#                           ELF recipe side effect (e.g. .ecc.hex)
 #   FW_TEST_POSTPROCESS_DEPS - files that invalidate the primary sidecar target
-# Test discovery is unified below (canonical tests/<name>/<name>.c); a subsystem
-# declares only deltas:
-#   FW_TEST_EXCLUDE_NAMES   - test dir names to skip
-#   FW_TEST_EXTRA_SRCS_<t>  - extra .c compiled into test <t> (e.g. coremark)
-# A bespoke layout opts out by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>).
+# Test discovery (canonical tests/<name>/<name>.c); a subsystem declares only
+# deltas, or opts out entirely by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>):
+#   FW_TEST_EXCLUDE_NAMES  - test dir names to skip
+#   FW_TEST_EXTRA_SRCS_<t> - extra .c compiled into test <t>
+#
+# Each test links against exactly one mode. Output artifacts are named
+# <test>/<test>.<mode>.{elf,map,dis,sym}.
 
 # Parallelize object compiles / test links by default (same pattern as
 # regen-regs). Explicit -j / --jobs on the command line wins.
@@ -78,7 +86,8 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c))
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c))
 FW_INCLUDES += $(if $(strip $(FW_REG_SYS)),$(call ocah_fw_reg_includes,$(FW_REG_SYS)))
 
 # Derived build variables.
@@ -101,6 +110,17 @@ FW_TEST_EXTRA_ARCHIVES ?=
 FW_TEST_COMMON_SRCS ?=
 FW_TEST_ARCHIVE_LINK ?= -Wl,--whole-archive "$(FW_ARCHIVE)" $(FW_TEST_EXTRA_ARCHIVES) -Wl,--no-whole-archive
 
+# Link modes: auto-discovered from link/modes/*.ld, each overridable by name.
+FW_LINK_MODES ?= $(sort $(patsubst $(FW_DIR)/link/modes/%.ld,%,$(wildcard $(FW_DIR)/link/modes/*.ld)))
+$(foreach m,$(FW_LINK_MODES),$(eval FW_LINK_SCRIPT_$(m) ?= $(FW_DIR)/link/modes/$(m).ld))
+# Per-mode overrides default to the subsystem-wide settings.
+$(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_LDFLAGS_$(m) ?= $(FW_TEST_LDFLAGS)))
+$(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_ARCHIVE_LINK_$(m) ?= $(FW_TEST_ARCHIVE_LINK)))
+
+# Per-test mode resolution: an explicit FW_TEST_MODE_<name> override wins,
+# otherwise the subsystem's FW_DEFAULT_TEST_MODE applies.
+ocah_fw_test_mode = $(if $(strip $(FW_TEST_MODE_$(1))),$(strip $(FW_TEST_MODE_$(1))),$(FW_DEFAULT_TEST_MODE))
+
 # Unified DV test discovery: one testcase per tests/<name>/ (plus sibling .c),
 # tests/common/ reserved for shared helpers. Opt out by pre-setting FW_TEST_NAMES.
 ifndef FW_TEST_NAMES
@@ -114,7 +134,7 @@ $(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/te
 endif
 
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
-FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).elf)
+FW_TEST_ELFS := $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t).$(call ocah_fw_test_mode,$(t)).elf)
 FW_TEST_POSTPROCESS_TARGETS := $(if $(strip $(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)), \
   $(foreach t,$(FW_TEST_SELECTED),$(FW_TEST_BUILD_DIR)/$(t)/$(t)$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)))
 FW_TEST_TARGETS := $(if $(strip $(FW_TEST_POSTPROCESS_TARGETS)),$(FW_TEST_POSTPROCESS_TARGETS),$(FW_TEST_ELFS))
@@ -169,19 +189,26 @@ FW_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_TEST_SRCS_$(1))),$$(FW_TEST_SRCS_$
 FW_TEST_OBJS_$(1) := $$(addprefix $(FW_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_TEST_SRCS_FOR_$(1):.c=.o)))
 $$(foreach src,$$(FW_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_test_obj_rule,$(1),$$(src))))
 
-$(FW_TEST_BUILD_DIR)/$(1)/$(1).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINKER_SCRIPT) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
-	$$(CC) $$(FW_TEST_LDFLAGS) -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).map" -T "$$(FW_TEST_LINKER_SCRIPT)" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK) -o "$$@"
-	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).dis"
-	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).sym"
+FW_TEST_MODE_FOR_$(1) := $$(call ocah_fw_test_mode,$(1))
+FW_TEST_LINK_SCRIPT_FOR_$(1) := $$(FW_LINK_SCRIPT_$$(FW_TEST_MODE_FOR_$(1)))
+FW_TEST_LDFLAGS_FOR_$(1) := $$(FW_TEST_LDFLAGS_$$(FW_TEST_MODE_FOR_$(1)))
+FW_TEST_ARCHIVE_LINK_FOR_$(1) := $$(FW_TEST_ARCHIVE_LINK_$$(FW_TEST_MODE_FOR_$(1)))
+
+# Search both link/ and link/modes/ so an INCLUDEd fragment resolves
+# regardless of which one it lives in.
+$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINK_SCRIPT_FOR_$(1)) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+	$$(CC) $$(FW_TEST_LDFLAGS_FOR_$(1)) -L"$(FW_DIR)/link" -L"$(FW_DIR)/link/modes" -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).map" -T "$$(FW_TEST_LINK_SCRIPT_FOR_$(1))" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK_FOR_$(1)) -o "$$@"
+	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"
+	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).sym"
 	$$(SIZE) "$$@"
-	$$(if $$(strip $$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),,$$(call FW_TEST_POSTPROCESS,$$@,$(1)))
+	$$(if $$(strip $$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),,$$(call FW_TEST_POSTPROCESS,$$@,$(1),$$(FW_TEST_MODE_FOR_$(1))))
 endef
 
 $(foreach test,$(FW_TEST_NAMES),$(eval $(call ocah_fw_test_rules,$(test))))
 
 define ocah_fw_test_postprocess_rule
-$(FW_TEST_BUILD_DIR)/$(1)/$(1)$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX): $(FW_TEST_BUILD_DIR)/$(1)/$(1).elf $(FW_TEST_POSTPROCESS_DEPS)
-	$$(call FW_TEST_POSTPROCESS,$$<,$(1))
+$(FW_TEST_BUILD_DIR)/$(1)/$(1)$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX): $(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf $(FW_TEST_POSTPROCESS_DEPS)
+	$$(call FW_TEST_POSTPROCESS,$$<,$(1),$$(FW_TEST_MODE_FOR_$(1)))
 endef
 
 ifneq ($(strip $(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),)
@@ -199,6 +226,7 @@ ifeq ($(strip $(FW_TEST_SRC_$(strip $(TEST)))$(FW_TEST_SRCS_$(strip $(TEST)))),)
 $(error unknown $(FW_NAME) FW C test '$(strip $(TEST))'; known tests: $(FW_TEST_NAMES))
 endif
 endif
+$(foreach t,$(FW_TEST_SELECTED),$(if $(filter $(call ocah_fw_test_mode,$(t)),$(FW_LINK_MODES)),,$(error $(FW_NAME) test '$(t)' resolved to unknown link mode '$(call ocah_fw_test_mode,$(t))'; known modes: $(FW_LINK_MODES))))
 endif
 
 .PHONY: dv-fw-tests

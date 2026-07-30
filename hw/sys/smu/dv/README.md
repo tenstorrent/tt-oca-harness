@@ -1,15 +1,20 @@
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
-Layout follows `hw/sys/sep/dv/` (flow-first cocotb under `cocotb/`).
+Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 
 **Master VPLAN (P1 + P2):** [`docs/SMU_VPLAN.md`](docs/SMU_VPLAN.md)
-— P1 **24/24 VCS DONE**; P2 SMC↔DTP protocol ~14 planned; no P3/P4.
+— live green `phase1` **14**, `sep0_all` **19** (no Force; product-pin CTM).
+
+**Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
+Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
+`testlists/deferred.toml` — **not** reportable as PASS. Shared cleanup
+checklist: [`../../smc/doc/dv_hack_cleanup_checklist.md`](../../smc/doc/dv_hack_cleanup_checklist.md).
 
 **P1 executable detail:** [`docs/SMU_OSS_VPLAN_PHASE1.md`](docs/SMU_OSS_VPLAN_PHASE1.md)
 (`smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1`).
 
-**OUT / deferred** (SEP=1 / interop / toggle): [`testlists/deferred.toml`](testlists/deferred.toml)
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml)
 + `SMU_VPLAN.md` Appendix A.
 
 ```
@@ -24,16 +29,17 @@ smu_<scenario>_test
 | Path | Role |
 |------|------|
 | `docs/` | SPEC, CSR, TB_ARCH, **VPLAN (P1/P2 master)**, PHASE1 detail, FCOV |
-| `tb/tb_top.sv` | `smu_uvm_top` skeleton → wire `SEP=0` DUT next |
-| `cocotb/{env,seq_lib,tests}/` | PyUVM layers (bodies = later phase) |
-| `testlists/all.toml` | Phase-1 includes only (`smc`/`dtp`/`fabric`) |
-| `testlists/deferred.toml` | Non-Phase-1 inventory (not default-included) |
+| `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
+| `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
+| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
+| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 19) |
+| `testlists/deferred.toml` | Non-enrolled inventory (not default-included) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
-| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline (#3357) |
-| `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — OSS `smu_wrapper` harness |
+| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
+| `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | Wrapper-baseline PyUVM tests |
-| `testlists/wrapper.toml` | Wrapper baseline catalog (4 tests) |
-| `shims/`, `fw/`, `tools/` | Wrapper shims, smoke firmware, readiness gate |
+| `testlists/wrapper.toml` | Wrapper baseline (≠ `sep0_all` signoff) |
+| `fw/`, `tools/` | Firmware, readiness |
 
 ## BFM Policy
 
@@ -65,20 +71,31 @@ python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 
 Groups: `smoke`, `top5`, `top10`, `phase1`, `smc`, `dtp`, `fabric`.
 
-## Production-wrapper baseline (`--dut smu_wrapper`, issue #3357)
+## Signoff sources (dual TB)
 
-A second sim config in this DV root builds the vendor-free OSS SMU wrapper
-(`hw/.bos/wrapper/smu/smu_wrapper.sv` via the `smu_oss_wrapper` bender
-target) with two compile profiles:
+| Source | DUT | Signoff role |
+|--------|-----|--------------|
+| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (14), `sep0_all` (19) |
+| Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
+
+Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
+`DUT_TAG=` so scoreboards stay distinguishable.
+
+## Production-wrapper baseline (`--dut smu_wrapper`)
+
+A second sim config in this DV root builds `hw/top/smu_wrapper.sv` (via the
+`smu_wrapper` Bender target) with two compile profiles:
 
 - `compile_smu_chiplet_no_sep`: wrapper with `NoSepCfg`, `SEP=0`.
 - `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
   real SEP EL2 CPU.
 
-No `hw/` sources are modified. Two hw/.bos files with
-Verilator-blocking bugs are shadowed by fixed copies under `shims/wrapper/`
-(see the file headers), and the foundry `sep_tcm_wrapper` macro wrapper is
-replaced by the vendor-free `shims/mem/sep_tcm_wrapper.sv`.
+OSS already ships `hw/sys/sep/rtl/sep_tcm_wrapper.sv` (Bender). The DV TCM
+shim was **removed** (no placeholder). SEP=1 wrapper elab/smoke stay in
+`sep_tcm_deferred` until foundry `ram_*` ICCM/DCCM cells exist (the sim-cfg
+exclude of `hw/sep/sep_tcm_wrapper.sv` is a stale path). Verilator tooling
+shims (`prim_sync2/3`) are shared from
+`hw/sys/smc/dv/tb/verilator_stubs/` (see SMC README B1/B2).
 
 ### Readiness gates
 
@@ -103,7 +120,7 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 
 The SEP smoke is a boot-readiness anchor mirroring the internal
 `smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI
-path is tracked separately (issue #3939).
+path is tracked separately.
 
 ### Running
 
@@ -114,11 +131,11 @@ mkdir -p "$TMPDIR"
 # Firmware toolchain: riscv64-unknown-elf-* on PATH, RISCV_TOOLCHAIN, or
 # per-tool overrides (e.g. Homebrew): RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
 
-# Full baseline (both profiles compile; all four tests):
-python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke --seed 1 \
+# Full baseline (regression: no --seed; elab_no_sep + smc_smoke):
+python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 
-# Single test, cached model:
+# Single test, cached model (--seed only with a single item):
 python3 tools/dv/run_dv.py --dut smu_wrapper --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```

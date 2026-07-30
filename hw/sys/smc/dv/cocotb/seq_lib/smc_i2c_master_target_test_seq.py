@@ -126,14 +126,31 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
     async def _wait_hostidle(self, label: str) -> None:
         status = 0
-        for _ in range(2000):
+        # Ensure the host actually left Idle (FMT accepted) before waiting for
+        # completion — otherwise a no-op FIFO write looks like instant success.
+        left_idle = False
+        for _ in range(200):
+            status = await self.csr_read(f"{label}_BUSY", I2C0_STATUS)
+            if not (status & I2C_STATUS_HOSTIDLE):
+                left_idle = True
+                break
+            await Timer(1, units="us")
+        if not left_idle:
+            cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", 0xC000_9078)
+            raise AssertionError(
+                f"{label}: DUT I2C0 host never left hostidle after FMT push "
+                f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
+            )
+        # VCS completes a 3-byte host write in ~40 us; allow 2 ms of sim time.
+        for _ in range(200):
             status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_HOSTIDLE:
                 return
             await Timer(10, units="us")
+        cevents = await self.csr_read(f"{label}_CEVENTS", 0xC000_9078)
         raise AssertionError(
             f"{label}: DUT I2C0 host did not reach hostidle "
-            f"(STATUS=0x{status:08x})"
+            f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
         )
 
     async def _dut_i2c0_host_write_proof(self) -> None:
@@ -145,6 +162,8 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         await self.csr_write(
             "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
         )
+        # W1C: clear sticky NACK/halt so a prior attempt cannot freeze Idle+SCL.
+        await self.csr_write("I2C0_CONTROLLER_EVENTS_CLR", 0xC000_9078, 0xF)
         await self.csr_write("I2C0_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
 
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0  # write
@@ -163,17 +182,25 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         )
 
         await self._wait_hostidle("DUT_HOST_WRITE")
+        cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", 0xC000_9078)
         await Timer(50, units="us")
         got = self._i2c_slave.read_mem(_I2C_WRITE_OFFSET, 1)
         cocotb.log.info(
-            "DUT I2C0 host write: slave.mem[0x%02X]=%s expected 0x%02X",
+            "DUT I2C0 host write: slave.mem[0x%02X]=%s expected 0x%02X "
+            "CONTROLLER_EVENTS=0x%08x VIP(starts=%s acks=%s stops=%s bytes=%s)",
             _I2C_WRITE_OFFSET,
             got.hex(),
             _I2C_WRITE_BYTE,
+            cevents,
+            getattr(self._i2c_slave, "starts", "?"),
+            getattr(self._i2c_slave, "acks", "?"),
+            getattr(self._i2c_slave, "stops", "?"),
+            getattr(self._i2c_slave, "bytes", "?"),
         )
         assert got == bytes([_I2C_WRITE_BYTE]), (
             f"DUT I2C0 host write: slave mem 0x{got.hex()}, "
-            f"expected 0x{_I2C_WRITE_BYTE:02X}"
+            f"expected 0x{_I2C_WRITE_BYTE:02X} "
+            f"(CONTROLLER_EVENTS=0x{cevents:08x})"
         )
         self.dut_host_write_ok = True
 
@@ -236,8 +263,11 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         )
 
         rdata = 0
+        saw_busy = False
         for _ in range(2000):
             status = await self.csr_read("I2C0_STATUS_ARA", I2C0_STATUS)
+            if not (status & I2C_STATUS_HOSTIDLE):
+                saw_busy = True
             if not (status & I2C_STATUS_RXEMPTY):
                 rdata = await self.csr_read("I2C0_RDATA_ARA", I2C0_RDATA) & 0xFF
                 break
@@ -247,7 +277,18 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})"
             )
 
-        await self._wait_hostidle("DUT_SMBUS_ARA")
+        # Transfer may already be back in hostidle by the time RX is readable;
+        # only require that we observed busy if still mid-transaction.
+        if not (status & I2C_STATUS_HOSTIDLE):
+            await self._wait_hostidle("DUT_SMBUS_ARA")
+        elif not saw_busy:
+            # RX filled while we only sampled idle — still prove FMT ran.
+            cocotb.log.warning(
+                "DUT_SMBUS_ARA: RX ready while HOSTIDLE stayed set "
+                "(STATUS=0x%08x); accepting completed read",
+                status,
+            )
+
         cocotb.log.info(
             "DUT SMBus ARA: RDATA=0x%02X expected 0x%02X (slave_addr=0x%02X)",
             rdata,
@@ -298,6 +339,8 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             I2C0_WRAP_CTRL,
             expected=I2C_WRAP_ENABLE_CONTROLLER,
         )
+        # I2C_EN must CDC into LSIO before host/VIP traffic (same on VCS/Verilator).
+        await self.wait_i2c0_lsio_ready("I2C0_WRAP_ENABLE")
 
         # OVRD pin-level gate (register -> pad).
         await self.csr_write("I2C0_OVRD_RELEASE", I2C0_OVRD, I2C_OVRD_RELEASE)
@@ -321,7 +364,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             "i2c_release_restore", expected_scl=1, expected_sda=1
         )
 
-        # U4-2 hard gate: DUT controller must own the bus.
+        # U4-2 hard gate: DUT controller must own the bus (VCS and Verilator).
         if self._i2c_slave is None:
             raise AssertionError(
                 "I2C EEPROM slave VIP unavailable; cannot prove DUT host path"

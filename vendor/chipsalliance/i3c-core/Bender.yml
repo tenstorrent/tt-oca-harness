@@ -73,7 +73,7 @@ sources:
       ################################################################
       # i3c-core CSR
       ################################################################
-      # Wrapper-generated CSR files (from parent tt-oca-hw project)
+      # Wrapper-generated CSR files (from the parent project)
       - upstream/src/csr/I3CCSR_pkg.sv
       - upstream/src/csr/I3CCSR.sv
       - upstream/src/i3c_pkg.sv

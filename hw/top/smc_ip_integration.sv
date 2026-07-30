@@ -17,10 +17,12 @@
 // (doc/integrator/modules/ROOT/pages/index.adoc, "Module Variants and IP
 // Integration") and hw/top/README.md.
 //
-// Every other technology-specific interface smc.sv exposes (CPU cache/SRAM/
-// ROM memory macros, I3C DAT/DCT memory macros, ATB telemetry, DFD/trace,
-// SPI-over-GPIO muxing, etc.) is passed straight through by smc_wrapper.sv,
-// left for a full-chip integration to wire up.
+// Every other technology-specific interface smc.sv exposes (I3C DAT/DCT
+// memory macros, ATB telemetry, DFD/trace, SPI-over-GPIO muxing, etc.) is
+// passed straight through by smc_wrapper.sv, left for a full-chip
+// integration to wire up. CPU ROM/scratch/L1$ macros are absorbed by the
+// companion smc_cpu_mem_integration.sv instantiated only from smc_wrapper
+// (this module stays SMU-safe without those ports).
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.

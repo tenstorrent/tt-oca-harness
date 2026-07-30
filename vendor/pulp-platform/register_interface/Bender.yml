@@ -5,10 +5,10 @@
 # Sources are vendored from upstream pulp-platform/register_interface into upstream/ via the
 # `vendor_package` entry in the root Bender.yml (bender vendor init), pinned at v0.4.7 (the commit
 # the TT fork was based on). No TT patch is carried: the only fork delta touched the deprecated
-# apb_to_reg.sv, which has no consumer in tt-oca-hw and is not vendored. Do NOT hand-edit the
+# apb_to_reg.sv, which has no consumer in OCA and is not vendored. Do NOT hand-edit the
 # upstream/ files.
 #
-# This is a slimmed manifest pruned to the strict instantiation closure tt-oca-hw actually uses:
+# This is a slimmed manifest pruned to the strict instantiation closure OCA actually uses:
 # axi_to_reg_v2 (the only register_interface module instantiated in OCA RTL, in
 # hw/comp/idma_wrapper/rtl/idma_frontend_wrapper.sv) plus its leaf dependencies (periph_to_reg, reg_demux,
 # reg_mux) and reg_intf (REG_BUS interface/types). The other upstream converters (apb_to_reg_v2,

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """P2-2 / U7-6: public secure-error negative via OTP program-fail + signature gate.
 
-Legacy OCCP is ROM firmware on the chiplet TB. On the OSS bare-smc unit TB the
+Legacy OCCP is ROM firmware on the chiplet TB. On the OSS smc_wrapper unit TB the
 public security hooks that are reachable without proprietary OCCP ROM are:
 
   1. OTP PROGRAM failure injection (secure programming error).

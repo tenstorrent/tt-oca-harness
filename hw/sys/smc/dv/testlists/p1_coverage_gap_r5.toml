@@ -2,30 +2,14 @@
 schema_version = 1
 
 # P1 Coverage-Gap Depth Slate — Round 5 (remaining leftover CSR blocks).
-# See `docs/SMC_VPLAN.md` §P1 Coverage-Gap Depth Slate — Round 5.
-# Closes the last two RTL CSR surfaces missed by round 1-4:
-#   * SMC_PVT_WRAP_DROOP  (0xC000_7400) — droop-monitor sub-block.
-#   * DFT_CTRL            (0xC000_F800) — top-level DFT status.
+# See `docs/SMC_VPLAN.adoc` §P1 Coverage-Gap Depth Slate — Round 5.
+# Covers remaining PVT droop CSR surface (0xC000_7400).
+# DFT_CTRL timeout-proxy test removed: it depended on deleted DV DFX stub /
+# bare-smc decode semantics, not smc_wrapper production RTL.
 
-[[tests]]
-name = "smc_pvt_droop_test"
-module = "smc_pvt_droop_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "p1_coverage_gap", "p1_coverage_gap_r5", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_dft_ctrl_test"
-module = "smc_dft_ctrl_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "p1_coverage_gap", "p1_coverage_gap_r5", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pvt_droop_test → testlists/deferred.toml (rtl_placeholder)
 
 [[groups]]
 name = "p1_coverage_gap_r5"
 tests = [
-    "smc_pvt_droop_test",
-    "smc_dft_ctrl_test",
 ]

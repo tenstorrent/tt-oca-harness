@@ -1,35 +1,28 @@
 schema_version = 1
 
-# Deferred, not-runnable wrapper baseline. `smc_wrapper` is intentionally not
-# registered in hw/common/dv/configs/duts.toml: its wrapper API, Bender targets,
-# and SEP prim shim have not been ported to the current repository.
-#
-# Independent of the bare-`smc` catalog in smc_sim_cfg.toml; both configs share
-# this DV root and the build/runs evidence directory.
+# Launch entry: `--dut smc_wrapper` (registered in duts.toml).
+# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
+# smc_cpu_mem_integration). Bare `--dut smc` is not used.
 name = "smc_wrapper"
 profile = "native-cocotb"
-description = "OSS-example smc_wrapper pad-level cocotb baseline"
-default_tool = "vcs"
+description = "SMC OSS cocotb: smc_wrapper under tb_top"
+default_tool = "verilator"
 tools = ["vcs", "verilator", "xcelium"]
 
 [testlist]
-path = "testlists/wrapper.toml"
+path = "testlists/all.toml"
 format = "toml_list"
 
 [native.stages.clean]
 kind = "clean"
-paths = [
-  "{run_dir}",
-  "hw/sys/smc/dv/build/cocotb_wrapper",
-  "hw/sys/smc/dv/build/work_wrapper",
-]
+paths = ["{run_dir}", "hw/sys/smc/dv/build"]
 
 [build]
-top_module = "smc_wrapper_uvm_top"
-top_file = "hw/sys/smc/dv/tb/tb_wrapper_top.sv"
-filelist = "hw/sys/smc/dv/build/smc_wrapper_dut_compile.f"
-bender_filelist = "hw/sys/smc/dv/build/smc_wrapper_bender.f"
-work_dir = "hw/sys/smc/dv/build/work_wrapper"
+top_module = "smc_uvm_top"
+top_file = "hw/sys/smc/dv/tb/tb_top.sv"
+filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
+work_dir = "hw/sys/smc/dv/build"
 common_bender_targets = [
   "tech_cells_generic_exclude_deprecated",
   "tech_cells_generic_exclude_tc_sram",
@@ -40,53 +33,33 @@ common_bender_targets = [
   "idma_rtl",
   "register_interface_l1",
 ]
-# smc + smu_oss_wrapper pulls OSS models/integration; smc_wrapper adds
-# smc_wrapper.sv; open_source_dv_files supplies OSS efuse_bank_model.
-# `simulation` is omitted (same rationale as smu_wrapper).
-bender_targets = ["smc", "smu_oss_wrapper", "smc_wrapper", "open_source_dv_files"]
-# Prepend SEP prim_assert shim so `include "prim_assert.sv"` resolves to the
-# SYNTHESIS-gated ASSERT macros (same as smu_wrapper); otherwise VCS emits
-# time-0 prim_rom noXOnCsI $error that the result parser treats as FAIL.
+# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv + CPU mem integration.
+bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
-  # FIXME(SMC-DV): this SEP prim shim is not present in the current repository.
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
 ]
 exclude_files = [
-  # Shadowed by shims/wrapper/smc_padring_ext.sv (ASSIGNIN fix).
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
-  # Not instantiated by smc_wrapper; avoid SEP package / SMU wrapper compile.
   "hw/oss-example/wrapper/smu/smu_wrapper.sv",
   "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
-  # Bender.lock still resolves Package(i3c-core) to stale deps/i3c-core while
-  # the smc target also lists vendor/chipsalliance/i3c-core (post #3934 rebase
-  # with rlt_mem_*). Drop the stale deps tree so i3c_pkg matches i3c_wrapper.
   "deps/i3c-core",
 ]
 stubs = [
+  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_dfx_ctrl_status_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_subsystem_resets.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_cool_reset_wrap.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/smc_reset_unit.sv",
-  # Avoid Verilator 5.046 C++ struct redefinition across parameterized
-  # gpio_shim / gpio_ctrl_reg specializations (VCS keeps real RTL).
-  "hw/sys/smc/dv/tb/verilator_stubs/gpio_macro_wrapper.sv",
-  "hw/sys/smc/dv/tb/verilator_stubs/input_gpio_macro_wrapper.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  "hw/sys/smc/dv/shims/mem/tb_smc_output_mem_responder.sv",
-  "hw/sys/smc/dv/shims/wrapper/smc_padring_ext.sv",
+  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
+  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
 ]
 
 [build.verilator]
-# Drop cocotb's global --public-flat-rw (see stages.cocotb_public_scope);
-# otherwise gpio_macro_wrapper parameterized instances collide in generated C++.
-public_scope = "hw/sys/smc/dv/tb/smc_wrapper_public_scope.vlt"
-# Legacy unused key kept for grep/docs continuity with bare smc_sim_cfg.
 disable_public_flat_rw = true
+public_scope = "hw/sys/smc/dv/tb/smc_public_scope.vlt"
 low_mem_make = true
 ccache = true
 
@@ -94,22 +67,39 @@ ccache = true
 build_jobs = 8
 
 [cocotb]
-python_root = "hw/sys/smc/dv/cocotb_wrapper"
-test_dir = "hw/sys/smc/dv/cocotb_wrapper/tests"
+python_root = "hw/sys/smc/dv/cocotb"
+test_dir = "hw/sys/smc/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
+[c_build.default]
+# Build the selected SMC C test and declare every time-zero preload consumed by
+# the firmware boot test. run_dv stages these basenames into the simulator cwd.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "make ocah-dv-fw-tests TARGET=smc TEST={fw_target} && cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+]
+outputs = [
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
+]
+
 [run_modes.smoke]
-description = "Pad-level smc_wrapper elaboration / reset smoke"
+description = "SMC functional smoke (smc_wrapper under tb_top)"
 timeout_sec = 1800
-args = ["+skip_fuse_sense"]
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
 
 [targets.default]
-description = "OSS smc_wrapper cocotb target"
-build_dir = "hw/sys/smc/dv/build/cocotb_wrapper"
+description = "OSS SMC cocotb target"
+build_dir = "hw/sys/smc/dv/build/cocotb"
 defines = [
   "SYNTHESIS",
   "SIM",

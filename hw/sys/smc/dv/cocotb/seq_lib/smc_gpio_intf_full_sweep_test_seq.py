@@ -20,7 +20,7 @@ _GPIO_INTF_COUNT = 68
 # REGRESSION-LOCK: bit25 is `lsio_enable` (sw=r/hw=w), whose RDL reset is 0x0;
 # those interfaces read 1 because their `lsio_enable` HW input is tied high
 # (physically routed to the LSIO block). That locks the per-instance HW tie,
-# not a spec reset constant. [audit: F1 common-mode, see smcoss_audit.md]
+# not a spec reset constant.
 _GPIO_INTF_DEFAULT_BIT25 = 0x0200_0000
 _GPIO_INTF_BIT25_INDICES = frozenset(
     {27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 49, 50, 51, 53, 60, 65, 66, 67}

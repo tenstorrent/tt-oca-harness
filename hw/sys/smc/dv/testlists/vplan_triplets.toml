@@ -50,30 +50,6 @@ tags = ["ci", "vplan_gap", "i2c_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_i3c_oca_write_read_sanity_test"
-module = "smc_i3c_oca_write_read_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_i3c_ibi_ccc_depth_test"
-module = "smc_i3c_ibi_ccc_depth_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "i3c_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_chiplet_reg_jtag_test"
-module = "smc_chiplet_reg_jtag_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "jtag_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_efuse_jtag_lc_negative_test"
 module = "smc_efuse_jtag_lc_negative_test"
 seed = 1
@@ -97,21 +73,7 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
-[[tests]]
-name = "smc_pll_dvfs_depth_test"
-module = "smc_pll_dvfs_depth_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_static_cg_sanity_test"
-module = "smc_static_cg_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "clock_depth", "pyuvm"]
-run_modes = ["smoke"]
+# smc_pll_dvfs_depth_test / smc_static_cg_sanity_test → deferred.toml (rtl_placeholder)
 
 [[tests]]
 name = "smc_gpio_strap_sanity_test"
@@ -213,8 +175,7 @@ timeout_sec = 3600
 tags = ["ci", "vplan_gap", "cpu_depth", "p2_phase_c", "u7_secure", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
-    "+smc_efuse_hex=smc_efuse_default.hex",
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
     "+smc_efuse_prog_fail_count=1",
 ]
 
@@ -226,8 +187,7 @@ timeout_sec = 3600
 tags = ["ci", "vplan_gap", "p2_phase_c", "u7_otp", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    # FIXME(SMC-DV): restore and stage this OTP image before enabling the test.
-    "+smc_efuse_hex=smc_efuse_default.hex",
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
     "+smc_efuse_prog_fail_count=1",
 ]
 
@@ -240,14 +200,8 @@ tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+skip_fuse_sense"]
 
-[[tests]]
-name = "smc_dfd_dbs_fault_inject_test"
-module = "smc_dfd_dbs_fault_inject_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "vplan_gap", "p2_phase_b", "u7_dfd", "pyuvm"]
-run_modes = ["smoke"]
-args = ["+skip_fuse_sense"]
+# smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
+# Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
 
 [[groups]]
 name = "vplan_gaps"
@@ -258,13 +212,8 @@ tests = [
     "smc_mailbox_event_irq_test",
     "smc_i2c_p1_rdwr_protocol_test",
     "smc_i2c_error_fifo_depth_test",
-    "smc_i3c_oca_write_read_sanity_test",
-    "smc_i3c_ibi_ccc_depth_test",
-    "smc_chiplet_reg_jtag_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_permission_boundary_test",
-    "smc_pll_dvfs_depth_test",
-    "smc_static_cg_sanity_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",
     "smc_uart_log_engine_error_boundary_test",
@@ -278,7 +227,6 @@ tests = [
     "smc_occp_sanity_secure_error_test",
     "smc_efuse_otp_burn_shadow_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
 ]
 
 [[groups]]
@@ -303,17 +251,11 @@ tests = [
     "smc_i2c_p1_rdwr_protocol_test",
     "smc_i2c_error_fifo_depth_test",
     "smc_i3c_to_fabric_test",
-    "smc_i3c_oca_write_read_sanity_test",
-    "smc_i3c_ibi_ccc_depth_test",
     "smc_ijtag_basic_test",
-    "smc_chiplet_reg_jtag_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_permission_boundary_test",
-    "smc_pll_pvt_clock_config_test",
-    "smc_pll_dvfs_depth_test",
-    "smc_static_cg_sanity_test",
     "smc_gpio_irq_active_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",

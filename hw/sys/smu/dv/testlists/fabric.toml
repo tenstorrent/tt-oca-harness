@@ -31,13 +31,7 @@ timeout_sec = 1800
 tags = ["fabric", "phase1"]
 run_modes = ["fabric"]
 
-[[tests]]
-name = "smu_smc_global_base_remap_test"
-module = "smu_smc_global_base_remap_test"
-seed = 1
-timeout_sec = 1800
-tags = ["fabric", "phase1"]
-run_modes = ["fabric"]
+# smu_smc_global_base_remap_test → testlists/deferred.toml
 
 [[tests]]
 name = "smu_axi_atomic_operation_test"

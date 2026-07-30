@@ -8,9 +8,6 @@
  * This test performs basic register read/write operations on Telemetry
  * Receiver registers to ensure the IP is accessible and functioning correctly.
  *
- * Note: In v1_oca, ATB has been renamed/remapped to TELEMETRY_RECEIVER_WRAP
- * with corrected register offsets
- *
  * Test Flow:
  * 1. System initialization
  * 2. Read Telemetry CTRL register

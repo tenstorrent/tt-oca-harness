@@ -15,23 +15,29 @@
 | Executable P1 detail | `SMU_OSS_VPLAN_PHASE1.md`, `dv/smu/tb/doc/oss_smu_vplan.md` |
 | OUT / deferred names | `../testlists/deferred.toml` |
 
-> **Canonical program:** **SEP=0 P1+P2+P3** = **55** tests (`sep0_all`) — **closed**.
-> **P4-SEP0** deepen + glue = **7** (`phase4_sep0`); full rollup `sep0_p4_all` = **62**.
-> **SEP=1 / Appendix A** still OUT. This file is the single master VPLAN for OSS SMU DV.
+> **Canonical program (policy 2026-07-29):** no DUT Force / no TB placeholder.
+> Live green surface: `phase1` **14**, `sep0_all` **19**, `phase4_sep0` **2**,
+> `sep0_p4_all` **19** (see `testlists/all.toml`). Force / LCC / hier-AXIL /
+> CTM-Force names live in `testlists/deferred.toml` (`needs_real_lcc` /
+> `needs_real_stimulus`) — see `testlists/deferred.toml`.
+> Historical ledger rows below that still say PASS for Force-era tests are
+> **stale** until rewritten; do not report them as current green.
+> **SEP=1 / Appendix A** still OUT. This file is the master VPLAN for OSS SMU DV.
 > Satellite notes (`SMU_OSS_COMPLETE_TESTPLAN.md`, `SMU_OSS_VPLAN_P1_P2.md`)
 > redirect here.
 
 | Phase | Content | Count | Status |
 |-------|---------|-------|--------|
-| **P0/P1** | SEP=0 density (smoke ⊂ top5 ⊂ top10 ⊂ phase1) | 24 | **24/24 VCS DONE (2026-07-14)** |
-| **P2** | SMC↔DTP protocol closure (I1–I12) | **15** | **15/15 VCS + Verilator DONE (2026-07-15)** |
-| **P3** | SEP=0 **corner / race / illegal / G4** on I1–I12 + SMN | **16** | **16/16 VCS + Verilator DONE (2026-07-17)** |
-| **P4** | SEP=0 deepen + glue remainder (secure_tm / WDT clamp / macro / OCTS / SS / BSR / ATB) | **7** | **7/7 VCS + Verilator DONE (2026-07-20; honesty re-verify)** |
-| — | P1+P2 enrollment | **39** | **DONE** |
-| — | **SEP=0 enrolled total** (`sep0_all`) | **55** | **55/55 VCS + Verilator PASS (2026-07-17)** |
-| — | **SEP=0 + P4** (`sep0_p4_all`) | **62** | enrolled rollup; **full 62/62 not signed** — gate is `phase4_sep0` 7/7 |
+| **P0/P1** | SEP=0 density without Force (smoke ⊂ top5 ⊂ top10 ⊂ phase1) | **14** | **14/14 Verilator PASS (2026-07-29i)** |
+| **P2 deepeners** | boot-stall / IC_RESET (non-Force) | **2** enrolled | green under `sep0_all` |
+| **P3 corner** | dual-domain illegal + stall vs IC_RESET | **2** enrolled | green under `sep0_all` |
+| **P4** | SS IC_RESET + BSR EXTEST only | **2** | enrolled (`phase4_sep0`) |
+| — | Force / LCC / CTM-Force / OTP-Force / WDT-Force matrix | OUT | `deferred.toml` |
+| — | P1+P2+P3 historical 55 Force-era enrollment | **superseded** | see cleanup log |
+| — | **SEP=0 enrolled total** (`sep0_all`) | **19** | **19/19 Verilator (2026-07-29i)** |
+| — | **SEP=0 + P4** (`sep0_p4_all`) | **19** | enrolled rollup |
 
-**Status ledger:** full testplan + testcase matrix → **§12**.
+**Status ledger:** full testplan + testcase matrix → **§12** (historical Force PASS rows are stale).
 
 ---
 
@@ -112,7 +118,7 @@ OUT names may remain in `deferred.toml` / Appendix A — **not** part of P1–P4
 | CTN wire-OR may force `dst_ack=0` | Do not require impossible level handshake |
 | CTN CSR relative `[0,0x300)` | Abs `0xC000F000` never reaches DTP: **local xbar periph ends `0xC000E800`** (hole). P1 DECERR is local-xbar, not CTN. |
 | OTP bank may be TB-tied | Completing OTP needs responder / shadow |
-| `feat_ctrl` tied `'0` under SEP=0 | Force OK if gate decision still proven |
+| `feat_ctrl` tied `'0` under SEP=0 | **OUT** Force ungating — use real LCC (`needs_real_lcc`) |
 
 Scratch: `export TMPDIR=/localdev/$USER/TMPDIR && mkdir -p "$TMPDIR"`.
 
@@ -285,7 +291,7 @@ no-SEP zeros.
 | OTP complete + err_slv | Child I2C/GPIO/crypto |
 | CTM four-phase / CLA loop | Scan / shim / telemetry |
 | Filter program → OKAY | Commercial toggle % |
-| feat_ctrl matrix (Force OK) | Real LCC #3538 enforce |
+| feat_ctrl matrix (Force **removed**) | Real LCC #3538 enforce |
 
 ### 6.2 Tests + pass contracts
 
@@ -551,10 +557,14 @@ python3 tools/dv/run_dv.py --dut smu --tool verilator --items phase4_sep0
 **Honest progress:** SEP=0 P1+P2+P3 **closed** (`sep0_all` 55/55). P4-SEP0 deepen+glue **closed** on `phase4_sep0` 7/7 (re-verified after vacuity fixes). Appendix A / SEP=1 remain OUT.
 
 Notes (honest caveats, not vacuous PASS):
-- I2b: SEP OTP JTAG bridge absent (`JTAG_SEP_DBG_ENABLE=0`); hier AXIL proves err_slv DECERR/poison; frontdoor AXIL idle.
-- I11a: WDOGIP0 CSR check only (isolate clamps WDT rst export without CPU bring-up); IRQ/PLIC OUT.
-- I11b: Force-pulse `wdt_second_timeout_o` into reset unit (same isolate limit); proves scratch domain split. Verilator uses stub `smc_reset_unit` that pulses `rst_warm`/`rst_wdt` on second-timeout.
-- Verilator: JTAG2AXI ungating via packed `feat_ctrl` Force + Force-shadow RMW (continuous `security_disable` non-forceable without `.vlt`); AXI-Lite / `jtag_smc_reset_ctrl` use flat packed bit helpers.
+- Policy 2026-07-29: **no DUT Force / no TB placeholder**. Force-era deepeners
+  (JTAG2AXI ungating, WDT Force pulse, hier AXIL, CTM Force, secure_tm Force)
+  are **OUT** in `testlists/deferred.toml` until real LCC / legal pins exist.
+  Tracker: `testlists/deferred.toml`.
+- I2b / I11b / P4 secure_tm / P4 WDT clamp: deferred (`needs_real_lcc` /
+  `needs_real_stimulus`); do not report historical Force PASS as current.
+- Live green: frontdoor JTAG / SMN / observe-only demote+lc_state / boot-stall /
+  IC_RESET / BSR EXTEST (see `testlists/all.toml`).
 - FCOV: `SMU_FCOV.md` v1.2 + `smu_fcov.py` P1–P3 bins enrolled; commercial SV covergroups still optional.
 - aidv Skill-1: `SMU_FEATURE_LIST.md` draft + scoreboard check tokens — **designer approval still pending** (checker list not signed off).
 
@@ -564,6 +574,7 @@ Notes (honest caveats, not vacuous PASS):
 - Claim P1 OTP/xtrig as full protocol closure
 - Fake SEP=1 interop under SEP=0 BFMs
 - Vacuous PASS on remap-only / Force-only without contrast
+- Re-enroll Force helpers or TB placeholders to inflate green counts
 
 ### Execution sequence
 
@@ -577,11 +588,14 @@ Notes (honest caveats, not vacuous PASS):
 
 ---
 
-## 12. Status ledger (canonical — 2026-07-20)
+## 12. Status ledger (canonical — 2026-07-20; policy sync 2026-07-29)
 
 > Single place for **testplan document status** + **enrolled testcase status**.
-> Executable groups: `sep0_all` (55), `phase4_sep0` (7), `sep0_p4_all` (62).
-> OUT names stay in Appendix A / `deferred.toml`.
+> **Current executable groups** (`testlists/all.toml`, 2026-07-29): `sep0_all`
+> **17**, `phase4_sep0` **2**, `sep0_p4_all` **19**. Force / LCC / hier /
+> CTM-Force names are in `deferred.toml` — **not** reportable as PASS.
+> The historical Force-era table rows below are marked **DEFERRED** (not green).
+> OUT names also stay in Appendix A / `deferred.toml`.
 > Latest signoff: VCS/VL `sep0_all` **55/55** (2026-07-17); VCS/VL `phase4_sep0` **7/7** (2026-07-20 honesty re-verify).
 
 ### 12.1 Testplan / document inventory
@@ -600,8 +614,9 @@ Notes (honest caveats, not vacuous PASS):
 | **§13 (this file)** | Result-reporting policy (scenario + checks) | Active |
 | `../testlists/all.toml` | Runnable groups (`smoke`…`sep0_p4_all`) | Active |
 | `../testlists/{smc,dtp,fabric}.toml` | Enrolled test entries | Active (**62** unique) |
-| `../testlists/deferred.toml` | OUT / SEP=1 / toggle / child names + blocker banners | Reference only (**84** names); never reportable as passing |
-| `../testlists/{sep,interop}.toml` | SEP=1 / interop placeholders | OUT (not in `all.toml`) |
+| `../testlists/deferred.toml` | OUT / SEP=1 / toggle / child names + blocker banners | Reference only (**~107** unique names); never reportable as passing |
+| `../testlists/{sep,interop}.toml` | SEP=1 / interop **catalog groups** (probe vs blocked-exec) | OUT (not in `all.toml`); names in `deferred.toml` |
+| `../testlists/wrapper.toml` | `--dut smu_wrapper`: green `all` = elab+SMC; `sep_exec_blocked` holds `smu_sep_smoke` | Wrapper merge-gate; SEP exec not reportable |
 | `cocotb/env/smu_fcov.py` | Python FCOV ledger hits | Active |
 | Internal `oca_smu/.../smu_all_testplan.md` | Legacy full SMU universe | **External reference**; not OSS exit gate |
 
@@ -617,7 +632,7 @@ Notes (honest caveats, not vacuous PASS):
 | **`sep0_p4_all`** | **62** | enrolled (not full run) | enrolled (not full run) | sep0_all + phase4_sep0 |
 | `phase2` | 39 | PASS (subset of sep0) | PASS | phase1+phase2_smc_dtp |
 | `phase3` | 31 | PASS | PASS (P2+P3) | phase2_smc_dtp+phase3_corner |
-| `deferred` / Appendix A | 84 names | N/A | N/A | SEP=1 / interop / toggle / CHILD — **OUT** |
+| `deferred` / Appendix A | ~107 unique names | N/A | N/A | SEP=1 / interop / toggle / CHILD — **OUT** |
 
 ### 12.3 Enrolled testcase matrix (`sep0_all`)
 
@@ -627,66 +642,67 @@ Notes (honest caveats, not vacuous PASS):
 | P1 | S2 | `smu_dtp_jtag_smoke_test` | dtp | G3 | PASS | PASS |
 | P1 | S3 | `smu_no_sep_configuration_test` | smc | G3 | PASS | PASS |
 | P1 | 2 | `smu_dft_dtp_boot_stall_test` | dtp | G3 | PASS | PASS |
-| P1 | 3 | `smu_dtp_dtm_local_axi_test` | dtp | G3 | PASS | PASS |
-| P1 | 4 | `smc_cpu_traffic_ext_axi_test` | fabric | G3 | PASS | PASS |
+| P1 | 3 | `smu_dtp_dtm_local_axi_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P1 | 4 | `smc_cpu_traffic_ext_axi_test` | fabric | G3 | DEFERRED | DEFERRED |
 | P1 | 5 | `smu_axi_id_width_conversion_test` | fabric | G3 | PASS | PASS |
 | P1 | 6 | `smu_axi_crossbar_error_handling_test` | fabric | G3 | PASS | PASS |
 | P1 | 7 | `smu_jtag_reset_override_test` | dtp | G3 | PASS | PASS |
-| P1 | 8 | `smu_cross_trigger_matrix_test` | dtp | G1/G2 | PASS | PASS |
+| P1 | 8 | `smu_cross_trigger_matrix_test` | dtp | G1/G2 | DEFERRED | DEFERRED |
 | P1 | 9 | `smc_reset_ctrl_test` | smc | G3 | PASS | PASS |
-| P1 | 10 | `smc_mailbox_int_test` | smc | G3 | PASS | PASS |
-| P1 | 11 | `smu_dtp_otp_debug_access_test` | dtp | G2 | PASS | PASS |
+| P1 | 10 | `smc_mailbox_int_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 11 | `smu_dtp_otp_debug_access_test` | dtp | G2 | DEFERRED | DEFERRED |
 | P1 | 12 | `smu_clock_stop_coordination_test` | dtp | G2 | PASS | PASS |
-| P1 | 13 | `smu_lifecycle_debug_policy_test` | dtp | G2 | PASS | PASS |
-| P1 | 14 | `smu_smc_dtp_jtag2axi_security_test` | dtp | G3 | PASS | PASS |
+| P1 | 13 | `smu_lifecycle_debug_policy_test` | dtp | G2 | DEFERRED | DEFERRED |
+| P1 | 14 | `smu_smc_dtp_jtag2axi_security_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P1 | 15 | `smu_dft_gpio_boot_stall_test` | dtp | G3 | PASS | PASS |
-| P1 | 16 | `smc_gpio_strap_sanity_test` | smc | G3 | PASS | PASS |
-| P1 | 17 | `smc_efuse_reg_sanity_test` | smc | G3 | PASS | PASS |
-| P1 | 18 | `smc_wdt_sanity_test` | smc | G3 light | PASS | PASS |
+| P1 | 16 | `smc_gpio_strap_sanity_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 17 | `smc_efuse_reg_sanity_test` | smc | G3 | DEFERRED | DEFERRED |
+| P1 | 18 | `smc_wdt_sanity_test` | smc | G3 light | DEFERRED | DEFERRED |
 | P1 | 19 | `smc_security_demote_pm_test` | smc | G2 | PASS | PASS |
 | P1 | 20 | `smu_axi_external_port_connectivity_test` | fabric | G3 | PASS | PASS |
-| P1 | 21 | `smu_smc_global_base_remap_test` | fabric | G3 | PASS | PASS |
+| P1 | 21 | `smu_smc_global_base_remap_test` | fabric | G3 | DEFERRED | DEFERRED |
 | P1 | 22 | `smu_axi_atomic_operation_test` | fabric | G3 | PASS | PASS |
-| P2 | I8a | `smu_dtp_csr_access_test` | dtp | G3 | PASS | PASS |
-| P2 | I2a | `smu_dtp_otp_smc_complete_rw_test` | dtp | G3 | PASS | PASS |
-| P2 | I6a | `smu_dtp_clock_stop_smc_cla_loop_test` | dtp | G3 | PASS | PASS |
-| P2 | I7a | `smu_xtrig_ctm_four_phase_test` | dtp | G3 | PASS | PASS |
-| P2 | I10a | `smu_sys_in_filter_program_jtag_test` | dtp | G3 | PASS | PASS |
-| P2 | I1a | `smu_dtp_jtag2axi_smc_rw_matrix_test` | dtp | G3 | PASS | PASS |
-| P2 | I1b | `smu_dtp_jtag2axi_smc_error_path_test` | dtp | G3 | PASS | PASS |
-| P2 | I2b | `smu_dtp_otp_sep0_err_slv_test` | dtp | G3 | PASS | PASS |
+| P2 | I8a | `smu_dtp_csr_access_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I2a | `smu_dtp_otp_smc_complete_rw_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I6a | `smu_dtp_clock_stop_smc_cla_loop_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I7a | `smu_xtrig_ctm_four_phase_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I10a | `smu_sys_in_filter_program_jtag_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I1a | `smu_dtp_jtag2axi_smc_rw_matrix_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I1b | `smu_dtp_jtag2axi_smc_error_path_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I2b | `smu_dtp_otp_sep0_err_slv_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P2 | I3a | `smu_boot_stall_jtag_cold_reset_matrix_test` | dtp | G3 | PASS | PASS |
 | P2 | I5a | `smu_ic_reset_smc_multi_domain_test` | dtp | G3 | PASS | PASS |
-| P2 | I7b | `smu_dtp_xtrigger_smc_cla_test` | dtp | G3 | PASS | PASS |
-| P2 | I8b | `smu_fabric_smc_dtp_cross_domain_test` | dtp | G3 | PASS | PASS |
-| P2 | I9a | `smu_dtp_feat_ctrl_gate_matrix_test` | dtp | G3 | PASS | PASS |
-| P2 | I11a | `smc_wdt_timeout_irq_test` | smc | G3 | PASS | PASS |
-| P2 | I11b | `smc_reset_unit_wdt_scratch_test` | smc | G3 | PASS | PASS |
-| P3 | H2b | `smu_sys_in_filter_window_edge_test` | dtp | G3 | PASS | PASS |
-| P3 | H2c | `smu_sys_in_filter_reprogram_shrink_test` | dtp | G3 | PASS | PASS |
-| P3 | H2a | `smu_dtp_jtag2axi_wstrb_partial_sticky_test` | dtp | G3 | PASS | PASS |
-| P3 | H1b | `smu_dtp_jtag2axi_back_to_back_error_ok_test` | dtp | G3 | PASS | PASS |
-| P3 | H4b | `smu_feat_ctrl_partial_bit_corner_test` | dtp | G3 | PASS | PASS |
+| P2 | I7b | `smu_dtp_xtrigger_smc_cla_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I8b | `smu_fabric_smc_dtp_cross_domain_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I9a | `smu_dtp_feat_ctrl_gate_matrix_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P2 | I11a | `smc_wdt_timeout_irq_test` | smc | G3 | DEFERRED | DEFERRED |
+| P2 | I11b | `smc_reset_unit_wdt_scratch_test` | smc | G3 | DEFERRED | DEFERRED |
+| P3 | H2b | `smu_sys_in_filter_window_edge_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H2c | `smu_sys_in_filter_reprogram_shrink_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H2a | `smu_dtp_jtag2axi_wstrb_partial_sticky_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H1b | `smu_dtp_jtag2axi_back_to_back_error_ok_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H4b | `smu_feat_ctrl_partial_bit_corner_test` | dtp | G3 | DEFERRED | DEFERRED |
 | P3 | H5a | `smu_ic_reset_dual_domain_illegal_test` | dtp | G3 | PASS | PASS |
 | P3 | H5b | `smu_boot_stall_vs_ic_reset_priority_test` | dtp | G3 | PASS | PASS |
-| P3 | H1c | `smu_xtrig_ctm_illegal_phase_test` | dtp | G3 | PASS | PASS |
-| P3 | H6a | `smu_cla_and_xtrig_concurrent_test` | dtp | G3 | PASS | PASS |
-| P3 | H6b | `smu_clock_stop_jtag_vs_cla_fb_race_test` | dtp | G3 | PASS | PASS |
-| P3 | H5c | `smc_wdt_scratch_double_pulse_test` | smc | G3 | PASS | PASS |
-| P3 | H1a | `smu_dtp_jtag2axi_abort_mid_op_test` | dtp | G3 | PASS | PASS |
-| P3 | H4a | `smu_feat_ctrl_flip_mid_jtag2axi_test` | dtp | G3 | PASS | PASS |
-| P3 | H3a | `smu_jtag2axi_vs_smn_same_csr_race_test` | dtp | G4 | PASS | PASS |
-| P3 | H3b | `smu_otp_vs_fabric_map_race_test` | dtp | G4 | PASS | PASS |
-| P3 | H3c | `smu_hier_ctn_vs_jtag2axi_concurrent_test` | dtp | G4 | PASS | PASS |
-| P4 | D1 | `smc_efuse_secure_tm_force_test` | smc | G3 | PASS | PASS |
-| P4 | D2 | `smc_wdt_ip0_isolate_clamp_test` | smc | G3 | PASS | PASS |
-| P4 | G1 | `smu_macro_axil_pll_pvt_route_test` | smc | G3 | PASS | PASS |
-| P4 | G2 | `smu_octs_timer_count_csr_test` | smc | G3 | PASS | PASS |
+| P3 | H1c | `smu_xtrig_ctm_illegal_phase_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H6a | `smu_cla_and_xtrig_concurrent_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H6b | `smu_clock_stop_jtag_vs_cla_fb_race_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H5c | `smc_wdt_scratch_double_pulse_test` | smc | G3 | DEFERRED | DEFERRED |
+| P3 | H1a | `smu_dtp_jtag2axi_abort_mid_op_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H4a | `smu_feat_ctrl_flip_mid_jtag2axi_test` | dtp | G3 | DEFERRED | DEFERRED |
+| P3 | H3a | `smu_jtag2axi_vs_smn_same_csr_race_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P3 | H3b | `smu_otp_vs_fabric_map_race_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P3 | H3c | `smu_hier_ctn_vs_jtag2axi_concurrent_test` | dtp | G4 | DEFERRED | DEFERRED |
+| P4 | D1 | `smc_efuse_secure_tm_force_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | D2 | `smc_wdt_ip0_isolate_clamp_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | G1 | `smu_macro_axil_pll_pvt_route_test` | smc | G3 | DEFERRED | DEFERRED |
+| P4 | G2 | `smu_octs_timer_count_csr_test` | smc | G3 | DEFERRED | DEFERRED |
 | P4 | G3 | `smu_ic_reset_ss_domain_matrix_test` | dtp | G3 | PASS | PASS |
 | P4 | G4 | `smu_dtp_bsr_extest_loopback_test` | dtp | G2 | PASS | PASS |
-| P4 | G5 | `smu_telemetry_atb_handshake_test` | smc | G2+ | PASS | PASS |
+| P4 | G5 | `smu_telemetry_atb_handshake_test` | smc | G2+ | DEFERRED | DEFERRED |
 
-**Totals:** `sep0_all` 55 · `phase4_sep0` 7 · `sep0_p4_all` 62 · P4 VCS/VL **7/7 PASS**.
+**Totals (current, 2026-07-29i):** `sep0_all` **19** · `phase4_sep0` **2** ·
+`sep0_p4_all` **19**. Historical Force-era 55/62 rollup is **superseded**.
 
 ### 12.4 OUT / deferred (not enrolled — do not promote into SEP=0)
 
@@ -698,15 +714,14 @@ Notes (honest caveats, not vacuous PASS):
 | Toggle / wrapper | `smu_wrapper_*_toggle_*`, signal_path, JTAG2AXI signal toggle | §A.4 |
 | Child / FW depth | ROM scratch / CPU bring-up, `smc_cpu_sanity`, PLIC, I2C/GPIO mux | §A.5 / CHILD |
 | Glue still OUT | cool pin, memrepair sticky, `ss_reset_complete`, dual OCTS, ext IRQ, trace | P4 remainder |
-| Security E2E #3538 | Real LCC → feat_ctrl → gated txn | OUT (Force matrix is enrolled) |
+| Security E2E #3538 | Real LCC → feat_ctrl → gated txn | OUT (`needs_real_lcc`; Force matrix **removed**) |
+| Force / hier / CTM inject | WDT Force, secure_tm Force, feat_ctrl Force, CTM/CLA Force | `needs_real_lcc` / `needs_real_stimulus` |
 
-### 12.5 Honest caveats (unchanged)
+### 12.5 Honest caveats (policy 2026-07-29)
 
-- I2b: SEP OTP JTAG bridge absent under SEP=0; err_slv DECERR/poison via hier AXIL.
-- I11a: WDOGIP0 CSR check only; IRQ/PLIC delivery OUT without CPU bring-up.
-- I11b: Force/stub second-timeout → scratch domain split; not full ChipYard WDT export.
-- P4 secure_tm: Force hier `secure_tm_i` → `is_secure_tm_blocked_o` 0→1 — **not** pin/`secure_tm_o`; SMC LOCKS is W1S / no lock[3] so **not** LOCKS evidence.
-- P4 WDT clamp: WDOGIP0 ∧ TB Force isolate/raw contrast (clamp pin=0 vs passthrough pin=1) — **not** PLIC delivery.
+- No DUT Force / no TB placeholder — see `testlists/deferred.toml`.
+- I2b / I11b / P4 secure_tm / P4 WDT clamp / CTM Force suite: **deferred** (raise stubs).
+- `smc_security_demote_pm_test`: observe-only demote + default lc_state (Force sigint inject deferred).
 - P4 EXTEST: TB scan loopback + one-hot decode — **not** functional pad BSR / SEP STAP.
 - Skill-1: `SMU_FEATURE_LIST.md` designer approval still **pending**.
 
@@ -769,20 +784,75 @@ group → VPLAN row (§12.3 ID or §4 `IF-*`).
 
 ## Appendix A — OUT / deferred universe (reference only)
 
-Not part of P1/P2 exit. Names retained for later programs / `deferred.toml`.
+Not part of P1–P4 exit. Names retained for later programs / `deferred.toml`.
+**Commercial sync (2026-07-23):** inventory aligned to
+`oca_smu/dv/smu/tb` (`testlist_smu_chiplet.yaml`, `SMU_INTEROP_VPLAN.md`,
+`SMU_DV_CLEANUP_PLAN.md` §27). Catalog groups:
+`testlists/sep.toml`, `testlists/interop.toml` (not in `all.toml`).
+**Legacy tree sync (2026-07-28):** `os_oca/dv/smu/tb` Jul mid adds audited —
+bodies **not** enrolled; names + disposition in **§A.7** / `deferred.toml`.
 
-### A.1 SMU-level SEP (needs `SEP=1`)
+### A.0 Commercial gate mapping (oca_smu → OSS)
+
+| Commercial regression | Intent | OSS home |
+|----------------------|--------|----------|
+| `SMU_Dev_with_SEP_Regression` | Probe / connectivity; **no** SEP CPU exec | `sep.toml` → `sep_probe`; `deferred.toml` tag `sep_probe` |
+| `Manual_SMU_Blocked_SEP_Exec_Regression` | Needs real SEP fetch/retire | `sep.toml` → `sep_exec_blocked`; wrapper `sep_exec_blocked` |
+| `SMU_Dev_without_SEP` / nightly | SEP=0 green | `all.toml` `sep0_*` (already enrolled) |
+
+**#3582 blocker (shared):** `mpc_reset_run_req` invert + `dbg_rstb→powergood_stable`
+landed; CLA fw half is `{1,4}` (not `{1,2,4}`). **Residual:** SEP CPU can be
+fully released (`mpc_reset_run=1`, clocks, resets) yet **IFU never asserts
+boot-ROM req** (`boot_rom_reqs=0`, `halt=X`, `pc=0`). OSS
+`--dut smu_wrapper` `smu_sep_smoke_test` reproduces this (2026-07-23).
+
+**OSS wrapper merge-gate:** `wrapper.toml` `all` / `smoke` = elaboration +
+`smu_smc_smoke` only. `smu_sep_smoke_test` is **quarantined** under
+`sep_exec_blocked` / `all_with_sep_exec` — not reportable as PASS (§13).
+
+### A.1 SMU-level SEP — blocked execution (`blocked_sep_exec`)
+
+Needs `compile_smu_chiplet_sep_rtl` **and** first-instruction retire:
 
 `smu_sep_smoke_test`, `smu_sep_sanity_test`, `smu_sep_spi_test`,
 `smu_sep_modules_test`, `smu_sep_dma_test`, `smu_sep_efuse_test`,
 `smu_sep_wdt(_strict)_test`, `smu_sep_aes(_strict)_test`,
-`smu_sep_otbn(_strict)_test`, `smu_sep_smc_xbar_programmable_addr_test`, …
+`smu_sep_otbn(_strict)_test`,
+`smu_cla_sep_cpu_debug_control_test` (**new**, SEP_SMU_022 CLA action map).
+
+### A.1b SMU-level SEP — probe / connectivity (`sep_probe`)
+
+Commercial green SEP gate (no retire required). Catalogued for OSS handoff;
+**not** enrolled until wrapper scoreboards exist:
+
+`smu_sep_smc_xbar_programmable_addr_test`, `smu_sep_wdt_reset_to_smc_test`,
+`smu_sep_spi_bridge_test`, `smu_sep_axi_extension_decode_test`,
+`smu_sep_external_irq_test`, `smu_sep_alias_mailbox_interrupt_probe_test`,
+`smu_sep_ext_axi_combined_probe_test`, `smu_sep_km_otbn_memory_test`,
+`smu_sep_debug_bus_test`, `smu_fuse_sense_handshake_test`,
+`smu_lifecycle_security_handoff_test`, `smu_feat_ctrl_monitor_test`,
+`smu_sep_filter_{rule_matrix,skip_wire}_test`,
+`smu_sep_ap_stee_{output_remap,remap_region_matrix}_test`,
+`smu_sep_outbound_demux_{decode,full_decode}_test`,
+`smu_sep_smc_{alias_remap_consistency,egress_unfiltered,addr_route_bug}_test`,
+`smu_sep_spi_mux_ctrl_wire_test`, `smu_sep_wdt_cdc_path_test`,
+`smu_ic_reset_sep_ext_slice_test`, `smu_sep_memory_integrity_test`,
+`smu_sep_otbn_execute_flow_probe_test`,
+`smu_sep_interrupt_error_recovery_matrix_test`.
 
 ### A.2 SMC/SEP interop
 
-`smc_sep_interoperability(_strict)_test`, `smc_sep_xbar(_strict)_test`,
-`smu_bidirect(_strict)_test`, `smu_smc_stall_sep_test`, modeled `smc_sep_*`,
-follow-up probes (`smu_dtp_sep_debug_enhanced_test`, fuse-sense, SPI bridge, …).
+**Real (blocked_sep_exec):** `smc_sep_interoperability(_strict)_test`,
+`smc_sep_xbar(_strict)_test`, `smu_bidirect(_strict)_test`,
+`smu_smc_stall_sep_test` (**updated**, SEP_SMU_004 CLA stall/release handshake).
+
+**Modeled BFM:** `smc_sep_{interaction,multi_cmd,service_req,error_recovery,
+seq_validation,notification,fw_request,bidirectional}_test`.
+
+**Other:** `smu_interop_negative_recovery_test`,
+`smu_interop_functional_coverage_bins_test`,
+`smu_dtp_sep_debug_enhanced_test`, `smu_dtp_sep_stap_reset_smoke_test`,
+`smu_dtp_sep_ic_reset_hold_test` (legacy P3; SEP=1).
 
 ### A.3 Fabric SEP=1
 
@@ -792,7 +862,8 @@ performance / structure / ID stress beyond SEP=0 slice.
 ### A.4 Toggle / wrapper coverage (commercial)
 
 `smu_wrapper_*_toggle_test`, `smu_u_smc_interface_toggle_test`,
-`smu_signal_path_verification_test`, `smu_dtp_jtag2axi_signal_toggle_test`.
+`smu_signal_path_verification_test`, `smu_dtp_jtag2axi_signal_toggle_test`,
+`smu_wrapper_pin_matrix` (helper; toggle-as-pass **OUT**).
 
 ### A.5 Child / dual reference
 
@@ -802,11 +873,35 @@ SMC dual_* / master-BFM references — not SMU signoff.
 
 | Domain | Anchor (P1/P2 or OUT) |
 |--------|------------------------|
-| Foundations / Boot | smoke, no_sep; SEP smoke = OUT |
+| Foundations / Boot | smoke, no_sep; SEP smoke = OUT (`sep_exec_blocked`) |
 | Debug / DTP | jtag, stall, OTP, JTAG2AXI, P2 deepeners |
 | Addressing | fabric SEP=0 slice; 3×3 = OUT |
 | Security | demote, lifecycle; #3538 E2E = OUT |
 | Protocols | xtrig P1/P2; OCTS dual = OUT |
+| SEP CLA / interop | OUT until #3582 IFU fix (`stall_sep`, `cla_sep_cpu_debug`) |
+
+### A.7 Legacy `os_oca/dv/smu/tb` Jul-2026 adds (catalog only)
+
+Source: `os_oca` commits around `#3909` / `#3926` / `#3966` / `#3971` /
+`#3973` and P3 expand `e84dfe55d` (`smu_p3_feature_list.md` /
+`smu_all_testplan.md`). **Do not enroll** into `all.toml` / `sep0_*`.
+Disposition:
+
+| Legacy name | OSS disposition | Enrolled near-relative (if any) |
+|-------------|-----------------|----------------------------------|
+| `smu_ctm_channel_matrix_test` | **superseded** | `smu_cross_trigger_matrix_test`, `smu_xtrig_ctm_four_phase_test`, `smu_xtrig_ctm_illegal_phase_test` |
+| `smu_dtp_feat_ctrl_gated_jtag2axi_test` | **superseded** | `smu_dtp_feat_ctrl_gate_matrix_test`, `smu_feat_ctrl_*` |
+| `smu_dtp_feat_ctrl_gated_stap_test` | **superseded** / SEP=1 STAP | gate_matrix (J2A); STAP remains OUT |
+| `smc_efuse_secure_tm_test` | **superseded** | `smc_efuse_secure_tm_force_test` (P4) |
+| `smu_wrapper_pin_matrix` | **OUT** toggle | wrapper elab + `smu_smc_smoke` |
+| `smu_dtp_dual_cpu_{bringup,jtag2axi}_test` | **blocked_sep_exec** | none (needs real SEP + pad TB) |
+| `smu_dtp_jtag2axi_sep_otp_path_test` | **sep1** catalog | SEP=0 OTP: `smu_dtp_otp_*` / `smu_dtp_otp_sep0_err_slv_test` |
+| `smu_dtp_ptap_otp_instr_scan_test` | **sep1** catalog | same |
+| `smu_dtp_sep_ic_reset_hold_test` | **sep1** catalog | SEP=0 IC_RESET: `smu_ic_reset_*` |
+| `smu_sep_smoke` / `smc_sep_{xbar,interoperability}` / `stall_sep` / `cla_sep_*` | already §A.1–A.2 | wrapper smoke skeleton only |
+
+**P1–P4 / `sep0_all` testplan rows:** **no change** — Jul legacy adds do not
+alter enrolled exit criteria.
 
 ---
 
@@ -850,3 +945,5 @@ Satellite detail: `SMU_OSS_VPLAN_PHASE1.md`. Stubs redirect here:
 | 2.24 | 2026-07-19 | §13 result-reporting policy (scenario exercised + failures detected + config classes + reproduce metadata); `deferred.toml` blocker banners (SEP console path, mailbox demux, IF-XT-04/IF-RST-04); DV-friendly terminology sweep (check grades, check tokens) |
 | 2.25 | 2026-07-20 | P4-SEP0 (`phase4_sep0` 7): secure_tm Force, WDT clamp, macro AXIL, OCTS, SS IC_RESET, EXTEST, ATB; VCS+VL **7/7**; FCOV v1.3 |
 | 2.26 | 2026-07-20 | P4 honesty: secure_tm→blocked_o; WDT isolate/raw clamp↔passthru contrast (TB Force gen_4core); OCTS CSR-required; EXTEST one-hot; IF-SMC-11; sep0_p4_all not full signoff; VCS+VL **7/7** |
+| 2.27 | 2026-07-23 | Sync SEP/interop catalog from `oca_smu/dv/smu/tb`: Appendix A.0–A.2 (probe vs `#3582` blocked-exec); `deferred.toml` + `sep.toml`/`interop.toml` groups; wrapper `all` drops `smu_sep_smoke` → `sep_exec_blocked`; add CLA/stall/filter/ap_stee/demux names |
+| 2.28 | 2026-07-28 | Audit `os_oca/dv/smu/tb` Jul adds vs OSS: **no enrolled body migrate**; Appendix **A.7** disposition table; `deferred.toml` catalog names; deferred count ~107 unique; P1–P4/`sep0_all` unchanged |

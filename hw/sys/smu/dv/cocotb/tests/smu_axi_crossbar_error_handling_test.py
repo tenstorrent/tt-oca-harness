@@ -38,7 +38,7 @@ class smu_axi_crossbar_error_handling_test(smu_base_test):
 
         for addr in ERR_ADDRS:
             value, resp = await axi_read32_resp(master, addr)
-            sb.expect_eq(f"DECERR @0x{addr:08x}", resp, AxiResp.DECERR)
+            sb.expect_eq(f"DECERR @0x{addr:08x}", resp, AxiResp.DECERR, evidence="AXI_SMOKE_DECERR")
             sb.expect_eq(f"poison @0x{addr:08x}", value & 0xFFFF_FFFF, 0xBADC_AB1E)
 
         # Negative control: same address twice must stay DECERR (no sticky OKAY).

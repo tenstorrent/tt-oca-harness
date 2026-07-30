@@ -4,14 +4,14 @@
 ifndef ocah_fw_mk
 ocah_fw_mk := 1
 
-# DV firmware dispatcher (open tree). Shared fan-out lives in dispatch.mk; only
+# DV firmware dispatcher. Shared fan-out lives in dispatch.mk; only
 # the literal target list below is tree-specific (kept literal for `make help`).
 include $(OCAH_ROOT)/hw/common/dv/fw/dispatch.mk
 
 OCAH_DV_FW_MKS := $(call ocah_dv_fw_mks_in,$(OCAH_ROOT))
 OCAH_DV_FW_SUBSYSTEMS := $(call ocah_dv_fw_subsystems,$(OCAH_DV_FW_MKS))
 
-# Bind the fan-out to the open tree: empty label, OCAH_ROOT forwarded.
+# Bind the fan-out: empty label, OCAH_ROOT forwarded.
 ocah_dv_fw = $(call ocah_dv_fw_run,$(1),,$(OCAH_DV_FW_MKS),$(OCAH_DV_FW_SUBSYSTEMS),OCAH_ROOT="$(OCAH_ROOT)")
 
 ## @section DV Firmware

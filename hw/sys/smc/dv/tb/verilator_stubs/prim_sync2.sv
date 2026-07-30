@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Compatibility stub for prim_sync2 during public Verilator / Xcelium builds.
+// See tb/verilator_stubs/README.md (DTP/SMC shared stubs convention).
 //
 // The public primitive library exposes prim_flop_2sync with lowRISC-style
 // ports, so this wrapper keeps SMC DUT elaboration independent of any

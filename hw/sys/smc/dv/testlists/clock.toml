@@ -22,5 +22,4 @@ name = "clock"
 tests = [
     "smc_clk_running_test",
     "smc_clk_multi_window_test",
-    "smc_pll_pvt_clock_config_test",
 ]

@@ -18,8 +18,8 @@ class smc_reset_ctrl_test(smu_base_test):
         dut = cocotb.top
         sb = self.env.scoreboard
 
-        sb.expect_eq("rst_cold_stable_ref_clk_no", int(dut.rst_cold_stable_ref_clk_no.value), 1)
-        sb.expect_eq("rst_primary_ref_clk_no", int(dut.rst_primary_ref_clk_no.value), 1)
+        sb.expect_eq("rst_cold_stable_ref_clk_no", int(dut.rst_cold_stable_ref_clk_no.value), 1, evidence="RST_PRIMARY_SMC_1")
+        sb.expect_eq("rst_primary_ref_clk_no", int(dut.rst_primary_ref_clk_no.value), 1, evidence="RST_COLD_STABLE_1")
         sb.expect_eq("rst_primary_smc_clk_no", int(dut.rst_primary_smc_clk_no.value), 1)
         sb.expect_eq("rst_primary_periph_clk_no", int(dut.rst_primary_periph_clk_no.value), 1)
 

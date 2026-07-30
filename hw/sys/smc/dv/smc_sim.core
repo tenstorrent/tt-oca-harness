@@ -1,10 +1,10 @@
 CAPI=2:
 # SPDX-License-Identifier: Apache-2.0
 # Optional FuseSoC/CAPI-2 view of the SMC OSS sim target. The native OSS flow
-# (tools/dv/run_dv.py) builds from smc_sim_cfg.toml [build].bender_targets and
-# does NOT parse this file; it exists only for an external FuseSoC consumer.
+# (tools/dv/run_dv.py) builds from smc_wrapper_sim_cfg.toml [build].bender_targets
+# and does NOT parse this file; it exists only for an external FuseSoC consumer.
 name: "ocah:dv:smc_sim:0.1"
-description: "SMC OSS cocotb/Verilator simulation target"
+description: "SMC OSS cocotb/Verilator simulation target (smc_wrapper)"
 
 filesets:
   files_rtl:
@@ -14,7 +14,9 @@ filesets:
   files_dv:
     files:
       - tb/tb_top.sv
+      # Tooling shims only — never product-module overrides.
       - tb/verilator_stubs/prim_sync2.sv
+      - tb/verilator_stubs/prim_sync3.sv
     file_type: systemVerilogSource
 
   files_tests:
