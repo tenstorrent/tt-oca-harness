@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Programmer's Guide
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+[WARNING]
+====
+This section is currently under development. Placeholder for the future
+OCAH Programmer's Guide documentation product. More content will be added as the
+project matures.
+====

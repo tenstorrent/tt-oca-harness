@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Combined multi-book Antora playbook. Add one content.sources entry per
+# book here; everything else (component/version switcher, cross-book nav)
+# follows automatically once a book has a valid antora.yml.
+
+site:
+  title: Open Chiplet Atlas Harness (OCAH) Documentation
+  url: /
+  start_page: ocah-docs::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/trm
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/integrator
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/appnotes
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/user
+      edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/programmer
+      edit_url: false
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/ui-supplemental
+output:
+  dir: ./doc/_build/html_antora

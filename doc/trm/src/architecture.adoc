@@ -10,11 +10,10 @@
 
 // For PDF backend, we include inline every subsection of a subsystem's documentation through its index.adoc. For HTML backend (webpage), we let the user use the navigation sidebar. Navigation sidebar is defined in `doc/trm/modules/ROOT/nav.adoc`
 
-ifdef::backend-html5[]
 This section provides an overview of the OCAH architecture including its
 subsystem composition, power and clock domains, reset hierarchy, and memory
-map. Navigate through the sidebar for detailed information on each subsystem.
-endif::backend-html5[]
+map. Subsequent chapters provide detailed microarchitectural documentation
+for each subsystem.
 
 [[ocah-architecture]]
 == OCAH Architecture
@@ -66,7 +65,8 @@ detailed microarchitectural documentation for each subsystem.
 * *Safety Monitor (SMO)* -- External entity that collects error signals and
   diagnostic logging from OCAH subsystems to implement fault reaction
   policies. The SMO is outside the scope of OCAH; its interface requirements
-  are specified in the functional safety chapter.
+  are specified separately as part of OCAH's functional safety
+  documentation.
 
 [[ocah-top-block-diagram]]
 === Top Block Diagram
@@ -318,50 +318,31 @@ procedures, refer to the Integrator Guide.
 // ============================================================================
 
 // SEP
-ifdef::backend-html5[]
 [[security-processor-sep]]
-== Security Processor (SEP)
-
-The Security Processor (SEP) is the Root of Trust (RoT) of the chiplet with the
-highest security privilege. SEP provides a physically isolated execution
-environment for highly sensitive security services including secure boot, secure
-lifecycle control, device attestation, and cryptography services.
-
-endif::backend-html5[]
-
 ifdef::backend-pdf[]
 include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
 endif::backend-pdf[]
-
-// SMC
 ifdef::backend-html5[]
-[[system-management-controller]]
-== System Management Controller (SMC)
-
-The System Management Controller (SMC) is a subsystem in a chiplet that handles
-system management tasks including clock/voltage/reset management, hardware
-platform bootstrapping, system initialization, and power and thermal management.
-
+include::sep:index.adoc[leveloffset=0]
 endif::backend-html5[]
 
+// SMC
+[[system-management-controller]]
 ifdef::backend-pdf[]
 include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
 endif::backend-pdf[]
-
-// DTP
 ifdef::backend-html5[]
-[[debug-test-ports]]
-== Debug & Test Ports (DTP)
-
-The DTP subsystem enables debug and test access to a chiplet, facilitates
-forwarding of JTAG and scan signals, and serves as a routing matrix for cross
-trigger pulses.
-
+include::smc:index.adoc[leveloffset=0]
 endif::backend-html5[]
 
+// DTP
+[[debug-test-ports]]
 ifdef::backend-pdf[]
 include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
 endif::backend-pdf[]
+ifdef::backend-html5[]
+include::dtp:index.adoc[leveloffset=0]
+endif::backend-html5[]
 
 // SMN
 // TODO remove adoc below and follow SMC example

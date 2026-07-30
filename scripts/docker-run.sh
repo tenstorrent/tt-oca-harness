@@ -161,9 +161,11 @@ eda_run() {
 
 doc_product_paths() {
     case "${1:-trm}" in
-        trm)        echo "doc/trm antora-trm-playbook.yml ocah-doc-trm-setup ocah-doc-trm-pdf" ;;
-        integrator) echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
-        *) echo "error: unknown doc product '$1' (expected trm or integrator)" >&2; exit 1 ;;
+        trm)         echo "doc/trm antora-trm-playbook.yml ocah-doc-trm-setup ocah-doc-trm-pdf" ;;
+        integrator)  echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
+        programmer)  echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
+        appnotes)    echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
+        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, or appnotes)" >&2; exit 1 ;;
     esac
 }
 
@@ -181,6 +183,13 @@ doc_html() {
         --attribute "basedir=${basedir}" "$playbook"
 }
 
+doc_html_all() {
+    doc_setup trm
+    doc_setup integrator
+    "$ENGINE" run --rm -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+        antora-playbook.yml
+}
+
 doc_pdf() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
@@ -194,7 +203,7 @@ case "${1:-}" in
     run)    shift; [[ $# -gt 0 ]] || { echo "error: run requires a command" >&2; exit 1; }; run "$@" ;;
     run-here) shift; [[ $# -gt 0 ]] || { echo "error: run-here requires a command" >&2; exit 1; }; run_here "$@" ;;
     shell)  run -it bash ;;
-    doc-html) shift; doc_html "${1:-trm}" ;;
+	doc-html) shift; [[ "${1:-trm}" == "all" ]] && doc_html_all || doc_html "${1:-trm}" ;;
     doc-pdf)  shift; doc_pdf "${1:-trm}" ;;
     eda-run)  shift; [[ $# -gt 0 ]] || { echo "error: eda-run requires a command" >&2; exit 1; }; eda_run "$@" ;;
     eda-shell) eda_run -it bash ;;
