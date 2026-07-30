@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../../../_/css/extra.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/appnotes">Open Chiplet Atlas Harness (OCAH) Application Notes</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 NOTE on the path shape: ../../../../.. only ever
+                 resolves back to the root of THIS SAME Antora build (e.g.
+                 the "trm" folder once staged for gh-pages) -- it has no
+                 concept of a sibling book living one level up. Since
+                 doc/gh-pages.mk physically nests each book's whole output
+                 under /trm/ or /integrator/ at deploy time, every link here
+                 -- including the link back to the book you're already in --
+                 goes ../../../../../../<book-folder>/... , climbing one
+                 extra level out to the shared gh-pages root before
+                 descending into whichever book is being linked to. This is
+                 deliberately uniform (same pattern for self-links and
+                 cross-book links) so it doesn't need any per-page
+                 conditional logic on which book is currently being viewed. -->
+            <a class="navbar-item" href="../../../../../../trm/ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../../integrator/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../../programmer/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../../appnotes/ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Deliberately NOT one-per-book: only list a PDF once a book
+                 has real content and a working PDF build. A "coming soon"
+                 placeholder page isn't worth a PDF download link yet --
+                 add a line here as each book's PDF becomes real.
+                 Same up-and-over path shape as the Guides menu above, into
+                 a shared top-level downloads/ folder (sibling to trm/ and
+                 integrator/) staged by doc/gh-pages.mk. -->
+            <a class="navbar-item" href="../../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="efuse-peripheral-module"><a class="anchor" href="#efuse-peripheral-module"></a><a class="link" href="#efuse-peripheral-module">1. eFuse</a></h4>
+<div class="sect4">
+<h5 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h5>
+
+</div>
+<div class="sect4">
+<h5 id="efuse-architecture"><a class="anchor" href="#efuse-architecture"></a><a class="link" href="#efuse-architecture">Architecture</a></h5>
+<div class="paragraph">
+<p>The eFuse IP provides secure One-Time Programmable (OTP) memory
+management with foundry-agnostic design. The layered architecture
+separates security control logic from foundry-specific implementation
+details, enabling deployment across different OTP technologies while
+maintaining consistent security characteristics and software interfaces.</p>
+</div>
+<div class="sect5">
+<h6 id="interface-controller"><a class="anchor" href="#interface-controller"></a><a class="link" href="#interface-controller">Interface Controller</a></h6>
+<div class="paragraph">
+<p>The eFuse Interface Controller (efuse_interface_controller.sv) provides
+dual-path access control with security policy enforcement.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="access-paths"><a class="anchor" href="#access-paths"></a><a class="link" href="#access-paths">Access Paths</a></h6>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>SMC AXI4-Lite Interface</strong>: Functional access for normal system
+operations</p>
+</li>
+<li>
+<p><strong>JTAG AXI4-Lite Interface</strong>: Debug access for manufacturing test and
+development</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect5">
+<h6 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">Destination Endpoints</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Endpoint</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High-performance boot-time caching for rapid access
+without OTP timing constraints</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status registers for read, program, and
+verification operations</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-Mapped Registers for SEP security tokens with specialized
+access control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interface SHIM CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, but always accessed via the interface controller.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="shadow-register-subsystem"><a class="anchor" href="#shadow-register-subsystem"></a><a class="link" href="#shadow-register-subsystem">Shadow Register Subsystem</a></h6>
+<div class="paragraph">
+<p>The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with <code>access_length_words</code> set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">Features</a></h6>
+<div class="paragraph">
+<p>The feature list for the shadow register subsystem is as follows:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Feature</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Capacity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable (default: 24576 bits / 3KB, 768 × 32-bit words), set via the <code>SHADOW_REG_BITS</code> parameter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Initialization</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic boot-time loading via Fuse Sense FSM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Multi-tier hardware and software lock mechanisms</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Consistency</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maintains synchronization with underlying OTP storage upon each power-on reset</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="state-machine-architecture"><a class="anchor" href="#state-machine-architecture"></a><a class="link" href="#state-machine-architecture">State Machine Architecture</a></h6>
+<div class="paragraph">
+<p>The read interface FSM (efuse_read_interface.sv) operates in a simple
+two-state sequence, transitioning from idle to waiting for a response as
+it handles on-demand eFuse reads that fall outside the shadow register
+cache. This mechanism works alongside the shadow subsystem, providing
+direct access only when necessary, and actively reports status to
+support robust error handling and retry logic.</p>
+</div>
+<div class="paragraph">
+<p>The program interface FSM (efuse_program_interface.sv) enforces the
+write-once nature of OTP hardware, ensuring that programmed data cannot
+be altered once set. It supports write-and-verify procedures for
+reliability, integrating verification steps that check programmed values
+against intended data, and fully blocks any unauthorized overwrites to
+maintain data integrity.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="parameterized-command-typedefs"><a class="anchor" href="#parameterized-command-typedefs"></a><a class="link" href="#parameterized-command-typedefs">Parameterized Command Typedefs</a></h6>
+<div class="paragraph">
+<p>The fuse command request/response structs exchanged between the
+controller and the SHIM are not declared with fixed types. Instead, they
+are generated from parameterized preprocessor macros defined in
+<code>efuse_typedef.svh</code>. This keeps the command interface technology-agnostic:
+each integration supplies its own address, data, access-length, and
+command types, while the macros guarantee a consistent struct layout and
+field ordering across all OTP variants.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 35%;">
+<col style="width: 30%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Macro</th>
+<th class="tableblock halign-left valign-top">Generated Type</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EFUSE_COMMAND_REQ_T</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Controller-to-SHIM command request</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EFUSE_COMMAND_RESP_T</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SHIM-to-controller command response</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The request macro is parameterized over the struct name plus four payload
+types (<code>addr_t</code>, <code>data_t</code>, <code>access_length_words_t</code>, <code>command_t</code>), allowing
+the controller to size the address space, transfer length, and command
+encoding to match the target OTP technology:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)  \
+  typedef struct packed {                                       \
+    addr_t                    address;             // Target address       \
+    logic                     program_data;        // Data to program (1'b1) \
+    access_length_words_t     access_length_words; // Transfer size        \
+    command_t                 command;             // Command type         \
+    logic                     valid;               // Request valid        \
+  } fuse_command_req_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The response macro is parameterized over the struct name and the
+<code>data_t</code> read-data type:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">`define EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)       \
+  typedef struct packed {                                       \
+    data_t              data;       // Read data                \
+    logic               status;     // Operation status         \
+    logic               valid;      // Response valid            \
+  } fuse_command_resp_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A typical instantiation expands both macros with the integration&#8217;s local
+types:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)
+`EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">Foundry-Specific Signals</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Example Hardware Interfaces by OTP Variant</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">OTP Variant</th>
+<th class="tableblock halign-left valign-top">Hardware Interface Signals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter OTP macro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined macro-side signals</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Current Example Model</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB interface with register-based control</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="interface-shim-layer"><a class="anchor" href="#interface-shim-layer"></a><a class="link" href="#interface-shim-layer">Interface SHIM Layer</a></h6>
+<div class="paragraph">
+<p>The Interface SHIM (<code>efuse_interface_shim.sv</code>) is an example, foundry-specific
+implementation of the custom fuse command interface. Its role is to translate
+the controller&#8217;s generic commands into the signaling expected by a particular
+OTP macro; in this reference version the macro-side interface is APB, but a
+real integration would replace this with the foundry&#8217;s native signals.</p>
+</div>
+<div class="paragraph">
+<p>The SHIM decodes three command types from the controller:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Read</strong> — fetch one or more words from the bank.</p>
+</li>
+<li>
+<p><strong>Program</strong> — burn new bits into the bank.</p>
+</li>
+<li>
+<p><strong>Program/read-back</strong> — program, then read back to verify success.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>It implements these with dedicated read and program FSMs that sequence the
+macro-side transactions and return a <code>fuse_command_resp_t</code> to the controller.
+Foundry-specific timing and configuration (for example, program pulse widths)
+are exposed through the SHIM Control CSRs, accessed over the
+<code>fuse_bank_ctrl</code> AXI4-Lite interface.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="efuse-bank-model"><a class="anchor" href="#efuse-bank-model"></a><a class="link" href="#efuse-bank-model">eFuse Bank Model</a></h6>
+<div class="paragraph">
+<p>The eFuse bank model (<code>efuse_bank_model.sv</code>) is a reference, simulation-only
+stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
+fronted by a standard APB interface, and it emulates the set-once behavior of
+real OTP so the controller and SHIM can be exercised end-to-end without
+silicon. In a production integration it is replaced by the actual foundry
+macro driven by the SHIM.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="access-permissions-and-security"><a class="anchor" href="#access-permissions-and-security"></a><a class="link" href="#access-permissions-and-security">Access Permissions and Security</a></h6>
+<div class="paragraph">
+<p>Access control is layered for defense in depth: per-field permissions
+are described by <code>efuse_field_map_i</code>, lock state is enforced by the eFuse
+guard (<code>efuse_guard.sv</code>), security-disable tokens are validated, and
+access can additionally be gated by the chip lifecycle state.</p>
+</div>
+<div class="paragraph">
+<p>Each eFuse field is described by a <code>rule_t</code> entry that pairs an address
+range with a 4-bit <code>lock</code> permission field:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">typedef struct packed {
+    logic [EFUSE_FIELD_MAP_IDX_WIDTH-1:0] idx;        // Field index
+    logic [3:0]                           lock;       // Permission bits
+    logic [31:0]                          start_addr; // Field start address
+    logic [31:0]                          end_addr;   // Field end address
+} rule_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>lock</code> field encodes read, write, and secure-test-mode permissions
+for the field:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 25%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bits</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Encoding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lock[0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0</code> = readable, <code>1</code> = read-locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lock[2:1]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>00</code> = unlocked, <code>10</code> = set-only (1&#8217;s may be added, never cleared), <code>11</code> = write-locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lock[3]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0</code> = unrestricted, <code>1</code> = access requires secure test mode</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">Hardware vs. Software Locks</a></h6>
+<div class="paragraph">
+<p>The same permission semantics are reached through two independent
+mechanisms, and the guard enforces whichever is more restrictive:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Hardware Lock</th>
+<th class="tableblock halign-left valign-top">Software Lock</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission bits fused into the eFuse array (the field map reflects
+the programmed values)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runtime writes to the <code>LOCKS</code> CSR (write-1-to-set)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Persistence</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permanent — backed by one-time-programmable bits and cannot
+be cleared once set</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Volatile — retained only until the next system reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reversibility</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Irreversible by any means</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cleared by reset, allowing the
+field to be re-opened</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typical use</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Final production lockdown of provisioned secrets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Temporary
+protection during boot, debug, or staged provisioning</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Because software locks are write-1-to-set, firmware can tighten access at
+runtime but can never loosen a restriction without a reset; hardware locks
+cannot be loosened at all. On top of these per-field locks, sensitive
+fields can be further gated by the chip lifecycle state and by secure test
+mode (<code>lock[3]</code>), so a field may be accessible in one operational mode and
+fully blocked in another even when its read/write bits are clear.</p>
+</div>
+<div class="paragraph">
+<p>For sensitive functions, such as those governed by the MMR registers,
+the system enforces token-based security. Only by providing the correct
+256-bit tokens, such as the RMA SOP Token for state transitions, the RMA Chiplet
+Token for chiplet-specific operations, or the Security Disable Token to
+override protections, can access to these resources be granted.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="security-disable-bypass-mechanism"><a class="anchor" href="#security-disable-bypass-mechanism"></a><a class="link" href="#security-disable-bypass-mechanism">Security Disable Bypass Mechanism</a></h6>
+<div class="paragraph">
+<p>The eFuse interface controller supports a security disable bypass mechanism
+via the <code>security_disable_i</code> input signal. This mechanism is primarily used
+for test and debug scenarios where the automatic fuse sensing sequence needs
+to be bypassed.</p>
+</div>
+<div class="paragraph">
+<p><strong>Behavior when <code>security_disable_i</code> is asserted:</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Behavior</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FSM Bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The automatic fuse sensing state machine is bypassed and does not
+issue read commands to the physical eFuse bank.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Register Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register values are output directly to
+downstream logic via <code>shadow_regs_o</code>, regardless of <code>fuse_sense_done</code> status.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Register Loading</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow registers are not loaded from fuse command
+responses; they retain their reset values (all zeros for SMC).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB Access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB access to shadow registers is permitted without waiting for
+<code>fuse_sense_done</code> completion.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Values</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the system is in reset state with <code>security_disable_i</code>
+asserted, shadow registers are initialized to zero (default reset value for SMC).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>For SMC, the internal security disable signal is directly driven by the
+<code>security_disable_i</code> input port.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="lifecycle-state-lc_state-effects"><a class="anchor" href="#lifecycle-state-lc_state-effects"></a><a class="link" href="#lifecycle-state-lc_state-effects">Lifecycle State (LC_STATE) Effects</a></h6>
+<div class="paragraph">
+<p>The eFuse interface controller enforces access restrictions based on the
+chip&#8217;s lifecycle state.</p>
+</div>
+<div class="paragraph">
+<p><strong>Lifecycle State Encoding:</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">State</th>
+<th class="tableblock halign-left valign-top">Encoding</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test/Development state (default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Production state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1 + DEMOTE=1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Production Debug (volatile, clears on reset)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_SOP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2, 0x3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA System-in-Package</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA_CHIPLET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x6-0x7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA Chiplet level</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Production End (terminal state)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">INVALID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All others</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid state (error fallback)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>JTAG Access Control Based on LC_STATE:</strong></p>
+</div>
+<div class="paragraph">
+<p>When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
+to eFuse registers is restricted:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 35%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Access Type</th>
+<th class="tableblock halign-left valign-top">PROD/RMA_SOP State</th>
+<th class="tableblock halign-left valign-top">Other States</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Write</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Blocked</strong> (error response)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allowed</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Read</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Blocked</strong> except Chiplet ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allowed</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG Read Chiplet ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allowed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allowed</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The access control mechanism uses an AXI-Lite demux that routes blocked
+requests to an error slave. When a request is blocked, the error slave
+returns an error response with data value <code>0xbadcab1e</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Chiplet ID Exception:</strong></p>
+</div>
+<div class="paragraph">
+<p>Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and
+package ID registers is permitted. This allows identification of the chip
+for manufacturing and field returns without exposing sensitive eFuse contents.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="secure-test-mode-secure_tm_i"><a class="anchor" href="#secure-test-mode-secure_tm_i"></a><a class="link" href="#secure-test-mode-secure_tm_i">Secure Test Mode (secure_tm_i)</a></h6>
+<div class="paragraph">
+<p>The eFuse interface controller supports a Secure Test Mode via the <code>secure_tm_i</code>
+input signal. This mode provides additional protection for sensitive security
+assets during secure manufacturing test operations.</p>
+</div>
+<div class="paragraph">
+<p><strong>Behavior when <code>secure_tm_i</code> is asserted:</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Behavior</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse Command Blocking</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All fuse commands to the physical eFuse bank are blocked.
+The guard logic filters incoming requests and returns default responses.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA Token Protection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA SOP and RMA Chiplet tokens are disconnected from
+shadow register outputs (set to zero), preventing token exposure during test.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write Lock Contribution</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode contributes to write lock status,
+preventing shadow register modifications.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Response Behavior</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When fuse commands are blocked, default response values
+(all zeros) are returned to requesters.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>SMC Configuration:</strong></p>
+</div>
+<div class="paragraph">
+<p>For SMC, <code>secure_tm_i</code> is tied to logic <code>0</code>, meaning Secure Test Mode is not
+active during normal SMC operation. This signal is primarily relevant for SEP
+where sensitive RMA tokens must be protected during manufacturing test flows.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="efuse-interface"><a class="anchor" href="#efuse-interface"></a><a class="link" href="#efuse-interface">Interface</a></h5>
+<div class="sect5">
+<h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP_SIZE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total OTP storage capacity</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WORD_WIDTH</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP word width</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_WORDS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">768</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of OTP words</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">Signal Interfaces</a></h6>
+
+</div>
+<div class="sect5">
+<h6 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">Clock and Reset</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock input</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">Main AXI4-Lite Interfaces</a></h6>
+<div class="paragraph">
+<p>The eFuse controller provides two AXI4-Lite interfaces for register
+access:</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">SMC Interface (Functional Access)</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite request from SMC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite response to SMC</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">JTAG Interface (Debug Access)</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_jtag_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite request from
+JTAG</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_jtag_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite response to
+JTAG</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">Fuse Bank Control Interface</a></h6>
+<div class="paragraph">
+<p>APB interface for communicating with the eFuse bank model:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_bank_ctrl_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_apb_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB request to eFuse
+bank</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_bank_ctrl_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_apb_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB response from
+eFuse bank</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">Fuse Command Interface</a></h6>
+<div class="paragraph">
+<p>Custom interface for SHIM state machine communication:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command request to
+SHIM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command response
+from SHIM</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">Security and Control Signals</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life cycle state from SEP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode enable</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable signal</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable override</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_field_map_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rule_t [EFUSE_FIELDS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Field access
+control rules</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register loading complete</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shadow_regs_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_map_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register contents</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">Debug and Status Signals</a></h6>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 12%;">
+<col style="width: 13%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal Name</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_write_locked_shadow_regs_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register CSRs are write locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_locked_shadow_regs_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register CSRs are read locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_program_locked_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse program operations are locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_locked_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse read operations are locked</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_write_setup_only_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Field is in write set-only mode (bits may be set, not cleared)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_lc_state_access_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access is gated by the current lifecycle state</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_timeout_debug_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A read command timed out waiting on the SHIM/bank</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_program_timeout_debug_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A program command timed out waiting on the SHIM/bank</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_efuse_req_err_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A request was blocked/errored by the eFuse guard</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_secure_tm_blocked_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access blocked because secure test mode is not active</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_rma_sip_token_match_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA SiP token match status code</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_rma_chiplet_token_match_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RMA chiplet token match status code</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sec_disable_token_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable token value (8 x 32-bit words)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">Fuse Command Protocol</a></h6>
+<div class="paragraph">
+<p>Custom command interface between controller and SHIM:</p>
+</div>
+<div class="paragraph">
+<p><strong>Request Structure</strong> (<code>fuse_command_req_t</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">typedef struct packed {
+    addr_t                    address;           // Target address in bits
+    logic                     program_data;      // Data to program (1'b1)
+    access_length_words_t     access_length_words; // Transfer size
+    command_t                 command;           // Command type
+    logic                     valid;             // Request valid
+} fuse_command_req_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Response Structure</strong> (<code>fuse_command_resp_t</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">typedef struct packed {
+    data_t              data;       // Read data
+    logic               status;     // Operation status
+    logic               valid;      // Response valid
+} fuse_command_resp_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Command Types</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>FUSE_COMMAND_READ (2&#8217;b00)</code>: Read operation</p>
+</li>
+<li>
+<p><code>FUSE_COMMAND_PROGRAM (2&#8217;b01)</code>: Program operation</p>
+</li>
+<li>
+<p><code>FUSE_COMMAND_PROGRAM_READ_BACK (2&#8217;b10)</code>: Program with verification</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">Memory Map</a></h5>
+<div class="sect5">
+<h6 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h6>
+<div class="paragraph">
+<p>The eFuse IP provides multiple register maps organized into four main
+address spaces:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Address Space Overview</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 30%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Register Block</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000-0x0FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse contents (read-only)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000-0x1FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMR Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security tokens for authentication</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2000-0x2FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Control CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command and status registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3000-0x3FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SHIM Control CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Foundry-specific configuration</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect5">
+<h6 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">Shadow Registers</a></h6>
+<div class="paragraph">
+<p>The shadow registers provide cached access to eFuse contents, including
+chiplet identification, package information, I2C/I3C address configuration
+(9 instances for I2C_I3C_ID[0:8]), and other system configuration data.
+These registers are automatically loaded from the physical eFuse array during boot.</p>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: smc_efuse_map</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x8AC, stride 0x8</li>
+<li><strong>RESERVED[65]</strong>: 65 registers, base 0xAFC, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
+<tr><td>0x8</td><td><a href="#CHIPLET_ID">CHIPLET_ID</a></td><td>RW</td><td>Chiplet ID register</td></tr>
+<tr><td>0x28</td><td><a href="#PACKAGE_ID">PACKAGE_ID</a></td><td>RW</td><td>Package ID register</td></tr>
+<tr><td>0x48</td><td><a href="#BIRA">BIRA</a></td><td>RW</td><td>Built-In Repair Analysis data</td></tr>
+<tr><td>0x848</td><td><a href="#CLUSTER">CLUSTER</a></td><td>RW</td><td>CPU cluster configuration</td></tr>
+<tr><td>0x888</td><td><a href="#FABRIC">FABRIC</a></td><td>RW</td><td>Fabric configuration</td></tr>
+<tr><td>0x8A8</td><td><a href="#SOP_TOPOLOGY">SOP_TOPOLOGY</a></td><td>RW</td><td>System on Package topology</td></tr>
+<tr><td>0x8AC - 0x8EC</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
+<tr><td>0x8F4</td><td><a href="#I2C_CLOCK_GATING">I2C_CLOCK_GATING</a></td><td>RW</td><td>I2C clock gating control</td></tr>
+<tr><td>0x8F8</td><td><a href="#I3C_DISABLE">I3C_DISABLE</a></td><td>RW</td><td>I3C interface disable control</td></tr>
+<tr><td>0x8FC</td><td><a href="#PLL_AND_SENSOR">PLL_AND_SENSOR</a></td><td>RW</td><td>PLL and sensor configuration</td></tr>
+<tr><td>0xAFC - 0xBFC</td><td><a href="#RESERVED_65_">RESERVED[65]</a></td><td>RW</td><td>Reserved register</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="LOCKS">LOCKS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:26</td><td>unused_lock_bits</td><td>RW</td><td>0x0</td><td>Unused lock bits for future expansion.</td></tr>
+<tr><td>25</td><td>reserved_read_lock</td><td>RW</td><td>0x0</td><td>Reserved read lock. When set, reserved field is not readable.</td></tr>
+<tr><td>24</td><td>reserved_write_lock</td><td>RW</td><td>0x0</td><td>Reserved write lock. When set, reserved field is not writable.</td></tr>
+<tr><td>23</td><td>spi_config_read_lock</td><td>RW</td><td>0x0</td><td>SPI config read lock. When set, SPI config field is not readable.</td></tr>
+<tr><td>22</td><td>spi_config_write_lock</td><td>RW</td><td>0x0</td><td>SPI config write lock. When set, SPI config field is not writable.</td></tr>
+<tr><td>21</td><td>spi_ctrl_field_enable_read_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable read lock. When set, SPI control field is not readable.</td></tr>
+<tr><td>20</td><td>spi_ctrl_field_enable_write_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable write lock. When set, SPI control field is not writable.</td></tr>
+<tr><td>19</td><td>pll_and_sensor_read_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor read lock. When set, PLL and sensor field is not readable.</td></tr>
+<tr><td>18</td><td>pll_and_sensor_write_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor write lock. When set, PLL and sensor field is not writable.</td></tr>
+<tr><td>17</td><td>i3c_disable_read_lock</td><td>RW</td><td>0x0</td><td>I3C disable read lock. When set, I3C disable field is not readable.</td></tr>
+<tr><td>16</td><td>i3c_disable_write_lock</td><td>RW</td><td>0x0</td><td>I3C disable write lock. When set, I3C disable field is not writable.</td></tr>
+<tr><td>15</td><td>i2c_clock_gating_read_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating read lock. When set, I2C clock gating field is not readable.</td></tr>
+<tr><td>14</td><td>i2c_clock_gating_write_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating write lock. When set, I2C clock gating field is not writable.</td></tr>
+<tr><td>13</td><td>i2c_i3c_id_read_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.</td></tr>
+<tr><td>12</td><td>i2c_i3c_id_write_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.</td></tr>
+<tr><td>11</td><td>sop_topology_read_lock</td><td>RW</td><td>0x0</td><td>SOP topology read lock. When set, SOP topology field is not readable.</td></tr>
+<tr><td>10</td><td>sop_topology_write_lock</td><td>RW</td><td>0x0</td><td>SOP topology write lock. When set, SOP topology field is not writable.</td></tr>
+<tr><td>9</td><td>fabric_read_lock</td><td>RW</td><td>0x0</td><td>Fabric read lock. When set, fabric field is not readable.</td></tr>
+<tr><td>8</td><td>fabric_write_lock</td><td>RW</td><td>0x0</td><td>Fabric write lock. When set, fabric field is not writable.</td></tr>
+<tr><td>7</td><td>cluster_read_lock</td><td>RW</td><td>0x0</td><td>Cluster read lock. When set, cluster field is not readable.</td></tr>
+<tr><td>6</td><td>cluster_write_lock</td><td>RW</td><td>0x0</td><td>Cluster write lock. When set, cluster field is not writable.</td></tr>
+<tr><td>5</td><td>bira_dis_read_lock</td><td>RW</td><td>0x0</td><td>BIRA disable read lock. When set, BIRA field is not readable.</td></tr>
+<tr><td>4</td><td>bira_dis_write_lock</td><td>RW</td><td>0x0</td><td>BIRA disable write lock. When set, BIRA field is not writable.</td></tr>
+<tr><td>3</td><td>package_id_read_lock</td><td>RW</td><td>0x0</td><td>Package ID read lock. When set, package ID field is not readable.</td></tr>
+<tr><td>2</td><td>package_id_write_lock</td><td>RW</td><td>0x0</td><td>Package ID write lock. When set, package ID field is not writable.</td></tr>
+<tr><td>1</td><td>chiplet_id_read_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID read lock. When set, chiplet ID field is not readable.</td></tr>
+<tr><td>0</td><td>chiplet_id_write_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID write lock. When set, chiplet ID field is not writable.</td></tr>
+</table>
+<h3 id="CHIPLET_ID">CHIPLET_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>chiplet_id_value</td><td>RW</td><td>0x0</td><td>Chiplet ID stored in fuse, divided into 8 words and defined as follows:<br>[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;<br>[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;<br>[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);<br>[5]: Chiplet User Group ID;<br>[7:6]: Reserved for extension.</td></tr>
+</table>
+<h3 id="PACKAGE_ID">PACKAGE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>package_id_value</td><td>RW</td><td>0x0</td><td>Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:<br>[1:0]: Serial number of the package;<br>[2]: Package Design Version, e.g. A1Q1/…​;<br>[3]: Package Design ID;<br>[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);<br>[5]: Package User Group ID;<br>[7:6]: Reserved for extension</td></tr>
+</table>
+<h3 id="BIRA">BIRA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>16383:0</td><td>repair_data</td><td>RW</td><td>0x0</td><td>16KB memory repair data for SMC and SEP SRAMs</td></tr>
+</table>
+<h3 id="CLUSTER">CLUSTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>cluster_config</td><td>RW</td><td>0x0</td><td>512-bit fuses reserved for CPU cluster configuration</td></tr>
+</table>
+<h3 id="FABRIC">FABRIC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>fabric_config</td><td>RW</td><td>0x0</td><td>256-bit fuses reserved for fabric configuration</td></tr>
+</table>
+<h3 id="SOP_TOPOLOGY">SOP_TOPOLOGY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>topology_serial</td><td>RW</td><td>0x0</td><td>Serial number of topology configuration</td></tr>
+</table>
+<h3 id="I2C_I3C_ID_9_">I2C_I3C_ID[9]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>interface_id</td><td>RW</td><td>0x0</td><td>I2C or I3C ID configuration:<br>* Static ID mode: [6:0] contains ID, [63:7] reserved<br>* Provisional ID mode: [63:0] full ID</td></tr>
+</table>
+<h3 id="I2C_CLOCK_GATING">I2C_CLOCK_GATING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>clock_gating_config</td><td>RW</td><td>0x0</td><td>I2C clock gating configuration</td></tr>
+</table>
+<h3 id="I3C_DISABLE">I3C_DISABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>disable_config</td><td>RW</td><td>0x0</td><td>I3C interface disable configuration</td></tr>
+</table>
+<h3 id="PLL_AND_SENSOR">PLL_AND_SENSOR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>4095:0</td><td>pll_sensor_config</td><td>RW</td><td>0x0</td><td>4KB fuses reserved for PLL and sensor configuration</td></tr>
+</table>
+<h3 id="RESERVED_65_">RESERVED[65]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>reserved_data</td><td>RW</td><td>0x0</td><td>Reserved for future use</td></tr>
+</table>
+</div>
+</div>
+<div class="sect5">
+<h6 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">MMR Registers</a></h6>
+<div class="paragraph">
+<p>The MMR (Memory-Mapped Registers) provide access to security tokens for
+authentication, including RMA tokens and security disable tokens.</p>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: efuse_mmr</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+<li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x40, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x40 - 0x5C</td><td><a href="#SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
+<tr><td>0x60</td><td><a href="#TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
+<tr><td>0x64</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x68</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</td></tr>
+</table>
+<h3 id="TOKEN_EOP">TOKEN_EOP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+</div>
+</div>
+<div class="sect5">
+<h6 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">eFuse Control Registers</a></h6>
+<div class="paragraph">
+<p>The eFuse Control CSR provides command and status registers for read, write,
+and verification operations on the eFuse array.</p>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: efuse_interface_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
+<tr><td>0x4</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
+<tr><td>0x8</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</td></tr>
+<tr><td>0xC</td><td><a href="#EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</td></tr>
+<tr><td>0x10</td><td><a href="#EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
+<tr><td>0x14</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
+<tr><td>0x18</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>8</td><td>efuse_req_error_clear</td><td>W</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>efuse_read_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</td></tr>
+<tr><td>5</td><td>efuse_program_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</td></tr>
+<tr><td>4</td><td>efuse_req_error</td><td>R</td><td>0x0</td><td>Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>efuse_sense_done</td><td>R</td><td>-</td><td>Indicates if the eFuse state machine has completed</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27</td><td>program_enable</td><td>RW</td><td>0x0</td><td>When set, enables the program request</td></tr>
+<tr><td>26</td><td>program_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error</td></tr>
+<tr><td>25</td><td>program_done</td><td>R</td><td>0x0</td><td>When set, the program has completed, the status of which is in program_status</td></tr>
+<tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
+<tr><td>23:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>18</td><td>efuse_program_read_back</td><td>RW</td><td>0x0</td><td>When set, trigger a read back after a program</td></tr>
+<tr><td>17</td><td>efuse_program_go</td><td>RW</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
+<tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
+<tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program</td></tr>
+</table>
+<h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
+<tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Logic error, assert read_go when read is not enabled</td></tr>
+<tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
+<tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
+<tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>efuse_read_go</td><td>RW</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
+<tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to read</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</td></tr>
+</table>
+<h3 id="EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through READ interface.</td></tr>
+</table>
+<h3 id="EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>read_req_timout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on read interface</td></tr>
+<tr><td>27:0</td><td>read_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>program_req_timeout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on program interface.</td></tr>
+<tr><td>27:0</td><td>program_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect5">
+<h6 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">SHIM Control Registers</a></h6>
+<div class="paragraph">
+<p>The SHIM Control CSR provides foundry-specific configuration registers for
+timing adaptation and eFuse bank initialization.</p>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: efuse_shim_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>init_time</td><td>RW</td><td>0x20</td><td>Most OTP have a initalization time before sensing can be done</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="efuse-programming"><a class="anchor" href="#efuse-programming"></a><a class="link" href="#efuse-programming">Programming</a></h5>
+<div class="sect5">
+<h6 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h6>
+
+</div>
+<div class="sect5">
+<h6 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable programming
+EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 28) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+
+// Trigger program
+EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
+
+// Wait for completion
+while (EFUSE_PROGRAM_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
+
+// Check status
+if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
+    // Handle error
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Setup read operation
+EFUSE_READ_CTRL = (1 &lt;&lt; 28) | (num_words &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+
+// Trigger read
+EFUSE_READ_CTRL |= (1 &lt;&lt; 17);
+
+// Wait for completion
+while (EFUSE_READ_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
+
+// Read data
+uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">Program Operation Sequence</a></h6>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Setup Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>program_enable</code> = 1 in <code>EFUSE_PROGRAM_CTRL</code></p>
+</li>
+<li>
+<p>Configure <code>efuse_addr</code> with target bit address</p>
+</li>
+<li>
+<p>Set <code>efuse_data</code> = 1 (only 1s can be programmed)</p>
+</li>
+<li>
+<p>Optionally set <code>efuse_program_read_back</code> = 1 for verification</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Execute Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>efuse_program_go</code> = 1 to trigger operation</p>
+</li>
+<li>
+<p>Monitor <code>program_busy</code> until it goes low</p>
+</li>
+<li>
+<p>Check <code>program_done</code> = 1 for completion</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Status Check</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Read <code>program_status</code> field:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>0: Success</p>
+</li>
+<li>
+<p>1: Bad data (data was not 1)</p>
+</li>
+<li>
+<p>2: Bad enables (program_enable not set or lock active)</p>
+</li>
+<li>
+<p>3: Programming failure (verification failed)</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">Read Operation Sequence</a></h6>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Setup Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>read_enable</code> = 1 in <code>EFUSE_READ_CTRL</code></p>
+</li>
+<li>
+<p>Configure <code>efuse_addr</code> with target bit address</p>
+</li>
+<li>
+<p>Set <code>efuse_read_length_words</code> for multi-word reads</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Execute Phase</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Set <code>efuse_read_go</code> = 1 to trigger operation</p>
+</li>
+<li>
+<p>Monitor <code>read_busy</code> until it goes low</p>
+</li>
+<li>
+<p>Check <code>read_done</code> = 1 for completion</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Data Retrieval</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Read data from <code>EFUSE_READ_INTERFACE_READ_DATA</code></p>
+</li>
+<li>
+<p>Check <code>read_status</code> for any errors</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas® has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

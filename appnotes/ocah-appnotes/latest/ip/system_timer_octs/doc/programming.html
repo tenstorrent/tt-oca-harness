@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../../../_/css/extra.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/appnotes">Open Chiplet Atlas Harness (OCAH) Application Notes</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 NOTE on the path shape: ../../../../.. only ever
+                 resolves back to the root of THIS SAME Antora build (e.g.
+                 the "trm" folder once staged for gh-pages) -- it has no
+                 concept of a sibling book living one level up. Since
+                 doc/gh-pages.mk physically nests each book's whole output
+                 under /trm/ or /integrator/ at deploy time, every link here
+                 -- including the link back to the book you're already in --
+                 goes ../../../../../../<book-folder>/... , climbing one
+                 extra level out to the shared gh-pages root before
+                 descending into whichever book is being linked to. This is
+                 deliberately uniform (same pattern for self-links and
+                 cross-book links) so it doesn't need any per-page
+                 conditional logic on which book is currently being viewed. -->
+            <a class="navbar-item" href="../../../../../../trm/ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../../integrator/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../../programmer/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../../appnotes/ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Deliberately NOT one-per-book: only list a PDF once a book
+                 has real content and a working PDF build. A "coming soon"
+                 placeholder page isn't worth a PDF download link yet --
+                 add a line here as each book's PDF becomes real.
+                 Same up-and-over path shape as the Guides menu above, into
+                 a shared top-level downloads/ folder (sibling to trm/ and
+                 integrator/) staged by doc/gh-pages.mk. -->
+            <a class="navbar-item" href="../../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect4">
+<h5 id="system-timer-octs-programming"><a class="anchor" href="#system-timer-octs-programming"></a><a class="link" href="#system-timer-octs-programming">Programming</a></h5>
+<div class="sect5">
+<h6 id="multi-chiplet-deployment-example"><a class="anchor" href="#multi-chiplet-deployment-example"></a><a class="link" href="#multi-chiplet-deployment-example">Multi-Chiplet Deployment Example</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// System with 1 PRIMARY + 3 SECONDARY timers
+#define PRIMARY_TIMER_BASE   0x40000000
+#define SECONDARY_0_BASE     0x50000000
+#define SECONDARY_1_BASE     0x60000000
+#define SECONDARY_2_BASE     0x70000000
+
+void initialize_multi_chiplet_timing() {
+    uint32_t timer_bases[] = {
+        PRIMARY_TIMER_BASE,
+        SECONDARY_0_BASE,
+        SECONDARY_1_BASE,
+        SECONDARY_2_BASE
+    };
+
+    // Configure all timers with same parameters
+    for (int i = 0; i &lt; 4; i++) {
+        write32(timer_bases[i] + 0x04, 0x0805); // Credit=8, Pulse=5
+        write32(timer_bases[i] + 0x0C, 0x00000000); // Preset_LO=0
+        write32(timer_bases[i] + 0x10, 0x00000000); // Preset_HI=0
+    }
+
+    // Start PRIMARY (automatically synchronizes SECONDARY timers)
+    write32(PRIMARY_TIMER_BASE + 0x00, 0x01);
+
+    // Verify all timers started
+    for (int i = 0; i &lt; 4; i++) {
+        uint32_t status = read32(timer_bases[i] + 0x08);
+        assert(status &amp; 0x10); // RUNNING bit
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="high-precision-timestamping"><a class="anchor" href="#high-precision-timestamping"></a><a class="link" href="#high-precision-timestamping">High-Precision Timestamping</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Get high-precision timestamp from any timer
+uint64_t get_timestamp(uint32_t timer_base) {
+    uint32_t hi1, lo, hi2;
+
+    // Double-read method for consistency
+    do {
+        hi1 = read32(timer_base + 0x18); // COUNT_HI
+        lo = read32(timer_base + 0x14);  // COUNT_LO
+        hi2 = read32(timer_base + 0x18); // COUNT_HI again
+    } while (hi1 != hi2);
+
+    return ((uint64_t)hi1 &lt;&lt; 32) | lo;
+}
+
+// Performance measurement example
+void performance_measurement() {
+    uint64_t start_time = get_timestamp(PRIMARY_TIMER_BASE);
+
+    // Execute operation being measured
+    critical_operation();
+
+    uint64_t end_time = get_timestamp(PRIMARY_TIMER_BASE);
+    uint64_t duration = end_time - start_time;
+
+    printf("Operation took %llu cycles\n", duration);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="synchronization-health-monitoring"><a class="anchor" href="#synchronization-health-monitoring"></a><a class="link" href="#synchronization-health-monitoring">Synchronization Health Monitoring</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void monitor_synchronization_health() {
+    uint32_t secondary_bases[] = {
+        SECONDARY_0_BASE,
+        SECONDARY_1_BASE,
+        SECONDARY_2_BASE
+    };
+
+    for (int i = 0; i &lt; 3; i++) {
+        uint32_t credit_expired = read32(secondary_bases[i] + 0x1C);
+
+        if (credit_expired == 0) {
+            printf("Secondary %d: Excellent sync\n", i);
+        } else if (credit_expired &lt; 100) {
+            printf("Secondary %d: Good sync (expired=%u)\n", i, credit_expired);
+        } else if (credit_expired &lt; 1000) {
+            printf("Secondary %d: WARNING - sync degraded (expired=%u)\n",
+                   i, credit_expired);
+            // Reset counter
+            write32(secondary_bases[i] + 0x1C, 0);
+        } else {
+            printf("Secondary %d: CRITICAL - sync failed (expired=%u)\n",
+                   i, credit_expired);
+            // Implement recovery procedure
+            recover_synchronization();
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="dynamic-reconfiguration"><a class="anchor" href="#dynamic-reconfiguration"></a><a class="link" href="#dynamic-reconfiguration">Dynamic Reconfiguration</a></h6>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void adjust_synchronization_parameters() {
+    // Read current configuration
+    uint32_t ctrl = read32(PRIMARY_TIMER_BASE + 0x04);
+    uint8_t current_credit = ctrl &amp; 0xFF;
+    uint8_t current_pulse = (ctrl &gt;&gt; 8) &amp; 0xFF;
+
+    printf("Current: Credit=%u, Pulse=%u\n", current_credit, current_pulse);
+
+    // Adjust for tighter synchronization
+    uint8_t new_credit = 5;  // Reduce credit value
+    uint8_t new_pulse = 10;  // Increase pulse width
+
+    uint32_t new_ctrl = (new_pulse &lt;&lt; 8) | new_credit;
+    write32(PRIMARY_TIMER_BASE + 0x04, new_ctrl);
+
+    printf("Updated: Credit=%u, Pulse=%u\n", new_credit, new_pulse);
+
+    // Monitor effect on synchronization quality
+    sleep_ms(1000);
+    monitor_synchronization_health();
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas® has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

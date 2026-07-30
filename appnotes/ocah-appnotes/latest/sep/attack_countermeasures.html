@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/appnotes">Open Chiplet Atlas Harness (OCAH) Application Notes</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 NOTE on the path shape: ../../.. only ever
+                 resolves back to the root of THIS SAME Antora build (e.g.
+                 the "trm" folder once staged for gh-pages) -- it has no
+                 concept of a sibling book living one level up. Since
+                 doc/gh-pages.mk physically nests each book's whole output
+                 under /trm/ or /integrator/ at deploy time, every link here
+                 -- including the link back to the book you're already in --
+                 goes ../../../../<book-folder>/... , climbing one
+                 extra level out to the shared gh-pages root before
+                 descending into whichever book is being linked to. This is
+                 deliberately uniform (same pattern for self-links and
+                 cross-book links) so it doesn't need any per-page
+                 conditional logic on which book is currently being viewed. -->
+            <a class="navbar-item" href="../../../../trm/ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../integrator/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../programmer/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../appnotes/ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Deliberately NOT one-per-book: only list a PDF once a book
+                 has real content and a working PDF build. A "coming soon"
+                 placeholder page isn't worth a PDF download link yet --
+                 add a line here as each book's PDF becomes real.
+                 Same up-and-over path shape as the Guides menu above, into
+                 a shared top-level downloads/ folder (sibling to trm/ and
+                 integrator/) staged by doc/gh-pages.mk. -->
+            <a class="navbar-item" href="../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="attack-countermeasures"><a class="anchor" href="#attack-countermeasures"></a><a class="link" href="#attack-countermeasures">1. Attack Countermeasures</a></h4>
+<div class="paragraph">
+<p>Countermeasures include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Protection of BL0 boot ROM and subsequent secure boot via digital
+signature verification</p>
+</li>
+<li>
+<p>Glitch and error detection</p>
+<div class="ulist">
+<ul>
+<li>
+<p>SRAMs and other memory structures such as FIFOs and register files
+are protected by parity (byte-wise) or SECDED</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Temporal noise injection, masking, secret splitting and obfuscation on
+sensitive operations</p>
+</li>
+<li>
+<p>Transaction filtering and firewalling</p>
+</li>
+<li>
+<p>Functional and physical isolation of private data assets
+e.g. cryptographic keys</p>
+</li>
+<li>
+<p>Anti-replay facilities e.g. non-volatile counterj in OTP</p>
+</li>
+<li>
+<p>Obfuscate data stored in SRAM and OTP memories</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="debug-and-dft-security-considerations"><a class="anchor" href="#debug-and-dft-security-considerations"></a><a class="link" href="#debug-and-dft-security-considerations">2. Debug and DFT Security Considerations</a></h4>
+<div class="paragraph">
+<p>The debug facilities and DFT share the scan chain infrastructure for
+their respective tasks. This is a security hazard as certain secret
+values will be resident in the registers: tokens, secrets, cryptographic
+keys. Unless prevented, an attacker could halt the chip execution and
+extract the register state containing these secrets. This section
+describes the countermeasures we take to prevent this from happening.</p>
+</div>
+<div class="paragraph">
+<p>One debug feature is scandump which provides access to all internal
+register states. We must ensure that a certain subset of registers
+holding secrets are never dumped out in this mode.</p>
+</div>
+<div class="paragraph">
+<p>There are three scenarios of how registers are handled for DFT scan test
+and debug scandump:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Full DFT and Debug access</p>
+</li>
+<li>
+<p>DFT access but no Debug access</p>
+</li>
+<li>
+<p>No DFT and no Debug access</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Consequently there will be two discrete scan chains to handle the
+registers in groups 1 and 2. The register instances (or module
+instances) will be labelled as belonging to one of the three groups and
+the DFT scan insertion tool will group the registers into the respective
+scan chains which will be managed for security in the TAP controller.</p>
+</div>
+<div class="paragraph">
+<p>These three groups correspond to the SEP asset classes defined
+authoritatively in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
+Protection</em>): group 1 = Class 5 (general), group 2 = Class 2 (crypto / KM
+secret-bearing), group 3 = Class 1 (secrets and integrity-critical control
+fields).</p>
+</div>
+<div class="sect4">
+<h5 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">Debug and Scan Dump</a></h5>
+<div class="paragraph">
+<p>Debug mode is enabled when the device’s Life Cycle (LC) state equals PROD_DBG_1/2. In
+this mode, the user has near full control and observability of the chip
+state, but we must enforce security restrictions.</p>
+</div>
+<div class="paragraph">
+<p><strong>General logic (Class 5)</strong> scan dump is gated by the per-scope <code>*_DBG</code>
+feature-control bits and the LC state&#8201;&#8212;&#8201;a scope&#8217;s general logic is dumpable
+only when its <code>SEP_DBG</code> / <code>SIP_DBG</code> / <code>CHIPLET_DBG</code> bit (sourced from the OTP
+DIS vectors; <code>1&#8217;b0</code> = enabled, <code>1&#8217;b1</code> = disabled, irreversible) and the LC
+state permit it.</p>
+</div>
+<div class="paragraph">
+<p><strong>Secret-bearing logic (Class 2)</strong>&#8201;&#8212;&#8201;crypto-engine key / round-key storage and
+the Key Manager key vault / shared key storage&#8201;&#8212;&#8201;is placed on a <strong>dedicated
+secret-bearing scan chain</strong> so DFT keeps coverage, but is <strong>never
+scan-dumpable</strong>, for any owner or LC state. It is governed by <code>secure_tm</code>, not
+the <code>*_DBG</code> bits: under <code>secure_tm = 1</code> the secret sources (UID / <code>CLASS_KEY</code>)
+are disconnected from these consumers, and under <code>secure_tm = 0</code> the chain is
+tied off.</p>
+</div>
+<div class="paragraph">
+<p><strong>Secrets and integrity-critical fields (Class 1)</strong> are excluded from every scan
+chain (never scannable):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Class 1a (confidentiality): UIDs, <code>CLASS_KEY</code>, token-plaintext input
+registers (<code>*_TOKEN_I</code>).</p>
+</li>
+<li>
+<p>Class 1b (integrity): <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
+<code>*_TOKEN_DIGEST</code> shadow registers.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The authoritative class-by-class mapping (asset lists, scan chains, gating
+bits) is in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
+Protection</em>); Key Manager specifics are in the Key Manager chapter (<em>Scan and
+Scan-Dump Protection</em>). The Class 2 secure-scan subcomponents are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Key Manager&#8201;&#8212;&#8201;key vault / shared key storage</p>
+</li>
+<li>
+<p>AES&#8201;&#8212;&#8201;key storage, round-key storage</p>
+</li>
+<li>
+<p>HMAC&#8201;&#8212;&#8201;key storage</p>
+</li>
+<li>
+<p>OTBN&#8201;&#8212;&#8201;key storage</p>
+</li>
+<li>
+<p>KMAC&#8201;&#8212;&#8201;key storage</p>
+</li>
+<li>
+<p><em>TODO: confirm the full Class 2 block list with the SEP team</em></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="secure-test-mode-secure_tm-secure-test-mode-secure_tm"><a class="anchor" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm"></a><a class="link" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm">Secure Test Mode (SECURE_TM)</a></h5>
+<div class="paragraph">
+<p>We assert a GPIO pin strap to enable secure test mode. This generates
+the SECURE_TM signal which is consumed by</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>TAP to enable scan test</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers</p>
+</li>
+<li>
+<p>Any downstream registers in the path from these registers to the test enablement signals for DTAP or fuse write enablement signals are also non-scannable</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>During scan test (<code>secure_tm = 1</code>) the secret-source outputs (UID / <code>CLASS_KEY</code>) are disconnected from the Class 2 secret-bearing consumers, so no real secret is shifted; during scan dump (<code>secure_tm = 0</code>) the Class 2 secret-bearing chain is tied off (never dumpable). See the Lifecycle Controller chapter, <em>`secure_tm` and Scan Dump</em>.</p>
+</li>
+<li>
+<p>Disable writing to any OTP fuse state to prevent updates.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>OTP controller</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Disable <em>writing</em> of shadow registers: LOCKS, LC_STATE, SIP_DIS and SYS_DIS</p>
+</li>
+<li>
+<p>Other shadow register fields may optionally also have write disabled</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas® has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/appnotes">Open Chiplet Atlas Harness (OCAH) Application Notes</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 NOTE on the path shape: ../../.. only ever
+                 resolves back to the root of THIS SAME Antora build (e.g.
+                 the "trm" folder once staged for gh-pages) -- it has no
+                 concept of a sibling book living one level up. Since
+                 doc/gh-pages.mk physically nests each book's whole output
+                 under /trm/ or /integrator/ at deploy time, every link here
+                 -- including the link back to the book you're already in --
+                 goes ../../../../<book-folder>/... , climbing one
+                 extra level out to the shared gh-pages root before
+                 descending into whichever book is being linked to. This is
+                 deliberately uniform (same pattern for self-links and
+                 cross-book links) so it doesn't need any per-page
+                 conditional logic on which book is currently being viewed. -->
+            <a class="navbar-item" href="../../../../trm/ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../integrator/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../programmer/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../appnotes/ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Deliberately NOT one-per-book: only list a PDF once a book
+                 has real content and a working PDF build. A "coming soon"
+                 placeholder page isn't worth a PDF download link yet --
+                 add a line here as each book's PDF becomes real.
+                 Same up-and-over path shape as the Guides menu above, into
+                 a shared top-level downloads/ folder (sibling to trm/ and
+                 integrator/) staged by doc/gh-pages.mk. -->
+            <a class="navbar-item" href="../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="cpu-memory-system"><a class="anchor" href="#cpu-memory-system"></a><a class="link" href="#cpu-memory-system">1. CPU &amp; Memory System</a></h3>
+<div class="paragraph">
+<p>This section describes the SMC&#8217;s CPU subsystem, which is based on the
+Rocket RV64GC RISC-V processor core (see:
+<a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Rocket
+Chip</a>). The cluster is generated using the Chipyard Rocket-chip
+generator and supports 1 to 4 processor cores, each with private L1
+cache and access to a shared local SRAM.</p>
+</div>
+<div class="paragraph">
+<p>Key features include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)</p>
+</li>
+<li>
+<p>Core-local L1 instruction and data caches, each configurable in size
+and associativity</p>
+</li>
+<li>
+<p>Shared local SRAM/Scratchpad and Boot ROM</p>
+</li>
+<li>
+<p>Multi-core system management, deterministic performance for embedded
+management workloads</p>
+</li>
+<li>
+<p>Full support for RISC-V privilege levels (Machine, Supervisor, User)</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">1.1. Processor Core Overview</a></h4>
+<div class="paragraph">
+<p>The table below summarizes the key features of the Rocket CPU core, and
+its cache hierarchy</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribute</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cores</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1–4, Rocket RV64GC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RV64GC (I, M, A, F, D, C extensions)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Microarchitecture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In-order, 5-stage pipeline</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privilege Levels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M/S/U</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Phys. Address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Vector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core, independently configurable (56b)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">1.2. Cache and Memory Hierarchy</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 15%;">
+<col style="width: 35%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Default Size</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+<th class="tableblock halign-left valign-top">Configurability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-Cache per core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB (32 sets × 2 ways)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-through, Parity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">icache_tag/data_cfg</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-Cache per core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB (32 sets × 2 ways)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-back, SECDED ECC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dcache_tag/data_cfg</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local SRAM/Scratchpad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB (32 banks)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deterministic access, SECDED ECC, bank power gating</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">scratch_ram_cfg</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only, stores boot firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">rom_cfg</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>All memory components (SRAM, caches, ROM) are configurable via top-level
+parameters. The scratchpad SRAM allows deterministic accesses,
+independent of cache state, and supports per-bank sizing and power
+management.</p>
+</div>
+<div class="paragraph">
+<p>Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
+At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see <a href="#fabric">[fabric]</a>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="reset-boot-and-initialization"><a class="anchor" href="#reset-boot-and-initialization"></a><a class="link" href="#reset-boot-and-initialization">1.3. Reset, Boot, and Initialization</a></h4>
+<div class="paragraph">
+<p>Each CPU core supports an independent reset mechanism and a programmable
+reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
+for cores N=0 to 3. The design provides separate reset controls for the
+uncore logic and debug subsystems, enabling flexible platform management
+and debug flows.</p>
+</div>
+<div class="paragraph">
+<p>SRAM initialization is handled automatically by hardware on reset,
+ensuring memory consistency and error-free operation at startup; this
+feature can be disabled using disable_sram_auto_init_i to support
+specialized or custom boot procedures. The completion of SRAM
+initialization is reported through the init_mem_done_o status signal,
+allowing software to reliably detect when memory is ready for use.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="memory-repair"><a class="anchor" href="#memory-repair"></a><a class="link" href="#memory-repair">1.4. Memory Repair</a></h4>
+<div class="paragraph">
+<p>The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
+support to address manufacturing defects in SRAM arrays. Repair uses redundant
+memory elements configured with data stored in eFuse memory, applied during the
+boot sequence.</p>
+</div>
+<div class="paragraph">
+<p>Memory repair executes automatically after eFuse sensing completes and before
+MBIST operations. The process reads repair data from the eFuse BIRA register
+(16-kilobit <code>repair_data</code> field) and configures redundant memory elements,
+ensuring SRAM arrays are functional before the CPU cluster begins execution.</p>
+</div>
+<div class="paragraph">
+<p><strong>Control Mechanisms:</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>fuse_sense_done_o</code>: eFuse controller output indicating sensing completion.
+External DFT logic monitors this signal to trigger repair operations.</p>
+</li>
+<li>
+<p><code>skip_mem_repair_o</code>: Reset unit output that bypasses repair when asserted,
+activating during FLR operations or when the <code>BYPASS_SRAM_REPAIR</code> strap is set.</p>
+</li>
+<li>
+<p><code>BYPASS_SRAM_REPAIR</code> strap (GPIO pin 13): Hardware-level bypass control that
+bypasses repair logic when asserted, assuming SRAM arrays are defect-free.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Status Reporting:</strong></p>
+</div>
+<div class="paragraph">
+<p>Repair completion and success are reported through DFT Control Status registers
+(<code>DFX_CTRL_STATUS_SOC</code> at <code>0xC000F800</code> and <code>DFX_CTRL_STATUS_SEP_SMC</code> at
+<code>0xC000F80C</code>). The <code>mem_repair_done</code> bit indicates completion, while
+<code>mem_repair_success</code> indicates successful repair. The SMC ROM firmware monitors
+these bits during initialization to verify repair completion before proceeding
+with boot operations.</p>
+</div>
+<div class="paragraph">
+<p><strong>Boot Sequence Integration:</strong></p>
+</div>
+<div class="paragraph">
+<p>Memory repair integrates into the boot sequence as follows: after power-on reset
+deasserts and eFuse sensing begins, <code>fuse_sense_done_o</code> assertion triggers
+repair operations. Repair data is read from eFuse shadow registers and applied
+to SRAM, with completion reported through DFT Control Status registers. MBIST
+operations begin after repair completes (or is bypassed), and the CPU cluster
+reset releases after both repair and MBIST complete. The repair process must
+complete successfully before the CPU cluster can safely access SRAM arrays.</p>
+</div>
+<div class="paragraph">
+<p>During FLR operations, repair is automatically bypassed via <code>skip_mem_repair_o</code>
+to enable rapid reset sequences. Normal cold reset sequences always execute
+repair unless explicitly bypassed via strap configuration.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="system-interfaces"><a class="anchor" href="#system-interfaces"></a><a class="link" href="#system-interfaces">1.5. System Interfaces</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MMIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56b addressing, low-latency</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L2 Frontend</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">For shared memory/coherency</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB, JTAG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-intrusive, per-core</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="cluster-boundary-isolation"><a class="anchor" href="#cluster-boundary-isolation"></a><a class="link" href="#cluster-boundary-isolation">1.6. Cluster Boundary Isolation</a></h4>
+<div class="paragraph">
+<p>The cluster is reset independently of the surrounding SMC fabric.
+If the cluster were reset while a transaction on one of its AXI ports
+was still in flight, the fabric on the other side would be left
+ waiting on a response that never returns, hanging the bus, and could
+sample boundary signals while they glitch through reset. To avoid this, each
+AXI port is wrapped in an <code>axi_isolate</code> block that drains the outstanding
+transactions and holds the boundary at safe values before the reset is allowed
+to take effect.</p>
+</div>
+<div class="paragraph">
+<p>Two instances wrap the AXI ports listed above, each sized for up to four
+outstanding transactions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the <strong>L2 frontend</strong> slave port, which blocks new transactions rather than
+terminating them, and</p>
+</li>
+<li>
+<p>the <strong>MMIO</strong> master port, which terminates outstanding transactions with an
+error response to keep reset-time X values from propagating into the fabric.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The non-AXI status crossings (<code>wb_pc_valid</code>, <code>wb_reg_pc</code>, and the per-core
+<code>wdt_reset</code>) are clamped to constants over the same window so they cannot leak
+glitches either. The boundary also self-isolates on cold boot, releasing only
+once SRAM initialization completes and the cores and uncore are out of reset.</p>
+</div>
+<div class="sect4">
+<h5 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">Drain Handshake</a></h5>
+<div class="paragraph">
+<p>Isolation is coordinated with the control logic
+(<code>smc_cpu_ctrl_wrap</code>) through two signals:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>isolate_req_i</code> — asserted by the control logic whenever a software reset of
+the cluster is pending. The control logic withholds the reset itself until
+the cluster reports that it is safe to apply.</p>
+</li>
+<li>
+<p><code>drained_o</code> — asserted once both <code>axi_isolate</code> instances have drained and
+isolated their ports, telling the control logic the withheld reset may now be
+released.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="reset-domain-crossing"><a class="anchor" href="#reset-domain-crossing"></a><a class="link" href="#reset-domain-crossing">Reset-Domain Crossing</a></h5>
+<div class="paragraph">
+<p>The flops driving the isolate-control logic are held by the cluster&#8217;s
+uncore/core reset, while the flops inside <code>axi_isolate</code> are held by the Primary
+Reset (see <a href="#clock-and-reset-management">Clock and Reset Management</a>). The
+uncore/core reset is driven from two sources:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a Warm Reset from a watchdog timeout, which is <strong>asynchronous</strong> to the isolate
+logic, and</p>
+</li>
+<li>
+<p>a CPU CSR write (the reset-control register in <code>smc_cpu_ctrl_wrap</code>), which is
+<strong>synchronous</strong>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Because the two sets of flops sit in different reset domains, the asynchronous
+warm-reset path is a reset-domain crossing into <code>axi_isolate</code>. This is
+acceptable: only the watchdog asserts the warm reset asynchronously, and a
+watchdog timeout is followed by a cold reset, so the
+brief crossing window has no functional consequence. The CSR path is
+synchronous and crosses no domains.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">1.7. Interrupt and Control Integration</a></h4>
+<div class="paragraph">
+<p>All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
+units; the authoritative <code>cpu_interrupts_o</code> map; PLIC/CLINT register
+documentation; and BEU NMI delivery—is documented in <a href="#interrupts">Interrupts</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="watchdog-timer-system"><a class="anchor" href="#watchdog-timer-system"></a><a class="link" href="#watchdog-timer-system">1.8. Watchdog Timer System</a></h4>
+<div class="paragraph">
+<p>Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
+0x400), enabling per-core fault detection and recovery without impacting
+other cores. Base addresses and interrupt-related context for the WDT are
+summarized in <a href="#interrupts">Interrupts</a>.</p>
+</div>
+<div class="paragraph">
+<p>Timeouts are configurable to suit different workloads, and staged
+warnings (followed by reset) allow software intervention before hardware
+reset is triggered.</p>
+</div>
+<div class="paragraph">
+<p>Watchdog monitoring can be disabled during debugging to prevent false
+triggers, supporting uninterrupted development and troubleshooting.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="advanced-bus-infrastructure-monitoring-and-error-management"><a class="anchor" href="#advanced-bus-infrastructure-monitoring-and-error-management"></a><a class="link" href="#advanced-bus-infrastructure-monitoring-and-error-management">1.9. Advanced Bus Infrastructure Monitoring and Error Management</a></h4>
+<div class="paragraph">
+<p>Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
+transactions, allowing the system to quickly detect and respond to
+infrastructure faults that could impact system management.</p>
+</div>
+<div class="paragraph">
+<p>AXI error capture detects and logs decode, slave, and timeout errors so
+management software has clear insight into infrastructure health and can
+tailor its response.</p>
+</div>
+<div class="paragraph">
+<p>Classifying errors lets software address each type effectively: decode
+errors may need reconfiguration; timeout errors may require isolating
+faults and recovery procedures.</p>
+</div>
+<div class="paragraph">
+<p>Error address and transaction capture aid debugging, preserving context
+like addresses and data to support thorough fault analysis and recovery
+coordination.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">1.10. Debug</a></h4>
+<div class="paragraph">
+<p>Debugging is facilitated by a dedicated APB interface and JTAG, enabling
+per-core access to registers, memory, and both hardware and software
+breakpoints. These debug capabilities function independently of
+functional resets and allow override of reset vectors to support
+firmware development and diagnostics.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">1.11. Detailed Register Map</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: debug_module</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>abstractdata[12]</strong>: 12 registers, base 0x10, stride 0x4</li>
+<li><strong>confstrptr[3]</strong>: 3 registers, base 0x64, stride 0x4</li>
+<li><strong>progbuf[16]</strong>: 16 registers, base 0x80, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x10 - 0x3C</td><td><a href="#abstractdata_12_">abstractdata[12]</a></td><td>RW</td><td>Abstract Data Register. Used for arguments/return values of abstract commands.</td></tr>
+<tr><td>0x40</td><td><a href="#dmcontrol">dmcontrol</a></td><td>RW</td><td>Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.</td></tr>
+<tr><td>0x44</td><td><a href="#dmstatus">dmstatus</a></td><td>R</td><td>Reports status for the Debug Module and currently selected harts. This entire register is read-only.</td></tr>
+<tr><td>0x48</td><td><a href="#hartinfo">hartinfo</a></td><td>R</td><td>Information about the hart currently selected by hartsel. Optional; reads all-zero if not present. Entire register is read-only.</td></tr>
+<tr><td>0x4C</td><td><a href="#haltsum1">haltsum1</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 32 is halted. May not be present in systems with fewer than 33 harts. Unavailable/nonexistent harts are not considered halted.</td></tr>
+<tr><td>0x50</td><td><a href="#hawindowsel">hawindowsel</a></td><td>RW</td><td>Selects which 32-bit portion of the hart array mask register is accessible in hawindow.</td></tr>
+<tr><td>0x54</td><td><a href="#hawindow">hawindow</a></td><td>RW</td><td>R/W access to a 32-bit portion of the hart array mask register, selected by hawindowsel.</td></tr>
+<tr><td>0x58</td><td><a href="#abstractcs">abstractcs</a></td><td>RW</td><td>Controls and status for abstract commands. Writing this register while an abstract command is executing (busy=1) sets cmderr to 1 (busy) if cmderr was 0.</td></tr>
+<tr><td>0x5C</td><td><a href="#command">command</a></td><td>RW</td><td>Writes cause corresponding abstract command to execute. Writing while busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.</td></tr>
+<tr><td>0x60</td><td><a href="#abstractauto">abstractauto</a></td><td>RW</td><td>Optional. Allows more efficient burst accesses. Writing while busy sets cmderr=1 (if cmderr=0). Detect support by R/W test.</td></tr>
+<tr><td>0x64 - 0x6C</td><td><a href="#confstrptr_3_">confstrptr[3]</a></td><td>R</td><td>Part of configuration string pointer address (if dmstatus.confstrptrvalid=1) or unspecified identifier information. Read-only.</td></tr>
+<tr><td>0x74</td><td><a href="#nextdm">nextdm</a></td><td>R</td><td>If multiple DMs on DMI, this holds base address of the next DM. 0 if this is the last. Read-only.</td></tr>
+<tr><td>0x80 - 0xBC</td><td><a href="#progbuf_16_">progbuf[16]</a></td><td>RW</td><td>Program Buffer word. For debugger to write small programs.</td></tr>
+<tr><td>0xC0</td><td><a href="#authdata">authdata</a></td><td>RW</td><td>32-bit serial port to/from authentication module. Use when dmstatus.authbusy is clear.</td></tr>
+<tr><td>0xD0</td><td><a href="#haltsum2">haltsum2</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 1024 is halted. May not be present if &lt; 1025 harts.</td></tr>
+<tr><td>0xD4</td><td><a href="#haltsum3">haltsum3</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 32768 is halted. May not be present if &lt; 32769 harts.</td></tr>
+<tr><td>0xDC</td><td><a href="#sbaddress3">sbaddress3</a></td><td>RW</td><td>Bits 127:96 of the physical system bus address for System Bus Access. Not present if sbcs.sbasize &lt; 97. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0xE0</td><td><a href="#sbcs">sbcs</a></td><td>RW</td><td>Controls and status for the System Bus Access master. Writes while sbbusy=1 result in undefined behavior.</td></tr>
+<tr><td>0xE4</td><td><a href="#sbaddress0">sbaddress0</a></td><td>RW</td><td>Bits 31:0 of the physical system bus address. Not present if sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write triggers read sequence.</td></tr>
+<tr><td>0xE8</td><td><a href="#sbaddress1">sbaddress1</a></td><td>RW</td><td>Bits 63:32 of the physical system bus address. Not present if sbcs.sbasize &lt; 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0xEC</td><td><a href="#sbaddress2">sbaddress2</a></td><td>RW</td><td>Bits 95:64 of the physical system bus address. Not present if sbcs.sbasize &lt; 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0xF0</td><td><a href="#sbdata0">sbdata0</a></td><td>RW</td><td>Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write triggers bus write sequence. Read triggers read sequence including conditional next read if sbcs.sbreadondata=1.</td></tr>
+<tr><td>0xF4</td><td><a href="#sbdata1">sbdata1</a></td><td>RW</td><td>Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0xF8</td><td><a href="#sbdata2">sbdata2</a></td><td>RW</td><td>Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0xFC</td><td><a href="#sbdata3">sbdata3</a></td><td>RW</td><td>Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
+<tr><td>0x100</td><td><a href="#haltsum0">haltsum0</a></td><td>R</td><td>Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5&#x27;h0}, MSB for hart {hartsel[19:5],5&#x27;h1f}.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="abstractdata_12_">abstractdata[12]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data value for abstract commands.</td></tr>
+</table>
+<h3 id="dmcontrol">dmcontrol</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>haltreq</td><td>RW</td><td>0x0</td><td>Halt request for currently selected harts. Write 0 to clear, 1 to set.</td></tr>
+<tr><td>30</td><td>resumereq</td><td>RW</td><td>0x0</td><td>Resume request for currently selected harts. Writing 1 causes halted harts to resume and clears their resume ack bit. Ignored if haltreq is set.</td></tr>
+<tr><td>29</td><td>hartreset</td><td>RW</td><td>0x0</td><td>Optional. Hart reset for currently selected harts. Write 1, then 0 to deassert. Debugger must not change selection while this is 1. If not implemented, reads as 0.</td></tr>
+<tr><td>28</td><td>ackhavereset</td><td>RW</td><td>0x0</td><td>Writing 1 clears havereset for any selected harts.</td></tr>
+<tr><td>27</td><td>_reserved_27</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>26</td><td>hasel</td><td>RW</td><td>0x0</td><td>Selects definition of currently selected harts. 0: single hart by hartsel. 1: hart by hartsel plus those by hart array mask. Tied to 0 if hart array mask not implemented.</td></tr>
+<tr><td>25:16</td><td>hartsello</td><td>RW</td><td>0x0</td><td>Low 10 bits of hartsel: DM-specific index of the hart to select.</td></tr>
+<tr><td>15:6</td><td>hartselhi</td><td>RW</td><td>0x0</td><td>High 10 bits of hartsel: DM-specific index of the hart to select.</td></tr>
+<tr><td>5:4</td><td>_reserved_5_4</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>3</td><td>setresethaltreq</td><td>RW</td><td>0x0</td><td>Optional (if dmstatus.hasresethaltreq=1). Writing 1 sets halt-on-reset request bit for selected harts (unless clrresethaltreq is also 1).</td></tr>
+<tr><td>2</td><td>clrresethaltreq</td><td>RW</td><td>0x0</td><td>Optional (if dmstatus.hasresethaltreq=1). Writing 1 clears halt-on-reset request bit for selected harts.</td></tr>
+<tr><td>1</td><td>ndmreset</td><td>RW</td><td>0x0</td><td>Controls reset signal from DM to system (ndmreset). Write 1, then 0 to deassert.</td></tr>
+<tr><td>0</td><td>dmactive</td><td>RW</td><td>0x0</td><td>Debug Module active and reset. 0: DM takes reset values (except this bit). 1: DM functions normally.</td></tr>
+</table>
+<h3 id="dmstatus">dmstatus</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:23</td><td>_reserved_31_23</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>22</td><td>impebreak</td><td>R</td><td>0x0</td><td>1: Implicit ebreak after Program Buffer. Must be 1 if abstractcs.progbufsize is 1.</td></tr>
+<tr><td>21:20</td><td>_reserved_21_20</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>19</td><td>allhavereset</td><td>R</td><td>0x0</td><td>1: All currently selected harts have been reset and not acknowledged.</td></tr>
+<tr><td>18</td><td>anyhavereset</td><td>R</td><td>0x0</td><td>1: At least one currently selected hart has been reset and not acknowledged.</td></tr>
+<tr><td>17</td><td>allresumeack</td><td>R</td><td>0x0</td><td>1: All currently selected harts have acknowledged their last resume request.</td></tr>
+<tr><td>16</td><td>anyresumeack</td><td>R</td><td>0x0</td><td>1: Any currently selected hart has acknowledged its last resume request.</td></tr>
+<tr><td>15</td><td>allnonexistent</td><td>R</td><td>0x0</td><td>1: All currently selected harts do not exist in this platform.</td></tr>
+<tr><td>14</td><td>anynonexistent</td><td>R</td><td>0x0</td><td>1: Any currently selected hart does not exist in this platform.</td></tr>
+<tr><td>13</td><td>allunavail</td><td>R</td><td>0x0</td><td>1: All currently selected harts are unavailable.</td></tr>
+<tr><td>12</td><td>anyunavail</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is unavailable.</td></tr>
+<tr><td>11</td><td>allrunning</td><td>R</td><td>0x0</td><td>1: All currently selected harts are running.</td></tr>
+<tr><td>10</td><td>anyrunning</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is running.</td></tr>
+<tr><td>9</td><td>allhalted</td><td>R</td><td>0x0</td><td>1: All currently selected harts are halted.</td></tr>
+<tr><td>8</td><td>anyhalted</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is halted.</td></tr>
+<tr><td>7</td><td>authenticated</td><td>R</td><td>0x0</td><td>0: Authentication required. 1: Authentication passed. Preset to 1 if no authentication implemented.</td></tr>
+<tr><td>6</td><td>authbusy</td><td>R</td><td>0x0</td><td>0: Authentication module ready. 1: Authentication module busy.</td></tr>
+<tr><td>5</td><td>hasresethaltreq</td><td>R</td><td>0x0</td><td>1: DM supports halt-on-reset functionality (setresethaltreq/clrresethaltreq bits in dmcontrol).</td></tr>
+<tr><td>4</td><td>confstrptrvalid</td><td>R</td><td>0x0</td><td>0: confstrptr0-3 are not relevant to config string. 1: confstrptr0-3 hold config string address.</td></tr>
+<tr><td>3:0</td><td>version</td><td>R</td><td>0x2</td><td>Debug Module version. 0=No DM, 1=v0.11, 2=v0.13, 15=Non-conformant.</td></tr>
+</table>
+<h3 id="hartinfo">hartinfo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>_reserved_31_24</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>23:20</td><td>nscratch</td><td>R</td><td>0x0</td><td>Number of dscratch registers available for debugger use during program buffer execution (dscratch0 upwards).</td></tr>
+<tr><td>19:17</td><td>_reserved_19_17</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>16</td><td>dataaccess</td><td>R</td><td>0x0</td><td>0: Data registers (dataN) are shadowed by CSRs. 1: Data registers are shadowed in hart&#x27;s memory map.</td></tr>
+<tr><td>15:12</td><td>datasize</td><td>R</td><td>0x0</td><td>If dataaccess=0: Number of CSRs for dataN. If dataaccess=1: Number of 32-bit words in memory map for dataN. Max value 12.</td></tr>
+<tr><td>11:0</td><td>dataaddr</td><td>R</td><td>0x0</td><td>If dataaccess=0: Number of first CSR for dataN. If dataaccess=1: Signed address of RAM where dataN are shadowed (relative to zero).</td></tr>
+</table>
+<h3 id="haltsum1">haltsum1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>haltsum1</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts {hartsel[19:10],10&#x27;h0}-{hartsel[19:10],10&#x27;h1f}, MSB for harts {hartsel[19:10],10&#x27;h3e0}-{hartsel[19:10],10&#x27;h3ff}.</td></tr>
+</table>
+<h3 id="hawindowsel">hawindowsel</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>_reserved_31_15</td><td>R</td><td>0x0</td><td>Reserved. High bits may be tied to 0 depending on hart array mask size.</td></tr>
+<tr><td>14:0</td><td>hawindowsel</td><td>RW</td><td>0x0</td><td>Window select for hart array mask register. E.g., on a system with 48 harts, only bit 0 may be writable.</td></tr>
+</table>
+<h3 id="hawindow">hawindow</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>maskdata</td><td>RW</td><td>0x0</td><td>32-bit window into the hart array mask register. Some bits may be constant 0, depending on hawindowsel and implemented harts.</td></tr>
+</table>
+<h3 id="abstractcs">abstractcs</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>_reserved_31_29</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>28:24</td><td>progbufsize</td><td>R</td><td>0x0</td><td>Size of the Program Buffer, in 32-bit words. Valid sizes are 0-16.</td></tr>
+<tr><td>23:13</td><td>_reserved_23_13</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>12</td><td>busy</td><td>R</td><td>0x0</td><td>1: An abstract command is currently being executed. Set when &#x27;command&#x27; is written, cleared on completion.</td></tr>
+<tr><td>11</td><td>_reserved_11</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>10:8</td><td>cmderr</td><td>RW</td><td>0x0</td><td>Abstract command error status. Remains set until cleared. Valid if busy=0. 0=none, 1=busy, 2=not_supported, 3=exception, 4=halt/resume, 5=bus, 7=other.</td></tr>
+<tr><td>7:4</td><td>_reserved_7_4</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>3:0</td><td>datacount</td><td>R</td><td>0x0</td><td>Number of data registers (dataN) implemented. Valid sizes are 1-12.</td></tr>
+</table>
+<h3 id="command">command</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>cmdtype</td><td>RW</td><td>0x0</td><td>Type of abstract command (e.g., 0 for Access Register, 1 for Quick Access, 2 for Access Memory).</td></tr>
+<tr><td>23:0</td><td>control</td><td>RW</td><td>0x0</td><td>Command-specific control field.</td></tr>
+</table>
+<h3 id="abstractauto">abstractauto</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>autoexecprogbuf</td><td>RW</td><td>0x0</td><td>Bitmask (16 bits). If bit N=1, R/W to progbufN re-executes command in &#x27;command&#x27; register.</td></tr>
+<tr><td>15:12</td><td>_reserved_15_12</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>11:0</td><td>autoexecdata</td><td>RW</td><td>0x0</td><td>Bitmask (12 bits). If bit N=1, R/W to dataN re-executes command in &#x27;command&#x27; register.</td></tr>
+</table>
+<h3 id="confstrptr_3_">confstrptr[3]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>addr</td><td>R</td><td>0x0</td><td>Bits of configuration string pointer or identifier information.</td></tr>
+</table>
+<h3 id="nextdm">nextdm</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>addr</td><td>R</td><td>0x0</td><td>Base address of the next Debug Module or 0.</td></tr>
+</table>
+<h3 id="progbuf_16_">progbuf[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program instruction word.</td></tr>
+</table>
+<h3 id="authdata">authdata</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data for authentication mechanism.</td></tr>
+</table>
+<h3 id="haltsum2">haltsum2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>haltsum2</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts {hartsel[19:15],15&#x27;h0}-{hartsel[19:15],15&#x27;h3ff}, etc.</td></tr>
+</table>
+<h3 id="haltsum3">haltsum3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>haltsum3</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts 20&#x27;h0-20&#x27;h7fff, etc.</td></tr>
+</table>
+<h3 id="sbaddress3">sbaddress3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 127:96 for system bus access.</td></tr>
+</table>
+<h3 id="sbcs">sbcs</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>sbversion</td><td>R</td><td>0x1</td><td>System Bus interface version. 0=pre-2018 drafts, 1=this version (0.13).</td></tr>
+<tr><td>28:23</td><td>_reserved_28_23</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>22</td><td>sbbusyerror</td><td>RW</td><td>0x0</td><td>System bus busy error. Set if access attempted while busy or read while read in progress. No new access if set.</td></tr>
+<tr><td>21</td><td>sbbusy</td><td>R</td><td>0x0</td><td>1: System bus master is busy. Goes high on access request, low on completion.</td></tr>
+<tr><td>20</td><td>sbreadonaddr</td><td>RW</td><td>0x0</td><td>1: Every write to sbaddress0 automatically triggers a system bus read at the new address.</td></tr>
+<tr><td>19:17</td><td>sbaccess</td><td>RW</td><td>0x2</td><td>Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit, 3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.</td></tr>
+<tr><td>16</td><td>sbautoincrement</td><td>RW</td><td>0x0</td><td>1: sbaddress is incremented by access size (from sbaccess) after every system bus access.</td></tr>
+<tr><td>15</td><td>sbreadondata</td><td>RW</td><td>0x0</td><td>1: Every read from sbdata0 automatically triggers a system bus read at (possibly auto-incremented) address.</td></tr>
+<tr><td>14:12</td><td>_reserved_14_12</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
+<tr><td>11:9</td><td>sberror</td><td>RW</td><td>0x0</td><td>System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.</td></tr>
+<tr><td>8:5</td><td>sbasize</td><td>R</td><td>0x0</td><td>Width of system bus addresses in bits (e.g., 32 for 32-bit addresses). 0 indicates no bus access support. NOTE: This field is 4 bits wide ([8:5]), which is insufficient to directly store typical bus widths like 32 or 64. This implies the value is an encoding or there is a spec issue. The text implies it stores values like 32, 64, etc (e.g. &#x27;if sbasize &lt; 33&#x27;).</td></tr>
+<tr><td>4</td><td>sbaccess128</td><td>R</td><td>0x0</td><td>1: 128-bit system bus accesses are supported.</td></tr>
+<tr><td>3</td><td>sbaccess64</td><td>R</td><td>0x0</td><td>1: 64-bit system bus accesses are supported.</td></tr>
+<tr><td>2</td><td>sbaccess32</td><td>R</td><td>0x0</td><td>1: 32-bit system bus accesses are supported.</td></tr>
+<tr><td>1</td><td>sbaccess16</td><td>R</td><td>0x0</td><td>1: 16-bit system bus accesses are supported.</td></tr>
+<tr><td>0</td><td>sbaccess8</td><td>R</td><td>0x0</td><td>1: 8-bit system bus accesses are supported.</td></tr>
+</table>
+<h3 id="sbaddress0">sbaddress0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 31:0.</td></tr>
+</table>
+<h3 id="sbaddress1">sbaddress1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 63:32.</td></tr>
+</table>
+<h3 id="sbaddress2">sbaddress2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 95:64.</td></tr>
+</table>
+<h3 id="sbdata0">sbdata0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 31:0.</td></tr>
+</table>
+<h3 id="sbdata1">sbdata1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 63:32.</td></tr>
+</table>
+<h3 id="sbdata2">sbdata2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 95:64.</td></tr>
+</table>
+<h3 id="sbdata3">sbdata3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 127:96.</td></tr>
+</table>
+<h3 id="haltsum0">haltsum0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>haltsum0</td><td>R</td><td>0x0</td><td>Halt status for 32 harts based on hartsel[19:5].</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: bus_error_unit</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#PHYS_ADDR">PHYS_ADDR</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#ENABLE">ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#PLIC_ENABLE">PLIC_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="CAUSE">CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>data</td><td>RW</td><td>0x0</td><td>Cause register. Enumerates different kinds of errors</td></tr>
+</table>
+<h3 id="PHYS_ADDR">PHYS_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>value</td><td>R</td><td>-</td><td>Physical address of error event. No reset value</td></tr>
+</table>
+<h3 id="ENABLE">ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache ECC correctable bus error. Enabled on reset.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache Tilelink bus error. Enabled on reset.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="PLIC_ENABLE">PLIC_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Coarse grain interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Coarse grain interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+<h3 id="LOCAL_ENABLE">LOCAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
+<tr><td>6</td><td>dcache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC correctable bus error.</td></tr>
+<tr><td>5</td><td>dcache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache Tilelink bus error.</td></tr>
+<tr><td>4</td><td>rsvd4</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd3</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>icache_correctable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache ECC correctable bus error.</td></tr>
+<tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for ICache Tilelink bus error.</td></tr>
+<tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: wdt</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0x8</td><td><a href="#COUNT">COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#SCALED_COUNT">SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#FEED">FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#KEY">KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#CMP">CMP</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<h3 id="COUNT">COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="SCALED_COUNT">SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="FEED">FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="KEY">KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<h3 id="CMP">CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas® has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

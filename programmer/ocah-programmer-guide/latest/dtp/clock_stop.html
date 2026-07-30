@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/programmer">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 NOTE on the path shape: ../../.. only ever
+                 resolves back to the root of THIS SAME Antora build (e.g.
+                 the "trm" folder once staged for gh-pages) -- it has no
+                 concept of a sibling book living one level up. Since
+                 doc/gh-pages.mk physically nests each book's whole output
+                 under /trm/ or /integrator/ at deploy time, every link here
+                 -- including the link back to the book you're already in --
+                 goes ../../../../<book-folder>/... , climbing one
+                 extra level out to the shared gh-pages root before
+                 descending into whichever book is being linked to. This is
+                 deliberately uniform (same pattern for self-links and
+                 cross-book links) so it doesn't need any per-page
+                 conditional logic on which book is currently being viewed. -->
+            <a class="navbar-item" href="../../../../trm/ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../integrator/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../programmer/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../appnotes/ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Deliberately NOT one-per-book: only list a PDF once a book
+                 has real content and a working PDF build. A "coming soon"
+                 placeholder page isn't worth a PDF download link yet --
+                 add a line here as each book's PDF becomes real.
+                 Same up-and-over path shape as the Guides menu above, into
+                 a shared top-level downloads/ folder (sibling to trm/ and
+                 integrator/) staged by doc/gh-pages.mk. -->
+            <a class="navbar-item" href="../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="dtp-clock-stop"><a class="anchor" href="#dtp-clock-stop"></a><a class="link" href="#dtp-clock-stop">1. Clock Stop</a></h3>
+<div class="paragraph">
+<p>This section describes DTP-level clock stop integration. For the clock stop controller implementation details, see <a href="#cross-trigger-network">[cross-trigger-network]</a>.</p>
+</div>
+<div class="paragraph">
+<p>From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and CLA
+request sources into one functional halt path, while keeping CLA-only status
+separate for DEBUG_CONTROL readback.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>JTAG <code>jtag_clock_stop</code></strong>: The JTAG Interface Unit captures the DEBUG_CONTROL
+<code>jtag_clock_stop</code> bit and drives it into the Cross Trigger Network (CTN) clock
+stop controller. It is OR-combined with CLA clock-stop requests to form the
+registered DTP <code>stop_clks_o</code> output that connects to chiplet functional clock
+gating.</p>
+</li>
+<li>
+<p><strong>Exported <code>cla_clock_stop_en</code></strong>: The DEBUG_CONTROL <code>cla_clock_stop_en</code> bit is
+exported at the DTP top level for downstream use (for example SMC/CLA debug
+policy). It is not used inside the CTN <code>stop_clks_o</code> aggregation.</p>
+</li>
+<li>
+<p><strong>CLA clock-stop indication</strong>: The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> to form
+the <code>cla_clock_stop</code> readback status (CLA requests only). This does not
+include the JTAG <code>jtag_clock_stop</code> bit.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">1.1. Architecture</a></h4>
+<div class="paragraph">
+<p>At a high level, the architecture is:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The JTAG Interface Unit captures DEBUG_CONTROL bits. The <code>jtag_clock_stop</code>
+bit is routed to the CTN clock stop controller; <code>cla_clock_stop_en</code> is
+exported at the DTP boundary.</p>
+</li>
+<li>
+<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> for <code>cla_clock_stop</code> status and
+combines that aggregate with <code>jtag_clock_stop</code> for the registered
+<code>stop_clks_o</code> output.</p>
+</li>
+<li>
+<p>The <code>cla_clock_stop</code> status is fed back into the DEBUG_CONTROL readback path
+so software or a debugger can observe whether any CLA clock-stop source is
+active.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This keeps CLA clock-stop observability distinct from the JTAG direct-stop
+path, while both can assert the functional chiplet halt through <code>stop_clks_o</code>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas® has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+  </body>
+</html>
