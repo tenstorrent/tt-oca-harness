@@ -231,7 +231,7 @@ module smc_cpu_ctrl_wrap
 
 		.s_axil_awready(axil_resp_o.aw_ready),
 		.s_axil_awvalid(axil_req_i.aw_valid),
-		.s_axil_awaddr(axil_req_i.aw.addr[12:0]),
+		.s_axil_awaddr(axil_req_i.aw.addr[cpu_ctrl_reg_pkg::CPU_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
 		.s_axil_awprot(axil_req_i.aw.prot),
 		.s_axil_wready(axil_resp_o.w_ready),
 		.s_axil_wvalid(axil_req_i.w_valid),
@@ -242,7 +242,7 @@ module smc_cpu_ctrl_wrap
 		.s_axil_bresp(axil_resp_o.b.resp),
 		.s_axil_arready(axil_resp_o.ar_ready),
 		.s_axil_arvalid(axil_req_i.ar_valid),
-		.s_axil_araddr(axil_req_i.ar.addr[12:0]),
+		.s_axil_araddr(axil_req_i.ar.addr[cpu_ctrl_reg_pkg::CPU_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
 		.s_axil_arprot(axil_req_i.ar.prot),
 		.s_axil_rready(axil_req_i.r_ready),
 		.s_axil_rvalid(axil_resp_o.r_valid),

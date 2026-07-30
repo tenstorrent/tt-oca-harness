@@ -5,9 +5,18 @@ schema_version = 1
 # [targets.*] tables in smu_wrapper_sim_cfg.toml selected per test.
 # Result-reporting policy: docs/SMU_VPLAN.md §13.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
-# smu_sep_smoke_test passes on the boot-readiness contract; the SEP console
-# path remains blocked (see testlists/deferred.toml SEP=1 banner) and is not
-# claimed as a passing result.
+#
+# SIGNOFF NOTE: wrapper `all` / `smoke` is the production-wrapper merge-gate
+# only. It is NOT a substitute for bare `--dut smu --items sep0_all`.
+# Shared name `smu_smc_smoke_test` must be tagged WRAPPER vs BARE in logs.
+#
+# Commercial mirror (oca_smu chiplet testlist YAML naming):
+#   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
+#   Manual_SMU_Blocked_SEP_Exec_Regression = needs real SEP fetch/retire (#3582)
+#
+# OSS wrapper merge-gate (`all` / `smoke`) keeps only bring-up that does NOT
+# require SEP CPU execution. `smu_sep_smoke_test` stays defined for the live
+# #3582 IFU reproducer but is enrolled only under `sep_exec_blocked`.
 
 [[tests]]
 name = "smu_wrapper_elaboration_no_sep_test"
@@ -57,6 +66,9 @@ args = [
   "+smc_efuse_hex=smc_efuse_default.hex",
 ]
 
+# Live #3582 reproducer (Manual_SMU_Blocked_SEP_Exec_Regression). Default-run
+# gate is correct at CPU reset release, but IFU never issues boot-ROM fetches
+# (boot_rom_reqs=0, halt=X). Not reportable as PASS until SEP fetch fix lands.
 [[tests]]
 name = "smu_sep_smoke_test"
 module = "smu_sep_smoke_test"
@@ -64,7 +76,7 @@ target = "compile_smu_chiplet_sep_rtl"
 firmware = { name = "smu_sep_smoke", mode = "sep_smoke" }
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "smoke", "smc", "sep", "real_rtl"]
+tags = ["firmware", "smoke", "smc", "sep", "real_rtl", "blocked_sep_exec"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smu_sep_arm.rom.hex",
@@ -75,27 +87,50 @@ args = [
   "+sep_dtcm_hex=smu_sep_smoke.dtcm.hex",
 ]
 
+# Merge-gate smoke: no SEP CPU (SEP=1 deferred until foundry ram_* for TCM).
 [[groups]]
 name = "smoke"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_smc_smoke_test",
-  "smu_sep_smoke_test",
 ]
 
 [[groups]]
 name = "build_smoke"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
+# Default `--items all` for smu_wrapper — green surface only (no SEP=1 TCM hack).
 [[groups]]
 name = "all"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_smc_smoke_test",
+]
+
+# Quarantine: needs foundry ram_* (OSS sep_tcm_wrapper present; DV shim
+# removed) and/or SEP IFU (#3582).
+[[groups]]
+name = "sep_tcm_deferred"
+tests = [
+  "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_sep_smoke_test",
+]
+
+# Quarantine: real SEP firmware boot / retire (oca_smu Blocked_SEP_Exec).
+[[groups]]
+name = "sep_exec_blocked"
+tests = [
+  "smu_sep_smoke_test",
+]
+
+# Full wrapper catalog including the blocked SEP exec leaf (manual / debug).
+[[groups]]
+name = "all_with_sep_exec"
+tests = [
+  "smu_wrapper_elaboration_no_sep_test",
+  "smu_smc_smoke_test",
+  "smu_wrapper_elaboration_sep_rtl_test",
   "smu_sep_smoke_test",
 ]

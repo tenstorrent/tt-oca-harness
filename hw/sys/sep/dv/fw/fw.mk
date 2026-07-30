@@ -27,7 +27,8 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-incompatible-pointer-types \
   -Wno-strict-prototypes
-FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/exec_from_tcms.ld
+# Only link mode: link/modes/tcm.ld, auto-discovered by compile.mk.
+FW_DEFAULT_TEST_MODE := tcm
 FW_TEST_LDFLAGS = $(FW_LDFLAGS)
 
 define FW_TEST_POSTPROCESS

@@ -41,8 +41,8 @@ class smu_dft_dtp_boot_stall_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 8)
 
         # --- Phase A: DEBUG_CONTROL <-> DTP outputs ---
-        sb.expect_eq("boot_stall_ovrd idle", int(dut.jtag_boot_stall_ovrd.value), 0)
-        sb.expect_eq("boot_stall idle", int(dut.jtag_boot_stall.value), 0)
+        sb.expect_eq("boot_stall_ovrd idle", int(dut.jtag_boot_stall_ovrd.value), 0, evidence="STALL_COLD_STICKY")
+        sb.expect_eq("boot_stall idle", int(dut.jtag_boot_stall.value), 0, evidence="STALL_TRST_CLEAR")
         sb.expect_eq(
             "fuse_reset after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),

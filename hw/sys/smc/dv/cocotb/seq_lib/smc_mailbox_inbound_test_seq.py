@@ -30,7 +30,6 @@ class smc_mailbox_inbound_test_seq(SmcCsrSeq):
         # REGRESSION-LOCK: the RDL reset of `empty` is 0x0, but the field is a
         # wire to the FIFO-empty flag, which reads 1 on an empty FIFO at reset --
         # so this locks observed HW behaviour, not a spec reset constant.
-        # [audit: F1 common-mode, see smcoss_audit.md]
         await self.csr_read("MBOX0_INBOUND_STATUS",
                             MAILBOX0_INBOUND_STATUS, expected=0x1)
         await self.csr_read("MBOX0_INBOUND_ERROR_FLAGS",

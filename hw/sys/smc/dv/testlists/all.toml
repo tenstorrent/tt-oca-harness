@@ -4,11 +4,10 @@ schema_version = 1
 # Aggregate testlist: merges all per-feature testlists. The DUT sim_cfg
 # points at this file so `--tag smoke` resolves across every leaf list.
 # Mirrors the shared all.toml convention.
+#
+# TB-policy deferred (I3C DAT, DTP CSR idle, pll/pvt placeholder, fake BFM):
+# testlists/deferred.toml — NOT included here.
 includes = ["reset.toml", "i2c.toml", "clock.toml", "irq.toml", "gpio.toml", "axil.toml", "combined.toml", "batch_b.toml", "batch_c.toml", "batch_d.toml", "vplan_triplets.toml", "p1_coverage_gap.toml", "p1_coverage_gap_r2.toml", "p1_coverage_gap_r3.toml", "p1_coverage_gap_r4.toml", "p1_coverage_gap_r5.toml"]
-
-[[groups]]
-name = "sanity"
-tests = ["smc_cold_reset_test"]
 
 [[groups]]
 name = "smoke"
@@ -42,7 +41,6 @@ tests = [
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_efuse_otp_clock_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_uart_spi_log_engine_test",
@@ -84,7 +82,6 @@ tests = [
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_efuse_otp_clock_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_uart_spi_log_engine_test",
@@ -132,7 +129,6 @@ tests = [
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_efuse_otp_clock_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_uart_spi_log_engine_test",
@@ -169,7 +165,6 @@ tests = [
     "smc_flr_sanity_test",
     "smc_clk_running_test",
     "smc_clk_multi_window_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_observe_test",
     "smc_gpio_multi_sample_test",
     "smc_gpio_irq_active_test",
@@ -192,12 +187,9 @@ tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",
     "smc_ijtag_basic_test",
-    "smc_jtag_dft_timeout_proxy_test",
     "smc_jtag_reset_proxy_test",
     "smc_jtag_dmi_smoke_test",
     "smc_i3c_to_fabric_test",
-    "smc_i3c_multi_controller_csr_test",
-    "smc_i3c_recovery_status_csr_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_chip_config_read_test",
@@ -214,11 +206,9 @@ tests = [
     "smc_smbus_pmbus_test",
     "smc_smbus_hostnotify_test",
     "smc_smbus_alert_ara_test",
-    "smc_i3c_ccc_ibi_full_test",
     "smc_uart_loopback_test",
     "smc_spi_loopback_test",
     "smc_spi_pad_bfm_test",
-    "smc_sideband_avsbus_octs_bfm_test",
     "smc_octs_dual_sync_test",
 ]
 
@@ -227,7 +217,7 @@ name = "p2_phase_b"
 tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
+    # smc_dfd_dbs_fault_inject_test → deferred.toml (tb_glue; not DUT DFD RTL)
     "smc_jtag_dmi_smoke_test",
 ]
 
@@ -238,7 +228,7 @@ tests = [
     "smc_efuse_otp_burn_shadow_test",
     "smc_occp_sanity_secure_error_test",
     "smc_ecc_fault_inject_test",
-    "smc_dfd_dbs_fault_inject_test",
+    # smc_dfd_dbs_fault_inject_test → deferred (tb_glue)
     "smc_uart_loopback_test",
     "smc_smbus_pmbus_test",
 ]

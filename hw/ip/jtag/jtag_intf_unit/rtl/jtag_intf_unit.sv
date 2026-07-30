@@ -327,15 +327,17 @@ module jtag_intf_unit
     // STAP I/O Port Instantiation (Chiplet-to-Chiplet Connectivity)
     //--------------------------------------------------------------------------
 
-    assign stap_io_security_disable = feat_ctrl_q.sip_debug;
-    assign stap_smc_security_disable = feat_ctrl_q.soc_debug || feat_ctrl_q.ap_debug;
-    assign stap_sep_security_disable = feat_ctrl_q.sep_debug || feat_ctrl_q.soc_debug || feat_ctrl_q.ap_debug;
-    assign stap_extra_security_disable = feat_ctrl_q.ap_debug;
-    assign stap_host_security_disable = feat_ctrl_q.ap_debug;
-    assign dft_secure_security_disable = feat_ctrl_q.fuse_test || feat_ctrl_q.sep_debug ||
-                                         feat_ctrl_q.soc_debug || feat_ctrl_q.ap_debug;
-    assign dft_nonsecure_security_disable = feat_ctrl_q.soc_debug || feat_ctrl_q.ap_debug;
-    assign dfd_security_disable = feat_ctrl_q.ap_debug;
+    // Enable-polarity feat_ctrl (DTP_VPLAN): required enable low => security_disable.
+    assign stap_io_security_disable = !feat_ctrl_q.sip_debug;
+    assign stap_smc_security_disable = !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
+    assign stap_sep_security_disable = !feat_ctrl_q.sep_debug || !feat_ctrl_q.soc_debug ||
+                                       !feat_ctrl_q.ap_debug;
+    assign stap_extra_security_disable = !feat_ctrl_q.ap_debug;
+    assign stap_host_security_disable = !feat_ctrl_q.ap_debug;
+    assign dft_secure_security_disable = !feat_ctrl_q.fuse_test || !feat_ctrl_q.sep_debug ||
+                                         !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
+    assign dft_nonsecure_security_disable = !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
+    assign dfd_security_disable = !feat_ctrl_q.ap_debug;
 
     if (STAP_IO_ENABLE) begin : gen_stap_io
         jtag_stap #(

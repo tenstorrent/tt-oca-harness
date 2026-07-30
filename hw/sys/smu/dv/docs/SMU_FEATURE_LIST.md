@@ -11,6 +11,27 @@ CHK-* checkers. Each check logs a token via `SmuScoreboard` (auto from the check
 name, or the explicit `evidence=` argument); tokens appear in the log as
 `EVIDENCE: <TOKEN>` lines.
 
+### Evidence contract (aidv)
+
+| Rule | Implementation |
+|------|----------------|
+| Canonical map | `cocotb/env/smu_evidence_map.py` (`TEST_EVIDENCE`) |
+| Log forms | `EVIDENCE: <TOKEN>`, `EVIDENCE:<TOKEN>`, `EVIDENCE:CHK-<TOKEN>` |
+| Non-vacuity | `SmuScoreboard.check_phase` emits `CHK-NONVAC` when `checks > 0` |
+| Hard gate | `prove_mapped_features()` fails if any mapped TOKEN was not proven |
+| Wrapper boot | `cocotb_wrapper/env/smu_boot_scoreboard.py` emits SMC_/SEP_ boot TOKENs |
+| GitHub leaves | Checkbox text must require the same TOKEN (not invent post-green) |
+| Designer gate | `[DESIGN-APPROVAL]` still **pending** (human only) |
+
+**DUT vs wrapper smoke:** `smu_smc_smoke_test` under `--dut smu` proves
+`RST_*` / `AXI_*` TOKENs. The same module name under `--dut smu_wrapper` proves
+`SMC_ROM_READ_OK` / `SMC_SCRATCH_WRITE_OK` / `SMC_TEST_PASS_OK`. Leaf `#4027`
+tracks the DUT cocotb contract; wrapper firmware smoke is under wrapper/TB scope.
+
+**Deferred (no source yet):** `smu_dtp_clock_stop_smc_cla_test`,
+`smu_dtp_jtag_smc_cpu_register_test`, `smu_dft_lifecycle_matrix_test`
+(`testlists/deferred.toml`).
+
 ---
 
 ## Legend
@@ -310,3 +331,4 @@ INTENT: SEP=0 glue — macro AXIL, OCTS, SS IC_RESET, EXTEST, ATB
 | 0.2 | 2026-07-17 | P3 H1–H6 corner/G4 CHK map; SEP=0 program closed pending designer approval |
 | 0.3 | 2026-07-20 | P4 deepen + glue CHKs (`phase4_sep0`); designer approval still pending |
 | 0.4 | 2026-07-20 | P4 honesty: IF-SMC-11 blocked_o; WDT Force-raw clamp; drop LOCKS vacuity |
+| 0.5 | 2026-07-28 | Aidv evidence contract: `smu_evidence_map.py`, scoreboard aliases + `CHK-NONVAC`, GitHub leaf TOKEN align; designer approval still pending |

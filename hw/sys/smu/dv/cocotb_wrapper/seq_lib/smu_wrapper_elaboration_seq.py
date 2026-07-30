@@ -58,9 +58,13 @@ class SmuWrapperElaborationSeq:
             observed_reset_during_cold,
             observed_fuse_during_cold,
         )
+        self.log.info("EVIDENCE:CHK-WRAPPER-SEP-PROFILE_OK")
+        self.log.info("EVIDENCE:CHK-WRAPPER-SEP-FUSE-COLD_OK")
 
         await self.wait_value(self.dut.powergood_o, 1, "powergood_o")
         await self.wait_value(self.dut.rst_cold_n_o, 1, "rst_cold_n_o")
+        self.log.info("EVIDENCE:CHK-WRAPPER-POWERGOOD_OK")
+        self.log.info("EVIDENCE:CHK-WRAPPER-RST-COLD-RELEASE_OK")
 
         for iteration in range(2):
             hold_cycles = self.rng.randint(2, 5)
@@ -75,6 +79,8 @@ class SmuWrapperElaborationSeq:
             self.dut.rst_cold_ni.value = 1
             await self.wait_value(self.dut.rst_cold_n_o, 1, "rst_cold_n_o")
 
+        self.log.info("EVIDENCE:CHK-WRAPPER-RST-PROPAGATION_OK")
+        self.log.info("EVIDENCE:CHK-NONVAC")
         self.log.info(
             "PASS: production wrapper elaborated with SEP=%d and reset remained responsive",
             expected_sep,

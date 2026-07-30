@@ -16,9 +16,9 @@ wrapper exists.
 
 | Field | Value |
 |-------|-------|
-| Design location | `hw/dtp/rtl/` |
+| Design location | `hw/sys/dtp/rtl/` |
 | RTL top module | `dtp` |
-| Package | `dtp_pkg` (`hw/dtp/rtl/dtp_pkg.sv`) |
+| Package | `dtp_pkg` (`hw/sys/dtp/rtl/dtp_pkg.sv`) |
 | Repository | `tt-oca` |
 | Open-source DV location | `hw/sys/dtp/dv/` |
 | Reference plan | `dv/dtp/doc/` |
@@ -39,7 +39,9 @@ wrapper exists.
 
 ## Configuration Parameters
 
-Default DTP build parameters from the OCAH design spec (Chapter 7).
+Defaults below are the values `hw/sys/dtp/rtl/dtp.sv` elaborates with, which are what
+the open-source TB builds. DTP prefixes the JTAG IP parameters with `JTAG_` (for
+example `JTAG_NUM_EXTRA_STAPS`), and overrides some IP-level defaults — noted per row.
 
 ### JTAG Interface Unit / PTAP
 
@@ -49,9 +51,9 @@ Default DTP build parameters from the OCAH design spec (Chapter 7).
 | `STAP_IO_ENABLE` | 0/1 | 1 | Enable I/O STAP for chiplet-to-chiplet connectivity |
 | `SMC_DBG_ENABLE` | 0/1 | 1 | Enable SMC debug STAP and SMC JTAG2AXI bridge |
 | `SEP_DBG_ENABLE` | 0/1 | 1 | Enable SEP debug STAP |
-| `NUM_EXTRA_STAPS` | 0-4 | 0 | Number of additional STAPs |
+| `NUM_EXTRA_STAPS` | 0-4 | 1 | Number of additional STAPs (IP default is 0; DTP elaborates 1) |
 | `BSR/EXTEST_TRAIN/EXTEST_PULSE/INTEST/CLAMP/HIGHZ/RUNBIST/TMP_ENABLE` | 0/1 | 1 | Optional instruction enables (a disabled instruction behaves as BYPASS) |
-| `IC_RESET_{SMC,SEP,EXT}_ENABLE` | 0/1 | 0 | Enable each IC_RESET slice |
+| `IC_RESET_{SMC,SEP,EXT}_ENABLE` | 0/1 | 1 | Enable each IC_RESET slice (IP default is 0; DTP elaborates all three to 1, so the IC_RESET TDR is `2*(NUM_SMC+NUM_SEP+NUM_EXT)+1` bits wide rather than absent) |
 | `IDCODE_MFR_ID / PART_NUM / SI_REV` | 11/16/4-bit | 0 | IDCODE field parameters |
 | `OCH_VER` | 8-bit | 0 | DTP IP major version reported in JTAG_CAPS |
 | `*_PL_DEPTH` | 2-bit | 3 | JTAG2AXI read/write pipeline depths |
@@ -95,7 +97,7 @@ AXI-Lite XTRIG CSR
 | JTAG interface unit | `jtag_intf_unit` | TAP instruction decode, scan routing, security gating, debug controls |
 | Primary TAP | `jtag_ptap` | IEEE 1149.1 TAP FSM, IR/DR scans, TDR selection |
 | Secondary TAP (STAP) | `jtag_stap` | IEEE 1838 STAP chain (I/O, SMC, SEP, extra STAPs); per-STAP 3-bit 3DCR and lockup latches |
-| JTAG2AXI bridges | `prim_jtag2axi` instances | Debug reads/writes across TCK to `clk_i` CDC into AXI/AXI-Lite |
+| JTAG2AXI bridges | `jtag2axi` instances | Debug reads/writes across TCK to `clk_i` CDC into AXI/AXI-Lite |
 | Cross trigger network | `cross_trigger_network` | CTP/CTM CSR decode, routing, clock-stop integration |
 | Cross trigger matrix | `cross_trigger_matrix` | Source-to-destination routing mask behavior |
 | Cross trigger port | `cross_trigger_port` | Wire-OR and point-to-point external trigger protocols |
@@ -249,10 +251,10 @@ features are always enabled.
 | `dtp_pkg` | DTP default widths and AXI typedefs |
 | `cross_trigger_network_pkg` | Cross-trigger topology and types |
 | `sep_efuse_pkg` | Lifecycle feature control struct |
-| `hw/ip/jtag_ptap`, `hw/ip/jtag_stap` | Primary and secondary TAP RTL |
-| `hw/ip/cross_trigger_port`, `hw/ip/cross_trigger_matrix` | CTP and CTM RTL |
-| `hw/comp/cross_trigger_network` | Cross-trigger network RTL |
-| `prim_jtag2axi` | JTAG-to-AXI/AXI-Lite bridge primitive |
+| `hw/ip/jtag/jtag_ptap`, `hw/ip/jtag/jtag_stap` | Primary and secondary TAP RTL |
+| `hw/ip/cross_trigger/cross_trigger_port`, `hw/ip/cross_trigger/cross_trigger_matrix` | CTP and CTM RTL |
+| `hw/ip/cross_trigger/cross_trigger_network` | Cross-trigger network RTL |
+| `hw/ip/jtag/jtag2axi` | `jtag2axi` JTAG-to-AXI/AXI-Lite bridge |
 | `ocah_jtag_vip` | Unified OCAH primary JTAG BFM wrapper |
 | `ocah_axi_vip` | Unified OCAH AXI/AXI-Lite BFM wrappers |
 
@@ -272,3 +274,4 @@ using unified OCAH BFM wrappers for standard protocols.
 | 1.0 | 2026-06-09 | DV Team | OCAH open-source verification specification aligned with the DTP reference plan |
 | 1.1 | 2026-06-14 | DV Team | Aligned with OCAH design spec (ocah-documentation.pdf, Chapter 7): added specifications/config-parameter tables, STAP hierarchy + 3DCR widths, authoritative lifecycle-gating table, clock-stop aggregation, and RTL dependencies |
 | 1.2 | 2026-06-22 | DV Team | Updated verification alignment for Basic JTAG, JTAG2AXI single-op, and debug TDR public scenarios |
+| 1.3 | 2026-07-29 | DV Team | Corrected stale RTL paths to the `hw/sys/` and `hw/ip/<family>/` layout, renamed the bridge to `jtag2axi`, and fixed the `NUM_EXTRA_STAPS` and `IC_RESET_{SMC,SEP,EXT}_ENABLE` defaults to the values `dtp.sv` actually elaborates |

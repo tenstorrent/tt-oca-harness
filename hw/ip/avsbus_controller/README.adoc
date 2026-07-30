@@ -103,8 +103,6 @@ The clock divider **MUST** be taken out of reset before the rest of the AVS logi
 ### Prerequisites Setup
 ```bash
 # Load required modules
-module load quasar
-source bin/setup_env.sh  # from OCAH repository root
 
 # Navigate to avsbus_controller directory
 cd hw/ip/avsbus_controller

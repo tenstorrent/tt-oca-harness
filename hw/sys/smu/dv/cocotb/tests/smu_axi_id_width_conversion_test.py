@@ -42,7 +42,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
                 f"DECERR via ID-converted SYS_IN @0x{addr:08x}",
                 resp,
                 AxiResp.DECERR,
-            )
+            evidence="AXI_ID_WIDTH_OK")
             # Poison data from axi_err_slv (lower 32b of 64'hCA11AB1EBADCAB1E).
             sb.expect_eq(
                 f"err_slv data @0x{addr:08x}",

@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""U7-2 / P2-8 DFD/DBS fault inject + capture."""
+"""TB-glue: DBS capture latch demo (NOT DUT DFD RTL).
+
+DEFERRED from green (2026-07-29): tb_dfd_fault_inject only latches a
+hardcoded token 0xDB5C_AFE1. Real DFD lives under smc_dfd_wrap / hw/ip/dfd.
+See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,7 @@ from seq_lib.smc_dfd_dbs_fault_inject_test_seq import (
 
 @pyuvm.test()
 class smc_dfd_dbs_fault_inject_test(smc_base_test):
-    """Pulse tb_dfd_fault_inject and score tb_dbs_capture_*."""
+    """TB capture latch demo — not smc_dfd_wrap / dfd_top coverage."""
 
     auto_protocol_vip = False
 
@@ -25,5 +30,8 @@ class smc_dfd_dbs_fault_inject_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="DFD fault inject latched DBS capture from hart0 PC",
+            details=(
+                "TB_GLUE only: tb_dfd_fault_inject latched 0xDB5C_AFE1 "
+                "(not DUT DFD RTL)"
+            ),
         )

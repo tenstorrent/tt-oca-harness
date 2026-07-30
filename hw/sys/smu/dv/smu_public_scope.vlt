@@ -5,50 +5,18 @@
 //  "// verilator ..." as a metacomment directive and fail to parse this file.)
 //
 // Pair with [build.verilator].public_scope so cocotb drops global --public-flat-rw.
-// Expose TB top + DUT modules that P1/P2 tests Force or hierarchically probe.
-// forceable: continuous / submodule-driven nets otherwise reject VPI Force
-// (VLVF_CONTINUOUSLY / non-forceable) and ungating / xtrig / CLA probes fail.
+// Expose TB top + DUT modules that P1/P2 tests hierarchically probe (observe).
+// Policy 2026-07-29d: no forceable — DUT Force / VPI Force inject deferred
+// (needs_real_lcc / needs_real_stimulus). Keep public_flat_rw for observe XMRs.
 
 public_flat_rw -module "smu_uvm_top" -var "*"
 public_flat_rw -module "smu" -var "*"
 public_flat_rw -module "dtp" -var "*"
 public_flat_rw -module "jtag_ptap" -var "*"
 public_flat_rw -module "smc" -var "*"
-// P4 secure_tm Force + WDT isolate clamp paths
 public_flat_rw -module "smc_peripherals" -var "*"
 public_flat_rw -module "smc_efuse_wrapper" -var "*"
 public_flat_rw -module "efuse_interface_controller" -var "*"
 public_flat_rw -module "smc_cpu_wrapper" -var "*"
 public_flat_rw -module "smc_4core_cpu" -var "*"
 public_flat_rw -module "smc_1core_cpu" -var "*"
-
-forceable -module "smu" -var "sep_feat_ctrl"
-forceable -module "smu" -var "sep_lc_state"
-forceable -module "dtp" -var "feat_ctrl_i"
-forceable -module "jtag_ptap" -var "feat_ctrl_i"
-
-// JTAG2AXI gate nets (continuous of ~feat_ctrl) — optional if feat_ctrl Force works
-forceable -module "jtag_ptap" -var "smc_jtag2axi_security_disable"
-forceable -module "jtag_ptap" -var "smc_otp_jtag2axi_security_disable"
-forceable -module "jtag_ptap" -var "sep_otp_jtag2axi_security_disable"
-
-// P2 Force inject / hier AXIL (submodule-driven or assign-tied under SEP=0)
-forceable -module "smu" -var "tdr_dbg_ctrl_clocks_stopped_by_cla"
-forceable -module "smu" -var "dtp_xtrig_ctm_src_req"
-forceable -module "smu" -var "dtp_xtrig_ctm_dst_ack"
-forceable -module "smu" -var "dtp_xtrig_ctm_dst_req"
-forceable -module "smu" -var "smc_xtrigger_ss_o"
-forceable -module "smu" -var "smc_xtrigger_ss_i"
-forceable -module "smu" -var "dtp_axil_sep_otp_jtag_req"
-forceable -module "smu" -var "dtp_axil_sep_otp_jtag_resp"
-forceable -module "dtp" -var "axil_xtrig_req_i"
-forceable -module "smc" -var "wdt_second_timeout_o"
-forceable -module "smu" -var "wdt_second_timeout_o"
-
-// P4: secure_tm Force on eFuse controller input (wrapper ties 1'b0)
-forceable -module "efuse_interface_controller" -var "secure_tm_i"
-// P4: Force pre-clamp WDT rst / isolate to prove clamp mux contrast
-forceable -module "smc_4core_cpu" -var "wdt_reset_raw"
-forceable -module "smc_4core_cpu" -var "cluster_boundary_isolate"
-forceable -module "smc_1core_cpu" -var "wdt_reset_raw"
-forceable -module "smc_1core_cpu" -var "cluster_boundary_isolate"

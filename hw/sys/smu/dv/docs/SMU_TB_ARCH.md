@@ -21,11 +21,15 @@ UVM + cocotb + firmware flow driven by `ttem` and YAML. This document describes
 the public target architecture ported from that reference; the OSS bring-up grows
 it incrementally, using unified OCAH BFM packages for standard interfaces.
 
-> **Status:** target architecture for the OSS SMU TB. **Phase-1 executable
-> scope is `SEP=0`** — see `docs/SMU_OSS_VPLAN_PHASE1.md`. The current folder
-> ships docs, Phase-1 testlists, sim config, and a documented `tb/tb_top.sv`
-> placeholder (`smu_uvm_top`). Cocotb env/sequences/tests and the wired
-> `SEP=0` DUT instantiation are the next phase.
+> **Status (2026-07-29):** OSS SMU TB is live under `run_dv.py`.
+> **Policy:** no DUT Force / no TB placeholder. Enrolled green =
+> `phase1` 14 / `sep0_all` 19 on bare `--dut smu`; wrapper smoke is a
+> separate merge-gate (`--dut smu_wrapper`). Force-era deepeners are
+> raise-stubs under `cocotb/tests_deferred/` + `deferred.toml`.
+> Cleanup: `hw/sys/smc/doc/dv_hack_cleanup_checklist.md`.
+>
+> Historical text below that still describes a `tb_top` placeholder or
+> Force-based feat_ctrl bring-up is **superseded**.
 
 ## VIP Selection Policy
 

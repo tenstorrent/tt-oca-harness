@@ -942,14 +942,21 @@ def _render_list(values: list[str], ctx: dict[str, str]) -> list[str]:
 
 
 def _render_run_test_args(
-    run_mode: dict[str, Any], test: TestEntry, seed: int
+    run_mode: dict[str, Any],
+    test: TestEntry,
+    seed: int,
+    repo_root: Path | str | None = None,
 ) -> list[str]:
-    """Render `run_mode.args` + `test.args` with a seed-bearing ctx so a testlist
-    entry can template the per-leaf regression seed (e.g.
-    `+sep_efuse_prog_fail_seed={seed}`). Only these two config-owned lists are
-    templated; `sim_global_args`, `--sim-arg`, and `--plusarg` stay literal.
-    Applied at every sim site so `{seed}` behaves identically across tools."""
+    """Render `run_mode.args` + `test.args` with a seed/repo_root ctx so a
+    testlist entry can template the per-leaf regression seed (e.g.
+    `+sep_efuse_prog_fail_seed={seed}`) and portable asset paths (e.g.
+    `+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex`).
+    Only these two config-owned lists are templated; `sim_global_args`,
+    `--sim-arg`, and `--plusarg` stay literal. Applied at every sim site so
+    `{seed}` / `{repo_root}` behave identically across tools."""
     ctx = {"seed": str(seed)}
+    if repo_root is not None:
+        ctx["repo_root"] = str(repo_root)
     return [
         *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
         *_render_list(list(test.args or []), ctx),
@@ -1354,7 +1361,7 @@ def _cocotb_vcs_makefile(
         run_mode = selected_run_mode(sim_cfg, test, args)
         sim_args = [
             *sim_global_args(sim_cfg),
-            *_render_run_test_args(run_mode, test, seed),
+            *_render_run_test_args(run_mode, test, seed, root),
             *(args.sim_arg or []),
             *(args.plusarg or []),
         ]
@@ -1604,7 +1611,9 @@ def _cocotb_make_sim(
         # cocotb's classic VCS make flow runs in make_dir, so stage the time-0 image there.
         _run_sim_prestage(
             root, cocotb_data, item, seed, make_dir,
-            sim_args=_render_run_test_args(run_mode, catalog.tests[item], seed),
+            sim_args=_render_run_test_args(
+                run_mode, catalog.tests[item], seed, root
+            ),
         )
     # The make flow compiles and runs in one invocation, so the timeout bounds both.
     timeout_sec = resolve_timeout_sec(sim_cfg, catalog.tests[item], run_mode, args)
@@ -1724,7 +1733,7 @@ def cocotb_sim(
     wave_format = str(info["wave_format"])
     test_args = [
         *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed),
+        *_render_run_test_args(run_mode, test, seed, root),
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]
@@ -1809,7 +1818,10 @@ def cocotb_sim(
         _run_sim_prestage(
             root, cocotb_data, item, seed, item_dir,
             sim_args=_render_run_test_args(
-                selected_run_mode(sim_cfg, catalog.tests[item], args), test, seed
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                test,
+                seed,
+                root,
             ),
         )
 
@@ -2132,7 +2144,7 @@ def vcs_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCatalo
     argv.append(f"+ntb_random_seed={seed}")
     argv += [
         *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed),
+        *_render_run_test_args(run_mode, test, seed, root),
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]
@@ -2301,7 +2313,7 @@ def xcelium_sim(flow: Flow, root: Path, sim_cfg: dict[str, Any], catalog: TestCa
         argv.append(f"+UVM_TESTNAME={uvm_test}")
     argv += [
         *sim_global_args(sim_cfg),
-        *_render_run_test_args(run_mode, test, seed),
+        *_render_run_test_args(run_mode, test, seed, root),
         *(args.sim_arg or []),
         *(args.plusarg or []),
     ]

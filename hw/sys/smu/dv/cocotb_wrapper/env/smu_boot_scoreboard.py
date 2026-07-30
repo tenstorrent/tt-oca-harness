@@ -21,6 +21,14 @@ class SmuSmcBootScoreboard(uvm_component):
         self.max_rom_reads = max(self.max_rom_reads, rom_reads)
         self.max_scratch_writes = max(self.max_scratch_writes, scratch_writes)
 
+    @staticmethod
+    def _log_evidence(logger, token: str) -> None:
+        logger.info("EVIDENCE: %s", token)
+        logger.info("EVIDENCE:%s", token)
+        if not token.startswith("CHK-"):
+            logger.info("EVIDENCE:CHK-%s", token)
+            logger.info("EVIDENCE: CHK-%s", token)
+
     def check_phase(self) -> None:
         self.logger.info(
             "SMC boot evidence: pass=%s fail=%s rom_reads=%d scratch_writes=%d",
@@ -39,6 +47,11 @@ class SmuSmcBootScoreboard(uvm_component):
         if self.max_scratch_writes == 0:
             errors.append("SMC scratch SRAM had no write activity")
         assert not errors, "SMC boot scoreboard: " + "; ".join(errors)
+        # aidv tokens for wrapper firmware smoke (distinct from DUT cocotb smoke)
+        self._log_evidence(self.logger, "SMC_ROM_READ_OK")
+        self._log_evidence(self.logger, "SMC_SCRATCH_WRITE_OK")
+        self._log_evidence(self.logger, "SMC_TEST_PASS_OK")
+        self._log_evidence(self.logger, "CHK-NONVAC")
 
 
 class SmuSepBootScoreboard(uvm_component):
@@ -122,6 +135,14 @@ class SmuSepBootScoreboard(uvm_component):
             and self.max_dccm_writes > 0
         )
 
+    @staticmethod
+    def _log_evidence(logger, token: str) -> None:
+        logger.info("EVIDENCE: %s", token)
+        logger.info("EVIDENCE:%s", token)
+        if not token.startswith("CHK-"):
+            logger.info("EVIDENCE:CHK-%s", token)
+            logger.info("EVIDENCE: CHK-%s", token)
+
     def check_phase(self) -> None:
         self.logger.info(
             "SEP boot evidence: reset(low/high)=%s/%s fuse(low/high)=%s/%s "
@@ -167,3 +188,7 @@ class SmuSepBootScoreboard(uvm_component):
         if self.max_dccm_writes == 0:
             errors.append("SEP firmware never stored results into DCCM")
         assert not errors, "SEP boot scoreboard: " + "; ".join(errors)
+        self._log_evidence(self.logger, "SEP_BOOT_ROM_OK")
+        self._log_evidence(self.logger, "SEP_ICCM_OK")
+        self._log_evidence(self.logger, "SEP_DCCM_WRITE_OK")
+        self._log_evidence(self.logger, "CHK-NONVAC")

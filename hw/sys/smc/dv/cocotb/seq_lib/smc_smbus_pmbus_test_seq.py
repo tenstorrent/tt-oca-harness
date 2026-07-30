@@ -52,6 +52,7 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         # software layers on top of I2C, verified VIP-side; the byte transaction,
         # when run, traverses the DUT-facing I2C0 pins.)
         await self.prove_dut_i2c0_pins()
+        await self.wait_i2c0_lsio_ready("I2C0_PMBUS_AFTER_PIN_PROOF")
 
         # PMBus Linear11 encode/decode self-check (no bus traffic yet).
         for v in _PMBUS_TEST_VALUES:
@@ -97,25 +98,9 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         )
 
         # Real bus traffic: SMBus write-with-PEC via master → slave EEPROM.
-        # Same wall-clock gating as the I2C master-target loopback: at
-        # 100 kHz a 3-byte SMBus write takes ~270 us of sim time, which is
-        # ~5+ minutes of Verilator wall-clock on the SMC DUT. Xcelium runs
-        # it in ~30 s and remains the byte-level authority; under Verilator
-        # we still bind master + slave and exercise the polarity + wired-AND
-        # adapter, but skip the byte transaction.
-        sim_name = (cocotb.SIM_NAME or "").lower()
-        skip_bus_proof = "verilator" in sim_name
-
+        # Same path on VCS and Verilator (LSIO enable must be ready first).
         slave = SmcI2cEepromSlave(addr=_EEPROM_ADDR)
         master = SmcI2cMasterVip(speed=100_000)
-
-        if skip_bus_proof:
-            cocotb.log.info(
-                "SMBus/PMBus bus-traffic proof skipped on Verilator (wall-"
-                "clock bound; Xcelium provides the byte-level authority). "
-                "PEC self-check + Linear11 round-trip already asserted."
-            )
-            return
 
         pec = await master.smbus_write_with_pec(_EEPROM_ADDR, _SMBUS_PAYLOAD)
 

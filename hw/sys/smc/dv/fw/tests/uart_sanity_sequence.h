@@ -4,15 +4,9 @@
 #ifndef UART_SANITY_SEQUENCE_H
 #define UART_SANITY_SEQUENCE_H
 
-/* UART sanity sequence for the cpu_traffic super-loop.
- *
- * Ported verbatim from tt-oca-hw/fw/smc/test_sequences/uart_sanity_sequence.h
- * (4-UART reset/enable, UART 16550 controller setup, controller->target
- * data transfer + readback compare). The only change is the mechanical
- * migration of the legacy UART_*_reg_u unions and
- * SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_N__* macros to the native PeakRDL
- * uart_*_t types and SMC_TOP_SMC_UART_WRAP_* indexed address macros. The UART
- * 16550 is open IP. */
+/* UART sanity sequence for the cpu_traffic super-loop: 4-UART reset/enable,
+ * UART 16550 controller setup, controller->target data transfer + readback
+ * compare. */
 
 #include <stdint.h>
 #include <time.h>
