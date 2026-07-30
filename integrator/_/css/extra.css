@@ -1,7 +1,85 @@
-/* Hide placeholder navbar items */
-.navbar-end .navbar-item.has-dropdown,
-.navbar-end .navbar-item:not(.navbar-brand) {
+/* Hide placeholder navbar items (upstream demo content only: any leftover
+   Home/Products/Services/Download not otherwise replaced) -- explicit
+   exceptions for every real item we've added. */
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu) {
     display: none !important;
+}
+
+/* Guides / Downloads dropdowns -- keep visible, style to match navbar */
+.navbar-end .navbar-item.guides-menu,
+.navbar-end .navbar-item.downloads-menu {
+    display: flex !important;
+    align-items: center;
+}
+
+.navbar-end .navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+    background: none !important;
+}
+
+.navbar-dropdown {
+    background-color: var(--oca-cream) !important;
+    border: 1px solid var(--oca-green);
+}
+
+/* Explicit show/hide behavior for the dropdown, rather than relying on the
+   underlying bundle's own hover CSS -- these dropdowns (Guides, Downloads)
+   were hidden by our own earlier blanket rule from day one, so this is the
+   first time they've actually needed to work, and the bundle's built-in
+   hover trigger was never actually verified. Self-contained fix: */
+/* Safety net: if the underlying bundle sets overflow:hidden anywhere in
+   this chain (common for the mobile burger-menu collapse animation), it
+   would silently clip the dropdown the moment it extends below the navbar,
+   even though display:block is correctly applied -- which matches exactly
+   what's being seen (CSS confirmed loaded and hover registering, but
+   nothing visible). Force it back open here rather than hunting for the
+   exact ancestor. */
+.header,
+.navbar,
+.navbar-menu,
+.navbar-end {
+    overflow: visible !important;
+}
+
+.navbar-item.has-dropdown {
+    position: relative;
+}
+
+.navbar-item.has-dropdown .navbar-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 500;
+}
+
+.navbar-item.has-dropdown:hover .navbar-dropdown,
+.navbar-item.has-dropdown:focus-within .navbar-dropdown,
+.navbar-item.has-dropdown.is-active .navbar-dropdown {
+    display: block !important;
+}
+
+.navbar-dropdown .navbar-item {
+    display: block !important;
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+.navbar-dropdown .navbar-item:hover {
+    background-color: var(--oca-green) !important;
+    color: #ffffff !important;
+}
+
+/* Tenstorrent link -- keep visible, style to match navbar */
+.navbar-end .navbar-item.tt-link {
+    display: flex !important;
+    align-items: center;
+}
+
+.navbar-end .navbar-item.tt-link img {
+    display: block;
 }
 
 /* Import custom documentation CSS - note: @import doesn't work in bundled CSS, so we'll include content directly */
@@ -12,6 +90,193 @@
 
 /* Import image zoom CSS for lightbox functionality */
 @import url("image-zoom.css");
+
+/* ========================================
+   OCA ECOSYSTEM VISUAL ALIGNMENT (WP1 M2)
+   Palette and font names sourced from openchipletatlas.org page inspection,
+   2026-07-14. Menu structure is left unchanged; this block only touches
+   color, background, and typography.
+   ======================================== */
+:root {
+    --oca-green: #103525;
+    --oca-cream: #EEEAE0;
+    --oca-cream-light: #F8F4EB;
+    --oca-gold: #F6BC42;
+    --oca-orange: #F6931E;
+    --oca-text: #484848;
+    /* Roboto is already loaded by the antora-ui-default bundle itself, so
+       list it first -- closer visual match than a generic system stack,
+       and costs nothing extra to use. Swap for real Tenstorrent fonts once
+       supplied -- see tracking doc To-Do. */
+    --oca-font-display: "Roboto", Georgia, "Iowan Old Style", serif;
+    --oca-font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
+    --oca-font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* Top navbar -> match OCA's cream navbar */
+.navbar {
+    background-color: var(--oca-cream) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.navbar-item,
+.navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+/* Logo swap: hide default text title, show OCA logo image instead */
+.navbar-brand a.navbar-item {
+    background: url("../img/oca.png") no-repeat left center;
+    background-size: contain;
+    text-indent: -9999px;
+    width: 120px;
+    overflow: hidden;
+}
+
+/* Navbar title text, positioned in-flow right after the OCA logo (not
+   centered) -- avoids the earlier centered-overlay approach, which
+   overlapped the Guides/Downloads menus at narrower widths since it was
+   absolutely positioned independent of surrounding content width.
+   Real HTML content now (see header-content.hbs), not a CSS pseudo-element,
+   so it participates properly in the navbar's normal layout flow. */
+.navbar-brand .oca-title-text {
+    font-family: var(--oca-font-display);
+    font-size: 1.1rem;
+    color: var(--oca-text);
+    white-space: nowrap;
+    padding-left: 8px;
+}
+
+/* Hide the title text at narrow widths rather than let it wrap/collide --
+   logo + Guides/Downloads/Tenstorrent take priority on small screens. */
+@media (max-width: 900px) {
+    .navbar-brand .oca-title-text {
+        display: none;
+    }
+}
+
+/* Sidebar -> OCA dark green, white text (2026-07-15 restyle) */
+.nav-container {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu .nav-text,
+.nav-panel-menu .nav-link,
+.nav-panel-menu a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+}
+
+.nav-panel-menu .is-current-path > .nav-link,
+.nav-panel-menu a:hover {
+    color: var(--oca-gold) !important;
+}
+
+/* Component/version switcher panel (".nav-panel-explore") -- shows when
+   toggled from the context bar below the page nav tree. Kept CREAM against
+   the new dark-green sidebar so it reads as a distinct, clickable control
+   rather than blending in -- this was the specific problem flagged
+   2026-07-15 (messy, easy-to-miss pop-up). */
+.nav-panel-explore {
+    background-color: var(--oca-cream) !important;
+    border: 2px solid var(--oca-green);
+    border-radius: 4px;
+}
+
+.nav-panel-explore .title,
+.nav-panel-explore .component .title a {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+/* Version "pill" buttons inside the switcher -- fixed-width font + orange
+   accent, matching Tenstorrent's own button convention (reference:
+   tenstorrent.com "Developers" button), replacing the default dark-grey. */
+.nav-panel-explore .versions .version a,
+.nav-panel-explore .version.is-current a {
+    font-family: var(--oca-font-mono);
+    background-color: var(--oca-orange) !important;
+    color: var(--oca-green) !important;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.nav-panel-explore .versions .version a:hover {
+    background-color: var(--oca-gold) !important;
+}
+
+/* The collapsed bottom-left toggle that shows/hides .nav-panel-explore.
+   NOTE: exact class name not yet confirmed against the real build -- this
+   selector is antora-ui-default's documented name (".context-bar" /
+   ".context-toggle"). If this doesn't visually hit after rebuilding, open
+   dev tools, click the element, and confirm the real class name so this
+   rule can be corrected. */
+.context-bar,
+.context-toggle {
+    background-color: var(--oca-cream) !important;
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    line-height: 1.25;
+    padding: 6px 10px;
+    border-top: 2px solid var(--oca-green);
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.context-bar .title,
+.context-toggle .title {
+    font-size: 0.68rem;
+}
+
+.context-bar .version,
+.context-toggle .version {
+    font-family: var(--oca-font-mono);
+    font-size: 0.6rem;
+    background-color: var(--oca-orange) !important;
+    color: var(--oca-green) !important;
+    border-radius: 999px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+/* Headings -> OCA display font + green */
+.doc h1,
+.doc h2,
+.doc h3 {
+    font-family: var(--oca-font-display);
+    color: var(--oca-green);
+}
+
+/* Body copy */
+.doc {
+    font-family: var(--oca-font-body);
+    color: var(--oca-text);
+}
+
+/* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
+.doc a {
+    color: var(--oca-green);
+}
+
+.doc a:hover {
+    color: var(--oca-gold);
+}
+
+/* Code/mono elements */
+.doc code,
+.doc pre {
+    font-family: var(--oca-font-mono);
+}
 
 /* ========================================
    COLLAPSIBLE TOC STYLING
@@ -396,4 +661,42 @@ nav.bd-links a,
 
 .nav-title {
     font-weight: normal !important;
+}
+
+/* ========================================
+   FOOTER RESTYLE (2026-07-16), matching OCA reference screenshot.
+   Requires the accompanying doc/ui-supplemental/partials/footer-content.hbs
+   override -- CSS alone cannot add the Tenstorrent link/icon.
+   ======================================== */
+.footer {
+    background-color: var(--oca-green) !important;
+    text-align: center;
+    padding: 20px;
+}
+
+.footer .oca-footer-text,
+.footer .oca-footer-text a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+    font-size: 0.95rem;
+}
+
+.footer .footer-tt-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.footer .footer-tt-icon {
+    height: 20px;
+    vertical-align: middle;
+}
+
+/* De-emphasized license attribution, kept for MPL-2.0 compliance rather
+   than removed outright -- see tracking doc. */
+.footer .oca-footer-fineprint {
+    color: var(--oca-cream) !important;
+    opacity: 0.6;
+    font-size: 0.72rem;
+    margin-top: 6px;
 }
