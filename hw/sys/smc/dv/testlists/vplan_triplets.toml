@@ -160,6 +160,7 @@ run_modes = ["smoke"]
 # +smc_hold_cpu_boot: keep pad60 boot_stall from t=0 until the sequence
 # programs RESET_VECTOR then releases (prevents fetch before revector).
 # min_pass.rom.hex: sync-free RV64 stub at ROM window (writes 0xACAFACA1).
+# (main #172 c_compile hello_world.ecc.scratch path intentionally not used.)
 args = [
     "+smc_hold_cpu_boot",
     "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",

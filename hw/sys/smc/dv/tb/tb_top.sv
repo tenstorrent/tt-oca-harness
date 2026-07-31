@@ -4,7 +4,7 @@
 //
 // Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
 // smc_cpu_mem_integration). File name is tb_top.sv / module smc_uvm_top so
-// `--dut smc` + smc_sim_cfg.toml is the single launch entry.
+// `--dut smc_wrapper` + smc_wrapper_sim_cfg.toml is the single launch entry.
 //
 // Cocotb port surface keeps the SmcEnv catalog pin names. Hierarchical XMRs
 // into the core use u_dut.u_smc.*.
