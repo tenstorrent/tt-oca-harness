@@ -30,11 +30,8 @@
         border-radius: 4px;
     }
 
-    /* Ensure tables don't collapse too much -- SCOPED, 2026-07-29: was a
-       bare `table` selector forcing nowrap+min-width onto every table on
-       the site, including admonition blocks (Asciidoctor renders NOTE/
-       WARNING etc. using an internal <table>) and unrelated content
-       tables. Only genuinely wide register/bit-layout tables need this. */
+    /* Ensure tables don't collapse too much. Only genuinely wide register
+	/bit-layout tables need this. */
     .register-table-wrapper table,
     .raw-html-container table,
     .rdl-container table,
@@ -54,12 +51,7 @@
     }
 }
 
-/* Auto-wrap tables in responsive containers -- REMOVED, 2026-07-29: this
-   bare `.content table` selector forced overflow/nowrap onto every table
-   on the site, including admonition blocks and regular content tables
-   that should just size to the document and wrap normally. The genuinely
-   wide register-layout tables are already handled by the scoped
-   .register-table-wrapper/.raw-html-container/.rdl-container rules below. */
+/* Auto-wrap tables in responsive containers */
 
 /* Ensure consistent table styling across different containers */
 .wy-table-responsive table,
@@ -143,12 +135,3 @@ div[class*="raw"] table {
     width: 100%;
     border-collapse: collapse;
 }
-
-/* Make sure all tables in the document have horizontal scroll when needed
-   -- REMOVED, 2026-07-29: this was the actual cause of the NOTE-admonition
-   and dashboard-table scrollbar bug reported. `.document`/`.content`/
-   `.section table` matched every table on the site indiscriminately.
-   Normal content tables (and admonition blocks, which Asciidoctor renders
-   using an internal <table>) should just size to the document and wrap
-   normally -- only the genuinely wide register-layout tables need the
-   scoped overflow/nowrap treatment, handled elsewhere in this file. */

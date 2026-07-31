@@ -5,7 +5,7 @@
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
 # Usage: docker-run.sh <build|verify|run CMD...|shell|doc-html [trm|integrator|programmer|appnotes|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>
-#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what actually gets deployed, not just a local trial.
+#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     build firmware image        verify    gcc version + multilibs
 #   run CMD   run in firmware image       shell     interactive firmware shell
@@ -86,8 +86,7 @@ doc_html() {
 }
 
 doc_html_all() {
-    # This IS the real combined-architecture build now (2026-07-23 decision)
-    # -- matches what CI actually deploys, not just a local trial anymore.
+    # This is the combined-architecture build.
     doc_setup trm
     doc_setup integrator
     doc_setup programmer
@@ -110,11 +109,9 @@ doc_pdf() {
 }
 
 # doc_stage: add PDFs + .nojekyll on top of the already-built combined
-# Antora output. Deliberately pure bash, no Docker/Make/Node involved --
+# Antora output. No Docker/Make/Node involved --
 # this is just file copying, so it doesn't need a container at all, and
-# avoids re-triggering the Node-based HTML build a second time (the
-# equivalent Make target is .PHONY and would always re-run it, which is
-# also how the WSL/Windows-npx path-mangling problem first surfaced).
+# avoids re-triggering the Node-based HTML build a second time.
 # Run this AFTER `doc-html all` and `doc-pdf trm`/`doc-pdf integrator`.
 doc_stage() {
     local ghpages_dir="${OCAH_GHPAGES_DIR:-doc/_build/html_antora}"

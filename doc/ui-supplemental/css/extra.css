@@ -308,14 +308,7 @@
 }
 
 /* ========================================
-   VERIFICATION DASHBOARD (mockup preview, 2026-07-28)
-   Static placeholder data only -- not yet wired to the real WP3 pipeline.
-   Deliberately keeps the red/yellow/green semantic pass/fail convention
-   (matching the OpenTitan reference this was modeled on) rather than
-   recoloring into the OCA gold/green brand palette -- pass/fail clarity
-   matters more here than brand consistency. Table chrome (fonts, header
-   background) still uses the OCA palette/typography, so it doesn't look
-   totally disconnected from the rest of the site.
+   VERIFICATION DASHBOARD .
    ======================================== */
 .dashboard-table {
     border-collapse: collapse;

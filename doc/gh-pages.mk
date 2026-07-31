@@ -3,32 +3,15 @@
 
 # GitHub Pages publish path (ghp-import -> gh-pages branch).
 #
-# 2026-07-23: reworked for the combined multi-book architecture decision.
-# The temporary static landing page (doc/gh-pages-index.html) is REMOVED --
-# per its own removal checklist below, since the combined Antora build now
-# provides a native multi-guide experience directly (any marketing landing
-# page lives outside this repo entirely, per Tenstorrent). This is no
-# longer four separate Antora builds manually copied into sibling
-# subfolders -- it's one Antora build (antora-playbook.yml), which already
-# produces the correct combined output (each book under its own
-# component/version path) in a single pass. Only the PDFs and a
-# .nojekyll marker need adding on top.
-#
-# The GitHub Pages publish mechanism itself (ghp-import + gh-pages branch)
-# is NOT being dropped -- Tenstorrent confirmed proceeding with GitHub
-# Pages. Only the old per-product staging/landing-page approach is gone.
-
 ifndef ocah_doc_ghpages_mk
 ocah_doc_ghpages_mk := 1
 
-# This IS the combined Antora build's own output dir (see antora-playbook.yml
-# output.dir) -- no separate staging copy needed anymore.
+# This is the combined Antora build's own output dir (see antora-playbook.yml output.dir)
 OCAH_GHPAGES_DIR ?= $(OCAH_DOC_DIR)/_build/html_antora
 OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 # Root-relative site URL once deployed, e.g. /tt-oca-harness for a plain
 # org.github.io/repo host with no custom domain, or empty/unset if a
-# custom domain fronts the repo root. Left as an override, not hardcoded,
-# pending the custom-domain decision -- see tracking doc WID-05.
+# custom domain fronts the repo root. Left as an override, not hardcoded.
 OCAH_DOC_SITE_URL ?=
 
 ## Build the combined multi-book site (all four books, one Antora run).

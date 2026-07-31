@@ -12,9 +12,8 @@ ocah_doc_mk := 1
 OCAH_DOC_DIR ?= $(OCAH_ROOT)/doc
 # Documentation tools are expected on PATH. The project Docker image provides
 # Node/npm for Antora and asciidoctor-pdf for PDF builds.
-# @antora/lunr-extension powers search (2026-07-23 decision) -- only
-# registered/active in the combined playbook (antora-playbook.yml), harmless
-# to have available for the standalone per-product playbooks too.
+# @antora/lunr-extension powers search -- only # registered/active in the combined playbook 
+# (antora-playbook.yml), harmless # to have available for the standalone per-product playbooks too.
 OCAH_ANTORA ?= npx -y -p @antora/cli@3.1 -p @antora/site-generator@3.1 -p @antora/lunr-extension@1.0.0-alpha.13 antora
 OCAH_ASCIIDOCTOR_PDF ?= asciidoctor-pdf
 OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
@@ -52,7 +51,7 @@ endif
 -include $(OCAH_DOC_DIR)/integrator/doc.mk
 -include $(OCAH_DOC_DIR)/programmer/doc.mk
 -include $(OCAH_DOC_DIR)/appnotes/doc.mk
-# GitHub Pages publish (combined multi-book build, 2026-07-23 -- see that file).
+# GitHub Pages publish.
 -include $(OCAH_DOC_DIR)/gh-pages.mk
 
 ## Compatibility aliases: default doc-* targets build the TRM.

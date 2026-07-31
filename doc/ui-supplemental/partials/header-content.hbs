@@ -28,13 +28,9 @@
                  Handlebars helpers (resolvePage/relativize) we haven't
                  verified against the real UI bundle -- see tracking doc.
 
-                 2026-07-23: simplified for the combined-architecture
-                 decision. All four books now build as ONE Antora site
+                 All four books now build as ONE Antora site
                  (antora-playbook.yml), so {{{siteRootPath}}} already
-                 resolves directly to the one shared root -- no more
-                 "up-and-over" ../<book-folder>/ prefix needed (that was
-                 specific to the old per-product-builds-nested-in-subfolders
-                 deployment shape, which this decision replaces). -->
+                 resolves directly to the one shared root. -->
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-docs/latest/index.html">Technical Reference Manual</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
@@ -44,12 +40,7 @@
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
           <a class="navbar-link" href="#">Downloads</a>
           <div class="navbar-dropdown">
-            <!-- Deliberately NOT one-per-book: only list a PDF once a book
-                 has real content and a working PDF build. A "coming soon"
-                 placeholder page isn't worth a PDF download link yet --
-                 add a line here as each book's PDF becomes real.
-                 2026-07-23: simplified path (no "../") for the same reason
-                 as the Guides menu above -- one shared site root now. -->
+            <!-- Add a line here as each book's PDF becomes real.-->
             <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
           </div>
