@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+	<link rel="stylesheet" href="../../../_/css/register_tables.css">
+	<link rel="stylesheet" href="../../../_/css/image-zoom.css">
+	  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 All four books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../about-ocah.html">About OCAH</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#motivation">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../about-ocah.html#use-cases">Use Cases</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../getting-started.html">Getting Started</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#dependencies">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#tools">Tools</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../getting-started.html#methodology">Methodology</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#ocah-architecture">OCAH Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#security-processor-sep">Security Processor (SEP)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#system-management-controller">System Management Controller (SMC)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#system-management-network">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="sep-memory-map"><a class="anchor" href="#sep-memory-map"></a><a class="link" href="#sep-memory-map">1. Memory Map</a></h3>
+<div class="paragraph">
+<p>SEP uses 32-bit addressing. The following table outlines the SEP CPU&#8217;s
+logical view of the SEP-local address space. External masters use the
+chiplet-global base programmed in <code>SEP_GLOBAL_BASE_ADDR</code>; SEP CPU
+software uses either direct internal addresses (<code>0x1000_0000</code>,
+<code>0x1080_0000</code>, and so on) or the local alias view described below.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External to chiplet, but not in SMU (SMC, DTP, etc).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Local</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Local resources (DMA, Crypto, etc)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x4000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI Extension</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved for adopter extension IP</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x4000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x8000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 GB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Resources</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x8000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 GB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU Resources (DTP, etc)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xD000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU Resources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EL2 Veer Resources (DCCM, ICCM, PIC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xD000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1_0000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">768 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Local Alias</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Corresponds to 0x1000_0000 - 0x4000_0000</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>SEP Local Alias</code> row is an alternate CPU-side name for the same
+hardware listed in the <code>SEP Local</code> and <code>SEP AXI Extension</code> rows. For
+example, <code>0xD000_0000</code> aliases <code>0x1000_0000</code> and <code>0xD080_2000</code> aliases
+<code>0x1080_2000</code>. This alias range is used by SEP-local masters, while
+external masters use chiplet-global addresses.</p>
+</div>
+<div class="paragraph">
+<p>The EL2 CPU resources are mapped into a separate segment than the SEP
+Local resources due to constraints on the CPU memory map. The ICCM,
+DCCM, and PIC addresses in the <code>0xC000_0000</code> region are statically
+configured in the CPU core module and are reached through the CPU&#8217;s
+internal wiring. The high local-alias mapping covers the <code>0xD000_0000</code>
+and above alias view. CPU CSRs are accessed with dedicated RISC-V
+instructions and do not appear in the address map.</p>
+</div>
+<div class="paragraph">
+<p>The high local alias span has a fixed SEP-local size of 768 MiB
+(<code>0xD000_0000</code> through <code>0xFFFF_FFFF</code>), corresponding to the direct
+internal range <code>0x1000_0000</code> through <code>0x3FFF_FFFF</code>. The
+chiplet-global SEP aperture configured by <code>SEP_GLOBAL_BASE_ADDR</code> /
+<code>SEP_REGION_SIZE</code> controls the SMU xbar and inbound global-to-local
+remap.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly Coupled Instruction SRAM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC004_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC005_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tightly Coupled Data SRAM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC006_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC007_FFFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC008_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC008_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt controller for El2 CPU</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC008_8000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xCFFF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Unit</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch SRAM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1001_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1003_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">192 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>RSV</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved Scratch SRAM expansion</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1004_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1004_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 immutable instruction memory</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1005_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x107F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7,872 KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>RSV</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_0FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA CSR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_1000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_2000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dual Scratch Register Banks</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_3000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_3007</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RST_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Reset Controller (software reset for KM and crypto accelerators)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1080_3008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x108F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1,043 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>RSV</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1090_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1090_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Public Key processor memory and CSR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_0FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Block Cipher</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_1000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC-SHA2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash / MAC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_3000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC-SHA3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash / MAC</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_4000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PCRV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PCR Vault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_5000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deterministic Random Bit Generator</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_6000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_6FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ESRC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Source</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_7000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRNG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Random Num Gen</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_8000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1091_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life Cycle Controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1092_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1092_0FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1092_1000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1092_FFFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RSV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1093_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1093_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse Control and Shadow Memory</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1093_8000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x109F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>RSV</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A0_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A3_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Bus I/F</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A4_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10AF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RSV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10B0_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10BF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External IO Peripherals Bridge: UART, GPIO etc.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1100_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x117F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AP Remap Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to this region to be routed to the AP remapper</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1180_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11FF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STEE Remap Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to this region to be routed to the STEE remapper</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1200_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1FFF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>RSV</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x4000_0000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Extension Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved for adopter extension IP</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">2. Detailed Register Map</a></h3>
+<div class="paragraph">
+<p>The following register tables are generated from the SEP register description
+(RDL) sub-blocks under <code>hw/sys/sep/regs/</code>. Each entry corresponds to a unit in
+the SEP memory map above.</p>
+</div>
+<div class="sect3">
+<h4 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">2.1. CPU Control and Interrupts</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_cpu_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</a></td><td>R</td><td>Timeout interrupt</td></tr>
+<tr><td>0x20</td><td><a href="#PKA_CTRL">PKA_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#SPACC_CTRL">SPACC_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#TIMEOUT_COUNT_TROOT">TIMEOUT_COUNT_TROOT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#TIMEOUT_COUNT_SPACC">TIMEOUT_COUNT_SPACC</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x68</td><td><a href="#TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x70</td><td><a href="#TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x78</td><td><a href="#TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x90</td><td><a href="#TIMEOUT_ENABLE">TIMEOUT_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x98</td><td><a href="#TIMEOUT_CLEAR">TIMEOUT_CLEAR</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xA0</td><td><a href="#TIMEOUT_MODE">TIMEOUT_MODE</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#SEP_TEST_CTRL">SEP_TEST_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC0</td><td><a href="#SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xD0</td><td><a href="#SEP_REGION_SIZE">SEP_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#SMU_GLOBAL_BASE_ADDR">SMU_GLOBAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110</td><td><a href="#SMU_REGION_SIZE">SMU_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x140</td><td><a href="#SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x150</td><td><a href="#SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x160</td><td><a href="#SEP_STRAPS">SEP_STRAPS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x170</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#SEP_SW_DEBUG">SEP_SW_DEBUG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x180</td><td><a href="#SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_1000. The NMI<br>interrupt is used for the WDT Bark interrupt.</td></tr>
+<tr><td>0x188</td><td><a href="#SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</a></td><td>RW</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The<br>NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+<tr><td>0x190</td><td><a href="#EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</a></td><td>RW</td><td>Per-stream external TRNG source selection for crypto subsystem entropy muxes.</td></tr>
+<tr><td>0x198</td><td><a href="#EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</a></td><td>RW</td><td>Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.</td></tr>
+<tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21:16</td><td>cg_hysteresis</td><td>RW</td><td>0x1F</td><td>Clockgate hysteresis</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>entropy_fifo_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the entropy fifo, using clk_gater, default should be 0</td></tr>
+<tr><td>11</td><td>ot_hmac_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the opentitan hmac engine/ default is 0, out clock is always enabled</td></tr>
+<tr><td>10</td><td>filter_out_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the outbound filters, even using clkgater, but this enable has been inverted, so should use 0 as default</td></tr>
+<tr><td>9</td><td>alias_remap_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the alias remap, using clk_gater, default should be 0</td></tr>
+<tr><td>8</td><td>zeroer_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the zeroer, using clkgater, but this enable has been inverted, so shouould use 0 as default</td></tr>
+<tr><td>7</td><td>sram_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the sram, using clkgater, default should be 1</td></tr>
+<tr><td>6</td><td>filter_in_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the inbound filters, using clk_gater, default should be 0</td></tr>
+<tr><td>5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>fabric_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the fabric</td></tr>
+<tr><td>3</td><td>mailbox_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the mailbox,using clk_gater, default should be 0</td></tr>
+<tr><td>2</td><td>dma_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the DMA, using clk_gater, deafault should be 0</td></tr>
+<tr><td>1</td><td>pka_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the PKA, default should be 1, using clkgater, meaining out clock is enabled</td></tr>
+<tr><td>0</td><td>spacc_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the SPAcc/ Default is 1, this is using a static clkgater, meaning out clock is enabled by default</td></tr>
+</table>
+<h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rc</td><td>R</td><td>-</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset</td></tr>
+</table>
+<h3 id="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>outbound_mailbox_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo outbound mailbox</td></tr>
+<tr><td>8</td><td>inbound_mailbox_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo inbound mailbox</td></tr>
+<tr><td>7</td><td>entropy_write_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo write axil</td></tr>
+<tr><td>6</td><td>entropy_read_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo read axil</td></tr>
+<tr><td>5</td><td>filter_out_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
+<tr><td>4</td><td>alias_remap_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
+<tr><td>3</td><td>dma_data_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
+<tr><td>2</td><td>spacc_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for spacc axi</td></tr>
+<tr><td>1</td><td>sys_in_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for sys in axi</td></tr>
+<tr><td>0</td><td>troot_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for troot axi</td></tr>
+</table>
+<h3 id="PKA_CTRL">PKA_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>pka_noise_src_valid</td><td>RW</td><td>0x0</td><td>pka_noise_src_valid</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>pka_noise_src</td><td>RW</td><td>0x0</td><td>pka_noise_src</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>pka_dpa_disable</td><td>RW</td><td>0x1</td><td>pka_dpa_disable</td></tr>
+</table>
+<h3 id="SPACC_CTRL">SPACC_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>spacc_dpa_rand_vld</td><td>RW</td><td>0x0</td><td>spacc_dpa_rand_vld</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>spacc_dpa_rand</td><td>RW</td><td>0x0</td><td>spacc_dpa_rand</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>spacc_dpa_disable</td><td>RW</td><td>0x1</td><td>spacc_dpa_disable</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_TROOT">TIMEOUT_COUNT_TROOT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_SPACC">TIMEOUT_COUNT_SPACC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+</table>
+<h3 id="TIMEOUT_ENABLE">TIMEOUT_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>outbound_mailbox_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for outbound mailbox</td></tr>
+<tr><td>8</td><td>inbound_mailbox_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for inbound mailbox</td></tr>
+<tr><td>7</td><td>entropy_write_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for entropy write</td></tr>
+<tr><td>6</td><td>entropy_read_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for entropy read</td></tr>
+<tr><td>5</td><td>filter_out_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for output filter</td></tr>
+<tr><td>4</td><td>alias_remap_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for input alias remap</td></tr>
+<tr><td>3</td><td>dma_data_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for dma data axi</td></tr>
+<tr><td>2</td><td>spacc_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for spacc axi</td></tr>
+<tr><td>1</td><td>sys_in_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for sys in axi</td></tr>
+<tr><td>0</td><td>troot_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for troot axi</td></tr>
+</table>
+<h3 id="TIMEOUT_CLEAR">TIMEOUT_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>outbound_mailbox_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for outbound mailbox</td></tr>
+<tr><td>8</td><td>inbound_mailbox_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for inbound mailbox</td></tr>
+<tr><td>7</td><td>entropy_write_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for entropy write</td></tr>
+<tr><td>6</td><td>entropy_read_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for entropy read</td></tr>
+<tr><td>5</td><td>filter_out_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for output filter</td></tr>
+<tr><td>4</td><td>alias_remap_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for input alias remap</td></tr>
+<tr><td>3</td><td>dma_data_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for dma data axi</td></tr>
+<tr><td>2</td><td>spacc_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for spacc axi</td></tr>
+<tr><td>1</td><td>sys_in_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for sys in axi</td></tr>
+<tr><td>0</td><td>troot_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for troot axi</td></tr>
+</table>
+<h3 id="TIMEOUT_MODE">TIMEOUT_MODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:18</td><td>outbound_mailbox_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for outbound mailbox</td></tr>
+<tr><td>17:16</td><td>inbound_mailbox_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for inbound mailbox</td></tr>
+<tr><td>15:14</td><td>entropy_write_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for entropy write</td></tr>
+<tr><td>13:12</td><td>entropy_read_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for entropy read</td></tr>
+<tr><td>11:10</td><td>filter_out_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for output filter</td></tr>
+<tr><td>9:8</td><td>alias_remap_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for input alias remap</td></tr>
+<tr><td>7:6</td><td>dma_data_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for dma data axi</td></tr>
+<tr><td>5:4</td><td>spacc_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for spacc axi</td></tr>
+<tr><td>3:2</td><td>sys_in_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for sys in axi</td></tr>
+<tr><td>1:0</td><td>troot_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for troot axi</td></tr>
+</table>
+<h3 id="SEP_TEST_CTRL">SEP_TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>fast_spi_en</td><td>R</td><td>0x0</td><td>Fast SPI Enable</td></tr>
+<tr><td>30</td><td>fast_iccm_en</td><td>R</td><td>0x0</td><td>Fast ICCM Enable</td></tr>
+<tr><td>29</td><td>fast_dccm_en</td><td>R</td><td>0x0</td><td>Fast DCCM Enable</td></tr>
+<tr><td>28</td><td>fast_sram_en</td><td>R</td><td>0x0</td><td>Fast SRAM Enable</td></tr>
+<tr><td>27</td><td>fast_pka_en</td><td>R</td><td>0x0</td><td>Fast PKA Enable</td></tr>
+<tr><td>26</td><td>fast_spacc_en</td><td>R</td><td>0x0</td><td>Fast SPAcc Enable</td></tr>
+<tr><td>25</td><td>sep_standalone</td><td>R</td><td>0x0</td><td>SEP is standalone (not part of eg SMU)</td></tr>
+<tr><td>24:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xC0000000</td><td>-</td></tr>
+</table>
+<h3 id="SEP_REGION_SIZE">SEP_REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>-</td></tr>
+</table>
+<h3 id="SMU_GLOBAL_BASE_ADDR">SMU_GLOBAL_BASE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0x80000000</td><td>-</td></tr>
+</table>
+<h3 id="SMU_REGION_SIZE">SMU_REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x40000000</td><td>-</td></tr>
+</table>
+<h3 id="SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>smc_fuse_sense_done</td><td>R</td><td>0x0</td><td>This bit indicates when SMC&#x27;s fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.<br>When this is 1, it is safe to send requests to the SMC.</td></tr>
+</table>
+<h3 id="SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>sep_fuse_sense_done</td><td>R</td><td>0x0</td><td>This reg is used to indicate the fuse sense status of SEP.</td></tr>
+</table>
+<h3 id="SEP_STRAPS">SEP_STRAPS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>bypass_mem_repair</td><td>R</td><td>0x0</td><td>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</td></tr>
+<tr><td>0</td><td>test_en</td><td>R</td><td>0x0</td><td>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</td></tr>
+</table>
+<h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>bank_instance</td><td>RW</td><td>0x0</td><td>Chiplet instance ID</td></tr>
+<tr><td>3:0</td><td>bank_chip</td><td>RW</td><td>0x0</td><td>Chiplet type ID</td></tr>
+</table>
+<h3 id="SEP_SW_DEBUG">SEP_SW_DEBUG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>sep_sw_debug</td><td>RW</td><td>0x0</td><td>software writtable debug information. This reg is routed to CLA</td></tr>
+</table>
+<h3 id="SEP_NMI_VEC">SEP_NMI_VEC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:1</td><td>nmi_vec</td><td>RW</td><td>0x60000080</td><td>NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).<br>Address where CPU jumps on Non-Maskable Interrupt. This is used for the<br>WDT Bark interrupt.</td></tr>
+<tr><td>0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved, bit 0 is always 0 (aligned)</td></tr>
+</table>
+<h3 id="SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+</table>
+<h3 id="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>sel</td><td>RW</td><td>0x3</td><td>TRNG source select per stream. Bit N selects the source for stream N.<br>0 = internal DRBG output, 1 = external TRNG (default).</td></tr>
+</table>
+<h3 id="EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
+</table>
+<h3 id="SEP_VERSION_ID">SEP_VERSION_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>version_id</td><td>R</td><td>0xDEADBEEF</td><td>Version ID for the CPU</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: el2_pic</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>meipl[32]</strong>: 32 registers, base 0x4, stride 0x4</li>
+<li><strong>meip[2]</strong>: 2 registers, base 0x1000, stride 0x4</li>
+<li><strong>meie[32]</strong>: 32 registers, base 0x2004, stride 0x4</li>
+<li><strong>meigwctrl[32]</strong>: 32 registers, base 0x4004, stride 0x4</li>
+<li><strong>meigwclr[32]</strong>: 32 registers, base 0x5004, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x4 - 0x80</td><td><a href="#meipl_32_">meipl[32]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
+<tr><td>0x1000 - 0x1004</td><td><a href="#meip_2_">meip[2]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
+<tr><td>0x2004 - 0x2080</td><td><a href="#meie_32_">meie[32]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
+<tr><td>0x3000</td><td><a href="#mpiccfg">mpiccfg</a></td><td>RW</td><td>PIC Configuration Register. Used to select the operational parameters of the PIC.</td></tr>
+<tr><td>0x4004 - 0x4080</td><td><a href="#meigwctrl_32_">meigwctrl[32]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
+<tr><td>0x5004 - 0x5080</td><td><a href="#meigwclr_32_">meigwclr[32]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="meipl_32_">meipl[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>intpriority</td><td>RW</td><td>0x0</td><td>External interrupt priority level:<br>RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)<br>Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</td></tr>
+</table>
+<h3 id="meip_2_">meip[2]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>intpend</td><td>R</td><td>0x0</td><td>External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.<br>0: Interrupt not pending<br>1: Interrupt pending</td></tr>
+</table>
+<h3 id="meie_32_">meie[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>inten</td><td>RW</td><td>0x0</td><td>External interrupt enable:<br>0: Interrupt disabled<br>1: Interrupt enabled</td></tr>
+</table>
+<h3 id="mpiccfg">mpiccfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>priord</td><td>RW</td><td>0x0</td><td>Priority order:<br>0: RISC-V standard compliant priority order (0=lowest to 15=highest)<br>1: Reverse priority order (15=lowest to 0=highest)</td></tr>
+</table>
+<h3 id="meigwctrl_32_">meigwctrl[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>irq_type</td><td>RW</td><td>0x0</td><td>External interrupt type:<br>0: Level-triggered interrupt<br>1: Edge-triggered interrupt</td></tr>
+<tr><td>0</td><td>polarity</td><td>RW</td><td>0x0</td><td>External interrupt polarity:<br>0: Active-high interrupt<br>1: Active-low interrupt</td></tr>
+</table>
+<h3 id="meigwclr_32_">meigwclr[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>clear</td><td>W</td><td>0x0</td><td>Write any value to clear the interrupt pending bit in the gateway.<br>This register is write-only; reads return 0.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">2.2. Reset and Lifecycle</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_reset_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#SW_RESET_N">SW_RESET_N</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="SW_RESET_N">SW_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>kmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>KMAC reset (0=assert, 1=release)</td></tr>
+<tr><td>3</td><td>hmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>HMAC reset (0=assert, 1=release)</td></tr>
+<tr><td>2</td><td>aes_sw_rst_n</td><td>RW</td><td>0x1</td><td>AES reset (0=assert, 1=release)</td></tr>
+<tr><td>1</td><td>otbn_sw_rst_n</td><td>RW</td><td>0x1</td><td>OTBN reset (0=assert, 1=release)</td></tr>
+<tr><td>0</td><td>km_sw_rst_n</td><td>RW</td><td>0x0</td><td>KM reset (0=assert, 1=release)</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_lifecycle_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#FEAT_CTRL">FEAT_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#DEMOTE_1">DEMOTE_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#DEMOTE_2">DEMOTE_2</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="FEAT_CTRL">FEAT_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>feature_control</td><td>R</td><td>0x0</td><td>Lifecycle feature control bits,</td></tr>
+</table>
+<h3 id="DEMOTE_1">DEMOTE_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+</table>
+<h3 id="DEMOTE_2">DEMOTE_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">2.3. Scratch and eFuse</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_scratch</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x8</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x38</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="SCRATCH_8_">SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_efuse_map</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#SiP_DIS">SiP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set, the corresponding feature is disabled</td></tr>
+<tr><td>0x1C</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set, the corresponding feature is disabled</td></tr>
+<tr><td>0x24</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x64</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x84</td><td><a href="#CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#BL1_VERSION">BL1_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xA8</td><td><a href="#BL2_VERSION">BL2_VERSION</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#CHIPLET_UID">CHIPLET_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xE8</td><td><a href="#SiP_PUBK_DIGEST">SiP_PUBK_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#SiP_UID">SiP_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x128</td><td><a href="#SYS_PUBK_DIGEST">SYS_PUBK_DIGEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x148</td><td><a href="#SYS_UID">SYS_UID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x168</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x16C</td><td><a href="#SEP_ROM_CTRL">SEP_ROM_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x170</td><td><a href="#SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x174</td><td><a href="#SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x17C</td><td><a href="#SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x180</td><td><a href="#SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x184</td><td><a href="#SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x188</td><td><a href="#SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18C</td><td><a href="#SPI_PHY_MISC">SPI_PHY_MISC</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x190</td><td><a href="#SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x194</td><td><a href="#PUBLIC_KEY_0">PUBLIC_KEY_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1B4</td><td><a href="#PUBLIC_KEY_1">PUBLIC_KEY_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1D4</td><td><a href="#RESERVED_0">RESERVED_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x214</td><td><a href="#RESERVED_1">RESERVED_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x254</td><td><a href="#RESERVED_2">RESERVED_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x294</td><td><a href="#RESERVED_3">RESERVED_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2D4</td><td><a href="#RESERVED_4">RESERVED_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x314</td><td><a href="#RESERVED_5">RESERVED_5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x354</td><td><a href="#RESERVED_6">RESERVED_6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x394</td><td><a href="#RESERVED_7">RESERVED_7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3D4</td><td><a href="#RESERVED_LAST_256">RESERVED_LAST_256</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3F4</td><td><a href="#RESERVED_LAST_64">RESERVED_LAST_64</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3FC</td><td><a href="#RESERVED_LAST_32">RESERVED_LAST_32</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="LOCKS">LOCKS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>RESERVED_LAST_32_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_32_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>62</td><td>RESERVED_LAST_32_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_32_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>61</td><td>RESERVED_LAST_64_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_64_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>60</td><td>RESERVED_LAST_64_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_64_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>59</td><td>RESERVED_LAST_256_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_256_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>58</td><td>RESERVED_LAST_256_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_LAST_256_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>57</td><td>RESERVED_7_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>56</td><td>RESERVED_7_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>55</td><td>RESERVED_6_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>54</td><td>RESERVED_6_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>53</td><td>RESERVED_5_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>52</td><td>RESERVED_5_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>51</td><td>RESERVED_4_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>50</td><td>RESERVED_4_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>49</td><td>RESERVED_3_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>48</td><td>RESERVED_3_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>47</td><td>RESERVED_2_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>46</td><td>RESERVED_2_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>45</td><td>RESERVED_1_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>44</td><td>RESERVED_1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>43</td><td>RESERVED_0_READ_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>42</td><td>RESERVED_0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>RESERVED_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>41</td><td>SEP_PUBLIC_KEY_HASH_1_READ_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>40</td><td>SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>39</td><td>SEP_PUBLIC_KEY_HASH_0_READ_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>38</td><td>SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>SEP_PUBLIC_KEY_HASH_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>37</td><td>SEP_SPI_CTRL_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_spi_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>36</td><td>SEP_SPI_CTRL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_spi_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>35</td><td>SEP_ROM_CTRL_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_rom_ctrl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>34</td><td>SEP_ROM_CTRL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_rom_ctrl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>32</td><td>STATUS_RPT_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>31</td><td>SYS_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>30</td><td>SYS_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>29</td><td>SYS_PUBK_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>28</td><td>SYS_PUBK_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>27</td><td>SiP_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>26</td><td>SiP_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>25</td><td>SiP_PUBK_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>24</td><td>SiP_PUBK_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>23</td><td>CHIPLET_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>22</td><td>CHIPLET_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>21</td><td>BL2_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>20</td><td>BL2_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>19</td><td>BL1_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>18</td><td>BL1_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>17</td><td>CHIPLET_PUBK_REVOKE_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_sel_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>16</td><td>CHIPLET_PUBK_REVOKE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_sel_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>15</td><td>CLASS_KEY_READ_LOCK</td><td>RW</td><td>0x0</td><td>class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>14</td><td>CLASS_KEY_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>13</td><td>RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>12</td><td>RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>11</td><td>RMA_SIP_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>10</td><td>RMA_SIP_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>9</td><td>SYS_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>8</td><td>SYS_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>7</td><td>SiP_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>6</td><td>SiP_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>5</td><td>TRANSIENT_RMA_EN_READ_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>4</td><td>TRANSIENT_RMA_EN_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>3</td><td>SBOOT_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>2</td><td>SBOOT_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>1</td><td>LC_STATE_READ_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>0</td><td>LC_STATE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+</table>
+<h3 id="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF0</td><td>Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}</td></tr>
+</table>
+<h3 id="SBOOT_DIS">SBOOT_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>disable_secure_boot</td><td>R</td><td>0x0</td><td>Chicken bit to disable secure boot in SEP ROM.</td></tr>
+</table>
+<h3 id="TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>0</td><td>transient_rma_en</td><td>R</td><td>0x0</td><td>When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg</td></tr>
+</table>
+<h3 id="SiP_DIS">SiP_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>47:37</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>36</td><td>ap_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.</td></tr>
+<tr><td>35</td><td>ap_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.</td></tr>
+<tr><td>34</td><td>sep_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.</td></tr>
+<tr><td>33</td><td>sep_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.</td></tr>
+<tr><td>32</td><td>fuse_test</td><td>RW</td><td>0x0</td><td>When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.</td></tr>
+<tr><td>31:5</td><td>debug_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.</td></tr>
+<tr><td>3</td><td>ap_trace</td><td>RW</td><td>0x0</td><td>When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.</td></tr>
+<tr><td>2</td><td>ap_debug</td><td>RW</td><td>0x0</td><td>When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.</td></tr>
+<tr><td>1</td><td>soc_debug</td><td>RW</td><td>0x0</td><td>Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.</td></tr>
+</table>
+<h3 id="SYS_DIS">SYS_DIS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>47:37</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>36</td><td>ap_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for non-SEP logic; When false, diagnostic tests are enabled for non-SEP logic.</td></tr>
+<tr><td>35</td><td>ap_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for non-SEP logic; When false, screening tests are enabled for non-SEP logic.</td></tr>
+<tr><td>34</td><td>sep_dtest</td><td>RW</td><td>0x0</td><td>When true, diagnostic tests are disabled for SEP; When false, diagnostic tests are enabled for SEP.</td></tr>
+<tr><td>33</td><td>sep_stest</td><td>RW</td><td>0x0</td><td>When true, screening tests are disabled for SEP; When false, screening tests are enabled for SEP.</td></tr>
+<tr><td>32</td><td>fuse_test</td><td>RW</td><td>0x0</td><td>When true, fuse controller and fuse block interface are non-scannable; When false, fuse controller and fuse block interface are scannable.</td></tr>
+<tr><td>31:5</td><td>debug_reserved</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>When true, external debug traffic is forwarded to downstream chiplets via outbound JTAG PTAP, is disabled; When false, external debug traffic is not forwarded to outbound JTAG PTAP.</td></tr>
+<tr><td>3</td><td>ap_trace</td><td>RW</td><td>0x0</td><td>When true, trace logic across the chiplet, e.g. Ascalon cluster, is disabled; When false, trace logic is enabled.</td></tr>
+<tr><td>2</td><td>ap_debug</td><td>RW</td><td>0x0</td><td>When true, debug module across the chiplet, e.g. Ascalon cluster, is disabled; When false, debug logic is enabled.</td></tr>
+<tr><td>1</td><td>soc_debug</td><td>RW</td><td>0x0</td><td>Silicon overall debug control; When true, external traffics can only get access to silicon’s peripheral states, but not internal state. Scan dump is disabled; When false, external traffics can get access to silicon’s internal states. Scan dump is enabled.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP’s overall debug control; When true, external traffics need to go through SEP inbound filter to get access to SEP’s internal states, scan dump of SEP is disabled; When false, SEP inbound traffic filter let all transactions pass, scan dump of SEP is enabled.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>token_digest</td><td>R</td><td>0x0</td><td>Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field</td></tr>
+</table>
+<h3 id="CLASS_KEY">CLASS_KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key</td><td>R</td><td>0x0</td><td>Class key that could be used for FW encryption/decryption</td></tr>
+</table>
+<h3 id="CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>select</td><td>R</td><td>0x0</td><td>Revoke public key used to verify BL1/ SEP ROM Should reject using the corresponding public key when associated bit is set to 1</td></tr>
+</table>
+<h3 id="BL1_VERSION">BL1_VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL1 version that can be loaded by SEPROM</td></tr>
+</table>
+<h3 id="BL2_VERSION">BL2_VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>version</td><td>R</td><td>0x0</td><td>Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.</td></tr>
+</table>
+<h3 id="CHIPLET_UID">CHIPLET_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>Silicon creator&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="SiP_PUBK_DIGEST">SiP_PUBK_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_digest</td><td>R</td><td>0x0</td><td>Hash digest of SiP owner&#x27;s root public key for secure boot.</td></tr>
+</table>
+<h3 id="SiP_UID">SiP_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>SiP owner&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="SYS_PUBK_DIGEST">SYS_PUBK_DIGEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_digest</td><td>R</td><td>0x0</td><td>Hash digest of system owner&#x27;s root public key for secure boot.</td></tr>
+</table>
+<h3 id="SYS_UID">SYS_UID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>uid</td><td>R</td><td>0x0</td><td>System owner&#x27;s confidential device unique ID.</td></tr>
+</table>
+<h3 id="STATUS_RPT">STATUS_RPT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>1:0</td><td>rpt</td><td>R</td><td>0x0</td><td>BOOTROM report status based on the bit. 2&#x27;b00-&gt; bootrom report status based on GPIO; 2&#x27;b01-&gt;bootrom report status;otherwise, bootrom does not report status</td></tr>
+</table>
+<h3 id="SEP_ROM_CTRL">SEP_ROM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>reserved</td><td>R</td><td>0x0</td><td>reserved</td></tr>
+<tr><td>5:1</td><td>rom_swap_ctrl</td><td>R</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
+<tr><td>0</td><td>rom_endianness_ctrl</td><td>R</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
+</table>
+<h3 id="SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:19</td><td>spi_control_field_en_rsvd</td><td>R</td><td>0x0</td><td>Reserved 13 bits</td></tr>
+<tr><td>18:8</td><td>smu_pll_sysclk</td><td>R</td><td>0x0</td><td>11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0</td></tr>
+<tr><td>7:0</td><td>spi_control_field_en</td><td>R</td><td>0x0</td><td>8 bit which indicates the following 8 spi config regs are enabled or not. 1-&gt;enabled; 0-&gt;disabled</td></tr>
+</table>
+<h3 id="SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>discovery</td><td>R</td><td>0x0</td><td>spi discovery control reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dq_timing</td><td>R</td><td>0x0</td><td>spi phy dq timing reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dqs_timing</td><td>R</td><td>0x0</td><td>spi phy dqs timing reg</td></tr>
+</table>
+<h3 id="SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>gate_lpbk</td><td>R</td><td>0x0</td><td>spi phy gate lpbk ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dll_slave</td><td>R</td><td>0x0</td><td>spi phy dll slv ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dll_master</td><td>R</td><td>0x0</td><td>spi phy dll mst ctrl reg</td></tr>
+</table>
+<h3 id="SPI_PHY_MISC">SPI_PHY_MISC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>misc</td><td>R</td><td>0x0</td><td>spi init phy misc</td></tr>
+</table>
+<h3 id="SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>rb_valid_time</td><td>R</td><td>0x0</td><td>spi init rb valid time</td></tr>
+</table>
+<h3 id="PUBLIC_KEY_0">PUBLIC_KEY_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Extra public key hash digest</td></tr>
+</table>
+<h3 id="PUBLIC_KEY_1">PUBLIC_KEY_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Extra public key hash digest</td></tr>
+</table>
+<h3 id="RESERVED_0">RESERVED_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_1">RESERVED_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_2">RESERVED_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_3">RESERVED_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_4">RESERVED_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_5">RESERVED_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_6">RESERVED_6</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_7">RESERVED_7</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>511:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_256">RESERVED_LAST_256</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_64">RESERVED_LAST_64</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+<h3 id="RESERVED_LAST_32">RESERVED_LAST_32</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved region for future use</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: efuse_mmr</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+<li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x40, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x40 - 0x5C</td><td><a href="#SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
+<tr><td>0x60</td><td><a href="#TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
+<tr><td>0x64</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x68</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</td></tr>
+</table>
+<h3 id="TOKEN_EOP">TOKEN_EOP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">2.4. Timers</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: aon_timer</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#WKUP_THOLD_HI">WKUP_THOLD_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#WKUP_THOLD_LO">WKUP_THOLD_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#WKUP_COUNT_HI">WKUP_COUNT_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#WKUP_COUNT_LO">WKUP_COUNT_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#WDOG_REGWEN">WDOG_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#WDOG_CTRL">WDOG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#WDOG_BARK_THOLD">WDOG_BARK_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#WDOG_BITE_THOLD">WDOG_BITE_THOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#WDOG_COUNT">WDOG_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="WKUP_CTRL">WKUP_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:1</td><td>PRESCALER</td><td>RW</td><td>0x0</td><td>Pre-scaler value for wakeup timer count</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x0</td><td>When set to 1, the wakeup timer will count</td></tr>
+</table>
+<h3 id="WKUP_THOLD_HI">WKUP_THOLD_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>THRESHOLD_HI</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, top 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_THOLD_LO">WKUP_THOLD_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>THRESHOLD_LO</td><td>RW</td><td>0x0</td><td>The count at which a wakeup interrupt should be generated, bottom 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_COUNT_HI">WKUP_COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_HI</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, top 32 bits.</td></tr>
+</table>
+<h3 id="WKUP_COUNT_LO">WKUP_COUNT_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT_LO</td><td>RW</td><td>0x0</td><td>The current wakeup counter value, bottom 32 bits.</td></tr>
+</table>
+<h3 id="WDOG_REGWEN">WDOG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW</td><td>0x1</td><td>Once cleared, the watchdog configuration will be locked until the next reset.</td></tr>
+</table>
+<h3 id="WDOG_CTRL">WDOG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>PAUSE_IN_SLEEP</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will not count during sleep.</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x0</td><td>When set to 1, the watchdog timer will count.</td></tr>
+</table>
+<h3 id="WDOG_BARK_THOLD">WDOG_BARK_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>THRESHOLD</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bark interrupt should be generated.</td></tr>
+</table>
+<h3 id="WDOG_BITE_THOLD">WDOG_BITE_THOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>THRESHOLD</td><td>RW</td><td>0x0</td><td>The count at which a watchdog bite reset should be generated.</td></tr>
+</table>
+<h3 id="WDOG_COUNT">WDOG_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNT</td><td>RW</td><td>0x0</td><td>The current watchdog counter value.</td></tr>
+</table>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WDOG_TIMER_BARK</td><td>RW</td><td>0x0</td><td>Raised if the watchdog timer has hit the bark threshold.</td></tr>
+<tr><td>0</td><td>WKUP_TIMER_EXPIRED</td><td>RW</td><td>0x0</td><td>Raised if the wakeup timer has hit the specified threshold.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WDOG_TIMER_BARK</td><td>W</td><td>-</td><td>Write 1 to force wdog_timer_bark interrupt.</td></tr>
+<tr><td>0</td><td>WKUP_TIMER_EXPIRED</td><td>W</td><td>-</td><td>Write 1 to force wkup_timer_expired interrupt.</td></tr>
+</table>
+<h3 id="WKUP_CAUSE">WKUP_CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>CAUSE</td><td>RW</td><td>0x0</td><td>AON timer requested wakeup, write 0 to clear.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">2.5. Cryptographic Accelerators</a></h4>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: aes</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0_0[8]</strong>: 8 registers, base 0x4, stride 0x4</li>
+<li><strong>KEY_SHARE1_0[8]</strong>: 8 registers, base 0x24, stride 0x4</li>
+<li><strong>IV_0[4]</strong>: 4 registers, base 0x44, stride 0x4</li>
+<li><strong>DATA_IN_0[4]</strong>: 4 registers, base 0x54, stride 0x4</li>
+<li><strong>DATA_OUT_0[4]</strong>: 4 registers, base 0x64, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4 - 0x20</td><td><a href="#KEY_SHARE0_0_8_">KEY_SHARE0_0[8]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24 - 0x40</td><td><a href="#KEY_SHARE1_0_8_">KEY_SHARE1_0[8]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x44 - 0x50</td><td><a href="#IV_0_4_">IV_0[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54 - 0x60</td><td><a href="#DATA_IN_0_4_">DATA_IN_0[4]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x64 - 0x70</td><td><a href="#DATA_OUT_0_4_">DATA_OUT_0[4]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x74</td><td><a href="#CTRL_SHADOWED">CTRL_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x78</td><td><a href="#CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7C</td><td><a href="#CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#TRIGGER">TRIGGER</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x84</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_CTRL_UPDATE_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="KEY_SHARE0_0_8_">KEY_SHARE0_0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_SHARE0_0</td><td>W</td><td>0x0</td><td>Initial Key Share 0</td></tr>
+</table>
+<h3 id="KEY_SHARE1_0_8_">KEY_SHARE1_0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_SHARE1_0</td><td>W</td><td>0x0</td><td>Initial Key Share 1</td></tr>
+</table>
+<h3 id="IV_0_4_">IV_0[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>IV_0</td><td>RW</td><td>0x0</td><td>Initialization Vector</td></tr>
+</table>
+<h3 id="DATA_IN_0_4_">DATA_IN_0[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_IN_0</td><td>W</td><td>0x0</td><td>Input Data</td></tr>
+</table>
+<h3 id="DATA_OUT_0_4_">DATA_OUT_0[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_OUT_0</td><td>R</td><td>0x0</td><td>Output Data</td></tr>
+</table>
+<h3 id="CTRL_SHADOWED">CTRL_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).<br>In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.<br>This is the most efficient mode to operate in.<br>Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.<br>In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.<br>This mode is useful if software needs full control over the AES unit.</td></tr>
+<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.<br>Invalid input values, i.e., values with multiple bits set and value 3&#x27;b000 are mapped to the highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
+<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
+<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set, value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3&#x27;b100).</td></tr>
+<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher mode.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to AES_NONE (6&#x27;b11_1111).</td></tr>
+<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES unit.<br>Invalid input values, i.e., values with multiple bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
+</table>
+<h3 id="CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when performing SCA.<br>To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.<br>In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.</td></tr>
+<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).</td></tr>
+</table>
+<h3 id="CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
+</table>
+<h3 id="TRIGGER">TRIGGER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).<br>If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.</td></tr>
+<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).</td></tr>
+<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).</td></tr>
+<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).<br>This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit (0).<br>A fatal fault has occurred and the AES unit needs to be reset (1).<br>Examples for fatal faults include<br>i) storage errors in the Control Register,<br>ii) if any internal FSM enters an invalid state,<br>iii) if any sparsely encoded signal takes on an invalid value,<br>iv) errors in the internal round counter,<br>v) escalations triggered by the life cycle controller, and<br>vi) fatal integrity failures on the TL-UL bus.</td></tr>
+<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>AES operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.<br>If the present values in the DATA_IN registers have not yet been loaded into the<br>module this flag is `0` (not ready).</td></tr>
+<tr><td>3</td><td>OUTPUT_VALID</td><td>R</td><td>0x0</td><td>The AES unit has no valid output (0) or has valid output data (1).</td></tr>
+<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).<br>It has been overwritten by the AES unit before the processor could fully read it.<br>Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.<br>The primary use of this flag is for design verification.<br>This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
+<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1) because there is previous<br>output data that must be read by the processor before the AES unit can<br>overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).</td></tr>
+<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).<br>This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.<br>This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.</td></tr>
+</table>
+<h3 id="CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.<br>For all other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all other values different from 5&#x27;b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5&#x27;b1_0000.</td></tr>
+<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).<br>In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6&#x27;b00_0001).</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: hmac</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_0[32]</strong>: 32 registers, base 0x24, stride 0x4</li>
+<li><strong>DIGEST_0[16]</strong>: 16 registers, base 0xA4, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#CMD">CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#WIPE_SECRET">WIPE_SECRET</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x24 - 0xA0</td><td><a href="#KEY_0_32_">KEY_0[32]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xA4 - 0xE0</td><td><a href="#DIGEST_0_16_">DIGEST_0[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE4</td><td><a href="#MSG_LENGTH_LOWER">MSG_LENGTH_LOWER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE8</td><td><a href="#MSG_LENGTH_UPPER">MSG_LENGTH_UPPER</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>HMAC_ERR</td><td>RW</td><td>0x0</td><td>HMAC error has occurred. ERR_CODE register shows which error occurred.</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>R</td><td>0x0</td><td>The message FIFO is empty.<br>This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:<br>i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.<br>ii) Software has not yet written the Process or Stop command to finish the hashing operation.<br>For the interrupt to be raised, the message FIFO must also have been full previously.<br>Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.</td></tr>
+<tr><td>0</td><td>HMAC_DONE</td><td>RW</td><td>0x0</td><td>HMAC/SHA-2 has completed.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>HMAC_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.hmac_err is set.</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.fifo_empty is set.</td></tr>
+<tr><td>0</td><td>HMAC_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.hmac_done is set.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>HMAC_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.hmac_err to 1.</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.fifo_empty to 1.</td></tr>
+<tr><td>0</td><td>HMAC_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.hmac_done to 1.</td></tr>
+</table>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="CFG">CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14:9</td><td>KEY_LENGTH</td><td>RW</td><td>0x20</td><td>Key length configuration.<br><br>This is a 6-bit one-hot encoded field to configure the key length for HMAC.<br><br>The HMAC can be programmed with the following key lengths: 128-bit, 256-bit, 384-bit, 512-bit and 1024-bit.<br>But the HMAC supports any arbitrary key length: the software should configure the HMAC with the next largest supported key length and concatenate zeros to reach the programmed key length.<br>The position of these zeros depends on the endianness, thus on the programmed [`CFG.key_swap`](registers.md#cfg--key_swap).<br>For example, for an 80-bit key, HMAC should be configured with an 128-bit key length, fed with the 80-bit key and with 48 zero-bits.<br><br>Note that the key length cannot be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to 512-bit for SHA-2 256.<br>The value of this register is irrelevant when only SHA-2 (not keyed HMAC) is configured.<br>However, for HMAC mode (`hmac_en == 1`), when HMAC is triggered to start while !!KEY_LENGTH holds `Key_None` or !!KEY_LENGTH holds `Key_1024` for !!DIGEST_SIZE = `SHA2_256`, starting is blocked and an error is signalled to SW.</td></tr>
+<tr><td>8:5</td><td>DIGEST_SIZE</td><td>RW</td><td>0x8</td><td>Digest size configuration.<br><br>This is a 4-bit one-hot encoded field to select digest size for either HMAC or SHA-2.<br>Invalid/unsupported values, i.e., values that don&#x27;t correspond to SHA2_256, SHA2_384, or SHA2_512, are mapped to SHA2_None.</td></tr>
+<tr><td>4</td><td>KEY_SWAP</td><td>RW</td><td>0x0</td><td>Key register byte swap (deprecated: KEY path is for DV only; production uses key manager sideload).<br><br>If 1 the endianness of each KEY_* register is swapped. Default value (value 0) is big endian representation of the KEY_* CSRs.</td></tr>
+<tr><td>3</td><td>DIGEST_SWAP</td><td>RW</td><td>0x0</td><td>Digest register byte swap.<br><br>If 1 the value in each digest output register is converted to big-endian byte order.<br>This setting does not affect the order of the digest output registers, !!DIGEST_0 still contains the first 4 bytes of the digest.</td></tr>
+<tr><td>2</td><td>ENDIAN_SWAP</td><td>RW</td><td>0x0</td><td>Endian swap.<br><br>If 0, each value will be added to the message in little-endian byte order.<br>The value is written to MSG_FIFO same to the SW writes.<br>If 1, then each individual multi-byte value, regardless of its alignment, written to !!MSG_FIFO will be added to the message in big-endian byte order.<br>A message written to !!MSG_FIFO one byte at a time will not be affected by this setting.<br>From a hardware perspective byte swaps are performed on a TL-UL word granularity.</td></tr>
+<tr><td>1</td><td>SHA_EN</td><td>RW</td><td>-</td><td>SHA-2 enable.<br><br>If 0, the SHA engine will not initiate compression, this is used to stop operation of the SHA-2 engine until configuration has been done.<br>When the SHA-2 engine is disabled the digest is cleared.</td></tr>
+<tr><td>0</td><td>HMAC_EN</td><td>RW</td><td>-</td><td>HMAC datapath enable.<br><br>If this bit is 1, HMAC operates when `hash_start` toggles.</td></tr>
+</table>
+<h3 id="CMD">CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>HASH_CONTINUE</td><td>W</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.</td></tr>
+<tr><td>2</td><td>HASH_STOP</td><td>W</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.<br>The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.<br>Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.</td></tr>
+<tr><td>1</td><td>HASH_PROCESS</td><td>W</td><td>-</td><td>If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.</td></tr>
+<tr><td>0</td><td>HASH_START</td><td>W</td><td>-</td><td>If 1 is written into this field, SHA-2 or HMAC begins its operation.<br>CPU must configure relative information first, such as the digest size, secret key and the key length.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:4</td><td>FIFO_DEPTH</td><td>R</td><td>-</td><td>FIFO entry count.</td></tr>
+<tr><td>3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>FIFO_FULL</td><td>R</td><td>-</td><td>FIFO full. Data written to the FIFO whilst it is full will cause back-pressure on the interconnect</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>R</td><td>0x1</td><td>FIFO empty</td></tr>
+<tr><td>0</td><td>HMAC_IDLE</td><td>R</td><td>0x1</td><td>HMAC idle status.<br>When IDLE, the `DIGEST` and the `MSG_LENGTH_LOWER`/`MSG_LENGTH_UPPER` can be written to from SW which enables restoring context (to support context switching).</td></tr>
+</table>
+<h3 id="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ERR_CODE</td><td>R</td><td>0x0</td><td>If an error interrupt occurs, this register has information of error cause.<br>Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.</td></tr>
+</table>
+<h3 id="WIPE_SECRET">WIPE_SECRET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SECRET</td><td>W</td><td>-</td><td>Secret value</td></tr>
+</table>
+<h3 id="KEY_0_32_">KEY_0[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_0</td><td>W</td><td>-</td><td>32-bit chunk of 1024-bit secret key</td></tr>
+</table>
+<h3 id="DIGEST_0_16_">DIGEST_0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DIGEST_0</td><td>RW</td><td>-</td><td>32-bit chunk of 512-bit digest</td></tr>
+</table>
+<h3 id="MSG_LENGTH_LOWER">MSG_LENGTH_LOWER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>V</td><td>RW</td><td>-</td><td>Message Length [31:0]</td></tr>
+</table>
+<h3 id="MSG_LENGTH_UPPER">MSG_LENGTH_UPPER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>V</td><td>RW</td><td>-</td><td>Message Length [63:32]</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: kmac</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0_0[16]</strong>: 16 registers, base 0x30, stride 0x4</li>
+<li><strong>KEY_SHARE1_0[16]</strong>: 16 registers, base 0x70, stride 0x4</li>
+<li><strong>PREFIX_0[11]</strong>: 11 registers, base 0xB4, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#CFG_REGWEN">CFG_REGWEN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#CFG_SHADOWED">CFG_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#CMD">CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#ENTROPY_PERIOD">ENTROPY_PERIOD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#ENTROPY_REFRESH_HASH_CNT">ENTROPY_REFRESH_HASH_CNT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#ENTROPY_REFRESH_THRESHOLD_SHADOWED">ENTROPY_REFRESH_THRESHOLD_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#ENTROPY_SEED">ENTROPY_SEED</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x30 - 0x6C</td><td><a href="#KEY_SHARE0_0_16_">KEY_SHARE0_0[16]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x70 - 0xAC</td><td><a href="#KEY_SHARE1_0_16_">KEY_SHARE1_0[16]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#KEY_LEN">KEY_LEN</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB4 - 0xDC</td><td><a href="#PREFIX_0_11_">PREFIX_0[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE0</td><td><a href="#ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>KMAC_ERR</td><td>RW</td><td>0x0</td><td>KMAC/SHA3 error occurred. ERR_CODE register shows the details</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>R</td><td>0x0</td><td>The message FIFO is empty.<br>This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:<br>i) The KMAC block is not exercised by a hardware application interface.<br>ii) The SHA3 block is in the Absorb state.<br>iii) Software has not yet written the Process command to finish the absorption process.<br>For the interrupt to be raised, the message FIFO must also have been full previously.<br>Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.</td></tr>
+<tr><td>0</td><td>KMAC_DONE</td><td>RW</td><td>0x0</td><td>KMAC/SHA3 absorbing has been completed</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>KMAC_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.kmac_err is set.</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.fifo_empty is set.</td></tr>
+<tr><td>0</td><td>KMAC_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.kmac_done is set.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>KMAC_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.kmac_err to 1.</td></tr>
+<tr><td>1</td><td>FIFO_EMPTY</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.fifo_empty to 1.</td></tr>
+<tr><td>0</td><td>KMAC_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.kmac_done to 1.</td></tr>
+</table>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FATAL_FAULT_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_OPERATION_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="CFG_REGWEN">CFG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>EN</td><td>R</td><td>0x1</td><td>Configuration enable.</td></tr>
+</table>
+<h3 id="CFG_SHADOWED">CFG_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>EN_UNSUPPORTED_MODESTRENGTH</td><td>RW</td><td>0x0</td><td>Enable Unsupported Mode and Strength configs.<br><br>SW may set this field for KMAC to move forward with unsupported<br>Keccak Mode and Strength configurations, such as cSHAKE512.<br><br>If not set, KMAC won&#x27;t propagate the SW command (CmdStart) to the<br>rest of the blocks (AppIntf, KMAC Core, SHA3).</td></tr>
+<tr><td>25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>ENTROPY_READY</td><td>RW</td><td>0x0</td><td>Entropy Ready status.<br><br>Software sets this field to allow the entropy generator in KMAC to<br>fetch the entropy and run.</td></tr>
+<tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>MSG_MASK</td><td>RW</td><td>0x0</td><td>Message Masking with PRNG.<br><br>If 1, KMAC applies PRNG to the input messages to the Keccak module<br>when KMAC mode is on.</td></tr>
+<tr><td>19</td><td>ENTROPY_FAST_PROCESS</td><td>RW</td><td>0x0</td><td>Entropy Fast process mode.<br><br>If 1, entropy logic uses garbage data while not processing the KMAC<br>key block. It will re-use previous entropy value and will not<br>expand the entropy when it is consumed. Only it refreshes the<br>entropy while processing the secret key block. This process should<br>not be used if SCA resistance is required because it may cause side<br>channel leakage.</td></tr>
+<tr><td>18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17:16</td><td>ENTROPY_MODE</td><td>RW</td><td>0x0</td><td>Entropy Mode<br><br>Using this field, software can configure mode of operation of the internal pseudo-random number generator (PRNG).<br><br>Note that once software has configured a value different from `idle_mode` after reset, and set the !!CFG_SHADOWED.entropy_ready bit afterwards, the PRNG configuration cannot be changed anymore (unless an EDN request timeout occurs when running in EDN mode).<br>Further writes to this field will change the value received upon reading the register, but they will be ignored by the internal hardware.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>SIDELOAD</td><td>RW</td><td>0x1</td><td>Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.<br><br>If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC<br>operation. KMAC uses the sideloaded key regardless of this<br>configuration when KeyMgr initiates the KMAC operation for<br>Key Derivation Function (KDF).</td></tr>
+<tr><td>11:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>STATE_ENDIANNESS</td><td>RW</td><td>0x0</td><td>State Endianness.<br><br>If 1 then each individual word in the !!STATE output register<br>is converted to big-endian byte order.<br>The order of the words in relation to one another is not<br>changed.<br>This setting does not affect how the state is interpreted<br>during computation.</td></tr>
+<tr><td>8</td><td>MSG_ENDIANNESS</td><td>RW</td><td>0x0</td><td>Message Endianness.<br><br>If 1 then each individual multi-byte value, regardless of its<br>alignment, written to !!MSG_FIFO will be added to the message<br>in big-endian byte order.<br>If 0, each value will be added to the message in little-endian<br>byte order.<br>A message written to !!MSG_FIFO one byte at a time will not be<br>affected by this setting.<br>From a hardware perspective byte swaps are performed on a TL-UL<br>word granularity.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:4</td><td>MODE</td><td>RW</td><td>0x0</td><td>Keccak hashing mode.<br><br>This module supports SHA3 main hashing algorithm and the part<br>of its derived functions, SHAKE and cSHAKE with limitations.<br>This field is to select the mode.</td></tr>
+<tr><td>3:1</td><td>KSTRENGTH</td><td>RW</td><td>0x0</td><td>Hashing Strength<br><br>3 bit field to select the security strength of SHA3 hashing<br>engine. If mode field is set to SHAKE or cSHAKE, only 128 and<br>256 strength can be selected. Other value will result error<br>when hashing starts.</td></tr>
+<tr><td>0</td><td>KMAC_EN</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the incoming message is processed in KMAC<br>with the secret key.</td></tr>
+</table>
+<h3 id="CMD">CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>ERR_PROCESSED</td><td>W</td><td>-</td><td>When error occurs and one of the state machine stays at<br>Error handling state, SW may process the error based on<br>ERR_CODE, then let FSM back to the reset state</td></tr>
+<tr><td>9</td><td>HASH_CNT_CLR</td><td>W</td><td>-</td><td>Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.</td></tr>
+<tr><td>8</td><td>ENTROPY_REQ</td><td>W</td><td>-</td><td>Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.<br>This will also clear !!ENTROPY_REFRESH_HASH_CNT.<br><br>Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>CMD</td><td>W</td><td>-</td><td>Issue a command to the KMAC/SHA3 IP. The command is sparse<br>encoded. To prevent sw from writing multiple commands at once,<br>the field is defined as enum.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>KMAC operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>16</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the KMAC unit (0).<br>A fatal fault has occurred and the KMAC unit needs to be reset (1),<br>Examples for such faults include<br>i) TL-UL bus integrity fault<br>ii) storage errors in the shadow registers<br>iii) errors in the message, round, or key counter<br>iv) any internal FSM entering an invalid state<br>v) an error in the redundant lfsr</td></tr>
+<tr><td>15</td><td>FIFO_FULL</td><td>R</td><td>-</td><td>Message FIFO Full indicator</td></tr>
+<tr><td>14</td><td>FIFO_EMPTY</td><td>R</td><td>0x1</td><td>Message FIFO Empty indicator.<br><br>The FIFO&#x27;s `Pass` parameter is set to `1&#x27;b 1`. So, by default, if<br>the SHA engine is ready, the write data to FIFO just passes<br>through.<br><br>In this case, `fifo_depth` remains **0**. `fifo_empty`, however,<br>lowers the value to **0** for a cycle, then goes back to the empty<br>state, **1**.<br><br>See the &quot;Message FIFO&quot; section in the spec for the reason.</td></tr>
+<tr><td>13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:8</td><td>FIFO_DEPTH</td><td>R</td><td>-</td><td>Count of occupied entries in the message FIFO.</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>SHA3_SQUEEZE</td><td>R</td><td>-</td><td>If 1, SHA3 completes sponge absorbing stage.<br>In this stage, SW can manually run the hashing engine.</td></tr>
+<tr><td>1</td><td>SHA3_ABSORB</td><td>R</td><td>-</td><td>If 1, SHA3 is receiving message stream and processing it</td></tr>
+<tr><td>0</td><td>SHA3_IDLE</td><td>R</td><td>0x1</td><td>If 1, SHA3 hashing engine is in idle state.</td></tr>
+</table>
+<h3 id="ENTROPY_PERIOD">ENTROPY_PERIOD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>WAIT_TIMER</td><td>RW</td><td>0x0</td><td>EDN request wait timer.<br><br>The entropy module in KMAC waits up to this field in the timer pulse<br>after it sends request to EDN module. If the timer expires, the<br>entropy module moves to an error state and notifies to the system.<br><br>If there is a pending EDN request during wait timer update, then this update is delayed until the EDN request is complete.<br><br>If 0, the entropy module waits the EDN response always. If EDN does<br>not respond in this configuration, the software shall reset the IP.</td></tr>
+<tr><td>15:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>PRESCALER</td><td>RW</td><td>0x0</td><td>EDN Wait timer prescaler.<br><br>EDN Wait timer has 16 bit value. The timer value is increased when the timer pulse is generated. Timer pulse is raises when the number of the clock cycles hit this prescaler value.<br><br>The exact period of the timer pulse is unknown as the KMAC input clock may contain jitters.</td></tr>
+</table>
+<h3 id="ENTROPY_REFRESH_HASH_CNT">ENTROPY_REFRESH_HASH_CNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>HASH_CNT</td><td>R</td><td>0x0</td><td>Hash (KMAC) counter</td></tr>
+</table>
+<h3 id="ENTROPY_REFRESH_THRESHOLD_SHADOWED">ENTROPY_REFRESH_THRESHOLD_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>THRESHOLD</td><td>RW</td><td>0x0</td><td>Hash Threshold</td></tr>
+</table>
+<h3 id="ENTROPY_SEED">ENTROPY_SEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SEED</td><td>W</td><td>-</td><td>32-bit chunk of the entropy generator seed</td></tr>
+</table>
+<h3 id="KEY_SHARE0_0_16_">KEY_SHARE0_0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_0</td><td>W</td><td>-</td><td>32-bit chunk of up-to 512-bit Secret Key</td></tr>
+</table>
+<h3 id="KEY_SHARE1_0_16_">KEY_SHARE1_0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>KEY_0</td><td>W</td><td>-</td><td>32-bit chunk of up-to 512-bit Secret Key</td></tr>
+</table>
+<h3 id="KEY_LEN">KEY_LEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>LEN</td><td>W</td><td>0x0</td><td>Key length choice</td></tr>
+</table>
+<h3 id="PREFIX_0_11_">PREFIX_0[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PREFIX_0</td><td>RW</td><td>0x0</td><td>32-bit chunk of Encoded NS Prefix</td></tr>
+</table>
+<h3 id="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ERR_CODE</td><td>R</td><td>0x0</td><td>If the `kmac_err` interrupt occurs, this register has information on the error cause.<br>Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.<br>This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: otbn</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#CMD">CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#ERR_BITS">ERR_BITS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#FATAL_ALERT_CAUSE">FATAL_ALERT_CAUSE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#INSN_CNT">INSN_CNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#LOAD_CHECKSUM">LOAD_CHECKSUM</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>DONE</td><td>RW</td><td>0x0</td><td>OTBN has completed the operation.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.done is set.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.done to 1.</td></tr>
+</table>
+<h3 id="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>RECOV</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>FATAL</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<h3 id="CMD">CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CMD</td><td>W</td><td>0x0</td><td>The operation to perform.<br><br>| Value | Name          | Description |<br>|:------|:--------------|:------------|<br>| 0xd8  | EXECUTE       | Starts the execution of the program stored in the instruction memory, starting at address zero. |<br>| 0xc3  | SEC_WIPE_DMEM | Securely removes all contents from the data memory. |<br>| 0x1e  | SEC_WIPE_IMEM | Securely removes all contents from the instruction  memory. |</td></tr>
+</table>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>SOFTWARE_ERRS_FATAL</td><td>RW</td><td>0x0</td><td>Controls the reaction to software errors.<br><br>When set software errors produce fatal errors, rather than<br>recoverable errors.<br><br>Writes are ignored if OTBN is not idle.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>R</td><td>0x4</td><td>Indicates the current operational state OTBN is in.<br><br>All BUSY values represent an operation started by a write to the<br>!!CMD register.<br><br>| Value | Name               | Description                                           |<br>|:------|:-------------------|:------------------------------------------------------|<br>| 0x00  | IDLE               | OTBN is idle: it is not performing any action.        |<br>| 0x01  | BUSY_EXECUTE       | OTBN is busy executing software.                      |<br>| 0x02  | BUSY_SEC_WIPE_DMEM | OTBN is busy securely wiping the data memory.         |<br>| 0x03  | BUSY_SEC_WIPE_IMEM | OTBN is busy securely wiping the instruction memory.  |<br>| 0x04  | BUSY_SEC_WIPE_INT  | OTBN is busy securely wiping the internal state.      |<br>| 0xFF  | LOCKED             | OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section &quot;Reaction to Fatal Errors&quot;. |</td></tr>
+</table>
+<h3 id="ERR_BITS">ERR_BITS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23</td><td>FATAL_SOFTWARE</td><td>RW</td><td>0x0</td><td>A `FATAL_SOFTWARE` error was observed.</td></tr>
+<tr><td>22</td><td>LIFECYCLE_ESCALATION</td><td>RW</td><td>0x0</td><td>A `LIFECYCLE_ESCALATION` error was observed.</td></tr>
+<tr><td>21</td><td>ILLEGAL_BUS_ACCESS</td><td>RW</td><td>0x0</td><td>An `ILLEGAL_BUS_ACCESS` error was observed.</td></tr>
+<tr><td>20</td><td>BAD_INTERNAL_STATE</td><td>RW</td><td>0x0</td><td>A `BAD_INTERNAL_STATE` error was observed.</td></tr>
+<tr><td>19</td><td>BUS_INTG_VIOLATION</td><td>RW</td><td>0x0</td><td>A `BUS_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>18</td><td>REG_INTG_VIOLATION</td><td>RW</td><td>0x0</td><td>A `REG_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>17</td><td>DMEM_INTG_VIOLATION</td><td>RW</td><td>0x0</td><td>A `DMEM_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>16</td><td>IMEM_INTG_VIOLATION</td><td>RW</td><td>0x0</td><td>A `IMEM_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>15:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>RND_FIPS_CHK_FAIL</td><td>RW</td><td>0x0</td><td>An `RND_FIPS_CHK_FAIL` error was observed.</td></tr>
+<tr><td>6</td><td>RND_REP_CHK_FAIL</td><td>RW</td><td>0x0</td><td>An `RND_REP_CHK_FAIL` error was observed.</td></tr>
+<tr><td>5</td><td>KEY_INVALID</td><td>RW</td><td>0x0</td><td>A `KEY_INVALID` error was observed.</td></tr>
+<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>A `LOOP` error was observed.</td></tr>
+<tr><td>3</td><td>ILLEGAL_INSN</td><td>RW</td><td>0x0</td><td>An `ILLEGAL_INSN` error was observed.</td></tr>
+<tr><td>2</td><td>CALL_STACK</td><td>RW</td><td>0x0</td><td>A `CALL_STACK` error was observed.</td></tr>
+<tr><td>1</td><td>BAD_INSN_ADDR</td><td>RW</td><td>0x0</td><td>A `BAD_INSN_ADDR` error was observed.</td></tr>
+<tr><td>0</td><td>BAD_DATA_ADDR</td><td>RW</td><td>0x0</td><td>A `BAD_DATA_ADDR` error was observed.</td></tr>
+</table>
+<h3 id="FATAL_ALERT_CAUSE">FATAL_ALERT_CAUSE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>FATAL_SOFTWARE</td><td>R</td><td>0x0</td><td>A `FATAL_SOFTWARE` error was observed.</td></tr>
+<tr><td>6</td><td>LIFECYCLE_ESCALATION</td><td>R</td><td>0x0</td><td>A `LIFECYCLE_ESCALATION` error was observed.</td></tr>
+<tr><td>5</td><td>ILLEGAL_BUS_ACCESS</td><td>R</td><td>0x0</td><td>A `ILLEGAL_BUS_ACCESS` error was observed.</td></tr>
+<tr><td>4</td><td>BAD_INTERNAL_STATE</td><td>R</td><td>0x0</td><td>A `BAD_INTERNAL_STATE` error was observed.</td></tr>
+<tr><td>3</td><td>BUS_INTG_VIOLATION</td><td>R</td><td>0x0</td><td>A `BUS_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>2</td><td>REG_INTG_VIOLATION</td><td>R</td><td>0x0</td><td>A `REG_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>1</td><td>DMEM_INTG_VIOLATION</td><td>R</td><td>0x0</td><td>A `DMEM_INTG_VIOLATION` error was observed.</td></tr>
+<tr><td>0</td><td>IMEM_INTG_VIOLATION</td><td>R</td><td>0x0</td><td>A `IMEM_INTG_VIOLATION` error was observed.</td></tr>
+</table>
+<h3 id="INSN_CNT">INSN_CNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>INSN_CNT</td><td>RW</td><td>0x0</td><td>The number of executed instructions.</td></tr>
+</table>
+<h3 id="LOAD_CHECKSUM">LOAD_CHECKSUM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>CHECKSUM</td><td>RW</td><td>0x0</td><td>Checksum accumulator</td></tr>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas&#174; has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

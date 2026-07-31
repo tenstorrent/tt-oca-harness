@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+	<link rel="stylesheet" href="../../../_/css/register_tables.css">
+	<link rel="stylesheet" href="../../../_/css/image-zoom.css">
+	  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 All four books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-docs/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h3>
+<div class="paragraph">
+<p>The System Management Controller (SMC) is a subsystem in a chiplet that
+takes on the system management tasks, including managing
+clock/voltage/reset, configuring the hardware platform, bringing up the
+system, and reporting system status.</p>
+</div>
+<div class="paragraph">
+<p>Given its essential role, a SiP with multiple chiplets integrates one
+SMC per chiplet. Each SMC instance in a chiplet is responsible for
+system management of the local chiplet. On top of that, a management
+hierarchy is expected to be built among different SMC instances,
+according to the OCA hierarchical system architecture, , Sec. 3.1 and
+3.2. This means an SMC instance in the primary chiplet is expected to
+play additional roles to manage SiP level tasks for the secondary
+chiplets.</p>
+</div>
+<div class="paragraph">
+<p>The SMC consists of a micro-controller and different facilitative components for
+various purposes. At high level, SMC&#8217;s main control logic is implemented in the
+firmware running on the micro-controller. Hardware facilitative components are
+added only when certain tasks cannot be implemented by firmware.</p>
+</div>
+<div class="paragraph">
+<p>The SMC architecture is organized around a RISC-V CPU cluster that executes
+firmware-based control logic. The CPU operates within the primary SMC clock
+domain and includes associated cache hierarchies for efficient instruction and
+data access. The system employs a multi-domain clocking architecture with a
+high-speed SMC clock domain for computational components, a stable reference
+clock domain for timing-sensitive operations, and a peripheral clock domain
+for external interfaces.</p>
+</div>
+<div class="paragraph">
+<p>The interconnect fabric provides AXI4 and AXI4-Lite bus infrastructure
+connecting the CPU to various system components. This fabric includes address
+remapping engines for security and virtualization support, traffic filtering
+mechanisms for access control, and crossbar switches for efficient data routing.</p>
+</div>
+<div class="paragraph">
+<p>Memory resources include read-only memory (ROM) for firmware storage and
+scratchpad memory for runtime data. The memory system is complemented by a DMA
+controller for efficient bulk data transfers and a memory zeroer for secure data
+clearing operations.</p>
+</div>
+<div class="paragraph">
+<p>Peripheral interfaces enable communication and control of external systems.
+These include GPIO controllers for general-purpose I/O, I2C and UART
+interfaces for serial communication, AVSBus controller for adaptive voltage
+scaling, and PVT (Process, Voltage, Temperature) sensors for environmental
+monitoring. A telemetry receiver collects system performance data, while the
+system timer OCTS provides multi-chiplet time synchronization.</p>
+</div>
+<div class="paragraph">
+<p>System management functions include clock and reset controllers for power and
+reset sequencing, an interrupt controller (PLIC) for handling system events, and
+core-local interruptors (CLINT) for timer and software interrupt management.
+Debug infrastructure provides JTAG access and RISC-V debug module support for
+development and troubleshooting.</p>
+</div>
+<div class="paragraph">
+<p>The figure below shows the SMC microarchitectural diagram.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/smc_top.png" alt="SMC Top-Level Block Diagram">
+</div>
+<div class="title">Figure 1. SMC Top-Level Block Diagram</div>
+</div>
+<div class="paragraph">
+<p>The rest of this documentation describes architectural requirements and
+microarchitectural implementation of SMC&#8217;s components in OCAH. A
+consolidated description of OCAH use cases is available in the top-level
+<a href="#use-cases">[use-cases]</a> section.</p>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas&#174; has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

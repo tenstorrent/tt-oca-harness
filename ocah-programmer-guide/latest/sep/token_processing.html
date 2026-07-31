@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../_/css/extra.css">
+	<link rel="stylesheet" href="../../../_/css/register_tables.css">
+	<link rel="stylesheet" href="../../../_/css/image-zoom.css">
+	  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 All four books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-docs/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect3">
+<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1. Token Processing</a></h4>
+<div class="paragraph">
+<p>Maintaining a known, measurable state of the SEP system is a core
+requirement to ensure trust and security. Consequently, changing the
+security state of SEP is a very high security operation that must be
+protected. Tokens are high security password strings which are used to
+alter the security state of SEP. They are used to initiate RMA LC state
+transitions as well as disable security features. Tokens are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Security Disable (SEC_DIS) bypasses fuse sensing</p>
+</li>
+<li>
+<p>Package RMA (RMA_SIP) used in LC state machine</p>
+</li>
+<li>
+<p>Chiplet RMA (RMA_CHIPLET) used in LC state machine</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The tokens directly affect the life cycle state machine processing and
+fuse sensing. so token processing is naturally done in the OTP
+Controller. Tokens are entered via the JTAG port and captured in a
+serial register for match processing described in the next section. The
+serial register has the following important properties:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Non-scannable</p>
+</li>
+<li>
+<p>Non-resetable</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="token-generation-storage-and-provisioning"><a class="anchor" href="#token-generation-storage-and-provisioning"></a><a class="link" href="#token-generation-storage-and-provisioning">Token Generation, Storage and Provisioning</a></h5>
+<div class="paragraph">
+<p>All token processing besides final provisioning takes place within the
+confines of an HSM, a very high security environment. RTL constant
+tokens are embedded into the design database very late in the
+development process to ensure minimal exposure while OTP fuse tokens are
+provisioned at manufacturing test time. All tokens are under tight
+security control.</p>
+</div>
+<div class="paragraph">
+<p>Token values are initially generated within the HSM using a secure TRNG,
+KDF and other facilities. Values to keep track of are the token itself
+and any encoded value such as the SHA256 hash value of it for example.</p>
+</div>
+<div class="paragraph">
+<p>All token values are securely stored in the HSM and securely transmitted
+to the remote tester which programs any OTP fuse values. In the case of
+SEP tokens, we provision the 256-bit hash digest values into the OTP
+fuse bank. Values could be global or unique per device. Examples of
+unique values are the UID, private ECDSA signing keys, and special
+purpose tokens, granting special TBD privileges on a per device basis.
+Processing at the device level can handle each scenario.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="token-matching-mechanism-and-attack-countermeasures"><a class="anchor" href="#token-matching-mechanism-and-attack-countermeasures"></a><a class="link" href="#token-matching-mechanism-and-attack-countermeasures">Token Matching Mechanism and Attack Countermeasures</a></h5>
+<div class="paragraph">
+<p>The tokens are 256-bit values which are processed in an analogous manner
+as passwords. We have tokens:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>RMA_SIP_TOKEN</p>
+<div class="ulist">
+<ul>
+<li>
+<p>LC state</p>
+</li>
+<li>
+<p>Digest RMA_SIP_TOKEN_DIGEST in OTP</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>RMA_CHIPLET_TOKEN</p>
+<div class="ulist">
+<ul>
+<li>
+<p>LC state</p>
+</li>
+<li>
+<p>Digest RMA_CHIPLET_TOKEN_DIGEST in OTP</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>SEC_DIS_TOKEN</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Security disable</p>
+</li>
+<li>
+<p>Digest SEC_DIS_TOKEN_DIGEST in hardware gates (global)</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The separate security disable token SEC_DIS_TOKEN overrides the entire
+LC control mechanism; the resulting feature control follows the SEC_DIS /
+SECURE_TM rules in the Lifecycle Controller chapter. This feature is an
+<em>emergency fallback</em> intended to enable A0 silicon debugging and shall
+be permanently disabled in subsequent A1/B0 revisions via metal mask
+only ECO.</p>
+</div>
+<div class="paragraph">
+<p>The tokens are not directly compared with an internal value stored in
+OTP but instead first hashed using the SHA2-256 cryptographic hash
+algorithm. OTP holds the hash value, also known as the TOKEN_DIGEST. The
+OTP controller shall have a local, dedicated SHA256 hardware accelerator
+unit to perform the hashing of the input token, entered via JTAG.</p>
+</div>
+<div class="paragraph">
+<p>token_match = (SHA256(token[255:0]) == &lt;NAME&gt;_TOKEN_DIGEST[255:0]</p>
+</div>
+<div class="paragraph">
+<p>The above token matching logic is purely combinational and input values
+are never stored in any downstream, potentially scannable registers.</p>
+</div>
+<div class="paragraph">
+<p>The stored secrets are very security sensitive so special care must be
+taken when provisioning them in the chiplet. OTP_secret[255:0] is a
+SHA256[token] which is stored in the OTP. The SEC_DIS token is handled
+differently with its SHA256[token] value stored in hardware gates. (aka
+RTL secret) rather than in OTP. It is global to all devices by its
+nature. In both cases, the hash preimage attack to deduce the input
+token value is considered practically infeasible so even if the secret
+digest is extracted from OTP or gates, the token will remain unknown to
+the attacker.</p>
+</div>
+<div class="paragraph">
+<p>As just stated, the <em>SEC_DIS secret is stored</em> only in gates, not in
+OTP. The reason for this is that SEC_DIS is an emergency feature used to
+unlock the chip when the OTP fuse sensing logic is non-functional but we
+still need to unlock the chip. If we were to rely on the non-functioning
+OTP, we would be unable to unlock the chip.</p>
+</div>
+<div class="paragraph">
+<p>The actual matching logic as a vulnerable attack point via FIB or fault
+injection. We protect this by using triple-redundant matching logic on
+fully differential signals resulting in a 6-bit output as illustrated
+below. The SHA256 hashing engine is also protected with redundancy
+coding of sensitive internal state. Any internally detected errors are
+signalled on the output error port.</p>
+</div>
+<div class="paragraph">
+<p>Note that this is not a majority vote scheme i.e. all three comparators
+must return the same result. If a mismatch is detected, this may
+indicate a tampering attack and an alarm interrupt must be raised.
+Furthermore, if an error is detected in the SHA256 hashing engine or the
+OTP shadow register memory bank, then matching will always return a
+failure code on all three redundant outputs.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/SEP_Token_Matching.png" alt="SEP_Token_Matching">
+</div>
+</div>
+<div class="paragraph">
+<p>The 6-bit matching signal is distributed as is to each individual point
+of use i.e. logic where individual features are enabled or disabled.
+Distributing the final enable logic to each feature diversifies the gate
+keeping and helps prevent global unlocking.</p>
+</div>
+<div class="paragraph">
+<p>Match = token_match[5:0] = 6’b010101
+Mismatch = 6’b101010
+Error = 6’b111111</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="post-token-matching-handling"><a class="anchor" href="#post-token-matching-handling"></a><a class="link" href="#post-token-matching-handling">Post Token Matching Handling</a></h5>
+<div class="paragraph">
+<p>After a token matching operation has completed and a LC state transition
+operation has been performed, the following takes place:</p>
+</div>
+<div class="paragraph">
+<p>disable all \{Debug, DFT, Functional} features making system inert
+if token match successful:
+initiate OTP LC state update operation</p>
+</div>
+<div class="paragraph">
+<p>Note that the above procedure takes place regardless whether the token
+match and LC state transition is successful or not.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas&#174; has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

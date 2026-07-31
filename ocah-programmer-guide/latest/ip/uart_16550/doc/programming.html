@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+	<link rel="stylesheet" href="../../../../../_/css/extra.css">
+	<link rel="stylesheet" href="../../../../../_/css/register_tables.css">
+	<link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+	  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links, deliberately not auto-generated from Antora's
+                 component list, since that would require relying on
+                 Handlebars helpers (resolvePage/relativize) we haven't
+                 verified against the real UI bundle -- see tracking doc.
+
+                 All four books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../index.html">Programmer&#8217;s Guide</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-docs/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect4">
+<h5 id="uart-16550-programming"><a class="anchor" href="#uart-16550-programming"></a><a class="link" href="#uart-16550-programming">Programming</a></h5>
+<div class="sect5">
+<h6 id="baud-rate-configuration"><a class="anchor" href="#baud-rate-configuration"></a><a class="link" href="#baud-rate-configuration">Baud Rate Configuration</a></h6>
+<div class="paragraph">
+<p>To configure the baud rate:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Set DLAB=1 in LCR register (0x0C)</p>
+</li>
+<li>
+<p>Calculate divisor:
+<code>divisor = clock_frequency / (16 * desired_baud_rate)</code></p>
+</li>
+<li>
+<p>Write low byte of divisor to DLL (0x00)</p>
+</li>
+<li>
+<p>Write high byte of divisor to DLM (0x04)</p>
+</li>
+<li>
+<p>Clear DLAB=0 in LCR register to resume normal operation</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Example for 115200 baud with 50MHz clock:
+<code>divisor = 50000000 / (16 * 115200) = 27 (0x001B)</code> - Write 0x1B to DLL -
+Write 0x00 to DLM</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="fifo-configuration"><a class="anchor" href="#fifo-configuration"></a><a class="link" href="#fifo-configuration">FIFO Configuration</a></h6>
+<div class="paragraph">
+<p>To enable and configure FIFOs:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write to FCR register (0x08): Set FIFOEN=1</p>
+</li>
+<li>
+<p>Configure receive trigger level in RXTRIG field</p>
+</li>
+<li>
+<p>Reset FIFOs if needed using RFIFORST and TFIFORST bits</p>
+</li>
+<li>
+<p>Select DMA mode if using DMA transfers</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">Interrupt Configuration</a></h6>
+<div class="paragraph">
+<p>To configure interrupts:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Enable desired interrupt sources in IER register (0x04)</p>
+</li>
+<li>
+<p>Configure OUT2 in MCR register if needed for interrupt enable</p>
+</li>
+<li>
+<p>Read IIR register (0x08) to identify pending interrupts</p>
+</li>
+<li>
+<p>Service interrupts by reading appropriate status/data registers</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The memory map provides comprehensive control over all UART 16550
+functions while maintaining backward compatibility with the original
+16550 standard. The dynamic register mapping through DLAB provides
+efficient access to both normal operation and baud rate configuration
+registers.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <p class="oca-footer-text">
+    The Open Chiplet Atlas&#174; has been developed by
+    <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+      <img src="../../../../../_/img/tenstorrent.png" alt="Tenstorrent" class="footer-tt-icon">
+    </a>
+    as an open standard.
+  </p>
+  <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+</footer>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>
