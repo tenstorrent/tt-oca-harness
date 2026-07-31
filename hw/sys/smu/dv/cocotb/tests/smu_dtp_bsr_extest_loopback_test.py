@@ -5,6 +5,10 @@ Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out
 loopback, and checks TDO matches. Also checks one-hot EXTEST decode.
 
 Does NOT claim functional pad BSR or SEP STAP.
+
+Pattern 0x00 is omitted: OcahJtagTap._logic_int maps X/Z TDO to 0, which would
+make an all-zero expect can't-fail. Nonzero patterns remain sensitive to stuck-0
+/ unresolved TDO (captured 0 != pattern).
 """
 
 from __future__ import annotations
@@ -25,7 +29,15 @@ from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
-_PATTERNS = (0x00, 0xFF, 0xA5, 0x5A, 0xC3, 0x3C)
+# Nonzero-only: VIP X/Z->0 would false-pass an all-zero expect.
+_PATTERNS = (0xFF, 0xA5, 0x5A, 0xC3, 0x3C, 0x01)
+
+
+def _sample(signal, name: str) -> int:
+    val = signal.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z sample on {name}: {val}")
+    return int(val)
 
 
 @pyuvm.test()
@@ -44,7 +56,7 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
         await jtag.shift_ir(DTP_IR_EXTEST)
         await ClockCycles(dut.clk_smu_i, 4)
 
-        decoded = int(dut.jtag_ptap_inst_decoded.value)
+        decoded = _sample(dut.jtag_ptap_inst_decoded, "jtag_ptap_inst_decoded")
         expect_onehot = 1 << DTP_EXTEST_DECODED_BIT
         sb.expect_eq(
             "EXTEST decode one-hot",
@@ -55,11 +67,15 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
 
         mask = (1 << DTP_BSR_MODEL_LEN) - 1
         for pattern in _PATTERNS:
+            if (pattern & mask) == 0:
+                raise AssertionError("zero pattern forbidden (X/Z->0 can't-fail)")
             captured = await jtag.shift_dr(
                 pattern & mask,
                 width=DTP_BSR_MODEL_LEN,
                 back_to_rti=True,
             )
+            # Fail-closed observation of TDO pin after VIP capture.
+            _sample(dut.jtag_tdo, "jtag_tdo")
             sb.expect_eq(
                 f"BSR_EXTEST_TDO_MATCH pat=0x{pattern:02x}",
                 int(captured) & mask,

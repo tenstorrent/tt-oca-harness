@@ -40,10 +40,10 @@ class SmcProtocolVipItem(uvm_sequence_item):
         self.proxy: bool = True
         self.csr_accesses: int = 0
         self.timeouts: int = 0
-        # `passed` records that the scenario ran to completion. Sequences
-        # abort on any real protocol mismatch via an in-body assertion (so a
-        # recorded item implies the sequence-level checks passed); the
-        # scoreboard additionally validates evidence consistency.
+        # Completion marker only — not a checker. Sequences abort on any real
+        # protocol mismatch before recording, so a recorded item already implies
+        # sequence-level checks passed. The scoreboard validates evidence
+        # consistency (scenario/details/counts/golden), not this field.
         self.passed: bool = True
         self.details: str = ""
         # U6-3 optional byte-level golden (None = no golden gate).

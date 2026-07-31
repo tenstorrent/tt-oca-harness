@@ -12,6 +12,9 @@ See ``hw/sys/smc/doc/dv_hack_cleanup_checklist.md`` Phase 2.1.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import cocotb
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
@@ -33,35 +36,60 @@ except Exception as _exc:  # noqa: BLE001 - optional at import time
     _I3C_PROTOCOL_VIP_AVAILABLE = False
     _I3C_PROTOCOL_VIP_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 
-# SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR (offset 0x18; shifted from 0x30
-# when the HANG_DET_* control registers were added ahead of it).
-CLOCK_GATE_CONTROL = 0xC001_0018
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_reg import (  # noqa: E402
+    OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR,
+    SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR,
+)
+
+CLOCK_GATE_CONTROL = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR
 I3C_CG_EN = 1 << 9
 
-# OCA_I3C_WRAP_0 CSR base (smc_addrmap_pkg / periph xbar): 0xC000_5000.
-# RTL currently instantiates i3ccore_stub → SLVERR + 0xBADCAB1E (not a hang).
-I3C0_HCI_VERSION = 0xC000_5000
+# OCA_I3C_WRAP_0 CSR base. RTL instantiates i3ccore_stub → SLVERR + 0xBADCAB1E.
+I3C0_HCI_VERSION = OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR
+AXI_RESP_SLVERR = 2
+I3C_STUB_SIGNATURE = 0xBADCAB1E
 
 
 class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
-    """Exercise I3C clock gate and the OSS bounded no-response path."""
+    """Exercise I3C clock gate and the OSS bounded stub-SLVERR path."""
 
     def __init__(self, name: str = "smc_i3c_to_fabric_test_seq") -> None:
         super().__init__(name)
         self.clock_gate_value: int = 0
         self.reads = 0
+        self.last_resp_code: int | None = None
 
-    async def _read(self, name: str, addr: int, expected: int | None = None,
-                    allow_error: bool = False) -> int:
+    async def _read(
+        self,
+        name: str,
+        addr: int,
+        expected: int | None = None,
+        allow_error: bool = False,
+        expect_error: bool = False,
+        expected_resp: int | None = None,
+    ) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
         item.expected = expected
-        item.allow_error = allow_error
+        item.allow_error = allow_error or expect_error
+        item.expect_error = expect_error
+        item.expected_resp = expected_resp
         await self.start_item(item)
         await self.finish_item(item)
         self.reads += 1
+        self.last_resp_code = item.resp_code
+        if expected_resp is not None:
+            assert item.resp_code == expected_resp, (
+                f"{name} @ 0x{addr:08x}: resp={item.resp_code}, "
+                f"expected {expected_resp}"
+            )
         return item.rdata
 
     async def _write(self, name: str, addr: int, data: int) -> None:
@@ -91,15 +119,18 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         await self._read("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL,
                          expected=self.clock_gate_value)
         # i3ccore_stub terminates with SLVERR/0xBADCAB1E. Prove the periph xbar
-        # routes the I3C window (no hang); value check returns once the real
-        # open-source core replaces the stub.
+        # routes the I3C window (no hang). Green scope = stub signature only.
         rdata = await self._read(
-            "I3C0_HCI_VERSION", I3C0_HCI_VERSION, allow_error=True
+            "I3C0_HCI_VERSION",
+            I3C0_HCI_VERSION,
+            allow_error=True,
+            expect_error=True,
+            expected_resp=AXI_RESP_SLVERR,
         )
         assert self.reads == 4, "expected clock-gate checks plus one I3C CSR read"
-        assert (rdata & 0xFFFF_FFFF) == 0xBADCAB1E, (
+        assert (rdata & 0xFFFF_FFFF) == I3C_STUB_SIGNATURE, (
             f"I3C stub signature mismatch: got 0x{rdata & 0xFFFF_FFFF:08X}, "
-            f"expected 0xBADCAB1E"
+            f"expected 0x{I3C_STUB_SIGNATURE:08X}"
         )
 
         if _I3C_PROTOCOL_VIP_AVAILABLE:

@@ -150,21 +150,22 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_cpu_firmware_boot_test"
 module = "smc_cpu_firmware_boot_test"
-firmware = "hello_world"
 seed = 1
 timeout_sec = 3600
 tags = ["ci", "vplan_gap", "cpu_depth", "u3_fw_boot", "pyuvm"]
 run_modes = ["smoke"]
-# +skip_fuse_sense: skip eFuse sense wait.
+# {repo_root} paths: simulator cwd is attempt_*/make, not the repo root.
+# SMC_002 card: real fuse sense (no +skip_fuse_sense); ROM-only boot
+# (no +smc_scratch_ram_hex) so CHK-ROM-IS-TARGET / CHK-EFUSE-SENSE-DONE hold.
 # +smc_hold_cpu_boot: keep pad60 boot_stall from t=0 until the sequence
-# programs RESET_VECTOR then releases (prevents ROM fetch before revector).
-# The c_compile stage builds the sync-free hello_world C test, generates its
-# 64-bit-data + 8-bit-ECC image, and stages both preload files into the sim cwd.
+# programs RESET_VECTOR then releases (prevents fetch before revector).
+# min_pass.rom.hex: sync-free RV64 stub at ROM window (writes 0xACAFACA1).
+# (main #172 c_compile hello_world.ecc.scratch path intentionally not used.)
 args = [
-    "+skip_fuse_sense",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload=default_efuse_shadow_reg.preload",
-    "+smc_scratch_ram_hex=hello_world.ecc.hex",
+    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+    "+smc_rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
+    "+rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
 ]
 
 [[tests]]

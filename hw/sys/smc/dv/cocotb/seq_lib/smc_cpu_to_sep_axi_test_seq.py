@@ -3,17 +3,46 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 from .smc_csr_seq_utils import SmcCsrSeq
 
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_reg import (  # noqa: E402
+    CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_DEFAULT,
+    CPU_CTRL_RESET_CTRL_REG_DEFAULT,
+    CPU_CTRL_RESET_VECTOR_REG_DEFAULT,
+    CPU_CTRL_TEST_CTRL_REG_DEFAULT,
+    CPU_CTRL_WDT_TIMEOUT_REG_DEFAULT,
+    SMC_CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_ADDR,
+    SMC_CPU_CTRL_RESET_CTRL_REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+    SMC_CPU_CTRL_TEST_CTRL_REG_ADDR,
+    SMC_CPU_CTRL_WDT_TIMEOUT_REG_ADDR,
+)
+
+# Spec-anchored reset constants (lower 32b; AxSIZE length=4). Each read verifies
+# SMC_CPU_CTRL decode at 0xC0039000+ AND RDL reset content — not merely OKAY.
+# (Earlier revision used stale 0xC001_xxxx BASE_CONFIG literals under CPU_CTRL names.)
 CPU_CTRL_READS = [
-    ("RESET_VECTOR_0", 0xC001_0000, None),
-    ("RESET_CTRL", 0xC001_0020, None),
-    ("CLOCK_GATE_CONTROL", 0xC001_0018, None),  # offset 0x18 (was 0x30 before HANG_DET_* added)
-    ("GLOBAL_BASE", 0xC001_0040, None),
-    ("LOCAL_BASE", 0xC001_0048, None),
-    ("REGION_SIZE", 0xC001_0050, None),
+    ("RESET_VECTOR_0", SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
+     CPU_CTRL_RESET_VECTOR_REG_DEFAULT & 0xFFFF_FFFF),
+    ("RESET_CTRL", SMC_CPU_CTRL_RESET_CTRL_REG_ADDR,
+     CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF),
+    ("CORE_RESET_PULSE_COUNT", SMC_CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_ADDR,
+     CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_DEFAULT & 0xFFFF_FFFF),
+    ("WDT_TIMEOUT", SMC_CPU_CTRL_WDT_TIMEOUT_REG_ADDR,
+     CPU_CTRL_WDT_TIMEOUT_REG_DEFAULT & 0xFFFF_FFFF),
+    ("TEST_CTRL", SMC_CPU_CTRL_TEST_CTRL_REG_ADDR,
+     CPU_CTRL_TEST_CTRL_REG_DEFAULT & 0xFFFF_FFFF),
 ]
-CPU_CTRL_SCRATCH_0 = 0xC001_0100
+CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 CPU_PATTERN = 0xC511_0001
 
 
@@ -28,4 +57,6 @@ class smc_cpu_to_sep_axi_test_seq(SmcCsrSeq):
         await self.csr_write_readback("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0,
                                       CPU_PATTERN)
         await self.csr_restore("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0)
-        assert self.accesses == len(CPU_CTRL_READS) + 4, "CPU CSR precheck mismatch"
+        # Closing gate is DUT-sensitive: every read above carried an independent
+        # RDL reset expectation via the scoreboard, and scratch write/readback
+        # checked the programmed pattern. Do not assert on self.accesses alone.

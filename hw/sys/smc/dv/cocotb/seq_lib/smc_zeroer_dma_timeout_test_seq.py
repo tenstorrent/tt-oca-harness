@@ -3,6 +3,11 @@
 
 from __future__ import annotations
 
+import json
+import os
+import sys
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -11,24 +16,108 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 
-ZEROER_DEST_ADDR = 0xC003_8200
-ZEROER_SIZE = 0xC003_8208
-ZEROER_CTRL_STATUS = 0xC003_8210
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
 
-INBOUND0_FILTER_CONFIG = 0xC001_5000
-INBOUND0_START = 0xC001_5008
-INBOUND0_END = 0xC001_5010
-OUTBOUND0_FILTER_CONFIG = 0xC001_6000
-OUTBOUND0_START = 0xC001_6008
-OUTBOUND0_END = 0xC001_6010
+from smc_reg import (  # noqa: E402
+    SMC_INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR,
+    SMC_INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
+    SMC_INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
+    ZEROER_CTRL_CTRL_STATUS_REG_ADDR,
+    ZEROER_CTRL_DEST_ADDR_REG_ADDR,
+    ZEROER_CTRL_SIZE_REG_ADDR,
+)
+
+ZEROER_DEST_ADDR = ZEROER_CTRL_DEST_ADDR_REG_ADDR
+ZEROER_SIZE = ZEROER_CTRL_SIZE_REG_ADDR
+ZEROER_CTRL_STATUS = ZEROER_CTRL_CTRL_STATUS_REG_ADDR
+
+INBOUND0_FILTER_CONFIG = SMC_INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
+INBOUND0_START = SMC_INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
+INBOUND0_END = SMC_INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
+OUTBOUND0_FILTER_CONFIG = SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
+OUTBOUND0_START = SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
+OUTBOUND0_END = SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
 PASS_ALL_CONFIG = 0x0100_3013
 
 OUTPUT_FABRIC_ADDR = 0x0200_0000
+OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
 OUTPUT_FABRIC_MODEL_REGION = "zeroer_output_fabric"
 OUTPUT_FABRIC_MODEL_SIZE = 0x1000
 ZEROER_POISON = bytes.fromhex("a0a1a2a3a4a5a6a7")
+ZEROER_NEIGHBOUR_POISON = bytes.fromhex("b0b1b2b3b4b5b6b7")
 ZEROER_EXPECTED = bytes(len(ZEROER_POISON))
 ZEROER_WAIT_CYCLES = 200
+
+
+def _sample_output_write_count() -> int:
+    sig = cocotb.top.tb_output_axi_write_count
+    assert sig.value.is_resolvable, (
+        "tb_output_axi_write_count is not resolvable (X/Z)"
+    )
+    return int(sig.value)
+
+
+def _coverage_report_dirs() -> list[Path]:
+    """Prefer run logs/coverage dirs so Skill 2 can find the artifact beside the kept log."""
+    candidates: list[Path] = []
+    env_dir = os.environ.get("SMC_DV_RUN_LOGDIR")
+    if env_dir:
+        candidates.append(Path(env_dir))
+    results = os.environ.get("COCOTB_RESULTS_FILE")
+    if results:
+        # .../<item>/results/results.xml → .../<item>/logs and .../<item>/coverage
+        item_dir = Path(results).resolve().parent.parent
+        candidates.append(item_dir / "logs")
+        candidates.append(item_dir / "coverage")
+    cwd = Path.cwd()
+    candidates.append(cwd / "logs")
+    candidates.append(cwd / "coverage")
+    candidates.append(cwd)
+    # Deduplicate while preserving order.
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            out.append(resolved)
+    return out
+
+
+def _emit_functional_coverage_report(cells_hit: list[str]) -> Path:
+    """Write FL-required functional-coverage-report for WRITE-STREAM.S1 cells."""
+    payload = {
+        "artifact_type": "functional-coverage-report",
+        "feature_key": "SMC-ZEROER-WRITE-STREAM.S1",
+        "method": "DIRECTED",
+        "seed": int(os.environ.get("SEED", "1") or "1"),
+        "required_cells": [
+            "zeroer-region-zeroed",
+            "zeroer-neighbours-untouched",
+        ],
+        "cells_hit": cells_hit,
+        "satisfied": set(cells_hit)
+        >= {"zeroer-region-zeroed", "zeroer-neighbours-untouched"},
+    }
+    text = json.dumps(payload, indent=2) + "\n"
+    written: list[Path] = []
+    for out_dir in _coverage_report_dirs():
+        try:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / "functional-coverage-report.json"
+            out_path.write_text(text, encoding="utf-8")
+            written.append(out_path)
+        except OSError:
+            continue
+    if not written:
+        raise AssertionError("failed to write functional-coverage-report.json")
+    return written[0]
 
 
 class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
@@ -81,41 +170,96 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
 
     async def _wait_for_zeroer_write(self, expected_count: int) -> None:
         for _ in range(ZEROER_WAIT_CYCLES):
-            write_count = int(cocotb.top.tb_output_axi_write_count.value)
+            write_count = _sample_output_write_count()
             if write_count >= expected_count:
                 return
             await ClockCycles(cocotb.top.clk_smc_i, 1)
         raise AssertionError(
             f"zeroer write count did not reach {expected_count}, "
-            f"got {int(cocotb.top.tb_output_axi_write_count.value)}"
+            f"got {_sample_output_write_count()}"
         )
 
     async def body(self) -> None:
+        cocotb.log.info(
+            "STEP S1: SETUP pass-all filters; JTAG-preload poison "
+            f"{ZEROER_POISON.hex()} at {OUTPUT_FABRIC_ADDR:#x} and neighbour "
+            f"{ZEROER_NEIGHBOUR_POISON.hex()} at {OUTPUT_FABRIC_NEIGHBOUR_ADDR:#x}"
+        )
         self._ensure_model_region()
         await self._program_output_fabric_pass_all()
 
-        start_writes = int(cocotb.top.tb_output_axi_write_count.value)
+        start_writes = _sample_output_write_count()
         self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_POISON,
                                 region=OUTPUT_FABRIC_MODEL_REGION)
+        self.memory_model.write(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON,
+                                region=OUTPUT_FABRIC_MODEL_REGION)
         await self._write_bytes(OUTPUT_FABRIC_ADDR, ZEROER_POISON)
-        assert await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_POISON)) == ZEROER_POISON
+        await self._write_bytes(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON)
+        preload_rb = await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_POISON))
+        neighbour_preload = await self._read_bytes(
+            OUTPUT_FABRIC_NEIGHBOUR_ADDR, len(ZEROER_NEIGHBOUR_POISON)
+        )
+        assert preload_rb == ZEROER_POISON
+        assert neighbour_preload == ZEROER_NEIGHBOUR_POISON
+        cocotb.log.info(
+            "CHK-NONVAC: S1 JTAG preload readback confirms poison "
+            f"{preload_rb.hex()} and neighbour {neighbour_preload.hex()} "
+            "were written and observed before trigger"
+        )
 
+        cocotb.log.info(
+            "STEP S2: program ZEROER_DEST_ADDR/SIZE from smc_reg map "
+            f"(DEST@{ZEROER_DEST_ADDR:#x} SIZE@{ZEROER_SIZE:#x})"
+        )
         await self.csr_write("ZEROER_DEST_ADDR", ZEROER_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8)
         await self.csr_write("ZEROER_SIZE", ZEROER_SIZE, len(ZEROER_POISON), length=8)
+        cocotb.log.info(
+            "CHK-ZEROER-REGION-DECODE: csr_write ZEROER_DEST_ADDR@"
+            f"{ZEROER_DEST_ADDR:#x}={OUTPUT_FABRIC_ADDR:#x} and ZEROER_SIZE@"
+            f"{ZEROER_SIZE:#x}={len(ZEROER_POISON)} both OKAY "
+            "(addresses from smc_reg ZEROER_CTRL_*_REG_ADDR)"
+        )
 
+        cocotb.log.info(
+            "STEP S3: trigger ZEROER_CTRL_STATUS=1; wait writes; readback zeros"
+        )
         # The zeroer FSM starts on the INT_EN field write side effect.
         await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8)
         await self._wait_for_zeroer_write(start_writes + 2)
+        write_count = _sample_output_write_count()
+        cocotb.log.info(
+            "CHK-ZEROER-TRIGGER-STARTS: after DEST/SIZE set, "
+            f"ZEROER_CTRL_STATUS_START@{ZEROER_CTRL_STATUS:#x}=0x1 caused "
+            f"tb_output_axi_write_count {start_writes}->{write_count} "
+            f"(baseline+2) within bound={ZEROER_WAIT_CYCLES} clk_smc_i"
+        )
 
         self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_EXPECTED,
                                 region=OUTPUT_FABRIC_MODEL_REGION)
         actual = await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_EXPECTED))
+        neighbour_after = await self._read_bytes(
+            OUTPUT_FABRIC_NEIGHBOUR_ADDR, len(ZEROER_NEIGHBOUR_POISON)
+        )
         assert actual == ZEROER_EXPECTED, (
             f"zeroer did not clear payload: got {actual.hex()}, expected {ZEROER_EXPECTED.hex()}"
         )
-        write_count = int(cocotb.top.tb_output_axi_write_count.value)
+        assert neighbour_after == ZEROER_NEIGHBOUR_POISON, (
+            "zeroer modified neighbour bytes outside configured region: "
+            f"got {neighbour_after.hex()}, expected {ZEROER_NEIGHBOUR_POISON.hex()}"
+        )
         assert write_count >= start_writes + 2, "zeroer write did not reach output responder"
         self.memory_model.expect(OUTPUT_FABRIC_ADDR, ZEROER_EXPECTED,
                                  region=OUTPUT_FABRIC_MODEL_REGION)
         self.checked_bytes = len(ZEROER_EXPECTED)
         self.model_checks = 1
+        cells_hit = ["zeroer-region-zeroed", "zeroer-neighbours-untouched"]
+        report_path = _emit_functional_coverage_report(cells_hit)
+        cocotb.log.info(
+            "CHK-ZEROER-REGION-ZEROED: JTAG readback at OUTPUT_FABRIC_ADDR "
+            f"returns {actual.hex()} (8 zero bytes), replacing poison; "
+            f"neighbour@{OUTPUT_FABRIC_NEIGHBOUR_ADDR:#x} still "
+            f"{neighbour_after.hex()}; "
+            f"tb_output_axi_write_count={write_count} >= baseline+2; "
+            f"COV cells={cells_hit}; functional-coverage-report={report_path}"
+        )
+        cocotb.log.info("SMC_006 scenario PASS")

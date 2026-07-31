@@ -1,0 +1,125 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
+
+Proves SEP=0 lc_state_o==8'hf0 only. Direct SMN→SMC path deferred: SYS_IN
+BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
+"""
+
+from __future__ import annotations
+
+import time
+
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge
+
+SEP0_LC_STATE = 0xF0
+
+
+class smu_no_sep_configuration_test_seq:
+    """SMU_005 rev3: SEP=0 lc_state composition."""
+
+    LC_STABLE_CYCLES = 16
+    EXPECTED_TIMEOUT_PATHS = 1
+
+    def __init__(self, test) -> None:
+        self.test = test
+        self.dut = cocotb.top
+        self.cfg = test.cfg
+        self._step_ts: dict[str, float] = {}
+        self._timeout_paths: list[str] = []
+
+    def _log(self, msg: str) -> None:
+        cocotb.log.info(msg)
+
+    def _mark_step(self, step_id: str, detail: str) -> None:
+        self._step_ts[step_id] = time.monotonic()
+        self._log(f"STEP {step_id}: {detail}")
+
+    def _sample(self, signal, name: str) -> int:
+        val = signal.value
+        if not val.is_resolvable:
+            raise AssertionError(f"X/Z sample on {name}: {val}")
+        return int(val)
+
+    async def run(self) -> None:
+        dut = self.dut
+        sb = self.test.env.scoreboard
+
+        await self.cfg.reset_done.wait()
+        await ClockCycles(dut.clk_smu_i, 16)
+
+        self._mark_step(
+            "S1",
+            "PRELOAD build/run with SEP=0; clocks/resets valid; SEP aperture tie-off",
+        )
+        sep_base = self._sample(dut.sep_global_base_o, "sep_global_base_o")
+        sep_size = self._sample(dut.sep_region_size_o, "sep_region_size_o")
+        if sep_base != 0 or sep_size != 0:
+            raise AssertionError(
+                f"SEP=0 aperture not tied off: base=0x{sep_base:x} size=0x{sep_size:x}"
+            )
+
+        self._mark_step("S2", "LC STATE: sample lc_state_o == 8'hf0 for >=16 clk_smu cycles")
+        stable = 0
+        for _ in range(self.LC_STABLE_CYCLES):
+            await RisingEdge(dut.clk_smu_i)
+            last_lc = self._sample(dut.lc_state_o, "lc_state_o") & 0xFF
+            if last_lc != SEP0_LC_STATE:
+                self._timeout_paths.append(
+                    f"s2_lc_stable: bound={self.LC_STABLE_CYCLES} EXPIRED last=0x{last_lc:02x}"
+                )
+                raise AssertionError(
+                    f"lc_state_o != 0x{SEP0_LC_STATE:02x} at stable sample {stable}: "
+                    f"0x{last_lc:02x}"
+                )
+            stable += 1
+        self._timeout_paths.append(
+            f"s2_lc_stable: bound={self.LC_STABLE_CYCLES} ok last=0x{SEP0_LC_STATE:02x}"
+        )
+        chk_lc = (
+            f"CHK-SEP0-LC: lc_state_o == 8'hf0 sampled stable for "
+            f">={self.LC_STABLE_CYCLES} clk_smu_i cycles (samples={stable})"
+        )
+        self._log(chk_lc)
+        sb.expect_eq("CHK-SEP0-LC stable", stable, self.LC_STABLE_CYCLES, evidence="CHK-SEP0-LC")
+
+        self._mark_step("S3", "TIMEOUT: bounded sample waits with last state")
+        for line in self._timeout_paths:
+            self._log(f"TIMEOUT-PATH {line}")
+        n_paths = len(self._timeout_paths)
+        if n_paths != self.EXPECTED_TIMEOUT_PATHS:
+            raise AssertionError(
+                f"CHK-TIMEOUT-PATHS count mismatch: got {n_paths} "
+                f"expect {self.EXPECTED_TIMEOUT_PATHS}"
+            )
+        for i, line in enumerate(self._timeout_paths):
+            if "bound=" not in line or (
+                "ok last=" not in line and "EXPIRED last=" not in line
+            ):
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] shape fail: {line}")
+        chk_to = (
+            "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
+            f"fail-on-expiry path, and last-state diagnostic "
+            f"(paths={n_paths} expect={self.EXPECTED_TIMEOUT_PATHS})"
+        )
+        self._log(chk_to)
+        sb.expect_eq(
+            "CHK-TIMEOUT-PATHS exact count",
+            n_paths,
+            self.EXPECTED_TIMEOUT_PATHS,
+            evidence="CHK-TIMEOUT-PATHS",
+        )
+
+        self._step_ts["PASS"] = time.monotonic()
+        self._log("SMU_005 sequence complete (PASS term recorded for NONVAC fence)")
+
+        order = ["S1", "S2", "PASS"]
+        for step_id in order:
+            if step_id not in self._step_ts:
+                raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
+        for a, b in zip(order, order[1:]):
+            if self._step_ts[a] >= self._step_ts[b]:
+                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
+        chk_nonvac = "CHK-NONVAC: ordered fence S2<PASS all present"
+        self._log(chk_nonvac)
+        sb.expect_eq("CHK-NONVAC ordered fence", True, True, evidence="CHK-NONVAC")

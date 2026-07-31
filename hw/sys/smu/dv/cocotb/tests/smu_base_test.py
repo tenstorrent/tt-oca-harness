@@ -69,6 +69,9 @@ class smu_base_test(uvm_test):
 
         dut.powergood_i.value = 0
         dut.rst_cold_ni.value = 0
+        # Default ungated boot-seq; SMU_006 overrides to 0 for gate proof.
+        if hasattr(dut, "ext_boot_seq_done_i"):
+            dut.ext_boot_seq_done_i.value = 1
         dut.jtag_tck.value = 0
         dut.jtag_tms.value = 0
         dut.jtag_trst.value = 0

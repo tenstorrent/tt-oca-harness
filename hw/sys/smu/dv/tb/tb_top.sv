@@ -25,6 +25,8 @@ module smu_uvm_top
     input  wire logic clk_periph_i,
     input  wire logic rst_cold_ni,
     input  wire logic powergood_i,
+    // External boot-sequence done gate (SMU_006); default-drive 1'b1 in base bring-up
+    input  wire logic ext_boot_seq_done_i,
 
     // Primary JTAG TAP (cocotb OcahJtagTap)
     input  wire logic jtag_tck,
@@ -510,7 +512,7 @@ module smu_uvm_top
         .fuse_sense_done_o,
         .fuse_reset_n_delayed_o,
         .skip_mem_repair_o           (),
-        .ext_boot_seq_done_i         (1'b1),
+        .ext_boot_seq_done_i         (ext_boot_seq_done_i),
         .temp_interrupt_i            (1'b0),
         .lc_state_o                  (lc_state_o),
         .lc_sigint_err_o             (lc_sigint_err_o),
