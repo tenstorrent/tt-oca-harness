@@ -316,38 +316,38 @@ module uart_16550
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckTxFifoDepth, TX_FIFO_DEPTH >= 4 && TX_FIFO_DEPTH <= 4096 &&
+    `OCAH_OT_ASSERT_INIT(paramCheckTxFifoDepth, TX_FIFO_DEPTH >= 4 && TX_FIFO_DEPTH <= 4096 &&
                                         is_pow_of_2(TX_FIFO_DEPTH))
-    `ASSERT_INIT(paramCheckRxFifoDepth, RX_FIFO_DEPTH >= 4 && RX_FIFO_DEPTH <= 4096 &&
+    `OCAH_OT_ASSERT_INIT(paramCheckRxFifoDepth, RX_FIFO_DEPTH >= 4 && RX_FIFO_DEPTH <= 4096 &&
                                         is_pow_of_2(RX_FIFO_DEPTH))
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(TxKnownO_A, tx_o)
-    `ASSERT_KNOWN(RtsKnownO_A,  rts_no)
-    `ASSERT_KNOWN(DtrKnownO_A,  dtr_no)
-    `ASSERT_KNOWN(Out1KnownO_A, out1_no)
-    `ASSERT_KNOWN(Out2KnownO_A, out2_no)
-    `ASSERT_KNOWN(RxrdyKnownO_A, rxrdy_o)
-    `ASSERT_KNOWN(TxrdyKnownO_A, txrdy_o)
-    `ASSERT_KNOWN(ErrKnownO_A, err_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(TxKnownO_A, tx_o)
+    `OCAH_OT_ASSERT_KNOWN(RtsKnownO_A,  rts_no)
+    `OCAH_OT_ASSERT_KNOWN(DtrKnownO_A,  dtr_no)
+    `OCAH_OT_ASSERT_KNOWN(Out1KnownO_A, out1_no)
+    `OCAH_OT_ASSERT_KNOWN(Out2KnownO_A, out2_no)
+    `OCAH_OT_ASSERT_KNOWN(RxrdyKnownO_A, rxrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(TxrdyKnownO_A, txrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(ErrKnownO_A, err_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
 
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TxFifoWptrErrTriggerAlert_A,
         uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TxFifoRptrErrTriggerAlert_A,
         uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         RxFifoWptrErrTriggerAlert_A,
         uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         RxFifoRptrErrTriggerAlert_A,
         uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx

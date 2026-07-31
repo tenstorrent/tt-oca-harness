@@ -52,7 +52,7 @@ module smc_output_fabric
     output logic                                              sys_out_filter_bus_active_o
 );
 
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     //////////////
     // Typedefs //
@@ -301,8 +301,8 @@ module smc_output_fabric
         );
 
         // assertions
-        `TT_ASSERT(out_remap_write_one_hot_sel, (~(|write_slv_sel) || $onehot(write_slv_sel)), clk_i, !rst_ni)
-        `TT_ASSERT(out_remap_read_one_hot_sel, (~(|read_slv_sel) || $onehot(read_slv_sel)), clk_i, !rst_ni)
+        `OCAH_ASSERT(out_remap_write_one_hot_sel, (~(|write_slv_sel) || $onehot(write_slv_sel)), clk_i, !rst_ni)
+        `OCAH_ASSERT(out_remap_read_one_hot_sel, (~(|read_slv_sel) || $onehot(read_slv_sel)), clk_i, !rst_ni)
 
     end
 

@@ -495,7 +495,7 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
     // SVA: AXI-Stream protocol — TVALID must not fall while TREADY is low.
     // This assertion fires on genuine protocol violations and on deliberate glitch injection
     // during stream-error testing; RTL detection logic handles both correctly.
-    `ASSERT_NEVER(KmDrbgTvalidStability_A,
+    `OCAH_OT_ASSERT_NEVER(KmDrbgTvalidStability_A,
         tvalid_q && !drbg_tready_q && !tvalid,
         clk_i, !cold_rst_ni)
 

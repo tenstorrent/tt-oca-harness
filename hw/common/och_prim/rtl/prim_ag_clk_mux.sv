@@ -115,9 +115,9 @@ module prim_ag_clk_mux #(
 	// reset to avoid X-propagation across asymmetric reset deassertion windows.
 	// Sampled in both clock domains so that a brief overlap living between
 	// i_clk0 edges is still caught by the i_clk1 sampler (and vice versa).
-	`ASSERT(CheckMutualExclusionClk0, !(sel_sync_clk0 && sel_sync_clk1),
+	`OCAH_OT_ASSERT(CheckMutualExclusionClk0, !(sel_sync_clk0 && sel_sync_clk1),
 	        i_clk0, !(i_reset_n_clk0 && i_reset_n_clk1))
-	`ASSERT(CheckMutualExclusionClk1, !(sel_sync_clk0 && sel_sync_clk1),
+	`OCAH_OT_ASSERT(CheckMutualExclusionClk1, !(sel_sync_clk0 && sel_sync_clk1),
 	        i_clk1, !(i_reset_n_clk0 && i_reset_n_clk1))
 
 endmodule

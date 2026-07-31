@@ -329,17 +329,17 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////
 
     // SRAM request only asserted for look-ahead reads, regular reads, or writes
-    `ASSERT(SramReqOnlyForValidOps_A,
+    `OCAH_OT_ASSERT(SramReqOnlyForValidOps_A,
         sram_mem_req_o.req |-> (mem_la_read_i || mem_valid_i),
         clk_i, !rst_ni)
 
     // mem_ready only asserts when mem_valid is also asserted
-    `ASSERT(MemReadyOnlyWhenValid_A,
+    `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A,
         mem_ready_o |-> mem_valid_i,
         clk_i, !rst_ni)
 
     // SRAM reads only complete after a matching read request has been accepted.
-    `ASSERT(ReadCompletesAfterAccept_A,
+    `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A,
         sram_mem_rsp_i.rvalid |-> read_pending_q || read_accept,
         clk_i, !rst_ni)
 

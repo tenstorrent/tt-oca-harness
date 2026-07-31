@@ -834,11 +834,11 @@ module efuse_interface_controller
   // intentionally drive OOB, disable these assertions via the simulator.
 
   // Assert that program addresses are within valid range
-  `ASSERT(ProgramAddrValid_A,
+  `OCAH_OT_ASSERT(ProgramAddrValid_A,
       reg_interface_program_go |-> !reg_interface_program_addr_oob, clk_i, !rst_ni)
 
   // Assert that read addresses are within valid range
-  `ASSERT(ReadAddrValid_A,
+  `OCAH_OT_ASSERT(ReadAddrValid_A,
       reg_interface_read_go |-> !reg_interface_read_addr_oob, clk_i, !rst_ni)
 
 endmodule : efuse_interface_controller

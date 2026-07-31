@@ -512,42 +512,42 @@ module i2c_core
         .alert_tx_o    (unused_alert_tx)
     );
 
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         ControllerTxFifoWptrErrTriggerAlert_A,
         controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         ControllerTxFifoRptrErrTriggerAlert_A,
         controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         ControllerRxFifoWptrErrTriggerAlert_A,
         controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         ControllerRxFifoRptrErrTriggerAlert_A,
         controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TargetTxFifoWptrErrTriggerAlert_A,
         target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TargetTxFifoRptrErrTriggerAlert_A,
         target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TargetRxFifoWptrErrTriggerAlert_A,
         target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TargetRxFifoRptrErrTriggerAlert_A,
         target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
@@ -1165,13 +1165,13 @@ module i2c_core
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(ControllerTxFifoDepthValid_A, CONTROLLER_TX_FIFO_DEPTH > 0 &&
+    `OCAH_OT_ASSERT_INIT(ControllerTxFifoDepthValid_A, CONTROLLER_TX_FIFO_DEPTH > 0 &&
                                                CONTROLLER_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
-    `ASSERT_INIT(ControllerRxFifoDepthValid_A, CONTROLLER_RX_FIFO_DEPTH > 0 &&
+    `OCAH_OT_ASSERT_INIT(ControllerRxFifoDepthValid_A, CONTROLLER_RX_FIFO_DEPTH > 0 &&
                                                CONTROLLER_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
-    `ASSERT_INIT(TargetTxFifoDepthValid_A, TARGET_TX_FIFO_DEPTH > 0 &&
+    `OCAH_OT_ASSERT_INIT(TargetTxFifoDepthValid_A, TARGET_TX_FIFO_DEPTH > 0 &&
                                            TARGET_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
-    `ASSERT_INIT(TargetRxFifoDepthValid_A, TARGET_RX_FIFO_DEPTH > 0 &&
+    `OCAH_OT_ASSERT_INIT(TargetRxFifoDepthValid_A, TARGET_RX_FIFO_DEPTH > 0 &&
                                            TARGET_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
 
 endmodule

@@ -156,10 +156,10 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     //=========================================================================
     // Constitution VI: Parameter validation with ASSERT_INIT
 
-    `ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == 16384)
-    `ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == 16384)
-    `ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
-    `ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
+    `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == 16384)
+    `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == 16384)
+    `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
+    `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 
     //=========================================================================
     // Internal Signals

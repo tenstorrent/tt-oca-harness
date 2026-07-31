@@ -134,10 +134,10 @@ module km_reset_conditioner import prim_mubi_pkg::*; #(
     // Assertions
     //=========================================================================
 
-    `ASSERT_INIT(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
+    `OCAH_OT_ASSERT_INIT(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
 
     // Warm reset must always be asserted when cold reset is asserted.
-    `ASSERT(WarmAssertedWhenCold_A,
+    `OCAH_OT_ASSERT(WarmAssertedWhenCold_A,
             !rst_cold_aasd_no |-> !rst_warm_sync_no,
             clk_i,
             !rst_cold_aasd_no || mubi4_test_true_strict(scanmode_i))

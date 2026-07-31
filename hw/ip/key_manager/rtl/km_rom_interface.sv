@@ -198,17 +198,17 @@ module km_rom_interface import km_intf_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////
 
     // ROM request only asserted for look-ahead reads or regular reads
-    `ASSERT(RomReqOnlyForRead_A,
+    `OCAH_OT_ASSERT(RomReqOnlyForRead_A,
         rom_mem_req_o.req |-> (mem_la_read_i || (mem_valid_i && !(|mem_wstrb_i))),
         clk_i, !rst_ni)
 
     // ROM is read-only - writes should be ignored (respond immediately)
-    `ASSERT(RomReadOnly_A,
+    `OCAH_OT_ASSERT(RomReadOnly_A,
         mem_valid_i && |mem_wstrb_i |-> mem_ready_o,
         clk_i, !rst_ni)
 
     // mem_ready only asserts when mem_valid is also asserted
-    `ASSERT(MemReadyOnlyWhenValid_A,
+    `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A,
         mem_ready_o |-> mem_valid_i,
         clk_i, !rst_ni)
 

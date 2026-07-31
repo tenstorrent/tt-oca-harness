@@ -113,7 +113,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     input  wire km_otp_data_t otp_data_i            // OTP data struct (life cycle, demotion, UID) — read-through
 );
 
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     // =========================================================================
     // Local Parameters
@@ -772,9 +772,9 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // Assertions
     //=========================================================================
 
-    `TT_ASSERT_KNOWN(ScramblerLockKnown_A, scrambler_lock_q, clk_i, !cold_rst_ni)
-    `TT_ASSERT_KNOWN(IrqKnown_A, km_irq_o, clk_i, !cold_rst_ni)
-    `TT_ASSERT_KNOWN(IrqEntryAddrKnown_A, irq_entry_addr_o, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(ScramblerLockKnown_A, scrambler_lock_q, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(IrqKnown_A, km_irq_o, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(IrqEntryAddrKnown_A, irq_entry_addr_o, clk_i, !cold_rst_ni)
 
 endmodule : km_csr
 

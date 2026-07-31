@@ -332,33 +332,33 @@ module drbg import drbg_pkg::*; #(
     // Assertions
     // =========================================================================
 
-    `ASSERT_INIT(IngressDepthValid_A, INGRESS_FIFO_DEPTH > 0)
-    `ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
-    `ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-    `ASSERT_INIT(TotalEndpointCountValid_A, EDN_TOTAL_ENDPOINTS > 0)
-    `ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(IngressDepthValid_A, INGRESS_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+    `OCAH_OT_ASSERT_INIT(TotalEndpointCountValid_A, EDN_TOTAL_ENDPOINTS > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
-    `ASSERT(CsrngNoTlOnUnsupported_A, csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
-    `ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
-    `ASSERT(EntropyAxisStrbFull_A, entropy_axis_o.tvalid |-> entropy_axis_o.tstrb == 4'hF)
-    `ASSERT(SeedFipsTopLevel_A, seed_queue_valid |-> seed_queue_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
+    `OCAH_OT_ASSERT(CsrngNoTlOnUnsupported_A, csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
+    `OCAH_OT_ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
+    `OCAH_OT_ASSERT(EntropyAxisStrbFull_A, entropy_axis_o.tvalid |-> entropy_axis_o.tstrb == 4'hF)
+    `OCAH_OT_ASSERT(SeedFipsTopLevel_A, seed_queue_valid |-> seed_queue_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
 
-    `ASSERT_KNOWN(EntropyAxisTvalidKnown_A, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTdataKnown_A, entropy_axis_o.tdata, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTstrbKnown_A, entropy_axis_o.tstrb, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
-    `ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)
-    `ASSERT_KNOWN(IntrCsCmdReqDoneKnown_A, intr_cs_cmd_req_done_o)
-    `ASSERT_KNOWN(IntrCsEntropyReqKnown_A, intr_cs_entropy_req_o)
-    `ASSERT_KNOWN(IntrCsHwInstExcKnown_A, intr_cs_hw_inst_exc_o)
-    `ASSERT_KNOWN(IntrCsFatalErrKnown_A, intr_cs_fatal_err_o)
-    `ASSERT_KNOWN(IntrEdnCmdReqDoneKnown_A, intr_edn_cmd_req_done_o)
-    `ASSERT_KNOWN(IntrEdnFatalErrKnown_A, intr_edn_fatal_err_o)
+    `OCAH_OT_ASSERT_KNOWN(EntropyAxisTvalidKnown_A, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN_IF(EntropyAxisTdataKnown_A, entropy_axis_o.tdata, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN_IF(EntropyAxisTstrbKnown_A, entropy_axis_o.tstrb, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
+    `OCAH_OT_ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsCmdReqDoneKnown_A, intr_cs_cmd_req_done_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsEntropyReqKnown_A, intr_cs_entropy_req_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsHwInstExcKnown_A, intr_cs_hw_inst_exc_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsFatalErrKnown_A, intr_cs_fatal_err_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrEdnCmdReqDoneKnown_A, intr_edn_cmd_req_done_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrEdnFatalErrKnown_A, intr_edn_fatal_err_o)
 
     for (genvar i = 0; i < EDN_ENDPOINT_COUNT; i++) begin : gen_edn_axis_known
-        `ASSERT_KNOWN(EdnAxisTvalidKnown_A, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EdnAxisTdataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EdnAxisTstrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN(EdnAxisTvalidKnown_A, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EdnAxisTdataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EdnAxisTstrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
     end
 
 endmodule : drbg

@@ -120,33 +120,33 @@ module drbg_entropy_router import drbg_pkg::*; #(
     // Assertions
     // =========================================================================
 
-    `ASSERT_INIT(IngressDepthValid_A, INGRESS_FIFO_DEPTH > 0)
-    `ASSERT(NoDualRoute_A, !(distribution_accept_o && csrng_accept_o))
-    `ASSERT(DistributionPriority_A,
+    `OCAH_OT_ASSERT_INIT(IngressDepthValid_A, INGRESS_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT(NoDualRoute_A, !(distribution_accept_o && csrng_accept_o))
+    `OCAH_OT_ASSERT(DistributionPriority_A,
         entropy_stream_vld_i && !distribution_fifo_full_o |-> distribution_accept_o)
-    `ASSERT(CsrngFallback_A,
+    `OCAH_OT_ASSERT(CsrngFallback_A,
         entropy_stream_vld_i && distribution_fifo_full_o && !csrng_fifo_full_o |-> csrng_accept_o)
-    `ASSERT(DropOnlyDoubleFull_A,
+    `OCAH_OT_ASSERT(DropOnlyDoubleFull_A,
         entropy_drop_o |-> entropy_stream_vld_i && distribution_fifo_full_o && csrng_fifo_full_o)
-    `ASSERT(DistributionNoBackpressureAtIngress_A,
+    `OCAH_OT_ASSERT(DistributionNoBackpressureAtIngress_A,
         distribution_accept_o |-> !distribution_fifo_full_o)
-    `ASSERT(CsrngNoBackpressureAtIngress_A,
+    `OCAH_OT_ASSERT(CsrngNoBackpressureAtIngress_A,
         csrng_accept_o |-> distribution_fifo_full_o && !csrng_fifo_full_o)
 
-    `ASSERT_KNOWN(EntropyAxisTvalidKnown_A, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTdataKnown_A, entropy_axis_o.tdata, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTstrbKnown_A, entropy_axis_o.tstrb, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN(CsrngWordValidKnown_A, csrng_word_valid_o)
-    `ASSERT_KNOWN_IF(CsrngWordDataKnown_A, csrng_word_data_o, csrng_word_valid_o)
-    `ASSERT_KNOWN(RouteDistributionKnown_A, distribution_accept_o)
-    `ASSERT_KNOWN(RouteCsrngKnown_A, csrng_accept_o)
-    `ASSERT_KNOWN(RouteDropKnown_A, entropy_drop_o)
-    `ASSERT_KNOWN(DistributionFullKnown_A, distribution_fifo_full_o)
-    `ASSERT_KNOWN(CsrngFullKnown_A, csrng_fifo_full_o)
-    `ASSERT_KNOWN(DistributionDepthKnown_A, distribution_fifo_depth_o)
-    `ASSERT_KNOWN(CsrngDepthKnown_A, csrng_fifo_depth_o)
-    `ASSERT(DistributionFifoHealthy_A, !distribution_fifo_err)
-    `ASSERT(CsrngFifoHealthy_A, !csrng_fifo_err)
+    `OCAH_OT_ASSERT_KNOWN(EntropyAxisTvalidKnown_A, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN_IF(EntropyAxisTdataKnown_A, entropy_axis_o.tdata, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN_IF(EntropyAxisTstrbKnown_A, entropy_axis_o.tstrb, entropy_axis_o.tvalid)
+    `OCAH_OT_ASSERT_KNOWN(CsrngWordValidKnown_A, csrng_word_valid_o)
+    `OCAH_OT_ASSERT_KNOWN_IF(CsrngWordDataKnown_A, csrng_word_data_o, csrng_word_valid_o)
+    `OCAH_OT_ASSERT_KNOWN(RouteDistributionKnown_A, distribution_accept_o)
+    `OCAH_OT_ASSERT_KNOWN(RouteCsrngKnown_A, csrng_accept_o)
+    `OCAH_OT_ASSERT_KNOWN(RouteDropKnown_A, entropy_drop_o)
+    `OCAH_OT_ASSERT_KNOWN(DistributionFullKnown_A, distribution_fifo_full_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrngFullKnown_A, csrng_fifo_full_o)
+    `OCAH_OT_ASSERT_KNOWN(DistributionDepthKnown_A, distribution_fifo_depth_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrngDepthKnown_A, csrng_fifo_depth_o)
+    `OCAH_OT_ASSERT(DistributionFifoHealthy_A, !distribution_fifo_err)
+    `OCAH_OT_ASSERT(CsrngFifoHealthy_A, !csrng_fifo_err)
 
 endmodule : drbg_entropy_router
 

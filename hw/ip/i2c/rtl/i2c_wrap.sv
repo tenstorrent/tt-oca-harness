@@ -284,20 +284,20 @@ module i2c_wrap
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckNumI2cs_A, NUM_I2CS > 0)
+    `OCAH_OT_ASSERT_INIT(paramCheckNumI2cs_A, NUM_I2CS > 0)
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(I2CEnKnownO_A,               i2c_en_o)
-    `ASSERT_KNOWN(I2CControllerModeEnKnownO_A, i2c_controller_mode_en_o)
-    `ASSERT_KNOWN(SclKnownO_A, scl_o)
-    `ASSERT_KNOWN(SdaKnownO_A, sda_o)
-    `ASSERT_KNOWN(SmbsusKnownO_A,   smbsus_no)
-    `ASSERT_KNOWN(SmbalertKnownO_A, smbalert_no)
-    `ASSERT_KNOWN(ControllerTxReadyKnownO_A, controller_tx_ready_o)
-    `ASSERT_KNOWN(ControllerRxReadyKnownO_A, controller_rx_ready_o)
-    `ASSERT_KNOWN(TargetTxReadyKnownO_A,     target_tx_ready_o)
-    `ASSERT_KNOWN(TargetRxReadyKnownO_A,     target_rx_ready_o)
-    `ASSERT_KNOWN(I2cIrqKnownO_A, i2c_irq_o)
-    `ASSERT_KNOWN(I2cDebugKnownO_A, i2c_debug_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(I2CEnKnownO_A,               i2c_en_o)
+    `OCAH_OT_ASSERT_KNOWN(I2CControllerModeEnKnownO_A, i2c_controller_mode_en_o)
+    `OCAH_OT_ASSERT_KNOWN(SclKnownO_A, scl_o)
+    `OCAH_OT_ASSERT_KNOWN(SdaKnownO_A, sda_o)
+    `OCAH_OT_ASSERT_KNOWN(SmbsusKnownO_A,   smbsus_no)
+    `OCAH_OT_ASSERT_KNOWN(SmbalertKnownO_A, smbalert_no)
+    `OCAH_OT_ASSERT_KNOWN(ControllerTxReadyKnownO_A, controller_tx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(ControllerRxReadyKnownO_A, controller_rx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(TargetTxReadyKnownO_A,     target_tx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(TargetRxReadyKnownO_A,     target_rx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(I2cIrqKnownO_A, i2c_irq_o)
+    `OCAH_OT_ASSERT_KNOWN(I2cDebugKnownO_A, i2c_debug_o)
 
 endmodule

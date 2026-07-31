@@ -1,0 +1,9 @@
+ocah_apb_vip
+ocah_axi_vip
+ocah_entropy_vip
+ocah_i2c_vip
+ocah_i3c_vip
+ocah_jtag_vip
+ocah_memory_image
+ocah_spi_vip
+ocah_uart_vip

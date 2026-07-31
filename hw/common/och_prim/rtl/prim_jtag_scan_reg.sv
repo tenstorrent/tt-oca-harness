@@ -27,7 +27,7 @@ module prim_jtag_scan_reg
     output logic [WIDTH-1:0]  data_out_o
 );
 
-    `ASSERT_STATIC_LINT_ERROR(WidthGtZero_A, WIDTH > 0)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(WidthGtZero_A, WIDTH > 0)
 
     logic              capture_selected, shift_selected, update_selected;
     logic [WIDTH-1:0]  scan_data, update_data;

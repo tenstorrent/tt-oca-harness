@@ -755,8 +755,8 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     // Assertions
     //=========================================================================
 
-    `ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
-    `ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
+    `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
 
 endmodule : km_mailbox
 

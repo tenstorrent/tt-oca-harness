@@ -232,9 +232,9 @@ module jtag2axi #(
     //--------------------------------------------------------------------------
     // Parameter Validation Assertions
     //--------------------------------------------------------------------------
-    `ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
-    `ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
-    `ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
 
     //--------------------------------------------------------------------------
     // JTAG TDR Shared Shift Register and Update Latches (TCK Domain)
