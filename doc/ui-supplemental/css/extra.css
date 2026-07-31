@@ -82,15 +82,6 @@
     display: block;
 }
 
-/* Import custom documentation CSS - note: @import doesn't work in bundled CSS, so we'll include content directly */
-
-/* OCH Documentation Styling */
-/* Import register tables CSS for table styling */
-@import url("register_tables.css");
-
-/* Import image zoom CSS for lightbox functionality */
-@import url("image-zoom.css");
-
 /* ========================================
    OCA ECOSYSTEM VISUAL ALIGNMENT (WP1 M2)
    Palette and font names sourced from openchipletatlas.org page inspection,
@@ -279,391 +270,6 @@
 }
 
 /* ========================================
-   COLLAPSIBLE TOC STYLING
-   ======================================== */
-/* REMOVED: TOC styling for legacy builds - Antora uses its own navigation */
-
-/* ========================================
-   FIXED TOC LAYOUT
-   ======================================== */
-/* REMOVED: TOC layout for legacy builds - Antora uses its own navigation */
-/* Responsive table container for horizontal scrolling */
-.table-responsive,
-.rdl-container {
-    overflow-x: auto;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-}
-
-/* Ensure tables maintain minimum width for readability */
-.table-responsive table,
-.rdl-container table {
-    min-width: 600px;
-    width: 100%;
-}
-
-/* Enhanced responsive table handling */
-@media (max-width: 1200px) {
-
-    /* Force horizontal scrolling on narrow screens */
-    .wy-table-responsive,
-    div.table-responsive,
-    .rdl-container,
-    .register-table-wrapper {
-        overflow-x: auto;
-        overflow-y: visible;
-        width: 100%;
-        margin-bottom: 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
-        border-radius: 4px;
-    }
-
-    /* Ensure tables don't collapse too much */
-    table {
-        min-width: 700px !important;
-        white-space: nowrap;
-    }
-
-    /* Prevent text wrapping in narrow columns */
-    .bit_data,
-    .addr_header,
-    td.bit_header,
-    td.addr_header {
-        white-space: nowrap;
-        min-width: 80px;
-    }
-}
-
-/* Auto-wrap tables in responsive containers */
-.content table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-}
-
-/* Ensure consistent table styling across different containers */
-.wy-table-responsive table,
-.table-responsive table,
-table {
-    margin-bottom: 0;
-    border: 1px solid var(--reg-content-border-color);
-}
-
-/* Register tables specific styling */
-.register-table-wrapper {
-    overflow-x: auto;
-    width: 100%;
-    margin: 1em 0;
-}
-
-.register-table-wrapper table {
-    min-width: 800px;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-/* Style for the raw HTML register tables */
-.raw-html-container {
-    overflow-x: auto;
-    width: 100%;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-}
-
-.raw-html-container table {
-    min-width: 800px;
-    width: 100%;
-}
-
-/* Ensure bit layout tables are also scrollable */
-table[class*="bit"],
-table[class*="reg"] {
-    min-width: 700px !important;
-}
-
-/* CSS variables for consistent theming */
-:root {
-    --reg-content-border-color: #ddd;
-}
-
-/* Dark mode support */
-[data-theme="dark"] {
-    --reg-content-border-color: #444;
-}
-
-/* Wrapper for any container that includes raw HTML register tables */
-.section .raw-html,
-.section .raw {
-    overflow-x: auto;
-    margin: 1em 0;
-}
-
-.section .raw-html table,
-.section .raw table {
-    min-width: 800px;
-    width: 100%;
-}
-
-/* Specific targeting for the raw HTML directive containers */
-.raw-html-container,
-.raw,
-div[class*="raw"] {
-    overflow-x: auto !important;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-}
-
-/* Target all embedded HTML tables from SystemRDL */
-.raw table,
-.raw-html-container table,
-div[class*="raw"] table {
-    min-width: 800px !important;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-/* Make sure all tables in the document have horizontal scroll when needed */
-.document table,
-.content table,
-.section table {
-    max-width: 100%;
-    overflow-x: auto;
-    display: block;
-    white-space: nowrap;
-}
-
-/* But reset display for tables that should remain as table */
-.document table table,
-.content table table {
-    display: table;
-}
-
-/* ========================================
-   SECTION STYLING CUSTOMIZATIONS
-   ======================================== */
-
-/* Make section numbers black instead of blue and bold */
-.section-number,
-h1 .section-number,
-h2 .section-number,
-h3 .section-number,
-h4 .section-number,
-h5 .section-number,
-h6 .section-number {
-    color: #000 !important;
-    font-weight: bold !important;
-}
-
-/* Make section titles (after numbers) normal weight and black */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    color: #000 !important;
-    font-weight: normal !important;
-}
-
-/* Override Furo theme's blue section colors */
-.content h1 a,
-.content h2 a,
-.content h3 a,
-.content h4 a,
-.content h5 a,
-.content h6 a {
-    color: #000 !important;
-    text-decoration: none !important;
-}
-
-/* Override any blue link colors in headers */
-.content h1 a:hover,
-.content h2 a:hover,
-.content h3 a:hover,
-.content h4 a:hover,
-.content h5 a:hover,
-.content h6 a:hover {
-    color: #000 !important;
-}
-
-/* Make sure toctree numbers are also black and bold */
-.toctree-wrapper .section-number,
-.toctree .section-number {
-    color: #000 !important;
-    font-weight: bold !important;
-}
-
-/* Target any remaining blue elements that should be black */
-.content .section>h1,
-.content .section>h2,
-.content .section>h3,
-.content .section>h4,
-.content .section>h5,
-.content .section>h6 {
-    color: #000 !important;
-}
-
-/* Ensure headerlinks (¶ symbols) are also black */
-.headerlink {
-    color: #000 !important;
-}
-
-/* Dark mode support for section styling */
-[data-theme="dark"] .section-number,
-[data-theme="dark"] h1 .section-number,
-[data-theme="dark"] h2 .section-number,
-[data-theme="dark"] h3 .section-number,
-[data-theme="dark"] h4 .section-number,
-[data-theme="dark"] h5 .section-number,
-[data-theme="dark"] h6 .section-number {
-    color: #fff !important;
-}
-
-[data-theme="dark"] h1,
-[data-theme="dark"] h2,
-[data-theme="dark"] h3,
-[data-theme="dark"] h4,
-[data-theme="dark"] h5,
-[data-theme="dark"] h6 {
-    color: #fff !important;
-}
-
-[data-theme="dark"] .content h1 a,
-[data-theme="dark"] .content h2 a,
-[data-theme="dark"] .content h3 a,
-[data-theme="dark"] .content h4 a,
-[data-theme="dark"] .content h5 a,
-[data-theme="dark"] .content h6 a {
-    color: #fff !important;
-}
-
-[data-theme="dark"] .headerlink {
-    color: #fff !important;
-}
-
-/* ========================================
-   NAVIGATION SIDEBAR STYLING
-   ======================================== */
-
-/* Target navigation toctree links - make them black */
-.toctree-l1>a,
-.toctree-l2>a,
-.toctree-l3>a,
-.toctree-l4>a,
-.toctree-l5>a,
-.toctree-l6>a {
-    color: #000 !important;
-    font-weight: normal !important;
-}
-
-/* Target navigation links on hover - keep them black */
-.toctree-l1>a:hover,
-.toctree-l2>a:hover,
-.toctree-l3>a:hover,
-.toctree-l4>a:hover,
-.toctree-l5>a:hover,
-.toctree-l6>a:hover {
-    color: #000 !important;
-}
-
-/* Current/active navigation item - keep black */
-.toctree-l1>a.current,
-.toctree-l2>a.current,
-.toctree-l3>a.current,
-.toctree-l4>a.current,
-.toctree-l5>a.current,
-.toctree-l6>a.current {
-    color: #000 !important;
-}
-
-/* Override any sidebar link colors */
-.sidebar-drawer .toctree-l1 a,
-.sidebar-drawer .toctree-l2 a,
-.sidebar-drawer .toctree-l3 a,
-.sidebar-drawer .toctree-l4 a,
-.sidebar-drawer .toctree-l5 a,
-.sidebar-drawer .toctree-l6 a {
-    color: #000 !important;
-    font-weight: normal !important;
-}
-
-/* Target the navigation numbers specifically to make them bold */
-.toctree-l1>a::before,
-.toctree-l2>a::before,
-.toctree-l3>a::before,
-.toctree-l4>a::before,
-.toctree-l5>a::before,
-.toctree-l6>a::before {
-    font-weight: bold !important;
-}
-
-/* Alternative approach: Use regex-like targeting for numbers at start of navigation text */
-.toctree-l1>a,
-.toctree-l2>a,
-.toctree-l3>a,
-.toctree-l4>a,
-.toctree-l5>a,
-.toctree-l6>a {
-    /* Custom styling for navigation items with numbers */
-    background: linear-gradient(to right, transparent 0%, transparent 100%);
-}
-
-/* More specific targeting for Furo theme navigation */
-.sidebar-tree .toctree-l1>a,
-.sidebar-tree .toctree-l2>a,
-.sidebar-tree .toctree-l3>a,
-.sidebar-tree .toctree-l4>a,
-.sidebar-tree .toctree-l5>a,
-.sidebar-tree .toctree-l6>a {
-    color: #000 !important;
-    font-weight: normal !important;
-}
-
-/* Target Furo's specific navigation classes */
-nav.bd-links a,
-.bd-toc nav a {
-    color: #000 !important;
-    font-weight: normal !important;
-}
-
-/* Dark mode support for navigation */
-[data-theme="dark"] .toctree-l1>a,
-[data-theme="dark"] .toctree-l2>a,
-[data-theme="dark"] .toctree-l3>a,
-[data-theme="dark"] .toctree-l4>a,
-[data-theme="dark"] .toctree-l5>a,
-[data-theme="dark"] .toctree-l6>a {
-    color: #fff !important;
-}
-
-[data-theme="dark"] .sidebar-drawer .toctree-l1 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l2 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l3 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l4 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l5 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l6 a {
-    color: #fff !important;
-}
-
-[data-theme="dark"] nav.bd-links a,
-[data-theme="dark"] .bd-toc nav a {
-    color: #fff !important;
-}
-
-/* Style for bold numbers in navigation (applied via JavaScript) */
-.nav-number {
-    font-weight: bold !important;
-}
-
-.nav-title {
-    font-weight: normal !important;
-}
-
-/* ========================================
    FOOTER RESTYLE (2026-07-16), matching OCA reference screenshot.
    Requires the accompanying doc/ui-supplemental/partials/footer-content.hbs
    override -- CSS alone cannot add the Tenstorrent link/icon.
@@ -699,4 +305,71 @@ nav.bd-links a,
     opacity: 0.6;
     font-size: 0.72rem;
     margin-top: 6px;
+}
+
+/* ========================================
+   VERIFICATION DASHBOARD .
+   ======================================== */
+.dashboard-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0 1.5em 0;
+    font-family: var(--oca-font-body);
+}
+
+.dashboard-table th {
+    background-color: var(--oca-cream);
+    color: var(--oca-text);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.dashboard-table td {
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: 600;
+}
+
+.dashboard-table td:first-child {
+    text-align: left;
+    font-weight: normal;
+    background-color: #fafafa;
+}
+
+.dash-pass {
+    background-color: #4caf50;
+    color: #ffffff;
+}
+
+.dash-warn {
+    background-color: #f6c343;
+    color: #2b2b2b;
+}
+
+.dash-fail {
+    background-color: #e05c5c;
+    color: #ffffff;
+}
+
+.dashboard h3 {
+    font-family: var(--oca-font-display);
+    color: var(--oca-green);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.dashboard-legend {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-legend span {
+    display: inline-block;
+    border-radius: 3px;
+    margin-right: 2px;
 }

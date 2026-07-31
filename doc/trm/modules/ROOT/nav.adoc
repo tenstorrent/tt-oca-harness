@@ -18,3 +18,4 @@
 ** xref:architecture.adoc#debug-test-ports[Debug & Test Ports (DTP)]
 ** xref:architecture.adoc#system-management-network[System Management Network (SMN)]
 ** xref:architecture.adoc#axi-over-ucie-bridge[AXI-over-UCIe Bridge (AoU)]
+* xref:dashboard.adoc[Verification Dashboard]
