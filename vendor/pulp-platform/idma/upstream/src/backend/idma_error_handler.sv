@@ -300,7 +300,7 @@ module idma_error_handler #(
                         // the counter is 0 -> no transfer in the datapath. This is an impossible
                         // state
                         end else begin
-                            `ASSERT_I(inactive_tf_wait, rst_ni !== 1'b1)
+                            `OCAH_PULP_ASSERT_I(inactive_tf_wait, rst_ni !== 1'b1)
                         end
                     end
                 end
@@ -333,7 +333,7 @@ module idma_error_handler #(
                     // the counter is 0 -> no transfer in the datapath. This is an impossible
                     // state
                     end else begin
-                        `ASSERT_I(inactive_tf_wait_last_w, rst_ni !== 1'b1)
+                        `OCAH_PULP_ASSERT_I(inactive_tf_wait_last_w, rst_ni !== 1'b1)
                     end
                 end
             end

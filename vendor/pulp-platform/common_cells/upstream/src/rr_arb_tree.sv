@@ -166,13 +166,13 @@ module rr_arb_tree #(
         end
 
         `ifndef COMMON_CELLS_ASSERTS_OFF
-          `TT_PULP_ASSERT(lock, req_o && (!gnt_i && !flush_i) |=> idx_o == $past(idx_o),
+          `OCAH_PULP_ASSERT(lock, req_o && (!gnt_i && !flush_i) |=> idx_o == $past(idx_o),
                   clk_i, !rst_ni || flush_i,
                   "Lock implies same arbiter decision in next cycle if output is not ready.")
 
           logic [NumIn-1:0] req_tmp;
           assign req_tmp = req_q & req_i;
-          `ASSUME(lock_req, lock_d |=> req_tmp == req_q, clk_i, !rst_ni || flush_i,
+          `OCAH_PULP_ASSUME(lock_req, lock_d |=> req_tmp == req_q, clk_i, !rst_ni || flush_i,
                   "It is disallowed to deassert unserved request signals when LockIn is enabled.")
         `endif
 
@@ -297,24 +297,24 @@ module rr_arb_tree #(
     end
 
     `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(numin_0, NumIn, "Input must be at least one element wide.")
-    `ASSERT_INIT(lockin_and_extprio, !(LockIn && ExtPrio),
+    `OCAH_PULP_ASSERT_INIT(numin_0, NumIn, "Input must be at least one element wide.")
+    `OCAH_PULP_ASSERT_INIT(lockin_and_extprio, !(LockIn && ExtPrio),
                  "Cannot use LockIn feature together with external ExtPrio.")
 
-    `TT_PULP_ASSERT(hot_one, $onehot0(gnt_o), clk_i, !rst_ni || flush_i,
+    `OCAH_PULP_ASSERT(hot_one, $onehot0(gnt_o), clk_i, !rst_ni || flush_i,
             "Grant signal must be hot1 or zero.")
 
-    `TT_PULP_ASSERT(gnt0, |gnt_o |-> gnt_i, clk_i, !rst_ni || flush_i, "Grant out implies grant in.")
+    `OCAH_PULP_ASSERT(gnt0, |gnt_o |-> gnt_i, clk_i, !rst_ni || flush_i, "Grant out implies grant in.")
 
-    `TT_PULP_ASSERT(gnt1, req_o |-> gnt_i |-> |gnt_o, clk_i, !rst_ni || flush_i,
+    `OCAH_PULP_ASSERT(gnt1, req_o |-> gnt_i |-> |gnt_o, clk_i, !rst_ni || flush_i,
             "Req out and grant in implies grant out.")
 
-    `TT_PULP_ASSERT(gnt_idx, req_o |->  gnt_i |-> gnt_o[idx_o], clk_i, !rst_ni || flush_i,
+    `OCAH_PULP_ASSERT(gnt_idx, req_o |->  gnt_i |-> gnt_o[idx_o], clk_i, !rst_ni || flush_i,
             "Idx_o / gnt_o do not match.")
 
-    `TT_PULP_ASSERT(req0, |req_i |-> req_o, clk_i, !rst_ni || flush_i, "Req in implies req out.")
+    `OCAH_PULP_ASSERT(req0, |req_i |-> req_o, clk_i, !rst_ni || flush_i, "Req in implies req out.")
 
-    `TT_PULP_ASSERT(req1, req_o |-> |req_i, clk_i, !rst_ni || flush_i, "Req out implies req in.")
+    `OCAH_PULP_ASSERT(req1, req_o |-> |req_i, clk_i, !rst_ni || flush_i, "Req out implies req in.")
     `endif
   end
 

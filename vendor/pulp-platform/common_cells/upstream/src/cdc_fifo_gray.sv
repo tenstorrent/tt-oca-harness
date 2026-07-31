@@ -159,8 +159,8 @@ module cdc_fifo_gray #(
 
   // Check the invariants.
   `ifndef COMMON_CELLS_ASSERTS_OFF
-  `ASSERT_INIT(log_depth_0, LOG_DEPTH > 0)
-  `ASSERT_INIT(sync_stages_gt_2, SYNC_STAGES >= 2)
+  `OCAH_PULP_ASSERT_INIT(log_depth_0, LOG_DEPTH > 0)
+  `OCAH_PULP_ASSERT_INIT(sync_stages_gt_2, SYNC_STAGES >= 2)
   `endif
 
 endmodule

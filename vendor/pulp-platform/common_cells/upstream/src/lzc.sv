@@ -33,7 +33,7 @@ module lzc #(
 );
 
   `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(width_0, WIDTH > 0, "input must be at least one bit wide")
+    `OCAH_PULP_ASSERT_INIT(width_0, WIDTH > 0, "input must be at least one bit wide")
   `endif
 
   if (WIDTH <= 1) begin : gen_degenerate_lzc

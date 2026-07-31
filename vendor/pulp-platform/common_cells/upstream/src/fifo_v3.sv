@@ -140,12 +140,12 @@ module fifo_v3 #(
     end
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(depth_0, DEPTH > 0, "DEPTH must be greater than 0.")
+    `OCAH_PULP_ASSERT_INIT(depth_0, DEPTH > 0, "DEPTH must be greater than 0.")
 
-    `TT_PULP_ASSERT(full_write, full_o |-> ~push_i, clk_i, !rst_ni,
+    `OCAH_PULP_ASSERT(full_write, full_o |-> ~push_i, clk_i, !rst_ni,
             "Trying to push new data although the FIFO is full.")
 
-    `TT_PULP_ASSERT(empty_read, empty_o |-> ~pop_i, clk_i, !rst_ni,
+    `OCAH_PULP_ASSERT(empty_read, empty_o |-> ~pop_i, clk_i, !rst_ni,
             "Trying to pop data although the FIFO is empty.")
 `endif
 

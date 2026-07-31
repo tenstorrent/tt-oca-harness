@@ -4110,9 +4110,9 @@ module idma_legalizer_rw_axi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -4581,9 +4581,9 @@ module idma_legalizer_r_init_rw_axi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -5025,9 +5025,9 @@ module idma_legalizer_r_obi_w_axi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -5467,9 +5467,9 @@ module idma_legalizer_r_axi_w_obi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -5977,9 +5977,9 @@ module idma_legalizer_rw_axi_rw_axis #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -6420,9 +6420,9 @@ module idma_legalizer_r_axi_w_axis #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -6857,9 +6857,9 @@ module idma_legalizer_r_axis_w_axi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -7318,9 +7318,9 @@ module idma_legalizer_r_init_rw_obi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -7825,9 +7825,9 @@ module idma_legalizer_r_obi_rw_init_w_axi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -8333,9 +8333,9 @@ module idma_legalizer_r_axi_rw_init_rw_obi #(
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule
@@ -21085,7 +21085,7 @@ module idma_desc64_reg_top #(
   assign unused_be = ^reg_be;
 
   // Assertions for Register Interface
-  `TT_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
+  `OCAH_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
 
 endmodule
 
@@ -23151,7 +23151,7 @@ module idma_reg32_3d_reg_top #(
   assign unused_be = ^reg_be;
 
   // Assertions for Register Interface
-  `TT_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
+  `OCAH_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
 
 endmodule
 
@@ -25337,7 +25337,7 @@ module idma_reg64_2d_reg_top #(
   assign unused_be = ^reg_be;
 
   // Assertions for Register Interface
-  `TT_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
+  `OCAH_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
 
 endmodule
 
@@ -27283,7 +27283,7 @@ module idma_reg64_1d_reg_top #(
   assign unused_be = ^reg_be;
 
   // Assertions for Register Interface
-  `TT_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
+  `OCAH_PULP_ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
 
 endmodule
 

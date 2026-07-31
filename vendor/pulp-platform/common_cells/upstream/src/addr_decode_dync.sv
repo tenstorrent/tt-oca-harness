@@ -126,13 +126,13 @@ module addr_decode_dync #(
   // Assumptions and assertions
   `ifndef COMMON_CELLS_ASSERTS_OFF
   initial begin : proc_check_parameters
-    `ASSUME_I(addr_width_mismatch, $bits(addr_i) == $bits(addr_map_i[0].start_addr),
+    `OCAH_PULP_ASSUME_I(addr_width_mismatch, $bits(addr_i) == $bits(addr_map_i[0].start_addr),
              $sformatf("Input address has %d bits and address map has %d bits.",
                        $bits(addr_i), $bits(addr_map_i[0].start_addr)))
-    `ASSUME_I(norules_0, NoRules > 0, $sformatf("At least one rule needed"))
+    `OCAH_PULP_ASSUME_I(norules_0, NoRules > 0, $sformatf("At least one rule needed"))
   end
 
-  `ASSERT_FINAL(more_than_1_bit_set, $onehot0(matched_rules) || config_ongoing_i,
+  `OCAH_PULP_ASSERT_FINAL(more_than_1_bit_set, $onehot0(matched_rules) || config_ongoing_i,
                 "More than one bit set in the one-hot signal, matched_rules")
 
   // These following assumptions check the validity of the address map.
@@ -147,7 +147,7 @@ module addr_decode_dync #(
   always @(addr_map_i or config_ongoing_i) /* #0 rmcnulty: Fix zero delay error */ begin : proc_check_addr_map
     if (!$isunknown(addr_map_i) && ~config_ongoing_i) begin
       for (int unsigned i = 0; i < NoRules; i++) begin
-        `ASSUME_I(check_start, Napot || addr_map_i[i].start_addr < addr_map_i[i].end_addr ||
+        `OCAH_PULP_ASSUME_I(check_start, Napot || addr_map_i[i].start_addr < addr_map_i[i].end_addr ||
           addr_map_i[i].end_addr == '0,
           $sformatf("This rule has a higher start than end address!!!\n\
               Violating rule %d.\n\
@@ -156,7 +156,7 @@ module addr_decode_dync #(
               i ,addr_map_i[i].idx, addr_map_i[i].start_addr, addr_map_i[i].end_addr))
         for (int unsigned j = i + 1; j < NoRules; j++) begin
           // overlap check
-          `ASSUME_I(check_overlap, Napot ||
+          `OCAH_PULP_ASSUME_I(check_overlap, Napot ||
                                   !((addr_map_i[j].start_addr < addr_map_i[i].end_addr) &&
                                     (addr_map_i[j].end_addr > addr_map_i[i].start_addr)) ||
                                   !((addr_map_i[i].end_addr == '0) &&
