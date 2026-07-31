@@ -140,6 +140,18 @@ vendor_package:
       - "src"
     patch_dir: "vendor/pulp-platform/idma/patches"
 
+  # UNBENT bus error unit: AXI wrapper path only, OBI wrapper intentionally excluded.
+  # Vendored to match tt-oca-hw; consumed once the fusa work lands.
+  - name: unbent
+    target_dir: "vendor/pulp-platform/unbent/upstream"
+    upstream: { git: "https://github.com/tenstorrent-forks/unbent.git", rev: "2df7a3f0307739d3813cf77db8228720b39a94f8" }
+    include_from_upstream:
+      - "src/bus_err_unit_reg_pkg.sv"
+      - "src/bus_err_unit_bare.sv"
+      - "src/bus_err_unit_reg_top.sv"
+      - "src/bus_err_unit.sv"
+      - "src/axi_err_unit_wrap.sv"
+
   - name: axi_stream
     target_dir: "vendor/pulp-platform/axi_stream/upstream"
     upstream: { git: "https://github.com/tenstorrent/tt-axi_stream.git", rev: "54891ff40455ca94a37641b9da4604647878cc07" }
