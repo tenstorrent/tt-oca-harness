@@ -1,0 +1,121 @@
+Bender.yml
+  s_d605cb93395a31::t_da223defb593f6 129
+  s_d605cb93395a31::t_b01445789eaa82 107
+  s_d605cb93395a31::t_fdbf4581290057 138
+vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller.sv
+  s_d605cb93395a31::t_3f85593fb1806d 464-474
+vendor/pulp-platform/axi/upstream/src/axi_demux_simple.sv
+  s_d605cb93395a31::t_a332cc5bd98fd0 570
+vendor/pulp-platform/axi/upstream/src/axi_mux.sv
+  s_d605cb93395a31::t_3042721b2ed31d 140-147
+vendor/pulp-platform/axi/upstream/src/axi_rw_join.sv
+  s_d605cb93395a31::t_48f0cc270fcf61 71-72,96
+vendor/pulp-platform/axi/upstream/src/axi_rw_split.sv
+  s_d605cb93395a31::t_03d59798906a0c 72,97
+vendor/pulp-platform/common_cells/Bender.yml
+  s_d605cb93395a31::t_a3c2b7a6e5fd47 15
+vendor/pulp-platform/common_cells/patches/0001-tt-common_cells-delta.patch
+  s_d605cb93395a31::t_c686e8f5155fa9 19
+vendor/pulp-platform/common_cells/patches/0002-id_queue-declare-empty-net-W154.patch
+  s_d605cb93395a31::t_2da0a6d2d0778b 1-12
+vendor/pulp-platform/common_cells/upstream/include/common_cells/assertions.svh
+  s_d605cb93395a31::t_7b935b7d5d190a 18,31,37-38,43,46-47,52,61-62,66-67,70,75-76,80,88-89,93,100-101,104,113-114,117,123-125,129-130,139-141,146-148,153-156,160-162,170-171,174,179-180,183,191,196,198,203,205,210,212
+vendor/pulp-platform/common_cells/upstream/src/addr_decode_dync.sv
+  s_d605cb93395a31::t_131e441a63dc58 129,132,135,150,159
+vendor/pulp-platform/common_cells/upstream/src/cb_filter.sv
+  s_d605cb93395a31::t_a3bd40e9f7b8c9 241
+vendor/pulp-platform/common_cells/upstream/src/cdc_2phase_clearable.sv
+  s_d605cb93395a31::t_bf66c850a247b8 191,260
+vendor/pulp-platform/common_cells/upstream/src/cdc_fifo_2phase.sv
+  s_d605cb93395a31::t_167d2a13e08cea 68
+vendor/pulp-platform/common_cells/upstream/src/cdc_fifo_gray.sv
+  s_d605cb93395a31::t_6e4aee027330b5 162-163
+vendor/pulp-platform/common_cells/upstream/src/cdc_fifo_gray_clearable.sv
+  s_d605cb93395a31::t_4e6cfe6dbf8924 259-260
+vendor/pulp-platform/common_cells/upstream/src/credit_counter.sv
+  s_d605cb93395a31::t_ddf30774455a0c 52-53
+vendor/pulp-platform/common_cells/upstream/src/exp_backoff.sv
+  s_d605cb93395a31::t_529ff7be324233 88-90
+vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
+  s_d605cb93395a31::t_3402ba18624747 143,145,148
+vendor/pulp-platform/common_cells/upstream/src/id_queue.sv
+  s_d605cb93395a31::t_439bc4efdb24ad 118,415-416
+vendor/pulp-platform/common_cells/upstream/src/isochronous_4phase_handshake.sv
+  s_d605cb93395a31::t_5dbdc99be003ab 74,76
+vendor/pulp-platform/common_cells/upstream/src/isochronous_spill_register.sv
+  s_d605cb93395a31::t_e3c36e5ac2ba71 101,103
+vendor/pulp-platform/common_cells/upstream/src/lfsr.sv
+  s_d605cb93395a31::t_428db37dbea6e2 296,298-299,301,303,306
+vendor/pulp-platform/common_cells/upstream/src/lfsr_16bit.sv
+  s_d605cb93395a31::t_72a33b77f9e693 64
+vendor/pulp-platform/common_cells/upstream/src/lfsr_8bit.sv
+  s_d605cb93395a31::t_0a92f0307b02a6 58
+vendor/pulp-platform/common_cells/upstream/src/lzc.sv
+  s_d605cb93395a31::t_693a04e935425a 36
+vendor/pulp-platform/common_cells/upstream/src/mem_to_banks_detailed.sv
+  s_d605cb93395a31::t_5712f3b6d23110 225,227,229
+vendor/pulp-platform/common_cells/upstream/src/multiaddr_decode.sv
+  s_d605cb93395a31::t_cc63d8f0accdb4 129-130,142
+vendor/pulp-platform/common_cells/upstream/src/onehot_to_bin.sv
+  s_d605cb93395a31::t_c86f97fff0b73e 35
+vendor/pulp-platform/common_cells/upstream/src/passthrough_stream_fifo.sv
+  s_d605cb93395a31::t_dd37d42602eeef 118,120
+vendor/pulp-platform/common_cells/upstream/src/plru_tree.sv
+  s_d605cb93395a31::t_54c7d309bfdd7a 124,126
+vendor/pulp-platform/common_cells/upstream/src/ring_buffer.sv
+  s_d605cb93395a31::t_b2d1363c3a223a 135,143,154,167-168,171
+vendor/pulp-platform/common_cells/upstream/src/rr_arb_tree.sv
+  s_d605cb93395a31::t_b20b537a6f3b94 169,175,300-301,304,307,309,312,315,317
+vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv
+  s_d605cb93395a31::t_550fddba4226f2 99
+vendor/pulp-platform/common_cells/upstream/src/stream_fork.sv
+  s_d605cb93395a31::t_c3781d6006dc2c 128
+vendor/pulp-platform/common_cells/upstream/src/stream_fork_dynamic.sv
+  s_d605cb93395a31::t_e8e30c74813f19 91
+vendor/pulp-platform/common_cells/upstream/src/stream_intf.sv
+  s_d605cb93395a31::t_e50ad790e78dd4 46-47
+vendor/pulp-platform/common_cells/upstream/src/stream_join_dynamic.sv
+  s_d605cb93395a31::t_59c94e515c5114 43
+vendor/pulp-platform/common_cells/upstream/src/stream_mux.sv
+  s_d605cb93395a31::t_fc85bcf9466146 41
+vendor/pulp-platform/common_cells/upstream/src/stream_omega_net.sv
+  s_d605cb93395a31::t_a519560d40829b 271,277,279,281,285,289,293,298,300,302
+vendor/pulp-platform/common_cells/upstream/src/stream_to_mem.sv
+  s_d605cb93395a31::t_b04a6cf051394a 123,125,127,130
+vendor/pulp-platform/common_cells/upstream/src/stream_xbar.sv
+  s_d605cb93395a31::t_459200ab725cb8 175,181,183,185,189,192,194,199-200
+vendor/pulp-platform/common_cells/upstream/src/trip_counter.sv
+  s_d605cb93395a31::t_78fa9d117cd06d 49
+vendor/pulp-platform/idma/overlay/target/rtl/idma_generated.sv
+  s_d605cb93395a31::t_adcfa320d810ec 4113,4115,4584,4586,5028,5030,5470,5472,5980,5982,6423,6425,6860,6862,7321,7323,7828,7830,8336,8338,21088,23154,25340,27286
+vendor/pulp-platform/idma/patches/0002-tt-idma-frontend.patch
+  s_d605cb93395a31::t_c36d10e7a30d52 19,93,109-112
+vendor/pulp-platform/idma/upstream/src/backend/idma_error_handler.sv
+  s_d605cb93395a31::t_9f50673503bff0 303,336
+vendor/pulp-platform/idma/upstream/src/backend/tpl/idma_legalizer.sv.tpl
+  s_d605cb93395a31::t_185c5f4c70455a 692,694
+vendor/pulp-platform/idma/upstream/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+  s_d605cb93395a31::t_cdf42d8d0128c8 75
+vendor/pulp-platform/idma/upstream/src/frontend/desc64/idma_desc64_top.sv
+  s_d605cb93395a31::t_40ccfd99669a7d 471-472
+vendor/pulp-platform/idma/upstream/src/frontend/inst64/idma_inst64_top.sv
+  s_d605cb93395a31::t_4a0b3f7a00b644 559
+vendor/pulp-platform/obi/Bender.yml
+  s_d605cb93395a31::t_a7e7491e030858 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "c74c36ef89165680a2f182a0e82a969aedb9da28",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
