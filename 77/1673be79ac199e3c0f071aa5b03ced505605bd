@@ -1,0 +1,65 @@
+hw/common/axi/apb2axil.sv
+  s_d605cb93395a31::t_ad13edbe287861 1-78
+hw/common/axi/axi_filter/rtl/traffic_filter.sv
+  s_d605cb93395a31::t_9074671e8c9c00 22,68
+hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
+  s_d605cb93395a31::t_eb7de929aebf55 4,6-8,14
+hw/common/axi/output_remap/rtl/output_remap.sv
+  s_d605cb93395a31::t_28503dca370f43 84-111
+hw/common/och_prim/rtl/prim_apb_mux_struct.sv
+  s_d605cb93395a31::t_74131436cabb2a 11-13,66,69,93
+hw/common/ot_pkg/rtl/csrng_pkg.sv
+  s_d605cb93395a31::t_d0dc281e787488 1-108
+hw/common/ot_pkg/rtl/edn_pkg.sv
+  s_d605cb93395a31::t_87acf275491367 1-73
+hw/common/peakrdl_adapter_sram.sv
+  s_d605cb93395a31::t_d44c19277e74b5 1-518
+hw/common/tlul/rtl/tlul_adapter_sram.sv
+  s_d605cb93395a31::t_08ad8a69405e6e 20,336,340
+hw/ip/avsbus_controller/rtl/avsbus_controller.sv
+  s_d605cb93395a31::t_19e150b7d06341 72-75
+hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
+  s_d605cb93395a31::t_39e97906b9f4f9 61
+hw/ip/dfd/rtl/dfd_top.sv
+  s_d605cb93395a31::t_f4eed1277c7624 4-8,40
+hw/ip/dfd/rtl/misc/dfd_mem_gen.sv
+  s_d605cb93395a31::t_54e1bd890d7a54 1-7702
+hw/ip/dfd/rtl/pkg/mem_gen_pkg.svh
+  s_d605cb93395a31::t_e7bbc84886ce00 1-737
+hw/ip/dfd/rtl/trace/dfd_trace_sink.sv
+  s_d605cb93395a31::t_b8b77566bc553e 5,1057
+hw/ip/gpio/rtl/gpio_model/gpio_model.sv
+  s_d605cb93395a31::t_25e9f8292fc48e 1-34
+hw/ip/gpio/rtl/gpio_shim.sv
+  s_d605cb93395a31::t_72dc067cd2eab0 31-34,84-85,87,93,194
+hw/ip/i2c/rtl/i2c_wrap.sv
+  s_d605cb93395a31::t_de6a01d513cc6b 266-269,279
+hw/ip/idma_wrapper/rtl/idma_wrapper.sv
+  s_d605cb93395a31::t_cdc993d017e9fd 14-17,120-121
+hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
+  s_d605cb93395a31::t_c90246a6fb2aaf 501-548,573,579,581-724,728-730,737-840
+hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
+  s_d605cb93395a31::t_ad5dce5b48c1d7 198,202,204-207,211,215,330-331,334
+hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
+  s_d605cb93395a31::t_26d24b230b1bb3 233-234
+hw/ip/uart/uart_16550/rtl/uart_16550.sv
+  s_d605cb93395a31::t_60239b4f65dbd6 7,9,54-58,147,149,158
+hw/ip/zeroer/rtl/zeroer.sv
+  s_d605cb93395a31::t_00c8f589b885cc 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "771673be79ac199e3c0f071aa5b03ced505605bd",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
