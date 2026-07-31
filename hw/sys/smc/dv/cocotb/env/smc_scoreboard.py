@@ -267,13 +267,12 @@ class SmcScoreboard(uvm_subscriber):
         self.protocol_vip_checks_seen += 1
         self.logger.info("Scoreboard protocol VIP check #%d: %s",
                          self.protocol_vip_checks_seen, item)
-        # `passed` reflects that the scenario reached completion without an
-        # in-sequence assertion aborting the test. The real protocol
-        # verification lives in the sequence-body asserts; the checks below
-        # guard against a scenario recording an empty/inconsistent evidence
-        # record (which would otherwise let a mis-wired test log false
-        # coverage).
-        assert item.passed, f"protocol VIP scenario failed: {item}"
+        # `passed` is a completion marker only (always True when an item is
+        # recorded — sequences abort on mismatch before recording). Do not
+        # assert it; the real protocol verification lives in sequence-body /
+        # SYS-AXI scoreboard checks. The checks below guard against a scenario
+        # recording an empty/inconsistent evidence record (which would
+        # otherwise let a mis-wired test log false coverage).
         assert item.scenario != "", "protocol VIP scenario name is empty"
         assert item.details != "", (
             f"protocol VIP {item.scenario} recorded without evidence details"

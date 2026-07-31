@@ -753,9 +753,11 @@ CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→`i3ccore_stub`
 only; reopen HCI_VERSION=0x120 / CCC/IBI after real core swap
 
 |iJTAG / JTAG / DFT |`smc_ijtag_basic_test`;
-`smc_chiplet_reg_jtag_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
+`smc_jtag_dmi_smoke_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
 |Keep blocked-window health precheck; migrate only after public
-JTAG/iJTAG ports and VIP are available
+JTAG/iJTAG ports and VIP are available. Former
+`smc_chiplet_reg_jtag_test` name was never enrolled — JTAG depth lives
+in `smc_jtag_dmi_smoke_test` / `smc_ijtag_basic_test`.
 
 |eFuse / OTP / security straps |`smc_efuse_otp_clock_test`;
 `smc_efuse_otp_clock_config_depth_test`;
@@ -945,20 +947,22 @@ output responder |`smc_input_output_fabric_wr_rd_test`,
 |`smc_i2c_master_target_test`, `smc_i2c_p1_rdwr_protocol_test`,
 `smc_i2c_error_fifo_depth_test`
 
-|P1-7 |`i3c_protocol` |CSR+HCI, real SDR write, CCC/IBI depth
-|`smc_i3c_to_fabric_test`, `smc_i3c_oca_write_read_sanity_test`,
-`smc_i3c_ibi_ccc_depth_test`
+|P1-7 |`i3c_protocol` |CSR+HCI fabric window; CCC/IBI depth deferred
+|`smc_i3c_to_fabric_test` (green); `smc_i3c_ccc_ibi_full_test`
+(`deferred.toml`). Former `smc_i3c_oca_write_read_sanity_test` /
+`smc_i3c_ibi_ccc_depth_test` names were never enrolled — intents map
+here.
 
-|P1-8 |`jtag_tap` |TAP-level IDCODE + DTMCS strict, chiplet reg, eFuse
-LC negative (NOTE: `smc_efuse_jtag_lc_negative_test` now covers the
-CSR-observable subset — records `CHIP_CONFIG_LC_STATE` + reads the
-always-allowed `CHIPLET_ID`/`PACKAGE_ID` identity registers + CPU JTAG
-pin check. The full JTAG-side block/allow matrix (DECERR+`0xBADCAB1E` in
-PROD/RMA_SIP, identity-read exception, sigint lockdown) is now covered
-by `smc_efuse_jtag_lc_access_matrix_test` — see
+|P1-8 |`jtag_tap` |TAP-level IDCODE + DTMCS strict, eFuse LC negative
+(NOTE: `smc_efuse_jtag_lc_negative_test` now covers the CSR-observable
+subset — records `CHIP_CONFIG_LC_STATE` + reads the always-allowed
+`CHIPLET_ID`/`PACKAGE_ID` identity registers + CPU JTAG pin check. The
+full JTAG-side block/allow matrix (DECERR+`0xBADCAB1E` in PROD/RMA_SIP,
+identity-read exception, sigint lockdown) is now covered by
+`smc_efuse_jtag_lc_access_matrix_test` — see
 link:#lifecycle-gated-efuse-jtag-access-control-coverage-gap[Lifecycle-Gated
 eFuse JTAG Access Control] / P2-15) |`smc_ijtag_basic_test`,
-`smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`
+`smc_jtag_dmi_smoke_test`, `smc_efuse_jtag_lc_negative_test`
 
 |P1-9 |`efuse_otp` |clock config, config depth, permission boundary
 |`smc_efuse_otp_clock_test`, `smc_efuse_otp_clock_config_depth_test`,
@@ -1032,9 +1036,11 @@ currently miss (P1-5 only touches outbound mbox 0).
 (0xC000_9200) + I2C_2 (0xC000_9400) + I2C_CTRL (0xC000_9E00) CSR windows
 to prove decode + reset defaults; 3-way ID isolation vs I2C0.
 
-|P1-7+ |`i3c_protocol` |`smc_i3c_wrap_extended_test` |Sweep OCA_I3C_WRAP
-3/4/5 (0xC000_5F00 / 0xC000_6400 / 0xC000_6900) HCI_VERSION +
-PRESENT_STATE. Existing tests only touch instances 0-2.
+|P1-7+ |`i3c_protocol` |*OUT / not enrolled*
+(`smc_i3c_wrap_extended_test` — never shipped) |Planned OCA_I3C_WRAP
+3/4/5 sweep never shipped a `.py` / testlist entry. Green I3C window
+coverage remains `smc_i3c_to_fabric_test` (instances 0–2). Do not invent
+a wrap-3/4/5 PASS against `i3ccore_stub`.
 
 |P1-9+ |`efuse_otp` |`smc_efuse_map_read_test` |Read SMC_EFUSE_MAP
 fields (0xC000_B000) — direct eFuse content readback rather than
@@ -1077,10 +1083,9 @@ firmware not required.
 |P1-18 |`pvt_analog` |`smc_pvt_analog_sensor_test` (bundles the
 combined/temp/POC-PBIAS scenarios) |PVT combined sensor wrap
 (0xC000_7000) + temp sensor (0xC000_7900) + GPIO POC/PBIAS
-(0xC000_6000). *PVT combined/temp (0xC000_7xxx) are inside the
-DECERR-terminated PVT macro window — reachability only, no sensor
-content (see scope caveat / S13a).* POC/PBIAS (0xC000_6000) is a
-separate window.
+(0xC000_4DE0). *PVT combined/temp are placeholder OKAY+0 wraps in OSS —
+reachability only (see scope caveat / S13a).* POC/PBIAS is on the
+gpio_ctrl err_slv (DECERR+0).
 
 |P1-19 |`remap_cla` |`smc_remap_cla_test` (bundles the MMODE/CLA/ALIAS
 scenarios) |MMODE_REMAP entries 0-7 (0xC001_3000+) + CLA (0xC016_0000) +
@@ -1090,11 +1095,10 @@ full sweep of ALIAS_REMAP entries 0-7 (P0/P1-4 only touch entry 0).
 __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 *Implementation note:* the P1-17/18/19 scenarios above were each
 implemented as a _single bundled test_ (`smc_cluster_cpu_infra_test`,
-`smc_pvt_analog_sensor_test`, `smc_remap_cla_test`) rather than the
-per-sub-block test names used in the TC_SMC_P1CG_10..19 detail rows
-below. The detail rows document the individual sub-scenarios; the ``Test
-Name'' there refers to the sub-scenario, not a standalone runnable test.
-Use the bundled test names when invoking.
+`smc_pvt_analog_sensor_test`, `smc_remap_cla_test`). Detail rows
+TC_SMC_P1CG_10..18 name the *bundled* runnable test and call out the
+sub-scenario in the Description column — there are no standalone
+`.py` files for the old per-sub-block names.
 __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 *Round 1 aggregate*: existing 48 + 13 new = *61 executable tests* in the
@@ -1129,16 +1133,20 @@ outbound + 32 inbound mailbox STATUS registers (64 reads). Round 1
 + 16 outbound filter FILTER_CONFIG registers (32 reads). Round 1
 `smc_input_fabric_axi_wr_rd_test` only touches entry 0.
 
-|P1-11++ |`gpio_ext_irq` |`smc_gpio_refclk_ctrl_test` |Cover
-GPIO_REFCLK_CTRL at 0xC000_4CC0 (previously unreached; not part of the
-GPIO_INTF / GPIO_CTRL sweeps).
+|P1-11++ |`gpio_ext_irq` |*OUT / not enrolled*
+(`smc_gpio_refclk_ctrl_test` — never enrolled) |GPIO_REFCLK_CTRL @
+0xC000_4CC0 was planned in Round 2 but never enrolled. Not covered by
+`smc_gpio_ctrl_full_sweep_test` / `smc_gpio_intf_full_sweep_test`.
 
 |P1-11+++ |`gpio_ext_irq` |(fix) `smc_gpio_ctrl_full_sweep_test` |Extend
 GPIO_CTRL sweep from 46 → *68* entries (RTL has GPIO_CTRL 0..67, stride
 0x20).
 |=======================================================================
 
-*Round 2 aggregate*: 3 new tests + 1 seq fix. Testlist tag
+*Round 2 aggregate*: 2 new tests (`smc_mailbox_multi_instance_test`,
+`smc_filter_multi_entry_test`) + 1 seq fix
+(`smc_gpio_ctrl_full_sweep_test` 46→68) + 1 OUT
+(`smc_gpio_refclk_ctrl_test` never enrolled). Testlist tag
 `p1_coverage_gap_r2`.
 
 [[p1-coverage-gap-depth-slate-round-3-field-level-depth]]
@@ -1229,57 +1237,24 @@ For core in 0..3, base = 0xC801_0000 + core * 0x1000: read `CAUSE`
 P1 Coverage-Gap Depth Slate — Round 5 (Remaining leftover CSR blocks)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A full top-level block audit of `smc_top_reg.svh` (every
-`*_REG_MAP_BASE_ADDR` container cross-checked against the addresses read
-by the cocotb sequences) confirmed that after Round 4 exactly two
-addressable CSR surfaces remained unreached, and both are simple
-bounded-read blocks:
+Round 5 originally targeted two leftover CSR surfaces after Round 4.
+The empty `p1_coverage_gap_r5` testlist was removed from
+`testlists/all.toml` (2026-07-30) — it selected zero runnable tests.
 
 [width="100%",cols="10%,37%,28%,25%",options="header",]
 |=======================================================================
-|# |P1 Category |New test |Purpose
-|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` |Sweep the PVT droop-monitor
-sub-block `SMC_PVT_WRAP_DROOP` (0xC000_7400), distinct from the
-combined-sensor (0xC000_7000) and temp-sensor (0xC000_7900) surfaces
-already covered by `smc_pvt_analog_sensor_test`.
+|# |P1 Category |Disposition |Notes
+|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` → `deferred.toml`
+(`rtl_placeholder`) |PVT droop-monitor window (0xC000_7400). Kept as
+shelved body until real adopter PVT IP replaces OKAY/DECERR wraps.
 
-|P1-16+ |`ecc_dfd_dbs` |`smc_dft_ctrl_test` |Read the top-level
-`DFT_CTRL` STATUS_SMU register (0xC000_F800). On Verilator the DFT wrap
-is a stub (`verilator_stubs/smc_dft_ctrl_status_wrap.sv`), so the read
-is bounded; on Xcelium it exercises the real decode.
+|P1-16+ |`ecc_dfd_dbs` |*Removed* `smc_dft_ctrl_test` |Depended on a
+deleted DV DFX stub / bare-SMC decode path, not `smc_wrapper`
+production RTL. Not re-enrolled.
 |=======================================================================
 
-*Round 5 aggregate*: 2 new tests. Testlist tag `p1_coverage_gap_r5`.
-With Round 5 landed, every top-level CSR block container in
-`smc_top_reg.svh` is touched by at least one OSS test.
-
-[[round-5-test-cases]]
-Round 5 Test Cases
-++++++++++++++++++
-
-[width="100%",cols="16%,13%,8%,16%,8%,18%,21%",options="header",]
-|=======================================================================
-|Test ID |Test Name |Stage |Description |Steps |Checker Items |Registers
-Used
-|TC_SMC_P1CG_22 |*smc_pvt_droop_test* |P1 |Bounded reachability of 10
-addresses in the PVT droop-monitor block. *These are inside the
-DECERR-terminated PVT macro window (0xC000_7xxx) — all 10 return the
-same DECERR; no droop-monitor content is read or distinguished (see
-scope caveat / S13a).* |1. Bounded-read ENABLES (0xC000_7400),
-SAMPLE_STROBE (+0x04), TARGET_MONITOR_CODE (+0x08), CONFIG (+0x0C),
-MEAS_DURATION0 (+0x10), LONG_TERM_MAX_CODE (+0x18), FORCE (+0x38),
-SAMPLED_DROOP (+0x40), CONFIG_SETTING_0_LW (+0x4C), PERCENT_DELAY_TH0
-(+0xEC) |[ ] 10 reads complete (OKAY or bounded DECERR/timeout if analog
-block gated)[ ] `accesses == 10`[ ] `timeouts <= accesses`[ ] No
-UVM_ERROR |`SMC_PVT_WRAP_DROOP_*` (0xC000_7400+)
-
-|TC_SMC_P1CG_23 |*smc_dft_ctrl_test* |P1 |Bounded read of the DFT_CTRL
-STATUS_SMU register. |1.
-`csr_read_bounded("DFT_CTRL_STATUS_SMU", 0xC000_F800)` |[ ] 1 read
-completes (OKAY or bounded DECERR/timeout; Verilator stub may
-no-decode)[ ] `accesses == 1`[ ] `timeouts <= accesses`[ ] No UVM_ERROR
-|`DFT_CTRL_STATUS_SMU` (0xC000_F800)
-|=======================================================================
+*Round 5 aggregate*: no green testlist tag. Droop coverage remains in
+`testlists/deferred.toml` only.
 
 [[p1-coverage-gap-test-cases-fabric_testplan-detail]]
 P1 Coverage-Gap Test Cases (fabric_testplan detail)
@@ -1308,13 +1283,10 @@ instance CSR reads OKAY[ ] Per-instance ID / config decode[ ]
 `accesses == 3` (bounded)[ ] No UVM_ERROR |I2C_WRAP I2C_1 (0xC000_9200),
 I2C_2 (0xC000_9400), I2C_CTRL (0xC000_9E00)
 
-|TC_SMC_P1CG_03 |*smc_i3c_wrap_extended_test* |P1 |*Deferred /
-stub-era*: OCA_I3C_WRAP 3/4/5 windows currently terminate via
-`i3ccore_stub` (SLVERR + `0xBADCAB1E`), not HCI_VERSION=0x120. Reopen
-when real core lands. |1–3. Read wrap 3/4/5 bases
-(0xC000_5F00 / 0xC000_6400 / 0xC000_6900) with `allow_error`; expect
-stub signature |[ ] Each window SLVERR + `0xBADCAB1E` (stub) — *not*
-feature PASS for real I3C |`OCA_I3C_WRAP_3/4/5` bases
+|TC_SMC_P1CG_03 |*OUT* (was `smc_i3c_wrap_extended_test`) |P1 |*Not
+enrolled.* Planned OCA_I3C_WRAP 3/4/5 sweep never shipped. Green I3C
+window coverage is `smc_i3c_to_fabric_test` (instances 0–2 only). |— |—
+not a runnable PASS criterion |`OCA_I3C_WRAP_3/4/5` (uncovered)
 
 |TC_SMC_P1CG_04 |*smc_efuse_map_read_test* |P1 |Read a sample of
 `SMC_EFUSE_MAP` fields (0xC000_B000) directly. |1. Read EFUSE_MAP entry
@@ -1366,16 +1338,18 @@ reads complete (OKAY or bounded DECERR)[ ] `accesses == 3`[ ] `timeouts`
 unchanged[ ] No UVM_ERROR |TELEMETRY_RECEIVER_0/1/2
 (0xC000_D000/D100/D200)
 
-|TC_SMC_P1CG_10 |*smc_cluster_wdt_sanity_test* |P1 |Read the 4 per-core
-WDT CSR windows (bounded, WDT counters). |1. Read `WDT_CORE0_CFG`
+|TC_SMC_P1CG_10 |*smc_cluster_cpu_infra_test* |P1 |*Sub-scenario WDT:*
+read the 4 per-core WDT CSR windows (bounded). Runnable file:
+`smc_cluster_cpu_infra_test`. |1. Read `WDT_CORE0_CFG`
 (0xC000_0000)2. Read `WDT_CORE1_CFG` (0xC000_0400)3. Read
 `WDT_CORE2_CFG` (0xC000_0800)4. Read `WDT_CORE3_CFG` (0xC000_0C00) |[ ]
 4 reads OKAY (or bounded DECERR if WDT clock-gated)[ ] `accesses == 4`[
 ] No UVM_ERROR |`SMC_CLUSTER_CORE0_WDT..CORE3_WDT`
 (0xC000_0000/0400/0800/0C00)
 
-|TC_SMC_P1CG_11 |*smc_cluster_plic_test* |P1 |Read PLIC priority /
-pending / enable representative registers. |1.
+|TC_SMC_P1CG_11 |*smc_cluster_cpu_infra_test* |P1 |*Sub-scenario PLIC:*
+read PLIC priority / pending / enable. Runnable file:
+`smc_cluster_cpu_infra_test`. |1.
 `csr_read_allow_error("PLIC_PRIORITY_1", 0xC400_0004)`2.
 `csr_read_allow_error("PLIC_PENDING_0", 0xC400_1000)`3.
 `csr_read_allow_error("PLIC_ENABLE_0", 0xC400_2000)` |[ ] 3 reads
@@ -1383,76 +1357,72 @@ complete (OKAY or bounded DECERR without CPU on)[ ] `accesses == 3`[ ]
 `timeouts` unchanged[ ] No UVM_ERROR |`SMC_CLUSTER_PLIC_*`
 (0xC400_0000+)
 
-|TC_SMC_P1CG_12 |*smc_cluster_clint_test* |P1 |Read CLINT MTIME /
-MTIMECMP / MSIP representative registers. |1.
+|TC_SMC_P1CG_12 |*smc_cluster_cpu_infra_test* |P1 |*Sub-scenario CLINT:*
+read CLINT MTIME / MTIMECMP / MSIP. Runnable file:
+`smc_cluster_cpu_infra_test`. |1.
 `csr_read_allow_error("CLINT_MSIP_0", 0xC800_0000)`2.
 `csr_read_allow_error("CLINT_MTIMECMP_0_LO", 0xC800_4000)`3.
 `csr_read_allow_error("CLINT_MTIME_LO", 0xC800_BFF8)` |[ ] 3 reads
 complete (OKAY or bounded DECERR)[ ] `accesses == 3`[ ] `timeouts`
 unchanged[ ] No UVM_ERROR |`SMC_CLUSTER_CLINT_*` (0xC800_0000+)
 
-|TC_SMC_P1CG_13 |*smc_pvt_combined_sensor_test* |P1 |Bounded
-reachability of the PVT combined-sensor wrap addresses. *Inside the
-DECERR-terminated PVT macro window — reads DECERR, no sensor content
-(see scope caveat / S13a).* |1.
+|TC_SMC_P1CG_13 |*smc_pvt_analog_sensor_test* |P1 |*Sub-scenario PVT
+combined:* bounded reachability of combined-sensor wrap. Runnable file:
+`smc_pvt_analog_sensor_test` (*deferred* / `rtl_placeholder`). |1.
 `csr_read_allow_error("PVT_COMBINED_CTRL_0", 0xC000_7000)`2.
 `csr_read_allow_error("PVT_COMBINED_CTRL_1", 0xC000_7004)`3.
 `csr_read_allow_error("PVT_COMBINED_STATUS", 0xC000_7008)` |[ ] 3 reads
 complete[ ] `accesses == 3`[ ] No UVM_ERROR
 |`SMC_PVT_WRAP_COMBINED_PVT_CTRL_*` (0xC000_7000+)
 
-|TC_SMC_P1CG_14 |*smc_pvt_temp_sensor_test* |P1 |Bounded reachability of
-the PVT temp-sensor wrap addresses. *Inside the DECERR-terminated PVT
-macro window — reads DECERR, no temperature content (see scope caveat /
-S13a).* |1. `csr_read_allow_error("TEMP_SENSOR_CTRL_0", 0xC000_7900)`2.
+|TC_SMC_P1CG_14 |*smc_pvt_analog_sensor_test* |P1 |*Sub-scenario PVT
+temp:* bounded reachability of temp-sensor wrap. Runnable file:
+`smc_pvt_analog_sensor_test` (*deferred* / `rtl_placeholder`). |1.
+`csr_read_allow_error("TEMP_SENSOR_CTRL_0", 0xC000_7900)`2.
 `csr_read_allow_error("TEMP_SENSOR_CTRL_1", 0xC000_7904)`3.
 `csr_read_allow_error("TEMP_SENSOR_STATUS", 0xC000_7908)` |[ ] 3 reads
 complete[ ] `accesses == 3`[ ] No UVM_ERROR
 |`SMC_PVT_WRAP_TEMP_SENSOR_CTRL_*` (0xC000_7900+)
 
-|TC_SMC_P1CG_15 |*smc_gpio_poc_pbias_sanity_test* |P1 |Read GPIO POC /
-PBIAS wrapper CSR. |1.
-`csr_read_allow_error("GPIO_POC_PBIAS_CTRL_0", 0xC000_6000)`2.
-`csr_read_allow_error("GPIO_POC_PBIAS_CTRL_1", 0xC000_6004)`3.
-`csr_read_allow_error("GPIO_POC_PBIAS_STATUS", 0xC000_6008)` |[ ] 3
-reads complete[ ] `accesses == 3`[ ] No UVM_ERROR
-|`GPIO_POC_PBIAS_CTRL_*` (0xC000_6000+)
+|TC_SMC_P1CG_15 |*smc_pvt_analog_sensor_test* |P1 |*Sub-scenario GPIO
+POC/PBIAS:* read gpio_ctrl err_slv window @ 0xC000_4DE0. Runnable file:
+`smc_pvt_analog_sensor_test` (*deferred* / `rtl_placeholder`). |1.
+`csr_read_allow_error("GPIO_POC_PBIAS_CTRL", 0xC000_4DE0)`2.
+`csr_read_allow_error("GPIO_POC_PBIAS_ACCESS_FILTER", 0xC000_4DE8)` |[
+] DECERR+0 for both[ ] No UVM_ERROR |`GPIO_POC_PBIAS_*` (0xC000_4DE0+)
 
-|TC_SMC_P1CG_16 |*smc_mmode_remap_csr_test* |P1 |Sweep MMODE_REMAP
-entries 0-7 (0xC001_3000+ stride 0x08). |1. For N in 0..7: read
-`MMODE_REMAP_N_ATTRS` (0xC001_3000 + N * 0x08) |[ ] 8 reads OKAY[ ]
-`accesses == 8`[ ] No UVM_ERROR |`SMC_MMODE_REMAP_0..7__REGION_ATTRS`
-(0xC001_3000 + N * 0x08)
+|TC_SMC_P1CG_16 |*smc_remap_cla_test* |P1 |*Sub-scenario MMODE_REMAP:*
+sweep entries 0-7. Runnable file: `smc_remap_cla_test`. |1. For N in
+0..7: read `MMODE_REMAP_N_ATTRS` (0xC001_3000 + N * 0x08) |[ ] 8 reads
+OKAY[ ] `accesses == 8`[ ] No UVM_ERROR
+|`SMC_MMODE_REMAP_0..7__REGION_ATTRS` (0xC001_3000 + N * 0x08)
 
-|TC_SMC_P1CG_17 |*smc_cla_sanity_test* |P1 |Read SMC_CLA_REG (Cluster
-Local Aggregator) representative regs. |1.
-`csr_read_allow_error("CLA_CTRL", 0xC016_0000)`2.
-`csr_read_allow_error("CLA_STATUS", 0xC016_0004)`3.
-`csr_read_allow_error("CLA_INTR", 0xC016_0008)` |[ ] 3 reads complete[ ]
-`accesses == 3`[ ] No UVM_ERROR |`SMC_CLA_REG_*` (0xC016_0000+)
+|TC_SMC_P1CG_17 |*smc_remap_cla_test* |P1 |*Sub-scenario CLA:* read
+SMC_CLA_REG (expect error-slave in OSS). Runnable file:
+`smc_remap_cla_test`. |1. `csr_read_expect_error("CLA_CTRL",
+0xC016_0000)`2. `csr_read_expect_error("CLA_STATUS", 0xC016_0004)`3.
+`csr_read_expect_error("CLA_INTR", 0xC016_0008)` |[ ] 3 reads complete
+with expected error[ ] No UVM_ERROR |`SMC_CLA_REG_*` (0xC016_0000+)
 
-|TC_SMC_P1CG_18 |*smc_alias_remap_full_sweep_test* |P1 |Sweep all 8
-ALIAS_REMAP entries START/END/ATTRS. |1. For N in 0..7: read
-`ALIAS_REMAP_N_START` (0xC001_2000 + N * 0x20)2. Read
-`ALIAS_REMAP_N_END` (+ 0x08)3. Read `ALIAS_REMAP_N_ATTRS` (+ 0x10) |[ ]
-24 reads OKAY (8 entries × 3 fields)[ ] `accesses == 24`[ ] No UVM_ERROR
+|TC_SMC_P1CG_18 |*smc_remap_cla_test* |P1 |*Sub-scenario ALIAS_REMAP:*
+sweep all 8 entries START/END/ATTRS. Runnable file:
+`smc_remap_cla_test`. |1. For N in 0..7: read `ALIAS_REMAP_N_START`
+(0xC001_2000 + N * 0x20)2. Read `ALIAS_REMAP_N_END` (+ 0x08)3. Read
+`ALIAS_REMAP_N_ATTRS` (+ 0x10) |[ ] 24 reads OKAY (8 entries × 3
+fields)[ ] `accesses == 24`[ ] No UVM_ERROR
 |`SMC_ALIAS_REMAP_0..7__REGION_START/END/ATTRS` (0xC001_2000 + N * 0x20)
 |=======================================================================
 
-Note: TC_SMC_P1CG_01..TC_SMC_P1CG_18 count is 18 rows above, but the
-bundled *test files* land as follows (some test IDs bundle multiple
-categorical reads into one test to keep file count aligned with the
-gap-fill statement — reflected in the extension table above):
+Note: TC_SMC_P1CG_01..18 document scenarios; runnable *test files* are:
 `smc_mailbox_inbound_test`, `smc_i2c_multi_instance_test`,
-`smc_i3c_wrap_extended_test`, `smc_efuse_map_read_test`,
-`smc_efuse_shim_ctrl_test`, `smc_pll_cgm_awm_config_test`,
+`smc_efuse_map_read_test`, `smc_efuse_shim_ctrl_test`,
+`smc_pll_cgm_awm_config_test` (*deferred*),
 `smc_gpio_ctrl_full_sweep_test`, `smc_uart_multi_instance_test`,
-`smc_telemetry_receiver_csr_test`, `smc_cluster_cpu_infra_test` (bundles
-WDT+PLIC+CLINT), `smc_pvt_analog_sensor_test` (bundles PVT combined +
-temp + POC/PBIAS), `smc_remap_cla_test` (bundles MMODE_REMAP + CLA +
-full ALIAS sweep). Cadence I3C AXIL-extension coverage
-(`smc_cdns_i3c_axil_test` / former P1-20 / TC_SMC_P1CG_19) was removed —
-OSS has no Cadence I3C IP on that path.
+`smc_telemetry_receiver_csr_test`, `smc_cluster_cpu_infra_test`
+(WDT+PLIC+CLINT), `smc_pvt_analog_sensor_test` (*deferred*; PVT +
+POC/PBIAS), `smc_remap_cla_test` (MMODE+CLA+ALIAS).
+OUT (never enrolled or removed): `smc_i3c_wrap_extended_test`, former
+P1-20 `smc_cdns_i3c_axil_test`, `smc_dft_ctrl_test`.
 
 [[p2-test-plan-blocker-gated-categories]]
 P2 Test Plan — Blocker-Gated Categories
@@ -1741,14 +1711,14 @@ line-level checks with `proxy=False`; next depth is one read/write
 transaction plus recovery
 
 |I3C |I3C0 pin VIP built; CCC/IBI model still next
-|`smc_i3c_oca_write_read_sanity_test` |Current promotion complete for
-line-level checks with `proxy=False`; next depth is one directed
-write/read and one status/interrupt observation
+|`smc_i3c_to_fabric_test` (green fabric); depth →
+`smc_i3c_ccc_ibi_full_test` (`deferred.toml`) |Fabric stub signature
+already green; reopen HCI/CCC/IBI after real core + DAT/DCT
 
 |iJTAG / JTAG / DFT |CPU JTAG pins lifted into `tb_top`; TAP access
-model still next |`smc_chiplet_reg_jtag_test` |Current promotion
-complete for reset/idle pin checks with `proxy=False`; next depth is one
-meaningful register access through JTAG
+model still next |`smc_jtag_dmi_smoke_test`; `smc_ijtag_basic_test`
+|Reset/idle / DMI smoke enrolled; next depth is one meaningful register
+access through JTAG (former `smc_chiplet_reg_jtag_test` name retired)
 
 |Output fabric |Output-fabric responder plus allow/block checker
 |`smc_output_fabric_wr_rd_responder_test`;

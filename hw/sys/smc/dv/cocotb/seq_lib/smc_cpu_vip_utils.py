@@ -3,17 +3,36 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
-# Absolute addresses from smc_top_reg.svh (SMC_CPU_CTRL_* @ 0xC003_9000).
-CPU_CTRL_RESET_VECTOR_0 = 0xC003_9000
-CPU_CTRL_RESET_VECTOR_1 = 0xC003_9008
-CPU_CTRL_RESET_VECTOR_2 = 0xC003_9010
-CPU_CTRL_RESET_VECTOR_3 = 0xC003_9018
-CPU_CTRL_RESET_CTRL = 0xC003_9020
-CPU_CTRL_RESET_TIMEOUT = 0xC003_9030
-CPU_CTRL_SCRATCH_0 = 0xC003_9080
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_reg import (  # noqa: E402
+    CPU_CTRL_RESET_CTRL_REG_DEFAULT,
+    CPU_CTRL_RESET_VECTOR_REG_DEFAULT,
+    SMC_CPU_CTRL_RESET_CTRL_REG_ADDR,
+    SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_1__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+)
+
+CPU_CTRL_RESET_VECTOR_0 = SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR
+CPU_CTRL_RESET_VECTOR_1 = SMC_CPU_CTRL_RESET_VECTOR_1__REG_ADDR
+CPU_CTRL_RESET_VECTOR_2 = SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR
+CPU_CTRL_RESET_VECTOR_3 = SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR
+CPU_CTRL_RESET_CTRL = SMC_CPU_CTRL_RESET_CTRL_REG_ADDR
+CPU_CTRL_RESET_TIMEOUT = SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR
+CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 
 # Freedom-metal __metal_synchronize_harts uses CLINT MSIP as a barrier.
 CLINT_MSIP_0 = 0xC800_0000
@@ -22,11 +41,11 @@ CLINT_MSIP_2 = 0xC800_0008
 CLINT_MSIP_3 = 0xC800_000C
 
 # Default RDL reset vector targets ROM window; hello_world links in scratch.
-CPU_RESET_VECTOR_ROM = 0xC004_0000
+CPU_RESET_VECTOR_ROM = CPU_CTRL_RESET_VECTOR_REG_DEFAULT & 0xFFFF_FFFF
 CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 
 # Matches CPU_CTRL_RESET_CTRL_REG_DEFAULT (cores+uncore released).
-CPU_RESET_CTRL_DEFAULT = 0x0000_010F
+CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
 # Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).

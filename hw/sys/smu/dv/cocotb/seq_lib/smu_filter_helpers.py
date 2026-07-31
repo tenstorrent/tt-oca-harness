@@ -10,6 +10,11 @@ from seq_lib.smu_jtag_helpers import J2A_STATUS_SUCCESS, jtag2axi_single_write
 INBOUND0_FILTER_CONFIG = 0xC001_5000
 INBOUND0_START = 0xC001_5008
 INBOUND0_END = 0xC001_5010
+OUTBOUND0_FILTER_CONFIG = 0xC001_6000
+OUTBOUND0_START = 0xC001_6008
+OUTBOUND0_END = 0xC001_6010
+# External SMN fabric window used by SMC SYS_OUT (not an SMC CSR address).
+EXT_FABRIC_PROBE_ADDR = 0x8000_0000
 # READ+WRITE + ADDR_MODE + ALLOW_NS + bus-width/src encodings (P1/P2).
 PASS_RW_CONFIG = 0x0100_3113
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
@@ -54,3 +59,15 @@ async def clear_inbound0_config(jtag, *, scoreboard: Any = None) -> None:
     st, _ = await jtag2axi_single_write(jtag, INBOUND0_FILTER_CONFIG, 0)
     if scoreboard is not None:
         scoreboard.expect_eq("JTAG2AXI INBOUND0_CONFIG clear", st, J2A_STATUS_SUCCESS)
+
+
+async def program_outbound0_pass_all(jtag, *, scoreboard: Any = None) -> None:
+    """Program OUTBOUND0 pass-all via JTAG2AXI (best-effort under SEP=0)."""
+    for addr, data, name in (
+        (OUTBOUND0_START, 0, "OUTBOUND0_START"),
+        (OUTBOUND0_END, PASS_ALL_END, "OUTBOUND0_END"),
+        (OUTBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "OUTBOUND0_CONFIG"),
+    ):
+        st, _ = await jtag2axi_single_write(jtag, addr, data)
+        if scoreboard is not None:
+            scoreboard.expect_eq(f"JTAG2AXI {name} write", st, J2A_STATUS_SUCCESS)

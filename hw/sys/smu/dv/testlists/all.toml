@@ -15,6 +15,7 @@ tests = [
     "smu_smc_smoke_test",
     "smu_dtp_jtag_smoke_test",
     "smu_no_sep_configuration_test",
+    "smu_ext_boot_seq_gate_test",
 ]
 
 [[groups]]
@@ -40,6 +41,7 @@ tests = [
     "smu_dft_gpio_boot_stall_test",
     "smu_dtp_jtag_smoke_test",
     "smu_no_sep_configuration_test",
+    "smu_ext_boot_seq_gate_test",
 ]
 
 # phase1 without Force/LCC ungating (those moved to deferred needs_real_lcc).
@@ -60,6 +62,7 @@ tests = [
     "smu_axi_atomic_operation_test",
     "smu_dtp_jtag_smoke_test",
     "smu_no_sep_configuration_test",
+    "smu_ext_boot_seq_gate_test",
     "smc_security_demote_pm_test",
 ]
 
@@ -68,6 +71,7 @@ name = "smc"
 tests = [
     "smu_smc_smoke_test",
     "smu_no_sep_configuration_test",
+    "smu_ext_boot_seq_gate_test",
     "smc_reset_ctrl_test",
     "smc_security_demote_pm_test",
 ]
