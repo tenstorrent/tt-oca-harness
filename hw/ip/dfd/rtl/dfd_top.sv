@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// *  Tenstorrent Inc.
+// *
+// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+// * written permission is obtained from Tenstorrent Inc.
+
 /*
  Author: Joey Chen
 
@@ -32,6 +37,7 @@ module dfd_top
 	import dfd_te_pkg::*;
 	import dfd_tn_pkg::*;
 	import dfd_CL_axi_pkg::*;
+	import mem_gen_pkg::*;
 	import dfd_trace_mem_pkg::*;
 	#(
 		parameter  int unsigned                 NUM_TRACE_INST   = 1,

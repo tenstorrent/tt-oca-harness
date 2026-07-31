@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // I2C Wrapper
-//
-//-----------------------------------------------------------------------------
 
 module i2c_wrap
 #(
@@ -266,16 +263,10 @@ module i2c_wrap
 
     // I2C_CTRL Registers
     always_comb begin
-        for (int i = 0; i < i2c_wrap_pkg::MAX_NUM_I2CS; i++) begin
-            if (i < NUM_I2CS) begin
-                i2c_en_o[i]                 = reg_out.I2C_CTRL[i].I2C_EN.value;
-                i2c_controller_mode_en_o[i] = reg_out.I2C_CTRL[i].I2C_CONTROLLER_MODE_EN.value;
-                smbus_en[i]                 = reg_out.I2C_CTRL[i].SMBUS_EN.value;
-            end else begin
-                i2c_en_o[i]                 = 1'b0;
-                i2c_controller_mode_en_o[i] = 1'b0;
-                smbus_en[i]                 = 1'b0;
-            end
+        for (int i = 0; i < NUM_I2CS; i++) begin
+            i2c_en_o[i]                 = reg_out.I2C_CTRL[i].I2C_EN.value;
+            i2c_controller_mode_en_o[i] = reg_out.I2C_CTRL[i].I2C_CONTROLLER_MODE_EN.value;
+            smbus_en[i]                 = reg_out.I2C_CTRL[i].SMBUS_EN.value;
         end
     end
 
@@ -285,6 +276,7 @@ module i2c_wrap
     ////////////////
 
     `OCAH_OT_ASSERT_INIT(paramCheckNumI2cs_A, NUM_I2CS > 0)
+    `OCAH_OT_ASSERT_INIT(paramCheckMaxNumI2cs_A, NUM_I2CS <= i2c_wrap_pkg::MAX_NUM_I2CS)
 
     `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
     `OCAH_OT_ASSERT_KNOWN(I2CEnKnownO_A,               i2c_en_o)

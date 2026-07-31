@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // APB2AVSBus V1.3.1 Controller
-//
-//-----------------------------------------------------------------------------
 
 `begin_keywords "1800-2005"
 
@@ -71,6 +68,10 @@ module avsbus_controller #(
   logic reset_n_apb_clk_syncd;
   logic reset_n_avs_clk_syncd;
   logic reset_n_pre_div_clk_syncd;
+
+  //synopsys sync_set_reset "reset_n_apb_clk_syncd"
+  //synopsys sync_set_reset "reset_n_avs_clk_syncd"
+  //synopsys sync_set_reset "reset_n_pre_div_clk_syncd"
 
   // CRC:
   logic [CrcDataWidth+CrcPolyWidth-1 : 0] data_for_crc_calc;

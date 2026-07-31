@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-
 
 /**
  * Tile-Link UL adapter for SRAM-like devices
@@ -19,6 +17,7 @@
  *   no stored integrity AND another entity upstream is already generating returning integrity.
  *   There is however no case where EnableDataIntgGen and EnableDataIntgPt are both true.
  */
+
 module tlul_adapter_sram
   import tlul_pkg::*;
 
@@ -334,11 +333,11 @@ module tlul_adapter_sram
   logic [top_pkg::TL_DW-1:0] unused_instr, unused_data;
   logic [DataIntgWidth-1:0] error_instr_integ, error_data_integ;
   tlul_data_integ_enc u_tlul_data_integ_enc_instr (
-    .data_i(tlul_pkg::DataMaxWidth'(DataWhenInstrError)),
+    .data_i(DataMaxWidth'(DataWhenInstrError)),
     .data_intg_o({error_instr_integ, unused_instr})
   );
   tlul_data_integ_enc u_tlul_data_integ_enc_data (
-    .data_i(tlul_pkg::DataMaxWidth'(DataWhenError)),
+    .data_i(DataMaxWidth'(DataWhenError)),
     .data_intg_o({error_data_integ, unused_data})
   );
 

@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // AXI Zeroer
-//
-//-----------------------------------------------------------------------------
-
 
 module zeroer #(
 	// AXI ctrl interface types
@@ -84,8 +80,8 @@ module zeroer #(
 		.AxiDataWidth(CTRL_DATA_WIDTH),
 		.AxiIdWidth(CTRL_ID_WIDTH),
 		.AxiUserWidth(CTRL_USER_WIDTH),
-		.AxiMaxWriteTxns(1),  // TODO: hardcode inflight transactions to 1?
-		.AxiMaxReadTxns(1),   // TODO: hardcode inflight transactions to 1?
+		.AxiMaxWriteTxns(1),
+		.AxiMaxReadTxns(1),
 		.FallThrough(0),
 		.FullBW(0),
 

@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // GPIO Interface Shim Example
-//
-//-----------------------------------------------------------------------------
-
 
 module gpio_shim
   import gpio_pkg::*;
@@ -31,6 +27,10 @@ module gpio_shim
     input  logic        core2pad_en_ovrd_i,
     output logic        pad2core_ovrd_o,
     input  logic        pad2core_en_ovrd_i,
+
+    // Safety preempt: when asserted, force the primary/normal plane regardless
+    // of hw2_ovrd (e.g. CAT-THERM preempts a 2nd-HW-function override)
+    input  logic        force_primary_i,
 
     // External GPIO Control
     input  logic        ext_intf_sel_i,
@@ -81,17 +81,16 @@ module gpio_shim
     logic aw_select;
     logic ar_select;
 
-    // Address decode: output[0] for register block, output[1] for error slave.
+    // Address decode: output[0] for register block, output[1] for error slave
+    // Address is assumed to be greater than base address of GPIO_CTRL_REG_MAP after passing the demux in gpio.sv
     always_comb begin
-        if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <=
-            gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+        if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <= gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
             aw_select = 1'b0;
         end else begin
             aw_select = 1'b1;
         end
 
-        if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] <=
-            gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+        if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] <= gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
             ar_select = 1'b0;
         end else begin
             ar_select = 1'b1;
@@ -192,7 +191,7 @@ module gpio_shim
     // GPIO 2nd HW Function Override MUXing
     // Note: it is the responsibility of the adopter to ensure enabling secondary function is safe with the primary function
     always_comb begin
-        if (gpio_ctrl_hwif_out.CONTROL.hw2_ovrd.value) begin
+        if (gpio_ctrl_hwif_out.CONTROL.hw2_ovrd.value && !force_primary_i) begin
             core2pad_muxed = core2pad_ovrd_i;
             core2pad_en_muxed = core2pad_en_ovrd_i;
             pad2core_en_muxed = pad2core_en_ovrd_i;
