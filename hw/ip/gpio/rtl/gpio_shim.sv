@@ -82,7 +82,7 @@ module gpio_shim
     logic ar_select;
 
     // Address decode: output[0] for register block, output[1] for error slave
-    // Address is assumed to be greater than base address of GPIO_CTRL_REG_MAP after passing the demux in gpio.sv
+    // Address is assumed to be greater than the GPIO_CTRL base address after passing the demux in gpio.sv
     always_comb begin
         if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <= gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
             aw_select = 1'b0;
