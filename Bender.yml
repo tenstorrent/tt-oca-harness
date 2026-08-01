@@ -183,6 +183,62 @@ vendor_package:
       - "include/register_interface/assign.svh"
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
+  # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
+  # Only the RTL reachable from abr_top; the testbench and coverage collateral
+  # are left out.
+  - name: adams_bridge
+    target_dir: "vendor/chipsalliance/adams-bridge/upstream"
+    upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
+    include_from_upstream:
+      - "src/abr_top/rtl"
+      - "src/abr_libs/rtl"
+      - "src/abr_prim/rtl"
+      - "src/abr_prim_generic/rtl"
+      - "src/abr_sampler_top/rtl"
+      - "src/abr_sha3/rtl"
+      - "src/barrett_reduction/rtl"
+      - "src/cbd_sampler/rtl"
+      - "src/compress/rtl"
+      - "src/decompose/rtl"
+      - "src/decompress/rtl"
+      - "src/exp_mask/rtl"
+      - "src/makehint/rtl"
+      - "src/norm_check/rtl"
+      - "src/ntt_top/rtl"
+      - "src/pk_decode/rtl"
+      - "src/power2round/rtl"
+      - "src/rej_bounded/rtl"
+      - "src/rej_sampler/rtl"
+      - "src/sample_in_ball/rtl"
+      - "src/sigdecode_h/rtl"
+      - "src/sig_decode_z/rtl"
+      - "src/sig_encode_z/rtl"
+      - "src/sk_decode/rtl"
+      - "src/sk_encode/rtl"
+    patch_dir: "vendor/chipsalliance/adams-bridge/patches"
+
+  # Caliptra KeyVault: only the client-side helpers Adams Bridge uses under
+  # `ifdef CALIPTRA`. The vault itself and its registers are not vendored;
+  # sep_abr_kv_shim serves the key-vault read/write instead.
+  - name: caliptra_keyvault
+    target_dir: "vendor/chipsalliance/caliptra-rtl/upstream"
+    upstream: { git: "https://github.com/chipsalliance/caliptra-rtl.git", rev: "ec349a89a0fe7bbe24f16c6bb05f9779d5a3d4c6" }
+    include_from_upstream:
+      - "src/keyvault/rtl/kv_macros.svh"
+      - "src/keyvault/rtl/kv_defines_pkg.sv"
+      - "src/keyvault/rtl/kv_fsm.sv"
+      - "src/keyvault/rtl/kv_read_rule_check.sv"
+      - "src/keyvault/rtl/kv_write_rule_check.sv"
+      - "src/keyvault/rtl/kv_read_client.sv"
+      - "src/keyvault/rtl/kv_write_client.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+    patch_dir: "vendor/chipsalliance/caliptra-rtl/patches"
+
   # VeeR EL2 core; config snapshots live in overlay/.
   - name: veer_el2
     target_dir: "vendor/chipsalliance/Cores-VeeR-EL2/upstream"
