@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file key_manager.sv
@@ -33,6 +29,7 @@
  * @param LATCHED_MEM_RDATA    Set to 1 if ROM/SRAM latch read data for
  *                             look-ahead optimization.
  */
+
 module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pkg::*; #(
     //=========================================================================
     // Parameters
@@ -54,15 +51,15 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     //=========================================================================
     // Clock and Reset
     //=========================================================================
-    input  wire logic   clk_i,              // System clock
-    input  wire logic   cold_rst_ni,        // Cold reset: asynchronous active-low
-    input  wire logic   warm_rst_ni,        // Warm reset: synchronous active-low
+    input  logic   clk_i,              // System clock
+    input  logic   cold_rst_ni,        // Cold reset: asynchronous active-low
+    input  logic   warm_rst_ni,        // Warm reset: synchronous active-low
 
     //=========================================================================
     // Mailbox AXI4-Lite Slave Interface (SEP Host Access)
     //=========================================================================
     // SEP host uses this interface to send/receive messages to/from KM
-    input  wire km_axil_req_t mbox_sep_req_i,   // SEP request
+    input  km_axil_req_t mbox_sep_req_i,   // SEP request
     output km_axil_resp_t mbox_sep_resp_o,  // SEP response
 
     //=========================================================================
@@ -83,70 +80,70 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
 
     // OTBN (Big Number Accelerator)
     output km_axil_req_t  otbn_req_o,
-    input  wire km_axil_resp_t otbn_resp_i,
+    input  km_axil_resp_t otbn_resp_i,
 
     // AES Accelerator
     output km_axil_req_t  aes_req_o,
-    input  wire km_axil_resp_t aes_resp_i,
+    input  km_axil_resp_t aes_resp_i,
 
     // KMAC Accelerator
     output km_axil_req_t  kmac_req_o,
-    input  wire km_axil_resp_t kmac_resp_i,
+    input  km_axil_resp_t kmac_resp_i,
 
     // HMAC Accelerator
     output km_axil_req_t  hmac_req_o,
-    input  wire km_axil_resp_t hmac_resp_i,
+    input  km_axil_resp_t hmac_resp_i,
 
     // Adams Bridge Accelerator
     output km_axil_req_t  abr_req_o,
-    input  wire km_axil_resp_t abr_resp_i,
+    input  km_axil_resp_t abr_resp_i,
 
     // Adams Bridge ML-KEM shared-key valid IRQ (level-sensitive, active-high)
-    input  wire logic abr_mlkem_sharedkey_irq_i,
+    input  logic abr_mlkem_sharedkey_irq_i,
 
     // OTP/eFuse AXI-Lite master — driven by xbar port 8 (KM-local 0x0001_1xxx).
     // addr[31:12] is replaced with OTP_EFUSE_REMAP_BASE[31:12] before the
     // transaction is driven here; the lower 12 bits (register offset) are preserved.
     // The integrator must connect this port to the system eFuse controller.
     output km_axil_req_t  efuse_req_o,
-    input  wire km_axil_resp_t efuse_resp_i,
+    input  km_axil_resp_t efuse_resp_i,
 
     //=========================================================================
     // ROM Memory Interface (Exposed for Hard Macro Connection)
     //=========================================================================
     // Constitution XXIII: Hard macros instantiated at integration level
     output km_rom_mem_req_t  rom_mem_req_o,
-    input  wire km_rom_mem_rsp_t rom_mem_rsp_i,
+    input  km_rom_mem_rsp_t rom_mem_rsp_i,
 
     //=========================================================================
     // SRAM Memory Interface (Exposed for Hard Macro Connection)
     //=========================================================================
     // Constitution XXIII: Hard macros instantiated at integration level
     output km_sram_mem_req_t sram_mem_req_o,
-    input  wire km_sram_mem_rsp_t sram_mem_rsp_i,
+    input  km_sram_mem_rsp_t sram_mem_rsp_i,
 
     //=========================================================================
     // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
     //=========================================================================
-    input  wire km_drbg_axis_req_t drbg_axis_req_i,
+    input  km_drbg_axis_req_t drbg_axis_req_i,
     output km_drbg_axis_resp_t drbg_axis_resp_o,
 
     //=========================================================================
     // SEP OTP Data Interface
     //=========================================================================
-    input  wire km_otp_data_t otp_data_i,       // OTP data (life cycle, demotion, UID) — read-through
+    input  km_otp_data_t otp_data_i,       // Differentially encoded OTP data
 
     //=========================================================================
     // Wipe State
     //=========================================================================
     // Rising edge sets IRQ_STATUS.WIPE_STATE and zeros entire KPV next cycle
-    input  wire logic    wipe_state_i,
+    input  logic    wipe_state_i,
 
     //=========================================================================
     // Test/Debug
     //=========================================================================
-    input  wire logic   test_en_i,          // DFT test-enable
-    input  wire logic   scan_rst_ni         // Scan reset (active-low, bypasses reset synchronizer)
+    input  logic   test_en_i,          // DFT test-enable
+    input  logic   scan_rst_ni         // Scan reset (active-low, bypasses reset synchronizer)
 );
 
     `include "prim_assert.sv"
@@ -497,4 +494,3 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
 
 endmodule : key_manager
 
-`default_nettype wire

@@ -5,7 +5,7 @@ package km_csr_reg_pkg;
 
     localparam KM_CSR_REG_DATA_WIDTH = 32;
     localparam KM_CSR_REG_MIN_ADDR_WIDTH = 10;
-    localparam KM_CSR_REG_SIZE = 'h308;
+    localparam KM_CSR_REG_SIZE = 'h30c;
 
     typedef struct {
         logic next;
@@ -714,6 +714,39 @@ package km_csr_reg_pkg;
     } km_csr__otp_change_status_reg__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__life_cycle__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__demotion__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__chiplet_uid__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__sip_uid__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__sys_uid__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__class_key__out_t;
+
+    typedef struct {
+        km_csr__otp_read_lock_cold_reg__life_cycle__out_t life_cycle;
+        km_csr__otp_read_lock_cold_reg__demotion__out_t demotion;
+        km_csr__otp_read_lock_cold_reg__chiplet_uid__out_t chiplet_uid;
+        km_csr__otp_read_lock_cold_reg__sip_uid__out_t sip_uid;
+        km_csr__otp_read_lock_cold_reg__sys_uid__out_t sys_uid;
+        km_csr__otp_read_lock_cold_reg__class_key__out_t class_key;
+    } km_csr__otp_read_lock_cold_reg__out_t;
+
+    typedef struct {
         km_csr__soft_rst_code_reg__out_t SOFT_RST_CODE;
         km_csr__irq_status_reg__out_t IRQ_STATUS;
         km_csr__irq_enable_reg__out_t IRQ_ENABLE;
@@ -736,5 +769,6 @@ package km_csr_reg_pkg;
         km_csr__tb_cmd_arg_reg__out_t TB_CMD_ARG;
         km_csr__otp_read_lock_reg__out_t OTP_READ_LOCK;
         km_csr__otp_change_status_reg__out_t OTP_CHANGE_STATUS;
+        km_csr__otp_read_lock_cold_reg__out_t OTP_READ_LOCK_COLD;
     } km_csr__out_t;
 endpackage

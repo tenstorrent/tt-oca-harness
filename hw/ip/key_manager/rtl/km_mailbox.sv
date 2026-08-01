@@ -3,8 +3,6 @@
 
 // Copyright 2026 Tenstorrent Inc.
 
-`default_nettype none
-
 /**
  * @file km_mailbox.sv
  * @brief Bidirectional mailbox for SEP-KM communication.
@@ -44,17 +42,17 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     parameter type sep_axil_resp_t = logic
 ) (
     // Clock and Reset
-    input  wire logic clk_i,
-    input  wire logic cold_rst_ni,   // Cold reset: AASD — resets FIFOs and SEP-facing interfaces
-    input  wire logic warm_rst_ni,   // Warm reset: synchronous — resets KM-CPU-facing interfaces
-    input  wire logic test_en_i,
+    input  logic clk_i,
+    input  logic cold_rst_ni,   // Cold reset: AASD — resets FIFOs and SEP-facing interfaces
+    input  logic warm_rst_ni,   // Warm reset: synchronous — resets KM-CPU-facing interfaces
+    input  logic test_en_i,
 
     // KM CPU AXI4-Lite Slave Interface (for outbound FIFO)
-    input  wire km_axil_req_t km_axil_req_i,
+    input  km_axil_req_t km_axil_req_i,
     output km_axil_resp_t km_axil_resp_o,
 
     // SEP Host AXI4-Lite Slave Interface (for inbound FIFO)
-    input  wire sep_axil_req_t sep_axil_req_i,
+    input  sep_axil_req_t sep_axil_req_i,
     output sep_axil_resp_t sep_axil_resp_o,
 
 
@@ -759,5 +757,3 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
 
 endmodule : km_mailbox
-
-`default_nettype wire

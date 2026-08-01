@@ -764,6 +764,7 @@ sources:
       - hw/ip/key_manager/rtl/km_csr.sv
       - hw/ip/key_manager/rtl/km_drbg_sampler.sv
       - hw/ip/key_manager/rtl/km_kpv.sv
+      - hw/ip/key_manager/rtl/km_kpv_eraser.sv
       - hw/ip/key_manager/rtl/km_kpv_regfile.sv
       - hw/ip/key_manager/rtl/km_mailbox.sv
       - hw/ip/key_manager/rtl/km_reset_conditioner.sv

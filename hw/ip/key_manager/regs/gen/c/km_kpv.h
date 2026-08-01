@@ -35,22 +35,22 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_KPV__CTRL_REG__LOCK_USE_bp 1
 #define KM_KPV__CTRL_REG__LOCK_USE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_3_2_bm 0xc
-#define KM_KPV__CTRL_REG__RSVD_3_2_bp 2
-#define KM_KPV__CTRL_REG__RSVD_3_2_bw 2
-#define KM_KPV__CTRL_REG__RSVD_3_2_reset 0x0
+#define KM_KPV__CTRL_REG__ERASE_bm 0x4
+#define KM_KPV__CTRL_REG__ERASE_bp 2
+#define KM_KPV__CTRL_REG__ERASE_bw 1
+#define KM_KPV__CTRL_REG__ERASE_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_3_bm 0x8
+#define KM_KPV__CTRL_REG__RSVD_3_bp 3
+#define KM_KPV__CTRL_REG__RSVD_3_bw 1
+#define KM_KPV__CTRL_REG__RSVD_3_reset 0x0
 #define KM_KPV__CTRL_REG__EXTEND_bm 0x70
 #define KM_KPV__CTRL_REG__EXTEND_bp 4
 #define KM_KPV__CTRL_REG__EXTEND_bw 3
 #define KM_KPV__CTRL_REG__EXTEND_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_8_7_bm 0x180
-#define KM_KPV__CTRL_REG__RSVD_8_7_bp 7
-#define KM_KPV__CTRL_REG__RSVD_8_7_bw 2
-#define KM_KPV__CTRL_REG__RSVD_8_7_reset 0x0
-#define KM_KPV__CTRL_REG__DEST_VALID_bm 0x1fe00
-#define KM_KPV__CTRL_REG__DEST_VALID_bp 9
-#define KM_KPV__CTRL_REG__DEST_VALID_bw 8
-#define KM_KPV__CTRL_REG__DEST_VALID_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_16_7_bm 0x1ff80
+#define KM_KPV__CTRL_REG__RSVD_16_7_bp 7
+#define KM_KPV__CTRL_REG__RSVD_16_7_bw 10
+#define KM_KPV__CTRL_REG__RSVD_16_7_reset 0x0
 #define KM_KPV__CTRL_REG__LAST_DWORD_bm 0x1e0000
 #define KM_KPV__CTRL_REG__LAST_DWORD_bp 17
 #define KM_KPV__CTRL_REG__LAST_DWORD_bw 4
@@ -63,10 +63,10 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t lock_write :1;
         uint32_t lock_use :1;
-        uint32_t rsvd_3_2 :2;
+        uint32_t erase :1;
+        uint32_t rsvd_3 :1;
         uint32_t extend :3;
-        uint32_t rsvd_8_7 :2;
-        uint32_t dest_valid :8;
+        uint32_t rsvd_16_7 :10;
         uint32_t last_dword :4;
         uint32_t rsvd_31_21 :11;
     } f;

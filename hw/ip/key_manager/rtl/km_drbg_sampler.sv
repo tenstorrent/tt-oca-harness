@@ -3,8 +3,6 @@
 
 // Copyright 2026 Tenstorrent Inc.
 
-`default_nettype none
-
 /**
  * @file km_drbg_sampler.sv
  * @brief DRBG sampler -- bridges KM CPU AXI4-Lite reads to a DRBG AXI-Stream.
@@ -29,16 +27,16 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
     parameter type axil_req_t  = km_axil_req_t,
     parameter type axil_resp_t = km_axil_resp_t
 ) (
-    input  wire logic   clk_i,
-    input  wire logic   cold_rst_ni,   // Cold reset: AASD
-    input  wire logic   warm_rst_ni,   // Warm reset: fully synchronous
+    input  logic   clk_i,
+    input  logic   cold_rst_ni,   // Cold reset: AASD
+    input  logic   warm_rst_ni,   // Warm reset: fully synchronous
 
     // AXI4-Lite Slave (from crossbar, base 0x0000_F000)
-    input  wire axil_req_t axil_req_i,
+    input  axil_req_t axil_req_i,
     output axil_resp_t axil_resp_o,
 
     // DRBG AXI-Stream (KM is slave: TREADY out; TVALID, TDATA, TSTRB in)
-    input  wire km_drbg_axis_req_t drbg_axis_req_i,
+    input  km_drbg_axis_req_t drbg_axis_req_i,
     output km_drbg_axis_resp_t drbg_axis_resp_o,
 
     // Aggregated error pulse to KMCSR (sets IRQ_STATUS.DRBG_ERR)
@@ -548,5 +546,3 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
     );
 
 endmodule : km_drbg_sampler
-
-`default_nettype wire

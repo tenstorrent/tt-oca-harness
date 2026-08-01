@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_reset_conditioner.sv
@@ -32,19 +28,20 @@
  *
  * @param MIN_RESET_CYCLES  Minimum warm reset hold time in clock cycles (default 10).
  */
+
 module km_reset_conditioner import prim_mubi_pkg::*; #(
     // Minimum reset hold time in clock cycles
     parameter int unsigned MIN_RESET_CYCLES = 10
 ) (
     // Clock
-    input  wire logic clk_i,
+    input  logic clk_i,
 
     // Reset inputs
-    input  wire logic   cold_rst_ni,   // Async cold reset (active-low, from external system)
-    input  wire logic   soft_rst_ni,   // Soft reset (active-low, from KMCSR; sync to clk_i)
-    input  wire logic   warm_rst_ni,   // Warm reset pulse (active-low, from integrator; sync to clk_i)
-    input  wire logic   scan_rst_ni,   // Scan reset (active-low, for DFT)
-    input  wire mubi4_t scanmode_i,    // Scan mode (MuBi4True enables scan override)
+    input  logic   cold_rst_ni,   // Async cold reset (active-low, from external system)
+    input  logic   soft_rst_ni,   // Soft reset (active-low, from KMCSR; sync to clk_i)
+    input  logic   warm_rst_ni,   // Warm reset pulse (active-low, from integrator; sync to clk_i)
+    input  logic   scan_rst_ni,   // Scan reset (active-low, for DFT)
+    input  mubi4_t scanmode_i,    // Scan mode (MuBi4True enables scan override)
 
     // Reset outputs
     output logic        rst_cold_aasd_no,  // Cold reset: async-assert / sync-deassert (AASD)
@@ -144,4 +141,3 @@ module km_reset_conditioner import prim_mubi_pkg::*; #(
 
 endmodule : km_reset_conditioner
 
-`default_nettype wire
