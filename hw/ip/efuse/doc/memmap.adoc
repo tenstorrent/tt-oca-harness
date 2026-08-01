@@ -1,7 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-[[efuse-memory-map]]
+[[smc-dv-efuse-memory-map]]
 ===== Memory Map
 
 ====== Overview
@@ -19,64 +16,22 @@ address spaces:
 |`0x3000-0x3FFF` |SHIM Control CSR |Foundry-specific configuration
 |=================================================================================
 
-====== Shadow Registers
+====== Detailed Register Descriptions
 
-The shadow registers provide cached access to eFuse contents, including
-chiplet identification, package information, I2C/I3C address configuration
-(9 instances for I2C_I3C_ID[0:8]), and other system configuration data.
-These registers are automatically loaded from the physical eFuse array during boot.
+Warning
+
+The HTML registers for this IP are generated but not correctly displayed
+in the documentation.
 
 ifdef::backend-html5[]
 ++++
-include::smc:partial$smc/regs/gen/html/blocks/smc_efuse_map.html[]
+include::partial$efuse/regs/gen/html/efuse_bank.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[]
-endif::backend-pdf[]
-
-====== MMR Registers
-
-The MMR (Memory-Mapped Registers) provide access to security tokens for
-authentication, including RMA tokens and security disable tokens.
-
-ifdef::backend-html5[]
-++++
-include::partial$efuse/regs/gen/html/efuse_mmr.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
+include::../regs/gen/adoc/efuse_bank.adoc[]
 include::../regs/gen/adoc/efuse_mmr.adoc[]
-endif::backend-pdf[]
-
-====== eFuse Control Registers
-
-The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.
-
-ifdef::backend-html5[]
-++++
-include::partial$efuse/regs/gen/html/efuse_interface_ctrl.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
 include::../regs/gen/adoc/efuse_interface_ctrl.adoc[]
-endif::backend-pdf[]
-
-====== SHIM Control Registers
-
-The SHIM Control CSR provides foundry-specific configuration registers for
-timing adaptation and eFuse bank initialization.
-
-ifdef::backend-html5[]
-++++
-include::partial$efuse/dv/models/regs/gen/html/efuse_shim_ctrl.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
 include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[]
 endif::backend-pdf[]

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [.small,stretch]
 .SEP Port Declaration
 [%autowidth,options="header",frame=all,grid=all]
@@ -46,7 +43,6 @@
 
 |`sep_cpu_trace` |`sep_cpu_trace_t` |Output |- |CPU trace output for debug. |Trace infrastructure |N/A
 
-|`rst_vec` |`logic` |Input |`[31:1]` |CPU reset vector (PC at reset). |Configuration tie-off |N/A
 |`jtag_id` |`logic` |Input |`[31:1]` |JTAG ID value. |Configuration tie-off |N/A
 |`core_id` |`logic` |Input |`[31:4]` |CPU core ID. |Configuration tie-off |N/A
 

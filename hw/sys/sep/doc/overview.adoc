@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [[hardware-overview]]
 === Hardware Overview
 
@@ -43,7 +40,8 @@ KMAC-SHA3
 Controller
 ** Entropy source, DRBG, Entropy Distribution
 ** Key Manager (KM)
-** PCR Vault (TPM attestation)
+*** Key and Policy Vault (KPV)
+*** Crypto engine key sideload interfaces
 
 The cryptographic, peripheral IO and systems IO subsystems reside in
 their own respective hierarchies. These subsystems are connected with

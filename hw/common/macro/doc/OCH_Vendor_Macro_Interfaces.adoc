@@ -1,0 +1,96 @@
+= OCH Vendor Macro Interfaces
+
+This document describes a method for interfacing technology specific macros with OCH. The goal is to abstract macro interfaces in OCH into a general purpose interface so that the OCH design is vendor technology independent and it's easy for the user to switch technologies. Some example macros used in OCH are: PLL, SRAM, ROM, OTP Fuse, Entropy Source and GPIO. We can also consider sensors such as voltage droop, PVT and temperature to be in scope.
+
+The general concept is illustrated in the figure below. The OCH component interface with the macro using two subcomponents:
+
+* OCH component interface logic
+* Interface adapter shim
+
+Consider the OCH component as the "client" and the external macro as the "server". The OCH client is intended to work with any vendor macro and handles abstracted requests and responses with the adapter shim translating these transactions into physical macro interfaces obeying all its timing rules. The Shim is outside of OCH and is developed by the OCH integrator. Each external macro would need a custom shim.
+
+image::Generic_Vendor_Macro_IF_Concept.svg[Generic Vendor Macro Interface Concept]
+
+== Interface Adapter Shim
+
+The OCH interface adapter shim has the following interface groups, some of which are optional:
+
+* Synchronization : clock and reset
+* Client Control and Data : request, response and event (optional)
+* External (optional) : reference clock for PLL is an example
+* Analog (optional) : voltage reference for OTP, PLL are examples
+* Macro : Vendor specific IP interface
+
+The client interface is intended to be as simple as possible. It follows a simple request and response model. Each port is a parameterized bundle of wires with a single polarity. The interface is source synchronous meaning that all interface signals are synchronous with the included clock. External control/status signals and analog signals are optional as are macro specific power and ground.
+
+The macro interface pins are specific to the vendor IP as is the timing. The shim translates the abstract request into the macro input signals obeying the macro's timing requirements. In the reverse direction, the shim receives the macro's outputs and translates these into abstract response signals.
+
+The request and response abstraction scheme is specific to the type of macro. The assumption is that specific macro types will have a common abstract communication protocol that will map into any vendor specific macro physical signalling.
+
+In some cases, such as the Synopsys IP, the abstraction is already provided and the IP provides an AMBA (APB, AHP, AXI) interface. The request and response abstraction can readily map to such standard bus interface protocols as illustrated in the table below. For example, in the case of AXI4-lite, we would bundle the write address, write data and read address channels together and map to the client request bus. The write response and read data channels would be in a second bundle and mapped to the client response bus.
+
+[cols="1,1,1,1,1"]
+|===
+|Shim Client Interface Ports |I/O |Mapping to AMBA Interface | |
+| | |*APB* |*AHB* |*AXI4-Lite*
+|*Clk* (clock) |in |pclk |hclk |aclk
+|*rstn* (reset) |in |presetn |hresetn |aresetn
+|*req[N-1:0]* (request) |in |paddr, pprot, pselx, penable, pwrite, pwdata, pstrb, pwakeup, pauser, pwuser, |Haddr[31:0], hwrite, hsize[2:0], hburst[2:0], hprot[3:0], htrans[1:0], hmastlock, hwdata[31:0] |*Write address channel:* Awvalid, awready, awaddr, awprot *Write data channel:* Wvalid, wready, wdata, wstrb *Read address channel:* Arvalid, arready, araddr, arprot
+|*resp[M-1:0]* (response) |out |Pready, prdata, pslverr, pruser, pbuser, |Hready, hresp, hrdata[31:0] |*Write response channel:* Valid, bready, crisp *Read data channel:* Valid, ready, rdata, rresp
+|===
+
+== Behavioral Simulation Model
+
+Each macro will require a behavior simulation model for verification of the attached OCH component. The model client side interface only has the interface shim's request, response and event interface. Vendor specific behavior is abstracted away and only the function is modeled.
+
+
+= OTP Fuse
+
+== "API" Functional Interface
+
+* *Test* : initiates any built in self-test (BIST) operations available in the macro to verify functional integrity.
+** Request
+*** test_mode[T-1:0]
+** Response
+*** test_result[R-1:0]
+* *Activate* : prepare the macro for the functional operation. Examples include turning on the charge pump for write (programming ), turning on sense amplifiers for reading
+** Request
+*** Operation_type[A-1:0]] // read or write
+** Response
+*** Ready[]
+* *Write*
+** Request
+*** address[M-1:0]
+*** data[N-1:0]
+** Response
+*** acknowledge
+* *Read*
+** Request
+*** address[M-1:0]
+** Response
+*** data[N-1:0]
+
+[cols="1,1,1,1"]
+|===
+|Interface Shim Ports |I/O |Physical Signal Mapping to Technology Specific Macros |
+| | |*Samsung* |*Rapidus*
+|*Clk* (clock) |in |clk |
+|*rstn* (reset) |in |rstb |rstb
+|*evt[E-1:0]* (event) |out |N/A |N/A
+|*req[N-1:0]* (request) |in |add, ceb, cle, dle, pgmen, readen, web, cpumpen, din, vddrdy, clken |Ce, mode[2:0], a[5:0], ref[2:0], b[31:0]
+|*resp[M-1:0]* (response) |out |dout[31:0], lock[7:0] |d[31:0]
+|*alg* (analog) |analog |vtdo, vrefm, vpp |iref
+|*pwr* (power) |rail |vddotp (OTP logic), vddhotp(OTP analog) |Vdd, vblow
+|*gnd* (ground) |rail |vssotp (OTP), vssl (chip logic) |vss
+|===
+
+== Vendors
+
+=== Samsung
+
+The Samsung OTP macro interface is described in the datasheet:
+
+Samsung_foundry_otp_cp_s101_ln04lpp_v1.04_datasheet_rev1.09.pdf. The block diagram and the IO pin description is copied below for reference.
+
+The interface pins are all available directly to the designer and are not wrapped with abstraction logic as is the case for the Synopsys IP described next.
+

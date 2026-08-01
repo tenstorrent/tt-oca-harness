@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [[ptap-interface]]
 ==== Interface
 
@@ -66,7 +63,7 @@ The PTAP uses 6-bit instruction encodings. During the capture phase, the least s
 |pwr_on_rst_ni |Input |1 |Power-on reset (active low), AND-combined with TRST
 |clk_i |Input |1 |System clock for AXI bridge modules
 |rst_n_i |Input |1 |System reset for AXI bridge modules (active low)
-|feat_ctrl_i |Input |64 |Lifecycle feature control vector (security gating for debug interfaces)
+|feat_ctrl_i |Input |64 |Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces
 |===
 
 ===== Dependencies

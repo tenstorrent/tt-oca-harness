@@ -1,93 +1,78 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [[fuse-controller-otp-fuse-controller-otp]]
 ==== Fuse Controller (OTP)
 
 image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
 
-On reset release of SEP (chiplet_cold_reset), the sensing FSM
-automatically copies each fuse field to its dedicated memory mapped fuse
+When SEP is released from reset (chiplet_cold_reset), the sensing FSM
+automatically copies each fuse field into its dedicated memory-mapped
 shadow register.
 
-The LC_STATE’s shadow register’s _output_ shall be 4’b1111 until fuse
-sensing is done. Only after fuse sensing is done, can the LC_STATE’s
-real value from fuses be sent out to downstream logic, like the
-lifecycle controller. Table xxx defines whether software can read/write
-the fuse shadow registers for each fuse field. Software invisible shadow
-registers send out fuse values to downstream hardware blocks directly.
-All fuses except for LOCKS and LC_STATE, as defined in Table xxx shall
-be made available to the downstream logic at once when ready.
+The _output_ of the LC_STATE shadow register shall remain 4’b1111 until fuse
+sensing completes; only then is the LC_STATE value sensed from the fuses driven
+to downstream logic such as the lifecycle controller. The fuse-field table below
+defines whether software can read and write the shadow register of each fuse
+field. Shadow registers that are not software-visible drive their fuse values
+directly to downstream hardware. All fuse fields other than LOCKS and LC_STATE
+are made available to downstream logic as soon as they are ready.
 
-After fuses are read out to their shadow registers, a sense completion
-indicator is generated. This will trigger the DFT based memory repair
-machine for the SEP SRAMs. Once memory repair is done or bypassed, the
-SEP CPU is enabled and it will fetch its first instruction from the SEP
-ROM.
+After the fuses have been read into their shadow registers, a sense-completion
+indicator is generated. This triggers the DFT-based memory-repair machine for
+the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
+enabled and fetches its first instruction from the SEP ROM.
 
-Every fuse field has 2 lock bits in the LOCKS field. One bit for write
-lock and one bit for read lock. When the write lock bit is set to 1, the
-corresponding fuse field cannot be programmed anymore. Its shadow
-register is not writable anymore either. When the read lock bit is set
-to 1, the shadow register for the corresponding fuse field is not
-readable by software nor by JTAG. The read lock effectively only applies
-to the fuse fields that are software visible.
+Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
+one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
+field can no longer be programmed, and its shadow register is no longer
+writable. When the read-lock bit is set to 1, the shadow register of the
+corresponding fuse field is readable neither by software nor by JTAG. The read
+lock is effective only for fuse fields that are software-visible.
 
-The fuse block’s internal space, including the fuse programming config
-space, can be accessed by a JTAG interface as well as an AXI interface,
-as shown in the figure. Both interfaces have their own access control.
-Besides the access control to the shadow registers defined by Table xxx,
-additional control shall be applied to the JTAG port, such that, in PROD
-and RMA_SIP states, it can only read/write RMA_SIP_TOKEN_I and
-RMA_CHIPLET_TOKEN_I.
+The fuse block’s internal space, including the fuse-programming configuration
+space, is accessible through both a JTAG interface and an AXI interface, as
+shown in the figure, and each interface has its own access control. In addition
+to the shadow-register access control defined by the fuse-field table below,
+the JTAG port shall be further restricted: in the PROD and RMA_SIP states it can
+only read and write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
 
-The fuse programming protection shall only enable the fuse programming
-function after the LOCKS field has been sensed. It shall also honor the
-write-lock fuse value for each field. Programming LC_STATE is handled
-with additional restrictions. 2nd and 3rd bits (LC_STATE[1] and
-LC_STATE[2]) indicate whether the chiplet is in RMA mode (Table 14). The
-SEP fuse controller implements two 256-bit registers, RMA_SIP_TOKEN_I
-and RMA_CHIPLET_TOKEN_I.
+The fuse-programming protection shall enable the fuse-programming function only
+after the LOCKS field has been sensed, and shall honor the write-lock value of
+each field. Programming LC_STATE is subject to additional restrictions:
+LC_STATE[2:1] indicate whether the chiplet is in an RMA state (see the LC State
+Machine section of the Life Cycle Controller). The SEP fuse controller
+implements two 256-bit registers, RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.
 
 These two registers can be populated by both SEP software and JTAG. Each input
 is hashed (SHA-256) and compared with the stored RMA_SIP_TOKEN_DIGEST and
-RMA_CHIPLET_TOKEN_DIGEST, respectively. Only when they match can programming of
-LC_STATE[1] and LC_STATE[2] be enabled. This is described in more detail in the
-next section below.
+RMA_CHIPLET_TOKEN_DIGEST, respectively. Only on a match can LC_STATE[1] and
+LC_STATE[2] be programmed. This is described in more detail in the next
+section.
 
-The fuse programming protection shall only enable the fuse programming
-function after the LOCKS field has been sensed. It shall also honor the
-write-lock fuse value for each field.
+The fuse bank shall support keeping the programming-voltage rail active for an
+unlimited lifetime. This is achieved by using only the internal
+charge-pump-generated programming voltage rather than the external programming
+voltage.
 
-The fuse bank shall support unlimited lifetime for the programming
-voltage rail to be active. This is supported by only employing the
-internal charge pump generated programming voltage rather than using the
-external programming voltage.
+The charge pump is calibrated early in wafer test, and its calibration values
+are burned into the corresponding fuse bits; this is the only time the external
+fuse-programming voltage is used. Consequently, software-initiated fuse
+programming never needs to configure the programming voltage.
 
-The charge pump is calibrated in the early phases of wafer-test and its
-calibration values are burned into the corresponding fuse bits. This is
-the only time the external fuse programming voltage is used.
-Consequently, SEP software based fuse programming does not need to be
-concerned about configuring the required programming voltage when
-writing further bits.
+* Programming a fuse does not update its shadow register until the next fuse
+sensing occurs.
+* The shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
+non-scannable. Any register on the path from these registers to the TAP
+test-enable or fuse write-enable signals is likewise non-scannable.
+* When SECURE_TM is 1 (see the Test Mode section), the shadow registers of
+LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update. Other fuse
+fields may optionally follow the same rule.
 
-* Programming the fuse doesn’t update the shadow registers until the
-next fuse sensing occurs.
-* Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
-non-scannable registers. Any register in the path from these registers
-to the test enablement signals for TAP or fuse write enablement signals
-is non-scannable either.
-* When SECURE_TM is 1 (Section 6.3), shadow registers of LOCKS,
-LC_STATE, SIP_DIS, and SYS_DIS are disabled from getting any updates. It’s
-optional for other fuse fields to follow the same rule.
+To prevent test patterns from accidentally or maliciously changing or reading
+out the fuse values:
 
-To prevent test patterns accidentally/maliciously change and read out
-the fuse values:
-
-* When SECURE_TM is 1 the fuse write enable input to the fuse IP block
-are tied to inactive; outputs of the fuse banks are disconnected from
-the downstream logic. If needed, dedicated test registers can be added
-to drive the downstream logic for testing purposes.
+* When SECURE_TM is 1, the fuse write-enable inputs to the fuse IP block are
+tied inactive, and the fuse-bank outputs are disconnected from downstream
+logic. If needed, dedicated test registers can be added to drive the
+downstream logic during test.
 
 [[fuse-fields]]
 ===== Fuse Fields
@@ -96,37 +81,38 @@ to drive the downstream logic for testing purposes.
 |=======================================================================
 |Field |Field index |Size (bits) |SW writable |SW readable |Description
 |LOCK |0 |64 |set-only |true |Lock control for each fuse field. There are
-two lock bits for each of the 32 fields. When write locked the
-corresponding shadow register is not writable. When read locked, SW and
-JTAG cannot read the corresponding shadow register or fuse field. The
-fuse sensing FSM is _always_ able to read the fuses in order to populate
+two lock bits for each of the 32 fields. When write-locked, the
+corresponding shadow register is not writable. When read-locked, neither
+software nor JTAG can read the corresponding shadow register or fuse field. The
+fuse-sensing FSM is _always_ able to read the fuses in order to populate
 the shadow registers.
 
-|LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life cycle state of
+|LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life-cycle state of the
 chiplet. *_LC_STATE shall never be write-locked or read-locked by the
 corresponding LOCKS bits_*. LC_STATE[3] and LC_STATE[0] are set-only.
 LC_STATE[2:1] shall be set-only when the corresponding *_TOKEN has a
 match. Otherwise, LC_STATE[2:1] cannot be updated.
 
-|SBOOT_DIS |2 |32 (use only 1 bit) |true |true |Disable secure boot when
-bit is set to 1.
+|SBOOT_DIS |2 |32 (use only 1 bit) |true |true |Disables secure boot when
+set to 1, in any lifecycle state (global override, including the
+otherwise-mandatory enforcement in PROD and PROD_END); see Secure-Boot
+Enforcement in the Life Cycle Controller section.
 
 |TRANS_RMA_EN |3 |32 (use only 1 bit) |true |true |When TRANS_RMA_EN == 1,
-we can perform token matching operations. If the token matches, put the
-chip automatically into the corresponding RMA state by setting the
-corresponding LC_STATE shadow register’s bits, without reset of the chip
-needed. Match of RMA_CHIPLET_TOKEN takes priority. The user needs to
-decide if they demand reset before entering RMA state or not. When
-TRANSIENT_RMA_EN == 0, match on *_TOKENs will not automatically change
-the LC_STATE shadow register.
+token-matching operations are permitted. On a token match, the chip is
+automatically placed into the corresponding RMA state by updating the
+LC_STATE shadow-register bits, with no chip reset required. A match on
+RMA_CHIPLET_TOKEN takes priority. The user decides whether to reset the
+chip before entering the RMA state. When TRANS_RMA_EN == 0, a match on
+the *_TOKENs does not automatically change the LC_STATE shadow register.
 
-|SIP_DIS |4 |64 |set-only |true |SiP owner’s feature control vector,
-provisioned by chiplet owner. When set, the corresponding feature is
-disabled.
+|SIP_DIS |4 |64 |set-only |true |SiP owner’s feature-control disable vector,
+provisioned by the chiplet owner. A bit set to 1 disables the corresponding
+feature.
 
-|SYS_DIS |5 |64 |set-only |true |System owner’s feature control vector,
-provisioned by SIP owner. When set, the corresponding feature is
-disabled.
+|SYS_DIS |5 |64 |set-only |true |System owner’s feature-control disable vector,
+provisioned by the SiP owner. A bit set to 1 disables the corresponding
+feature.
 
 |RMA_SIP_TOKEN_DIGEST |6 |256 |true |true |Hash digest of the secret
 RMA_SIP_TOKEN, that enables entering RMA_SIP Life Cycle state
@@ -136,34 +122,38 @@ RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state
 
 |CLASS_KEY |8 |256 |true |true |Can be used for firmware encryption and decryption.
 
-|CHIPLET_PUBK_REVOKE |9 |32 |set-only |true |Revoke public keys used to
-verify BL1. SEP ROM embeds a set of public key hash digests as well as
-access to additional keys via fuses. Each hash digest entry is mapped to
-a bit in this CHIPLET_PUBK_REVOKE field. Once set, the SEP ROM shall
-reject the corresponding public key. The first two public keys in the
-SEP ROM are used for development. Before the chiplet owner transfers a
-part to the customer, the corresponding bit in CHIPLET_PUBK_REVOKE shall
-be set i.e. revoked.
+|CHIPLET_PUBK_REVOKE |9 |32 |set-only |true |Global public-key revocation
+vector covering every boot-verification key of every owner (classical and
+PQC). SEP ROM embeds a set of public-key hash digests and accesses
+additional fused key hashes; each key entry maps to one bit here. Once set,
+SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator
+classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator
+PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1;
+[20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH /
+SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26]
+reserved. Before the chiplet owner transfers a
+part to the customer, the development-key bits shall be set (revoked).
+(Name retained for compatibility; scope is now all owners.)
 
-|BL1_VERSION |10 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL1.
-Minimum BL1 version that can be loaded by SEPROM. The version is encoded
-as the population count of 1 bits in this field. Maximum version is 240
-(TBD) which provides redundancy for any fuses that fail to blow.
+|BL1_VERSION |10 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL1:
+the minimum BL1 version that SEP ROM will load. The version is encoded
+as the population count of 1 bits in this field. The maximum version is 240
+(TBD), which leaves redundancy for any fuses that fail to blow.
 
-|BL2_VERSION |11 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL2.
-Minimum BL1 version that can be loaded by SEPROM. The version is encoded
-as the population count of 1 bits in this field. Maximum version is 240
-(TBD) which provides redundancy for any fuses that fail to blow.
+|BL2_VERSION |11 |256 |set-only |true |Anti-Rollback Counter (ARBC) for BL2:
+the minimum BL2 version that can be loaded. The version is encoded
+as the population count of 1 bits in this field. The maximum version is 240
+(TBD), which leaves redundancy for any fuses that fail to blow.
 
 |CHIPLET_UID |12 |256 |true |true |Silicon creator’s _secret_ device unique
-ID. (It may also be referred to as UDS - Unique Device Secret). The
+ID (also referred to as the UDS, Unique Device Secret). The
 chiplet creator is responsible for CHIPLET_UID provisioning and public
 identity enrollment. _FUTURE IMPROVEMENT: HW enforced key provisioning
 measurement recording. When locked, both writability and software
 visibility are disabled._
 
-|SIP_PUBK_DIGEST |13 |256 |true |true |Hash digest of SiP owner’s root
-public key for secure boot. Note: The chiplet creator’s actual root
+|SIP_PUBK_HASH0 |13 |256 |true |true |Hash digest of SiP owner’s root
+public key for secure boot (slot 0). Note: The chiplet creator’s actual root
 public key is embedded in the SEPROM. The digest is used to validate
 that public key.
 
@@ -174,7 +164,7 @@ disabled. _FUTURE IMPROVEMENT: HW enforced key provisioning measurement
 recording; keep previous owners’ PUBK and UID pair(s) still valid but
 reflected in the key derivation hierarchy._
 
-|SYS_PUBK_DIGEST |15 |256 |true |true |Hash digest of system owner’s root
+|SYS_PUBK_HASH |15 |256 |true |true |Hash digest of system owner’s root
 public key for secure boot.
 
 |SYS_UID |16 |256 |true |true |System owner’s _secret_ device unique ID. The
@@ -182,14 +172,14 @@ system owner is responsible for SYS_UID provisioning and public identity
 enrollment. When locked, both writability and software visibility are
 disabled.
 
-|STATUS_RPT |17 |32 (2 used) |true |true |When STATUS_RPT[1:0] = 2'b00,
-BootROM looks at a SMC GPIO, STATUS_RPT, to determine whether to report
-status. When STATUS_RPT == 2'b01, BootROM reports status; otherwise,
-BootROM doesn't report status.
+|STATUS_RPT |17 |32 (2 used) |true |true |When STATUS_RPT[1:0] == 2'b00, the
+boot ROM samples an SMC GPIO (STATUS_RPT) to determine whether to report
+status. When STATUS_RPT[1:0] == 2'b01, the boot ROM reports status; otherwise,
+it does not.
 
-|ROM_CTL |18 |32 |true |true |ROM_CTL[0]: 0: little endian, 1: big endian
-ROM_CTL[5:1]: row swap control, swaps ROM slices when set ROM_CTL[31:6]:
-reserved
+|ROM_CTL |18 |32 |true |true |ROM_CTL[0]: 0 = little-endian, 1 = big-endian.
+ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
+reserved.
 
 |SPI_CONFIG |19 |288 |true |true |SPI discovery has 8 configuration values
 as well as 1 enable bitfield. Each word is 32-bits in length: [0]
@@ -206,53 +196,80 @@ SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
 SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
 SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME
 
-|PUBK_HASH0 |20 |256 |true |true |Chiplet owner authentication key 0, fused.
-These chiplet owner fused key hashes can be used in addition to the
-hashes in the ROM itself to authenticate manifests.
+|CHIPLET_PUBK_HASH0 |20 |256 |true |true |Hash of chiplet-owner authentication
+key 0, fused. These fused chiplet-owner key hashes can be used in addition to
+the hashes embedded in the ROM to authenticate manifests.
 
-|PUBK_HASH1 |21 |256 |true |true |Chiplet owner authentication key 1, fused.
+|CHIPLET_PUBK_HASH1 |21 |256 |true |true |Hash of chiplet-owner authentication
+key 1, fused.
 
-|reserved0 |22 |512 |true |true |512 bit field with lock bit
+|REQUIRED_SIGNERS |22 |32 (use only 2 bits) |true |true |Owners whose signature
+a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
+0 = not-required; the default all-zero value requires no additional owner. [0]
+SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
+trust -- its classical and PQC root digests are embedded in SEP ROM and always
+authenticate BL1 -- so it has no bit here. Burning a fuse bit only ever adds a
+required signer, so the fuse is monotonic: the standard LOCK bits exist but
+locking this field is unnecessary, since a later burn can never weaken security.
+The value is applied via the shadow register (loaded from the fuse at cold reset,
+SW-writable): firmware may update the shadow to set the required signers for each
+manifest it verifies (BL1, BL2, runtime, ...). See Secure-Boot Signing Model in
+the Life Cycle Controller section.
 
-|reserved1 |23 |512 |true |true |512 bit field with lock bit
+|REQUIRED_ALGS |23 |32 (use only 12 bits) |set-only |true |Per-owner required
+signature algorithms, applied only when that owner is required. Each owner has a
+4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
+(ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
+set (e.g., ML-DSA-44/65/87) are set by the owner's provisioned keys, not mandated
+here. [3:0] chiplet, [7:4] SiP owner, [11:8] system owner, [31:12] reserved. For
+each required (owner, algorithm) the manifest must carry a signature verified
+against that owner's burned, non-revoked key of that type; all required pairs
+must verify, and any signature from a non-required owner is ignored.
 
-|reserved2 |24 |512 |true |true |512 bit field with lock bit
+|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA (PQC)
+authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|reserved3 |25 |512 |true |true |512 bit field with lock bit
+|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA (PQC)
+authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
-|reserved4 |26 |512 |true |true |512 bit field with lock bit
+|SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
+ML-DSA (PQC) root public key for secure boot (slot 0). PQC counterpart of
+SIP_PUBK_HASH0.
 
-|reserved5 |27 |512 |true |true |512 bit field with lock bit
+|SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
+ML-DSA (PQC) root public key for secure boot. PQC counterpart of
+SYS_PUBK_HASH.
 
-|reserved6 |28 |512 |true |true |512 bit field with lock bit
+|SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
+public key for secure boot, slot 1. Second slot so the SiP owner retains a
+usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
 
-|reserved7 |29 |512 |true |true |512 bit field with lock bit
+|SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
+(PQC) root public key for secure boot, slot 1. PQC counterpart of
+SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
 
-|reserved_last_256 |30 |256 |true |true |256 bit field with lock bit
+|reserved4 |30 |2048 |true |true |2048 bit reserved field with lock bit
 
-|reserved_last_64 |31 |64 |true |true |64 bit field with lock bit
-
-|reserved_last_32 |32 |32 |true |true |32 bit field with lock bit
+|reserved5 |31 |800 |true |true |800 bit reserved field with lock bit
 |=======================================================================
 
-The JTAG_ID field has been removed from the fuse map and will be implemented as a top level port.
+The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
 
 [[anti-rollback-counter-arbc-anti-rollback-counter-arbc]]
 ===== Anti-Rollback Counter (ARBC)
 
 The counter is implemented as a ``population count'' in fuses instead of
-a binary counter. For a counter capacity of 256 states, we allocate 240
-fuse bits with 26 spares. Every counter increment results in an
-additional fuse bit being blown. Counter state equals the fuse
-population count i.e. the number of fuses (out of 256) which have been
+a binary counter. Each 256-bit counter field allocates 240 fuse bits for
+counting, with 16 spares as redundancy for fuses that fail to blow. Every
+counter increment blows one additional fuse bit, and the counter state equals
+the fuse population count -- the number of fuses (out of 256) that have been
 blown.
 
-A new device has an initial ARBC state of zero fuse bits blown.
-Everytime we want to increment the required production firmware version,
-we blow a fuse bit as described above. Firmware signature verification
-includes the state of ARBC along with the firmware version and ensures
-that older firmware versions do not pass the signature verification
-process and cannot be loaded.
+A new device starts with an ARBC state of zero fuse bits blown. Each time the
+required production firmware version is incremented, one more fuse bit is
+blown as described above. Firmware signature verification includes the ARBC
+state along with the firmware version, ensuring that older firmware versions
+fail signature verification and cannot be loaded.
 
 ===== RTL Integration
 
@@ -264,9 +281,7 @@ After sensing, the shadow register map (`sep_efuse_pkg::efuse_map_t`) is exposed
 
 The Key Manager receives a subset of the OTP data through the `km_otp_data_t` structure, which is assembled in `sep_crypto.sv`. The `life_cycle` field comes from the differentially-encoded `LC_STATE` shadow register, the `demotion_state_*` fields come from the lifecycle controller outputs (not directly from fuses), and the `chiplet_uid` field comes from the `CHIPLET_UID` shadow register. The ARBC fields (`BL1_VERSION`, `BL2_VERSION`), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.
 
-For simulation, adopters may provide an external eFuse macro model through an
-overlay-specific shim. The open tree keeps only the generic controller and shim
-interfaces.
+For simulation, the `sep_ip_integration` module instantiates an `efuse_bank_model_samsung` with `HAS_LC_STATE = 1'b1`, connected through an `efuse_interface_shim_samsung` that bridges the generic shim/bank-control interface to the Samsung eFuse macro model.
 
 For the canonical eFuse IP documentation covering the `efuse_interface_controller` internals, sensing FSM, and programming protocol, see `hw/periph/efuse/doc/index.adoc` (included in the SMC documentation via `hw/smc/doc/periphs.adoc`).
 
@@ -327,13 +342,7 @@ _not support_ this feature and will leave this interface on the
 component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.
 
-The open SEP SPI path is `sep_ot_spi_wrap`, which wraps the modified
-OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no
-TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS,
-4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA
-trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of
-chip-select outputs. High-performance flash-controller integrations are supplied
-through adopter overlays rather than the open RTL tree.
+The SEP provides two SPI integration paths. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. A second path, `sep_cdns_spi_wrap`, integrates a Cadence xSPI controller and PHY for high-performance octal DDR flash access. This module presents both an AXI-Lite register interface and a full AXI4 flash read window, along with dedicated PHY pad connections and initialization status outputs. The selection between these two SPI paths is determined by the system configuration.
 
 For the OpenTitan SPI host theory of operation and register map, refer to the https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host documentation].
 
@@ -343,7 +352,7 @@ For the OpenTitan SPI host theory of operation and register map, refer to the ht
 The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
 CPU must periodically visit the WDT and reset its counter, proving that
-the CPU is still alive and well i.e. not hanging. If the WDT timer
+the CPU is still alive and well i.e. not hanging. If the WDT timer
 reaches zero in its countdown, it fires an external interrupt indicating
 that its timeout has expired and there is a problem within the SEP.
 
@@ -365,21 +374,29 @@ The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` wi
 [cols="<10%,<20%,<10%,<10%,<50%",options="header",]
 |=======================================================================
 |Bit |Field |Access |Default |Description
-|0 |km_sw_rst_n | |0 |KM reset (0=assert, 1=release)
-|1 |otbn_sw_rst_n | |1 |OTBN reset (0=assert, 1=release)
-|2 |aes_sw_rst_n | |1 |AES reset (0=assert, 1=release)
-|3 |hmac_sw_rst_n | |1 |HMAC reset (0=assert, 1=release)
-|4 |kmac_sw_rst_n | |1 |KMAC reset (0=assert, 1=release)
+|0 |km_sw_rst_n |RW |0 |KM reset (0=assert, 1=release)
+|1 |otbn_sw_rst_n |RW |1 |OTBN reset (0=assert, 1=release)
+|2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
+|3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
+|4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
 |=======================================================================
 
 On power-up, `SW_RESET_N` resets to `0x1E`: KM is held in reset, while OTBN,
 AES, HMAC, and KMAC are released. The SEP host firmware writes `1` to release an
 IP from reset and writes `0` to assert its software reset.
 
-Each bit is ANDed with the system reset (`sep_reset_n`) and passed through a 2-FF reset synchronizer to produce a glitch-free, synchronized active-low reset output per IP. Hardware reset always takes precedence -- even if the software bit is `1`, asserting the system reset will reset the IP.
+Inside `sep_reset_ctrl`, each bit is ANDed with `sep_reset_n` and then passed
+through a per-IP JTAG override mux (`jtag_sep_reset_ctrl_i`). The `sep_reset_n`
+term holds every IP in reset until eFuse sensing completes during boot.
 
-The `_N` suffix convention matches the SMC reset controller: `0` = assert reset, `1` = release.
-
+The Key Manager reset (`km_sw_rst_n`) is applied directly as the KM warm reset.
+The four crypto accelerators (`otbn`, `aes`, `hmac`, `kmac`) are AXI subordinates
+on the `sep_crypto` demux, so resetting one mid-transaction would strand an
+in-flight request and hang its master. Their reset bits are therefore treated as
+requests: `sep_crypto_axi_isolate` first isolates the accelerator's AXI port,
+draining outstanding transactions and terminating new ones with DECERR, and only
+then asserts the reset. The isolation is held for the duration of the reset and
+released when the software bit deasserts.
 
 // Additive cross-reference: canonical OTP/eFuse IP documentation
 // is maintained by SMC and can be found at:

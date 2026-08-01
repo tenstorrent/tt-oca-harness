@@ -11,6 +11,6 @@ Cross Trigger Port (CTP) registers into a unified address space:
 * 0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each
 
 // NOTE: The Cross Trigger Network has no generated register block (the Cross
-// Trigger Matrix RDL is template-only and not ported; see Plan A). The combined
+// Trigger Matrix RDL is template-only and not ported). The combined
 // CTM/CTP register table is therefore not auto-included here. Per-port registers
 // are documented under the Cross Trigger Port IP.

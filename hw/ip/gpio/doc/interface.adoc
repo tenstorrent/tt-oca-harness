@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [[gpio-interface]]
 ===== Interface
 
@@ -12,7 +9,7 @@ integration for hardware protocols, and direct GPIO pad connections.
 [width="100%",cols="30%,20%,50%",options="header",]
 |=====================================================================================
 |Parameter |Default |Description
-|NUM_GPIO |68 |Total number of GPIO pins (64 bonded + 4 unbonded)
+|NUM_GPIO |65 |Total number of GPIO pins (61 bonded + 4 unbonded)
 
 |BUS_PROTOCOL |AXI4-Lite |Register interface protocol (AXI4-Lite or
 APB4)

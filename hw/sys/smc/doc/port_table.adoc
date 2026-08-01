@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [.small,stretch]
 .SMC Port Declaration
 [%autowidth,options="header",frame=all,grid=all]
@@ -46,7 +43,7 @@
 |`gpio_out_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output data to external pins. |GPIO padring → External GPIO pins |N/A
 |`gpio_in_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO input enable control. |GPIO padring → GPIO wraps |N/A
 |`gpio_out_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output enable control. |GPIO padring → GPIO wraps |N/A
-|`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin 67. |GPIO pin 67 → Reset Unit |N/A
+|`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin 61. |GPIO pin 61 → Reset Unit |N/A
 |`clk_telemetry_i` |`logic` |Input |1 |Telemetry clock domain. Separate clock for ATB telemetry data collection. |Telemetry clock source |N/A
 |`rst_telemetry_ni` |`logic` |Input |1 |Telemetry reset (active low). Resets telemetry receiver logic. |Telemetry reset source |N/A
 |`telemetry_atdata_i` |`telemetry_receiver_pkg::telemetry_data_t` |Input |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB telemetry data input array. |ATB sources → Telemetry receivers |N/A

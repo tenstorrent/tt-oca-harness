@@ -1,7 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-[[mailbox-unit-memory-map]]
+[[memory-map]]
 ===== Memory Map
 
 ====== Address Space Organization

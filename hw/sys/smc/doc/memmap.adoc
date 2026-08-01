@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 [[smc-memory-map]]
 === Memory Map
 
@@ -23,10 +20,10 @@ conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
 refer to the
 ifdef::backend-html5[]
-SMC Address Map Integration
+xref:ROOT:integration_guide.adoc#smc-address-map-integration[SMC Address Map Integration]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-SMC Address Map Integration
+xref:../../../doc/integration_guide.adoc#smc-address-map-integration[SMC Address Map Integration]
 endif::backend-pdf[]
 section of the Integration Guide.
 
@@ -44,16 +41,19 @@ timer interfaces (4 cores, 1KB each)
 |BASE + 0x000_1000 - BASE + 0x000_1FFF |4KB |Debug Unit |RISC-V Debug Module
 interface
 
-|BASE + 0x000_2000 - BASE + 0x000_3FFF |8KB |System Control |Reset unit and
+|BASE + 0x000_2000 - BASE + 0x000_2FFF |4KB |System Control |Reset unit and
 miscellaneous system control registers
 
-|BASE + 0x000_4000 - BASE + 0x000_4FFF |4KB |GPIO Interface |General Purpose I/O
-control and configuration (68 GPIO instances)
+|BASE + 0x000_3000 - BASE + 0x000_3FFF |4KB |GPIO Interface |General Purpose I/O
+control and configuration (65 GPIO instances)
 
-|BASE + 0x000_7000 - BASE + 0x000_AFFF |16KB |Peripheral Controllers |PVT, AVSBus,
+|BASE + 0x000_4000 - BASE + 0x000_5FFF |8KB |I3C Controllers |OCA I3C controller
+instances (6 instances)
+
+|BASE + 0x000_6000 - BASE + 0x000_8FFF |12KB |Peripheral Controllers |AVSBus,
 I2C, and UART interfaces
 
-|BASE + 0x000_B000 - BASE + 0x000_FFFF |20KB |Security, Timing & DFT |eFuse,
+|BASE + 0x000_9000 - BASE + 0x000_DFFF |20KB |Security, Timing & DFT |eFuse,
 telemetry, system timer, DTP control, and DFT status
 
 |BASE + 0x001_0000 - BASE + 0x001_7FFF |32KB |Fabric Control |CPU control, address
@@ -70,8 +70,9 @@ memory spaces
 
 |BASE + 0x016_0000 - BASE + 0x016_8FFF |36KB |CLA |Debug and trace (CLA) module
 
-|BASE + 0x040_0000 - BASE + 0x040_17FF |6KB |I3C Interface (Reserved) |I3C controller
-instances (6 planned) - NOT YET IMPLEMENTED
+|BASE + 0x040_0000 - BASE + 0x040_5FFF |24KB |AXI-Lite External |Cadence I3C
+controllers plus vendor blocks relocated from the core SMC map (PLL, PVT,
+refclk / PoC-PBias, clock-observation GPIOs, eFuse SHIM)
 
 |BASE + 0x080_0000 - BASE + 0x1FF_FFFF |24MB |Address Remapping |M-mode and Xvisor
 remapped address regions
@@ -103,52 +104,40 @@ interface
 |Miscellaneous Wrapper |BASE + 0x000_2800 - BASE + 0x000_2FFF |1 instance |System
 configuration registers
 
-|PLL Wrapper |BASE + 0x000_3000 - BASE + 0x000_3FFF |1 instance |Clock generation
-and management
-
-|GPIO Interface |BASE + 0x000_4000 + (N×0x10) |68 instances |GPIO interface
+|GPIO Interface |BASE + 0x000_3000 + (N×0x10) |65 instances |GPIO interface
 control
 
-|GPIO Control |BASE + 0x000_4440 + (N×0x20) |68 instances |GPIO pad
+|GPIO Control |BASE + 0x000_3440 + (N×0x20) |65 instances |GPIO pad
 configuration
 
-|GPIO Refclk Control |BASE + 0x000_4CC0 |1 instance |Reference clock GPIO
-control
+|OCA I3C Controllers |BASE + 0x000_4000 + (N×0x500) |6 instances |OCA I3C
+controller instances
 
-|GPIO PoC/PBias Control |BASE + 0x000_4DE0 |1 instance |Power-on and pad bias
-control
-
-|PVT Wrapper |BASE + 0x000_7000 - BASE + 0x000_7FFF |1 instance |Process, Voltage,
-Temperature monitoring
-
-|AVSBus Controller |BASE + 0x000_8000 - BASE + 0x000_8FFF |1 instance |Adaptive
+|AVSBus Controller |BASE + 0x000_6000 - BASE + 0x000_6FFF |1 instance |Adaptive
 voltage scaling control
 
-|I2C Wrapper |BASE + 0x000_9000 - BASE + 0x000_9FFF |1 instance |I2C/SMBus
+|I2C Wrapper |BASE + 0x000_7000 - BASE + 0x000_7FFF |1 instance |I2C/SMBus
 communication interface
 
-|UART Wrapper |BASE + 0x000_A000 - BASE + 0x000_AFFF |1 instance |UART communication
+|UART Wrapper |BASE + 0x000_8000 - BASE + 0x000_8FFF |1 instance |UART communication
 interface
 
-|eFuse Map |BASE + 0x000_B000 - BASE + 0x000_BFFF |1 instance |eFuse memory mapping
+|eFuse Map |BASE + 0x000_9000 - BASE + 0x000_9FFF |1 instance |eFuse memory mapping
 interface
 
-|eFuse Interface |BASE + 0x000_C000 - BASE + 0x000_C0FF |1 instance |eFuse interface
+|eFuse Interface |BASE + 0x000_A000 - BASE + 0x000_AFFF |1 instance |eFuse interface
 controller
 
-|eFuse SHIM |BASE + 0x000_C100 - BASE + 0x000_C1FF |1 instance |eFuse hardware
-abstraction layer
-
-|Telemetry Receiver |BASE + 0x000_D000 - BASE + 0x000_DFFF |1 instance |Telemetry
+|Telemetry Receiver |BASE + 0x000_B000 - BASE + 0x000_BFFF |1 instance |Telemetry
 data processing
 
-|System Timer OCTS |BASE + 0x000_E000 - BASE + 0x000_EFFF |1 instance |Multi-chiplet
+|System Timer OCTS |BASE + 0x000_C000 - BASE + 0x000_CFFF |1 instance |Multi-chiplet
 time synchronization
 
-|DTP Control Registers |BASE + 0x000_F000 - BASE + 0x000_F7FF |512 entries |DTP
+|DTP Control Registers |BASE + 0x000_D000 - BASE + 0x000_D7FF |512 entries |DTP
 control register block
 
-|DFT Control/Status |BASE + 0x000_F800 - BASE + 0x000_FFFF |1 instance |DFT control
+|DFT Control/Status |BASE + 0x000_D800 - BASE + 0x000_DFFF |1 instance |DFT control
 and status for ROM
 
 |CPU Control |BASE + 0x001_0000 - BASE + 0x001_1FFF |1 instance |CPU cluster
@@ -186,8 +175,9 @@ space
 |SMC CLA |BASE + 0x016_0000 - BASE + 0x016_8FFF |1 instance |Debug and trace (CLA)
 module
 
-|I3C Wraps (Reserved) |BASE + 0x040_0000 + (N×0x400) |6 planned |I3C controller
-interfaces - NOT YET IMPLEMENTED
+|AXI-Lite External |BASE + 0x040_0000 - BASE + 0x040_5FFF |1 window |External
+window hosting the Cadence I3C controllers and vendor blocks relocated from the
+core SMC map (see the AXI-Lite External Window table below)
 
 |M-mode Region |BASE + 0x100_0000 - BASE + 0x17F_FFFF |8MB |Machine mode remapped
 space
@@ -202,6 +192,41 @@ Controller
 
 |Bus Error Units |BASE + 0x801_0000 + (N×0x1000) |4 instances |Per-core bus
 error handling
+|=======================================================================
+
+==== AXI-Lite External Window
+
+The `smc_external` block at `BASE + 0x040_0000` hosts the Cadence I3C
+controllers together with vendor/adopter blocks relocated out of the core SMC
+map: the PLL and PVT sensor register blocks, the reference-clock and PoC/PBias
+pad controls, the PLL/PVT clock-observation GPIOs, and the Samsung eFuse SHIM.
+Addresses below are expressed as `BASE + offset` (`BASE` = `0xC000_0000`).
+
+.SMC AXI-Lite External Window
+[width="100%",cols="25%,25%,20%,30%",options="header",]
+|=======================================================================
+|Component |Address Range |Instance |Description
+|Cadence I3C Controllers |BASE + 0x040_0000 + (N×0x400) |6 instances |Cadence
+I3C controller wrappers
+
+|PLL Clock-Obs GPIO |BASE + 0x040_2000 (intf), BASE + 0x040_200C (ctrl) |1 instance
+|PLL clock observation GPIO
+
+|PVT Clock-Obs GPIO |BASE + 0x040_2010 (intf), BASE + 0x040_201C (ctrl) |1 instance
+|PVT clock observation GPIO
+
+|GPIO PoC/PBias Control |BASE + 0x040_2020 |1 instance |Power-on and pad bias
+control
+
+|GPIO Refclk Control |BASE + 0x040_202C |1 instance |Reference clock GPIO control
+
+|PLL Wrapper |BASE + 0x040_3000 |1 instance |Clock generation and management
+
+|PVT Wrapper |BASE + 0x040_4000 |1 instance |Process, Voltage, Temperature
+monitoring
+
+|eFuse SHIM |BASE + 0x040_5000 |1 instance |Samsung eFuse hardware abstraction
+layer
 |=======================================================================
 
 ==== Register Interface Standards
