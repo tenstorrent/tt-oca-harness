@@ -1,0 +1,21 @@
+hw/ip/gpio/rtl/gpio_shim.sv
+  s_d605cb93395a31::t_f3c562ee5d1d09 85
+Bender.yml
+  s_d605cb93395a31::t_f28b61c08ebc3e 143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "d3a0ac6683a86adbeff1d83d2a3948dddf937465",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
