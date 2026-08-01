@@ -3,7 +3,7 @@
 package entropy_source_addrmap_pkg;
 
 localparam longint unsigned ENTROPY_SOURCE_BASE_ADDR = 64'h0;
-localparam longint unsigned ENTROPY_SOURCE_SIZE = 64'h154;
+localparam longint unsigned ENTROPY_SOURCE_SIZE = 64'h17C;
 
 localparam longint unsigned ENTROPY_SOURCE_COMPONENT_ID_BASE_ADDR = 64'h0;
 localparam longint unsigned ENTROPY_SOURCE_CTRL_BASE_ADDR = 64'h4;
@@ -38,7 +38,7 @@ localparam longint unsigned ENTROPY_SOURCE_RING_OSC_TUNE_BASE_ADDR = 64'h94;
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_CTRL_BASE_ADDR = 64'h98;
 localparam longint unsigned ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR = 64'hA0;
 localparam longint unsigned ENTROPY_SOURCE_DECORRELATOR_MASK_BASE_ADDR = 64'hA4;
-localparam longint unsigned ENTROPY_SOURCE_STARTUP_CTRL_BASE_ADDR = 64'hB0;
+localparam longint unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR = 64'hB4;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_BASE_ADDR = 64'hC0;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_BASE_ADDR = 64'hC4;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_BASE_ADDR = 64'hC8;
@@ -72,6 +72,16 @@ localparam longint unsigned ENTROPY_SOURCE_MARKOV_HI_TOTAL_FAILS_BASE_ADDR = 64'
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_LO_TOTAL_FAILS_BASE_ADDR = 64'h148;
 localparam longint unsigned ENTROPY_SOURCE_ALERT_SUMMARY_FAIL_COUNTS_BASE_ADDR = 64'h14C;
 localparam longint unsigned ENTROPY_SOURCE_ALERT_FAIL_COUNTS_BASE_ADDR = 64'h150;
+localparam longint unsigned ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR = 64'h154;
+localparam longint unsigned ENTROPY_SOURCE_ALERT_THRESHOLD_BASE_ADDR = 64'h158;
+localparam longint unsigned ENTROPY_SOURCE_MIN_ENTROPY_H_BASE_ADDR = 64'h15C;
+localparam longint unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_BASE_ADDR = 64'h160;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_CTRL_BASE_ADDR = 64'h164;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_BASE_ADDR = 64'h168;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_RDATA_BASE_ADDR = 64'h16C;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_BASE_ADDR = 64'h170;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_BASE_ADDR = 64'h174;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_BASE_ADDR = 64'h178;
 
 
 typedef enum logic [2:0] {

@@ -1,36 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// GF(2^8) Multiply-Adder
-// Performs the computation Y = (a*b) + c in the Galois field defined by the
-// primitive polynomial x^8 + x^4 + x^3 + x + 1 (0x11b).
-// Fun fact: the same polynomial is used in AES byte substitution computations.
-// The multiplication algorithm unrolls the shift-and-XOR sequence of partial
-// product computations.
-//------------------------------------------------------------------------------
+/**
+ * @file gf_muladd.sv
+ * @brief Galois Field GF(2^8) multiply-adder for AES applications.
+ *
+ * @details This module computes Y = (a * b) + c in GF(2^8) under the AES
+ *          primitive polynomial x^8 + x^4 + x^3 + x + 1 (0x11b). The
+ *          multiplication is unrolled into a shift-and-XOR sequence of
+ *          partial products, eliminating any feedback loops for improved
+ *          throughput.
+ */
 
-module gf_muladd(
-    input  logic [7:0] a,
-    input  logic [7:0] b,
-    input  logic [7:0] c,
-    output logic [7:0] y
+module gf_muladd (
+    input       logic [7:0] a,
+    input       logic [7:0] b,
+    input       logic [7:0] c,
+    output      logic [7:0] y
 );
 
-    // primitive polynomial: x^8 + x^4 + x^3 + x + 1
-    // represented as 0x1b (without implicit x^8 term)
+    /////////////////////
+    // Local parameters
+    /////////////////////
+
+    // AES poly without the implicit x^8 term: x^4 + x^3 + x + 1 = 0x1b
     localparam logic [7:0] AES_POLY = 8'h1B;
 
-    // intermediate signals for unrolled multiplication
+    /////////////
+    // Signals
+    /////////////
+
     logic [7:0] a0, a1, a2, a3, a4, a5, a6, a7;
     logic [7:0] p0, p1, p2, p3, p4, p5, p6, p7, p8;
     logic [7:0] mult_result;
 
-    // initialise stage 0
+    /////////////////
+    // Combinational
+    /////////////////
+
     assign a0 = a;
     assign p0 = 8'h00;
 
-    // stages 1 through 8
     assign p1 = p0 ^ (b[0] ? a0 : 8'h00);
     assign a1 = a0[7] ? ((a0 << 1) ^ AES_POLY) : (a0 << 1);
 
@@ -56,7 +66,10 @@ module gf_muladd(
 
     assign mult_result = p8;
 
-    // final addition in galois field
+    ///////////
+    // Output
+    ///////////
+
     assign y = mult_result ^ c;
 
 endmodule
