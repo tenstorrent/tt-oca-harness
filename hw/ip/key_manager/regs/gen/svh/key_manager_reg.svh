@@ -1425,7 +1425,7 @@ localparam int unsigned KPV_KPV_SCRAMBLER_CTRL_REG_ADDR                         
 
 
 localparam int unsigned KMCSR_REG_MAP_BASE_ADDR                                                                   = 32'h0000E000;
-localparam int unsigned KMCSR_REG_MAP_SIZE                                                                        = 32'h00000308;
+localparam int unsigned KMCSR_REG_MAP_SIZE                                                                        = 32'h00000200;
 
 
 localparam int unsigned KMCSR_VERSION_REG_OFFSET                                                                  = 32'h00000000;
@@ -1448,20 +1448,6 @@ localparam int unsigned KMCSR_IRQ_SET_REG_OFFSET                                
 localparam int unsigned KMCSR_IRQ_SET_REG_ADDR                                                                    = 32'h0000E020;
 localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_OFFSET                                                = 32'h00000024;
 localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_ADDR                                                  = 32'h0000E024;
-localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_OFFSET                                                          = 32'h00000028;
-localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_ADDR                                                            = 32'h0000E028;
-localparam int unsigned KMCSR_BOOT_STATUS_REG_OFFSET                                                              = 32'h0000002C;
-localparam int unsigned KMCSR_BOOT_STATUS_REG_ADDR                                                                = 32'h0000E02C;
-localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_OFFSET                                                           = 32'h00000030;
-localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_ADDR                                                             = 32'h0000E030;
-localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_OFFSET                                                       = 32'h00000034;
-localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_ADDR                                                         = 32'h0000E034;
-localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_OFFSET                                                           = 32'h00000038;
-localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_ADDR                                                             = 32'h0000E038;
-localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_OFFSET                                                           = 32'h000000B8;
-localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_ADDR                                                             = 32'h0000E0B8;
-localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_OFFSET                                                           = 32'h000000BC;
-localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_ADDR                                                             = 32'h0000E0BC;
 localparam int unsigned KMCSR_VUART_TX_REG_OFFSET                                                                 = 32'h00000100;
 localparam int unsigned KMCSR_VUART_TX_REG_ADDR                                                                   = 32'h0000E100;
 localparam int unsigned KMCSR_VUART_RX_REG_OFFSET                                                                 = 32'h00000104;
@@ -1486,138 +1472,6 @@ localparam int unsigned KMCSR_TB_CMD_RESULT_REG_OFFSET                          
 localparam int unsigned KMCSR_TB_CMD_RESULT_REG_ADDR                                                              = 32'h0000E12C;
 localparam int unsigned KMCSR_DEBUG_REG_OFFSET                                                                    = 32'h000001FC;
 localparam int unsigned KMCSR_DEBUG_REG_ADDR                                                                      = 32'h0000E1FC;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_OFFSET                                                    = 32'h00000200;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_ADDR                                                      = 32'h0000E200;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_OFFSET                                                    = 32'h00000204;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_ADDR                                                      = 32'h0000E204;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_OFFSET                                                    = 32'h00000208;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_ADDR                                                      = 32'h0000E208;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_OFFSET                                                    = 32'h0000020C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_ADDR                                                      = 32'h0000E20C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_OFFSET                                                    = 32'h00000210;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_ADDR                                                      = 32'h0000E210;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_OFFSET                                                    = 32'h00000214;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_ADDR                                                      = 32'h0000E214;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_OFFSET                                                    = 32'h00000218;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_ADDR                                                      = 32'h0000E218;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_OFFSET                                                    = 32'h0000021C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_ADDR                                                      = 32'h0000E21C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_OFFSET                                                    = 32'h00000220;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_ADDR                                                      = 32'h0000E220;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_OFFSET                                                    = 32'h00000224;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_ADDR                                                      = 32'h0000E224;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_OFFSET                                                    = 32'h00000228;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_ADDR                                                      = 32'h0000E228;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_OFFSET                                                    = 32'h0000022C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_ADDR                                                      = 32'h0000E22C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_OFFSET                                                    = 32'h00000230;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_ADDR                                                      = 32'h0000E230;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_OFFSET                                                    = 32'h00000234;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_ADDR                                                      = 32'h0000E234;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_OFFSET                                                    = 32'h00000238;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_ADDR                                                      = 32'h0000E238;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_OFFSET                                                    = 32'h0000023C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_ADDR                                                      = 32'h0000E23C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_OFFSET                                                        = 32'h00000240;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_ADDR                                                          = 32'h0000E240;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_OFFSET                                                        = 32'h00000244;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_ADDR                                                          = 32'h0000E244;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_OFFSET                                                        = 32'h00000248;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_ADDR                                                          = 32'h0000E248;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_OFFSET                                                        = 32'h0000024C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_ADDR                                                          = 32'h0000E24C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_OFFSET                                                        = 32'h00000250;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_ADDR                                                          = 32'h0000E250;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_OFFSET                                                        = 32'h00000254;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_ADDR                                                          = 32'h0000E254;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_OFFSET                                                        = 32'h00000258;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_ADDR                                                          = 32'h0000E258;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_OFFSET                                                        = 32'h0000025C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_ADDR                                                          = 32'h0000E25C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_OFFSET                                                        = 32'h00000260;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_ADDR                                                          = 32'h0000E260;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_OFFSET                                                        = 32'h00000264;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_ADDR                                                          = 32'h0000E264;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_OFFSET                                                        = 32'h00000268;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_ADDR                                                          = 32'h0000E268;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_OFFSET                                                        = 32'h0000026C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_ADDR                                                          = 32'h0000E26C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_OFFSET                                                        = 32'h00000270;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_ADDR                                                          = 32'h0000E270;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_OFFSET                                                        = 32'h00000274;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_ADDR                                                          = 32'h0000E274;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_OFFSET                                                        = 32'h00000278;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_ADDR                                                          = 32'h0000E278;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_OFFSET                                                        = 32'h0000027C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_ADDR                                                          = 32'h0000E27C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_OFFSET                                                        = 32'h00000280;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_ADDR                                                          = 32'h0000E280;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_OFFSET                                                        = 32'h00000284;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_ADDR                                                          = 32'h0000E284;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_OFFSET                                                        = 32'h00000288;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_ADDR                                                          = 32'h0000E288;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_OFFSET                                                        = 32'h0000028C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_ADDR                                                          = 32'h0000E28C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_OFFSET                                                        = 32'h00000290;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_ADDR                                                          = 32'h0000E290;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_OFFSET                                                        = 32'h00000294;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_ADDR                                                          = 32'h0000E294;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_OFFSET                                                        = 32'h00000298;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_ADDR                                                          = 32'h0000E298;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_OFFSET                                                        = 32'h0000029C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_ADDR                                                          = 32'h0000E29C;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_OFFSET                                                        = 32'h000002A0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_ADDR                                                          = 32'h0000E2A0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_OFFSET                                                        = 32'h000002A4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_ADDR                                                          = 32'h0000E2A4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_OFFSET                                                        = 32'h000002A8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_ADDR                                                          = 32'h0000E2A8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_OFFSET                                                        = 32'h000002AC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_ADDR                                                          = 32'h0000E2AC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_OFFSET                                                        = 32'h000002B0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_ADDR                                                          = 32'h0000E2B0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_OFFSET                                                        = 32'h000002B4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_ADDR                                                          = 32'h0000E2B4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_OFFSET                                                        = 32'h000002B8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_ADDR                                                          = 32'h0000E2B8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_OFFSET                                                        = 32'h000002BC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_ADDR                                                          = 32'h0000E2BC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_OFFSET                                                      = 32'h000002C0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_ADDR                                                        = 32'h0000E2C0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_OFFSET                                                      = 32'h000002C4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_ADDR                                                        = 32'h0000E2C4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_OFFSET                                                      = 32'h000002C8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_ADDR                                                        = 32'h0000E2C8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_OFFSET                                                      = 32'h000002CC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_ADDR                                                        = 32'h0000E2CC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_OFFSET                                                      = 32'h000002D0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_ADDR                                                        = 32'h0000E2D0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_OFFSET                                                      = 32'h000002D4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_ADDR                                                        = 32'h0000E2D4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_OFFSET                                                      = 32'h000002D8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_ADDR                                                        = 32'h0000E2D8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_OFFSET                                                      = 32'h000002DC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_ADDR                                                        = 32'h0000E2DC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_OFFSET                                                      = 32'h000002E0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_ADDR                                                        = 32'h0000E2E0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_OFFSET                                                      = 32'h000002E4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_ADDR                                                        = 32'h0000E2E4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_OFFSET                                                      = 32'h000002E8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_ADDR                                                        = 32'h0000E2E8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_OFFSET                                                      = 32'h000002EC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_ADDR                                                        = 32'h0000E2EC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_OFFSET                                                      = 32'h000002F0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_ADDR                                                        = 32'h0000E2F0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_OFFSET                                                      = 32'h000002F4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_ADDR                                                        = 32'h0000E2F4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_OFFSET                                                      = 32'h000002F8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_ADDR                                                        = 32'h0000E2F8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_OFFSET                                                      = 32'h000002FC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_ADDR                                                        = 32'h0000E2FC;
-localparam int unsigned KMCSR_OTP_READ_LOCK_REG_OFFSET                                                            = 32'h00000300;
-localparam int unsigned KMCSR_OTP_READ_LOCK_REG_ADDR                                                              = 32'h0000E300;
-localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_OFFSET                                                        = 32'h00000304;
-localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_ADDR                                                          = 32'h0000E304;
 
 
 //==============================================================================
@@ -2267,7 +2121,7 @@ localparam longint unsigned KEY_ENTRY_RF_KEY_WORD_REG_REG_DEFAULT               
 localparam longint unsigned KM_KPV_CTRL_REG_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_REG_DEFAULT                                              = 32'h00000000;
 localparam longint unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_REG_DEFAULT                                             = 32'h00000000;
-localparam longint unsigned KM_CSR_VERSION_REG_REG_DEFAULT                                                        = 32'h00010000;
+localparam longint unsigned KM_CSR_VERSION_REG_REG_DEFAULT                                                        = 32'h4B4D0101;
 localparam longint unsigned KM_CSR_CTRL_REG_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned KM_CSR_SOFT_RST_CODE_REG_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned KM_CSR_IRQ_STATUS_REG_REG_DEFAULT                                                     = 32'h00000000;
@@ -2277,13 +2131,6 @@ localparam longint unsigned KM_CSR_SCRAMBLER_CTRL_REG_REG_DEFAULT               
 localparam longint unsigned KM_CSR_SRAM_LOCK_REG_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned KM_CSR_IRQ_SET_REG_REG_DEFAULT                                                        = 32'h00000000;
 localparam longint unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_REG_DEFAULT                                      = 32'h00000000;
-localparam longint unsigned KM_CSR_RECOVERABLE_ERR_REG_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned KM_CSR_BOOT_STATUS_REG_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned KM_CSR_OTP_LIFE_CYCLE_REG_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned KM_CSR_OTP_DEMOTION_STATE_REG_REG_DEFAULT                                             = 32'h00000000;
-localparam longint unsigned KM_CSR_SRAM_EXEC_MODE_REG_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_REG_DEFAULT                                                 = 32'h00000010;
-localparam longint unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned KM_CSR_VUART_TX_REG_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned KM_CSR_VUART_RX_REG_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned KM_CSR_VUART_STATUS_REG_REG_DEFAULT                                                   = 32'h00000001;
@@ -2296,9 +2143,6 @@ localparam longint unsigned KM_CSR_TB_CMD_ARG_REG_REG_DEFAULT                   
 localparam longint unsigned KM_CSR_TB_CMD_STATUS_REG_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned KM_CSR_TB_CMD_RESULT_REG_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned KM_CSR_DEBUG_REG_REG_DEFAULT                                                          = 32'hCAFEBEEF;
-localparam longint unsigned KM_CSR_OTP_DR_WORD_REG_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned KM_CSR_OTP_READ_LOCK_REG_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned KM_CSR_OTP_CHANGE_STATUS_REG_REG_DEFAULT                                              = 32'h00000000;
 localparam longint unsigned KM_DRBG_SAMPLER_DATA_REG_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned KM_DRBG_SAMPLER_CFG_REG_REG_DEFAULT                                                   = 32'h01000000;
 localparam longint unsigned KM_DRBG_SAMPLER_STATUS_REG_REG_DEFAULT                                                = 32'h00000000;
@@ -2370,17 +2214,17 @@ localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_SHIFT                        
 localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_MASK                                                             = 32'h2;
 localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_SHIFT                                                            = 1;
 
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_2_MASK                                                             = 32'hC;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_2_SHIFT                                                            = 2;
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_MASK                                                                = 32'h4;
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_SHIFT                                                               = 2;
+
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_MASK                                                               = 32'h8;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_SHIFT                                                              = 3;
 
 localparam int unsigned KM_KPV_CTRL_REG_EXTEND_MASK                                                               = 32'h70;
 localparam int unsigned KM_KPV_CTRL_REG_EXTEND_SHIFT                                                              = 4;
 
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_8_7_MASK                                                             = 32'h180;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_8_7_SHIFT                                                            = 7;
-
-localparam int unsigned KM_KPV_CTRL_REG_DEST_VALID_MASK                                                           = 32'h1FE00;
-localparam int unsigned KM_KPV_CTRL_REG_DEST_VALID_SHIFT                                                          = 9;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_MASK                                                            = 32'h1FF80;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_SHIFT                                                           = 7;
 
 localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_MASK                                                           = 32'h1E0000;
 localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_SHIFT                                                          = 17;
@@ -2400,17 +2244,14 @@ localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_LOCK_SHIFT                
 localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_MASK                                                   = 32'hFFFFFFFC;
 localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_SHIFT                                                  = 2;
 
-localparam int unsigned KM_CSR_VERSION_REG_PATCH_MASK                                                             = 32'hFF;
-localparam int unsigned KM_CSR_VERSION_REG_PATCH_SHIFT                                                            = 0;
+localparam int unsigned KM_CSR_VERSION_REG_MINOR_MASK                                                             = 32'hFF;
+localparam int unsigned KM_CSR_VERSION_REG_MINOR_SHIFT                                                            = 0;
 
-localparam int unsigned KM_CSR_VERSION_REG_MINOR_MASK                                                             = 32'hFF00;
-localparam int unsigned KM_CSR_VERSION_REG_MINOR_SHIFT                                                            = 8;
+localparam int unsigned KM_CSR_VERSION_REG_MAJOR_MASK                                                             = 32'hFF00;
+localparam int unsigned KM_CSR_VERSION_REG_MAJOR_SHIFT                                                            = 8;
 
-localparam int unsigned KM_CSR_VERSION_REG_MAJOR_MASK                                                             = 32'hFF0000;
-localparam int unsigned KM_CSR_VERSION_REG_MAJOR_SHIFT                                                            = 16;
-
-localparam int unsigned KM_CSR_VERSION_REG_RSVD_MASK                                                              = 32'hFF000000;
-localparam int unsigned KM_CSR_VERSION_REG_RSVD_SHIFT                                                             = 24;
+localparam int unsigned KM_CSR_VERSION_REG_ID_MASK                                                                = 32'hFFFF0000;
+localparam int unsigned KM_CSR_VERSION_REG_ID_SHIFT                                                               = 16;
 
 localparam int unsigned KM_CSR_CTRL_REG_RSVD_MASK                                                                 = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_CTRL_REG_RSVD_SHIFT                                                                = 0;
@@ -2439,20 +2280,8 @@ localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_DECERR_SHIFT                  
 localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_MASK                                                       = 32'h40;
 localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_SHIFT                                                      = 6;
 
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_MASK                                                     = 32'h80;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_SHIFT                                                    = 7;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_MASK                                                     = 32'h100;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_SHIFT                                                    = 8;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_MASK                                                     = 32'h200;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT                                                    = 9;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_MASK                                                 = 32'h400;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_SHIFT                                                = 10;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 11;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFFF80;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 7;
 
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_MASK                                                  = 32'h1;
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_SHIFT                                                 = 0;
@@ -2475,20 +2304,8 @@ localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_DECERR_EN_SHIFT               
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_MASK                                                    = 32'h40;
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_SHIFT                                                   = 6;
 
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_MASK                                                  = 32'h80;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_SHIFT                                                 = 7;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_MASK                                                  = 32'h100;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_SHIFT                                                 = 8;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_MASK                                                  = 32'h200;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_SHIFT                                                 = 9;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_MASK                                              = 32'h400;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_SHIFT                                             = 10;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 11;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFFF80;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 7;
 
 localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_MASK                                                         = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_SHIFT                                                        = 0;
@@ -2526,65 +2343,11 @@ localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_SHIFT                 
 localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_MASK                                                      = 32'h40;
 localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_SHIFT                                                     = 6;
 
-localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_MASK                                                    = 32'h80;
-localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_SHIFT                                                   = 7;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_MASK                                                    = 32'h100;
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_SHIFT                                                   = 8;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_MASK                                                    = 32'h200;
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_SHIFT                                                   = 9;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_MASK                                                = 32'h400;
-localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_SHIFT                                               = 10;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 11;
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFFF80;
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 7;
 
 localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_MASK                                  = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_SHIFT                                 = 0;
-
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_MASK                                           = 32'h1;
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_SHIFT                                          = 0;
-
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_MASK                                                      = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_SHIFT                                                     = 1;
-
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_MASK                                                = 32'h1;
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_SHIFT                                               = 0;
-
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_MASK                                                          = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_SHIFT                                                         = 1;
-
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_MASK                                                      = 32'hFF;
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_SHIFT                                                     = 0;
-
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_MASK                                                       = 32'hFFFFFF00;
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_SHIFT                                                      = 8;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_MASK                                         = 32'h3;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_SHIFT                                        = 0;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_MASK                                         = 32'hC;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_SHIFT                                        = 2;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_MASK                                                   = 32'hFFFFFFF0;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_SHIFT                                                  = 4;
-
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_MASK                                                     = 32'h1;
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_SHIFT                                                    = 0;
-
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_SHIFT                                                      = 1;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_SHIFT                                                      = 0;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_MASK                                                       = 32'h1;
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_SHIFT                                                      = 0;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_SHIFT                                                      = 1;
 
 localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_MASK                                                          = 32'hFF;
 localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_SHIFT                                                         = 0;
@@ -2642,51 +2405,6 @@ localparam int unsigned KM_CSR_TB_CMD_RESULT_REG_RESULT_SHIFT                   
 
 localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_MASK                                                               = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_SHIFT                                                              = 0;
-
-localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_SHIFT                                                        = 0;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_MASK                                                  = 32'h1;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_SHIFT                                                 = 0;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_MASK                                                    = 32'h2;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_SHIFT                                                   = 1;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK                                                 = 32'h4;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_SHIFT                                                = 2;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK                                                     = 32'h8;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_SHIFT                                                    = 3;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK                                                     = 32'h10;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_SHIFT                                                    = 4;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK                                                   = 32'h20;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_SHIFT                                                  = 5;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_MASK                                                        = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT                                                       = 6;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK                                              = 32'h1;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_SHIFT                                             = 0;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_MASK                                                = 32'h2;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_SHIFT                                               = 1;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_MASK                                             = 32'h4;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_SHIFT                                            = 2;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_MASK                                                 = 32'h8;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_SHIFT                                                = 3;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_MASK                                                 = 32'h10;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_SHIFT                                                = 4;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK                                               = 32'h20;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_SHIFT                                              = 5;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 6;
 
 localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_MASK                                                        = 32'hFFFFFFFF;
 localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_SHIFT                                                       = 0;
@@ -3382,10 +3100,10 @@ typedef struct packed {
 typedef struct packed {
     logic [10:0]   rsvd_31_21 ;
     logic [3:0]   last_dword ;
-    logic [7:0]   dest_valid ;
-    logic [1:0]   rsvd_8_7 ;
+    logic [9:0]   rsvd_16_7 ;
     logic [2:0]   extend ;
-    logic [1:0]   rsvd_3_2 ;
+    logic [0:0]   rsvd_3 ;
+    logic [0:0]   erase ;
     logic [0:0]   lock_use ;
     logic [0:0]   lock_write ;
 } km_kpv_ctrl_reg_reg_t;
@@ -3407,10 +3125,9 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [7:0]   rsvd ;
+    logic [15:0]   id ;
     logic [7:0]   major ;
     logic [7:0]   minor ;
-    logic [7:0]   patch ;
 } km_csr_version_reg_reg_t;
 
 
@@ -3428,11 +3145,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation ;
-    logic [0:0]   otp_sigint ;
-    logic [0:0]   otp_change ;
-    logic [0:0]   wipe_state ;
+    logic [24:0]   rsvd ;
     logic [0:0]   drbg_err ;
     logic [0:0]   axi_decerr ;
     logic [0:0]   axi_slverr ;
@@ -3445,11 +3158,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation_en ;
-    logic [0:0]   otp_sigint_en ;
-    logic [0:0]   otp_change_en ;
-    logic [0:0]   wipe_state_en ;
+    logic [24:0]   rsvd ;
     logic [0:0]   drbg_err_en ;
     logic [0:0]   axi_decerr_en ;
     logic [0:0]   axi_slverr_en ;
@@ -3482,11 +3191,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation_set ;
-    logic [0:0]   otp_sigint_set ;
-    logic [0:0]   otp_change_set ;
-    logic [0:0]   wipe_state_set ;
+    logic [24:0]   rsvd ;
     logic [0:0]   drbg_err_set ;
     logic [0:0]   axi_decerr_set ;
     logic [0:0]   axi_slverr_set ;
@@ -3501,55 +3206,6 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   violation_bits ;
 } km_csr_sram_write_lock_violation_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   recoverable_err ;
-} km_csr_recoverable_err_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   cold_boot_done ;
-} km_csr_boot_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [23:0]   rsvd ;
-    logic [7:0]   value ;
-} km_csr_otp_life_cycle_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [27:0]   rsvd ;
-    logic [1:0]   demote_2_value ;
-    logic [1:0]   demote_1_value ;
-} km_csr_otp_demotion_state_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   enable ;
-} km_csr_sram_exec_mode_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   addr ;
-} km_csr_irq_entry_addr_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   lock ;
-} km_csr_irq_entry_lock_reg_reg_t;
 
 
 
@@ -3629,36 +3285,6 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   magic ;
 } km_csr_debug_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   value ;
-} km_csr_otp_dr_word_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [25:0]   rsvd ;
-    logic [0:0]   class_key ;
-    logic [0:0]   sys_uid ;
-    logic [0:0]   sip_uid ;
-    logic [0:0]   chiplet_uid ;
-    logic [0:0]   demotion ;
-    logic [0:0]   life_cycle ;
-} km_csr_otp_read_lock_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [25:0]   rsvd ;
-    logic [0:0]   class_key ;
-    logic [0:0]   sys_uid ;
-    logic [0:0]   sip_uid ;
-    logic [0:0]   chiplet_uid ;
-    logic [0:0]   demotion ;
-    logic [0:0]   life_cycle ;
-} km_csr_otp_change_status_reg_reg_t;
 
 
 

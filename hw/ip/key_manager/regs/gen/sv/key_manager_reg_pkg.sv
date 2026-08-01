@@ -104,7 +104,7 @@ package key_manager_reg_pkg;
 
     typedef struct {
         logic req;
-        logic [9:0] addr;
+        logic [8:0] addr;
         logic req_is_wr;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;

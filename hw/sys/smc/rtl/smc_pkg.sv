@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller Package
-//
-//-----------------------------------------------------------------------------
 
 `ifndef SMC_PACKAGE_DEFINED
 `define SMC_PACKAGE_DEFINED
 package smc_pkg;
 
+	// Include register header file
+
+	typedef enum int unsigned {
+		SMC_1CORE = 1,
+		SMC_4CORE = 2
+	} smc_cpu_config_e;
+
 	// Peripheral parameters
-	localparam int unsigned NUM_BONDED_GPIO = 64;
+	localparam int unsigned NUM_BONDED_GPIO = 61;
 	localparam int unsigned NUM_UNBONDED_GPIO = 4;
 	localparam int unsigned NUM_GPIO_WRAPS = NUM_BONDED_GPIO + NUM_UNBONDED_GPIO;
 
@@ -166,10 +170,18 @@ package smc_pkg;
 	// Transaction and Timeout Parameters //
 	////////////////////////////////////////
 
+	// PER AXI ID BUCKET, for axi_demux.MaxTrans
+	localparam int unsigned FABRIC_MAX_TRANS = 32;
+	// For axi_demux.AxiLookBits
+	localparam int unsigned FABRIC_ID_LOOKUP_BITS = 3;
+	// ALL IDs, PER DIRECTION, for passive monitors (prim_axi_snoop via axi_cg_snoop, axi_hang_detector)
+	localparam int unsigned FABRIC_ID_BUCKETS = 2**FABRIC_ID_LOOKUP_BITS;
+	localparam int unsigned FABRIC_OUTSTANDING_TX = FABRIC_ID_BUCKETS * FABRIC_MAX_TRANS;
+	// ALL IDs, to be used with axi_err_slv
+	localparam int unsigned ERR_SLV_MAX_TRANS = 32;
+
+	// Unique-ID table depth for axi_id_remap (prim_axi_id_converter)
 	localparam int unsigned MAX_INFLIGHT_IDS = 4;
-	localparam int unsigned FABRIC_MAX_TRANS = 32; // this is PER AXI ID
-	localparam int unsigned FABRIC_OUTSTANDING_TX = MAX_INFLIGHT_IDS * FABRIC_MAX_TRANS; // this for all in-flight AXI IDs
-	localparam int unsigned ERR_SLV_MAX_TRANS = 32; // this is for ALL IDs, to be used with axi_err_slv
 	localparam int unsigned TIMEOUT_COUNT_W = 48; // 48 bits is enough for 78 hours at refclk
 
 	////////////////////////////////////
@@ -274,9 +286,9 @@ package smc_pkg;
 	localparam smc_axi_user_t SEP_SRC_ID = smc_axi_user_t'('hF);
 
 	// Address Remap Parameters
-    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_BASE_ADDR);
     localparam smc_axi_addr_t MMODE_REMAP_SIZE     = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_SIZE);
-    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_BASE_ADDR);
     localparam smc_axi_addr_t XVISOR_REMAP_SIZE    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_SIZE);
 
 	// Filter Parameters

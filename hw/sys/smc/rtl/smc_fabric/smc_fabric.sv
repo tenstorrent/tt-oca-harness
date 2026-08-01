@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller Fabric
-//
-//-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
 module smc_fabric
@@ -12,11 +9,9 @@ module smc_fabric
     parameter bit                                       NO_ADDR_REMAP            = 1'b1,
     parameter int unsigned                              SYS_IN_ID_WIDTH          = 9,
 
-    parameter int unsigned                              AxiMaxWriteTxns          = 4,
-    parameter int unsigned                              AxiMaxReadTxns           = 4,
     parameter int unsigned                              NumInboundFilters        = 16,
     parameter int unsigned                              NumOutboundFilters       = 16,
-    parameter int unsigned                              MaxTrans                 = 32,
+    parameter int unsigned                              MaxTrans                 = smc_pkg::FABRIC_MAX_TRANS,
     parameter bit                                       FilterReqPipelineEnable  = 1'b0,
     parameter bit                                       FilterRspPipelineEnable  = 1'b0
 ) (
@@ -100,8 +95,10 @@ module smc_fabric
     output smc_pkg::remap_debug_t                                                         remap_debug_jtag_o,
     output smc_pkg::remap_debug_t                                                         remap_debug_log_o,
     output smc_pkg::remap_debug_t                                                         remap_debug_dma_o,
-    output axi_filter_pkg::filter_debug_t                                                 outbound_filter_debug_o,
-    output axi_filter_pkg::filter_debug_t                                                 inbound_filter_debug_o,
+    output logic [$clog2(NumInboundFilters)-1:0]                                          outbound_write_filter_hit_debug_o,
+    output logic [$clog2(NumInboundFilters)-1:0]                                          outbound_read_filter_hit_debug_o,
+    output logic [$clog2(NumOutboundFilters)-1:0]                                         inbound_write_filter_hit_debug_o,
+    output logic [$clog2(NumOutboundFilters)-1:0]                                         inbound_read_filter_hit_debug_o,
 
     // Clock gater activity indicators
     output logic                                                                          fabric_clk_active_o,
@@ -177,7 +174,8 @@ module smc_fabric
         .remap_debug_jtag_o         (remap_debug_jtag_o),
         .remap_debug_log_o          (remap_debug_log_o),
         .remap_debug_dma_o          (remap_debug_dma_o),
-        .filter_debug_o             (outbound_filter_debug_o),
+        .write_filter_hit_debug_o   (outbound_write_filter_hit_debug_o),
+        .read_filter_hit_debug_o    (outbound_read_filter_hit_debug_o),
 
         // Clock gater activity indicators
         .sys_in_filter_clk_active_o (sys_in_filter_clk_active_o),
@@ -188,10 +186,7 @@ module smc_fabric
     // Local Fabric Logic //
     ///////////////////////
 
-    smc_local_fabric #(
-        .AXI_MAX_WRITE_TXNS   (AxiMaxWriteTxns),
-        .AXI_MAX_READ_TXNS    (AxiMaxReadTxns)
-    ) u_smc_local_fabric (
+    smc_local_fabric u_smc_local_fabric (
         .clk_i                              (clk_i),
         .rst_ni                             (rst_ni),
         .test_en_i                          (test_en_i),
@@ -266,7 +261,8 @@ module smc_fabric
         .xR_ctrl_i                    (xR_ctrl_i),
 
         // Debug outputs
-        .filter_debug_o               (inbound_filter_debug_o),
+        .write_filter_hit_debug_o     (inbound_write_filter_hit_debug_o),
+        .read_filter_hit_debug_o      (inbound_read_filter_hit_debug_o),
 
         // Clock gater activity indicators
         .fabric_clk_active_o         (fabric_clk_active_o),

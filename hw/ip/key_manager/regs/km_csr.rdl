@@ -18,50 +18,19 @@ addrmap km_csr {
     default hw = r;
 
     //=========================================================================
-    // Warm reset signal declaration
-    //=========================================================================
-    // WARM_RST_N carries both cpuif_reset (resets the AXI CPUIF state machine
-    // so no in-flight transaction lingers past warm reset) and field_reset (so
-    // individual fields can opt into warm reset via resetsignal = WARM_RST_N).
-    // The default arst_n port is connected to cold reset in the wrapper.
-    // warm_rst_ni and soft_rst_n are synchronous to clk_i at the regblock
-    // boundary, so async = false is correct.
-    signal warm_rst_n {
-        activelow;
-        async = false;
-        cpuif_reset = true;
-        // field_reset is intentionally NOT set here. Every warm-resettable
-        // field carries an explicit `resetsignal = WARM_RST_N` so that fields
-        // without one (notably BOOT_STATUS.COLD_BOOT_DONE) continue to use the
-        // default arst_n (cold reset only).
-    };
-    warm_rst_n WARM_RST_N;
-
-    //=========================================================================
     // VERSION Register (0x000)
     //=========================================================================
-    // Canonical layout: patch[7:0], minor[15:8], major[23:16], reserved[31:24].
-    // Read-only; writes must produce SLVERR (use PeakRDL --err-if-bad-rw).
-    // Current version: 1.0.0 (major=1, minor=0, patch=0).
     reg version_reg {
         name = "VERSION";
-        desc = "Hardware version register (semantic versioning: major.minor.patch)";
-
-        field {
-            name = "PATCH";
-            desc = "Patch version number";
-            sw = r;
-            hw = na;
-            reset = 8'h00;
-        } patch[7:0];
+        desc = "Version and identification register";
 
         field {
             name = "MINOR";
             desc = "Minor version number";
             sw = r;
             hw = na;
-            reset = 8'h00;
-        } minor[15:8];
+            reset = 8'h01;
+        } minor[7:0];
 
         field {
             name = "MAJOR";
@@ -69,15 +38,15 @@ addrmap km_csr {
             sw = r;
             hw = na;
             reset = 8'h01;
-        } major[23:16];
+        } major[15:8];
 
         field {
-            name = "RSVD";
-            desc = "Reserved; must read as zero";
+            name = "ID";
+            desc = "Component identifier (0x4B4D = 'KM')";
             sw = r;
             hw = na;
-            reset = 8'h00;
-        } rsvd[31:24];
+            reset = 16'h4B4D;
+        } id[31:16];
     };
 
     version_reg VERSION @ 0x000;
@@ -112,7 +81,6 @@ addrmap km_csr {
             desc = "32-bit reset code. Write 0x53525354 to trigger soft reset.";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;  // Clears after soft-reset-induced warm cycle
             reset = 32'h0;
         } code[31:0];
     };
@@ -134,7 +102,6 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_parity_err[0:0];
 
@@ -146,7 +113,6 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_parity_err[1:1];
 
@@ -158,7 +124,6 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_write_err[2:2];
 
@@ -170,7 +135,6 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_write_lock_err[3:3];
 
@@ -182,7 +146,6 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_slverr[4:4];
 
@@ -194,77 +157,27 @@ addrmap km_csr {
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_decerr[5:5];
 
         field {
             name = "DRBG_ERR";
-            desc = "DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.";
+            desc = "DRBG Sampler error (timeout or other). Set when sampler sends error pulse. Sticky, write 1 to clear.";
             sw = rw;
             hw = rw;           // HW can read/write (read for IRQ aggregation, write for stickybit)
             hwset = true;      // Hardware can set this bit
             stickybit = true;  // Bit stays set until SW clears
             onwrite = woclr;   // Software writes 1 to clear
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } drbg_err[6:6];
-
-        field {
-            name = "WIPE_STATE";
-            desc = "Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } wipe_state[7:7];
-
-        field {
-            name = "OTP_CHANGE";
-            desc = "An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_change[8:8];
-
-        field {
-            name = "OTP_SIGINT";
-            desc = "OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_sigint[9:9];
-
-        field {
-            name = "EXEC_VIOLATION";
-            desc = "Instruction fetch from a non-whitelisted (non-executable) memory region detected. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } exec_violation[10:10];
 
         field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 25'h0;
+        } rsvd[31:7];
     };
 
     irq_status_reg IRQ_STATUS @ 0x00C;
@@ -281,7 +194,6 @@ addrmap km_csr {
             desc = "Enable ROM parity error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_parity_en[0:0];
 
@@ -290,7 +202,6 @@ addrmap km_csr {
             desc = "Enable SRAM parity error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_parity_en[1:1];
 
@@ -299,7 +210,6 @@ addrmap km_csr {
             desc = "Enable ROM write error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_write_en[2:2];
 
@@ -308,7 +218,6 @@ addrmap km_csr {
             desc = "Enable SRAM write-lock violation interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_write_lock_en[3:3];
 
@@ -317,7 +226,6 @@ addrmap km_csr {
             desc = "Enable AXI SLVERR error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_slverr_en[4:4];
 
@@ -326,7 +234,6 @@ addrmap km_csr {
             desc = "Enable AXI DECERR error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_decerr_en[5:5];
 
@@ -335,53 +242,16 @@ addrmap km_csr {
             desc = "Enable DRBG Sampler error interrupt";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } drbg_err_en[6:6];
-
-        field {
-            name = "WIPE_STATE_EN";
-            desc = "Enable wipe state interrupt";
-            sw = rw;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } wipe_state_en[7:7];
-
-        field {
-            name = "OTP_CHANGE_EN";
-            desc = "Enable OTP field change interrupt";
-            sw = rw;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_change_en[8:8];
-
-        field {
-            name = "OTP_SIGINT_EN";
-            desc = "Enable OTP dual-rail integrity violation interrupt";
-            sw = rw;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_sigint_en[9:9];
-
-        field {
-            name = "EXEC_VIOLATION_EN";
-            desc = "Enable execute-permission whitelist violation interrupt";
-            sw = rw;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } exec_violation_en[10:10];
 
         field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 25'h0;
+        } rsvd[31:7];
     };
 
     irq_enable_reg IRQ_ENABLE @ 0x010;
@@ -393,7 +263,7 @@ addrmap km_csr {
     // This allows software to trigger interrupts for ISR testing.
     // The register is write-only; reads return 0.
     //
-    // For sticky bits (parity errors, bus errors, DRBG, wipe), writing 1 sets the status bit.
+    // For sticky bits (parity errors), writing 1 sets the status bit.
     reg irq_set_reg {
         name = "IRQ_SET";
         desc = "Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.";
@@ -404,7 +274,6 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_parity_err_set[0:0];
 
@@ -414,7 +283,6 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_parity_err_set[1:1];
 
@@ -424,7 +292,6 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } rom_write_err_set[2:2];
 
@@ -434,7 +301,6 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } sram_write_lock_err_set[3:3];
 
@@ -444,7 +310,6 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_slverr_set[4:4];
 
@@ -454,84 +319,42 @@ addrmap km_csr {
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } axi_decerr_set[5:5];
 
         field {
             name = "DRBG_ERR_SET";
-            desc = "Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)";
+            desc = "Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler error interrupt for testing)";
             sw = w;
             hw = r;
             singlepulse;  // Self-clearing pulse
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } drbg_err_set[6:6];
 
         field {
-            name = "WIPE_STATE_SET";
-            desc = "Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)";
-            sw = w;
-            hw = r;
-            singlepulse;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } wipe_state_set[7:7];
-
-        field {
-            name = "OTP_CHANGE_SET";
-            desc = "Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)";
-            sw = w;
-            hw = r;
-            singlepulse;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_change_set[8:8];
-
-        field {
-            name = "OTP_SIGINT_SET";
-            desc = "Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)";
-            sw = w;
-            hw = r;
-            singlepulse;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } otp_sigint_set[9:9];
-
-        field {
-            name = "EXEC_VIOLATION_SET";
-            desc = "Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)";
-            sw = w;
-            hw = r;
-            singlepulse;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } exec_violation_set[10:10];
-
-        field {
             name = "RSVD";
-            desc = "Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)";
-            sw = w;
+            desc = "Reserved";
+            sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 25'h0;
+        } rsvd[31:7];
     };
 
     irq_set_reg IRQ_SET @ 0x020;
 
     //=========================================================================
-    // SCRAMBLER_KEY Register (0x014) - No reset for security
+    // SCRAMBLER_KEY Register (0x014)
     //=========================================================================
     reg scrambler_key_reg {
         name = "SCRAMBLER_KEY";
-        desc = "32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.";
+        desc = "32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0.";
 
         field {
             name = "KEY";
-            desc = "Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.";
+            desc = "Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0).";
             sw = rw;
             hw = rw;
-            // No reset: datapath must power up with random value
+            reset = 32'h0;
             // Note: RTL must implement read-as-zero when locked via hwif_in override
         } key[31:0];
     };
@@ -577,21 +400,17 @@ addrmap km_csr {
     //=========================================================================
     // SRAM_LOCK Register (0x01C) - Write-1-only, one bit per 512-byte region
     //=========================================================================
-    // Native SystemRDL woset: writing 1 sets the bit, writing 0 has no effect.
-    // Warm-reset domain: cleared by a warm or cold reset. The ROM is responsible
-    // for re-applying the lock policy on every boot (cold and warm) before
-    // handing control to mutable firmware.
+    // RTL implements write-1-only: only bits written as 1 are set; writes of 0
+    // have no effect. Lock bits persist until full reset.
     reg sram_lock_reg {
         name = "SRAM_LOCK";
-        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.";
+        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared only by full reset.";
 
         field {
             name = "LOCK_BITS";
-            desc = "One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
+            desc = "One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect.";
             sw = rw;
-            onwrite = woset;
-            hw = r;   // Hardware only reads; storage is updated by SW woset
-            resetsignal = WARM_RST_N;
+            hw = rw;  // RTL overrides: next = value | (written_data when written) for W1-only
             reset = 32'h0;
         } lock_bits[31:0];
     };
@@ -616,226 +435,11 @@ addrmap km_csr {
             hwset = true;   // 32-bit: HW sets bits from SRAM interface violation one-hot
             stickybit = true;
             onwrite = woclr;
-            resetsignal = WARM_RST_N;
             reset = 32'h0;
         } violation_bits[31:0];
     };
 
     sram_write_lock_violation_reg SRAM_WRITE_LOCK_VIOLATION @ 0x024;
-
-    //=========================================================================
-    // RECOVERABLE_ERR Register (0x028) - Recoverable error status
-    //=========================================================================
-    // Set by KM firmware (ISR) when it recovers from a recoverable fault
-    // (e.g. corrupted/malformed command, or exception handled without trapping).
-    // Cleared when SEP sends a firmware command to clear (KM firmware writes 0).
-    // This register drives the recoverable error event output from the KM.
-    reg recoverable_err_reg {
-        name = "RECOVERABLE_ERR";
-        desc = "Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.";
-
-        field {
-            name = "RECOVERABLE_ERR";
-            desc = "1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.";
-            sw = rw;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } recoverable_err[0:0];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 31'h0;
-        } rsvd[31:1];
-    };
-
-    recoverable_err_reg RECOVERABLE_ERR @ 0x028;
-
-    //=========================================================================
-    // BOOT_STATUS Register (0x02C) - Cold-boot done flag (firmware-set, W1S)
-    //=========================================================================
-    // Set by ROM firmware at the end of cold-boot initialization.
-    // Firmware reads this to distinguish cold boot (0) from warm reboot (1).
-    // COLD_BOOT_DONE uses the default arst_n (cold reset) and NO warm reset
-    // override — it survives warm resets but clears on cold reset.
-    reg boot_status_reg {
-        name = "BOOT_STATUS";
-        desc = "Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.";
-
-        field {
-            name = "COLD_BOOT_DONE";
-            desc = "Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).";
-            sw = rw;
-            hw = r;
-            onwrite = woset;
-            // Deliberately omits resetsignal = WARM_RST_N: uses default arst_n (cold reset only)
-            reset = 1'b0;
-        } cold_boot_done[0:0];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 31'h0;
-        } rsvd[31:1];
-    };
-
-    boot_status_reg BOOT_STATUS @ 0x02C;
-
-    //=========================================================================
-    // SRAM_EXEC_MODE Register (0x038) - Execute-permission whitelist mode
-    //=========================================================================
-    // Write-1-only, warm-reset domain.  Selects which memory regions the
-    // PicoRV32 is permitted to execute from:
-    //   0 (ROM mode): ROM only.  Instruction fetch from SRAM or peripheral
-    //     space triggers an unrecoverable fault (EXEC_VIOLATION IRQ).
-    //   1 (SRAM mode): ROM and write-locked SRAM regions (SRAM_LOCK bits).
-    //     Instruction fetch from unlocked SRAM or peripheral space faults.
-    // Warm reset clears it so the ROM-only whitelist is re-applied on every
-    // boot cycle.
-    reg sram_exec_mode_reg {
-        name = "SRAM_EXEC_MODE";
-        desc = "Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM-only executable; 1=ROM + write-locked SRAM regions executable. Set by ROM stack-less handover immediately before jumping to mutable firmware.";
-
-        field {
-            name = "ENABLE";
-            desc = "Execute-permission mode: 0=ROM-only whitelist; 1=ROM + write-locked SRAM whitelist. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } enable[0:0];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 31'h0;
-        } rsvd[31:1];
-    };
-
-    sram_exec_mode_reg SRAM_EXEC_MODE @ 0x038;
-
-    //=========================================================================
-    // OTP Data Registers (0x030-0x034)
-    //=========================================================================
-    // Read-through from otp_data_i port.
-    // Software read-only; values reflect current OTP port signals.
-
-    reg otp_life_cycle_reg {
-        name = "OTP_LIFE_CYCLE";
-        desc = "Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.";
-        field {
-            name = "VALUE";
-            desc = "8-bit life cycle state from OTP. No reset; power-up value undefined.";
-            sw = r;
-            hw = w;
-        } value[7:0];
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 24'h0;
-        } rsvd[31:8];
-    };
-    otp_life_cycle_reg OTP_LIFE_CYCLE @ 0x030;
-
-    reg otp_demotion_state_reg {
-        name = "OTP_DEMOTION_STATE";
-        desc = "Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.";
-        field {
-            name = "VALUE";
-            desc = "2-bit demotion 1 state from OTP. No reset; power-up value undefined.";
-            sw = r;
-            hw = w;
-        } demote_1_value[1:0];
-        field {
-            name = "VALUE";
-            desc = "2-bit demotion 2 state from OTP. No reset; power-up value undefined.";
-            sw = r;
-            hw = w;
-        } demote_2_value[3:2];
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 30'h0;
-        } rsvd[31:4];
-    };
-    otp_demotion_state_reg OTP_DEMOTION_STATE @ 0x034;
-
-    // Dual-rail OTP word registers (256-bit fields as {~value, value}, 8+8 words each)
-    // Replaced the old 32×byte layout with 4 contiguous dual-rail regfiles at 0x200+.
-    // Each field exposes: VAL_0..7 (value[255:0] in 32-bit words) and
-    //                     CPL_0..7 (complement[255:0] in 32-bit words).
-    // All fields: sw=r; hw=w; no reset (read-through).
-    // Read-lock: controlled by OTP_READ_LOCK; locked reads return zero (set in km_csr.sv).
-    reg otp_dr_word_reg {
-        name = "OTP_DR_WORD";
-        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.";
-        field {
-            name = "VALUE";
-            desc = "32-bit OTP word. No reset; power-up value undefined.";
-            sw = r;
-            hw = w;
-        } value[31:0];
-    };
-
-    //=========================================================================
-    // IRQ entry programmability (FR: programmable PicoRV32 IRQ vector)
-    //=========================================================================
-    // Effective IRQ entry address for the KM CPU. swwel gated in km_csr.sv when
-    // IRQ_ENTRY_LOCK.LOCK is set (post-lock writes have no effect, readback unchanged).
-
-    reg irq_entry_addr_reg {
-        name = "IRQ_ENTRY_ADDR";
-        desc = "Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.";
-
-        field {
-            name = "ADDR";
-            desc = "IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.";
-            sw = rw;
-            hw = r;
-            swwel = true;
-            resetsignal = WARM_RST_N;
-            reset = 32'h0000_0010;
-        } addr[31:0];
-    };
-
-    irq_entry_addr_reg IRQ_ENTRY_ADDR @ 0x0B8;
-
-    reg irq_entry_lock_reg {
-        name = "IRQ_ENTRY_LOCK";
-        desc = "Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.";
-
-        field {
-            name = "LOCK";
-            desc = "Write 1 to set; write 0 has no effect; sticky until reset.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } lock[0:0];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved; reads as zero.";
-            sw = r;
-            hw = na;
-            reset = 31'h0;
-        } rsvd[31:1];
-    };
-
-    irq_entry_lock_reg IRQ_ENTRY_LOCK @ 0x0BC;
 
     //=========================================================================
     // Virtual UART Registers (0x100-0x10C) - Testbench Interface
@@ -862,7 +466,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 8'h00;
-            resetsignal = WARM_RST_N;
         } tx_byte[7:0];
 
         field {
@@ -879,7 +482,6 @@ addrmap km_csr {
             sw = rw;
             hw = rw;
             reset = 1'b0;
-            resetsignal = WARM_RST_N;
         } data_valid[31:31];
     };
 
@@ -895,7 +497,6 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 8'h00;
-            resetsignal = WARM_RST_N;
         } rx_byte[7:0];
 
         field {
@@ -912,7 +513,6 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 1'b0;
-            resetsignal = WARM_RST_N;
         } data_valid[31:31];
     };
 
@@ -928,7 +528,6 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 1'b1;
-            resetsignal = WARM_RST_N;
         } tx_ready[0:0];
 
         field {
@@ -937,7 +536,6 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 1'b0;
-            resetsignal = WARM_RST_N;
         } rx_valid[1:1];
 
         field {
@@ -946,7 +544,6 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 1'b0;
-            resetsignal = WARM_RST_N;
         } print_enable[2:2];
 
         field {
@@ -984,7 +581,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } result[31:0];
     };
 
@@ -1000,7 +596,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } signature[31:0];
     };
 
@@ -1016,7 +611,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } errcode[31:0];
     };
 
@@ -1032,7 +626,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } subtest[31:0];
     };
 
@@ -1048,7 +641,6 @@ addrmap km_csr {
             sw = rw;
             hw = rw;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } cmd[31:0];
     };
 
@@ -1064,7 +656,6 @@ addrmap km_csr {
             sw = rw;
             hw = r;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } arg[31:0];
     };
 
@@ -1080,7 +671,6 @@ addrmap km_csr {
             sw = rw;
             hw = w;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } status[31:0];
     };
 
@@ -1096,360 +686,10 @@ addrmap km_csr {
             sw = r;
             hw = w;
             reset = 32'h0;
-            resetsignal = WARM_RST_N;
         } result[31:0];
     };
 
     tb_cmd_result_reg TB_CMD_RESULT @ 0x12C;
-
-    //=========================================================================
-    // Dual-Rail OTP Readout Registers (0x200-0x2FC)
-    //=========================================================================
-    // Each 256-bit OTP field is exposed as 8 value words (VAL_0..7) and
-    // 8 complement words (CPL_0..7), i.e. the {~value, value} dual-rail.
-    // VAL word index n = bits [32n+31:32n] of the plain value.
-    // CPL word index n = bits [32n+31:32n] of ~value (complement).
-    // All words: sw=r; hw=w; no reset (datapath-driven).
-    // km_csr.sv masks the .next to zero when the field's OTP_READ_LOCK bit is set.
-
-    // CHIPLET_UID: value words @ 0x200-0x21C, complement words @ 0x220-0x23C
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_0 @ 0x200;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_1 @ 0x204;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_2 @ 0x208;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_3 @ 0x20C;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_4 @ 0x210;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_5 @ 0x214;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_6 @ 0x218;
-    otp_dr_word_reg OTP_CHIPLET_UID_VAL_7 @ 0x21C;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_0 @ 0x220;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_1 @ 0x224;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_2 @ 0x228;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_3 @ 0x22C;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_4 @ 0x230;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_5 @ 0x234;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_6 @ 0x238;
-    otp_dr_word_reg OTP_CHIPLET_UID_CPL_7 @ 0x23C;
-
-    // SIP_UID: value words @ 0x240-0x25C, complement words @ 0x260-0x27C
-    otp_dr_word_reg OTP_SIP_UID_VAL_0 @ 0x240;
-    otp_dr_word_reg OTP_SIP_UID_VAL_1 @ 0x244;
-    otp_dr_word_reg OTP_SIP_UID_VAL_2 @ 0x248;
-    otp_dr_word_reg OTP_SIP_UID_VAL_3 @ 0x24C;
-    otp_dr_word_reg OTP_SIP_UID_VAL_4 @ 0x250;
-    otp_dr_word_reg OTP_SIP_UID_VAL_5 @ 0x254;
-    otp_dr_word_reg OTP_SIP_UID_VAL_6 @ 0x258;
-    otp_dr_word_reg OTP_SIP_UID_VAL_7 @ 0x25C;
-    otp_dr_word_reg OTP_SIP_UID_CPL_0 @ 0x260;
-    otp_dr_word_reg OTP_SIP_UID_CPL_1 @ 0x264;
-    otp_dr_word_reg OTP_SIP_UID_CPL_2 @ 0x268;
-    otp_dr_word_reg OTP_SIP_UID_CPL_3 @ 0x26C;
-    otp_dr_word_reg OTP_SIP_UID_CPL_4 @ 0x270;
-    otp_dr_word_reg OTP_SIP_UID_CPL_5 @ 0x274;
-    otp_dr_word_reg OTP_SIP_UID_CPL_6 @ 0x278;
-    otp_dr_word_reg OTP_SIP_UID_CPL_7 @ 0x27C;
-
-    // SYS_UID: value words @ 0x280-0x29C, complement words @ 0x2A0-0x2BC
-    otp_dr_word_reg OTP_SYS_UID_VAL_0 @ 0x280;
-    otp_dr_word_reg OTP_SYS_UID_VAL_1 @ 0x284;
-    otp_dr_word_reg OTP_SYS_UID_VAL_2 @ 0x288;
-    otp_dr_word_reg OTP_SYS_UID_VAL_3 @ 0x28C;
-    otp_dr_word_reg OTP_SYS_UID_VAL_4 @ 0x290;
-    otp_dr_word_reg OTP_SYS_UID_VAL_5 @ 0x294;
-    otp_dr_word_reg OTP_SYS_UID_VAL_6 @ 0x298;
-    otp_dr_word_reg OTP_SYS_UID_VAL_7 @ 0x29C;
-    otp_dr_word_reg OTP_SYS_UID_CPL_0 @ 0x2A0;
-    otp_dr_word_reg OTP_SYS_UID_CPL_1 @ 0x2A4;
-    otp_dr_word_reg OTP_SYS_UID_CPL_2 @ 0x2A8;
-    otp_dr_word_reg OTP_SYS_UID_CPL_3 @ 0x2AC;
-    otp_dr_word_reg OTP_SYS_UID_CPL_4 @ 0x2B0;
-    otp_dr_word_reg OTP_SYS_UID_CPL_5 @ 0x2B4;
-    otp_dr_word_reg OTP_SYS_UID_CPL_6 @ 0x2B8;
-    otp_dr_word_reg OTP_SYS_UID_CPL_7 @ 0x2BC;
-
-    // CLASS_KEY: value words @ 0x2C0-0x2DC, complement words @ 0x2E0-0x2FC
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_0 @ 0x2C0;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_1 @ 0x2C4;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_2 @ 0x2C8;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_3 @ 0x2CC;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_4 @ 0x2D0;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_5 @ 0x2D4;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_6 @ 0x2D8;
-    otp_dr_word_reg OTP_CLASS_KEY_VAL_7 @ 0x2DC;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_0 @ 0x2E0;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_1 @ 0x2E4;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_2 @ 0x2E8;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_3 @ 0x2EC;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_4 @ 0x2F0;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_5 @ 0x2F4;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_6 @ 0x2F8;
-    otp_dr_word_reg OTP_CLASS_KEY_CPL_7 @ 0x2FC;
-
-    //=========================================================================
-    // OTP_READ_LOCK Register (0x300) - Write-1-only, warm reset domain
-    //=========================================================================
-    // Warm-reset-domain read-lock register.  One lock bit per OTP readout
-    // field, same layout as OTP_READ_LOCK_COLD.  These bits are cleared by
-    // any warm or cold reset; ROM firmware re-applies them on every boot
-    // (warm or cold) before handing control to mutable firmware.
-    //
-    // The effective read-lock for each OTP field is the OR of the corresponding
-    // bit in OTP_READ_LOCK and OTP_READ_LOCK_COLD.  Either register alone is
-    // sufficient to suppress CSR readback for a field (km_csr.sv returns zero).
-    //
-    // ROM firmware sets these bits using a triple-write convention
-    // (rom_otp_set_read_lock).  The warm-reset domain is enforced by
-    // resetsignal = WARM_RST_N on every field.
-    reg otp_read_lock_reg {
-        name = "OTP_READ_LOCK";
-        desc = "OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.";
-
-        field {
-            name = "LIFE_CYCLE";
-            desc = "Lock OTP_LIFE_CYCLE reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } life_cycle[0:0];
-
-        field {
-            name = "DEMOTION";
-            desc = "Lock OTP_DEMOTION_STATE reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } demotion[1:1];
-
-        field {
-            name = "CHIPLET_UID";
-            desc = "Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } chiplet_uid[2:2];
-
-        field {
-            name = "SIP_UID";
-            desc = "Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } sip_uid[3:3];
-
-        field {
-            name = "SYS_UID";
-            desc = "Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } sys_uid[4:4];
-
-        field {
-            name = "CLASS_KEY";
-            desc = "Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } class_key[5:5];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
-    };
-
-    otp_read_lock_reg OTP_READ_LOCK @ 0x300;
-
-    //=========================================================================
-    // OTP_READ_LOCK_COLD Register (0x308) - Write-1-only, cold reset domain
-    //=========================================================================
-    // Parallel cold-reset-domain read-lock register.  One lock bit per OTP
-    // readout field, same layout as OTP_READ_LOCK.  These bits survive warm
-    // reset (including soft reset) and are cleared only by cold reset.
-    //
-    // The effective read-lock for each OTP field is the OR of the corresponding
-    // bit in OTP_READ_LOCK and OTP_READ_LOCK_COLD.  Either register alone is
-    // sufficient to suppress CSR readback for a field (km_csr.sv returns zero).
-    //
-    // SEP host may set cold-reset read-lock bits via CMD_OTP_READ_LOCK_COLD
-    // (0x28).  The cold-reset domain is enforced by the absence of
-    // resetsignal = WARM_RST_N; the generated regblock uses arst_n (wired to
-    // cold_rst_ni in km_csr.sv) as the only reset for these fields.
-    reg otp_read_lock_cold_reg {
-        name = "OTP_READ_LOCK_COLD";
-        desc = "OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.";
-
-        field {
-            name = "LIFE_CYCLE";
-            desc = "Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } life_cycle[0:0];
-
-        field {
-            name = "DEMOTION";
-            desc = "Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } demotion[1:1];
-
-        field {
-            name = "CHIPLET_UID";
-            desc = "Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } chiplet_uid[2:2];
-
-        field {
-            name = "SIP_UID";
-            desc = "Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } sip_uid[3:3];
-
-        field {
-            name = "SYS_UID";
-            desc = "Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } sys_uid[4:4];
-
-        field {
-            name = "CLASS_KEY";
-            desc = "Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.";
-            sw = rw;
-            onwrite = woset;
-            hw = r;
-            reset = 1'b0;
-        } class_key[5:5];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
-    };
-
-    otp_read_lock_cold_reg OTP_READ_LOCK_COLD @ 0x308;
-
-    //=========================================================================
-    // OTP_CHANGE_STATUS Register (0x304) - Sticky per-field change flags
-    //=========================================================================
-    // Bit set by hardware (hwset) when the corresponding OTP field's decoded
-    // value changes from the prior cycle. Write 1 to clear (W1C).
-    // Firmware should read this after OTP_CHANGE IRQ to identify the field.
-    reg otp_change_status_reg {
-        name = "OTP_CHANGE_STATUS";
-        desc = "OTP field change status. A bit is set when the corresponding field's decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.";
-
-        field {
-            name = "LIFE_CYCLE";
-            desc = "OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } life_cycle[0:0];
-
-        field {
-            name = "DEMOTION";
-            desc = "OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } demotion[1:1];
-
-        field {
-            name = "CHIPLET_UID";
-            desc = "OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } chiplet_uid[2:2];
-
-        field {
-            name = "SIP_UID";
-            desc = "OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } sip_uid[3:3];
-
-        field {
-            name = "SYS_UID";
-            desc = "OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } sys_uid[4:4];
-
-        field {
-            name = "CLASS_KEY";
-            desc = "OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.";
-            sw = rw;
-            hw = rw;
-            hwset = true;
-            stickybit = true;
-            onwrite = woclr;
-            resetsignal = WARM_RST_N;
-            reset = 1'b0;
-        } class_key[5:5];
-
-        field {
-            name = "RSVD";
-            desc = "Reserved";
-            sw = r;
-            hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
-    };
-
-    otp_change_status_reg OTP_CHANGE_STATUS @ 0x304;
 
     //=========================================================================
     // DEBUG Register (0x1FC) - Read-only debug/verification register

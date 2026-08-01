@@ -242,7 +242,7 @@ vendor_package:
   # VeeR EL2 core; config snapshots live in overlay/.
   - name: veer_el2
     target_dir: "vendor/chipsalliance/Cores-VeeR-EL2/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-Cores-VeeR-EL2.git", rev: "b5e2e9d0d2383b2cb6d864b6b36d689a09bfb684" }
+    upstream: { git: "https://github.com/tenstorrent/tt-Cores-VeeR-EL2.git", rev: "07a51d817c5042f57850e931a1fb5e6a557a9333" }
     include_from_upstream:
       - "design"
       - "configs"
@@ -273,6 +273,34 @@ vendor_package:
       - "csr"
     patch_dir: "vendor/tenstorrent/aou-rtl/patches"
 
+  # I3C controller/target core. The wrapper and memory primitives are left out;
+  # this tree supplies its own through i3ccore_wrap.
+  - name: i3c-core
+    target_dir: "vendor/chipsalliance/i3c-core/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
+    include_from_upstream:
+      - "src"
+    exclude_from_upstream:
+      - "src/i3c_wrapper.sv"
+      - "src/libs/mem"
+      - "src/*.f"
+    patch_dir: "vendor/chipsalliance/i3c-core/patches"
+
+  - name: i3c-core-caliptra-rtl
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
+    upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "8bd654eba57cfaa0688f9c4804b23253d0235dfc" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
+
+  - name: i3c-core-cocotbext-i3c
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
+    upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
+
+  - name: i3c-core-axi-vip
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip"
+    upstream: { git: "https://github.com/antmicro/axi-vip.git", rev: "6aeb0a5ba7810dafd96145f0e569db6996464b0e" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/axi-vip"
+
 # RTL sources are partitioned by composable subsystem targets.
 sources:
   # Shared files are selected when any owning subsystem is requested.
@@ -295,6 +323,12 @@ sources:
       - hw/ip/dfd/rtl/misc
       - hw/ip/dfd/rtl/pkg
       - hw/sys/smc/rtl/smc_cpu
+      - hw/ip/i3ccore_wrap/rtl
+      - vendor/chipsalliance/i3c-core/upstream/src
+      - vendor/chipsalliance/i3c-core/upstream/src/libs
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl
     files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
   - target: sep
@@ -431,7 +465,6 @@ sources:
       - hw/ip/i2c/rtl/i2c_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
       - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
-      - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
   - target: dtp
     files:
@@ -724,7 +757,6 @@ sources:
       - hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
       - hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
-      - hw/ip/drbg/rtl/drbg_entropy_router.sv
   - target: any(sep, smc)
     files:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
@@ -778,8 +810,70 @@ sources:
       - hw/ip/i2c/rtl/i2c_target_fsm.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg.sv
       - hw/ip/i2c/rtl/i2c_wrap.sv
-      - hw/ip/i3ccore_wrap/rtl/i3ccore_stub.sv
-      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper_stub.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/i3ccore_axi_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_addr.v
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl/skidbuffer.v
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/buf_pp.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/bufs.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/i3c_phy.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/interrupt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_arb.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_rd.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_wr.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/read_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/write_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/ahb_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/axi_adapter.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/dxt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/tti.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/hci.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/csri.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_8toN.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_Nto8.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_pec.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_receiver.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_handler.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_scl_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_start_stop_gen.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/target_reset_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc_entdaa.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/configuration.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/edge_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_rx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_ibi.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i3c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/stable_high_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c.sv
+      - hw/ip/i3ccore_wrap/rtl/i3c_wrapper.sv
+      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv

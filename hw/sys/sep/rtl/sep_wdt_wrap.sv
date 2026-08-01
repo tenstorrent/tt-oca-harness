@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP WDT Wrapper - Watchdog Timer with AXI interface
-//
-//-----------------------------------------------------------------------------
 
 module sep_wdt_wrap
 (
@@ -23,10 +20,19 @@ module sep_wdt_wrap
     // WDT Interface
     output logic                         intr_wdog_timer_bark_o,
     output logic                         wdt_timer_rst_req_o,
+    // Aggregated fatal alert (alert pulse | integ_fail of all channels)
+    output logic                         wdt_alert_o,
     input  logic                         wdt_debug_sleep_mode_i
 );
 
+    localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;
+
     logic rst_wdt_n;
+
+    prim_alert_pkg::alert_tx_t [NumAlerts-1:0] wdt_alert_tx;
+    prim_alert_pkg::alert_rx_t [NumAlerts-1:0] wdt_alert_rx;
+    logic [NumAlerts-1:0]                      wdt_alert_pulse;
+    logic [NumAlerts-1:0]                      wdt_alert_integ_fail;
 
     prim_sync_reset u_rst_wdt_sync (
         .clk        (clk_wdt_i),
@@ -136,12 +142,8 @@ module sep_wdt_wrap
         .tl_i                      (tl_d_i),
         .tl_o                      (tl_d_o),
 
-        // Tie off alert receiver inputs to a *valid* differential idle encoding.
-        // Using '0 makes ping_p==ping_n (and ack_p==ack_n), which looks like a signal-integrity
-        // fault to prim_alert_sender and can trip SigInt* assertions when the block later
-        // drives a real alert.
-        .alert_rx_i                (prim_alert_pkg::ALERT_RX_DEFAULT),
-        .alert_tx_o                (/* UNUSED */),
+        .alert_rx_i                (wdt_alert_rx),
+        .alert_tx_o                (wdt_alert_tx),
         .racl_policies_i           ('0),
         .racl_error_o              (/* UNUSED */),
 
@@ -155,5 +157,24 @@ module sep_wdt_wrap
 
         .sleep_mode_i              (wdt_debug_sleep_mode_i)
     );
+
+    for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_receivers
+        prim_alert_receiver #(
+            .AsyncOn   (1'b0),
+            .SkewCycles(1)
+        ) u_alert_receiver (
+            .clk_i,
+            .rst_ni,
+            .init_trig_i  (prim_mubi_pkg::MuBi4False),
+            .ping_req_i   (1'b0),
+            .ping_ok_o    (),
+            .integ_fail_o (wdt_alert_integ_fail[i]),
+            .alert_o      (wdt_alert_pulse[i]),
+            .alert_rx_o   (wdt_alert_rx[i]),
+            .alert_tx_i   (wdt_alert_tx[i])
+        );
+    end
+
+    assign wdt_alert_o = (|wdt_alert_pulse) | (|wdt_alert_integ_fail);
 
 endmodule

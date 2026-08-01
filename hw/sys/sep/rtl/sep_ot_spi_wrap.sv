@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP OpenTitan SPI Controller Wrapper
 //
 // Wrapper for the modified OpenTitan SPI Host IP (spi_controller)
@@ -11,7 +10,7 @@
 // - spi_controller (modified OpenTitan SPI Host with AXI4-Lite interface)
 //
 // The spi_controller is a software-controlled SPI controller that
-// uses FIFO-based command/data transfer.
+// uses FIFO-based command/data transfer (similar to STIG mode in Cadence xSPI).
 // It does NOT support direct memory-mapped flash access.
 //
 // Features:
@@ -20,12 +19,8 @@
 // - Single Transfer Rate (STR) only (no DTR/DDR support)
 // - Software-driven command sequences
 // - AXI4-Lite register interface (no TileLink)
-//
-//-----------------------------------------------------------------------------
 
 module sep_ot_spi_wrap
-    import sep_io_pkg::*;
-    import spi_controller_pkg::*;
 #(
     parameter int unsigned NUM_CS = 1   // Number of chip selects
 ) (

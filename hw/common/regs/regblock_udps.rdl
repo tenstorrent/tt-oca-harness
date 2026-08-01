@@ -2,9 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 /*
- * Property extensions understood by PeakRDL-Regblock.
+ * This file defines several property extensions that are understood by the
+ * PeakRDL-Regblock SystemVerilog code generator.
  *
- * Compile this file before block-specific SystemRDL sources.
+ * Compile this file prior to your other SystemRDL sources.
+ *
+ * For more details, see: https://peakrdl-regblock.readthedocs.io/en/latest/udps/intro.html
  */
 
 property buffer_reads {
@@ -51,25 +54,4 @@ property intwidth {
 property fracwidth {
     type = longint unsigned;
     component = field;
-};
-
-/*
- * OpenTitan UDPs emitted by reggen_wrapper.py when exporting upstream OpenTitan
- * hjson (aes/hmac/kmac/otbn/csrng/edn/...). Defined here so the regenerated RDLs
- * compile without an `include "opentitan_udps.rdl"` (this file is already passed
- * to every peakrdl invocation).
- */
-
-// hwre: true if the register's read latches a hardware read-enable pulse.
-property hwre {
-    type = boolean;
-    component = reg;
-    default = false;
-};
-
-// shadowed: true if the register is shadowed (guarded against fault injection).
-property shadowed {
-    type = boolean;
-    component = reg;
-    default = false;
 };

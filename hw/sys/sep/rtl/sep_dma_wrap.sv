@@ -1,32 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
 // SEP DMA Wrapper
 //
 // AXI to TileLink UL Bridge for secure_dma module
-//------------------------------------------------
 
 module sep_dma_wrap
-  import secure_dma_pkg::*;
-  import secure_dma_reg_pkg::*;
-  import sep_pkg::*;
-  import tlul_pkg::*;
-  import prim_mubi_pkg::*;
 #(
   // Local parameter for register address width
   parameter int unsigned REG_ADDR_WIDTH = 32,
   parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,
-  parameter logic [NumAlerts-1:0]                   AlertAsyncOn = {NumAlerts{1'b1}},
+  parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] AlertAsyncOn = {secure_dma_reg_pkg::NumAlerts{1'b1}},
   parameter int unsigned                            AlertSkewCycles = 1,
   parameter bit                                     EnableDataIntgGen = 1'b1,
   parameter bit                                     EnableRspDataIntgCheck = 1'b1,
-  parameter logic [RsvdWidth-1:0]                   TlUserRsvd = '0,
+  parameter logic [tlul_pkg::RsvdWidth-1:0]         TlUserRsvd = '0,
   parameter top_racl_pkg::racl_role_t               SysRaclRole = '0,
   parameter int unsigned                            OtAgentId = 0,
   parameter bit                                     EnableRacl = 1'b0,
   parameter bit                                     RaclErrorRsp = EnableRacl,
-  parameter top_racl_pkg::racl_policy_sel_t         RaclPolicySelVec[NumRegs] = '{NumRegs{0}}
+  parameter top_racl_pkg::racl_policy_sel_t         RaclPolicySelVec[secure_dma_reg_pkg::NumRegs] = '{secure_dma_reg_pkg::NumRegs{0}}
 ) (
   input  logic                                      clk_i,
   input  logic                                      rst_ni,
@@ -34,14 +27,13 @@ module sep_dma_wrap
   input  logic                                      test_en_i,
 
   // DMA Handshake Interface
-  input  lsio_trigger_t                             lsio_trigger_i, // Periphal signals that it has data for DMA to transfer
+  input  secure_dma_pkg::lsio_trigger_t             lsio_trigger_i, // Periphal signals that it has data for DMA to transfer
   output logic                                      intr_dma_done_o,
   output logic                                      intr_dma_chunk_done_o,
   output logic                                      intr_dma_error_o,
 
-  // Alerts
-  input  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o,
+  // Aggregated fatal alert (alert pulse | integ_fail of all channels).
+  output logic                                      dma_alert_o,
 
   // Register Interface (AXI Slave)
   input  sep_pkg::sep_32_64_6_12_axi_req_t            reg_req_i,
@@ -52,8 +44,7 @@ module sep_dma_wrap
   input  sep_pkg::sep_32_64_3_12_axi_resp_t           dma_resp_i,
 
   // Local Alias Remap Configuration
-  input  logic [31:0]                                sep_local_base_addr_i,
-  input  logic [31:0]                                sep_region_size_i
+  input  logic [31:0]                                sep_local_base_addr_i
 );
 
   // Local parameter for 32-bit data width
@@ -99,6 +90,12 @@ module sep_dma_wrap
   // CTN Interface (tied off)
   tlul_pkg::tl_d2h_t ctn_tl_d2h;
 
+  // Local alert termination (no chiplet alert_handler today)
+  prim_alert_pkg::alert_tx_t [secure_dma_reg_pkg::NumAlerts-1:0] dma_alert_tx;
+  prim_alert_pkg::alert_rx_t [secure_dma_reg_pkg::NumAlerts-1:0] dma_alert_rx;
+  logic [secure_dma_reg_pkg::NumAlerts-1:0]                      dma_alert_pulse;
+  logic [secure_dma_reg_pkg::NumAlerts-1:0]                      dma_alert_integ_fail;
+
   //////////////
   // DMA Core //
   //////////////
@@ -124,8 +121,8 @@ module sep_dma_wrap
     .intr_dma_chunk_done_o  (intr_dma_chunk_done_o),
     .intr_dma_error_o       (intr_dma_error_o),
 
-	  .alert_rx_i             (alert_rx_i),
-	  .alert_tx_o             (alert_tx_o),
+	  .alert_rx_i             (dma_alert_rx),
+	  .alert_tx_o             (dma_alert_tx),
 
 	  .racl_policies_i        ('0),
 	  .racl_error_o           (/* UNUSED */),
@@ -180,8 +177,8 @@ module sep_dma_wrap
   // Convert absolute address to offset by subtracting base address
   always_comb begin
     axi32_slv_req_offset         = axi32_slv_req;
-    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - SECURE_DMA_REG_MAP_BASE_ADDR;
-    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - SECURE_DMA_REG_MAP_BASE_ADDR;
+    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
+    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
   end
 
   // Convert AXI to AXI-Lite (after data width conversion)
@@ -301,18 +298,18 @@ module sep_dma_wrap
   // -> this is because the DMA is allowed to access the ICCM and DCCM in the SEP CPU
   //    therefore change the local base start to be offset by the SRAM start address
   //    and the size to be SRAM start address smaller
-  axi_local_alias_remap #(
-      .axi_req_t      (sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_32_64_3_12_axi_resp_t),
+  axi_window_remap #(
+      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
       .AXI_ADDR_WIDTH (32)
   ) u_dma_local_alias_remap (
       .slv_req_i          (dma_axi_req_raw),
       .slv_resp_o         (dma_axi_resp_raw),
       .mst_req_o          (dma_req_o),
       .mst_resp_i         (dma_resp_i),
-      .local_alias_base_i (sep_local_base_addr_i + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
-      .region_size_i      (sep_region_size_i - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
-      .target_base_i      (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
+      .local_alias_base_i (sep_local_base_addr_i),
+      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   ///////////////////
@@ -329,5 +326,28 @@ module sep_dma_wrap
   assign ctn_tl_d2h.d_data = '0;
   assign ctn_tl_d2h.d_user = '0;
   assign ctn_tl_d2h.d_error = 1'b0;
+
+  ////////////////////
+  // Alert Receiver //
+  ////////////////////
+
+  for (genvar i = 0; i < secure_dma_reg_pkg::NumAlerts; i++) begin : gen_alert_receivers
+    prim_alert_receiver #(
+      .AsyncOn   (1'b0),
+      .SkewCycles(1)
+    ) u_alert_receiver (
+      .clk_i,
+      .rst_ni,
+      .init_trig_i  (prim_mubi_pkg::MuBi4False),
+      .ping_req_i   (1'b0),
+      .ping_ok_o    (),
+      .integ_fail_o (dma_alert_integ_fail[i]),
+      .alert_o      (dma_alert_pulse[i]),
+      .alert_rx_o   (dma_alert_rx[i]),
+      .alert_tx_i   (dma_alert_tx[i])
+    );
+  end
+
+  assign dma_alert_o = (|dma_alert_pulse) | (|dma_alert_integ_fail);
 
 endmodule

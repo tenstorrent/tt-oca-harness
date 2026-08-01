@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//----------------------------------------------------------
 // SMC Peripherals
-//
-//----------------------------------------------------------
 
-module smc_peripherals #() (
+module smc_peripherals #(
+    parameter int unsigned MAX_TRANS = 2  // GPIO obs consistency; threaded from smc_wrapper
+) (
 	input  logic                                        											clk_ref_i,
 	input  logic                                        											clk_smc_i,
 	input  logic 																					clk_periph_i,
@@ -36,25 +35,13 @@ module smc_peripherals #() (
 	output smc_pkg::smc_axil_32_32_req_t                                                            axil_dtp_csr_req_o,
 	input  smc_pkg::smc_axil_32_32_resp_t                                                           axil_dtp_csr_resp_i,
 
-	// Extension AXI-Lite Master
-	output smc_pkg::smc_axil_32_32_req_t                                                            axil_extension_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t                                                           axil_extension_resp_i,
+	// External AXI-Lite Master
+	output smc_pkg::smc_axil_32_32_req_t                                                            smc_external_req_o,
+    input  smc_pkg::smc_axil_32_32_resp_t                                                           smc_external_resp_i,
 
 	// eFuse JTAG AXI-Lite Slave
 	input  smc_pkg::smc_axil_32_32_req_t                                                            axil_smc_otp_jtag_req_i,
 	output smc_pkg::smc_axil_32_32_resp_t                                                           axil_smc_otp_jtag_resp_o,
-
-	// PLL Clock Observation (from shim at Top Level)
-    output smc_pkg::smc_axil_32_32_req_t                                                   			axil_pll_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t                                                  			axil_pll_resp_i,
-
-    // PVT Clock Observation (from shim at Top Level)
-    output smc_pkg::smc_axil_32_32_req_t                         									axil_pvt_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t                        									axil_pvt_resp_i,
-
-	// GPIO Control Interface (for control registers routed to external padring)
-	output gpio_pkg::gpio_axil_req_t                                                                axil_req_gpio_ctrl_o,
-	input  gpio_pkg::gpio_axil_resp_t                                                               axil_resp_gpio_ctrl_i,
 
 	// GPIO Data Signals (to external GPIO macros via gpio_shim instances)
 	output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                                                      lsio_interface_select_o,
@@ -182,6 +169,10 @@ module smc_peripherals #() (
 	output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dat_mem_sink_o,
 	input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dct_mem_src_i,
 	output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dct_mem_sink_o,
+	input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]                                    i3c_rlt_mem_src_i,
+	output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_rlt_mem_sink_o,
+	// Gated I3C peripheral clock (same domain as i3ccore_wrapper)
+	output logic                                                                                    gated_clk_periph_i3c_o,
 
 	// ------------------
 	// Debug signals
@@ -245,6 +236,9 @@ module smc_peripherals #() (
 
 	smc_pkg::smc_axil_32_32_req_t                                                            axil_misc_req;
 	smc_pkg::smc_axil_32_32_resp_t                                                           axil_misc_resp;
+
+	// DTP CSR request before the xbar base address is stripped off
+	smc_pkg::smc_axil_32_32_req_t                                                            axil_dtp_csr_req;
 
 	// Clock gate enable signals synchronized to destination domains
 	logic                                                                                    i2c_cg_en_periph_clk;
@@ -353,12 +347,8 @@ module smc_peripherals #() (
 		.periph_in_resp_o                 (axil_peripherals_resp_o),
 
 		// Output ports
-		.pll_req_o                        (axil_pll_req_o),
-		.pll_resp_i                       (axil_pll_resp_i),
 		.gpio_req_o                       (axil_padring_req),
 		.gpio_resp_i                      (axil_padring_resp),
-		.pvt_req_o                        (axil_pvt_req_o),
-		.pvt_resp_i                       (axil_pvt_resp_i),
 		.apb2avsbus_req_o                 (axil_avsbus_controller_req_smc_clk),
 		.apb2avsbus_resp_i                (axil_avsbus_controller_resp_smc_clk),
 		.i2c_req_o                        (axil_i2c_req_smc_clk),
@@ -371,7 +361,7 @@ module smc_peripherals #() (
 		.telemetry_resp_i                 (axil_telemetry_resp),
 		.system_timer_octs_req_o          (axil_system_timer_octs_req),
 		.system_timer_octs_resp_i         (axil_system_timer_octs_resp),
-		.dtp_csr_req_o                    (axil_dtp_csr_req_o),
+		.dtp_csr_req_o                    (axil_dtp_csr_req),
 		.dtp_csr_resp_i                   (axil_dtp_csr_resp_i),
 		.i3c_req_o                        (axil_i3c_req_smc_clk),
 		.i3c_resp_i                       (axil_i3c_resp_smc_clk),
@@ -379,9 +369,17 @@ module smc_peripherals #() (
         .reset_unit_resp_i                (axil_reset_unit_resp),
         .misc_req_o                       (axil_misc_req),
         .misc_resp_i                      (axil_misc_resp),
-		.extension_req_o                  (axil_extension_req_o),
-		.extension_resp_i                 (axil_extension_resp_i)
+		.external_req_o                   (smc_external_req_o),
+		.external_resp_i                  (smc_external_resp_i)
 	);
+
+	// Rebase DTP CSR addresses to zero: the xbar routes on the full system
+	// address, but the DTP CSR block expects an offset from its base.
+	always_comb begin
+		axil_dtp_csr_req_o         = axil_dtp_csr_req;
+		axil_dtp_csr_req_o.aw.addr = axil_dtp_csr_req.aw.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
+		axil_dtp_csr_req_o.ar.addr = axil_dtp_csr_req.ar.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
+	end
 
 	//////////////////////
 	// Periph Clock CDC //
@@ -474,10 +472,9 @@ module smc_peripherals #() (
 	/////////////
 
 	smc_padring #(
-		.MAX_TRANS                  (2), // Allow new AXIL request to buffer while previous response still in-flight
+		.MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
 		.ADDRESS_MAP_SIZE_PER_GPIO  (smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE),
-		.GPIO_INTF_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-		.GPIO_CTRL_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
+		.GPIO_INTF_BASE_ADDR 		(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0))
 	) u_smc_padring (
 		.clk_i                      (clk_smc_i),
 		.rst_primary_ni             (rst_primary_smc_clk_no),
@@ -489,9 +486,6 @@ module smc_peripherals #() (
 		// AXI-Lite Register Interface
 		.axil_req_i                 (axil_padring_req),
 		.axil_resp_o                (axil_padring_resp),
-
-		.axil_req_gpio_ctrl_o		(axil_req_gpio_ctrl_o), // `smc_clk` control plane into adopter padring wrapper
-		.axil_resp_gpio_ctrl_i		(axil_resp_gpio_ctrl_i), // `smc_clk` control plane into adopter padring wrapper
 
 		// SPI
 		.spi_enable_i			    (spi_enable_i),
@@ -744,19 +738,6 @@ module smc_peripherals #() (
 	assign axil_log_engine_req_o = axil_log_engine_req_smc_clk;
 	assign axil_log_engine_resp_smc_clk = axil_log_engine_resp_i;
 
-	/////////
-	// I3C //
-	/////////
-
-	logic gated_clk_periph_i3c;
-
-	prim_clkgater i3c_clk_periph_gater (
-		.i_clk(clk_periph_i),
-		.i_en(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-		.i_te(test_en_i),
-		.o_clk(gated_clk_periph_i3c)
-	);
-
 	////////////////////
 	// Telemetry Unit //
 	////////////////////
@@ -855,6 +836,7 @@ module smc_peripherals #() (
 		.locked_field_access_interrupt_o (locked_field_access_interrupt)
 	);
 
+	// In grendel, fuse_reset_n goes through jtag override first and second rstbypass, and then pipe stages
 	prim_pipe_stages #(
 		.WIDTH(1),
 		.NUM_STAGES(16)
@@ -935,34 +917,27 @@ module smc_peripherals #() (
     // I3C Controller //
     ////////////////////
 
-	// TODO: stub i3c out until the updated open-source controller is integrated
+	logic gated_clk_periph_i3c;
 
-	i3ccore_stub #(
+	prim_clkgater i3c_clk_periph_gater (
+		.i_clk(clk_periph_i),
+		.i_en(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
+		.i_te(test_mode_i),
+		.o_clk(gated_clk_periph_i3c)
+	);
+
+	i3ccore_wrapper #(
 		.NUM_I3C            (smc_config_pkg::NUM_I3C),
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
-		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR),
+		.BASE_ADDR          (oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_BASE_ADDR),
 		.INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
 		// I3C Core parameters
 		.DatAw              (i3c_pkg::DatAw),
 		.DctAw              (i3c_pkg::DctAw),
 		.CsrAddrWidth       (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
-		.CsrDataWidth       (I3CCSR_pkg::I3CCSR_DATA_WIDTH),
-
-		// HCI FIFO depth parameters (Controller support enabled)
-		.HciRespFifoDepth   (I3CCSR_pkg::resp_fifo_size),
-		.HciCmdFifoDepth    (I3CCSR_pkg::cmd_fifo_size),
-		.HciRxFifoDepth     (I3CCSR_pkg::rx_fifo_size),
-		.HciTxFifoDepth     (I3CCSR_pkg::tx_fifo_size),
-		.HciIbiFifoDepth    (I3CCSR_pkg::ibi_fifo_size),
-
-		// TTI FIFO depth parameters (Target support enabled)
-		.TtiRxDescFifoDepth (I3CCSR_pkg::tti_rx_desc_fifo_size),
-		.TtiTxDescFifoDepth (I3CCSR_pkg::tti_tx_desc_fifo_size),
-		.TtiRxFifoDepth     (I3CCSR_pkg::tti_rx_fifo_size),
-		.TtiTxFifoDepth     (I3CCSR_pkg::tti_tx_fifo_size),
-		.TtiIbiFifoDepth    (I3CCSR_pkg::tti_ibi_fifo_size)
-	) u_i3ccore_stub (
+		.CsrDataWidth       (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
+	) u_i3ccore_wrapper (
 		.clk_i              (gated_clk_periph_i3c),
 		.rst_ni             (rst_primary_periph_clk_n),
 
@@ -1018,7 +993,9 @@ module smc_peripherals #() (
 		.dat_mem_src_i  (i3c_dat_mem_src_i),
 		.dat_mem_sink_o (i3c_dat_mem_sink_o),
 		.dct_mem_src_i  (i3c_dct_mem_src_i),
-		.dct_mem_sink_o (i3c_dct_mem_sink_o)
+		.dct_mem_sink_o (i3c_dct_mem_sink_o),
+		.rlt_mem_src_i  (i3c_rlt_mem_src_i),
+		.rlt_mem_sink_o (i3c_rlt_mem_sink_o)
 	);
 
 	///////////////////
@@ -1128,6 +1105,7 @@ module smc_peripherals #() (
 	assign gpio_interrupt_o = gpio_interrupt;
 	assign uart_interrupt_o = uart_irq_periph_clk;
 
+    assign gated_clk_periph_i3c_o = gated_clk_periph_i3c;
 	assign rst_primary_periph_clk_no = rst_primary_periph_clk_n;
 
 endmodule

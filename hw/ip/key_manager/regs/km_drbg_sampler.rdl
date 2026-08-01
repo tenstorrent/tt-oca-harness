@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+// Copyright 2026 Tenstorrent Inc.
 
 // DRBG Sampler Register Block (km_drbg_sampler)
 // SystemRDL 2.0 Register Definition (Contract)
 //
-// Copyright 2026 Tenstorrent Inc.
 //
 // Base Address: 0x0000_F000
 // Size: 4KB (0x1000)
@@ -22,33 +22,18 @@ addrmap km_drbg_sampler {
     default hw = r;
 
     //=========================================================================
-    // Warm reset signal declaration
-    //=========================================================================
-    // cpuif_reset quiesces the AXI CPUIF on warm reset.
-    // field_reset is intentionally NOT set: every warm-resettable field carries
-    // an explicit `resetsignal = WARM_RST_N`. PREFETCH_DATA has no reset and
-    // uses the default arst_n (cold reset only).
-    signal warm_rst_n {
-        activelow;
-        async = false;
-        cpuif_reset = true;
-    };
-    warm_rst_n WARM_RST_N;
-
-    //=========================================================================
     // DATA Register (0x000) - Read-only; read triggers fetch
     //=========================================================================
-    // DATA register: no reset for security. Power-up value undefined.
     reg data_reg {
         name = "DATA";
-        desc = "One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.";
+        desc = "One word of random data. Read triggers request or returns prefetch. Writes return SLVERR.";
 
         field {
             name = "DATA";
-            desc = "32-bit random data from DRBG. No reset for security; power-up value undefined.";
+            desc = "32-bit random data from DRBG";
             sw = r;
             hw = w;
-            // No reset: datapath must power up with random value
+            reset = 32'h0;
         } data[31:0];
     };
 
@@ -66,7 +51,6 @@ addrmap km_drbg_sampler {
             desc = "Enable prefetch. When 0, prefetch data register is cleared.";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } prefetch[0:0];
 
@@ -83,7 +67,6 @@ addrmap km_drbg_sampler {
             desc = "Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.";
             sw = rw;
             hw = r;
-            resetsignal = WARM_RST_N;
             reset = 16'd256;
         } timeout[31:16];
     };
@@ -102,7 +85,6 @@ addrmap km_drbg_sampler {
             desc = "TVALID asserted from DRBG";
             sw = r;
             hw = w;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } drbg_ready[0:0];
 
@@ -111,7 +93,6 @@ addrmap km_drbg_sampler {
             desc = "Prefetched data available";
             sw = r;
             hw = w;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } prefetched[1:1];
 
@@ -123,7 +104,6 @@ addrmap km_drbg_sampler {
             hwset = true;
             stickybit = true;
             onwrite = woclr;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } timeout_err[2:2];
 
@@ -135,7 +115,6 @@ addrmap km_drbg_sampler {
             hwset = true;
             stickybit = true;
             onwrite = woclr;
-            resetsignal = WARM_RST_N;
             reset = 1'b0;
         } stream_err[3:3];
 
@@ -152,7 +131,6 @@ addrmap km_drbg_sampler {
             desc = "Failed transactions (timeout or error). Saturates at 0xFF.";
             sw = r;
             hw = w;
-            resetsignal = WARM_RST_N;
             reset = 8'h0;
         } count_bad[15:8];
 
@@ -161,7 +139,6 @@ addrmap km_drbg_sampler {
             desc = "Successful words transferred to CPU. Saturates at 0xFFFF.";
             sw = r;
             hw = w;
-            resetsignal = WARM_RST_N;
             reset = 16'h0;
         } count_good[31:16];
     };
@@ -171,17 +148,16 @@ addrmap km_drbg_sampler {
     //=========================================================================
     // PREFETCH_DATA Register (0x00C) - Read-only, debug
     //=========================================================================
-    // PREFETCH_DATA: no reset for security. Cleared when PREFETCH=0 at runtime.
     reg prefetch_data_reg {
         name = "PREFETCH_DATA";
-        desc = "Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.";
+        desc = "Prefetched word (read-only, for debugging). Cleared when PREFETCH=0.";
 
         field {
             name = "DATA";
-            desc = "Prefetched 32-bit random data. No reset for security; power-up value undefined.";
+            desc = "Prefetched 32-bit random data";
             sw = r;
             hw = w;
-            // No reset: datapath must power up with random value
+            reset = 32'h0;
         } data[31:0];
     };
 
