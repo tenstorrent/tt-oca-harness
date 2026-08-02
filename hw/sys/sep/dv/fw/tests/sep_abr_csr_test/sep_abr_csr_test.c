@@ -17,8 +17,7 @@
 #include "test_completion.h"
 #include "abr_mldsa.h"
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -27,14 +26,14 @@ int main(void)
 
     uint32_t name0 = READ_REG(ABR_MLDSA_NAME0);
     uint32_t name1 = READ_REG(ABR_MLDSA_NAME1);
-    uint32_t ver0  = READ_REG(ABR_MLDSA_VERSION0);
-    uint32_t ver1  = READ_REG(ABR_MLDSA_VERSION1);
+    uint32_t ver0 = READ_REG(ABR_MLDSA_VERSION0);
+    uint32_t ver1 = READ_REG(ABR_MLDSA_VERSION1);
 
     printf("NAME=0x%08x%08x VERSION=0x%08x%08x\n", name1, name0, ver1, ver0);
 
     if (name0 != ABR_MLDSA_NAME0_EXP || name1 != ABR_MLDSA_NAME1_EXP) {
-        printf("  NAME mismatch (expected 0x%08x%08x = \"MLDSA-87\")\n",
-               ABR_MLDSA_NAME1_EXP, ABR_MLDSA_NAME0_EXP);
+        printf("  NAME mismatch (expected 0x%08x%08x = \"MLDSA-87\")\n", ABR_MLDSA_NAME1_EXP,
+               ABR_MLDSA_NAME0_EXP);
         pass = 0;
     } else {
         printf("  NAME = \"MLDSA-87\" OK\n");

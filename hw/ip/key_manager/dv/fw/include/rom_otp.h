@@ -13,8 +13,10 @@
  *   - `rom_otp_read_sip_uid()`         — 256-bit SIP_UID, dual-rail verified.
  *   - `rom_otp_read_sys_uid()`         — 256-bit SYS_UID, dual-rail verified.
  *   - `rom_otp_read_class_key()`       — 256-bit CLASS_KEY, dual-rail verified.
- *   - `rom_otp_set_read_lock()`        — Applies OTP_READ_LOCK bits (warm-reset domain, triple-write).
- *   - `rom_otp_set_read_lock_cold()`   — Applies OTP_READ_LOCK_COLD bits (cold-reset domain, triple-write).
+ *   - `rom_otp_set_read_lock()`        — Applies OTP_READ_LOCK bits (warm-reset domain,
+ * triple-write).
+ *   - `rom_otp_set_read_lock_cold()`   — Applies OTP_READ_LOCK_COLD bits (cold-reset domain,
+ * triple-write).
  *   - `rom_otp_get_change_status()`    — Read OTP_CHANGE_STATUS (which fields changed).
  *   - `rom_otp_clear_change_status()`  — W1C-clear OTP_CHANGE_STATUS bits.
  *
@@ -185,7 +187,8 @@ void rom_otp_clear_change_status(uint32_t mask);
  * The default implementation does nothing.  Override in test code or
  * application firmware to react to live OTP value changes.
  *
- * @param changed_mask  Bitmask of changed fields (KM_CSR__OTP_CHANGE_STATUS_REG__*_bm bit positions).
+ * @param changed_mask  Bitmask of changed fields (KM_CSR__OTP_CHANGE_STATUS_REG__*_bm bit
+ * positions).
  */
 void rom_otp_on_change(uint32_t changed_mask);
 

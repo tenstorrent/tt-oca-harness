@@ -31,8 +31,12 @@
 #include "rom_otp.h"
 #include "key_manager_fw.h"
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /*===========================================================================
  * Helpers (same pattern as test_km_cmd_key_load.c)
@@ -40,56 +44,46 @@ int rom_unrec_wipe_enabled(void) { return 0; }
 
 static uint8_t cmd_seq;
 
-static void send_cmd_no_payload(uint8_t cmd_id)
-{
+static void send_cmd_no_payload(uint8_t cmd_id) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq;
-    hdr.id          = cmd_id;
+    hdr.seq_num = cmd_seq;
+    hdr.id = cmd_id;
     hdr.payload_len = 0;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
     /* Zero-payload frame: separator first, then header (no payload, no CRC). */
     if (!tb_sep_mbox_write_separator_write(1, 5000))
         TEST_FAIL("separator write failed (no-payload)");
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed (no-payload)");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed (no-payload)");
 }
 
-static void send_cmd_one_word(uint8_t cmd_id, uint32_t word0)
-{
+static void send_cmd_one_word(uint8_t cmd_id, uint32_t word0) {
     rom_km_msg_header_t hdr;
-    hdr.seq_num     = cmd_seq;
-    hdr.id          = cmd_id;
+    hdr.seq_num = cmd_seq;
+    hdr.id = cmd_id;
     hdr.payload_len = 1;
     hdr.header_crc8 = rom_crc8_rohc((const uint8_t *)&hdr, 3);
 
-    if (!tb_sep_mbox_write(hdr.raw, 5000))
-        TEST_FAIL("header write failed");
-    if (!tb_sep_mbox_write(word0, 5000))
-        TEST_FAIL("payload word0 write failed");
+    if (!tb_sep_mbox_write(hdr.raw, 5000)) TEST_FAIL("header write failed");
+    if (!tb_sep_mbox_write(word0, 5000)) TEST_FAIL("payload word0 write failed");
 
     uint32_t crc = rom_crc32c((const uint8_t *)&word0, 4u);
-    if (!tb_sep_mbox_write_separator_write(1, 5000))
-        TEST_FAIL("separator write failed");
-    if (!tb_sep_mbox_write(crc, 5000))
-        TEST_FAIL("CRC write failed");
+    if (!tb_sep_mbox_write_separator_write(1, 5000)) TEST_FAIL("separator write failed");
+    if (!tb_sep_mbox_write(crc, 5000)) TEST_FAIL("CRC write failed");
 }
 
-static void process_and_drain(void)
-{
+static void process_and_drain(void) {
     test_delay(1000);
     rom_msg_rx_process();
     rom_isr_mailbox();
 }
 
-static void read_resp_cmd(int8_t *rc_out, uint32_t *arg_out)
-{
+static void read_resp_cmd(int8_t *rc_out, uint32_t *arg_out) {
     rom_km_msg_header_t rhdr;
     uint32_t payload_words[4] = {0};
     uint32_t word;
 
-    if (!tb_sep_mbox_read(&word, 5000))
-        TEST_FAIL("Failed to read response header");
+    if (!tb_sep_mbox_read(&word, 5000)) TEST_FAIL("Failed to read response header");
     rhdr.raw = word;
 
     uint8_t exp_crc = rom_crc8_rohc((const uint8_t *)&word, 3);
@@ -101,7 +95,7 @@ static void read_resp_cmd(int8_t *rc_out, uint32_t *arg_out)
     payload_words[0] = seq_echo;
     if (!tb_sep_mbox_read(&cmd_echo, 5000)) TEST_FAIL("cmd echo read failed");
     payload_words[1] = cmd_echo;
-    if (!tb_sep_mbox_read(&rc_word, 5000))  TEST_FAIL("rc word read failed");
+    if (!tb_sep_mbox_read(&rc_word, 5000)) TEST_FAIL("rc word read failed");
     payload_words[2] = rc_word;
     *rc_out = (int8_t)(rc_word & 0xFFu);
 
@@ -114,11 +108,10 @@ static void read_resp_cmd(int8_t *rc_out, uint32_t *arg_out)
 
     uint32_t crc_word;
     if (!tb_sep_mbox_read(&crc_word, 5000)) TEST_FAIL("payload CRC read failed");
-    TEST_ASSERT(rhdr.payload_len == 3u || rhdr.payload_len == 4u,
-                "resp payload_len=%u", (unsigned)rhdr.payload_len);
+    TEST_ASSERT(rhdr.payload_len == 3u || rhdr.payload_len == 4u, "resp payload_len=%u",
+                (unsigned)rhdr.payload_len);
     TEST_ASSERT_EQ(crc_word,
-                   rom_crc32c((const uint8_t *)payload_words,
-                              (uint32_t)rhdr.payload_len * 4u),
+                   rom_crc32c((const uint8_t *)payload_words, (uint32_t)rhdr.payload_len * 4u),
                    "resp payload CRC");
 }
 
@@ -126,28 +119,24 @@ static void read_resp_cmd(int8_t *rc_out, uint32_t *arg_out)
  * Test body
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     uint32_t buf[ROM_KM_OTP_WORDS];
-    int8_t   rc;
+    int8_t rc;
     uint32_t arg;
 
     TEST_INIT();
 
-    if (!tb_set_timeout(1000000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(1000000)) TEST_FAIL("Failed to set testbench timeout");
 
     rom_boot_init();
 
     /* Discard RESP_KM_READY emitted by rom_boot_init() */
     {
         uint32_t ready;
-        if (!tb_sep_mbox_read(&ready, 5000))
-            TEST_FAIL("No RESP_KM_READY after boot");
+        if (!tb_sep_mbox_read(&ready, 5000)) TEST_FAIL("No RESP_KM_READY after boot");
         rom_km_msg_header_t rdy;
         rdy.raw = ready;
-        TEST_ASSERT_EQ((uint32_t)rdy.id, (uint32_t)ROM_KM_RESP_KM_READY,
-                       "boot response id");
+        TEST_ASSERT_EQ((uint32_t)rdy.id, (uint32_t)ROM_KM_RESP_KM_READY, "boot response id");
     }
     cmd_seq = 0;
 
@@ -173,14 +162,12 @@ int main(void)
     process_and_drain();
     read_resp_cmd(&rc, &arg);
 
-    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_SUCCESS,
-                   "CMD_OTP_READ_LOCK_COLD rc");
+    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_SUCCESS, "CMD_OTP_READ_LOCK_COLD rc");
     TEST_ASSERT(arg & KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm,
                 "return_arg chiplet_uid bit set (arg=0x%08X)", (unsigned)arg);
 
     /* OTP_READ_LOCK_COLD register must reflect the bit */
-    TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w &
-                KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm,
+    TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w & KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm,
                 "OTP_READ_LOCK_COLD.chiplet_uid not set after command");
 
     TEST_SUBTEST_PASS();
@@ -196,8 +183,7 @@ int main(void)
     (void)rom_otp_read_chiplet_uid(buf);
     for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
         if (buf[i] != 0u) {
-            TEST_FAIL("chiplet_uid[%u]: 0x%08X (expected 0 — cold-locked)",
-                      i, (unsigned)buf[i]);
+            TEST_FAIL("chiplet_uid[%u]: 0x%08X (expected 0 — cold-locked)", i, (unsigned)buf[i]);
         }
     }
 
@@ -222,7 +208,7 @@ int main(void)
 
     send_cmd_one_word(ROM_KM_CMD_OTP_READ_LOCK_COLD,
                       KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm |
-                      KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm);
+                          KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm);
     cmd_seq++;
     process_and_drain();
     read_resp_cmd(&rc, &arg);
@@ -258,8 +244,7 @@ int main(void)
     {
         km_csr__otp_read_lock_cold_reg_t clr = {0};
         ROM_OTP_READ_LOCK_COLD_REG = clr;
-        TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w &
-                    KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm,
+        TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w & KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm,
                     "chiplet_uid cold-lock cleared by 0-write (should not happen)");
         (void)rom_otp_read_chiplet_uid(buf);
         for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
@@ -280,8 +265,7 @@ int main(void)
     process_and_drain();
     read_resp_cmd(&rc, &arg);
 
-    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_INVALID_LEN,
-                   "empty payload rc");
+    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_INVALID_LEN, "empty payload rc");
 
     TEST_SUBTEST_PASS();
 
@@ -295,8 +279,7 @@ int main(void)
     process_and_drain();
     read_resp_cmd(&rc, &arg);
 
-    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_INVALID_ARG,
-                   "reserved bits rc");
+    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_INVALID_ARG, "reserved bits rc");
 
     TEST_SUBTEST_PASS();
 

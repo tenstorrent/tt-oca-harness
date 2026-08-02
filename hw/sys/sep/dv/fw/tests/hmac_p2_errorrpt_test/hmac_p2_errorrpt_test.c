@@ -172,8 +172,7 @@ static int test_fifo_saturation_and_reset_recovery(void) {
     hmac__CMD_t start = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
 
-    volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     uint32_t words_written = 0;
     int full_seen = 0;
     uint32_t max_depth = 0;

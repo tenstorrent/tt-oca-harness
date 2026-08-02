@@ -47,7 +47,7 @@
 #define AES_MB_STREAM_DEFAULT_CHUNKS 256u
 #endif
 
-#define FW_READY_MAGIC    0xA1E50007u
+#define FW_READY_MAGIC 0xA1E50007u
 #define HANDSHAKE_TIMEOUT 2000000
 
 /* CTRL_SHADOWED.OPERATION encodings */
@@ -58,8 +58,12 @@
 /* Minimal trap handler (no printf -> avoids recursive traps)         */
 /* ------------------------------------------------------------------ */
 #define STDOUT_ADDR 0x80000000
-static void raw_putc(char c) { *(volatile uint8_t *)STDOUT_ADDR = (uint8_t)c; }
-static void raw_puts(const char *s) { while (*s) raw_putc(*s++); }
+static void raw_putc(char c) {
+    *(volatile uint8_t *)STDOUT_ADDR = (uint8_t)c;
+}
+static void raw_puts(const char *s) {
+    while (*s) raw_putc(*s++);
+}
 static void raw_hex32(uint32_t v) {
     const char hex[] = "0123456789abcdef";
     raw_puts("0x");
@@ -67,52 +71,49 @@ static void raw_hex32(uint32_t v) {
 }
 void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) __attribute__((noreturn));
 void trap_dump(uint32_t mcause, uint32_t mepc, uint32_t mtval) {
-    raw_puts("\n*** TRAP ***\nmcause="); raw_hex32(mcause);
-    raw_puts("\nmepc="); raw_hex32(mepc);
-    raw_puts("\nmtval="); raw_hex32(mtval); raw_putc('\n');
+    raw_puts("\n*** TRAP ***\nmcause=");
+    raw_hex32(mcause);
+    raw_puts("\nmepc=");
+    raw_hex32(mepc);
+    raw_puts("\nmtval=");
+    raw_hex32(mtval);
+    raw_putc('\n');
     test_fail(1);
     while (1) __asm__ volatile("wfi");
 }
 static void trap_handler_c(void) __attribute__((naked));
 static void trap_handler_c(void) {
-    __asm__ volatile (
-        "addi  sp, sp, -16   \n"
-        "sw    ra, 12(sp)    \n"
-        "csrr  a0, mcause    \n"
-        "csrr  a1, mepc      \n"
-        "csrr  a2, mtval     \n"
-        "call  trap_dump     \n"
-    );
+    __asm__ volatile("addi  sp, sp, -16   \n"
+                     "sw    ra, 12(sp)    \n"
+                     "csrr  a0, mcause    \n"
+                     "csrr  a1, mepc      \n"
+                     "csrr  a2, mtval     \n"
+                     "call  trap_dump     \n");
 }
 static void install_trap_handler(void) {
     uintptr_t addr = (uintptr_t)&trap_handler_c;
-    __asm__ volatile("csrw mtvec, %0" :: "r"(addr));
+    __asm__ volatile("csrw mtvec, %0" ::"r"(addr));
 }
 
 /* ------------------------------------------------------------------ */
 /* Config tables                                                      */
 /* ------------------------------------------------------------------ */
 #define AES_MODE_ECB 0x1u
-static const uint32_t KEYLENS[3]  = {0x1u, 0x2u, 0x4u};   /* 128 192 256 */
-static const int      KEYWORDS[3] = {4, 6, 8};
-static const int      KEYBITS[3]  = {128, 192, 256};
+static const uint32_t KEYLENS[3] = {0x1u, 0x2u, 0x4u}; /* 128 192 256 */
+static const int KEYWORDS[3] = {4, 6, 8};
+static const int KEYBITS[3] = {128, 192, 256};
 
 /* key128 = NIST SP800-38A F.1 key (used by the golden anchor). */
-static const uint32_t key128[8] = {
-    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09, 0, 0, 0, 0
-};
-static const uint32_t key192[8] = {
-    0x10eb3d60, 0xbe71ca15, 0xf0ae732b, 0x81777d85, 0x072c351f, 0xd708613b, 0, 0
-};
-static const uint32_t key256[8] = {
-    0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
-    0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c
-};
+static const uint32_t key128[8] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09, 0, 0, 0, 0};
+static const uint32_t key192[8] = {0x10eb3d60, 0xbe71ca15, 0xf0ae732b, 0x81777d85,
+                                   0x072c351f, 0xd708613b, 0,          0};
+static const uint32_t key256[8] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
+                                   0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c};
 static const uint32_t zero_iv[4] = {0, 0, 0, 0};
 
 /* NIST SP800-38A F.1.1 ECB-AES128 block #1 (golden anchor) */
 static const uint32_t ecb_pt_base[4] = {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373};
-static const uint32_t ecb_ct_exp[4]  = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
+static const uint32_t ecb_ct_exp[4] = {0xb47bd73a, 0x60367a0d, 0xf3ca9ea8, 0x97ef6624};
 
 /* Reused per-chunk buffers (NOT the whole payload). */
 static uint32_t pt_buf[AES_MB_STREAM_CHUNK_BLOCKS * 4];
@@ -122,10 +123,14 @@ static uint32_t ct_buf[AES_MB_STREAM_CHUNK_BLOCKS * 4];
 /* Deterministic plaintext PRNG (xorshift32) - continuous over run     */
 /* ------------------------------------------------------------------ */
 static uint32_t prng_state;
-static void prng_seed(uint32_t s) { prng_state = s ? s : 1u; }
+static void prng_seed(uint32_t s) {
+    prng_state = s ? s : 1u;
+}
 static uint32_t prng_next(void) {
     uint32_t x = prng_state;
-    x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
     prng_state = x;
     return x;
 }
@@ -136,13 +141,11 @@ static uint32_t prng_next(void) {
 static int check_block_status(uint32_t block, const char *phase) {
     aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
-        printf("  ERROR: OUTPUT_LOST at %s block %u (STATUS=0x%08x)\n",
-               phase, block, st.w);
+        printf("  ERROR: OUTPUT_LOST at %s block %u (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;
     }
     if (st.f.STALL) {
-        printf("  WARNING: STALL at %s block %u (STATUS=0x%08x)\n",
-               phase, block, st.w);
+        printf("  WARNING: STALL at %s block %u (STATUS=0x%08x)\n", phase, block, st.w);
     }
     return check_no_alert(phase);
 }
@@ -163,16 +166,16 @@ static int check_key_share_read_zero(void) {
         WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u, s0_pattern);
         s0_rb = READ_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u);
         if (s0_rb != 0) {
-            printf("  ERROR: KEY_SHARE0_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n",
-                   i, s0_pattern, s0_rb);
+            printf("  ERROR: KEY_SHARE0_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n", i,
+                   s0_pattern, s0_rb);
             return -1;
         }
 
         WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u, s1_pattern);
         s1_rb = READ_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u);
         if (s1_rb != 0) {
-            printf("  ERROR: KEY_SHARE1_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n",
-                   i, s1_pattern, s1_rb);
+            printf("  ERROR: KEY_SHARE1_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n", i,
+                   s1_pattern, s1_rb);
             return -1;
         }
     }
@@ -188,7 +191,8 @@ static int run_golden_anchor(void) {
     uint32_t out[4];
     printf("\n--- Golden anchor: NIST AES-128 ECB block ---\n");
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(AES_OP_ENC, AES_MODE_ECB, KEYLENS[0], key128, 4, NULL, zero_iv, 0x0) != 0)
+    if (configure_aes_full(AES_OP_ENC, AES_MODE_ECB, KEYLENS[0], key128, 4, NULL, zero_iv, 0x0) !=
+        0)
         return -1;
     if (wait_for_input_ready() != 0) return -1;
     write_data_in(ecb_pt_base);
@@ -203,7 +207,7 @@ static int run_golden_anchor(void) {
 /* cocotb handshake: publish ready, read packed {total_chunks, seed}   */
 /* ------------------------------------------------------------------ */
 static int get_config(uint16_t *seed_o, uint32_t *chunks_o) {
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0);          /* pre-clear */
+    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0); /* pre-clear */
     WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
 
     uint32_t word = 0;
@@ -217,10 +221,10 @@ static int get_config(uint16_t *seed_o, uint32_t *chunks_o) {
         return -1;
     }
 
-    uint16_t seed   = (uint16_t)(word & 0xFFFFu);
+    uint16_t seed = (uint16_t)(word & 0xFFFFu);
     uint32_t chunks = (word >> 16) & 0xFFFFu;
     if (seed == 0) seed = 1u;
-    if (chunks == 0) chunks = AES_MB_STREAM_DEFAULT_CHUNKS;     /* 0 => default */
+    if (chunks == 0) chunks = AES_MB_STREAM_DEFAULT_CHUNKS; /* 0 => default */
 
     *seed_o = seed;
     *chunks_o = chunks;
@@ -230,10 +234,10 @@ static int get_config(uint16_t *seed_o, uint32_t *chunks_o) {
 /* ------------------------------------------------------------------ */
 /* Encrypt one chunk: pt_buf -> ct_buf                                 */
 /* ------------------------------------------------------------------ */
-static int encrypt_chunk(uint32_t key_len, const uint32_t *key, int key_words,
-                         uint32_t chunk) {
+static int encrypt_chunk(uint32_t key_len, const uint32_t *key, int key_words, uint32_t chunk) {
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(AES_OP_ENC, AES_MODE_ECB, key_len, key, key_words, NULL, zero_iv, 0x0) != 0)
+    if (configure_aes_full(AES_OP_ENC, AES_MODE_ECB, key_len, key, key_words, NULL, zero_iv, 0x0) !=
+        0)
         return -1;
     if (wait_for_input_ready() != 0) return -1;
     for (uint32_t b = 0; b < AES_MB_STREAM_CHUNK_BLOCKS; b++) {
@@ -255,7 +259,8 @@ static int decrypt_verify_chunk(uint32_t key_len, const uint32_t *key, int key_w
                                 uint32_t chunk) {
     uint32_t rpt[4];
     if (wait_for_idle() != 0) return -1;
-    if (configure_aes_full(AES_OP_DEC, AES_MODE_ECB, key_len, key, key_words, NULL, zero_iv, 0x0) != 0)
+    if (configure_aes_full(AES_OP_DEC, AES_MODE_ECB, key_len, key, key_words, NULL, zero_iv, 0x0) !=
+        0)
         return -1;
     if (wait_for_input_ready() != 0) return -1;
     for (uint32_t b = 0; b < AES_MB_STREAM_CHUNK_BLOCKS; b++) {
@@ -296,9 +301,8 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_mb_stream_test (STRESS-003)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x  chunk=%u blocks (%u bytes), streaming\n",
-           OCH_SEP_TOP_AES_BASE_ADDR, AES_MB_STREAM_CHUNK_BLOCKS,
-           AES_MB_STREAM_CHUNK_BLOCKS * 16u);
+    printf("AES base=0x%08x  chunk=%u blocks (%u bytes), streaming\n", OCH_SEP_TOP_AES_BASE_ADDR,
+           AES_MB_STREAM_CHUNK_BLOCKS, AES_MB_STREAM_CHUNK_BLOCKS * 16u);
 
     if (rc == 0) rc = check_key_share_read_zero();
     if (rc == 0) rc = run_golden_anchor();
@@ -310,30 +314,28 @@ int main(void) {
         key_words = KEYWORDS[ki];
         key = (ki == 0) ? key128 : (ki == 1) ? key192 : key256;
         prng_seed((uint32_t)seed | 1u);
-        printf("Config: seed=0x%04x key=%d-bit chunks=%u total=%u bytes (%u blocks)\n",
-               seed, KEYBITS[ki], chunks,
-               chunks * AES_MB_STREAM_CHUNK_BLOCKS * 16u,
+        printf("Config: seed=0x%04x key=%d-bit chunks=%u total=%u bytes (%u blocks)\n", seed,
+               KEYBITS[ki], chunks, chunks * AES_MB_STREAM_CHUNK_BLOCKS * 16u,
                chunks * AES_MB_STREAM_CHUNK_BLOCKS);
     }
 
     for (uint32_t c = 0; rc == 0 && c < chunks; c++) {
         /* Continuous PRNG stream -> fresh plaintext for this chunk. */
-        for (uint32_t w = 0; w < AES_MB_STREAM_CHUNK_BLOCKS * 4; w++)
-            pt_buf[w] = prng_next();
+        for (uint32_t w = 0; w < AES_MB_STREAM_CHUNK_BLOCKS * 4; w++) pt_buf[w] = prng_next();
 
         rc = encrypt_chunk(key_len, key, key_words, c);
         if (rc == 0) rc = decrypt_verify_chunk(key_len, key, key_words, c);
 
         if (rc == 0 && (c % 64u == 63u))
-            printf("  progress: %u/%u chunks (%u KiB) OK\n",
-                   c + 1u, chunks, (c + 1u) * AES_MB_STREAM_CHUNK_BLOCKS * 16u / 1024u);
+            printf("  progress: %u/%u chunks (%u KiB) OK\n", c + 1u, chunks,
+                   (c + 1u) * AES_MB_STREAM_CHUNK_BLOCKS * 16u / 1024u);
     }
 
     cleanup_aes();
 
     if (rc == 0) {
-        printf("=== sep_aes_mb_stream_test PASSED (%d-bit, %u chunks, %u bytes) ===\n",
-               KEYBITS[ki], chunks, chunks * AES_MB_STREAM_CHUNK_BLOCKS * 16u);
+        printf("=== sep_aes_mb_stream_test PASSED (%d-bit, %u chunks, %u bytes) ===\n", KEYBITS[ki],
+               chunks, chunks * AES_MB_STREAM_CHUNK_BLOCKS * 16u);
         test_pass(0);
     } else {
         printf("=== sep_aes_mb_stream_test FAILED ===\n");

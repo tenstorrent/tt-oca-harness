@@ -42,8 +42,7 @@ static int wait_for_done_or_idle(void) {
  * Per RDL: "A message written to MSG_FIFO one byte at a time will not be
  * affected by this setting." Word-granularity writes are required. */
 static int feed_msg_words(const uint32_t *words, uint32_t count) {
-    volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < count; i++) {
         int spins = 0;
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};

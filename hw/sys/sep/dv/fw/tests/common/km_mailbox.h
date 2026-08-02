@@ -29,38 +29,37 @@
 #include "sep.h"
 
 /* KM ROM command IDs (rom_defs.h rom_km_cmd_id_t). */
-#define KM_CMD_KEY_TRANSFER  0x24u
-#define KM_CMD_ENGINE_SHRED  0x25u
-#define KM_CMD_KEY_LOAD      0x26u
+#define KM_CMD_KEY_TRANSFER 0x24u
+#define KM_CMD_ENGINE_SHRED 0x25u
+#define KM_CMD_KEY_LOAD 0x26u
 
 /* KM response IDs. */
-#define KM_RESP_CMD          0x00u
-#define KM_RESP_READY        0x55u
+#define KM_RESP_CMD 0x00u
+#define KM_RESP_READY 0x55u
 
 /* KM destination bitmask (rom_defs.h rom_km_dest_bits_t). */
-#define KM_DEST_HMAC_SHA2      0x01u
-#define KM_DEST_KMAC_SHA3      0x02u
-#define KM_DEST_AES            0x04u
-#define KM_DEST_OTBN           0x08u
+#define KM_DEST_HMAC_SHA2 0x01u
+#define KM_DEST_KMAC_SHA3 0x02u
+#define KM_DEST_AES 0x04u
+#define KM_DEST_OTBN 0x08u
 #define KM_DEST_ABR_MLDSA_SEED 0x10u
-#define KM_DEST_ABR_MLKEM_D    0x20u
-#define KM_DEST_ABR_MLKEM_Z    0x40u
-#define KM_DEST_ABR_MLKEM_MSG  0x80u
+#define KM_DEST_ABR_MLKEM_D 0x20u
+#define KM_DEST_ABR_MLKEM_Z 0x40u
+#define KM_DEST_ABR_MLKEM_MSG 0x80u
 
 /* STATUS register bit aliases. */
-#define KM_STATUS_IN_FULL    KM_MAILBOX_SEP__STATUS_REG__INBOUND_FULL_bm
-#define KM_STATUS_OUT_EMPTY  KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm
-#define KM_STATUS_OUT_SEP    KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_SEPARATOR_bm
+#define KM_STATUS_IN_FULL KM_MAILBOX_SEP__STATUS_REG__INBOUND_FULL_bm
+#define KM_STATUS_OUT_EMPTY KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm
+#define KM_STATUS_OUT_SEP KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_SEPARATOR_bm
 
 /* Generous poll budget; the UVM FW_TEST_TIMEOUT is the real backstop. */
-#define KM_MBOX_TIMEOUT      2000000u
+#define KM_MBOX_TIMEOUT 2000000u
 
 /* Per-translation-unit frame sequence counters. */
 static uint8_t km_cmd_seq;
 static uint8_t km_resp_seq;
 
-static uint8_t km_crc8_rohc_bytes(const uint8_t *data, uint32_t len)
-{
+static uint8_t km_crc8_rohc_bytes(const uint8_t *data, uint32_t len) {
     uint8_t crc = 0xffu;
 
     for (uint32_t i = 0; i < len; i++) {
@@ -71,8 +70,7 @@ static uint8_t km_crc8_rohc_bytes(const uint8_t *data, uint32_t len)
     return crc;
 }
 
-static uint32_t km_crc32c_words(const uint32_t *words, uint32_t count)
-{
+static uint32_t km_crc32c_words(const uint32_t *words, uint32_t count) {
     uint32_t crc = 0xffffffffu;
 
     for (uint32_t i = 0; i < count; i++) {
@@ -86,16 +84,14 @@ static uint32_t km_crc32c_words(const uint32_t *words, uint32_t count)
     return crc ^ 0xffffffffu;
 }
 
-static uint32_t km_header(uint8_t seq, uint8_t id, uint8_t payload_len)
-{
+static uint32_t km_header(uint8_t seq, uint8_t id, uint8_t payload_len) {
     uint8_t bytes[3] = {seq, id, payload_len};
     uint32_t crc = km_crc8_rohc_bytes(bytes, 3);
 
     return (crc << 24) | ((uint32_t)payload_len << 16) | ((uint32_t)id << 8) | seq;
 }
 
-static int km_wait_inbound_space(void)
-{
+static int km_wait_inbound_space(void) {
     uint32_t timeout = KM_MBOX_TIMEOUT;
 
     while (timeout-- != 0u) {
@@ -105,23 +101,18 @@ static int km_wait_inbound_space(void)
     return -1;
 }
 
-static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_len)
-{
+static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_len) {
     uint32_t words[16];
     uint32_t total = 1u;
 
-    if (payload_len > 12u)
-        return -1;
+    if (payload_len > 12u) return -1;
 
     words[0] = km_header(km_cmd_seq, id, payload_len);
-    for (uint32_t i = 0; i < payload_len; i++)
-        words[total++] = payload[i];
-    if (payload_len != 0u)
-        words[total++] = km_crc32c_words(payload, payload_len);
+    for (uint32_t i = 0; i < payload_len; i++) words[total++] = payload[i];
+    if (payload_len != 0u) words[total++] = km_crc32c_words(payload, payload_len);
 
     for (uint32_t i = 0; i < total; i++) {
-        if (km_wait_inbound_space() != 0)
-            return -1;
+        if (km_wait_inbound_space() != 0) return -1;
         if (i == total - 1u)
             WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR, 1u);
         WRITE_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR, words[i]);
@@ -130,18 +121,15 @@ static int km_send_frame(uint8_t id, const uint32_t *payload, uint8_t payload_le
     return 0;
 }
 
-static int km_recv_frame(uint32_t *words, uint32_t capacity, uint32_t *count)
-{
+static int km_recv_frame(uint32_t *words, uint32_t capacity, uint32_t *count) {
     uint32_t timeout = KM_MBOX_TIMEOUT;
     uint32_t n = 0u;
 
     while (timeout-- != 0u) {
         uint32_t status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
 
-        if ((status & KM_STATUS_OUT_EMPTY) != 0u)
-            continue;
-        if (n >= capacity)
-            return -1;
+        if ((status & KM_STATUS_OUT_EMPTY) != 0u) continue;
+        if (n >= capacity) return -1;
 
         words[n++] = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
         status = READ_REG(OCH_SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR);
@@ -154,14 +142,12 @@ static int km_recv_frame(uint32_t *words, uint32_t capacity, uint32_t *count)
 }
 
 static int km_validate_frame(const uint32_t *words, uint32_t count, uint8_t expected_id,
-                             const uint32_t **payload, uint8_t *payload_len)
-{
+                             const uint32_t **payload, uint8_t *payload_len) {
     uint32_t header;
     uint8_t bytes[3];
     uint8_t len;
 
-    if (count == 0u)
-        return -1;
+    if (count == 0u) return -1;
 
     header = words[0];
     bytes[0] = (uint8_t)header;
@@ -169,14 +155,10 @@ static int km_validate_frame(const uint32_t *words, uint32_t count, uint8_t expe
     bytes[2] = (uint8_t)(header >> 16);
     len = bytes[2];
 
-    if ((uint8_t)(header >> 24) != km_crc8_rohc_bytes(bytes, 3))
-        return -1;
-    if (bytes[0] != km_resp_seq || bytes[1] != expected_id)
-        return -1;
-    if (count != 1u + len + ((len != 0u) ? 1u : 0u))
-        return -1;
-    if (len != 0u && words[1u + len] != km_crc32c_words(&words[1], len))
-        return -1;
+    if ((uint8_t)(header >> 24) != km_crc8_rohc_bytes(bytes, 3)) return -1;
+    if (bytes[0] != km_resp_seq || bytes[1] != expected_id) return -1;
+    if (count != 1u + len + ((len != 0u) ? 1u : 0u)) return -1;
+    if (len != 0u && words[1u + len] != km_crc32c_words(&words[1], len)) return -1;
 
     km_resp_seq++;
     *payload = &words[1];
@@ -185,17 +167,14 @@ static int km_validate_frame(const uint32_t *words, uint32_t count, uint8_t expe
 }
 
 /* Wait for the KM boot-complete banner (RESP_READY, no payload). */
-static int km_wait_ready(void)
-{
+static int km_wait_ready(void) {
     uint32_t words[8];
     uint32_t count;
     const uint32_t *payload;
     uint8_t payload_len;
 
-    if (km_recv_frame(words, 8, &count) != 0)
-        return -1;
-    if (km_validate_frame(words, count, KM_RESP_READY, &payload, &payload_len) != 0)
-        return -1;
+    if (km_recv_frame(words, 8, &count) != 0) return -1;
+    if (km_validate_frame(words, count, KM_RESP_READY, &payload, &payload_len) != 0) return -1;
     return (payload_len == 0u) ? 0 : -1;
 }
 
@@ -205,39 +184,35 @@ static int km_wait_ready(void)
  * On success *return_arg receives payload word 3 (0 if absent).
  */
 static int km_command(uint8_t id, const uint32_t *payload, uint8_t payload_len,
-                      uint32_t *return_arg)
-{
+                      uint32_t *return_arg) {
     uint32_t words[12];
     uint32_t count;
     const uint32_t *response;
     uint8_t response_len;
     uint8_t sent_seq = km_cmd_seq;
 
-    if (km_send_frame(id, payload, payload_len) != 0)
-        return -1;
-    if (km_recv_frame(words, 12, &count) != 0)
-        return -1;
-    if (km_validate_frame(words, count, KM_RESP_CMD, &response, &response_len) != 0)
-        return -1;
-    if (response_len < 3u || (uint8_t)response[0] != sent_seq ||
-        (uint8_t)response[1] != id || (int8_t)response[2] != 0)
+    if (km_send_frame(id, payload, payload_len) != 0) return -1;
+    if (km_recv_frame(words, 12, &count) != 0) return -1;
+    if (km_validate_frame(words, count, KM_RESP_CMD, &response, &response_len) != 0) return -1;
+    if (response_len < 3u || (uint8_t)response[0] != sent_seq || (uint8_t)response[1] != id ||
+        (int8_t)response[2] != 0)
         return -1;
 
-    if (return_arg != 0)
-        *return_arg = (response_len >= 4u) ? response[3] : 0u;
+    if (return_arg != 0) *return_arg = (response_len >= 4u) ? response[3] : 0u;
     return 0;
 }
 
 /* Release the KM out of reset via the SEP reset controller. */
-static int km_release_reset(void)
-{
+static int km_release_reset(void) {
     uint32_t reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
     reset_n |= SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm;
     WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, reset_n);
     __asm__ volatile("fence" ::: "memory");
     return (READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
-            SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm) ? 0 : -1;
+            SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm)
+               ? 0
+               : -1;
 }
 
 /*
@@ -246,26 +221,22 @@ static int km_release_reset(void)
  * in 32-bit words (1..12); the KM re-masks it into XOR shares on delivery.
  * Returns 0 on success and, when handle_o != 0, stores the KPV key handle.
  */
-static int km_load_and_transfer_key(const uint32_t *key, uint8_t key_words,
-                                    uint8_t dest_mask, uint8_t *handle_o)
-{
+static int km_load_and_transfer_key(const uint32_t *key, uint8_t key_words, uint8_t dest_mask,
+                                    uint8_t *handle_o) {
     uint32_t load_payload[14];
     uint32_t transfer_payload[2];
     uint32_t result = 0u;
 
-    if (key_words == 0u || key_words > 12u)
-        return -1;
+    if (key_words == 0u || key_words > 12u) return -1;
 
-    load_payload[0] = (uint32_t)(key_words - 1u);  /* KEY_SIZE = words - 1 */
+    load_payload[0] = (uint32_t)(key_words - 1u); /* KEY_SIZE = words - 1 */
     load_payload[1] = dest_mask;
-    for (uint8_t i = 0; i < key_words; i++)
-        load_payload[2u + i] = key[i];
+    for (uint8_t i = 0; i < key_words; i++) load_payload[2u + i] = key[i];
 
     if (km_command(KM_CMD_KEY_LOAD, load_payload, (uint8_t)(key_words + 2u), &result) != 0)
         return -1;
 
-    if (handle_o != 0)
-        *handle_o = (uint8_t)result;
+    if (handle_o != 0) *handle_o = (uint8_t)result;
 
     transfer_payload[0] = (uint8_t)result;
     transfer_payload[1] = dest_mask;
@@ -273,8 +244,7 @@ static int km_load_and_transfer_key(const uint32_t *key, uint8_t key_words,
 }
 
 /* Shred the sideload key(s) in the selected engine(s). */
-static int km_shred_engine(uint8_t dest_mask)
-{
+static int km_shred_engine(uint8_t dest_mask) {
     uint32_t payload = dest_mask;
     uint32_t result;
 

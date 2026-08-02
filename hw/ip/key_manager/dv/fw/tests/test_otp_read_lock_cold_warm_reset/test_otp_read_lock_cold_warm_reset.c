@@ -45,20 +45,23 @@
 #include "rom_kmcsr.h"
 #include "key_manager_fw.h"
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
 /* SRAM phase marker.  Must be below BSS_START so crt0.s does not clear it on
  * warm reset (crt0 only zeroes .bss).  Convention mirrors test_warm_reset.c. */
-#define MARKER_ADDR   (SRAM_BASE + 0x2C10u)
+#define MARKER_ADDR (SRAM_BASE + 0x2C10u)
 #define MARKER_PHASE1 0xA5000002u
 
 /*===========================================================================
  * Test body
  *===========================================================================*/
 
-int main(void)
-{
+int main(void) {
     uint32_t buf[ROM_KM_OTP_WORDS];
 
     TEST_INIT();
@@ -68,8 +71,7 @@ int main(void)
      */
     rom_kmcsr_cold_boot_done_set();
 
-    if (!tb_set_timeout(500000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(500000)) TEST_FAIL("Failed to set testbench timeout");
 
     volatile uint32_t *marker = (volatile uint32_t *)MARKER_ADDR;
     uint32_t phase = *marker;
@@ -97,13 +99,11 @@ int main(void)
          *    end-to-end command testing is covered by test_km_cmd_otp_read_lock_cold. */
         TEST_SUBTEST_START("Phase 0: apply warm lock (chiplet) and cold lock (sip)");
         rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm);
-        TEST_ASSERT(ROM_OTP_READ_LOCK_REG.w &
-                    KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm,
+        TEST_ASSERT(ROM_OTP_READ_LOCK_REG.w & KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm,
                     "warm lock chiplet_uid bit not set");
 
         rom_otp_set_read_lock_cold(KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm);
-        TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w &
-                    KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm,
+        TEST_ASSERT(ROM_OTP_READ_LOCK_COLD_REG.w & KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm,
                     "cold lock sip_uid bit not set");
         TEST_SUBTEST_PASS();
 
@@ -112,7 +112,8 @@ int main(void)
         (void)rom_otp_read_chiplet_uid(buf);
         for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
             if (buf[i] != 0u)
-                TEST_FAIL("chiplet_uid[%u]: non-zero after warm lock (0x%08X)", i, (unsigned)buf[i]);
+                TEST_FAIL("chiplet_uid[%u]: non-zero after warm lock (0x%08X)", i,
+                          (unsigned)buf[i]);
         }
         (void)rom_otp_read_sip_uid(buf);
         for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
@@ -124,9 +125,8 @@ int main(void)
         /* 4. Advance phase marker, then warm reset */
         TEST_SUBTEST_START("Phase 0: warm reset via external warm_rst_n");
         *marker = MARKER_PHASE1;
-        __asm__ volatile ("fence" ::: "memory");
-        if (!tb_km_warm_reset(30000u))
-            TEST_FAIL("TB_CMD_KM_WARM_RESET not acknowledged");
+        __asm__ volatile("fence" ::: "memory");
+        if (!tb_km_warm_reset(30000u)) TEST_FAIL("TB_CMD_KM_WARM_RESET not acknowledged");
 
         /* CPU restarts — should not reach here */
         TEST_FAIL("Execution continued after warm reset");
@@ -151,8 +151,7 @@ int main(void)
             TEST_FAIL("OTP_READ_LOCK not cleared by warm reset: 0x%08X",
                       (unsigned)ROM_OTP_READ_LOCK_REG.w);
         }
-        if (!(ROM_OTP_READ_LOCK_COLD_REG.w &
-              KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm)) {
+        if (!(ROM_OTP_READ_LOCK_COLD_REG.w & KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm)) {
             TEST_FAIL("OTP_READ_LOCK_COLD.sip_uid cleared by warm reset (should persist): 0x%08X",
                       (unsigned)ROM_OTP_READ_LOCK_COLD_REG.w);
         }
@@ -171,8 +170,8 @@ int main(void)
         (void)rom_otp_read_sip_uid(buf);
         for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
             if (buf[i] != 0u)
-                TEST_FAIL("sip_uid[%u]: 0x%08X — cold lock did not survive warm reset!",
-                          i, (unsigned)buf[i]);
+                TEST_FAIL("sip_uid[%u]: 0x%08X — cold lock did not survive warm reset!", i,
+                          (unsigned)buf[i]);
         }
         TEST_SUBTEST_PASS();
 

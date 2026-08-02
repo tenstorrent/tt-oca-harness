@@ -27,8 +27,7 @@ void *rom_memset(void *dest, int c, size_t n);
  * @param[in]  n    Number of bytes to fill.
  * @return dest.
  */
-void *rom_memset(void *dest, int c, size_t n)
-{
+void *rom_memset(void *dest, int c, size_t n) {
     register uint8_t *d = (uint8_t *)dest;
     register size_t remaining = n;
     register uint8_t byte = (uint8_t)c;

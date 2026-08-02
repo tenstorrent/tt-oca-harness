@@ -42,7 +42,8 @@
 /** @brief SRAM region write-lock register. */
 #define ROM_KMCSR_SRAM_LOCK_REG \
     (*(volatile km_csr__sram_lock_reg_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
-/** @brief SRAM execute-permission mode register (volatile; write-1-only, cleared by warm or cold reset). */
+/** @brief SRAM execute-permission mode register (volatile; write-1-only, cleared by warm or cold
+ * reset). */
 #define ROM_KMCSR_SRAM_EXEC_MODE_REG \
     (*(volatile km_csr__sram_exec_mode_reg_t *)KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR)
 

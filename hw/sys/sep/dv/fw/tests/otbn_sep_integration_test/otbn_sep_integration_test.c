@@ -115,8 +115,7 @@ static int verify_address_map(void) {
     }
 
     /* 0x1000 words of 32 bits each. */
-    if (OCH_SEP_TOP_OTBN_IMEM_SIZE != 0x4000u ||
-        OCH_SEP_TOP_OTBN_DMEM_SIZE != 0x4000u) {
+    if (OCH_SEP_TOP_OTBN_IMEM_SIZE != 0x4000u || OCH_SEP_TOP_OTBN_DMEM_SIZE != 0x4000u) {
         printf("ERROR: OTBN window size mismatch, imem=0x%08x dmem=0x%08x\n",
                OCH_SEP_TOP_OTBN_IMEM_SIZE, OCH_SEP_TOP_OTBN_DMEM_SIZE);
         return -1;

@@ -20,8 +20,7 @@
  * The SHA-256 implementation stores the final bit length in 32 bits. Reserve
  * one SHA-256 block for HMAC's inner key pad.
  */
-#define ROM_HMAC_MAX_MESSAGE_BYTES \
-    ((UINT32_MAX >> 3) - (uint32_t)ROM_SHA256_BLOCK_SIZE)
+#define ROM_HMAC_MAX_MESSAGE_BYTES ((UINT32_MAX >> 3) - (uint32_t)ROM_SHA256_BLOCK_SIZE)
 
 /**
  * @brief Compute HMAC-SHA256.
@@ -39,7 +38,7 @@
  *                     ROM_HMAC_MAX_MESSAGE_BYTES).
  * @return 0 on success, or -1 if arguments are invalid or SHA-256 fails.
  */
-int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len,
-                    const uint8_t *message, uint32_t message_len);
+int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len, const uint8_t *message,
+                    uint32_t message_len);
 
 #endif /* ROM_HMAC_H */

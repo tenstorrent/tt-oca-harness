@@ -50,8 +50,7 @@ volatile uint8_t g_abr_sk_notify_pending;
  *
  * @param frame Saved IRQ frame.
  */
-void rom_irq(rom_irq_frame_t *frame)
-{
+void rom_irq(rom_irq_frame_t *frame) {
     if (frame->irq_mask & PICORV32_IRQ_ABR_SHAREDKEY) {
         rom_abr_mlkem_sharedkey_irq_status_clear();
         g_abr_sk_notify_pending = 1u;
@@ -59,8 +58,7 @@ void rom_irq(rom_irq_frame_t *frame)
 }
 
 /** Ask the testbench to write all 8 key words and pulse KEY_VALID. */
-static void tb_load_shared_key(uint32_t base_pattern)
-{
+static void tb_load_shared_key(uint32_t base_pattern) {
     uint8_t wi;
     for (wi = 0; wi < ROM_KM_ABR_WORDS_PER_SHARE; wi++) {
         if (!tb_drbg_set_next_value(base_pattern | wi, 1000))
@@ -68,16 +66,13 @@ static void tb_load_shared_key(uint32_t base_pattern)
         if (!tb_abr_sk_load_word(wi, 1000))
             TEST_FAIL("tb_abr_sk_load_word(%u) failed", (unsigned)wi);
     }
-    if (!tb_abr_sk_assert_valid(1000))
-        TEST_FAIL("tb_abr_sk_assert_valid failed");
+    if (!tb_abr_sk_assert_valid(1000)) TEST_FAIL("tb_abr_sk_assert_valid failed");
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(400000))
-        TEST_FAIL("Failed to set testbench timeout");
+    if (!tb_set_timeout(400000)) TEST_FAIL("Failed to set testbench timeout");
 
     printf("Adams Bridge ML-KEM Shared-Key IRQ Test (sticky-status semantics)\n");
     printf("==================================================================\n\n");
@@ -95,7 +90,7 @@ int main(void)
     TEST_SUBTEST_START("IRQ gated by enable (disabled)");
     g_abr_sk_notify_pending = 0u;
     tb_load_shared_key(0x5EED0000u);
-    test_delay(500);   /* ample time for spurious delivery if gating fails */
+    test_delay(500); /* ample time for spurious delivery if gating fails */
     if (g_abr_sk_notify_pending != 0u)
         TEST_FAIL("notify_pending set while IRQ_ENABLE.key_valid_en = 0");
     /* Clear the pending sticky status and consume the key so the next subtest
@@ -117,10 +112,8 @@ int main(void)
 
     {
         uint32_t t = 500000u;
-        while (g_abr_sk_notify_pending == 0u && t--)
-            __asm__ volatile ("nop");
-        if (g_abr_sk_notify_pending == 0u)
-            TEST_FAIL("ABR shared-key IRQ never delivered to CPU");
+        while (g_abr_sk_notify_pending == 0u && t--) __asm__ volatile("nop");
+        if (g_abr_sk_notify_pending == 0u) TEST_FAIL("ABR shared-key IRQ never delivered to CPU");
     }
     TEST_SUBTEST_PASS();
 
@@ -139,7 +132,7 @@ int main(void)
      * ------------------------------------------------------------------ */
     TEST_SUBTEST_START("Single delivery (ISR clears sticky IRQ_STATUS)");
     g_abr_sk_notify_pending = 0u;
-    test_delay(500);   /* enough time for a spurious second trigger */
+    test_delay(500); /* enough time for a spurious second trigger */
     if (g_abr_sk_notify_pending != 0u)
         TEST_FAIL("IRQ re-fired unexpectedly (ISR should have cleared IRQ_STATUS)");
     TEST_SUBTEST_PASS();
@@ -156,8 +149,8 @@ int main(void)
         for (wi = 0; wi < ROM_KM_ABR_WORDS_PER_SHARE; wi++) {
             uint32_t expected = 0xA5A50000u | wi;
             if (sk_out[wi] != expected)
-                TEST_FAIL("key[%u]: got=0x%08X expected=0x%08X",
-                          (unsigned)wi, sk_out[wi], expected);
+                TEST_FAIL("key[%u]: got=0x%08X expected=0x%08X", (unsigned)wi, sk_out[wi],
+                          expected);
         }
         if (ROM_ABR_MLKEM_SK_CTRL_REG.f.key_valid)
             TEST_FAIL("KEY_VALID not cleared after consume (ctrl=0x%08X)",
@@ -176,8 +169,7 @@ int main(void)
 
     {
         uint32_t t = 500000u;
-        while (g_abr_sk_notify_pending == 0u && t--)
-            __asm__ volatile ("nop");
+        while (g_abr_sk_notify_pending == 0u && t--) __asm__ volatile("nop");
         if (g_abr_sk_notify_pending == 0u)
             TEST_FAIL("Second key IRQ not delivered (HW did not re-set IRQ_STATUS)");
     }

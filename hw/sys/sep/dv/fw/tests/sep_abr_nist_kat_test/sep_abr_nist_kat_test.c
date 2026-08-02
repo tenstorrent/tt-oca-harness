@@ -34,8 +34,7 @@
 /* Reused readback buffer, sized to the largest output (signature, 1157 words). */
 static uint32_t g_buf[NIST_SG_SIG_WORDS];
 
-static int first_mismatch(const uint32_t *got, const uint32_t *exp, int n)
-{
+static int first_mismatch(const uint32_t *got, const uint32_t *exp, int n) {
     for (int i = 0; i < n; i++) {
         if (got[i] != exp[i]) {
             return i;
@@ -45,8 +44,7 @@ static int first_mismatch(const uint32_t *got, const uint32_t *exp, int n)
 }
 
 /* Compare a byte string spread over words, masking the final partial word. */
-static int bytes_mismatch(const uint32_t *got, const uint32_t *exp, int nbytes)
-{
+static int bytes_mismatch(const uint32_t *got, const uint32_t *exp, int nbytes) {
     int full = nbytes / 4;
     int rem = nbytes % 4;
     int m = first_mismatch(got, exp, full);
@@ -62,8 +60,7 @@ static int bytes_mismatch(const uint32_t *got, const uint32_t *exp, int nbytes)
     return -1;
 }
 
-static int kat_keygen(void)
-{
+static int kat_keygen(void) {
     abr_write_array(ABR_MLDSA_SEED, nist_kg_seed, NIST_KG_SEED_WORDS);
     abr_write_array(ABR_MLDSA_ENTROPY, k_entropy, MLDSA_ENTROPY_WORDS);
 
@@ -74,19 +71,18 @@ static int kat_keygen(void)
 
     int m = first_mismatch(g_buf, nist_kg_pk, NIST_KG_PK_WORDS);
     if (m >= 0) {
-        printf("  keyGen MISMATCH at word %d: got 0x%08x exp 0x%08x\n",
-               m, g_buf[m], nist_kg_pk[m]);
+        printf("  keyGen MISMATCH at word %d: got 0x%08x exp 0x%08x\n", m, g_buf[m], nist_kg_pk[m]);
         return -1;
     }
     printf("  keyGen: PK matches NIST pk (%d bytes)\n", NIST_KG_PK_BYTES);
     return 0;
 }
 
-static int kat_siggen(void)
-{
+static int kat_siggen(void) {
     abr_write_array(ABR_MLDSA_PRIVKEY_IN, nist_sg_sk, NIST_SG_SK_WORDS);
     abr_write_array(ABR_MLDSA_EXTERNAL_MU, nist_sg_mu, NIST_SG_MU_WORDS);
-    abr_write_array(ABR_MLDSA_SIGN_RND, k_sign_rnd, MLDSA_SIGN_RND_WORDS); /* zeros: deterministic */
+    abr_write_array(ABR_MLDSA_SIGN_RND, k_sign_rnd,
+                    MLDSA_SIGN_RND_WORDS); /* zeros: deterministic */
     abr_write_array(ABR_MLDSA_ENTROPY, k_entropy, MLDSA_ENTROPY_WORDS);
 
     if (abr_run_command("siggen", ABR_CMD_SIGN | ABR_CTRL_EXTERNAL_MU) != 0) {
@@ -96,8 +92,8 @@ static int kat_siggen(void)
 
     int m = bytes_mismatch(g_buf, nist_sg_sig, NIST_SG_SIG_BYTES);
     if (m >= 0) {
-        printf("  sigGen MISMATCH at word %d: got 0x%08x exp 0x%08x\n",
-               m, g_buf[m], nist_sg_sig[m]);
+        printf("  sigGen MISMATCH at word %d: got 0x%08x exp 0x%08x\n", m, g_buf[m],
+               nist_sg_sig[m]);
         return -1;
     }
     printf("  sigGen: signature matches NIST sig (%d bytes)\n", NIST_SG_SIG_BYTES);
@@ -105,8 +101,7 @@ static int kat_siggen(void)
 }
 
 /* Returns 1 if ABR accepts the signature as valid, 0 if it rejects it. */
-static int abr_verify(const uint32_t *pk, const uint32_t *mu, const uint32_t *sig)
-{
+static int abr_verify(const uint32_t *pk, const uint32_t *mu, const uint32_t *sig) {
     if (abr_wait_ready() != 0) {
         return -1;
     }
@@ -115,8 +110,7 @@ static int abr_verify(const uint32_t *pk, const uint32_t *mu, const uint32_t *si
     abr_write_array(ABR_MLDSA_SIGNATURE, sig, NIST_SV_SIG_WORDS);
 
     WRITE_REG(ABR_MLDSA_CTRL, ABR_CMD_VERIFY | ABR_CTRL_EXTERNAL_MU);
-    if (poll_reg_timeout(ABR_MLDSA_STATUS, ABR_ST_VALID, ABR_ST_VALID,
-                         ABR_POLL_TIMEOUT) != 0) {
+    if (poll_reg_timeout(ABR_MLDSA_STATUS, ABR_ST_VALID, ABR_ST_VALID, ABR_POLL_TIMEOUT) != 0) {
         return 0; /* never produced a valid result -> treat as rejected */
     }
     if (READ_REG(ABR_MLDSA_STATUS) & ABR_ST_ERROR) {
@@ -128,8 +122,7 @@ static int abr_verify(const uint32_t *pk, const uint32_t *mu, const uint32_t *si
     return abr_words_equal(ver, sig, MLDSA_CHASH_WORDS) ? 1 : 0;
 }
 
-static int kat_sigver(void)
-{
+static int kat_sigver(void) {
     int ok = abr_verify(nist_sv_ok_pk, nist_sv_ok_mu, nist_sv_ok_sig);
     if (ok != NIST_SV_OK_VERDICT) {
         printf("  sigVer(valid) got %d, expected %d\n", ok, NIST_SV_OK_VERDICT);
@@ -147,8 +140,7 @@ static int kat_sigver(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();

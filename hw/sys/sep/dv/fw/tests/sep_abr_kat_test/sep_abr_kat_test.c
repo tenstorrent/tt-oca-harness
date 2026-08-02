@@ -28,8 +28,7 @@ static uint32_t g_pk[MLDSA_PK_WORDS];
 static uint32_t g_sig[MLDSA_SIG_WORDS];
 static uint32_t g_ver[MLDSA_CHASH_WORDS];
 
-static int run_kat(void)
-{
+static int run_kat(void) {
     /* 1. KeyGen + Sign (on-the-fly SK). */
     abr_write_array(ABR_MLDSA_SEED, k_seed, MLDSA_SEED_WORDS);
     abr_write_array(ABR_MLDSA_ENTROPY, k_entropy, MLDSA_ENTROPY_WORDS);
@@ -40,8 +39,8 @@ static int run_kat(void)
     }
     abr_read_array(ABR_MLDSA_PUBKEY, g_pk, MLDSA_PK_WORDS);
     abr_read_array(ABR_MLDSA_SIGNATURE, g_sig, MLDSA_SIG_WORDS);
-    printf("  signed: c~[0..1]=0x%08x 0x%08x  PK[0..1]=0x%08x 0x%08x\n",
-           g_sig[0], g_sig[1], g_pk[0], g_pk[1]);
+    printf("  signed: c~[0..1]=0x%08x 0x%08x  PK[0..1]=0x%08x 0x%08x\n", g_sig[0], g_sig[1],
+           g_pk[0], g_pk[1]);
     if (!abr_words_any_nonzero(g_sig, MLDSA_CHASH_WORDS)) {
         printf("  signature commitment is all zero\n");
         return -1;
@@ -61,16 +60,14 @@ static int run_kat(void)
     }
     abr_read_array(ABR_MLDSA_VERIFY_RES, g_ver, MLDSA_CHASH_WORDS);
     if (!abr_words_equal(g_ver, g_sig, MLDSA_CHASH_WORDS)) {
-        printf("  VERIFY_RES mismatch: c_ver[0]=0x%08x c_sig[0]=0x%08x\n",
-               g_ver[0], g_sig[0]);
+        printf("  VERIFY_RES mismatch: c_ver[0]=0x%08x c_sig[0]=0x%08x\n", g_ver[0], g_sig[0]);
         return -1;
     }
     printf("  VERIFY_RES matches c~ -> signature VALID\n");
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("\n=== Adams Bridge ML-DSA-87 Self-Consistency KAT (software seed) ===\n");

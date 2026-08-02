@@ -68,8 +68,8 @@ int main(void) {
     }
     km_kpv__ctrl_reg_t ctrl_read = {.w = KPV_CTRL_REG(SLOT_ID).w};
     if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL) {
-        TEST_FAIL("CTRL readback: extend=0x%X last_dword=0x%X",
-                  (unsigned)ctrl_read.f.extend, (unsigned)ctrl_read.f.last_dword);
+        TEST_FAIL("CTRL readback: extend=0x%X last_dword=0x%X", (unsigned)ctrl_read.f.extend,
+                  (unsigned)ctrl_read.f.last_dword);
     }
     TEST_SUBTEST_PASS();
 

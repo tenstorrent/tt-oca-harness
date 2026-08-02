@@ -30,13 +30,16 @@
 #define EXEC_MODE_REG \
     (*(volatile km_csr__sram_exec_mode_reg_t *)KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR)
 
-#define WARM_RESET_MARKER 4u  /* non-zero sram_fw_size used as phase indicator */
+#define WARM_RESET_MARKER 4u /* non-zero sram_fw_size used as phase indicator */
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(500000) || !tb_drbg_set_seed(0xFA12u, 5000)) {
@@ -66,8 +69,7 @@ int main(void)
 
     /* Test 1: reads 0 at cold reset */
     TEST_SUBTEST_START("reads 0 at cold reset");
-    TEST_ASSERT_EQ(EXEC_MODE_REG.f.enable, 0u,
-                   "SRAM_EXEC_MODE.enable must be 0 after cold reset");
+    TEST_ASSERT_EQ(EXEC_MODE_REG.f.enable, 0u, "SRAM_EXEC_MODE.enable must be 0 after cold reset");
     TEST_SUBTEST_PASS();
 
     /* Test 2: write-0 is a no-op */

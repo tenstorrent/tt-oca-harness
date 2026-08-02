@@ -30,11 +30,12 @@
 
 /* Generic launder: returns x unchanged but opaque to the optimizer. Evaluates x
  * exactly once. GNU statement expression + __typeof__ (GCC/Clang). */
-#define HARDEN_VAL(x) __extension__({           \
-    __typeof__(x) _harden_v = (x);              \
-    __asm__ volatile("" : "+r"(_harden_v));     \
-    _harden_v;                                  \
-})
+#define HARDEN_VAL(x) \
+    __extension__({ \
+        __typeof__(x) _harden_v = (x); \
+        __asm__ volatile("" : "+r"(_harden_v)); \
+        _harden_v; \
+    })
 
 /* Typed convenience wrappers — read well at call sites and are usable where a
  * function (not a macro) is preferred. */

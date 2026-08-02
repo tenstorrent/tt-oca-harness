@@ -219,13 +219,13 @@ typedef enum {
     ROM_KM_CMD_EXEC_ROM = 0x10,  /**< Continue executing ROM; ignore subsequent handover commands */
     ROM_KM_CMD_SRAM_LOAD_EXEC =
         0x11, /**< Accept firmware image via mailbox, load to SRAM, and execute */
-    ROM_KM_CMD_SRAM_EXEC = 0x12,       /**< Jump to pre-loaded mutable firmware in SRAM */
-    ROM_KM_CMD_KEY_GENERATE = 0x22,    /**< Generate a random key */
-    ROM_KM_CMD_KEY_REVOKE = 0x23,      /**< Revoke a key by handle */
-    ROM_KM_CMD_KEY_TRANSFER = 0x24,    /**< Transfer a key to crypto engines */
-    ROM_KM_CMD_ENGINE_SHRED = 0x25,    /**< Shred crypto engine sideload keys */
-    ROM_KM_CMD_KEY_LOAD = 0x26,        /**< Load SEP-supplied key material via mailbox */
-    ROM_KM_CMD_ABR_SK_TRANSFER = 0x27, /**< Capture ML-KEM shared key from ABR into KPV */
+    ROM_KM_CMD_SRAM_EXEC = 0x12,         /**< Jump to pre-loaded mutable firmware in SRAM */
+    ROM_KM_CMD_KEY_GENERATE = 0x22,      /**< Generate a random key */
+    ROM_KM_CMD_KEY_REVOKE = 0x23,        /**< Revoke a key by handle */
+    ROM_KM_CMD_KEY_TRANSFER = 0x24,      /**< Transfer a key to crypto engines */
+    ROM_KM_CMD_ENGINE_SHRED = 0x25,      /**< Shred crypto engine sideload keys */
+    ROM_KM_CMD_KEY_LOAD = 0x26,          /**< Load SEP-supplied key material via mailbox */
+    ROM_KM_CMD_ABR_SK_TRANSFER = 0x27,   /**< Capture ML-KEM shared key from ABR into KPV */
     ROM_KM_CMD_OTP_READ_LOCK_COLD = 0x28 /**< Set cold-reset-domain OTP read-lock bits */
 } rom_km_cmd_id_t;
 

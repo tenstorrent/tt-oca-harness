@@ -201,10 +201,9 @@ int main(void) {
         ctrl.w = KPV_CTRL(base_slot).w;
 
         TEST_ASSERT_EQ((uint32_t)ctrl.f.lock_write, 1u, "slot lock_write=1");
-        TEST_ASSERT_EQ(rom_keyreg_get_dest_valid(&rom_keyreg_state, handle_a, &dest_valid),
-                       0u, "registry destination lookup");
-        TEST_ASSERT_EQ((uint32_t)dest_valid.raw,
-                       (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
+        TEST_ASSERT_EQ(rom_keyreg_get_dest_valid(&rom_keyreg_state, handle_a, &dest_valid), 0u,
+                       "registry destination lookup");
+        TEST_ASSERT_EQ((uint32_t)dest_valid.raw, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
                        "registry dest_valid=AES");
         TEST_ASSERT_EQ((uint32_t)ctrl.f.extend, 0u, "extend=0 (1 slot)");
         TEST_ASSERT_EQ((uint32_t)ctrl.f.last_dword, 3u, "last_dword=(4-1)%%16=3");

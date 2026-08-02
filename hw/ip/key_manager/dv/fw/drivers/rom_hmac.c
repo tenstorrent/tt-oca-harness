@@ -28,10 +28,8 @@ static struct rom_sha256_ctx g_hmac_ctx;
  * Compute one HMAC step: output = hash((key zero-padded ^ mask) || data).
  * Returns 0 on success; -1 if the hash failed, in which case output is zeroed.
  */
-static int rom_hmac_sha256_step(uint8_t *output, uint8_t mask,
-                                const uint8_t *key, uint32_t key_len,
-                                const uint8_t *data, uint32_t data_len)
-{
+static int rom_hmac_sha256_step(uint8_t *output, uint8_t mask, const uint8_t *key, uint32_t key_len,
+                                const uint8_t *data, uint32_t data_len) {
     struct rom_sha256_ctx *ctx = &g_hmac_ctx;
     uint8_t *key_pad = ctx->block;
     uint8_t *tmp;
@@ -39,8 +37,7 @@ static int rom_hmac_sha256_step(uint8_t *output, uint8_t mask,
 
     /* key_pad = key (zero-padded) ^ mask */
     memset(key_pad, (int)mask, ROM_SHA256_BLOCK_SIZE);
-    for (uint32_t i = 0u; i < key_len; i++)
-        key_pad[i] = (uint8_t)(key_pad[i] ^ key[i]);
+    for (uint32_t i = 0u; i < key_len; i++) key_pad[i] = (uint8_t)(key_pad[i] ^ key[i]);
 
     /* tmp = hash(key_pad || data) */
     rom_sha256_init_one_block(ctx, key_pad);
@@ -62,17 +59,13 @@ static int rom_hmac_sha256_step(uint8_t *output, uint8_t mask,
     return ret;
 }
 
-int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len,
-                    const uint8_t *message, uint32_t message_len)
-{
-    if (output == NULL)
-        return -1;
+int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len, const uint8_t *message,
+                    uint32_t message_len) {
+    if (output == NULL) return -1;
 
     /* Reject inconsistent pointer/length pairs and unsupported key sizes. */
-    if (((key == NULL) && (key_len != 0u)) ||
-        ((message == NULL) && (message_len != 0u)) ||
-        (key_len > (uint32_t)ROM_SHA256_BLOCK_SIZE) ||
-        (message_len > ROM_HMAC_MAX_MESSAGE_BYTES)) {
+    if (((key == NULL) && (key_len != 0u)) || ((message == NULL) && (message_len != 0u)) ||
+        (key_len > (uint32_t)ROM_SHA256_BLOCK_SIZE) || (message_len > ROM_HMAC_MAX_MESSAGE_BYTES)) {
         rom_secure_memzero(output, ROM_SHA256_DIGEST_SIZE);
         return -1;
     }
@@ -84,8 +77,7 @@ int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len,
      * On inner-hash failure, output is already zeroed; abort so the outer
      * step cannot turn the failure into a valid-looking non-zero MAC.
      */
-    if (rom_hmac_sha256_step(output, (uint8_t)0x36u, key, key_len,
-                             message, message_len) != 0) {
+    if (rom_hmac_sha256_step(output, (uint8_t)0x36u, key, key_len, message, message_len) != 0) {
         return -1;
     }
 
@@ -95,6 +87,6 @@ int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len,
      *
      * On failure the step zeroes output itself, so no handling is needed.
      */
-    return rom_hmac_sha256_step(output, (uint8_t)0x5cu, key, key_len,
-                                output, (uint32_t)ROM_SHA256_DIGEST_SIZE);
+    return rom_hmac_sha256_step(output, (uint8_t)0x5cu, key, key_len, output,
+                                (uint32_t)ROM_SHA256_DIGEST_SIZE);
 }

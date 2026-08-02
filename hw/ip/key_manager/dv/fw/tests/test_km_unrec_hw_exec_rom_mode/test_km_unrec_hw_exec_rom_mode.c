@@ -26,16 +26,21 @@
 /* Trivial function to copy to SRAM: returns its argument + 1. */
 typedef uint32_t (*add1_fn_t)(uint32_t);
 
-__attribute__((noinline))
-static uint32_t add1_stub(uint32_t x) { return x + 1u; }
-__attribute__((noinline))
-static void add1_stub_end(void) { __asm__ volatile (""); }
+__attribute__((noinline)) static uint32_t add1_stub(uint32_t x) {
+    return x + 1u;
+}
+__attribute__((noinline)) static void add1_stub_end(void) {
+    __asm__ volatile("");
+}
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {
@@ -58,14 +63,13 @@ int main(void)
         TEST_FAIL("Failed to arm unrecoverable watcher");
     }
 
-    rom_boot_init();  /* enables exec_violation_en; EXEC_MODE.enable stays 0 (ROM mode) */
+    rom_boot_init(); /* enables exec_violation_en; EXEC_MODE.enable stays 0 (ROM mode) */
 
     /* Copy function body to SRAM */
     uint32_t fn_size = (uint32_t)((uintptr_t)add1_stub_end - (uintptr_t)add1_stub);
     uint8_t *src = (uint8_t *)(uintptr_t)add1_stub;
     uint8_t *dst = (uint8_t *)SRAM_CODE_BASE;
-    for (uint32_t i = 0; i < fn_size; i++)
-        dst[i] = src[i];
+    for (uint32_t i = 0; i < fn_size; i++) dst[i] = src[i];
 
     /* Call the SRAM copy.  Since EXEC_MODE.enable == 0, this fetch is
      * outside the whitelist → exec_violation_o fires → UFAULT_EXEC. */

@@ -20,8 +20,7 @@
 
 static uint32_t g_pk[MLDSA_PK_WORDS];
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -42,8 +41,8 @@ int main(void)
             printf("  signature is all zero (keygen+sign produced no output)\n");
             pass = 0;
         } else {
-            printf("  c~[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n",
-                   c_sig[0], c_sig[1], c_sig[2], c_sig[3]);
+            printf("  c~[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n", c_sig[0], c_sig[1], c_sig[2],
+                   c_sig[3]);
         }
         abr_read_array(ABR_MLDSA_PUBKEY, g_pk, MLDSA_PK_WORDS);
         if (!abr_words_any_nonzero(g_pk, MLDSA_PK_WORDS)) {

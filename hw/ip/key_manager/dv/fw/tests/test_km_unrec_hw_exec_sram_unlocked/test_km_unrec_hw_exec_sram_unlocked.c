@@ -23,21 +23,26 @@
 
 /* Use region 18 (0x4000 + 18*0x200 = 0x6400) — intentionally NOT locked. */
 #define UNLOCKED_CODE_REGION 18u
-#define REGION_SIZE_BYTES    0x200u
-#define SRAM_CODE_BASE       (SRAM_BASE + (UNLOCKED_CODE_REGION * REGION_SIZE_BYTES))
+#define REGION_SIZE_BYTES 0x200u
+#define SRAM_CODE_BASE (SRAM_BASE + (UNLOCKED_CODE_REGION * REGION_SIZE_BYTES))
 
 typedef uint32_t (*add1_fn_t)(uint32_t);
 
-__attribute__((noinline))
-static uint32_t add1_stub(uint32_t x) { return x + 1u; }
-__attribute__((noinline))
-static void add1_stub_end(void) { __asm__ volatile (""); }
+__attribute__((noinline)) static uint32_t add1_stub(uint32_t x) {
+    return x + 1u;
+}
+__attribute__((noinline)) static void add1_stub_end(void) {
+    __asm__ volatile("");
+}
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {
@@ -60,7 +65,7 @@ int main(void)
         TEST_FAIL("Failed to arm unrecoverable watcher");
     }
 
-    rom_boot_init();  /* enables exec_violation_en */
+    rom_boot_init(); /* enables exec_violation_en */
 
     /* Enable SRAM execution mode.  From this point locked SRAM is executable;
      * unlocked SRAM (including region 18) remains forbidden. */
@@ -71,8 +76,7 @@ int main(void)
     uint32_t fn_size = (uint32_t)((uintptr_t)add1_stub_end - (uintptr_t)add1_stub);
     uint8_t *src = (uint8_t *)(uintptr_t)add1_stub;
     uint8_t *dst = (uint8_t *)SRAM_CODE_BASE;
-    for (uint32_t i = 0; i < fn_size; i++)
-        dst[i] = src[i];
+    for (uint32_t i = 0; i < fn_size; i++) dst[i] = src[i];
 
     /* Call the unlocked copy.  exec_allowed = is_sram_addr && sram_exec_mode_i &&
      * sram_lock_bits_i[18] = 0 → exec_violation fires → UFAULT_EXEC. */

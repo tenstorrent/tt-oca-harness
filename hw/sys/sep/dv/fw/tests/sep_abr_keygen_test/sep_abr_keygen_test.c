@@ -19,8 +19,7 @@
 
 static uint32_t g_pk[MLDSA_PK_WORDS];
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -38,8 +37,7 @@ int main(void)
             printf("  PK is all zero (keygen produced no output)\n");
             pass = 0;
         } else {
-            printf("  PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n",
-                   g_pk[0], g_pk[1], g_pk[2], g_pk[3]);
+            printf("  PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n", g_pk[0], g_pk[1], g_pk[2], g_pk[3]);
         }
     }
 

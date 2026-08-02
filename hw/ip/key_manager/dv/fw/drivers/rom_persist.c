@@ -20,24 +20,21 @@ rom_persist_t rom_persist __attribute__((section(".rom_persist"), used));
 /**
  * @brief Cold-initialize the warm-persist region.
  */
-void rom_persist_cold_init(void)
-{
+void rom_persist_cold_init(void) {
     rom_persist = (rom_persist_t){0};
 }
 
 /**
  * @brief Read the loaded mutable-firmware size.
  */
-uint32_t rom_persist_get_sram_fw_size(void)
-{
+uint32_t rom_persist_get_sram_fw_size(void) {
     return rom_persist.sram_fw_size;
 }
 
 /**
  * @brief Set the loaded mutable-firmware size.
  */
-void rom_persist_set_sram_fw_size(uint32_t size)
-{
+void rom_persist_set_sram_fw_size(uint32_t size) {
     rom_persist.sram_fw_size = size;
 }
 
@@ -47,7 +44,6 @@ void rom_persist_set_sram_fw_size(uint32_t size)
  * Triple write for glitch resistance (matches rom_kmcsr_sram_lock_set
  * convention). Not yet called; reserved for the SRAM-firmware handoff path.
  */
-void rom_persist_lock(void)
-{
+void rom_persist_lock(void) {
     rom_kmcsr_sram_lock_set(ROM_KM_PERSIST_LOCK_MASK);
 }

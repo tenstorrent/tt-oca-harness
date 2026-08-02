@@ -63,17 +63,13 @@ _Static_assert(offsetof(km_kdf_input_t, flags) == 6u, "kdf flags offset");
 _Static_assert(offsetof(km_kdf_input_t, purpose) == 8u, "kdf purpose offset");
 _Static_assert(offsetof(km_kdf_input_t, out_bits) == 10u, "kdf out_bits offset");
 _Static_assert(offsetof(km_kdf_input_t, caps) == 12u, "kdf caps offset");
-_Static_assert(offsetof(km_kdf_input_t, device_state) == 16u,
-               "kdf device_state offset");
+_Static_assert(offsetof(km_kdf_input_t, device_state) == 16u, "kdf device_state offset");
 _Static_assert(offsetof(km_kdf_input_t, rsvd) == 20u, "kdf reserved offset");
-_Static_assert(offsetof(km_kdf_input_t, label) == KM_KDF_HDR_BYTES,
-               "kdf label offset");
-_Static_assert(offsetof(km_kdf_input_t, context) ==
-                   KM_KDF_HDR_BYTES + KM_KDF_LABEL_BYTES,
+_Static_assert(offsetof(km_kdf_input_t, label) == KM_KDF_HDR_BYTES, "kdf label offset");
+_Static_assert(offsetof(km_kdf_input_t, context) == KM_KDF_HDR_BYTES + KM_KDF_LABEL_BYTES,
                "kdf context offset");
 _Static_assert(offsetof(km_kdf_input_t, entropy) ==
-                   KM_KDF_HDR_BYTES + KM_KDF_LABEL_BYTES +
-                       KM_KDF_CONTEXT_BYTES,
+                   KM_KDF_HDR_BYTES + KM_KDF_LABEL_BYTES + KM_KDF_CONTEXT_BYTES,
                "kdf entropy offset");
 
 /**
@@ -94,9 +90,8 @@ _Static_assert(offsetof(km_kdf_input_t, entropy) ==
  * @return 0 on success, or -1 on invalid arguments or a cryptographic failure.
  *         On a cryptographic failure, the requested output region is zeroed.
  */
-int rom_kdf_800_108(const uint8_t *key, uint32_t key_len,
-                    const km_kdf_input_t *input, uint8_t *output,
-                    uint16_t out_bits);
+int rom_kdf_800_108(const uint8_t *key, uint32_t key_len, const km_kdf_input_t *input,
+                    uint8_t *output, uint16_t out_bits);
 
 /**
  * @brief Run the embedded KDF known-answer power-on self-test.

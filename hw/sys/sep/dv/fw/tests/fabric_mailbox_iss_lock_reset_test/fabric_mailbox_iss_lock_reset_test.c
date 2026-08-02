@@ -84,10 +84,10 @@ int main(void) {
     write64_split(end_addr, OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR +
                                 MAILBOX_0_APERTURE_SIZE - 1u);
 
-    cfg_src3 = FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |
-               FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |
-               FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm |
-               (3u << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp);
+    cfg_src3 =
+        FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |
+        FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |
+        FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm | (3u << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp);
     write64_split(cfg_addr, cfg_src3);
     cfg_rb = READ_REG(cfg_addr);
     if (!check_eq32("Inbound filter src_id=3 cfg", cfg_rb, cfg_src3 | 0u)) {

@@ -80,8 +80,7 @@ int main(void) {
 
     /* Step 3: Write 1 word to MSG_FIFO, verify fifo_empty deasserts */
     printf("\nStep 3: Write 1 word, verify fifo_empty=0\n");
-    volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     *fifo32 = 0xDEADBEEFu;
 
     sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);

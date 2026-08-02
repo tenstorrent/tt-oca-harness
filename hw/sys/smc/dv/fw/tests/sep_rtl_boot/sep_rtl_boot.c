@@ -28,8 +28,7 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-int main(void)
-{
+int main(void) {
     test_pass(0);
 
     /* Unreachable — test_pass() never returns. */

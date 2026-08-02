@@ -26,11 +26,14 @@
 
 typedef void (*void_fn_t)(void);
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (tb_check_unrecoverable_restart(1000)) {
@@ -53,7 +56,7 @@ int main(void)
         TEST_FAIL("Failed to arm unrecoverable watcher");
     }
 
-    rom_boot_init();  /* enables exec_violation_en */
+    rom_boot_init(); /* enables exec_violation_en */
 
     /* Attempt instruction fetch from KMCSR peripheral space.
      * is_rom_addr = is_vrom_addr = is_sram_addr = 0 → exec_allowed = 0

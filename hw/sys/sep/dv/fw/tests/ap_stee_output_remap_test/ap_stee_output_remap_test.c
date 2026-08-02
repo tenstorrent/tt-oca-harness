@@ -242,7 +242,8 @@ int main(void) {
     open_filter_config.w = 0; // Clear all fields first
     open_filter_config.f.read_allowed = 1;
     open_filter_config.f.write_allowed = 1;
-    open_filter_config.f.entry_enabled = 1; // Needs to be enabled since BlockByDefault is set in RTL
+    open_filter_config.f.entry_enabled =
+        1; // Needs to be enabled since BlockByDefault is set in RTL
     open_filter_config.f.allow_ns = 0;
     open_filter_config.f.allow_burst = 1;
     open_filter_config.f.locked = 0;

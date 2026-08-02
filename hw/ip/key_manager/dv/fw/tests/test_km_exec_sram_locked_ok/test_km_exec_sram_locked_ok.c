@@ -21,53 +21,55 @@
 #include "key_manager_fw.h"
 
 /* Use region 24 (0x4000 + 24*0x200 = 0x7000) as the locked code region. */
-#define LOCKED_CODE_REGION  24u
-#define REGION_SIZE_BYTES   0x200u
-#define SRAM_CODE_BASE      (SRAM_BASE + (LOCKED_CODE_REGION * REGION_SIZE_BYTES))
+#define LOCKED_CODE_REGION 24u
+#define REGION_SIZE_BYTES 0x200u
+#define SRAM_CODE_BASE (SRAM_BASE + (LOCKED_CODE_REGION * REGION_SIZE_BYTES))
 
 /* The copied function will add a constant to its argument. */
 #define ADD_CONSTANT 0x5A5A0001u
 
 typedef uint32_t (*add_fn_t)(uint32_t);
 
-__attribute__((noinline))
-static uint32_t locked_add_stub(uint32_t x) { return x + ADD_CONSTANT; }
-__attribute__((noinline))
-static void locked_add_stub_end(void) { __asm__ volatile (""); }
+__attribute__((noinline)) static uint32_t locked_add_stub(uint32_t x) {
+    return x + ADD_CONSTANT;
+}
+__attribute__((noinline)) static void locked_add_stub_end(void) {
+    __asm__ volatile("");
+}
 
-int rom_boot_wipe_enabled(void)  { return 0; }
-int rom_unrec_wipe_enabled(void) { return 0; }
+int rom_boot_wipe_enabled(void) {
+    return 0;
+}
+int rom_unrec_wipe_enabled(void) {
+    return 0;
+}
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(500000) || !tb_drbg_set_seed(0xFA12u, 5000)) {
         TEST_FAIL("TB setup failed");
     }
 
-    rom_boot_init();  /* enables exec_violation_en */
+    rom_boot_init(); /* enables exec_violation_en */
 
     /* Copy function to SRAM region 24 *before* locking (data write, allowed). */
     TEST_SUBTEST_START("copy function to SRAM region 24");
-    uint32_t fn_size = (uint32_t)((uintptr_t)locked_add_stub_end -
-                                  (uintptr_t)locked_add_stub);
+    uint32_t fn_size = (uint32_t)((uintptr_t)locked_add_stub_end - (uintptr_t)locked_add_stub);
     if (fn_size == 0 || fn_size > REGION_SIZE_BYTES) {
         TEST_FAIL("Unexpected function size");
     }
     uint8_t *src = (uint8_t *)(uintptr_t)locked_add_stub;
     uint8_t *dst = (uint8_t *)SRAM_CODE_BASE;
-    for (uint32_t i = 0; i < fn_size; i++)
-        dst[i] = src[i];
+    for (uint32_t i = 0; i < fn_size; i++) dst[i] = src[i];
     TEST_SUBTEST_PASS();
 
     /* Write-lock region 24.  After this, data writes to 0x7000-0x71FF are
      * blocked and the region is whitelisted for instruction fetch in SRAM mode. */
     TEST_SUBTEST_START("write-lock region 24");
     rom_kmcsr_sram_lock_set(1u << LOCKED_CODE_REGION);
-    TEST_ASSERT_EQ(
-        (rom_kmcsr_sram_lock_read() >> LOCKED_CODE_REGION) & 1u, 1u,
-        "SRAM_LOCK bit 24 must be set");
+    TEST_ASSERT_EQ((rom_kmcsr_sram_lock_read() >> LOCKED_CODE_REGION) & 1u, 1u,
+                   "SRAM_LOCK bit 24 must be set");
     TEST_SUBTEST_PASS();
 
     /* Enable SRAM execution mode.  ROM and write-locked SRAM become executable. */

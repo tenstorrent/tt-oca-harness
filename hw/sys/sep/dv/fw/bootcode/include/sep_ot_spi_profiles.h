@@ -17,45 +17,45 @@ static const ot_spi_params_t ot_spi_profiles[] = {
      * address, no dummy cycles, SPI mode 0, moderate CS timing, ~25 MHz SCK.
      * Matches the settings the standalone controller tests use. */
     {
-        .sck_mhz      = 25u,
-        .cpol         = 0u,
-        .cpha         = 0u,
-        .full_cyc     = 1u,                    /* sample a full cycle late: at
-                                                * 25 MHz the SCK->flash->data
-                                                * round-trip exceeds the
-                                                * half-cycle window, so
-                                                * half-cycle sampling reads each
-                                                * bit one SCK early. */
-        .csnidle      = 2u,
-        .csnlead      = 2u,
-        .csntrail     = 2u,
-        .read_opcode  = OT_SPI_OP_READ,        /* 0x03 */
+        .sck_mhz = 25u,
+        .cpol = 0u,
+        .cpha = 0u,
+        .full_cyc = 1u, /* sample a full cycle late: at
+                         * 25 MHz the SCK->flash->data
+                         * round-trip exceeds the
+                         * half-cycle window, so
+                         * half-cycle sampling reads each
+                         * bit one SCK early. */
+        .csnidle = 2u,
+        .csnlead = 2u,
+        .csntrail = 2u,
+        .read_opcode = OT_SPI_OP_READ, /* 0x03 */
         .dummy_cycles = 0u,
-        .data_width   = OT_SPI_WIDTH_STD,
-        .addr_bytes   = 3u,
+        .data_width = OT_SPI_WIDTH_STD,
+        .addr_bytes = 3u,
         .rx_watermark = 4u,
-        .flags        = OT_SPI_PF_CYCLE_ELIGIBLE,
+        .flags = OT_SPI_PF_CYCLE_ELIGIBLE,
     },
     /* [1] Example alternate: fast read (0x0B) with 8 dummy cycles, single lane.
      * Present to show that adding a device is a one-row edit; not the default. */
     {
-        .sck_mhz      = 25u,
-        .cpol         = 0u,
-        .cpha         = 0u,
-        .full_cyc     = 1u,                    /* full-cycle sampling (see [0]) */
-        .csnidle      = 2u,
-        .csnlead      = 2u,
-        .csntrail     = 2u,
-        .read_opcode  = OT_SPI_OP_READ_FAST,   /* 0x0B */
+        .sck_mhz = 25u,
+        .cpol = 0u,
+        .cpha = 0u,
+        .full_cyc = 1u, /* full-cycle sampling (see [0]) */
+        .csnidle = 2u,
+        .csnlead = 2u,
+        .csntrail = 2u,
+        .read_opcode = OT_SPI_OP_READ_FAST, /* 0x0B */
         .dummy_cycles = 8u,
-        .data_width   = OT_SPI_WIDTH_STD,
-        .addr_bytes   = 3u,
+        .data_width = OT_SPI_WIDTH_STD,
+        .addr_bytes = 3u,
         .rx_watermark = 4u,
-        .flags        = 0u,
+        .flags = 0u,
     },
 };
 
-#define OT_SPI_PROFILE_COUNT  (sizeof(ot_spi_profiles) / sizeof(ot_spi_profiles[0]))
+#define OT_SPI_PROFILE_COUNT (sizeof(ot_spi_profiles) / sizeof(ot_spi_profiles[0]))
 
 /* Boot profile index (build-time). 0 = safe default; override with
  * -DBOOT_OT_SPI_PROFILE=<n> (or `make BOOT_OT_SPI_PROFILE=<n>`) to boot a

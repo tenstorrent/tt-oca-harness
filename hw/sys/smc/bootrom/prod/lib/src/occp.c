@@ -185,11 +185,14 @@ static int error_response_sent = 0;
 
 static bool enable_gpio_hw_override(uint8_t gpio_num) {
     GPIO_CTRL_CONTROL_reg_u gpio_ctrl;
-    gpio_ctrl.val = read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
+    gpio_ctrl.val =
+        read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
     gpio_ctrl.f.hw2_ovrd = 1;
-    write_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET, gpio_ctrl.val);
+    write_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET,
+                    gpio_ctrl.val);
 
-    gpio_ctrl.val = read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
+    gpio_ctrl.val =
+        read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
     if (gpio_ctrl.f.hw2_ovrd != 1) {
         simputshex32("Failed to enable GPIO hw2_ovrd for gpio: ", gpio_num);
         return false;

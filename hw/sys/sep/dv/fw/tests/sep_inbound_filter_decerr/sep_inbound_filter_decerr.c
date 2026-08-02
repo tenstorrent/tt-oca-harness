@@ -26,18 +26,18 @@
 #include "sep.h"
 
 /* Inbound filter entry register layout (per-entry stride 0x20). */
-#define FILTER_CONFIG_OFFSET   0x0u
-#define FILTER_START_OFFSET    0x8u
-#define FILTER_END_OFFSET      0x10u
+#define FILTER_CONFIG_OFFSET 0x0u
+#define FILTER_START_OFFSET 0x8u
+#define FILTER_END_OFFSET 0x10u
 
 /*
  * Allow-window = SEP Local SRAM [0x1000_0000, 0x1003_FFFF].
  * FILTER_CONFIG enable bits: read_allowed(0) | write_allowed(1) | entry_enabled(4) |
  *                            allow_ns(8) | allow_burst(24) = 0x0100_0113.
  */
-#define ALLOW_START_ADDR      0x0000000010000000ULL
-#define ALLOW_END_ADDR        0x000000001003FFFFULL
-#define ALLOW_FILTER_CONFIG   0x0000000001000113ULL
+#define ALLOW_START_ADDR 0x0000000010000000ULL
+#define ALLOW_END_ADDR 0x000000001003FFFFULL
+#define ALLOW_FILTER_CONFIG 0x0000000001000113ULL
 
 /*
  * Firmware -> TB handshake: after the allow-list is programmed, write a done
@@ -45,8 +45,8 @@
  * this address (allowed) and only proceeds once it reads the magic, which also
  * proves the filter transitioned from block-by-default to allow.
  */
-#define SYNC_ADDR             0x10003000u
-#define CONFIG_DONE_MAGIC     0x6000D01Eu
+#define SYNC_ADDR 0x10003000u
+#define CONFIG_DONE_MAGIC 0x6000D01Eu
 
 /*
  * PROD lifecycle state, differentially encoded. LC_STATE stores {~raw[3:0],
@@ -54,10 +54,9 @@
  * vectors PROD gives feat_ctrl.sep_debug=0 -> inbound filter ACTIVE. Same path
  * as fw/sep/tests/lcc_inbound_filter_gating_test.
  */
-#define PROD_LC_STATE_DIFF_ENCODED  0xE1u
+#define PROD_LC_STATE_DIFF_ENCODED 0xE1u
 
-static inline void enter_prod_lifecycle(void)
-{
+static inline void enter_prod_lifecycle(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR, PROD_LC_STATE_DIFF_ENCODED);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     /* Let LC_STATE -> feat_ctrl.sep_debug -> inbound_filter_skip_i settle before
@@ -67,25 +66,22 @@ static inline void enter_prod_lifecycle(void)
     }
 }
 
-static inline void program_inbound_allow_entry0(void)
-{
+static inline void program_inbound_allow_entry0(void) {
     uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
-    WRITE_REG64(base + FILTER_START_OFFSET,  ALLOW_START_ADDR);
-    WRITE_REG64(base + FILTER_END_OFFSET,    ALLOW_END_ADDR);
+    WRITE_REG64(base + FILTER_START_OFFSET, ALLOW_START_ADDR);
+    WRITE_REG64(base + FILTER_END_OFFSET, ALLOW_END_ADDR);
     WRITE_REG64(base + FILTER_CONFIG_OFFSET, ALLOW_FILTER_CONFIG);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-__attribute__((noinline, used)) void sep_inbound_filter_pass_loop(void)
-{
+__attribute__((noinline, used)) void sep_inbound_filter_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     /* 1. Enter PROD so sep_debug=0 and the inbound filter is ACTIVE (not skipped). */
     enter_prod_lifecycle();
 

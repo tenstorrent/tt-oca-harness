@@ -33,17 +33,15 @@
  * Dword-palindromic seed: seed[i] == seed[7-i]. Invariant under the KV-client
  * dword reversal so PK(direct) and PK(KM sideload) can be compared directly.
  */
-static const uint32_t k_seed_pal[MLDSA_SEED_WORDS] = {
-    0x0badc0deu, 0x13572468u, 0xa5a5a5a5u, 0xfeedfaceu,
-    0xfeedfaceu, 0xa5a5a5a5u, 0x13572468u, 0x0badc0deu
-};
+static const uint32_t k_seed_pal[MLDSA_SEED_WORDS] = {0x0badc0deu, 0x13572468u, 0xa5a5a5a5u,
+                                                      0xfeedfaceu, 0xfeedfaceu, 0xa5a5a5a5u,
+                                                      0x13572468u, 0x0badc0deu};
 
 static uint32_t g_pk_direct[MLDSA_PK_WORDS];
 static uint32_t g_pk_km[MLDSA_PK_WORDS];
 
 /* Phase 1: golden PK from a direct software-seed KEYGEN. */
-static int keygen_direct(uint32_t *pk_out)
-{
+static int keygen_direct(uint32_t *pk_out) {
     abr_write_array(ABR_MLDSA_SEED, k_seed_pal, MLDSA_SEED_WORDS);
     abr_write_array(ABR_MLDSA_ENTROPY, k_entropy, MLDSA_ENTROPY_WORDS);
 
@@ -62,8 +60,7 @@ static int keygen_direct(uint32_t *pk_out)
  * Phase 2: KM pushes the same seed as dual shares, the shim serves it on
  * kv_read[0], and abr_ctrl copies it into MLDSA_SEED when READ_EN is set.
  */
-static int keygen_km_sideload(uint32_t *pk_out)
-{
+static int keygen_km_sideload(uint32_t *pk_out) {
     if (km_release_reset() != 0) {
         printf("  KM reset release failed\n");
         return -1;
@@ -72,8 +69,7 @@ static int keygen_km_sideload(uint32_t *pk_out)
         printf("  KM boot-ready banner not received\n");
         return -1;
     }
-    if (km_load_and_transfer_key(k_seed_pal, MLDSA_SEED_WORDS,
-                                 KM_DEST_ABR_MLDSA_SEED, 0) != 0) {
+    if (km_load_and_transfer_key(k_seed_pal, MLDSA_SEED_WORDS, KM_DEST_ABR_MLDSA_SEED, 0) != 0) {
         printf("  KM load/transfer of ABR seed failed\n");
         return -1;
     }
@@ -100,8 +96,7 @@ static int keygen_km_sideload(uint32_t *pk_out)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int pass = 1;
 
     sep_outbound_filter_init();
@@ -113,8 +108,8 @@ int main(void)
         pass = 0;
         goto done;
     }
-    printf("  direct PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n",
-           g_pk_direct[0], g_pk_direct[1], g_pk_direct[2], g_pk_direct[3]);
+    printf("  direct PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n", g_pk_direct[0], g_pk_direct[1],
+           g_pk_direct[2], g_pk_direct[3]);
 
     /* Return the sequencer to RESET / clear VALID before the second op. */
     if (abr_zeroize() != 0) {
@@ -127,8 +122,8 @@ int main(void)
         pass = 0;
         goto done;
     }
-    printf("  KM     PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n",
-           g_pk_km[0], g_pk_km[1], g_pk_km[2], g_pk_km[3]);
+    printf("  KM     PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x\n", g_pk_km[0], g_pk_km[1], g_pk_km[2],
+           g_pk_km[3]);
 
     if (!abr_words_equal(g_pk_direct, g_pk_km, MLDSA_PK_WORDS)) {
         printf("  MISMATCH: KM-sideloaded PK != direct-seed PK\n");

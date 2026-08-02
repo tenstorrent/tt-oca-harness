@@ -34,8 +34,7 @@
 
 // Poll the counter until it counts up by REFCLK_CYCLES; returns 0 on success,
 // -1 if it never advanced (counter stuck).
-static int wait_refclk_advance(void)
-{
+static int wait_refclk_advance(void) {
     uint32_t start_refclk_count = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
 
     for (int i = 0; i < POLL_MAX; i++) {
@@ -50,8 +49,7 @@ static int wait_refclk_advance(void)
 // Poll until the counter reflects the written value (the update takes several
 // refclk cycles to cross into the counter domain and sync back); returns 0 on
 // success, -1 on timeout with the last readback in *last.
-static int wait_counter_update(uint32_t target, uint32_t *last)
-{
+static int wait_counter_update(uint32_t target, uint32_t *last) {
     for (int i = 0; i < POLL_MAX; i++) {
         uint32_t refclk_count = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
         *last = refclk_count;
@@ -62,8 +60,7 @@ static int wait_counter_update(uint32_t target, uint32_t *last)
     return -1;
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
 
     printf("SEP Reference Counter Test\n");

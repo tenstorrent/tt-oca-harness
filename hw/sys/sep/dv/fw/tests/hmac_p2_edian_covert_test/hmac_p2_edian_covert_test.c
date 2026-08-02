@@ -59,8 +59,7 @@ static void cleanup_hmac(void) {
 }
 
 static int feed_msg_words(const uint32_t *words, uint32_t count) {
-    volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
 
     for (uint32_t i = 0; i < count; i++) {
         int spins = 0;

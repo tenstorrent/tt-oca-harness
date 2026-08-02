@@ -25,38 +25,33 @@
 #include "rom_defs.h"
 
 /** Write a distinct known pattern to all 16 words of a slot. */
-static void write_pattern_slot(uint8_t slot)
-{
+static void write_pattern_slot(uint8_t slot) {
     for (uint8_t w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++)
         KPV_KEY_WORD(slot, w) = 0xC0DE0000u | (uint32_t)slot << 8 | (uint32_t)w;
 }
 
 /** Assert that every word of a slot differs from the known pattern. */
-static void verify_slot_changed(uint8_t slot)
-{
+static void verify_slot_changed(uint8_t slot) {
     for (uint8_t w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++) {
         uint32_t expected = 0xC0DE0000u | (uint32_t)slot << 8 | (uint32_t)w;
         uint32_t after = KPV_KEY_WORD(slot, w);
         if (after == expected) {
-            TEST_FAIL("erase: slot %u word %u unchanged (0x%08X)",
-                      (unsigned)slot, (unsigned)w, (unsigned)expected);
+            TEST_FAIL("erase: slot %u word %u unchanged (0x%08X)", (unsigned)slot, (unsigned)w,
+                      (unsigned)expected);
         }
     }
 }
 
 /** Assert that the slot CTRL register is fully cleared after erase. */
-static void verify_ctrl_cleared(uint8_t slot)
-{
+static void verify_ctrl_cleared(uint8_t slot) {
     km_kpv__ctrl_reg_t ctrl;
     ctrl.w = KPV_CTRL(slot).w;
     if (ctrl.w != 0u) {
-        TEST_FAIL("erase: slot %u CTRL not cleared (0x%08X)",
-                  (unsigned)slot, (unsigned)ctrl.w);
+        TEST_FAIL("erase: slot %u CTRL not cleared (0x%08X)", (unsigned)slot, (unsigned)ctrl.w);
     }
 }
 
-int main(void)
-{
+int main(void) {
     TEST_INIT();
 
     if (!tb_set_timeout(1500000)) {
@@ -78,8 +73,7 @@ int main(void)
     {
         const uint8_t slot = 5;
         uint32_t key_in[16];
-        for (uint32_t i = 0; i < 16; i++)
-            key_in[i] = 0x11223300u + i;
+        for (uint32_t i = 0; i < 16; i++) key_in[i] = 0x11223300u + i;
 
         if (rom_kpv_write_key(slot, key_in, 16) != 0) {
             TEST_FAIL("write_key slot %u failed", (unsigned)slot);
@@ -102,11 +96,9 @@ int main(void)
 
         /* Slot must be reusable now that locks are cleared. */
         uint32_t key2[16];
-        for (uint32_t i = 0; i < 16; i++)
-            key2[i] = 0x44556600u + i;
+        for (uint32_t i = 0; i < 16; i++) key2[i] = 0x44556600u + i;
         if (rom_kpv_write_key(slot, key2, 16) != 0) {
-            TEST_FAIL("write_key to erased slot %u failed (not reusable)",
-                      (unsigned)slot);
+            TEST_FAIL("write_key to erased slot %u failed (not reusable)", (unsigned)slot);
         }
 
         uint32_t key_out[16];
@@ -128,8 +120,7 @@ int main(void)
         const uint8_t base = 10;
         const uint8_t klen = 20; /* 2 slots: EXTEND=1 */
         uint32_t key_in[20];
-        for (uint32_t i = 0; i < klen; i++)
-            key_in[i] = 0x77000000u + i;
+        for (uint32_t i = 0; i < klen; i++) key_in[i] = 0x77000000u + i;
 
         if (rom_kpv_write_key(base, key_in, klen) != 0) {
             TEST_FAIL("write_key multi-slot base %u failed", (unsigned)base);
