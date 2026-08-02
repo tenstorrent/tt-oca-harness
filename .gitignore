@@ -30,7 +30,9 @@ nonfree/
 # (see doc/stage-docs.sh); source of truth stays outside staged module output.
 doc/_build/
 doc/*/_build/
-doc/*/dist/
+# Keep the released PDFs tracked (like tt-oca-hw's doc/dist), ignore the rest.
+doc/*/dist/*
+!doc/*/dist/ocah-*.pdf
 doc/*/assets/*
 doc/*/src/assets
 !doc/trm/assets/
