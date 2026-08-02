@@ -400,7 +400,6 @@ sources:
     files:
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/models/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
