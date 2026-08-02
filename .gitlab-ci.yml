@@ -8,6 +8,13 @@ stages:
   - init
   - nonfree
 
+# The only nonfree knob CI sets: swap ocah.mk's SSH default for an HTTPS URL
+# carrying the runner's access token (NONFREE_REPO_PAT is a masked project
+# variable). Which commit to check out stays in ocah.mk, so the open tree and the
+# nonfree tree always move in lockstep.
+variables:
+  OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
+
 # Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), and manual web triggers.
 .ci_rules: &ci_rules
   rules:
@@ -21,7 +28,6 @@ init:
   <<: *ci_rules
   script:
     - make ocah-nonfree-init
-      OCAH_NONFREE_REMOTE="https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
   artifacts:
     paths:
       - nonfree/ci.yml
@@ -30,6 +36,10 @@ nonfree:
   stage: nonfree
   needs: [ init ]
   <<: *ci_rules
+  variables:
+    # Forward the credential-bearing remote to the child pipeline, which has to
+    # re-clone nonfree into its own fresh workspace.
+    OCAH_NONFREE_REMOTE: $OCAH_NONFREE_REMOTE
   trigger:
     include:
       - artifact: nonfree/ci.yml
