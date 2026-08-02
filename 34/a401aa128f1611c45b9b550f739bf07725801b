@@ -1,0 +1,20 @@
+scripts/docker-run.sh
+  s_d605cb93395a31::t_82583fd03e067d 58-66,70-71,74,76
+  s_d605cb93395a31::t_3a5118127840b4 7,10-14,19-20,24-31,40-48,53-57,67-69,72-73,75,77-109,112-154,163,172,275-276,281,286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "34a401aa128f1611c45b9b550f739bf07725801b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
