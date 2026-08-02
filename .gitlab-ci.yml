@@ -12,8 +12,15 @@ stages:
 # carrying the runner's access token (NONFREE_REPO_PAT is a masked project
 # variable). Which commit to check out stays in ocah.mk, so the open tree and the
 # nonfree tree always move in lockstep.
-variables:
+#
+# Anchored so the trigger job can repeat the real value: a variable that refers to
+# itself is forwarded to the child pipeline unexpanded, and make would then read
+# "$OCAH_NONFREE_REMOTE" as $(O) followed by "CAH_NONFREE_REMOTE".
+.nonfree_remote: &nonfree_remote
   OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
+
+variables:
+  <<: *nonfree_remote
 
 # Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), and manual web triggers.
 .ci_rules: &ci_rules
@@ -39,7 +46,7 @@ nonfree:
   variables:
     # Forward the credential-bearing remote to the child pipeline, which has to
     # re-clone nonfree into its own fresh workspace.
-    OCAH_NONFREE_REMOTE: $OCAH_NONFREE_REMOTE
+    <<: *nonfree_remote
   trigger:
     include:
       - artifact: nonfree/ci.yml
