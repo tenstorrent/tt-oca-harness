@@ -44,7 +44,18 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 	else \
 		echo "warning: Integrator Guide PDF not found at $(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF), skipping (Downloads link will 404 until it exists)"; \
 	fi
+	@if [ -f "$(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF)" ]; then \
+		cp "$(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	else \
+		echo "warning: Programmer's Guide PDF not found at $(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf programmer"; \
+	fi
+	@if [ -f "$(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)" ]; then \
+		cp "$(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	else \
+		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
+	fi
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
+	@echo "Note: Datasheet PDFs (SMU/DTP/SEP/SMC/AOU) have no build pipeline yet -- those Downloads links will 404 until that content and a PDF build step exist."
 
 ## Push the already-staged tree to the gh-pages branch. This is what CI
 ## calls, after CI's own separate HTML/PDF build steps have already run.

@@ -4,8 +4,6 @@
 [[security-processor-sep]]
 == Security Processor (SEP)
 
-// PDF only: Include all sections to build complete document
-ifdef::backend-pdf[]
 :imagesdir: assets
 
 include::introduction.adoc[leveloffset=0]
@@ -21,5 +19,3 @@ include::token_processing.adoc[leveloffset=0]
 include::security_disable.adoc[leveloffset=0]
 include::lifecycle_controller.adoc[leveloffset=0]
 include::test_mode.adoc[leveloffset=0]
-
-endif::backend-pdf[]

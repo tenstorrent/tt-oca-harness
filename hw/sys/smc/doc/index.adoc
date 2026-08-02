@@ -6,8 +6,6 @@
 
 // This file serves for PDF rendering, as HTML backend uses navigation bar from `doc/modules/ROOT/nav.adoc` that includes same content
 
-// PDF only: Include all sections to build complete document
-ifdef::backend-pdf[]
 :imagesdir: assets
 
 include::overview.adoc[leveloffset=0]
@@ -22,5 +20,3 @@ include::zeroer.adoc[leveloffset=0]
 include::periphs.adoc[leveloffset=0]
 // Pointer to DV VPLAN AsciiDoc source (full plan under dv/docs/).
 include::dv_vplan.adoc[leveloffset=0]
-
-endif::backend-pdf[]

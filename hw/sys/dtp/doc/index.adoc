@@ -4,26 +4,21 @@
 [[debug-test-ports]]
 == Debug and Test Ports (DTP)
 
-// This file serves for PDF rendering, as HTML backend uses navigation bar from `doc/modules/ROOT/nav.adoc` that includes same content
-
-// PDF only: Include all sections to build complete document
-ifdef::backend-pdf[]
 :imagesdir: assets
 
 include::overview.adoc[leveloffset=0]
 
 // JTAG Components
-include::../../../ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=0]
-include::../../../ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=0]
-include::../../../ip/jtag/jtag_stap/doc/index.adoc[leveloffset=0]
+// Antora resource-ID includes not raw relative paths
+include::ip:jtag_intf_unit/doc/index.adoc[leveloffset=0]
+include::ip:jtag_ptap/doc/index.adoc[leveloffset=0]
+include::ip:jtag_stap/doc/index.adoc[leveloffset=0]
 
 // Cross Trigger Components
-include::../../../ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=0]
+include::ip:cross_trigger_network/doc/index.adoc[leveloffset=0]
+include::ip:cross_trigger_port/doc/index.adoc[leveloffset=0]
+include::ip:cross_trigger_matrix/doc/index.adoc[leveloffset=0]
 
 // DTP-level integration
 include::jtag.adoc[leveloffset=0]
 include::clock_stop.adoc[leveloffset=0]
-
-endif::backend-pdf[]

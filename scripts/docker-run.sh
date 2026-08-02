@@ -117,6 +117,8 @@ doc_stage() {
     local ghpages_dir="${OCAH_GHPAGES_DIR:-doc/_build/html_antora}"
     local trm_dist="${OCAH_TRM_DIST:-doc/trm/dist}" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
     local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
+    local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
+    local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
 
     if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
         echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -137,6 +139,18 @@ doc_stage() {
         cp "$ROOT/$integrator_dist/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
     else
         echo "warning: Integrator Guide PDF not found at $integrator_dist/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
+    fi
+
+    if [[ -f "$ROOT/$programmer_dist/$programmer_pdf" ]]; then
+        cp "$ROOT/$programmer_dist/$programmer_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: Programmer's Guide PDF not found at $programmer_dist/$programmer_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf programmer)"
+    fi
+
+    if [[ -f "$ROOT/$appnotes_dist/$appnotes_pdf" ]]; then
+        cp "$ROOT/$appnotes_dist/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
     fi
 
     echo "Staged GitHub Pages tree at $ghpages_dir"
