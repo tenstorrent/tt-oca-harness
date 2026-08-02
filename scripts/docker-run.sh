@@ -16,8 +16,9 @@
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
 # Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
-#      OCAH_DOCKER_CACHE_DIR   shared tarball cache dir for the firmware image
-#                               (default: /proj_soc_scratch_ps/socinfra/ocah-docker-cache)
+#      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the
+#                               firmware image; unset disables the cache
+#                               (site CI sets this, e.g. in its env setup)
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
@@ -40,11 +41,13 @@ EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 # Firmware image provisioning. The ocah-toolchain image is built locally and
 # published to no registry, so bare `run` on a fresh host would try (and fail)
 # to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
-# registry/internet access at job time - a built image is cached as a tarball on
-# shared storage, keyed by the Dockerfile hash. Hosts reuse a matching local
-# image, else load the tarball, else build once and publish it for the rest.
+# registry/internet access at job time - a built image can be cached as a
+# tarball on shared storage, keyed by the Dockerfile hash: hosts reuse a
+# matching local image, else load the tarball, else build once and publish it
+# for the rest. The cache is only active when OCAH_DOCKER_CACHE_DIR is set
+# (site-specific; e.g. exported by the adopter's CI environment setup).
 DOCKER_CTX="${ROOT}/tools/docker"
-DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-/proj_soc_scratch_ps/socinfra/ocah-docker-cache}"
+DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
 if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
@@ -114,11 +117,12 @@ image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
 image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 
 # Build the firmware image (labeled with the Dockerfile hash) and publish it to
-# the shared tarball cache when that storage is writable. A publish failure is
-# a warning, not a build failure.
+# the shared tarball cache when one is configured and writable. A publish
+# failure is a warning, not a build failure.
 build_image() {
     local hash; hash="$(image_hash)"
     "$ENGINE" build --label "ocah.dockerfile.sha=${hash}" -t "$IMAGE" "$DOCKER_CTX"
+    [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
     local tar; tar="$(image_cache_tar)"
     if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
         local tmp="${tar}.$$.tmp"
@@ -142,11 +146,13 @@ ensure_image() {
     if [ "$("$ENGINE" image inspect --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
         return 0
     fi
-    tar="$(image_cache_tar)"
-    if [ -r "$tar" ]; then
-        echo "docker-run: loading $IMAGE from cache $tar" >&2
-        "$ENGINE" load -i "$tar"
-        return 0
+    if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+        tar="$(image_cache_tar)"
+        if [ -r "$tar" ]; then
+            echo "docker-run: loading $IMAGE from cache $tar" >&2
+            "$ENGINE" load -i "$tar"
+            return 0
+        fi
     fi
     echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
     build_image
