@@ -1,4 +1,7 @@
-[[smc-dv-efuse-interface]]
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[efuse-interface]]
 ===== Interface
 
 ====== Configuration Parameters
@@ -9,7 +12,6 @@
 |OTP_SIZE |3KB |Total OTP storage capacity
 |WORD_WIDTH |32 bits |OTP word width
 |NUM_WORDS |768 |Total number of OTP words
-|SHADOW_REGS |Yes |Boot-time caching enabled
 |===================================================
 
 ====== Signal Interfaces
@@ -102,25 +104,34 @@ control rules
 
 ====== Debug and Status Signals
 
-[width="100%",cols="20%,15%,15%,50%",options="header",]
+[width="100%",cols="30%,12%,13%,45%",options="header",]
 |=====================================================================================
 |Signal Name |Direction |Width |Description
-|`is_write_locked_shadow_regs_o` |Output |1 |Shadow registers write
-locked
+|`is_write_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are write locked
 
-|`is_read_locked_shadow_regs_o` |Output |1 |Shadow registers read locked
+|`is_read_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are read locked
 
-|`is_program_locked_o` |Output |1 |eFuse program operations locked
+|`is_program_locked_o` |Output |1 |eFuse program operations are locked
 
-|`is_read_locked_o` |Output |1 |eFuse read operations locked
+|`is_read_locked_o` |Output |1 |eFuse read operations are locked
 
-|`is_write_setup_only_o` |Output |1 |Write setup mode only
+|`is_write_setup_only_o` |Output |1 |Field is in write set-only mode (bits may be set, not cleared)
 
-|`is_lc_state_access_o` |Output |1 |Life cycle state access active
+|`is_lc_state_access_o` |Output |1 |Access is gated by the current lifecycle state
 
-|`rma_sop_token_match_o` |Output |1 |RMA SOP token match status
+|`is_read_timeout_debug_o` |Output |1 |A read command timed out waiting on the SHIM/bank
 
-|`rma_chiplet_token_match_o` |Output |1 |RMA chiplet token match status
+|`is_program_timeout_debug_o` |Output |1 |A program command timed out waiting on the SHIM/bank
+
+|`is_efuse_req_err_o` |Output |1 |A request was blocked/errored by the eFuse guard
+
+|`is_secure_tm_blocked_o` |Output |1 |Access blocked because secure test mode is not active
+
+|`is_rma_sip_token_match_debug` |Output |6 |RMA SiP token match status code
+
+|`is_rma_chiplet_token_match_debug` |Output |6 |RMA chiplet token match status code
+
+|`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
 |=====================================================================================
 
 ====== Fuse Command Protocol

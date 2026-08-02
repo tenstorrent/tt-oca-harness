@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 [[cryptographic-subsystem]]
 === Cryptographic Subsystem
 
@@ -311,17 +314,17 @@ include::../../../ip/entropy_source/doc/architecture.adoc[]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
-xref:comp:drbg/doc/index.adoc[DRBG]
+xref:ip:drbg/doc/index.adoc[DRBG]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::../../../ip/entropy_source/doc/architecture.adoc[]
+include::../../../ip/drbg/doc/architecture.adoc[]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
-xref:comp:key_manager/doc/index.adoc[Key Manager]
+xref:ip:key_manager/doc/index.adoc[Key Manager]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::../../../ip/entropy_source/doc/architecture.adoc[]
+include::../../../ip/key_manager/doc/architecture.adoc[]
 endif::backend-pdf[]
 
 ifdef::backend-pdf[]

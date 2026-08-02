@@ -27,8 +27,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `EDN_FATAL_ERR` | RW | 0x0 a| Asserted when a FIFO error occurs.
-| 0 | `EDN_CMD_REQ_DONE` | RW | 0x0 a| Asserted when a software CSRNG request has completed.
+| 1 | `edn_fatal_err` | RW | 0x0 a| Asserted when a FIFO error occurs.
+| 0 | `edn_cmd_req_done` | RW | 0x0 a| Asserted when a software CSRNG request has completed.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -36,8 +36,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `EDN_FATAL_ERR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_fatal_err is set.
-| 0 | `EDN_CMD_REQ_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
+| 1 | `edn_fatal_err` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_fatal_err is set.
+| 0 | `edn_cmd_req_done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -45,8 +45,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `EDN_FATAL_ERR` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_fatal_err to 1.
-| 0 | `EDN_CMD_REQ_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
+| 1 | `edn_fatal_err` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_fatal_err to 1.
+| 0 | `edn_cmd_req_done` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -54,8 +54,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `FATAL_ALERT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
-| 0 | `RECOV_ALERT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 1 | `fatal_alert` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `recov_alert` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
 [cols="1,1,1,1,3", options="header"]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 = OCAH UART & Log Engine Wrapper
 :sectnums:
 
@@ -85,7 +88,9 @@ parity of the received character.
 The tables below describe the register map and each register in detail.
 
 ifdef::backend-html5[]
-include::partial$uart_log_engine_wrap/regs/gen/adoc/uart_log_engine_wrap_reg.adoc[]
+++++
+include::partial$uart_log_engine_wrap/regs/gen/html/uart_log_engine_wrap.html[]
+++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]

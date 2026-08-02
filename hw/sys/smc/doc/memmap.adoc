@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 [[smc-memory-map]]
 === Memory Map
 
@@ -20,10 +23,10 @@ conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
 refer to the
 ifdef::backend-html5[]
-xref:ROOT:integration_guide.adoc#smc-address-map-integration[SMC Address Map Integration]
+SMC Address Map Integration
 endif::backend-html5[]
 ifdef::backend-pdf[]
-xref:../../../doc/integration_guide.adoc#smc-address-map-integration[SMC Address Map Integration]
+SMC Address Map Integration
 endif::backend-pdf[]
 section of the Integration Guide.
 

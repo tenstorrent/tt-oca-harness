@@ -448,7 +448,7 @@ The bare `sep` module used to externalize these as ports (idle by default) backe
   confirms the DMA→DCCM datapath (DMA master → SEP xbar → VeeR EL2 dma_axi slave →
   responder-backed DCCM) is exercisable — fully faithful to OCAH, no delta.
   Infra added: firmware PIC/ISR framework (`fw/build/start.S` meivt vector table +
-  `fw/drivers/sep_pic.h`), `fw/drivers/sep_dma.h`, SW SHA-256 (`fw/drivers/sha256.c`) +
+  `fw/drivers/sep_pic.h`), `fw/drivers/sep_dma.h`, SW SHA-256 (`fw/tests/common/sha256.c`) +
   freestanding mem* (`fw/drivers/sep_libc.c`), boot-scoreboard banner parameterized.
   Independent-agent audited for OCAH parity (no correctness bugs). Out of scope (depth,
   not in the OCAH test either): DMA error-IRQ / chunk-done IRQ, multi-chunk, width/align
@@ -588,7 +588,7 @@ The bare `sep` module used to externalize these as ports (idle by default) backe
   OpenTitan HMAC and KMAC engines over the CPU→fabric path (both internal to bare
   `sep`, CSR clocks always on). **HMAC** (SHA-256 mode @ 0x1091_1000): hashes
   empty / "abc" / "Hello OTBN." and compares each HW digest against an INDEPENDENT
-  firmware SW SHA-256 (`fw/drivers/sha256.c`), + no-timeout + ERR_CODE==0.
+  firmware SW SHA-256 (`fw/tests/common/sha256.c`), + no-timeout + ERR_CODE==0.
   **KMAC** (KMAC128/cSHAKE @ 0x1091_3000): masked hash of "test" with a zero key
   using SOFTWARE entropy (no EDN) — checks done, ERR_CODE==0, and the unmasked
   digest (share0^share1) non-zero. **Stronger than OCAH** (live SW SHA-256 golden

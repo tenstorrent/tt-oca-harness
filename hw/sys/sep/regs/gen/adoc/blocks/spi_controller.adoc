@@ -2,65 +2,62 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | CONTROL | RW a| -
-| 0x14 | STATUS | R a| -
-| 0x18 | CONFIGOPTS | RW a| -
-| 0x1C | CSID | RW a| -
-| 0x20 | COMMAND | W a| -
+| 0x0 | INTR_STATUS | R a| Interrupt Status Register
+| 0x4 | INTR_ENABLE | RW a| Interrupt Enable Register
+| 0x8 | INTR_TEST | RW a| Interrupt Test Register
+| 0x10 | CTRL | RW a| Control Register
+| 0x14 | STATUS | R a| Status Register
+| 0x18 | CFG | RW a| Configuration Register
+| 0x1C | CSID | RW a| Chip Select ID Register
+| 0x20 | CMD | W a| Command Register
+| 0x24 | RXDATA | R a| Received Data Register
+| 0x28 | TXDATA | W a| Transmit Data Register
 | 0x2C | ERROR_ENABLE | RW a| -
 | 0x30 | ERROR_STATUS | RW a| -
 | 0x34 | EVENT_ENABLE | RW a| -
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.INTR_STATE Register
+.INTR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `SPI_EVENT` | R | 0x0 a| Event-related interrupts, see !!EVENT_ENABLE register for more
-information.
-| 0 | `ERROR` | RW | 0x0 a| Error-related interrupts, see !!ERROR_ENABLE register for more
-information.
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SPI_EVENT` | R | 0x0 a| SPI Event Interrupt. Asserted when any event associated with a bit in the
+EVENT_ENABLE register occurs.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `ERROR` | R | 0x0 a| Error Interrupt. Asserted when any bit in the ERROR_STATUS register is set.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `SPI_EVENT` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.spi_event is set.
-| 0 | `ERROR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.error is set.
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SPI_EVENT` | RW | 0x0 a| SPI Event Interrupt Enable.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `ERROR` | RW | 0x0 a| Error Interrupt Enable.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `SPI_EVENT` | W | 0x0 a| Write 1 to force !!INTR_STATE.spi_event to 1.
-| 0 | `ERROR` | W | 0x0 a| Write 1 to force !!INTR_STATE.error to 1.
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SPI_EVENT` | RW | 0x0 a| SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event
+Interrupt and writing `0` releases it.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `ERROR` | RW | 0x0 a| Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and
+writing `0` releases it.
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.ALERT_TEST Register
+.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.CONTROL Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31 | `SPIEN` | RW | 0x0 a| Enables the SPI host.  On reset, this field is 0, meaning
+| 31 | `SPIEN` | RW | 0x0 a| Enables the SPI Controller. On reset, this field is 0, meaning
 that no transactions can proceed.
-| 30 | `SW_RST` | RW | 0x0 a| Clears the internal state (not registers) to the reset state when set to 1,
-including the FIFOs, the CDC's, the core state machine and the shift register.
+| 30 | `SW_RST` | W | 0x0 a| Clears the entire IP to the reset state when set to 1, including
+the FIFOs, the CDC's, the core state machine and the shift register.
 In the current implementation, the CDC FIFOs are drained not reset.
 Therefore software must confirm that both FIFO's empty before releasing
 the IP from reset.
@@ -86,7 +83,7 @@ an error, and will trigger an interrupt.
 | 30 | `ACTIVE` | R | 0x0 a| When high, indicates the SPI host is processing a previously
 issued command.
 | 29 | `TXFULL` | R | 0x0 a| When high, indicates that the transmit data fifo is full.
-Any further writes to !!TXDATA will create an error interrupt.
+Any further writes to !!RXDATA will create an error interrupt.
 | 28 | `TXEMPTY` | R | 0x0 a| When high, indicates that the transmit data fifo is empty.
 | 27 | `TXSTALL` | R | 0x0 a| If high, signifies that an ongoing transaction has stalled
 due to lack of data in the TX FIFO
@@ -109,18 +106,18 @@ currently in the command segment queue.
 | 15:8 | `RXQD` | R | 0x0 a| Receive queue depth. Indicates how many unread 32-bit words are
 currently in the RX FIFO.  When active, this result may an
 underestimate due to synchronization delays.
-| 7:0 | `TXQD` | R | 0x0 a| Transmit queue depth.
-Indicates how many unsent 32-bit words are currently in the TX FIFO.
-When active, this result may be an overestimate due to synchronization delays.
+| 7:0 | `TXQD` | R | 0x0 a| Transmit queue depth. Indicates how many unsent 32-bit words
+are currently in the TX FIFO.  When active, this result may
+be an overestimate due to synchronization delays.
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.CONFIGOPTS Register
+.CFG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `CPOL` | RW | 0x0 a| The polarity of the sck clock signal.  When CPOL is 0,
 sck is low when idle, and emits high pulses.   When CPOL
-is 1, sck is high when idle, and emits a series of low
+is low, sck is high when idle, and emits a series of low
 pulses.
 | 30 | `CPHA` | RW | 0x0 a| The phase of the sck clock signal relative to the data. When
 CPHA = 0, the data changes on the trailing edge of sck
@@ -164,51 +161,68 @@ period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.COMMAND Register
+.CMD Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:25 | `Reserved` | - | - a| Reserved
-| 24:5 | `LEN` | W | 0x0 a| Segment Length.
+| 31:14 | `Reserved` | - | - a| Reserved
+| 13:12 | `DIRECTION` | W | 0x0 a| The direction for the following command: "0" = Dummy cycles
+(no TX/RX). "1" = Rx only, "2" = Tx only, "3" = Bidirectional
+Tx/Rx (Standard SPI mode only).
+| 11:10 | `SPEED` | W | 0x0 a| The speed for this command segment: "0" = Standard SPI. "1" = Dual SPI.
+"2"=Quad SPI,  "3": RESERVED.
+| 9 | `CSAAT` | W | 0x0 a| Chip select active after transaction.  If CSAAT = 0, the
+chip select line is raised immediately at the end of the
+command segment.   If !!COMMAND.CSAAT = 1, the chip select
+line is left low at the end of the current transaction
+segment.  This allows the creation longer, more
+complete SPI transactions, consisting of several separate
+segments for issuing instructions, pausing for dummy cycles,
+and transmitting or receiving data from the device.
+| 8:0 | `LEN` | W | 0x0 a| Segment Length.
 
 For read or write segments, this field controls the
 number of 1-byte bursts to transmit and or receive in
-this command segment.  The number of cycles required
+this command segment.  The number of cyles required
 to send or received a byte will depend on !!COMMAND.SPEED.
 For dummy segments, (!!COMMAND.DIRECTION == 0), this register
 controls the number of dummy cycles to issue.
 The number of bytes (or dummy cycles) in the segment will be
 equal to !!COMMAND.LEN + 1.
-| 4:3 | `DIRECTION` | W | 0x0 a| The direction for the following command: "0" = Dummy cycles
-(no TX/RX). "1" = Rx only, "2" = Tx only, "3" = Bidirectional
-Tx/Rx (Standard SPI mode only).
-| 2:1 | `SPEED` | W | 0x0 a| The speed for this command segment: "0" = Standard SPI. "1" = Dual SPI.
-"2"=Quad SPI,  "3": RESERVED.
-| 0 | `CSAAT` | W | 0x0 a| **C**hip **S**elect **A**ctive **A**fter **T**ransaction.
-If !!COMMAND.CSAAT = 0, the chip select line is raised immediately
-at the end of the command segment.
-If !!COMMAND.CSAAT = 1, the chip select line is left low at the
-end of the current transaction segment.
-This allows the creation of longer, more complete SPI transactions,
-consisting of several separate segments for issuing instructions,
-pausing for dummy cycles, and transmitting or receiving data from
-the device.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.RXDATA Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `RXDATA` | R | 0x0 a| SPI Received Data.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.TXDATA Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `TXDATA` | W | 0x0 a| SPI Transmit Data.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .ERROR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `CSIDINVAL` | RW | 0x1 a| Invalid CSID: If this bit is set, the block sends an error interrupt whenever
+| 31:17 | `Reserved` | - | - a| Reserved
+| 16 | `CSIDINVAL` | RW | 0x1 a| Invalid CSID: If this bit is set, the block sends an error interrupt whenever
 a command is submitted, but CSID exceeds NumCS.
-| 3 | `CMDINVAL` | RW | 0x1 a| Invalid Command Errors: If this bit is set, the block sends an
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12 | `CMDINVAL` | RW | 0x1 a| Invalid Command Errors: If this bit is set, the block sends an
 error interrupt whenever a command is sent with invalid values for
 !!COMMAND.SPEED or !!COMMAND.DIRECTION.
-| 2 | `UNDERFLOW` | RW | 0x1 a| Underflow Errors: If this bit is set, the block sends an
+| 11:9 | `Reserved` | - | - a| Reserved
+| 8 | `UNDERFLOW` | RW | 0x1 a| Underflow Errors: If this bit is set, the block sends an
 error interrupt whenever there is a read from !!RXDATA
 but the RX FIFO is empty.
-| 1 | `OVERFLOW` | RW | 0x1 a| Overflow Errors: If this bit is set, the block sends an
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `OVERFLOW` | RW | 0x1 a| Overflow Errors: If this bit is set, the block sends an
 error interrupt whenever the TX FIFO overflows.
+| 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `CMDBUSY` | RW | 0x1 a| Command Error: If this bit is set, the block sends an error
 interrupt whenever a command is issued while busy (i.e. a 1 is
 when !!STATUS.READY is not asserted.)
@@ -218,16 +232,21 @@ when !!STATUS.READY is not asserted.)
 .ERROR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:6 | `Reserved` | - | - a| Reserved
-| 5 | `ACCESSINVAL` | RW | 0x0 a| Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
+| 31:21 | `Reserved` | - | - a| Reserved
+| 20 | `ACCESSINVAL` | RW | 0x0 a| Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
 'zero byte' writes are not supported.
-| 4 | `CSIDINVAL` | RW | 0x0 a| Indicates a command was attempted with an invalid value for !!CSID.
-| 3 | `CMDINVAL` | RW | 0x0 a| Indicates an invalid command segment, meaning either an invalid value of
+| 19:17 | `Reserved` | - | - a| Reserved
+| 16 | `CSIDINVAL` | RW | 0x0 a| Indicates a command was attempted with an invalid value for !!CSID.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12 | `CMDINVAL` | RW | 0x0 a| Indicates an invalid command segment, meaning either an invalid value of
 !!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
 speed
-| 2 | `UNDERFLOW` | RW | 0x0 a| Indicates that firmware has attempted to read from
+| 11:9 | `Reserved` | - | - a| Reserved
+| 8 | `UNDERFLOW` | RW | 0x0 a| Indicates that firmware has attempted to read from
 !!RXDATA when the RX FIFO is empty.
-| 1 | `OVERFLOW` | RW | 0x0 a| Indicates that firmware has overflowed the TX FIFO
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `OVERFLOW` | RW | 0x0 a| Indicates that firmware has overflowed the TX FIFO
+| 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `CMDBUSY` | RW | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 |===
 
@@ -235,21 +254,26 @@ speed
 .EVENT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:6 | `Reserved` | - | - a| Reserved
-| 5 | `IDLE` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
+| 31:21 | `Reserved` | - | - a| Reserved
+| 20 | `IDLE` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
 goes low
-| 4 | `READY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.READY
+| 19:17 | `Reserved` | - | - a| Reserved
+| 16 | `READY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.READY
 goes high
-| 3 | `TXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12 | `TXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
 the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
 reassertion of this interrupt add more data to the TX FIFO, or
 reduce !!CONTROL.TX_WATERMARK.
-| 2 | `RXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
+| 11:9 | `Reserved` | - | - a| Reserved
+| 8 | `RXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
 the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
 reassertion of this interrupt, read more data from the RX FIFO, or
 increase !!CONTROL.RX_WATERMARK.
-| 1 | `TXEMPTY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
+| 7:5 | `Reserved` | - | - a| Reserved
+| 4 | `TXEMPTY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
 goes high
+| 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `RXFULL` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.RXFULL
 goes high
 |===

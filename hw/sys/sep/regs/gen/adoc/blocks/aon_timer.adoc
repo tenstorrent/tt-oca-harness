@@ -2,20 +2,20 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | ALERT_TEST | W a| -
-| 0x4 | WKUP_CTRL | RW a| -
-| 0x8 | WKUP_THOLD_HI | RW a| -
-| 0xC | WKUP_THOLD_LO | RW a| -
-| 0x10 | WKUP_COUNT_HI | RW a| -
-| 0x14 | WKUP_COUNT_LO | RW a| -
-| 0x18 | WDOG_REGWEN | RW a| -
-| 0x1C | WDOG_CTRL | RW a| -
-| 0x20 | WDOG_BARK_THOLD | RW a| -
-| 0x24 | WDOG_BITE_THOLD | RW a| -
-| 0x28 | WDOG_COUNT | RW a| -
-| 0x2C | INTR_STATE | RW a| -
-| 0x30 | INTR_TEST | W a| -
-| 0x34 | WKUP_CAUSE | RW a| -
+| 0x0 | ALERT_TEST | W a| Alert Test Register
+| 0x4 | WKUP_CTRL | RW a| Wakeup Timer Control register. Each write to the register resets the internal prescaler count.
+| 0x8 | WKUP_THOLD_HI | RW a| Wakeup Timer Threshold Register (bits 63 - 32)
+| 0xC | WKUP_THOLD_LO | RW a| Wakeup Timer Threshold Register (bits 31 - 0)
+| 0x10 | WKUP_COUNT_HI | RW a| Wakeup Timer Count Register (bits 63 - 32)
+| 0x14 | WKUP_COUNT_LO | RW a| Wakeup Timer Count Register (bits 31 - 0)
+| 0x18 | WDOG_REGWEN | RW a| Watchdog Timer Write Enable Register
+| 0x1C | WDOG_CTRL | RW a| Watchdog Timer Control register
+| 0x20 | WDOG_BARK_THOLD | RW a| Watchdog Timer Bark Threshold Register
+| 0x24 | WDOG_BITE_THOLD | RW a| Watchdog Timer Bite Threshold Register
+| 0x28 | WDOG_COUNT | RW a| Watchdog Timer Count Register
+| 0x2C | INTR_STATE | RW a| Interrupt State Register
+| 0x30 | INTR_TEST | W a| Interrupt Test Register
+| 0x34 | WKUP_CAUSE | RW a| Wakeup request status
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -23,7 +23,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -31,36 +31,36 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:13 | `Reserved` | - | - a| Reserved
-| 12:1 | `PRESCALER` | RW | 0x0 a| Pre-scaler value for wakeup timer count
-| 0 | `ENABLE` | RW | 0x0 a| When set to 1, the wakeup timer will count
+| 12:1 | `prescaler` | RW | 0x0 a| Pre-scaler value for wakeup timer count.
+| 0 | `enable` | RW | 0x0 a| When set to 1, the wakeup timer will count.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WKUP_THOLD_HI Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `THRESHOLD_HI` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, top 32 bits.
+| 31:0 | `threshold_hi` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, top 32 bits.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WKUP_THOLD_LO Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `THRESHOLD_LO` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, bottom 32 bits.
+| 31:0 | `threshold_lo` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, bottom 32 bits.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WKUP_COUNT_HI Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `COUNT_HI` | RW | 0x0 a| The current wakeup counter value, top 32 bits.
+| 31:0 | `count_hi` | RW | 0x0 a| The current wakeup counter value, top 32 bits.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WKUP_COUNT_LO Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `COUNT_LO` | RW | 0x0 a| The current wakeup counter value, bottom 32 bits.
+| 31:0 | `count_lo` | RW | 0x0 a| The current wakeup counter value, bottom 32 bits.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -68,7 +68,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `REGWEN` | RW | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
+| 0 | `regwen` | RW | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -76,29 +76,29 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `PAUSE_IN_SLEEP` | RW | 0x0 a| When set to 1, the watchdog timer will not count during sleep.
-| 0 | `ENABLE` | RW | 0x0 a| When set to 1, the watchdog timer will count.
+| 1 | `pause_in_sleep` | RW | 0x0 a| When set to 1, the watchdog timer will not count during sleep.
+| 0 | `enable` | RW | 0x0 a| When set to 1, the watchdog timer will count.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WDOG_BARK_THOLD Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `THRESHOLD` | RW | 0x0 a| The count at which a watchdog bark interrupt should be generated.
+| 31:0 | `threshold` | RW | 0x0 a| The count at which a watchdog bark interrupt should be generated.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WDOG_BITE_THOLD Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `THRESHOLD` | RW | 0x0 a| The count at which a watchdog bite reset should be generated.
+| 31:0 | `threshold` | RW | 0x0 a| The count at which a watchdog bite reset should be generated.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .WDOG_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `COUNT` | RW | 0x0 a| The current watchdog counter value.
+| 31:0 | `count` | RW | 0x0 a| The current watchdog counter value.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -106,8 +106,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `WDOG_TIMER_BARK` | RW | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
-| 0 | `WKUP_TIMER_EXPIRED` | RW | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
+| 1 | `wdog_timer_bark` | RW | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
+| 0 | `wkup_timer_expired` | RW | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -115,8 +115,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `WDOG_TIMER_BARK` | W | - a| Write 1 to force wdog_timer_bark interrupt.
-| 0 | `WKUP_TIMER_EXPIRED` | W | - a| Write 1 to force wkup_timer_expired interrupt.
+| 1 | `wdog_timer_bark` | W | 0x0 a| Write 1 to force wdog_timer_bark interrupt.
+| 0 | `wkup_timer_expired` | W | 0x0 a| Write 1 to force wkup_timer_expired interrupt.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -124,5 +124,5 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `CAUSE` | RW | 0x0 a| AON timer requested wakeup, write 0 to clear.
+| 0 | `cause` | RW | 0x0 a| AON timer requested wakeup, write 0 to clear.
 |===

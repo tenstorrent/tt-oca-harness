@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 [[sep-interconnect]]
 === SEP Interconnect
 
@@ -69,37 +72,6 @@ h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Reset Ctrl h|Crypto Periph h|System P
 |DMA |C |C |N/C |C |C |C |C |C |N/C |C |N/C
 |System I/F |N/C |C |C |C |N/C |C |N/C |C |C |C |N/C
 |===
-
-The inbound path and the local-crossbar reach of each initiator are
-summarised below.
-
-....
-   ┌──────────────────────────────────┐            SEP top-level port
-   │      SEP EL2 CPU (RISC-V)         │      smn_inbound_axi_req_i / _resp_o  <-- external port
-   │   IFU        LSU        DBG        │                   │
-   └────┬─────────┬──────────┬─────────┘                   ▼
-        │         │          │              ┌─────────────────────────────────────┐
-   (Boot ROM      │          │   external ─▶│  u_inbound_filter  (BlockByDefault=1,│
-    dedic. p2p)   │          │              │                     skip=sep_debug)  │
-        │         │          │              │              │                       │
-        │         │          │              │              ▼                       │
-        │         │          │              │        INNER xbar                    │
-        │         │          │              │        ├── mailbox   0x10A0_0000     │  reached
-        │         │          │              │        ├── system_csr 0x10A1_0000    │  DIRECTLY,
-        │         │          │              │        │   (CPU_CTRL @0x10A3)         │  not via rows
-        │         │          │              │        └── smn_inbound_from_xbar     │
-        │         │          │              └──────────────────┼───────────────────┘
-        │         │          │                                 ▼  .ext_axi_req_i (sep.sv:398)
-        │         │          │        ┌────────────────────────────────────────────────┐
-        │         │          │        │            sep_local_axi_xbar (LOCAL fabric)     │
-        │         ▼          ▼        ▼   initiators: ifu │ lsu │ dbg │ dma │ ext         │
-        │   ifu → sram, Boot ROM(p2p)                                                     │
-        │   lsu → sram, dma_csr, wdt, reset, crypto, sysperiph, io, EPOOL, axi_ext  FULL  │
-        │   dbg → sram, dma_csr, wdt, reset, crypto, sysperiph, io, EPOOL, axi_ext  FULL  │
-        │   dma → cpu_tcm, sram, wdt, reset, crypto, sysperiph, io, axi_ext               │
-        │   ext → sram, dma_csr, wdt, crypto, io, EPOOL, axi_ext  (filter guards access)  │
-        └─────────────────────────────────────────────────────────────────────────────────┘
-....
 
 [[subsystem-external-interfaces]]
 ==== Subsystem External Interfaces
