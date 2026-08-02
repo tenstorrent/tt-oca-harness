@@ -3,7 +3,8 @@
 
 // Top-level SMU address map for a combined SMC+SEP view.
 // Not wired into the register-generation build flow; kept as a source
-// reference.
+// reference. Lives in regs/include/ (not regs/) so block discovery does
+// not pick it up as a generatable top.
 //
 // Only globally accessible resources belong in this map, so drop each
 // subsystem's core-local block (SEP ICCM/DCCM/PIC, SMC PLIC/CLINT/BEU).
