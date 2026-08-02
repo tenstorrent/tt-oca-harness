@@ -1,0 +1,23 @@
+hw/sys/smu/synth/constraints.sdc
+  s_d605cb93395a31::t_e6d87434877a63 407-408
+hw/sys/smc/dv/docs/SMC_VPLAN.adoc
+  s_d605cb93395a31::t_ede82966ecbebc 217-218
+hw/sys/smc/synth/constraints.sdc
+  s_d605cb93395a31::t_b17893437618da 325-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "61629867b8de4a87f51a7e2bf02e7124efa88f5d",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
