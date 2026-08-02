@@ -37,7 +37,6 @@ module dfd_top
 	import dfd_te_pkg::*;
 	import dfd_tn_pkg::*;
 	import dfd_CL_axi_pkg::*;
-	import mem_gen_pkg::*;
 	import dfd_trace_mem_pkg::*;
 	#(
 		parameter  int unsigned                 NUM_TRACE_INST   = 1,

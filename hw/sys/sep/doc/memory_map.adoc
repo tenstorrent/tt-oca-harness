@@ -15,7 +15,7 @@ software uses either direct internal addresses (`0x1000_0000`,
 |Base Address |End Address |Size |Unit |Description
 |0x0000_0000 |0x1000_0000 |256 MB |External |External to chiplet, but not in SMU (SMC, DTP, etc).
 |0x1000_0000 |0x2000_0000 |256 MB |SEP Local |SEP Local resources (DMA, Crypto, etc)
-|0x2000_0000 |0x4000_0000 |512 MB |SEP AXI Extension |To be used by external IP (Cadence SPI, etc)
+|0x2000_0000 |0x4000_0000 |512 MB |SEP AXI Extension |Reserved for adopter extension IP
 |0x4000_0000 |0x8000_0000 |1 GB |SMC |SMC Resources
 |0x8000_0000 |0xC000_0000 |1 GB |SMU |SMU Resources (DTP, etc)
 |0xC000_0000 |0xD000_0000 |256 MB |SEP CPU Resources |EL2 Veer Resources (DCCM, ICCM, PIC)
@@ -88,5 +88,87 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 |0x1100_0000 |0x117F_FFFF |8 MB |AP Remap Region |Write to this region to be routed to the AP remapper
 |0x1180_0000 |0x11FF_FFFF |8 MB |STEE Remap Region |Write to this region to be routed to the STEE remapper
 |0x1200_0000 |0x1FFF_FFFF |20 MB |_RSV_ |Reserved
-|0x2000_0000 |0x4000_0000 |512 MB |AXI Extension Region |Currently used for Cadence SPI
+|0x2000_0000 |0x4000_0000 |512 MB |AXI Extension Region |Reserved for adopter extension IP
 |=======================================================================
+
+[[sep-detailed-register-map]]
+=== Detailed Register Map
+
+The following register tables are generated from the SEP register description
+(RDL) sub-blocks under `hw/sys/sep/regs/`. Each entry corresponds to a unit in
+the SEP memory map above.
+
+==== CPU Control and Interrupts
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_cpu_ctrl.html[]
+include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/el2_pic.adoc[]
+endif::backend-pdf[]
+
+==== Reset and Lifecycle
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
+include::partial$sep/regs/gen/html/blocks/sep_lifecycle_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[]
+endif::backend-pdf[]
+
+==== Scratch and eFuse
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_scratch.html[]
+include::partial$sep/regs/gen/html/blocks/sep_efuse_map.html[]
+include::partial$sep/regs/gen/html/blocks/efuse_mmr.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_scratch.adoc[]
+include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[]
+include::../regs/gen/adoc/blocks/efuse_mmr.adoc[]
+endif::backend-pdf[]
+
+==== Timers
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/aon_timer.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/aon_timer.adoc[]
+endif::backend-pdf[]
+
+==== Cryptographic Accelerators
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/aes.html[]
+include::partial$sep/regs/gen/html/blocks/hmac.html[]
+include::partial$sep/regs/gen/html/blocks/kmac.html[]
+include::partial$sep/regs/gen/html/blocks/otbn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/aes.adoc[]
+include::../regs/gen/adoc/blocks/hmac.adoc[]
+include::../regs/gen/adoc/blocks/kmac.adoc[]
+include::../regs/gen/adoc/blocks/otbn.adoc[]
+endif::backend-pdf[]
+

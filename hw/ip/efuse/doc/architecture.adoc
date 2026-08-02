@@ -134,9 +134,8 @@ types:
 [width="100%",cols="20%,80%",options="header",]
 |=====================================================================================
 |OTP Variant |Hardware Interface Signals
-|Samsung OTP
-|`addr, ceb, cle, dle, pgmen, readen, web, cpumpen, din, vddrdy, clken`
-→ `dout[31:0], lock[7:0]`
+|Adopter OTP macro
+|Adopter-defined macro-side signals
 
 |Current Example Model |APB interface with register-based control
 |=====================================================================================

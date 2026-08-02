@@ -1054,7 +1054,7 @@ module dfd_trace_sink
   // --------------------------------------------------------------------------
   // 32KB = 8 instances of 512x64 macros
   // for (genvar gc=0; gc<TRC_RAM_INSTANCES; gc++) begin: TrcSinkCells
-  //   dfd_rv_mem_model #( .CELL(mem_gen_pkg::mem_ln04lpp_s00_mc_rf1rw_hsr_lvt_512x64m2b1c1r2),
+  //   dfd_rv_mem_model #(
   //                   .ADDR_WIDTH(TRC_RAM_INDEX_WIDTH),
   //                   .DATA_WIDTH(TRC_RAM_DATA_WIDTH),
   //                   .RW_PORTS(1)

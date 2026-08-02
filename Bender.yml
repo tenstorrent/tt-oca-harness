@@ -424,7 +424,6 @@ sources:
       - hw/ip/dfd/rtl/pkg/dfd_addr_map_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_CL_axi_pkg.svh
-      - hw/ip/dfd/rtl/pkg/mem_gen_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_cla_csr_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_cr_csr_pkg.svh
       - hw/ip/dfd/rtl/pkg/dfd_cr_4b_csr_pkg.svh

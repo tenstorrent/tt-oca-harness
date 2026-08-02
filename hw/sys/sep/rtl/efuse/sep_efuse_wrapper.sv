@@ -381,7 +381,7 @@ module sep_efuse_wrapper
 		.security_disable_o         (security_disable), // Used for LC control, and secure_tm latch logic
 		.shadow_regs_o              (shadow_regs_o),
 
-		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // In grendel this was mem_repair_done from SMC (now DTB?) and straps from SMC
+		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
 
 		.prod_dbg_active_i          (prod_dbg_active_i),
 

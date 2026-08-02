@@ -538,8 +538,8 @@ IBI
 5. After IBI completion, controller resumes interrupted transaction from saved
 state
 
-*Benefit*: Cadence I3C does not support this mechanism. OCA's implementation
-allows targets to interrupt ongoing transactions rather than waiting for bus
+*Benefit*: OCA's implementation allows targets to interrupt ongoing
+transactions rather than waiting for bus
 idle, reducing IBI response latency by up to milliseconds in active systems.
 
 *IBI Processing Flow*:
