@@ -125,13 +125,12 @@ int rom_check_key(uint8_t handle) {
     if (rom_keyreg_get_crc(&rom_keyreg_state, handle, &stored_crc) < 0) return -1;
 
     uint8_t key_len;
-    rom_km_dest_bits_t dest_valid;
-    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0) return -1;
+    if (rom_kpv_get_key_info(base_slot, &key_len) < 0) return -1;
 
     if (key_len > ROM_KM_MAX_KEY_WORDS) return -1;
 
     uint32_t key_buf[ROM_KM_MAX_KEY_WORDS];
-    if (rom_kpv_read_key(base_slot, key_buf, &key_len, &dest_valid) < 0) {
+    if (rom_kpv_read_key(base_slot, key_buf, &key_len) < 0) {
         rom_secure_memzero(key_buf, (size_t)key_len * sizeof(key_buf[0]));
         return -1;
     }
@@ -173,12 +172,14 @@ int rom_transfer_key(uint8_t handle, rom_km_dest_bits_t dest_engines) {
 
     uint8_t key_len;
     rom_km_dest_bits_t dest_valid;
-    if (rom_kpv_get_key_info(base_slot, &key_len, &dest_valid) < 0) return -1;
+    if (rom_keyreg_get_dest_valid(&rom_keyreg_state, handle, &dest_valid) < 0) return -1;
+
+    if (rom_kpv_get_key_info(base_slot, &key_len) < 0) return -1;
 
     if (key_len > ROM_KM_MAX_KEY_WORDS) return -1;
 
     uint32_t key_buf[ROM_KM_MAX_KEY_WORDS];
-    if (rom_kpv_read_key(base_slot, key_buf, &key_len, &dest_valid) < 0) {
+    if (rom_kpv_read_key(base_slot, key_buf, &key_len) < 0) {
         rom_secure_memzero(key_buf, (size_t)key_len * sizeof(key_buf[0]));
         return -1;
     }
@@ -281,14 +282,14 @@ int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, const uint32_t
     uint32_t key_crc = rom_crc32c((const uint8_t *)key_data, (uint32_t)(key_size + 1u) * 4u);
 
     /* Register the handle before any KPV mutation; roll back on KPV failure. */
-    int h = rom_keyreg_generate(&rom_keyreg_state, base, num_slots, key_crc);
+    int h = rom_keyreg_generate(&rom_keyreg_state, base, num_slots, key_crc, dest_valid);
     if (h < 0) return -2;
 
     /* Shred all selected slots before writing SEP-supplied data. */
     for (uint8_t s = 0; s < num_slots; s++) rom_kpv_shred_slot(base + s, &rom_prng_state);
 
-    /* Write key data and control fields (EXTEND, LAST_DWORD, DEST_VALID). */
-    if (rom_kpv_write_key(base, key_data, (uint8_t)(key_size + 1u), dest_valid) < 0) {
+    /* Write key data and control fields (EXTEND, LAST_DWORD). */
+    if (rom_kpv_write_key(base, key_data, (uint8_t)(key_size + 1u)) < 0) {
         rom_keyreg_destroy(&rom_keyreg_state, (uint8_t)h);
         return -3;
     }

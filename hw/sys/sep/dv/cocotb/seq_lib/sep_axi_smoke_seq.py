@@ -2,14 +2,17 @@
 """Sequence for sep_axi_smoke_test.
 
 Real AXI traffic over the CPU LSU bus (no booted CPU):
-  1. Reset-value read of sep_cpu_ctrl.CLOCK_GATE_CTRL (decode sanity).
-  2. Write -> readback of several pure-RW sep_cpu_ctrl scratch registers,
-     each with a distinct pattern, to prove writes land and read back exactly.
+  1. Reset-value read of sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR (decode sanity).
+  2. Write -> readback of several RW sep_cpu_ctrl registers, each with a
+     distinct pattern, to prove writes land and read back exactly.
 
 Targets are RW registers with no hardware side effects and no external-memory
-dependency (SEP_SW_DEBUG scratch + TIMEOUT_COUNT_* thresholds, which are inert
-while TIMEOUT_ENABLE=0), so they exercise the write path without a memory model.
+dependency, so they exercise the write path without a memory model. Several are
+narrower than 32 bits, so each carries the mask of its implemented field bits.
 The scoreboard checks the AXI response and the read value for every access.
+
+Offsets and reset values follow the generated map
+(hw/sys/sep/regs/gen/py/sep_reg.py, SEP_CPU_CTRL_*).
 """
 
 from __future__ import annotations
@@ -18,21 +21,20 @@ from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
-# sep_cpu_ctrl block base on the CPU-local map (CLOCK_GATE_CTRL @ +0x8 = 0x10A3_0008).
-# Offsets/reset values follow the current generated map
-# (hw/sys/sep/regs/gen/py/sep_reg.py, SEP_CPU_CTRL_*): the pre-port map had
-# TIMEOUT_COUNT_* at +0x28/+0x30/+0x38 and CLOCK_GATE_CTRL reset 0x001F_0021.
 SEP_CPU_CTRL_BASE = 0x10A3_0000
 
-CLOCK_GATE_CTRL_ADDR = SEP_CPU_CTRL_BASE + 0x008
-CLOCK_GATE_CTRL_EXP = 0x001F_0083
+# Non-zero reset value, so a successful read proves the block actually decoded
+# rather than returning zeros from an unmapped address.
+LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL_BASE + 0x0C8
+LOCAL_BASE_ADDR_EXP = 0xD000_0000
 
-# (name, addr, pattern) — pure 32-bit RW scratch/threshold registers.
+# (name, addr, pattern, implemented-field mask)
 WRITE_READBACK = [
-    ("SEP_SW_DEBUG",         SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF),
-    ("TIMEOUT_COUNT_DMA",    SEP_CPU_CTRL_BASE + 0x048, 0x0BAD_C0DE),
-    ("TIMEOUT_COUNT_SYS_IN", SEP_CPU_CTRL_BASE + 0x058, 0xCAFE_F00D),
-    ("TIMEOUT_COUNT_MAILBOX_INBOUND", SEP_CPU_CTRL_BASE + 0x060, 0x1234_5678),
+    ("SEP_SW_DEBUG",  SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF, 0xFFFF_FFFF),
+    # nmi_vec is [31:1]; bit 0 is reserved and reads back as zero.
+    ("SEP_NMI_VEC",   SEP_CPU_CTRL_BASE + 0x180, 0x0BAD_C0DE, 0xFFFF_FFFE),
+    ("RAS_BANK_INFO", SEP_CPU_CTRL_BASE + 0x170, 0x0000_00A5, 0x0000_00FF),
+    ("PKA_CTRL",      SEP_CPU_CTRL_BASE + 0x020, 0x0000_0007, 0x0000_0007),
 ]
 
 
@@ -57,9 +59,9 @@ class sep_axi_smoke_seq(uvm_sequence):
 
     async def body(self) -> None:
         # 1. Reset-value decode sanity.
-        await self._read(CLOCK_GATE_CTRL_ADDR, expected=CLOCK_GATE_CTRL_EXP)
+        await self._read(LOCAL_BASE_ADDR_ADDR, expected=LOCAL_BASE_ADDR_EXP)
 
         # 2. Write -> readback across several RW registers (real write traffic).
-        for _name, addr, pattern in WRITE_READBACK:
+        for _name, addr, pattern, mask in WRITE_READBACK:
             await self._write(addr, pattern)
-            await self._read(addr, expected=pattern)
+            await self._read(addr, expected=pattern & mask)

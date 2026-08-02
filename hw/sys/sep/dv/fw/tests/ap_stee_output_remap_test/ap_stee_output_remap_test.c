@@ -240,9 +240,9 @@ int main(void) {
     // Configure outbound filter 1 to allow ALL addresses (wide open)
     filter_ctrl__FILTER_CONFIG_t open_filter_config;
     open_filter_config.w = 0; // Clear all fields first
-    open_filter_config.f.read_en = 1;
-    open_filter_config.f.write_en = 1;
-    open_filter_config.f.addr_mode = 1; // Needs to be enabled since BlockByDefault is set in RTL
+    open_filter_config.f.read_allowed = 1;
+    open_filter_config.f.write_allowed = 1;
+    open_filter_config.f.entry_enabled = 1; // Needs to be enabled since BlockByDefault is set in RTL
     open_filter_config.f.allow_ns = 0;
     open_filter_config.f.allow_burst = 1;
     open_filter_config.f.locked = 0;

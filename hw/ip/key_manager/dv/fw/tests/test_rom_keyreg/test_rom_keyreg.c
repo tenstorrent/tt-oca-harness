@@ -43,9 +43,12 @@ int main(void) {
     TEST_SUBTEST_START("Generate sequential handles");
     rom_keyreg_init(&reg);
     {
-        int h1 = rom_keyreg_generate(&reg, 0, 1, 0x1111u);
-        int h2 = rom_keyreg_generate(&reg, 1, 1, 0x2222u);
-        int h3 = rom_keyreg_generate(&reg, 2, 1, 0x3333u);
+        int h1 = rom_keyreg_generate(&reg, 0, 1, 0x1111u,
+                                      (rom_km_dest_bits_t){.raw = 0x04u});
+        int h2 = rom_keyreg_generate(&reg, 1, 1, 0x2222u,
+                                      (rom_km_dest_bits_t){.raw = 0x02u});
+        int h3 = rom_keyreg_generate(&reg, 2, 1, 0x3333u,
+                                      (rom_km_dest_bits_t){.raw = 0x08u});
         TEST_ASSERT_EQ(h1, 1u, "handle 1");
         TEST_ASSERT_EQ(h2, 2u, "handle 2");
         TEST_ASSERT_EQ(h3, 3u, "handle 3");
@@ -100,7 +103,8 @@ int main(void) {
     TEST_SUBTEST_START("Destroy");
     rom_keyreg_init(&reg);
     {
-        int h = rom_keyreg_generate(&reg, 10, 1, 0xAAAAu);
+        int h = rom_keyreg_generate(&reg, 10, 1, 0xAAAAu,
+                                    (rom_km_dest_bits_t){.raw = 0x04u});
         TEST_ASSERT_EQ(h, 1u, "generated handle");
 
         int rc = rom_keyreg_destroy(&reg, (uint8_t)h);
@@ -118,7 +122,8 @@ int main(void) {
     TEST_SUBTEST_START("Reverse map (slot_to_handle)");
     rom_keyreg_init(&reg);
     {
-        int h = rom_keyreg_generate(&reg, 5, 2, 0xBBBBu);
+        int h = rom_keyreg_generate(&reg, 5, 2, 0xBBBBu,
+                                    (rom_km_dest_bits_t){.raw = 0x04u});
         if (h < 1) {
             TEST_FAIL("generate returned %d", h);
         }
@@ -138,12 +143,14 @@ int main(void) {
     {
         uint32_t i;
         for (i = 0; i < 255; i++) {
-            int h = rom_keyreg_generate(&reg, (uint8_t)(i % ROM_KM_KPV_NUM_SLOTS), 1, i);
+            int h = rom_keyreg_generate(&reg, (uint8_t)(i % ROM_KM_KPV_NUM_SLOTS), 1, i,
+                                        (rom_km_dest_bits_t){.raw = 0x04u});
             if (h < 1) {
                 TEST_FAIL("generate failed at i=%u, returned %d", (unsigned)i, h);
             }
         }
-        int overflow = rom_keyreg_generate(&reg, 0, 1, 0xFFFFu);
+        int overflow = rom_keyreg_generate(&reg, 0, 1, 0xFFFFu,
+                                           (rom_km_dest_bits_t){.raw = 0x04u});
         if (overflow != -1) {
             TEST_FAIL("256th generate should return -1, got %d", overflow);
         }

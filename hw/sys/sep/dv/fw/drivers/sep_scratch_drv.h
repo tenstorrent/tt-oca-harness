@@ -8,8 +8,8 @@
 // run an AXI master while the EL2 owns the LSU bus. (Addresses are SEP fabric
 // facts; meta/registers sep_scratch. Cold base = 0x1080_2000, 8-byte stride.)
 
-#ifndef SEP_SCRATCH_H
-#define SEP_SCRATCH_H
+#ifndef SEP_SCRATCH_DRV_H
+#define SEP_SCRATCH_DRV_H
 
 #include <stdint.h>
 

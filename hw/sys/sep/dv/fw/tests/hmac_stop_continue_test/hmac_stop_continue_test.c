@@ -29,14 +29,14 @@ static int wait_for_done_or_idle(void) {
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) break;
+        if (intr.f.hmac_done || sts.f.hmac_idle) break;
     }
     if (timeout <= 0) {
         printf("Timeout waiting for HMAC completion\n");
         return -1;
     }
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (intr.f.HMAC_DONE) {
+    if (intr.f.hmac_done) {
         WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
@@ -46,18 +46,18 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (sts.f.HMAC_IDLE) return 0;
+        if (sts.f.hmac_idle) return 0;
     }
     printf("Timeout waiting for HMAC idle\n");
     return -1;
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        while (s.f.FIFO_FULL) {
+        while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("FIFO full timeout\n");
                 return -1;
@@ -80,14 +80,14 @@ static void to_hex(const uint8_t *in, char *out, int len) {
 
 static void read_digest(uint8_t digest[32]) {
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 }
 
 static void cleanup(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
@@ -113,15 +113,15 @@ int main(void) {
     /* ---- Single-pass hash ---- */
     printf("[Single-pass] Hashing \"Hello World!\"...\n");
 
-    hmac__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.SHA_EN = 1;
-    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.sha_en = 1;
+    cfg.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t cmd_start = {.f.HASH_START = 1};
+    hmac__CMD_t cmd_start = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
 
     if (feed_msg(full_msg, full_len) != 0) {
@@ -132,7 +132,7 @@ int main(void) {
         }
     }
 
-    hmac__CMD_t cmd_proc = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t cmd_proc = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
 
     if (wait_for_done_or_idle() != 0) {
@@ -157,8 +157,8 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg2 = {.w = 0};
-    cfg2.f.SHA_EN = 1;
-    cfg2.f.DIGEST_SIZE = 1;
+    cfg2.f.sha_en = 1;
+    cfg2.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg2.w);
 
     /* hash_start */
@@ -174,7 +174,7 @@ int main(void) {
     }
 
     /* hash_stop */
-    hmac__CMD_t cmd_stop = {.f.HASH_STOP = 1};
+    hmac__CMD_t cmd_stop = {.f.hash_stop = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_stop.w);
 
     /* hash_stop at a 64-byte boundary generates hmac_done then asserts hmac_idle.
@@ -189,7 +189,7 @@ int main(void) {
     printf("HMAC idle/done after hash_stop: OK\n");
 
     /* hash_continue */
-    hmac__CMD_t cmd_cont = {.f.HASH_CONTINUE = 1};
+    hmac__CMD_t cmd_cont = {.f.hash_continue = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_cont.w);
 
     /* Feed part 2 */

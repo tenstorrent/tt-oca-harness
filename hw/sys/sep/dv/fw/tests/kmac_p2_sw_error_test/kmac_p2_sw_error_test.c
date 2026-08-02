@@ -23,7 +23,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (status.f.SHA3_IDLE) {
+        if (status.f.sha3_idle) {
             return 0;
         }
     }
@@ -34,7 +34,7 @@ static int wait_for_idle(void) {
 
 static void clear_error(void) {
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.ERR_PROCESSED = 1;
+    cmd.f.err_processed = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
 }
@@ -56,7 +56,7 @@ static int expect_error(const char *name, uint32_t expected) {
     int pass = 1;
 
     printf("  %s ERR_CODE=0x%08x expected=0x%08x INTR_STATE=0x%08x kmac_err=%u\n", name, err.w,
-           expected, intr.w, intr.f.KMAC_ERR);
+           expected, intr.w, intr.f.kmac_err);
 
     if (err.w == 0) {
         printf("  FAIL: no KMAC error reported\n");
@@ -65,7 +65,7 @@ static int expect_error(const char *name, uint32_t expected) {
         printf("  INFO: expected code differs, but hardware reported a valid non-zero error\n");
     }
 
-    if (!intr.f.KMAC_ERR) {
+    if (!intr.f.kmac_err) {
         printf("  FAIL: kmac_err interrupt state did not assert\n");
         pass = 0;
     }
@@ -92,18 +92,18 @@ static int test_hash_without_entropy_ready(void) {
     /* kmac_errchk.sv check_entropy_ready gates on kmac_en_i=1; run cSHAKE/L128
      * with entropy_ready=0 so the IP reports ErrSwHashingWithoutEntropyReady. */
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 1;
-    cfg.f.MODE = 0x2;      /* cSHAKE (mandatory companion of kmac_en=1) */
-    cfg.f.KSTRENGTH = 0x0; /* L128 (valid for Shake/cSHAKE) */
-    cfg.f.ENTROPY_MODE = 0x1;
-    cfg.f.ENTROPY_READY = 0;
+    cfg.f.kmac_en = 1;
+    cfg.f.mode = 0x2;      /* cSHAKE (mandatory companion of kmac_en=1) */
+    cfg.f.kstrength = 0x0; /* L128 (valid for Shake/cSHAKE) */
+    cfg.f.entropy_mode = 0x1;
+    cfg.f.entropy_ready = 0;
     write_cfg_shadowed(cfg);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29; /* START */
+    cmd.f.cmd = 29; /* START */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x00636261u);
-    cmd.f.CMD = 46; /* PROCESS */
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00636261u);
+    cmd.f.cmd = 46; /* PROCESS */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return expect_error("ErrSwHashingWithoutEntropyReady", 0x09);
@@ -118,19 +118,19 @@ static int test_unsupported_mode_strength(void) {
     seed_entropy();
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 0;
-    cfg.f.MODE = 0x0;      /* SHA3 */
-    cfg.f.KSTRENGTH = 0x0; /* L128 is unsupported for SHA3 */
-    cfg.f.ENTROPY_MODE = 0x1;
-    cfg.f.ENTROPY_READY = 1;
-    cfg.f.EN_UNSUPPORTED_MODESTRENGTH = 0;
+    cfg.f.kmac_en = 0;
+    cfg.f.mode = 0x0;      /* SHA3 */
+    cfg.f.kstrength = 0x0; /* L128 is unsupported for SHA3 */
+    cfg.f.entropy_mode = 0x1;
+    cfg.f.entropy_ready = 1;
+    cfg.f.en_unsupported_modestrength = 0;
     write_cfg_shadowed(cfg);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29; /* START */
+    cmd.f.cmd = 29; /* START */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x00636261u);
-    cmd.f.CMD = 46; /* PROCESS */
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00636261u);
+    cmd.f.cmd = 46; /* PROCESS */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return expect_error("ErrUnexpectedModeStrength", 0x06);
@@ -144,9 +144,9 @@ int main(void) {
     printf("========================================\n");
 
     kmac__INTR_ENABLE_t intr_en = {.w = 0};
-    intr_en.f.KMAC_DONE = 1;
-    intr_en.f.FIFO_EMPTY = 1;
-    intr_en.f.KMAC_ERR = 1;
+    intr_en.f.kmac_done = 1;
+    intr_en.f.fifo_empty = 1;
+    intr_en.f.kmac_err = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
     clear_error();
 

@@ -136,22 +136,58 @@ int rom_kpv_shred_slot(uint8_t slot, rom_km_prng_state_t *prng) {
 }
 
 /*===========================================================================
+ * Hardware erase
+ *===========================================================================*/
+
+/**
+ * @brief Hardware-erase the base slot and all extended slots, then wait.
+ *
+ * Asserts CTRL.erase on every slot spanned by the key and busy-waits until
+ * hardware self-clears each erase bit (slot data overwritten with LFSR output
+ * and CTRL cleared, incl. locks — erase is not gated by the slot locks).
+ *
+ * @param[in] base_slot First slot index (EXTEND field determines span).
+ */
+void rom_kpv_erase_slot(uint8_t base_slot) {
+    uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
+
+    /* Assert the erase trigger on every slot of the key.  The write-1 trigger
+     * is issued three times per slot so a single skipped store (e.g. from a
+     * fault-injection glitch) cannot prevent the erase from starting. */
+    for (uint8_t s = 0; s <= extend; s++) {
+        km_kpv__ctrl_reg_t ctrl;
+        ctrl.w = KPV_CTRL(base_slot + s).w;
+        ctrl.f.erase = 1;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
+        KPV_CTRL(base_slot + s).w = ctrl.w;
+    }
+
+    /* Wait until hardware self-clears each erase bit: the slot data has been
+     * overwritten and its CTRL register (incl. locks) cleared, so the slot is
+     * reusable. */
+    for (uint8_t s = 0; s <= extend; s++) {
+        while (KPV_CTRL(base_slot + s).f.erase)
+            ;
+    }
+}
+
+/*===========================================================================
  * Write key
  *===========================================================================*/
 
 /**
  * @brief Write a key into one or more consecutive KPV slots.
  *
- * Configures EXTEND, LAST_DWORD, and DEST_VALID control fields.
+ * Configures EXTEND and LAST_DWORD control fields. The permitted-destination
+ * mask is tracked in the software key registry (rom_keyreg), not in KPV CTRL.
  *
  * @param[in] base_slot  First slot index.
  * @param[in] key        Key data array.
  * @param[in] key_len    Key length in 32-bit words.
- * @param[in] dest_valid Permitted destination engine bitmask.
  * @return 0 on success, -1 if any required slot is write-locked.
  */
-int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len,
-                      rom_km_dest_bits_t dest_valid) {
+int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len) {
     uint8_t extend = (uint8_t)((key_len - 1) / ROM_KM_KPV_WORDS_PER_SLOT);
     uint8_t num_slots = extend + 1;
 
@@ -166,7 +202,6 @@ int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len,
         km_kpv__ctrl_reg_t ctrl;
         ctrl.w = 0;
         ctrl.f.extend = ((s == 0) ? extend : 0) & 0x7u;
-        ctrl.f.dest_valid = dest_valid.raw;
 
         if (s == num_slots - 1) {
             uint8_t rem = key_len % ROM_KM_KPV_WORDS_PER_SLOT;
@@ -191,20 +226,19 @@ int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len,
 }
 
 /*===========================================================================
- * Get key info (length and dest_valid from control registers only)
+ * Get key info (length from control registers only)
  *===========================================================================*/
 
 /**
- * @brief Get key length and dest_valid from KPV control registers.
+ * @brief Get key length from KPV control registers.
  *
  * Performs same validation as rom_kpv_read_key; does not read key data.
  *
  * @param[in]  base_slot  Base slot index (0-31).
  * @param[out] key_len    Receives total key length in words.
- * @param[out] dest_valid Receives DEST_VALID bitmask from base slot.
  * @return 0 on success, -1 if read-locked or malformed.
  */
-int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t *dest_valid) {
+int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len) {
     km_kpv__ctrl_reg_t base_ctrl;
     base_ctrl.w = KPV_CTRL(base_slot).w;
 
@@ -222,7 +256,6 @@ int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t
     km_kpv__ctrl_reg_t final_ctrl;
     final_ctrl.w = KPV_CTRL(base_slot + extend).w;
     *key_len = (uint8_t)(ROM_KM_KPV_WORDS_PER_SLOT * extend + final_ctrl.f.last_dword + 1);
-    dest_valid->raw = (uint8_t)base_ctrl.f.dest_valid;
     return 0;
 }
 
@@ -238,12 +271,10 @@ int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len, rom_km_dest_bits_t
  * @param[in]  base_slot  First slot index (must have EXTEND set).
  * @param[out] key        Output buffer (caller must provide >= key_len words).
  * @param[out] key_len    Receives the reconstructed key length in words.
- * @param[out] dest_valid Receives the DEST_VALID bitmask from the base slot.
  * @return 0 on success, -1 if any slot is read-locked or malformed.
  */
-int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len,
-                     rom_km_dest_bits_t *dest_valid) {
-    if (rom_kpv_get_key_info(base_slot, key_len, dest_valid) < 0) return -1;
+int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len) {
+    if (rom_kpv_get_key_info(base_slot, key_len) < 0) return -1;
 
     uint8_t total_len = *key_len;
     uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;

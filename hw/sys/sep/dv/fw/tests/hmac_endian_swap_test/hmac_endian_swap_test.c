@@ -25,14 +25,14 @@ static int wait_for_done_or_idle(void) {
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) break;
+        if (intr.f.hmac_done || sts.f.hmac_idle) break;
     }
     if (timeout <= 0) {
         printf("Timeout waiting for HMAC completion\n");
         return -1;
     }
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (intr.f.HMAC_DONE) {
+    if (intr.f.hmac_done) {
         WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
@@ -43,11 +43,11 @@ static int wait_for_done_or_idle(void) {
  * affected by this setting." Word-granularity writes are required. */
 static int feed_msg_words(const uint32_t *words, uint32_t count) {
     volatile uint32_t *fifo32 =
-        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+        (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < count; i++) {
         int spins = 0;
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        while (s.f.FIFO_FULL) {
+        while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("FIFO full timeout\n");
                 return -1;
@@ -60,17 +60,17 @@ static int feed_msg_words(const uint32_t *words, uint32_t count) {
 }
 
 static int hash_abc_with_swap(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_out[8]) {
-    hmac__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.SHA_EN = 1;
-    cfg.f.DIGEST_SIZE = 1;
-    cfg.f.ENDIAN_SWAP = endian_swap;
-    cfg.f.DIGEST_SWAP = digest_swap;
+    cfg.f.sha_en = 1;
+    cfg.f.digest_size = 1;
+    cfg.f.endian_swap = endian_swap;
+    cfg.f.digest_swap = digest_swap;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Write "abc\x00" as one 32-bit word (0x61626300).
@@ -79,17 +79,17 @@ static int hash_abc_with_swap(uint32_t endian_swap, uint32_t digest_swap, uint32
     const uint32_t msg_word[] = {0x61626300u};
     if (feed_msg_words(msg_word, 1) != 0) return -1;
 
-    hmac__CMD_t proc = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t proc = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, proc.w);
 
     if (wait_for_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        digest_out[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
+        digest_out[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
 
     hmac__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg_off.f.SHA_EN = 0;
+    cfg_off.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg_off.w);
     WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);

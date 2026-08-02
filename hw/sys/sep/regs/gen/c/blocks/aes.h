@@ -117,6 +117,7 @@ typedef union {
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bm 0x1
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bp 0
 #define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bw 1
+#define AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CTRL_AUX_REGWEN :1;

@@ -20,6 +20,7 @@
 #include "rom_sideload.h"
 #include "rom_keymgmt.h"
 #include "rom_kmcsr.h"
+#include "rom_otp.h"
 #include "rom_persist.h"
 #include "rom_handover.h"
 #include "rom_secutil.h"
@@ -121,6 +122,10 @@ rom_km_cmd_result_t rom_cmd_dispatch(uint8_t cmd_id, uint8_t cmd_seq, uint8_t pa
         vr = rom_cmd_validate_payload_length(payload_len, 1);
         if (vr.return_code != ROM_KM_RC_SUCCESS) return vr;
         return rom_cmd_abr_sk_transfer((const rom_km_cmd_abr_sk_transfer_args_t *)payload);
+    case ROM_KM_CMD_OTP_READ_LOCK_COLD:
+        vr = rom_cmd_validate_payload_length(payload_len, 1);
+        if (vr.return_code != ROM_KM_RC_SUCCESS) return vr;
+        return rom_cmd_otp_read_lock_cold((const rom_km_cmd_otp_read_lock_cold_args_t *)payload);
     default:
         return (rom_km_cmd_result_t){ROM_KM_RC_INVALID_CMD, 0, 0};
     }
@@ -351,6 +356,28 @@ rom_km_cmd_result_t rom_cmd_abr_sk_transfer(const rom_km_cmd_abr_sk_transfer_arg
 
     rom_km_handle_ret_t ret = {.key_handle = handle};
     return (rom_km_cmd_result_t){ROM_KM_RC_SUCCESS, 1, ret.raw};
+}
+
+/**
+ * @brief Set cold-reset-domain OTP read-lock bits (CMD_OTP_READ_LOCK_COLD 0x28).
+ *
+ * Validates that no reserved bits ([31:6]) are set in LOCK_BITS, then applies
+ * the bits to OTP_READ_LOCK_COLD via the triple-write convention and echoes the
+ * resulting register value.  Bits are write-1-only (woset) and survive warm
+ * reset; only cold reset clears them.
+ *
+ * @param args Parsed command payload (word 0 = LOCK_BITS).
+ * @return Success with return_arg = OTP_READ_LOCK_COLD value after write,
+ *         or ROM_KM_RC_INVALID_ARG if reserved bits are set.
+ */
+rom_km_cmd_result_t rom_cmd_otp_read_lock_cold(const rom_km_cmd_otp_read_lock_cold_args_t *args) {
+    if (args->lock_bits & ~ROM_KM_OTP_READ_LOCK_COLD_VALID_MASK)
+        return (rom_km_cmd_result_t){ROM_KM_RC_INVALID_ARG, 1, args->lock_bits};
+
+    rom_otp_set_read_lock_cold(args->lock_bits);
+
+    uint32_t result = ROM_OTP_READ_LOCK_COLD_REG.w;
+    return (rom_km_cmd_result_t){ROM_KM_RC_SUCCESS, 1, result};
 }
 
 /*===========================================================================

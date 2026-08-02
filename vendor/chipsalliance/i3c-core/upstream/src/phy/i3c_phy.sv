@@ -32,7 +32,7 @@ module i3c_phy (
 `ifndef DISABLE_INPUT_FF
 
   // Synchronize SCL to system clock
-  caliptra_prim_flop_2sync #(
+  prim_flop_2sync #(
       .Width(1),
       .ResetValue(1)
   ) scl_synchronizer (
@@ -43,7 +43,7 @@ module i3c_phy (
   );
 
   // Synchronize SDA to system clock
-  caliptra_prim_flop_2sync #(
+  prim_flop_2sync #(
       .Width(1),
       .ResetValue(1)
   ) sda_synchronizer (

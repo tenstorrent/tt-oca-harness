@@ -133,12 +133,14 @@ static I3C_Status i3c_stub_receive_payload(I3C_Driver *drv, uint8_t *buffer, siz
 
 static I3C_Status i3c_stub_receive_payload_stream(I3C_Driver *drv, uint8_t *buffer,
                                                   size_t buffer_length, size_t *bytes_received,
-                                                  uint32_t timeout, bool expect_excess_bytes) {
+                                                  uint32_t timeout, bool expect_excess_bytes,
+                                                  bool is_flush) {
     (void)drv;
     (void)buffer;
     (void)buffer_length;
     (void)timeout;
     (void)expect_excess_bytes;
+    (void)is_flush;
     if (bytes_received) *bytes_received = 0;
     return I3C_ERR_HW;
 }

@@ -209,7 +209,7 @@ extern const uint8_t __km_fw_load_limit[];
  * Command IDs
  *===========================================================================*/
 
-/** @brief Command identifiers (sparse: 0x00-0x04, 0x10-0x12, and 0x22-0x26). */
+/** @brief Command identifiers (sparse: 0x00-0x04, 0x10-0x12, and 0x22-0x28). */
 typedef enum {
     ROM_KM_CMD_HW_VER = 0x00,    /**< Query hardware version */
     ROM_KM_CMD_ROM_VER = 0x01,   /**< Query ROM firmware version */
@@ -219,18 +219,19 @@ typedef enum {
     ROM_KM_CMD_EXEC_ROM = 0x10,  /**< Continue executing ROM; ignore subsequent handover commands */
     ROM_KM_CMD_SRAM_LOAD_EXEC =
         0x11, /**< Accept firmware image via mailbox, load to SRAM, and execute */
-    ROM_KM_CMD_SRAM_EXEC = 0x12,      /**< Jump to pre-loaded mutable firmware in SRAM */
-    ROM_KM_CMD_KEY_GENERATE = 0x22,   /**< Generate a random key */
-    ROM_KM_CMD_KEY_REVOKE = 0x23,     /**< Revoke a key by handle */
-    ROM_KM_CMD_KEY_TRANSFER = 0x24,   /**< Transfer a key to crypto engines */
-    ROM_KM_CMD_ENGINE_SHRED = 0x25,   /**< Shred crypto engine sideload keys */
-    ROM_KM_CMD_KEY_LOAD = 0x26,       /**< Load SEP-supplied key material via mailbox */
-    ROM_KM_CMD_ABR_SK_TRANSFER = 0x27 /**< Capture ML-KEM shared key from ABR into KPV */
+    ROM_KM_CMD_SRAM_EXEC = 0x12,       /**< Jump to pre-loaded mutable firmware in SRAM */
+    ROM_KM_CMD_KEY_GENERATE = 0x22,    /**< Generate a random key */
+    ROM_KM_CMD_KEY_REVOKE = 0x23,      /**< Revoke a key by handle */
+    ROM_KM_CMD_KEY_TRANSFER = 0x24,    /**< Transfer a key to crypto engines */
+    ROM_KM_CMD_ENGINE_SHRED = 0x25,    /**< Shred crypto engine sideload keys */
+    ROM_KM_CMD_KEY_LOAD = 0x26,        /**< Load SEP-supplied key material via mailbox */
+    ROM_KM_CMD_ABR_SK_TRANSFER = 0x27, /**< Capture ML-KEM shared key from ABR into KPV */
+    ROM_KM_CMD_OTP_READ_LOCK_COLD = 0x28 /**< Set cold-reset-domain OTP read-lock bits */
 } rom_km_cmd_id_t;
 
 /** @brief Evaluate to non-zero if @p id is a valid command ID. */
 #define ROM_KM_CMD_IS_VALID(id) \
-    ((id) <= 0x04 || ((id) >= 0x10 && (id) <= 0x12) || ((id) >= 0x22 && (id) <= 0x27))
+    ((id) <= 0x04 || ((id) >= 0x10 && (id) <= 0x12) || ((id) >= 0x22 && (id) <= 0x28))
 
 /*===========================================================================
  * Response IDs
@@ -406,6 +407,21 @@ typedef struct {
 typedef struct {
     uint32_t dest_valid; /**< [7:0] destination engine bitmask; RESERVED[31:8] must be 0 */
 } rom_km_cmd_abr_sk_transfer_args_t;
+
+/** @brief Payload for CMD_OTP_READ_LOCK_COLD (0x28): 1 word.
+ *
+ * word 0: LOCK_BITS[5:0]  RESERVED[31:6]=0  — OTP field read-lock bitmask
+ *   applied to the cold-reset-domain OTP_READ_LOCK_COLD register (woset).
+ * RESERVED[31:6] must be zero; non-zero reserved bits return INVALID_ARG.
+ * Bits can only be set, not cleared.  Already-set bits are unaffected (woset).
+ * The return argument echoes the resulting OTP_READ_LOCK_COLD register value.
+ */
+typedef struct {
+    uint32_t lock_bits; /**< [5:0] OTP field bitmask; RESERVED[31:6] must be 0 */
+} rom_km_cmd_otp_read_lock_cold_args_t;
+
+/** @brief Valid (non-reserved) bit mask for CMD_OTP_READ_LOCK_COLD lock_bits. */
+#define ROM_KM_OTP_READ_LOCK_COLD_VALID_MASK 0x3Fu
 
 /**
  * @brief Payload for CMD_SRAM_LOAD_EXEC (0x11): 1 word.

@@ -18,7 +18,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (s.f.SHA3_IDLE) return 0;
+        if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for idle\n");
     return -1;
@@ -45,8 +45,8 @@ static int test_cfg_regwen(void) {
 
     printf("=== Step 1: Check CFG_REGWEN default (expect 1) ===\n");
     kmac__CFG_REGWEN_t rw = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
-    printf("CFG_REGWEN = %u\n", rw.f.EN);
-    if (rw.f.EN != 1) {
+    printf("CFG_REGWEN = %u\n", rw.f.en);
+    if (rw.f.en != 1) {
         printf("FAIL: expected en=1 at idle\n");
         errors++;
     }
@@ -55,10 +55,10 @@ static int test_cfg_regwen(void) {
     if (wait_for_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 0;
-    cfg.f.MODE = 0x0;
-    cfg.f.KSTRENGTH = 0x2;
-    cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.kmac_en = 0;
+    cfg.f.mode = 0x0;
+    cfg.f.kstrength = 0x2;
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -71,18 +71,18 @@ static int test_cfg_regwen(void) {
 
     printf("=== Step 3: Configure and START (SHA3-256) ===\n");
     setup_entropy();
-    cfg.f.ENTROPY_READY = 1;
+    cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29;
+    cmd.f.cmd = 29;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     printf("=== Step 4: Check CFG_REGWEN after START (expect 0) ===\n");
     rw.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR);
-    printf("CFG_REGWEN = %u\n", rw.f.EN);
-    if (rw.f.EN != 0) {
+    printf("CFG_REGWEN = %u\n", rw.f.en);
+    if (rw.f.en != 0) {
         printf("FAIL: expected en=0 during operation\n");
         errors++;
     }
@@ -91,11 +91,11 @@ static int test_cfg_regwen(void) {
     uint32_t saved_cfg = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
 
     kmac__CFG_SHADOWED_t alt_cfg = {.w = 0};
-    alt_cfg.f.KMAC_EN = 0;
-    alt_cfg.f.MODE = 0x1;
-    alt_cfg.f.KSTRENGTH = 0x2;
-    alt_cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
-    alt_cfg.f.ENTROPY_READY = 1;
+    alt_cfg.f.kmac_en = 0;
+    alt_cfg.f.mode = 0x1;
+    alt_cfg.f.kstrength = 0x2;
+    alt_cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    alt_cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
 
@@ -110,22 +110,22 @@ static int test_cfg_regwen(void) {
     }
 
     printf("=== Step 6: Complete operation (PROCESS, wait done, DONE) ===\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x74736574);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
-    cmd.f.CMD = 46;
+    cmd.f.cmd = 46;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    cmd.f.CMD = 22;
+    cmd.f.cmd = 22;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     printf("=== Step 7: Check CFG_REGWEN after DONE (expect 1) ===\n");
     if (wait_for_idle() != 0) return -1;
 
     rw.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR);
-    printf("CFG_REGWEN = %u\n", rw.f.EN);
-    if (rw.f.EN != 1) {
+    printf("CFG_REGWEN = %u\n", rw.f.en);
+    if (rw.f.en != 1) {
         printf("FAIL: expected en=1 after DONE\n");
         errors++;
     }

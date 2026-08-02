@@ -172,7 +172,7 @@ static inline uint64_t read_mailbox(uint8_t mailbox_num, uint8_t is_inbound, uin
 
 static inline void write_gpio_shim(uint8_t gpio_num, uint32_t offset, uint32_t value) {
     uint32_t gpio_spacing = 0x20;
-    volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((GPIO_CTRL_0__REG_MAP_BASE_ADDR +
+    volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__REG_MAP_BASE_ADDR +
                                                                   gpio_num * gpio_spacing) +
                                                                  offset);
     *p_addr = value;
@@ -180,7 +180,7 @@ static inline void write_gpio_shim(uint8_t gpio_num, uint32_t offset, uint32_t v
 
 static inline uint32_t read_gpio_shim(uint8_t gpio_num, uint32_t offset) {
     uint32_t gpio_spacing = 0x20;
-    volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((GPIO_CTRL_0__REG_MAP_BASE_ADDR +
+    volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__REG_MAP_BASE_ADDR +
                                                                   gpio_num * gpio_spacing) +
                                                                  offset);
     return *p_addr;
@@ -232,13 +232,13 @@ static inline uint32_t read_gpio(uint8_t gpio_num, uint32_t offset) {
 
 static inline void write_pll_ctrl_reg(uint32_t offset, uint32_t value) {
     volatile uint16_t *p_addr =
-        (volatile uint16_t *)(uintptr_t)(SMC_PLL_WRAP_PLL_CNTL_REG_MAP_BASE_ADDR + offset);
+        (volatile uint16_t *)(uintptr_t)(SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_REG_MAP_BASE_ADDR + offset);
     *p_addr = value;
 }
 
 static inline uint32_t read_pll_ctrl_reg(uint32_t offset) {
     volatile uint16_t *p_addr =
-        (volatile uint16_t *)(uintptr_t)(SMC_PLL_WRAP_PLL_CNTL_REG_MAP_BASE_ADDR + offset);
+        (volatile uint16_t *)(uintptr_t)(SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_REG_MAP_BASE_ADDR + offset);
     return *p_addr;
 }
 
@@ -258,14 +258,14 @@ static inline uint32_t read_abp2avsbus_ctrl_reg(uint32_t offset) {
 
 static inline void write_cgm_pll_reg(uint32_t id, uint32_t offset, uint32_t value) {
     volatile uint16_t *p_addr =
-        (volatile uint16_t *)(uintptr_t)(SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_REG_ADDR + id * 0x100 +
+        (volatile uint16_t *)(uintptr_t)(SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_REG_ADDR + id * 0x100 +
                                          offset);
     *p_addr = value;
 }
 
 static inline uint32_t read_cgm_pll_reg(uint32_t id, uint32_t offset) {
     volatile uint16_t *p_addr =
-        (volatile uint16_t *)(uintptr_t)(SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_REG_ADDR + id * 0x100 +
+        (volatile uint16_t *)(uintptr_t)(SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_REG_ADDR + id * 0x100 +
                                          offset);
     return *p_addr;
 }

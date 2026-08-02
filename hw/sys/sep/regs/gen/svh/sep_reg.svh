@@ -3892,7 +3892,7 @@ localparam longint unsigned AES_DATA_IN_REG_DEFAULT                             
 localparam longint unsigned AES_DATA_OUT_REG_DEFAULT                                                              = 32'h00000000;
 localparam longint unsigned AES_CTRL_SHADOWED_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned AES_CTRL_AUX_SHADOWED_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned AES_CTRL_AUX_REGWEN_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned AES_CTRL_AUX_REGWEN_REG_DEFAULT                                                       = 32'h00000001;
 localparam longint unsigned AES_TRIGGER_REG_DEFAULT                                                               = 32'h00000000;
 localparam longint unsigned AES_STATUS_REG_DEFAULT                                                                = 32'h00000000;
 localparam longint unsigned AES_CTRL_GCM_SHADOWED_REG_DEFAULT                                                     = 32'h00000000;

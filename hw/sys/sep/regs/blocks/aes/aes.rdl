@@ -183,7 +183,7 @@ addrmap aes {
             desc = "Auxiliary Control Register configuration enable
             bit.  If this is cleared to 0, the Auxiliary Control
             Register cannot be written anymore.";
-        } CTRL_AUX_REGWEN[0:0];
+        } CTRL_AUX_REGWEN[0:0] = 0x1;
     } CTRL_AUX_REGWEN @ 0x7c;
     reg {
         field {

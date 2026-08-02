@@ -34,11 +34,11 @@
 #define OTBN_DONE_TIMEOUT 20000
 
 static inline uint32_t otbn_dmem_read_offset(uint32_t offset) {
-    return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), offset / 4u);
+    return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u);
 }
 
 static inline void otbn_dmem_write_offset(uint32_t offset, uint32_t value) {
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), offset / 4u, value);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u, value);
 }
 
 static void fail_and_halt(int code, const char *msg) {
@@ -102,22 +102,23 @@ static int verify_address_map(void) {
         return -1;
     }
 
-    if ((OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0) - OCH_SEP_TOP_OTBN_BASE_ADDR) != 0x4000u) {
+    if ((OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR) != 0x4000u) {
         printf("ERROR: IMEM offset mismatch, actual=0x%08x\n",
-               OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0) - OCH_SEP_TOP_OTBN_BASE_ADDR);
+               OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR);
         return -1;
     }
 
-    if ((OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0) - OCH_SEP_TOP_OTBN_BASE_ADDR) != 0x8000u) {
+    if ((OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR) != 0x8000u) {
         printf("ERROR: DMEM offset mismatch, actual=0x%08x\n",
-               OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0) - OCH_SEP_TOP_OTBN_BASE_ADDR);
+               OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR - OCH_SEP_TOP_OTBN_BASE_ADDR);
         return -1;
     }
 
-    if (OCH_SEP_TOP_OTBN_IMEM_TOTAL_SIZE != 0x1000u ||
-        OCH_SEP_TOP_OTBN_DMEM_TOTAL_SIZE != 0x1000u) {
+    /* 0x1000 words of 32 bits each. */
+    if (OCH_SEP_TOP_OTBN_IMEM_SIZE != 0x4000u ||
+        OCH_SEP_TOP_OTBN_DMEM_SIZE != 0x4000u) {
         printf("ERROR: OTBN window size mismatch, imem=0x%08x dmem=0x%08x\n",
-               OCH_SEP_TOP_OTBN_IMEM_TOTAL_SIZE, OCH_SEP_TOP_OTBN_DMEM_TOTAL_SIZE);
+               OCH_SEP_TOP_OTBN_IMEM_SIZE, OCH_SEP_TOP_OTBN_DMEM_SIZE);
         return -1;
     }
 
@@ -126,8 +127,8 @@ static int verify_address_map(void) {
 
 static int verify_frontdoor_access(void) {
     printf("[DBG] Verifying OTBN frontdoor CSR/IMEM/DMEM accesses\n");
-    const uint32_t imem_last_word = (OCH_SEP_TOP_OTBN_IMEM_TOTAL_SIZE / 4u) - 1u;
-    const uint32_t dmem_last_word = (OCH_SEP_TOP_OTBN_DMEM_TOTAL_SIZE / 4u) - 1u;
+    const uint32_t imem_last_word = (OCH_SEP_TOP_OTBN_IMEM_SIZE / 4u) - 1u;
+    const uint32_t dmem_last_word = (OCH_SEP_TOP_OTBN_DMEM_SIZE / 4u) - 1u;
 
     printf("[DBG][FD-1] Reading INTR_ENABLE (save)...\n");
     const uint32_t saved_intr_enable = READ_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR);
@@ -142,19 +143,19 @@ static int verify_frontdoor_access(void) {
     printf("[DBG][FD-2] OK\n");
 
     printf("[DBG][FD-3] Write IMEM[0]=0x11111111...\n");
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), 0u, 0x11111111u);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, 0u, 0x11111111u);
     printf("[DBG][FD-3] OK\n");
 
     printf("[DBG][FD-4] Write IMEM[%u]=0x22222222...\n", imem_last_word);
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), imem_last_word, 0x22222222u);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, imem_last_word, 0x22222222u);
     printf("[DBG][FD-4] OK\n");
 
     printf("[DBG][FD-5] Read IMEM[0]...\n");
-    uint32_t imem0 = READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), 0u);
+    uint32_t imem0 = READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, 0u);
     printf("[DBG][FD-5] got=0x%08x\n", imem0);
 
     printf("[DBG][FD-6] Read IMEM[%u]...\n", imem_last_word);
-    uint32_t imem_last = READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), imem_last_word);
+    uint32_t imem_last = READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, imem_last_word);
     printf("[DBG][FD-6] got=0x%08x\n", imem_last);
 
     if (imem0 != 0x11111111u || imem_last != 0x22222222u) {
@@ -163,19 +164,19 @@ static int verify_frontdoor_access(void) {
     }
 
     printf("[DBG][FD-7] Write DMEM[0]=0x33333333...\n");
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), 0u, 0x33333333u);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, 0u, 0x33333333u);
     printf("[DBG][FD-7] OK\n");
 
     printf("[DBG][FD-8] Write DMEM[%u]=0x44444444...\n", dmem_last_word);
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), dmem_last_word, 0x44444444u);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, dmem_last_word, 0x44444444u);
     printf("[DBG][FD-8] OK\n");
 
     printf("[DBG][FD-9] Read DMEM[0]...\n");
-    uint32_t dmem0 = READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), 0u);
+    uint32_t dmem0 = READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, 0u);
     printf("[DBG][FD-9] got=0x%08x\n", dmem0);
 
     printf("[DBG][FD-10] Read DMEM[%u]...\n", dmem_last_word);
-    uint32_t dmem_last = READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), dmem_last_word);
+    uint32_t dmem_last = READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, dmem_last_word);
     printf("[DBG][FD-10] got=0x%08x\n", dmem_last);
 
     if (dmem0 != 0x33333333u || dmem_last != 0x44444444u) {
@@ -195,12 +196,12 @@ static int otbn_load_app(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), (uint32_t)i,
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i,
                        otbn_otbn_sep_integration_imem[i]);
     }
 
     for (size_t i = 0; i < otbn_otbn_sep_integration_dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), (uint32_t)i,
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i,
                        otbn_otbn_sep_integration_dmem[i]);
     }
 
@@ -261,7 +262,7 @@ int main(void) {
 
     printf("=== OTBN SEP Address and Bus Access Test ===\n");
     printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
-           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0));
+           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
 
     if (verify_address_map() != 0) {
         fail_and_halt(1, "OTBN address map verification failed");

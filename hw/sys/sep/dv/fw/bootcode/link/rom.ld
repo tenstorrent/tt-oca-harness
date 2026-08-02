@@ -1,12 +1,16 @@
-/* Linker script for SEP bootcode (Boot ROM + DCCM execution).
+/* Linker script for SEP bootcode (self-contained Boot ROM image).
  *
- * Code (.text) and metadata execute from Boot ROM (0x10040000) via the IFU
- * AXI demux in sep_cpu.sv.  Read-only data (.rodata), initialized data (.data),
- * and BSS reside in DCCM because the LSU cannot access Boot ROM (ROM is not
- * a crossbar target — only IFU can reach it through the dedicated demux).
+ * Code (.text), metadata, and read-only data (.rodata/.srodata) reside in and
+ * are read from Boot ROM (0x10040000): the IFU reaches ROM via its AXI demux,
+ * and the LSU reaches ROM via the LSU->ROM demux (sep_cpu.sv) and the boot-ROM
+ * AXI mux (sep.sv, u_boot_rom_axi_mux), so read-only data does not consume DCCM.
  *
- * In the DV environment, Boot ROM is preloaded via +BOOT_ROM_VMEM_FILE and
- * DCCM is preloaded via BACKDOOR_TCM (+DTCM_HEX_FILE).
+ * Writable runtime data (.data/.bss) and the stack live in DCCM.  .data's
+ * initial image is stored in Boot ROM (LMA via AT> rom) and copied to DCCM by
+ * vector.S at boot; .bss is zeroed there.
+ *
+ * In the DV environment, Boot ROM is preloaded via +BOOT_ROM_VMEM_FILE; DCCM
+ * needs no firmware preload (DATA_SIZE=0), only ECC init via init_tcms().
  */
 
 OUTPUT_ARCH("riscv")
@@ -42,23 +46,26 @@ SECTIONS {
     __metadata_end = .;
   } > rom
 
-  /* Switch location counter to DCCM for runtime sections.
-   *
-   * The LSU cannot access Boot ROM addresses (they are only reachable via
-   * the IFU demux).  Therefore .rodata and .data must reside in DCCM.
-   * DCCM is preloaded by the DV testbench (BACKDOOR_TCM). */
-  . = ORIGIN(dccm);
-
-  /* Read-only data in DCCM (LSU cannot read Boot ROM). */
+  /* Read-only data lives in Boot ROM and is read in place by the LSU (via the
+   * LSU->ROM demux / boot-ROM AXI mux), so it does not consume DCCM.  Relaxation
+   * is disabled (-mno-relax / --no-relax), so .srodata is addressed absolutely
+   * rather than gp-relative and can safely live in ROM. */
   .rodata : ALIGN(4) {
     *(.rodata .rodata.* .srodata .srodata.*)
-  } > dccm
+  } > rom
+
+  /* Switch the VMA location counter to DCCM for writable runtime sections.
+   * .data executes from DCCM, but its initial image is stored in Boot ROM
+   * (LMA via AT> rom) and copied to DCCM by vector.S at boot.  __data_load_start
+   * therefore resolves to a ROM address, making the vector.S copy a real
+   * ROM->DCCM copy (it was a no-op self-copy when .data's LMA was in DCCM). */
+  . = ORIGIN(dccm);
 
   .data : ALIGN(4) {
     __data_start = .;
     *(.data .data.* .sdata .sdata.*)
     __data_end = .;
-  } > dccm
+  } > dccm AT> rom
   __data_load_start = LOADADDR(.data);
 
   /* Global pointer for small data accesses (gp-relative). */

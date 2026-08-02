@@ -6,7 +6,7 @@
 
 `include "i3c_sva.svh"
 
-module i3c_i2c_controller_fsm
+module i2c_controller_fsm_i3ccore
   import controller_pkg::*;
 #(
     parameter int FifoDepth = 64,

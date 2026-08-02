@@ -61,13 +61,13 @@ static int wait_for_idle(int timeout) {
 
 /* Issue an RX-only command of rx_bytes bytes (max 256) */
 static void issue_rx_cmd(uint32_t rx_bytes) {
-    spi_controller__COMMAND_t cmd;
+    spi_controller__CMD_t cmd;
     cmd.w = 0;
     cmd.f.LEN = rx_bytes - 1;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1; /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 }
 
 int main(void) {
@@ -78,7 +78,7 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CONTROL_t ctrl;
+    spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
     uint32_t i;
@@ -90,10 +90,10 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Configure SPI clock */
-    spi_controller__CONFIGOPTS_t cfg;
+    spi_controller__CFG_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -101,7 +101,7 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
@@ -168,7 +168,7 @@ int main(void) {
     for (i = 0; i < RX_LEN_BYTES / 4; i++) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.RXEMPTY) {
-            uint32_t word = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+            uint32_t word = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
             printf("  [%u] 0x%08x\n", i, word);
             words_read++;
         } else {
@@ -201,7 +201,7 @@ int main(void) {
      * ------------------------------------------------------------------- */
     printf("\nStep 5: UNDERFLOW test (read empty RX FIFO)\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    uint32_t dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+    uint32_t dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     (void)dummy;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x, UNDERFLOW=%u\n", err_status.w, err_status.f.UNDERFLOW);
@@ -228,9 +228,9 @@ int main(void) {
      * RXWM should be 1
      * ------------------------------------------------------------------- */
     printf("\nStep 6: RXWM test (RX_WATERMARK=2)\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.RX_WATERMARK = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -255,7 +255,7 @@ int main(void) {
     for (i = 0; i < 3; i++) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.RXEMPTY) {
-            (void)READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+            (void)READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
         }
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
@@ -271,7 +271,7 @@ int main(void) {
     for (i = 0; i < 4; i++) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.RXEMPTY) {
-            (void)READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+            (void)READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
         }
     }
 

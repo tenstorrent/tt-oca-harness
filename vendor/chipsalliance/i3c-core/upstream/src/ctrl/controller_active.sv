@@ -293,7 +293,7 @@ module controller_active
   logic unused_event_stretch_timeout_o;
   logic unused_event_sda_unstable_o;
 
-  i3c_i2c_controller_fsm i2c_fsm (
+  i2c_controller_fsm_i3ccore i2c_fsm (
       .clk_i (clk_i),
       .rst_ni(rst_ni),
       .scl_i (ctrl_bus_i[0].scl.value),

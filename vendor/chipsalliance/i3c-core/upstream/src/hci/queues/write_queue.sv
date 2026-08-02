@@ -174,7 +174,7 @@ module write_queue #(
 
   logic unused_err;
 
-  caliptra_prim_fifo_sync #(
+  prim_fifo_sync #(
       .Width(DataWidth),
       .Pass (1'b0),
       .Depth(Depth)

@@ -14,7 +14,8 @@
 // limitations under the License
 
 module rvjtag_tap #(
-parameter AWIDTH = 7
+parameter AWIDTH = 7,
+parameter [31:0] RESET_VEC = `RV_RESET_VEC
 )
 (
 input               trst,
@@ -36,6 +37,7 @@ input   [1:0]       rd_status,
 
 output  reg         dmi_reset,
 output  reg         dmi_hard_reset,
+output  [31:1]      rst_vec,
 
 /*pragma coverage off*/
 input   [2:0]       idle,
@@ -74,7 +76,9 @@ wire update_ir ;
 wire capture_ir;
 wire[1:0] dr_en;
 wire devid_sel;
+wire rst_vec_sel;
 wire [5:0] abits;
+reg [31:1] rst_vec_tdr;
 
 assign abits = AWIDTH[5:0];
 
@@ -152,6 +156,7 @@ end
 assign devid_sel  = ir == 5'b00001;
 assign dr_en[0]   = ir == 5'b10000;
 assign dr_en[1]   = ir == 5'b10001;
+assign rst_vec_sel = ir == 5'b11000;
 
 ///////////////////////////////////////////////////////
 //                      Shift register
@@ -174,7 +179,8 @@ always_comb begin
                     dr_en[1]:   nsr = {tdi, sr[USER_DR_LENGTH-1:1]};
 
                     dr_en[0],
-                    devid_sel:  nsr = {{USER_DR_LENGTH-32{1'b0}},tdi, sr[31:1]};
+                    devid_sel,
+                    rst_vec_sel: nsr = {{USER_DR_LENGTH-32{1'b0}},tdi, sr[31:1]};
                     default:    nsr = {{USER_DR_LENGTH-1{1'b0}},tdi}; // bypass
                     endcase
                 end
@@ -184,12 +190,26 @@ always_comb begin
                     dr_en[0]:   nsr = {{USER_DR_LENGTH-15{1'b0}}, idle, dmi_stat, abits, version};
                     dr_en[1]:   nsr = {{AWIDTH{1'b0}}, rd_data, rd_status};
                     devid_sel:  nsr = {{USER_DR_LENGTH-32{1'b0}}, jtag_id, 1'b1};
+                    rst_vec_sel: nsr = {{USER_DR_LENGTH-32{1'b0}}, rst_vec_tdr, 1'b0};
                     endcase
                 end
     shift_ir:   nsr = {{USER_DR_LENGTH-5{1'b0}},tdi, sr[4:1]};
     capture_ir: nsr = {{USER_DR_LENGTH-1{1'b0}},1'b1};
     endcase
 end
+
+// Reset vector TDR. The value is updated in the JTAG clock domain while the
+// SEP is held in reset and is otherwise quasi-static in the core clock domain.
+always @ (posedge tck or negedge trst) begin
+    if(!trst)
+        rst_vec_tdr <= RESET_VEC[31:1];
+    else if (jtag_reset)
+        rst_vec_tdr <= RESET_VEC[31:1];
+    else if (update_dr & rst_vec_sel)
+        rst_vec_tdr <= sr[31:1];
+end
+
+assign rst_vec = rst_vec_tdr;
 
 // TDO retiming
 always @ (negedge tck ) tdo <= sr[0];

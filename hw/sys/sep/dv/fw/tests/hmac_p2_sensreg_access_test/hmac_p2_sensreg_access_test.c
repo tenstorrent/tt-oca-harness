@@ -31,7 +31,7 @@ static int test_key_read_protection(void) {
 
     int pass = 1;
     for (uint32_t i = 0; i < 8; i++) {
-        uint32_t addr = OCH_SEP_TOP_HMAC_KEY_0_BASE_ADDR(i);
+        uint32_t addr = OCH_SEP_TOP_HMAC_KEY_BASE_ADDR(i);
         uint32_t pattern = 0xa5a50000u | (i * 0x1111u) | i;
 
         WRITE_REG(addr, pattern);
@@ -55,7 +55,7 @@ static int test_digest_write_non_echo(void) {
 
     int pass = 1;
     for (uint32_t i = 0; i < 8; i++) {
-        uint32_t addr = OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i);
+        uint32_t addr = OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i);
         uint32_t before = READ_REG(addr);
         uint32_t pattern = 0x5a5a0000u | (i * 0x0101u) | i;
 
@@ -77,15 +77,15 @@ static int test_cfg_regwen_absent(void) {
     printf("  INFO: HMAC_CFG_REGWEN is not present in sep.h / sep_addr.h; step is N/A\n");
 
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.SHA_EN = 1;
-    cfg.f.HMAC_EN = 0;
-    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.sha_en = 1;
+    cfg.f.hmac_en = 0;
+    cfg.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
     printf("  CFG write/readback without regwen: wrote=0x%08x read=0x%08x\n", cfg.w, rb.w);
 
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     return check_true("CFG remains writable because no regwen register exists", rb.w == cfg.w);

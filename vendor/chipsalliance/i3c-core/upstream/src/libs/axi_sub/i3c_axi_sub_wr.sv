@@ -27,7 +27,7 @@
 //
 // -------------------------------------------------------------
 
-module i3c_axi_sub_wr import axi_pkg::*; #(
+module i3c_axi_sub_wr import i3ccore_axi_pkg::*; #(
     parameter AW = 32,         // Address Width
     parameter DW = 32,         // Data Width
               BC = DW/8,       // Byte Count

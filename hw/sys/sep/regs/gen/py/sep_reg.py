@@ -4052,13 +4052,13 @@ class AES_CTRL_AUX_SHADOWED_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AES_CTRL_AUX_REGWEN_REG_DEFAULT = 0x00000000
+AES_CTRL_AUX_REGWEN_REG_DEFAULT = 0x00000001
 class AES_CTRL_AUX_REGWEN_reg_t(Structure):
     _fields_ = [
         ('ctrl_aux_regwen', c_uint8, 1),
     ]
 
-AES_CTRL_AUX_REGWEN_REG_DEFAULT = 0x00000000
+AES_CTRL_AUX_REGWEN_REG_DEFAULT = 0x00000001
 
 class AES_CTRL_AUX_REGWEN_reg_u(Union):
     _fields_ = [

@@ -2,7 +2,7 @@
 
 // Description: Decodes Command Descriptor and forwards byte to be sent on the
 // I3C / I2C bus to the
-// i3c_controller_fsm and i3c_i2c_controller_fsm
+// i3c_controller_fsm and i2c_controller_fsm_i3ccore
 // TODO: Add support for data byte ordering modes (HC_CONTROL.DATA_BYTE_ORDER_MODE)
 
 module flow_active

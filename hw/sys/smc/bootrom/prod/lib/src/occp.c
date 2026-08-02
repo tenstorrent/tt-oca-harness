@@ -185,11 +185,11 @@ static int error_response_sent = 0;
 
 static bool enable_gpio_hw_override(uint8_t gpio_num) {
     GPIO_CTRL_CONTROL_reg_u gpio_ctrl;
-    gpio_ctrl.val = read_gpio_shim(gpio_num, GPIO_CTRL_0__CONTROL_REG_OFFSET);
+    gpio_ctrl.val = read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
     gpio_ctrl.f.hw2_ovrd = 1;
-    write_gpio_shim(gpio_num, GPIO_CTRL_0__CONTROL_REG_OFFSET, gpio_ctrl.val);
+    write_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET, gpio_ctrl.val);
 
-    gpio_ctrl.val = read_gpio_shim(gpio_num, GPIO_CTRL_0__CONTROL_REG_OFFSET);
+    gpio_ctrl.val = read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
     if (gpio_ctrl.f.hw2_ovrd != 1) {
         simputshex32("Failed to enable GPIO hw2_ovrd for gpio: ", gpio_num);
         return false;
@@ -201,6 +201,18 @@ static bool enable_gpio_hw_override(uint8_t gpio_num) {
 static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
+#ifdef I3C_USE_HCI_CORE
+    /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c pads via
+     * the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
+     * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
+     * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
+     * OFF for the OCA instance (SwapI3cCore=1) -> the pad INPUT buffer stays disabled and the OCA
+     * target never sees the bus (root cause of the ENTDAA M2 timeout). So leave hw2_ovrd=0 (reset
+     * default) for the i3c GPIOs; the OCA core's LSIO routing then serves the shared bus (mirrors
+     * the cocotb OCA target).
+     */
+    return true;
+#else
     /* Mirror the proven bring-up sequence used by i3c_loop_back:
      * enable hw2_ovrd on all I3C-related GPIOs so the I3C HW function reaches the pads.
      */
@@ -218,6 +230,7 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     enable_gpio_hw_override(SMC_I3C_5_SCL_GPIO); /* I3C5 SCL */
     enable_gpio_hw_override(SMC_I3C_5_SDA_GPIO); /* I3C5 SDA */
     return ok;
+#endif /* I3C_USE_HCI_CORE */
 }
 #endif
 
@@ -240,21 +253,21 @@ static void enable_observation_gpio_overrides(void) {
 static void set_gpio_status(occp_error_code_t status) {
     GPIO_INTF_DATA_CTRL_reg_u gpio_control;
 
-    gpio_control.val = read_gpio(61, GPIO_CTRL_61__CONTROL_REG_OFFSET);
+    gpio_control.val = read_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET);
     gpio_control.f.interface_enable = 1; // Enable the interface
     gpio_control.f.enable_rx_tx = 1;     // Enable Tx
 
     if (status == OCCP_ERROR_NONE) {
         // Set GPIO to indicate success
         gpio_control.f.core2pad = 1; // Register driven data send to pad
-        write_gpio(61, GPIO_CTRL_61__CONTROL_REG_OFFSET,
+        write_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET,
                    gpio_control.val); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate success\n");
     } else {
 
         // Clear GPIO to indicate error
         gpio_control.f.core2pad = 0; // Set chip to pad mode
-        write_gpio(61, GPIO_CTRL_61__CONTROL_REG_OFFSET,
+        write_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET,
                    gpio_control.val); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate error\n");
     }
@@ -1779,7 +1792,7 @@ static int smc_occp_read_from_bus_4byte_aligned_or_complete_stream(
         simputs("smc_occp_read_from_bus: Error writing to buffer from I2C bus\n");
     } else if (drv_type == DRIVER_TYPE_I3C) {
         i3c_status = i3c_drv->receive_payload_stream(i3c_drv, buffer, length, &bytes_received,
-                                                     timeout, expect_excess_bytes);
+                                                     timeout, expect_excess_bytes, is_flush);
         if (i3c_status == I3C_OK) {
             return OCCP_ERROR_NONE;
         } else if (i3c_status == I3C_ERR_INCOMPLETE) {
@@ -1790,6 +1803,9 @@ static int smc_occp_read_from_bus_4byte_aligned_or_complete_stream(
             return OCCP_ERROR_TIMEOUT;
         }
         simputs("smc_occp_read_from_bus: Error receiving payload from I3C bus\n");
+        /* Fail-safe: an unmapped driver status (e.g. I3C_ERR_HW, or any future code)
+         * must not fall through as success -- that silently accepted corrupt/absent data. */
+        return OCCP_ERROR_INTERFACE_ERROR;
     }
     return OCCP_ERROR_NONE;
 }
@@ -1912,27 +1928,24 @@ static int smc_occp_flush_interface_fifo(interface_driver_t drv, driver_type_t d
     } else if (drv_type == DRIVER_TYPE_I3C) {
         I3C_Driver *i3c_drv = (I3C_Driver *)drv;
         const uint32_t MAX_FLUSH_BYTES = OCCP_MAX_MSG_SIZE + 32; /* Conservative limit */
-        uint32_t timeout_counter = 0;
 
-        /* Flush I3C RX FIFO with safety limits */
-        while (flush_count < MAX_FLUSH_BYTES && timeout_counter < TRANSPORT_TIMEOUT) {
-            if (i3c_drv->check_rx_fifo(i3c_drv) > 0) {
-                uint8_t dummy_data[4]; /* I3C reads are typically 4-byte aligned */
-                uint32_t fifo_level = i3c_drv->check_rx_fifo(i3c_drv);
-                uint32_t read_size = (fifo_level >= 4) ? 4 : fifo_level;
-
-                if (smc_occp_read_from_bus_4byte_aligned_or_complete_stream(
-                        drv, drv_type, dummy_data, read_size, TRANSPORT_TIMEOUT, 1, 1) ==
-                    OCCP_ERROR_NONE) {
-                    flush_count += read_size;
-                    // reset timeout if we read a byte
-                    timeout_counter = 0;
-                } else {
-                    break; /* Stop on read error */
-                }
-            } else {
-                timeout_counter++;
+        /* Frame-aware flush: let the DRIVER decide how much belongs to dead frames and
+         * report it per 4-byte step; got==0 means its frame ledger is clean -> done. The previous
+         * loop drained anything that appeared within a TRANSPORT_TIMEOUT quiet window (and reset
+         * the window on every byte), so a NEW command sent by a compliant controller right after
+         * our error response was swallowed whole -> both sides waited forever
+         * (smc_occp_zero_length_rw_test). The swap/HCI driver drains by its frame accounting
+         * (exact, instant when clean); the Cadence driver's stream read keeps its own
+         * fill-level/timeout behavior inside the same call, so its net behavior is unchanged. */
+        while (flush_count < MAX_FLUSH_BYTES) {
+            uint8_t dummy_data[4]; /* I3C reads are typically 4-byte aligned */
+            size_t got = 0;
+            i3c_drv->receive_payload_stream(i3c_drv, dummy_data, sizeof(dummy_data), &got,
+                                            TRANSPORT_TIMEOUT, 1, 1);
+            if (got == 0) {
+                break; /* ledger clean (or nothing arrived within the driver's own bound) */
             }
+            flush_count += (uint32_t)got;
         }
 
         simputshex32("OCCP: Flushed I3C FIFO bytes: ", flush_count);

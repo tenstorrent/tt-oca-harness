@@ -29,7 +29,7 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 #include "sep_efuse.h"
-#include "sep_scratch.h"
+#include "sep_scratch_drv.h"
 
 #define CPU_READY_MARKER 0xE9050001u
 #define SCRATCH_READY 0u // scratch-cold[0]: CPU_READY

@@ -182,26 +182,30 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * FR-2739-023: Verify KPV CTRL fields for the AS1.1 loaded key
+     * FR-2739-023: Verify KPV CTRL and registry fields for the AS1.1 loaded key
      *
      * For KEY_SIZE=3 (key_size=4 words), num_slots=1:
      *   extend    = 0  (only 1 slot)
      *   last_dword = (4-1) % 16 = 3
-     *   dest_valid = AES bit (0x04)
      *   lock_write = 1
+     * dest_valid is tracked in the software key registry, not KPV CTRL.
      *=================================================================*/
-    TEST_SUBTEST_START("FR-2739-023: KPV CTRL fields correct after key_load");
+    TEST_SUBTEST_START("FR-2739-023: KPV CTRL and registry fields correct after key_load");
     {
         uint8_t base_slot;
         if (rom_keyreg_get_slot(&rom_keyreg_state, handle_a, &base_slot) < 0)
             TEST_FAIL("rom_keyreg_get_slot failed for handle %u", handle_a);
 
         km_kpv__ctrl_reg_t ctrl;
+        rom_km_dest_bits_t dest_valid;
         ctrl.w = KPV_CTRL(base_slot).w;
 
         TEST_ASSERT_EQ((uint32_t)ctrl.f.lock_write, 1u, "slot lock_write=1");
-        TEST_ASSERT_EQ((uint32_t)ctrl.f.dest_valid, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
-                       "slot dest_valid=AES");
+        TEST_ASSERT_EQ(rom_keyreg_get_dest_valid(&rom_keyreg_state, handle_a, &dest_valid),
+                       0u, "registry destination lookup");
+        TEST_ASSERT_EQ((uint32_t)dest_valid.raw,
+                       (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw,
+                       "registry dest_valid=AES");
         TEST_ASSERT_EQ((uint32_t)ctrl.f.extend, 0u, "extend=0 (1 slot)");
         TEST_ASSERT_EQ((uint32_t)ctrl.f.last_dword, 3u, "last_dword=(4-1)%%16=3");
 
