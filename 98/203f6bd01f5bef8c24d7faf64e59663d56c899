@@ -1,0 +1,24 @@
+hw/sys/smc/doc/memmap.adoc
+  s_d605cb93395a31::t_7813eb9a719441 76-78
+  s_d605cb93395a31::t_671075f414f60a 181-183
+  s_d605cb93395a31::t_bdcba3ca05dcd6 202-215,218,222,225,228,231-234,236,238,241,245-254
+  s_d605cb93395a31::t_5e0ed39fb4bace 255
+.gitignore
+  s_d605cb93395a31::t_50dd05f12062ed 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "98203f6bd01f5bef8c24d7faf64e59663d56c899",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
