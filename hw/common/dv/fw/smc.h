@@ -55,7 +55,6 @@
 #include "i2c_wrap.h"
 #include "debug_module.h"
 #include "smc_cla.h"
-#include "smc_axil_extension.h"
 
 /*
  * Per-pad gpio_ctrl addresses.
