@@ -709,6 +709,48 @@ typedef union {
     uint32_t w;
 } km_csr__otp_change_status_reg_t;
 
+// reg - km_csr::otp_read_lock_cold_reg
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xffffffc0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 6
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t life_cycle :1;
+        uint32_t demotion :1;
+        uint32_t chiplet_uid :1;
+        uint32_t sip_uid :1;
+        uint32_t sys_uid :1;
+        uint32_t class_key :1;
+        uint32_t rsvd :26;
+    } f;
+    uint32_t w;
+} km_csr__otp_read_lock_cold_reg_t;
+
 // addrmap - km_csr
 typedef struct __attribute__ ((__packed__)) {
     km_csr__version_reg_t VERSION;
@@ -810,10 +852,11 @@ typedef struct __attribute__ ((__packed__)) {
     km_csr__otp_dr_word_reg_t OTP_CLASS_KEY_CPL_7;
     km_csr__otp_read_lock_reg_t OTP_READ_LOCK;
     km_csr__otp_change_status_reg_t OTP_CHANGE_STATUS;
+    km_csr__otp_read_lock_cold_reg_t OTP_READ_LOCK_COLD;
 } km_csr_t;
 
 
-static_assert(sizeof(km_csr_t) == 0x308, "Packing error");
+static_assert(sizeof(km_csr_t) == 0x30c, "Packing error");
 
 #ifdef __cplusplus
 }

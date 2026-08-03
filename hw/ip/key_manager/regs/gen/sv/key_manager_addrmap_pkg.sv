@@ -17,7 +17,7 @@ localparam longint unsigned KEY_MANAGER_KPV_KEY_ENTRY_STRIDE = 64'h40;
 localparam longint unsigned KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE = 64'h800;
 
 localparam longint unsigned KEY_MANAGER_KMCSR_BASE_ADDR = 64'hE000;
-localparam longint unsigned KEY_MANAGER_KMCSR_SIZE = 64'h308;
+localparam longint unsigned KEY_MANAGER_KMCSR_SIZE = 64'h30C;
 
 localparam longint unsigned KEY_MANAGER_DRBG_SAMPLER_BASE_ADDR = 64'hF000;
 localparam longint unsigned KEY_MANAGER_DRBG_SAMPLER_SIZE = 64'h10;
@@ -169,6 +169,7 @@ localparam longint unsigned KEY_MANAGER_KMCSR_OTP_CLASS_KEY_CPL_6_BASE_ADDR = 64
 localparam longint unsigned KEY_MANAGER_KMCSR_OTP_CLASS_KEY_CPL_7_BASE_ADDR = 64'hE2FC;
 localparam longint unsigned KEY_MANAGER_KMCSR_OTP_READ_LOCK_BASE_ADDR = 64'hE300;
 localparam longint unsigned KEY_MANAGER_KMCSR_OTP_CHANGE_STATUS_BASE_ADDR = 64'hE304;
+localparam longint unsigned KEY_MANAGER_KMCSR_OTP_READ_LOCK_COLD_BASE_ADDR = 64'hE308;
 localparam longint unsigned KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR = 64'hF000;
 localparam longint unsigned KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR = 64'hF004;
 localparam longint unsigned KEY_MANAGER_DRBG_SAMPLER_STATUS_BASE_ADDR = 64'hF008;

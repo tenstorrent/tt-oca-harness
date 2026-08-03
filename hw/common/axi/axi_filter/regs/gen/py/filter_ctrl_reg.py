@@ -14,10 +14,10 @@ END_ADDR_REG_ADDR = 0x00000010
 FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT = 0x0000000000003000
 class FILTER_CTRL_FILTER_CONFIG_reg_t(Structure):
     _fields_ = [
-        ('read_en', c_uint64, 1),
-        ('write_en', c_uint64, 1),
+        ('read_allowed', c_uint64, 1),
+        ('write_allowed', c_uint64, 1),
         ('rsvd_0', c_uint64, 2),
-        ('addr_mode', c_uint64, 1),
+        ('entry_enabled', c_uint64, 1),
         ('rsvd_1', c_uint64, 3),
         ('allow_ns', c_uint64, 1),
         ('rsvd_2', c_uint64, 3),

@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file picorv32_pcpi_crc.sv
  * @brief PCPI front-end for Key Manager CRC custom instructions.
  */
+
 module picorv32_pcpi_crc (
-    input wire logic        clk_i,
-    input wire logic        rst_ni,
-    input wire logic        pcpi_valid_i,
-    input wire logic [31:0] pcpi_insn_i,
-    input wire logic [31:0] pcpi_rs1_i,
-    input wire logic [31:0] pcpi_rs2_i,
+    input logic        clk_i,
+    input logic        rst_ni,
+    input logic        pcpi_valid_i,
+    input logic [31:0] pcpi_insn_i,
+    input logic [31:0] pcpi_rs1_i,
+    input logic [31:0] pcpi_rs2_i,
     output logic            pcpi_wr_o,
     output logic [31:0]     pcpi_rd_o,
     output logic            pcpi_wait_o,
@@ -24,7 +21,7 @@ module picorv32_pcpi_crc (
 );
 
     `include "prim_assert.sv"
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     localparam logic [6:0] CRC_OPCODE_CUSTOM0 = 7'b0001011;
     localparam logic [6:0] CRC_FUNCT7         = 7'b0101100;
@@ -138,30 +135,29 @@ module picorv32_pcpi_crc (
     assign pcpi_rd_o    = engine_result;
     assign pcpi_wait_o  = start_pulse || active_q;
 
-    `ASSERT(WriteImpliesReady_A, pcpi_wr_o |-> pcpi_ready_o, clk_i, !rst_ni)
-    `ASSERT(RecognizedOnlyStartsWhenIdle_A, start_pulse |-> !active_q, clk_i, !rst_ni)
-    `ASSERT(UnrecognizedNoResponse_A,
+    `OCAH_ASSERT(WriteImpliesReady_A, pcpi_wr_o |-> pcpi_ready_o, clk_i, !rst_ni)
+    `OCAH_ASSERT(RecognizedOnlyStartsWhenIdle_A, start_pulse |-> !active_q, clk_i, !rst_ni)
+    `OCAH_ASSERT(UnrecognizedNoResponse_A,
         pcpi_valid_i && !insn_recognized && !active_q |-> !pcpi_wait_o && !pcpi_ready_o && !pcpi_wr_o,
         clk_i, !rst_ni)
-    `ASSERT(Crc32cByteLowByteOnly_A,
+    `OCAH_ASSERT(Crc32cByteLowByteOnly_A,
         engine_done && op_mode_q == CRC_MODE_32C_BYTE |->
             engine_result == crc_reflected_byte_step(op_state_q, op_data_q[7:0],
                                                      CRC32C_POLY, CRC32C_STATE_MASK),
         clk_i, !rst_ni)
-    `ASSERT(Crc8LowByteOnlyZeroExtended_A,
+    `OCAH_ASSERT(Crc8LowByteOnlyZeroExtended_A,
         engine_done && op_mode_q == CRC_MODE_8_ROHC |->
             engine_result == crc_reflected_byte_step(op_state_q, op_data_q[7:0],
                                                      CRC8_ROHC_POLY, CRC8_STATE_MASK) &&
             engine_result[31:8] == '0,
         clk_i, !rst_ni)
 
-    `TT_ASSERT_PULSE(ReadyPulse_A, pcpi_ready_o, clk_i, !rst_ni)
-    `TT_ASSERT_PULSE(WritePulse_A, pcpi_wr_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(WaitKnown_A, pcpi_wait_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(ReadyKnown_A, pcpi_ready_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(WriteKnown_A, pcpi_wr_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(ReadDataKnown_A, pcpi_rd_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_PULSE(ReadyPulse_A, pcpi_ready_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_PULSE(WritePulse_A, pcpi_wr_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(WaitKnown_A, pcpi_wait_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(ReadyKnown_A, pcpi_ready_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(WriteKnown_A, pcpi_wr_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(ReadDataKnown_A, pcpi_rd_o, clk_i, !rst_ni)
 
 endmodule : picorv32_pcpi_crc
 
-`default_nettype wire

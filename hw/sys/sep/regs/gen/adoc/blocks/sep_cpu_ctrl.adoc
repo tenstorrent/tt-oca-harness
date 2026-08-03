@@ -2,24 +2,21 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x8 | CLOCK_GATE_CTRL | RW a| -
-| 0x10 | REFERENCE_COUNTER | R a| -
-| 0x18 | TIMEOUT_INTERRUPT | R a| Timeout interrupt
-| 0x20 | PKA_CTRL | RW a| -
-| 0x30 | SPACC_CTRL | RW a| -
-| 0x40 | TIMEOUT_COUNT_TROOT | RW a| -
-| 0x48 | TIMEOUT_COUNT_DMA | RW a| -
-| 0x50 | TIMEOUT_COUNT_SPACC | RW a| -
-| 0x58 | TIMEOUT_COUNT_SYS_IN | RW a| -
-| 0x60 | TIMEOUT_COUNT_MAILBOX_INBOUND | RW a| -
-| 0x68 | TIMEOUT_COUNT_MAILBOX_OUTBOUND | RW a| -
-| 0x70 | TIMEOUT_COUNT_ENTROPY_WRITE | RW a| -
-| 0x78 | TIMEOUT_COUNT_ENTROPY_READ | RW a| -
-| 0x80 | TIMEOUT_COUNT_FILTER_OUT | RW a| -
-| 0x88 | TIMEOUT_COUNT_ALIAS_REMAP | RW a| -
-| 0x90 | TIMEOUT_ENABLE | RW a| -
-| 0x98 | TIMEOUT_CLEAR | W a| -
-| 0xA0 | TIMEOUT_MODE | W a| -
+| 0x8 | CLOCK_GATE_CTRL | RW a| TODO: clock-gate control - placeholder fields, not yet implemented.
+| 0x10 | REFERENCE_COUNTER | RW a| -
+| 0x18 | TIMEOUT_INTERRUPT | R a| Reserved - per-block timeout interrupt not yet implemented.
+| 0x20 | PKA_CTRL | RW a| TODO: PKA control - placeholder fields, not yet implemented.
+| 0x28 | TIMEOUT_COUNT_DMA | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x30 | TIMEOUT_COUNT_SYS_IN | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x38 | TIMEOUT_COUNT_MAILBOX_INBOUND | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x40 | TIMEOUT_COUNT_MAILBOX_OUTBOUND | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x48 | TIMEOUT_COUNT_ENTROPY_WRITE | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x50 | TIMEOUT_COUNT_ENTROPY_READ | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x58 | TIMEOUT_COUNT_FILTER_OUT | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x60 | TIMEOUT_COUNT_ALIAS_REMAP | RW a| Reserved - per-block timeout count/threshold not yet implemented.
+| 0x68 | TIMEOUT_ENABLE | RW a| Reserved - per-block timeout enable not yet implemented.
+| 0x70 | TIMEOUT_CLEAR | W a| Reserved - per-block timeout interrupt-clear not yet implemented.
+| 0x78 | TIMEOUT_MODE | W a| Reserved - per-block timeout mode not yet implemented.
 | 0xB0 | SEP_TEST_CTRL | R a| -
 | 0xC0 | SEP_GLOBAL_BASE_ADDR | RW a| -
 | 0xC8 | SEP_LOCAL_BASE_ADDR | RW a| -
@@ -37,6 +34,7 @@ interrupt is used for the WDT Bark interrupt.
 NMI interrupt is used for the WDT Bark interrupt.
 | 0x190 | EXT_TRNG_SRC_SEL | RW a| Per-stream external TRNG source selection for crypto subsystem entropy muxes.
 | 0x198 | EXT_TRNG_SRC_SEL_LOCK | RW a| Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.
+| 0x1A0 | KM_WIPE_CTRL | RW a| Key Manager emergency wipe control.
 | 0x1000 | SEP_VERSION_ID | R a| -
 |===
 
@@ -44,201 +42,121 @@ NMI interrupt is used for the WDT Bark interrupt.
 .CLOCK_GATE_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:22 | `Reserved` | - | - a| Reserved
-| 21:16 | `cg_hysteresis` | RW | 0x1F a| Clockgate hysteresis
-| 15:13 | `Reserved` | - | - a| Reserved
-| 12 | `entropy_fifo_cg_enable` | RW | 0x0 a| Clockgate enable for the entropy fifo, using clk_gater, default should be 0
-| 11 | `ot_hmac_cg_enable` | RW | 0x0 a| Clockgate enable for the opentitan hmac engine/ default is 0, out clock is always enabled
-| 10 | `filter_out_cg_enable` | RW | 0x0 a| Clockgate enable for the outbound filters, even using clkgater, but this enable has been inverted, so should use 0 as default
-| 9 | `alias_remap_cg_enable` | RW | 0x0 a| Clockgate enable for the alias remap, using clk_gater, default should be 0
-| 8 | `zeroer_cg_enable` | RW | 0x0 a| Clockgate enable for the zeroer, using clkgater, but this enable has been inverted, so shouould use 0 as default
-| 7 | `sram_cg_enable` | RW | 0x1 a| Clockgate enable for the sram, using clkgater, default should be 1
-| 6 | `filter_in_cg_enable` | RW | 0x0 a| Clockgate enable for the inbound filters, using clk_gater, default should be 0
-| 5 | `Reserved` | - | - a| Reserved
-| 4 | `fabric_cg_enable` | RW | 0x0 a| Clockgate enable for the fabric
-| 3 | `mailbox_cg_en` | RW | 0x0 a| Clockgate enable for the mailbox,using clk_gater, default should be 0
-| 2 | `dma_cg_enable` | RW | 0x0 a| Clockgate enable for the DMA, using clk_gater, deafault should be 0
-| 1 | `pka_cg_enable` | RW | 0x1 a| Clockgate enable for the PKA, default should be 1, using clkgater, meaining out clock is enabled
-| 0 | `spacc_cg_enable` | RW | 0x1 a| Clockgate enable for the SPAcc/ Default is 1, this is using a static clkgater, meaning out clock is enabled by default
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `pka_cg_enable` | RW | 0x0 a| Reserved - PKA clock-gate enable, not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .REFERENCE_COUNTER Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `rc` | R | - a| SEP REFERENCE COUNTER, counting after deassert of cold reset
+| 63:0 | `rc` | RW | 0x0 a| SEP REFERENCE COUNTER, counting after deassert of cold reset
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_INTERRUPT Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:10 | `Reserved` | - | - a| Reserved
-| 9 | `outbound_mailbox_timeout_int` | R | 0x0 a| Timeout interrupt for entropy fifo outbound mailbox
-| 8 | `inbound_mailbox_timeout_int` | R | 0x0 a| Timeout interrupt for entropy fifo inbound mailbox
-| 7 | `entropy_write_timeout_int` | R | 0x0 a| Timeout interrupt for entropy fifo write axil
-| 6 | `entropy_read_timeout_int` | R | 0x0 a| Timeout interrupt for entropy fifo read axil
-| 5 | `filter_out_timeout_int` | R | 0x0 a| Timeout interrupt for dma data axi
-| 4 | `alias_remap_timeout_int` | R | 0x0 a| Timeout interrupt for dma data axi
-| 3 | `dma_data_timeout_int` | R | 0x0 a| Timeout interrupt for dma data axi
-| 2 | `spacc_timeout_int` | R | 0x0 a| Timeout interrupt for spacc axi
-| 1 | `sys_in_timeout_int` | R | 0x0 a| Timeout interrupt for sys in axi
-| 0 | `troot_timeout_int` | R | 0x0 a| Timeout interrupt for troot axi
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | R | 0x0 a| Reserved - timeout interrupt status not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .PKA_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `pka_noise_src_valid` | RW | 0x0 a| pka_noise_src_valid
-| 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `pka_noise_src` | RW | 0x0 a| pka_noise_src
-| 7:1 | `Reserved` | - | - a| Reserved
-| 0 | `pka_dpa_disable` | RW | 0x1 a| pka_dpa_disable
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.SPACC_CTRL Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `spacc_dpa_rand_vld` | RW | 0x0 a| spacc_dpa_rand_vld
-| 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `spacc_dpa_rand` | RW | 0x0 a| spacc_dpa_rand
-| 7:1 | `Reserved` | - | - a| Reserved
-| 0 | `spacc_dpa_disable` | RW | 0x1 a| spacc_dpa_disable
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.TIMEOUT_COUNT_TROOT Register
-|===
-| Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `pka_noise_src_valid` | RW | 0x0 a| Reserved - PKA noise source valid, not yet implemented.
+| 1 | `pka_noise_src` | RW | 0x0 a| Reserved - PKA noise source select, not yet implemented.
+| 0 | `pka_dpa_disable` | RW | 0x0 a| Reserved - disable DPA countermeasures in PKA, not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_DMA Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.TIMEOUT_COUNT_SPACC Register
-|===
-| Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_SYS_IN Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_MAILBOX_INBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_MAILBOX_OUTBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_ENTROPY_WRITE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_ENTROPY_READ Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_FILTER_OUT Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_COUNT_ALIAS_REMAP Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `Reserved` | - | - a| Reserved
-| 47:0 | `data` | RW | 0x0 a| Timeout value
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:10 | `Reserved` | - | - a| Reserved
-| 9 | `outbound_mailbox_timeout_en` | RW | 0x0 a| Timeout enable for outbound mailbox
-| 8 | `inbound_mailbox_timeout_en` | RW | 0x0 a| Timeout enable for inbound mailbox
-| 7 | `entropy_write_timeout_en` | RW | 0x0 a| Timeout enable for entropy write
-| 6 | `entropy_read_timeout_en` | RW | 0x0 a| Timeout enable for entropy read
-| 5 | `filter_out_timeout_en` | RW | 0x0 a| Timeout enable for output filter
-| 4 | `alias_remap_timeout_en` | RW | 0x0 a| Timeout enable for input alias remap
-| 3 | `dma_data_timeout_en` | RW | 0x0 a| Timeout enable for dma data axi
-| 2 | `spacc_timeout_en` | RW | 0x0 a| Timeout enable for spacc axi
-| 1 | `sys_in_timeout_en` | RW | 0x0 a| Timeout enable for sys in axi
-| 0 | `troot_timeout_en` | RW | 0x0 a| Timeout enable for troot axi
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | RW | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:10 | `Reserved` | - | - a| Reserved
-| 9 | `outbound_mailbox_timeout_clear` | W | 0x0 a| Timeout interrupt clear for outbound mailbox
-| 8 | `inbound_mailbox_timeout_clear` | W | 0x0 a| Timeout interrupt clear for inbound mailbox
-| 7 | `entropy_write_timeout_clear` | W | 0x0 a| Timeout interrupt clear for entropy write
-| 6 | `entropy_read_timeout_clear` | W | 0x0 a| Timeout interrupt clear for entropy read
-| 5 | `filter_out_timeout_clear` | W | 0x0 a| Timeout interrupt clear for output filter
-| 4 | `alias_remap_timeout_clear` | W | 0x0 a| Timeout interrupt clear for input alias remap
-| 3 | `dma_data_timeout_clear` | W | 0x0 a| Timeout interrupt clear for dma data axi
-| 2 | `spacc_timeout_clear` | W | 0x0 a| Timeout interrupt clear for spacc axi
-| 1 | `sys_in_timeout_clear` | W | 0x0 a| Timeout interrupt clear for sys in axi
-| 0 | `troot_timeout_clear` | W | 0x0 a| Timeout interrupt clear for troot axi
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .TIMEOUT_MODE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:20 | `Reserved` | - | - a| Reserved
-| 19:18 | `outbound_mailbox_timeout_mode` | W | 0x0 a| Timeout mode for outbound mailbox
-| 17:16 | `inbound_mailbox_timeout_mode` | W | 0x0 a| Timeout mode for inbound mailbox
-| 15:14 | `entropy_write_timeout_mode` | W | 0x0 a| Timeout mode for entropy write
-| 13:12 | `entropy_read_timeout_mode` | W | 0x0 a| Timeout mode for entropy read
-| 11:10 | `filter_out_timeout_mode` | W | 0x0 a| Timeout mode for output filter
-| 9:8 | `alias_remap_timeout_mode` | W | 0x0 a| Timeout mode for input alias remap
-| 7:6 | `dma_data_timeout_mode` | W | 0x0 a| Timeout mode for dma data axi
-| 5:4 | `spacc_timeout_mode` | W | 0x0 a| Timeout mode for spacc axi
-| 3:2 | `sys_in_timeout_mode` | W | 0x0 a| Timeout mode for sys in axi
-| 1:0 | `troot_timeout_mode` | W | 0x0 a| Timeout mode for troot axi
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -250,9 +168,8 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 29 | `fast_dccm_en` | R | 0x0 a| Fast DCCM Enable
 | 28 | `fast_sram_en` | R | 0x0 a| Fast SRAM Enable
 | 27 | `fast_pka_en` | R | 0x0 a| Fast PKA Enable
-| 26 | `fast_spacc_en` | R | 0x0 a| Fast SPAcc Enable
-| 25 | `sep_standalone` | R | 0x0 a| SEP is standalone (not part of eg SMU)
-| 24:0 | `Reserved` | - | - a| Reserved
+| 26 | `sep_standalone` | R | 0x0 a| SEP is standalone (not part of eg SMU)
+| 25:0 | `Reserved` | - | - a| Reserved
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -268,7 +185,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `addr` | RW | 0xC0000000 a| -
+| 55:0 | `addr` | RW | 0xD0000000 a| -
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -362,8 +279,9 @@ The NMI interrupt is used for the WDT Bark interrupt.
 .EXT_TRNG_SRC_SEL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:2 | `Reserved` | - | - a| Reserved
-| 1:0 | `sel` | RW | 0x3 a| TRNG source select per stream. Bit N selects the source for stream N.
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2:0 | `sel` | RW | 0x7 a| TRNG source select per stream. Bit N selects the source for stream N
+(bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).
 0 = internal DRBG output, 1 = external TRNG (default).
 |===
 
@@ -373,6 +291,14 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
 | 0 | `lock` | RW | 0x0 a| Lock TRNG source selection. Once set, cannot be cleared by software.
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.KM_WIPE_CTRL Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `wipe_state` | RW | 0x0 a| Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
 |===
 
 [cols="1,1,1,1,3", options="header"]

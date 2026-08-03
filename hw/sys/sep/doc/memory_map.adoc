@@ -71,17 +71,19 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 |0x1091_0000 |0x1091_0FFF |4 kB |AES |Block Cipher
 |0x1091_1000 |0x1091_2FFF |8 kB |HMAC-SHA2 |Hash / MAC
 |0x1091_3000 |0x1091_3FFF |4 kB |KMAC-SHA3 |Hash / MAC
-|0x1091_4000 |0x1091_4FFF |4 kB |PCRV |PCR Vault
+|0x1091_4000 |0x1091_4FFF |4 kB |_RSV_ |Reserved
 |0x1091_5000 |0x1091_5FFF |4 kB |DRBG |Deterministic Random Bit Generator
 |0x1091_6000 |0x1091_6FFF |4 kB |ESRC |Entropy Source
 |0x1091_7000 |0x1091_7FFF |4 kB |TRNG |Random Num Gen
 |0x1091_8000 |0x1091_FFFF |32 kB |LC |Life Cycle Controller
 |0x1092_0000 |0x1092_0FFF |4 kB |KM |Key Manager
-|0x1092_1000 |0x1092_FFFF | |RSV |Reserved
+|0x1092_1000 |0x1092_FFFF | |_RSV_ |Reserved
 |0x1093_0000 |0x1093_7FFF |32 kB |OTP |Fuse Control and Shadow Memory
-|0x1093_8000 |0x109F_FFFF | |_RSV_ |Reserved
+|0x1093_8000 |0x1094_FFFF | |_RSV_ |Reserved
+|0x1095_0000 |0x1095_FFFF |64 kB |EPOOL |Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.
+|0x1096_0000 |0x109F_FFFF | |_RSV_ |Reserved
 |0x10A0_0000 |0x10A3_FFFF |256 kB |SYS |System Bus I/F
-|0x10A4_0000 |0x10AF_FFFF | |RSV |Reserved
+|0x10A4_0000 |0x10AF_FFFF | |_RSV_ |Reserved
 |0x10B0_0000 |0x10BF_FFFF |1 MB |IO |External IO Peripherals Bridge: UART, GPIO etc.
 |0x1100_0000 |0x117F_FFFF |8 MB |AP Remap Region |Write to this region to be routed to the AP remapper
 |0x1180_0000 |0x11FF_FFFF |8 MB |STEE Remap Region |Write to this region to be routed to the STEE remapper

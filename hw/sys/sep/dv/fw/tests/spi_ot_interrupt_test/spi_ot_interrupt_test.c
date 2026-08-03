@@ -47,12 +47,12 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__INTR_STATE_t intr_status;
+    spi_controller__INTR_STATUS_t intr_status;
     spi_controller__INTR_ENABLE_t intr_enable;
     spi_controller__INTR_TEST_t intr_test;
     spi_controller__EVENT_ENABLE_t event_enable;
     spi_controller__ERROR_STATUS_t err_status;
-    spi_controller__CONTROL_t ctrl;
+    spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
 
     configure_spi_mux_ot();
@@ -62,11 +62,11 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Step 1: INTR_STATUS default */
     printf("\nStep 1: INTR_STATUS default\n");
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     printf("  INTR_STATUS=0x%08x (ERROR=%u, SPI_EVENT=%u)\n", intr_status.w, intr_status.f.ERROR,
            intr_status.f.SPI_EVENT);
 
@@ -92,41 +92,41 @@ int main(void) {
     intr_test.w = 0;
     intr_test.f.ERROR = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.error=1 via INTR_TEST injection", intr_status.f.ERROR, 1)) pass = 0;
 
     /* Release INTR_TEST — INTR_STATUS should deassert (no real error active) */
     intr_test.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.error=0 after INTR_TEST release", intr_status.f.ERROR, 0)) pass = 0;
 
     intr_test.w = 0;
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=1 via INTR_TEST injection", intr_status.f.SPI_EVENT, 1))
         pass = 0;
 
     /* Release INTR_TEST — INTR_STATUS should deassert */
     intr_test.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=0 after INTR_TEST release", intr_status.f.SPI_EVENT, 0))
         pass = 0;
 
     /* Step 3.5: INTR_STATUS.error functional verification via UNDERFLOW */
     printf("\nStep 3.5: INTR_STATUS.error via UNDERFLOW\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF); /* clear */
-    dummy_rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
+    dummy_rx = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); /* trigger UNDERFLOW */
     (void)dummy_rx;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("UNDERFLOW triggered", err_status.f.UNDERFLOW, 1)) pass = 0;
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.error=1 on underflow", intr_status.f.ERROR, 1)) pass = 0;
     /* W1C clear ERROR_STATUS → INTR_STATUS.error should deassert */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, err_status.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.error=0 after clear", intr_status.f.ERROR, 0)) pass = 0;
 
     /* Step 4: EVENT_ENABLE configuration */
@@ -139,12 +139,12 @@ int main(void) {
     event_enable.w = 0;
     event_enable.f.TXEMPTY = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=1 (txempty)", intr_status.f.SPI_EVENT, 1)) pass = 0;
     /* Disable txempty → spi_event should deassert */
     event_enable.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=0 (no events)", intr_status.f.SPI_EVENT, 0)) pass = 0;
 
     /* Step 4.6: EVENT_ENABLE.ready and .idle functional path
@@ -155,22 +155,22 @@ int main(void) {
     event_enable.w = 0;
     event_enable.f.READY = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=1 (ready event)", intr_status.f.SPI_EVENT, 1)) pass = 0;
     event_enable.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=0 after ready disable", intr_status.f.SPI_EVENT, 0))
         pass = 0;
 
     event_enable.w = 0;
     event_enable.f.IDLE = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=1 (idle event)", intr_status.f.SPI_EVENT, 1)) pass = 0;
     event_enable.w = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_enable.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=0 after idle disable", intr_status.f.SPI_EVENT, 0))
         pass = 0;
 
@@ -205,7 +205,7 @@ int main(void) {
     intr_test.w = 0;
     intr_test.f.ERROR = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.error=0 when INTR_ENABLE.error=0 (masked)", intr_status.f.ERROR, 0))
         pass = 0;
 
@@ -220,7 +220,7 @@ int main(void) {
     intr_test.w = 0;
     intr_test.f.SPI_EVENT = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, intr_test.w);
-    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     if (!check_reg("INTR_STATUS.spi_event=0 when INTR_ENABLE.spi_event=0 (masked)",
                    intr_status.f.SPI_EVENT, 0))
         pass = 0;

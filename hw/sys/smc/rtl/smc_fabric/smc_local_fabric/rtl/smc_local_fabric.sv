@@ -1,17 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller Input Fabric
-//
-//-----------------------------------------------------------------------------
-
 
 module smc_local_fabric
-#(
-    parameter int unsigned AXI_MAX_WRITE_TXNS = 4,
-    parameter int unsigned AXI_MAX_READ_TXNS  = 4
-) (
+(
     input logic                                         clk_i,
     input logic                                         rst_ni,
     input logic                                         test_en_i,
@@ -152,6 +145,7 @@ module smc_local_fabric
     // Verify smc_pkg types match crossbar package types
     // ===========================================================================
 
+`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
     // AXI64 input types (6-bit ID, 32-bit addr, 64-bit data, 12-bit user)
     initial begin : g_axi64_input_type_assertions
         // input_axi (system)
@@ -205,5 +199,6 @@ module smc_local_fabric
         assert ($bits(apb_smc_dfd_reg_req_o.pwdata) == $bits(smc_local_xbar_pkg::apb32_data_t)) else $fatal(1, "APB_SMC_DFD_REG PWDATA width mismatch");
         assert ($bits(apb_smc_dfd_reg_resp_i.prdata) == $bits(smc_local_xbar_pkg::apb32_data_t)) else $fatal(1, "APB_SMC_DFD_REG PRDATA width mismatch");
     end
+`endif  // SYNTHESIS
 
 endmodule

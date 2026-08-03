@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
+
 // drbg_pkg
 //
 // Shared DRBG wrapper parameters and interface types.
-//----------------------------------------------------------
-
-`default_nettype none
-
 
 /**
  * @file drbg_pkg.sv
@@ -20,6 +15,7 @@
  *          the entropy and EDN output paths, and provisional FIPS policy
  *          constants that are intentionally isolated in one package.
  */
+
 package drbg_pkg;
 
     `include "axi/typedef.svh"
@@ -28,8 +24,6 @@ package drbg_pkg;
     // Wrapper Parameter Defaults
     // =========================================================================
 
-    /** @brief Default shared ingress FIFO depth for entropy routing. */
-    localparam int unsigned DRBG_DEFAULT_INGRESS_FIFO_DEPTH = 12;
     /** @brief Default complete-seed queue depth feeding wrapped CSRNG. */
     localparam int unsigned DRBG_DEFAULT_SEED_FIFO_DEPTH = 1;
     /** @brief Default number of exposed EDN endpoint AXI-Stream outputs. */
@@ -141,17 +135,5 @@ package drbg_pkg;
         logic tready;
     } drbg_axis_rsp_t;
 
-    // =========================================================================
-    // Entropy Routing Observability
-    // =========================================================================
-
-    /** @brief Route chosen for an accepted entropy word. */
-    typedef enum logic [1:0] {
-        DrbgEntropyRouteDistribution = 2'b00,
-        DrbgEntropyRouteCsrng        = 2'b01,
-        DrbgEntropyRouteDropped      = 2'b10
-    } drbg_entropy_route_e;
-
 endpackage : drbg_pkg
 
-`default_nettype wire

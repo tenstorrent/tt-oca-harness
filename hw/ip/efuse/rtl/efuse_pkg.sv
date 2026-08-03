@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // Efuse typedefs and parameters
-//
-//-----------------------------------------------------------------------------
 
 package efuse_pkg;
 
@@ -69,6 +66,124 @@ package efuse_pkg;
 
     localparam int unsigned SHADOW_IDX_LC_STATE         = 2;
     localparam int unsigned SHADOW_IDX_TRANSIENT_RMA_EN = 4;
+
+    localparam int unsigned MAX_CLASS1_SHADOW_RANGES = 10;
+
+    typedef struct packed {
+        logic        valid;
+        logic [31:0] first_word;
+        logic [31:0] last_word;
+    } shadow_word_range_t;
+
+    typedef shadow_word_range_t [MAX_CLASS1_SHADOW_RANGES-1:0]
+        shadow_word_range_map_t;
+
+    function automatic shadow_word_range_t make_shadow_word_range(
+        input int unsigned register_offset_bytes,
+        input int unsigned register_width_bits,
+        input int unsigned shadow_word_width_bits
+    );
+        shadow_word_range_t range_cfg;
+        int unsigned word_count;
+        range_cfg.valid = 1'b1;
+        range_cfg.first_word =
+            register_offset_bytes / (shadow_word_width_bits / 8);
+        word_count =
+            (register_width_bits + shadow_word_width_bits - 1) /
+            shadow_word_width_bits;
+        range_cfg.last_word = range_cfg.first_word + word_count - 1;
+        return range_cfg;
+    endfunction
+
+    function automatic int unsigned shadow_range_word_count(
+        input shadow_word_range_t range_cfg
+    );
+        if (range_cfg.valid) begin
+            return range_cfg.last_word - range_cfg.first_word + 1;
+        end
+        return 0;
+    endfunction
+
+    function automatic int unsigned shadow_range_map_word_count(
+        input shadow_word_range_map_t range_map
+    );
+        int unsigned word_count;
+        word_count = 0;
+        for (int unsigned i = 0; i < MAX_CLASS1_SHADOW_RANGES; i++) begin
+            word_count += shadow_range_word_count(range_map[i]);
+        end
+        return word_count;
+    endfunction
+
+    function automatic logic shadow_range_map_contains_word(
+        input shadow_word_range_map_t range_map,
+        input int unsigned word_idx
+    );
+        logic contains_word;
+        contains_word = 1'b0;
+        for (int unsigned i = 0; i < MAX_CLASS1_SHADOW_RANGES; i++) begin
+            if (range_map[i].valid &&
+                (word_idx >= range_map[i].first_word) &&
+                (word_idx <= range_map[i].last_word)) begin
+                contains_word = 1'b1;
+            end
+        end
+        return contains_word;
+    endfunction
+
+    function automatic int unsigned class1_shadow_storage_idx(
+        input shadow_word_range_map_t range_map,
+        input int unsigned word_idx
+    );
+        int unsigned storage_idx;
+        storage_idx = 0;
+        for (int unsigned i = 0; i < MAX_CLASS1_SHADOW_RANGES; i++) begin
+            if (range_map[i].valid && (word_idx > range_map[i].last_word)) begin
+                storage_idx += shadow_range_word_count(range_map[i]);
+            end else if (range_map[i].valid &&
+                         (word_idx >= range_map[i].first_word)) begin
+                storage_idx += word_idx - range_map[i].first_word;
+            end
+        end
+        return storage_idx;
+    endfunction
+
+    function automatic int unsigned normal_shadow_storage_idx(
+        input shadow_word_range_map_t range_map,
+        input int unsigned word_idx
+    );
+        int unsigned storage_idx;
+        storage_idx = word_idx;
+        for (int unsigned i = 0; i < MAX_CLASS1_SHADOW_RANGES; i++) begin
+            if (range_map[i].valid && (word_idx > range_map[i].last_word)) begin
+                storage_idx -= shadow_range_word_count(range_map[i]);
+            end
+        end
+        return storage_idx;
+    endfunction
+
+    function automatic logic shadow_range_map_is_valid(
+        input shadow_word_range_map_t range_map,
+        input int unsigned num_shadow_words
+    );
+        logic map_is_valid;
+        map_is_valid = 1'b1;
+        for (int unsigned i = 0; i < MAX_CLASS1_SHADOW_RANGES; i++) begin
+            if (range_map[i].valid &&
+                ((range_map[i].first_word > range_map[i].last_word) ||
+                 (range_map[i].last_word >= num_shadow_words))) begin
+                map_is_valid = 1'b0;
+            end
+            for (int unsigned j = i + 1; j < MAX_CLASS1_SHADOW_RANGES; j++) begin
+                if (range_map[i].valid && range_map[j].valid &&
+                    !((range_map[i].last_word < range_map[j].first_word) ||
+                      (range_map[j].last_word < range_map[i].first_word))) begin
+                    map_is_valid = 1'b0;
+                end
+            end
+        end
+        return map_is_valid;
+    endfunction
 
     //////////////////////////////
     // Fuse Command Parameters  //

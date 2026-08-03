@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
 
 /**
  * @file km_kpv_regfile.sv
@@ -21,23 +18,24 @@
  * @param WORDS_PER_SLOT  Words per slot (default 16).
  * @param DATA_WIDTH      Data width in bits (default 32).
  */
+
 module km_kpv_regfile #(
     parameter int unsigned NUM_SLOTS      = 32,
     parameter int unsigned WORDS_PER_SLOT = 16,
     parameter int unsigned DATA_WIDTH     = 32
 ) (
-    input  wire logic                                    clk_i,
+    input  logic                                    clk_i,
 
     // Bulk wipe: zeroes ALL entries on the next clock edge
-    input  wire logic                                    wipe_i,
+    input  logic                                    wipe_i,
 
     // Write port (KM)
-    input  wire logic                                    wr_a_en_i,
-    input  wire logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,
-    input  wire logic [DATA_WIDTH-1:0]                   wr_a_data_i,
+    input  logic                                    wr_a_en_i,
+    input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,
+    input  logic [DATA_WIDTH-1:0]                   wr_a_data_i,
 
     // Read port (KM only, combinational)
-    input  wire logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] rd_addr_i,
+    input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] rd_addr_i,
     output logic [DATA_WIDTH-1:0]                        rd_data_o
 );
 
@@ -64,4 +62,3 @@ module km_kpv_regfile #(
 
 endmodule : km_kpv_regfile
 
-`default_nettype wire

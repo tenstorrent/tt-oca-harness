@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // AXI Zeroer
-//
-//-----------------------------------------------------------------------------
-
 
 module zeroer #(
 	// AXI ctrl interface types
@@ -53,7 +49,7 @@ module zeroer #(
 	output  logic                               zeroer_bus_active_o
 );
 
-	`include "tt_assert.svh"
+	`include "ocah_assert.svh"
 	`include "axi/typedef.svh"
 
 	// Local type derivations from width parameters
@@ -84,8 +80,8 @@ module zeroer #(
 		.AxiDataWidth(CTRL_DATA_WIDTH),
 		.AxiIdWidth(CTRL_ID_WIDTH),
 		.AxiUserWidth(CTRL_USER_WIDTH),
-		.AxiMaxWriteTxns(1),  // TODO: hardcode inflight transactions to 1?
-		.AxiMaxReadTxns(1),   // TODO: hardcode inflight transactions to 1?
+		.AxiMaxWriteTxns(1),
+		.AxiMaxReadTxns(1),
 		.FallThrough(0),
 		.FullBW(0),
 
@@ -424,7 +420,7 @@ module zeroer #(
 	assign mst_axi_req_o.ar.user   = axi_user_t'(0);
 	assign mst_axi_req_o.r_ready   = 1'b0;
 
-	`TT_ASSERT_NEVER(TotalTransferSizeOverflow, total_transfer_size_overflow[AXI_DATA_WIDTH], clk_i, !rst_ni)
-	`TT_ASSERT_NEVER(NxtSizeOverflow, nxt_size_overflow[64], clk_i, !rst_ni)
+	`OCAH_ASSERT_NEVER(TotalTransferSizeOverflow, total_transfer_size_overflow[AXI_DATA_WIDTH], clk_i, !rst_ni)
+	`OCAH_ASSERT_NEVER(NxtSizeOverflow, nxt_size_overflow[64], clk_i, !rst_ni)
 
 endmodule

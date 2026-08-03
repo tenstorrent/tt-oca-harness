@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // OTBN wrapper: AXI 64 (cache forced) -> AXI 32 -> AXI-Lite 32 -> TL-UL
 //                                        + upstream OTBN
 //
@@ -16,28 +15,18 @@
 //
 // See also: hw/sep/AXI_TO_TILELINK_MASK_BUG.md, commit 3b3aaa6f2,
 //           smc_cpu.sv CACHE_MODIFIABLE forcing (commit 38d09186e).
-//-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_crypto_otbn_wrapper
-    import sep_pkg::*;
-    import sep_crypto_pkg::*;
-    import tlul_pkg::*;
-    import prim_alert_pkg::*;
-    import keymgr_pkg::*;
-    import edn_pkg::*;
-    import otbn_pkg::*;
-    import otbn_reg_pkg::*;
-    import otbn_wrapper_key_reg_pkg::*;
 (
     input  logic clk_i,
     input  logic rst_ni,
 
     // 64-bit AXI slave side from crypto AXI crossbar (structs)
-    input  sep_32_64_6_12_axi_req_t  otbn_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t otbn_axi_resp_o,
+    input  sep_pkg::sep_32_64_6_12_axi_req_t  otbn_axi_req_i,
+    output sep_pkg::sep_32_64_6_12_axi_resp_t otbn_axi_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req_i,
@@ -57,10 +46,10 @@ module sep_crypto_otbn_wrapper
     output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
 
     // External SRAM interfaces (from upstream OTBN via prim_ram_1p_scr_ext)
-    output sep_crypto_pka_imem_sram_req_t imem_sram_req_o,
-    input  sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,
-    output sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,
-    input  sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i
+    output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,
+    input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,
+    output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,
+    input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i
 );
 
     // ========================================================================
@@ -73,7 +62,7 @@ module sep_crypto_otbn_wrapper
     // Force the bit here, matching the smc_cpu.sv pattern.
     // ========================================================================
 
-    sep_32_64_6_12_axi_req_t otbn_axi_req_cache_fixed;
+    sep_pkg::sep_32_64_6_12_axi_req_t otbn_axi_req_cache_fixed;
 
     always_comb begin
         otbn_axi_req_cache_fixed = otbn_axi_req_i;
@@ -191,7 +180,7 @@ module sep_crypto_otbn_wrapper
     // OpenTitan OTBN core.
     // ========================================================================
 
-    otbn_wrapper_key__out_t key_csr_hwif_out;
+    otbn_wrapper_key_reg_pkg::otbn_wrapper_key__out_t key_csr_hwif_out;
 
     keymgr_pkg::otbn_key_req_t otbn_keymgr_key;
 
@@ -202,7 +191,7 @@ module sep_crypto_otbn_wrapper
         assign otbn_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
     end
 
-    localparam int unsigned OTBN_KEY_CSR_ADDR_WIDTH = OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
+    localparam int unsigned OTBN_KEY_CSR_ADDR_WIDTH = otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
 
     otbn_wrapper_key_reg u_otbn_wrapper_key_reg (
         .clk       (clk_i),
@@ -261,8 +250,8 @@ module sep_crypto_otbn_wrapper
     // Alert interface
     // ========================================================================
 
-    prim_alert_pkg::alert_rx_t [NumAlerts-1:0] otbn_alert_rx;
-    prim_alert_pkg::alert_tx_t [NumAlerts-1:0] otbn_alert_tx;
+    prim_alert_pkg::alert_rx_t [otbn_reg_pkg::NumAlerts-1:0] otbn_alert_rx;
+    prim_alert_pkg::alert_tx_t [otbn_reg_pkg::NumAlerts-1:0] otbn_alert_tx;
     assign otbn_alert_rx = alert_rx_i;
     assign alert_tx_o    = otbn_alert_tx;
 
@@ -274,7 +263,7 @@ module sep_crypto_otbn_wrapper
 
     otbn #(
         .Stub    (1'b0),
-        .RegFile (RegFileFF)
+        .RegFile (otbn_pkg::RegFileFF)
     ) u_otbn (
         .clk_i,
         .rst_ni,

@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------
-// AXI Local Alias Remap
+// AXI Window Remap
 //
-// Conditionally remaps addresses in a specified local alias region to a target
-// region. Addresses outside the alias region pass through unchanged.
+// Generic single-window address translation: conditionally remaps addresses
+// in a specified window to a target region. Addresses outside the window pass
+// through unchanged. Used for both local-alias and global-to-local remapping.
 //
 // Example: If local_alias_base=0xC000_0000, target_base=0x1000_0000, region_size=0x50000
 //   - Address 0xC000_1234 -> remapped to 0x1000_1234
 //   - Address 0x2000_0000 -> unchanged (outside alias region)
-//
-//------------------------------------------------------------
 
-module axi_local_alias_remap #(
+module axi_window_remap #(
     parameter type axi_req_t  = logic,
     parameter type axi_resp_t = logic,
     parameter int unsigned AXI_ADDR_WIDTH = 32

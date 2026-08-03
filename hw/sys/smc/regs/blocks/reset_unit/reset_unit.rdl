@@ -10,8 +10,8 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Configuration registers to setup system configuration. Used in Athena only.
-                    Description can be found in 5.9.1 of the Athena Chiplet spec, table 106";
+            desc = "Configuration registers to setup system configuration.
+                    Usage is integration-specific; see the adopter chiplet specification.";
         } ss_config[31:0] = 0x0 ;
     };
 

@@ -19,24 +19,24 @@ addrmap filter_ctrl {
             sw = rw;
             hw = r;
             desc = "Filter range has read permissions";
-        } read_en[0:0] = 0x0;
+        } read_allowed[0:0] = 0x0;
 
         field {
             sw = rw;
             hw = r;
             desc = "Filter range has write permissions";
-        } write_en[1:1] = 0x0;
+        } write_allowed[1:1] = 0x0;
 
         field {
             sw = rw;
             hw = r;
-            desc = "Address matching mode for the filter. A = 0 means this entry is disabled, A = 1 means this entry is enabled";
-        } addr_mode[4:4] = 0x0;
+            desc = "Filter entry enabled. A = 0 means this entry is disabled, A = 1 means this entry is enabled and will be used to filter";
+        } entry_enabled[4:4] = 0x0;
 
         field {
             sw = rw;
             hw = r;
-            desc = "Whether non-secure or secure transactions only can pass through this field";
+            desc = "Only transactions with axprot[1] equal to this field will be allowed to pass";
         } allow_ns[8:8] = 0x0;
 
         field {
@@ -48,13 +48,13 @@ addrmap filter_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "Source Id field to match";
+            desc = "Source Id field to match to pass filter";
         } src_id[19:16] = 0x0;
 
         field {
             sw = rw;
             hw = r;
-            desc = "Group Id field to match";
+            desc = "Group Id field to match to pass filter";
         } group_id[23:20] = 0x0;
 
         field {
@@ -67,7 +67,7 @@ addrmap filter_ctrl {
             sw = rw;
             onwrite=woset;
             hw = r;
-            desc = "Write once register to lock filter configurations";
+            desc = "Lock filter configurations. Write once register";
         } locked[63:63] = 0x0;
     };
 

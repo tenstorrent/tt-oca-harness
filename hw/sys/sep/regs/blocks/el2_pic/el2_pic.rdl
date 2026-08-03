@@ -5,7 +5,7 @@
 `define EL2_PIC_RDL_DEFINED
 
 // VeeR EL2 PIC (Programmable Interrupt Controller) Memory-Mapped Registers
-// Based on VeeR EL2 documentation: deps/el2/docs/source/interrupts.md
+// Based on VeeR EL2 documentation: chipsalliance/Cores-VeeR-EL2 docs/source/interrupts.md
 //
 // Note: CSR registers (meivt, meipt, meicpct, meicidpl, meicurpl, meihap) are
 // in RISC-V CSR address space and NOT included in this memory-mapped RDL file.

@@ -30,25 +30,25 @@ static int wait_for_done_or_idle(void) {
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) break;
+        if (intr.f.hmac_done || sts.f.hmac_idle) break;
     }
     if (timeout <= 0) {
         printf("Timeout waiting for HMAC completion\n");
         return -1;
     }
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (intr.f.HMAC_DONE) {
+    if (intr.f.hmac_done) {
         WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        while (s.f.FIFO_FULL) {
+        while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("FIFO full timeout\n");
                 return -1;
@@ -70,32 +70,32 @@ static void to_hex(const uint8_t *in, char *out, int len) {
 }
 
 static int sha256_abc(uint32_t digest_words[8]) {
-    hmac__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.HMAC_EN = 0;
-    cfg.f.SHA_EN = 1;
-    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.hmac_en = 0;
+    cfg.f.sha_en = 1;
+    cfg.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     const uint8_t abc[] = "abc";
     if (feed_msg(abc, 3) != 0) return -1;
 
-    hmac__CMD_t proc = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t proc = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, proc.w);
 
     if (wait_for_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        digest_words[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
+        digest_words[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
 
     hmac__CFG_t cfg_off = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg_off.f.SHA_EN = 0;
+    cfg_off.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg_off.w);
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
@@ -128,7 +128,7 @@ int main(void) {
     /* Step 3: Read digest again, verify at least some words changed */
     uint32_t digest_wiped[8];
     for (int i = 0; i < 8; i++) {
-        digest_wiped[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
+        digest_wiped[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
     printf("Post-wipe digest words:");
     for (int i = 0; i < 8; i++) printf(" 0x%08x", digest_wiped[i]);
@@ -146,8 +146,8 @@ int main(void) {
 
     /* Step 4: Verify STATUS returns idle */
     hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-    printf("STATUS after wipe: idle=%u\n", sts.f.HMAC_IDLE);
-    if (!sts.f.HMAC_IDLE) {
+    printf("STATUS after wipe: idle=%u\n", sts.f.hmac_idle);
+    if (!sts.f.hmac_idle) {
         printf("FAIL: HMAC not idle after WIPE_SECRET\n");
         pass = 0;
     }

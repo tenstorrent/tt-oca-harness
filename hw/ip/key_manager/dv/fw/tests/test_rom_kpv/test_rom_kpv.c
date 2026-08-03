@@ -179,7 +179,7 @@ int main(void) {
         for (i = 0; i < 16; i++) {
             key_in[i] = 0x01020304u + i;
         }
-        int rc = rom_kpv_write_key(0, key_in, 16, (rom_km_dest_bits_t){.aes = 1});
+        int rc = rom_kpv_write_key(0, key_in, 16);
         if (rc != 0) {
             TEST_FAIL("write_key slot 0 returned %d", rc);
         }
@@ -192,15 +192,13 @@ int main(void) {
     {
         uint32_t key_out[16];
         uint8_t key_len = 0;
-        rom_km_dest_bits_t dest = {.raw = 0};
         uint32_t i;
 
-        int rc = rom_kpv_read_key(0, key_out, &key_len, &dest);
+        int rc = rom_kpv_read_key(0, key_out, &key_len);
         if (rc != 0) {
             TEST_FAIL("read_key slot 0 returned %d", rc);
         }
         TEST_ASSERT_EQ(key_len, 16u, "key_len");
-        TEST_ASSERT_EQ(dest.raw, (uint32_t)(rom_km_dest_bits_t){.aes = 1}.raw, "dest_valid");
         for (i = 0; i < 16; i++) {
             uint32_t expected = 0x01020304u + i;
             TEST_ASSERT_EQ(key_out[i], expected, "key word");
@@ -218,7 +216,7 @@ int main(void) {
             new_key[i] = 0xFFu;
         }
         rom_kpv_write_lock(0);
-        int rc = rom_kpv_write_key(0, new_key, 16, (rom_km_dest_bits_t){.aes = 1});
+        int rc = rom_kpv_write_key(0, new_key, 16);
         if (rc != -1) {
             TEST_FAIL("write_key to write-locked slot should return -1, got %d", rc);
         }
@@ -231,10 +229,9 @@ int main(void) {
     {
         uint32_t key_out[16];
         uint8_t key_len = 0;
-        rom_km_dest_bits_t dest = {.raw = 0};
 
         rom_kpv_read_lock(0);
-        int rc = rom_kpv_read_key(0, key_out, &key_len, &dest);
+        int rc = rom_kpv_read_key(0, key_out, &key_len);
         if (rc != -1) {
             TEST_FAIL("read_key from read-locked slot should return -1, got %d", rc);
         }

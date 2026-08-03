@@ -144,11 +144,11 @@ static int otbn_load_app(const otbn_error_app_t *app) {
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < app->imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), (uint32_t)i, app->imem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i, app->imem[i]);
     }
 
     for (size_t i = 0; i < app->dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), (uint32_t)i, app->dmem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i, app->dmem[i]);
     }
 
     uint32_t checksum = READ_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
@@ -317,7 +317,7 @@ int main(void) {
 
     printf("=== OTBN Software Error Handling Test ===\n");
     printf("[DBG] OTBN base: csr=0x%08x imem=0x%08x dmem=0x%08x\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
-           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0));
+           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
 
     if (otbn_wait_for_status(OTBN_STATUS_IDLE, "IDLE") != 0) {
         fail_and_halt(1, "OTBN did not reach IDLE");

@@ -398,12 +398,12 @@ module telemetry_receiver
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckBufferDepth, BUFFER_DEPTH >= 2)
+    `OCAH_OT_ASSERT_INIT(paramCheckBufferDepth, BUFFER_DEPTH >= 2)
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
-    `ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
-    `ASSERT_KNOWN(DebugKnownO_A, debug_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
+    `OCAH_OT_ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(DebugKnownO_A, debug_o)
 
 endmodule

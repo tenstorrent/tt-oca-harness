@@ -17,7 +17,7 @@ extern "C" {
 #define AON_TIMER__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t FATAL_FAULT :1;
+        uint32_t fatal_fault :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -34,8 +34,8 @@ typedef union {
 #define AON_TIMER__WKUP_CTRL__PRESCALER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ENABLE :1;
-        uint32_t PRESCALER :12;
+        uint32_t enable :1;
+        uint32_t prescaler :12;
         uint32_t :19;
     } f;
     uint32_t w;
@@ -48,7 +48,7 @@ typedef union {
 #define AON_TIMER__WKUP_THOLD_HI__THRESHOLD_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t THRESHOLD_HI :32;
+        uint32_t threshold_hi :32;
     } f;
     uint32_t w;
 } aon_timer__WKUP_THOLD_HI_t;
@@ -60,7 +60,7 @@ typedef union {
 #define AON_TIMER__WKUP_THOLD_LO__THRESHOLD_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t THRESHOLD_LO :32;
+        uint32_t threshold_lo :32;
     } f;
     uint32_t w;
 } aon_timer__WKUP_THOLD_LO_t;
@@ -72,7 +72,7 @@ typedef union {
 #define AON_TIMER__WKUP_COUNT_HI__COUNT_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t COUNT_HI :32;
+        uint32_t count_hi :32;
     } f;
     uint32_t w;
 } aon_timer__WKUP_COUNT_HI_t;
@@ -84,7 +84,7 @@ typedef union {
 #define AON_TIMER__WKUP_COUNT_LO__COUNT_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t COUNT_LO :32;
+        uint32_t count_lo :32;
     } f;
     uint32_t w;
 } aon_timer__WKUP_COUNT_LO_t;
@@ -96,7 +96,7 @@ typedef union {
 #define AON_TIMER__WDOG_REGWEN__REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t REGWEN :1;
+        uint32_t regwen :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -113,8 +113,8 @@ typedef union {
 #define AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ENABLE :1;
-        uint32_t PAUSE_IN_SLEEP :1;
+        uint32_t enable :1;
+        uint32_t pause_in_sleep :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -127,7 +127,7 @@ typedef union {
 #define AON_TIMER__WDOG_BARK_THOLD__THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t THRESHOLD :32;
+        uint32_t threshold :32;
     } f;
     uint32_t w;
 } aon_timer__WDOG_BARK_THOLD_t;
@@ -139,7 +139,7 @@ typedef union {
 #define AON_TIMER__WDOG_BITE_THOLD__THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t THRESHOLD :32;
+        uint32_t threshold :32;
     } f;
     uint32_t w;
 } aon_timer__WDOG_BITE_THOLD_t;
@@ -151,7 +151,7 @@ typedef union {
 #define AON_TIMER__WDOG_COUNT__COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t COUNT :32;
+        uint32_t count :32;
     } f;
     uint32_t w;
 } aon_timer__WDOG_COUNT_t;
@@ -167,8 +167,8 @@ typedef union {
 #define AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t WKUP_TIMER_EXPIRED :1;
-        uint32_t WDOG_TIMER_BARK :1;
+        uint32_t wkup_timer_expired :1;
+        uint32_t wdog_timer_bark :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -178,13 +178,15 @@ typedef union {
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bm 0x1
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bp 0
 #define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_bw 1
+#define AON_TIMER__INTR_TEST__WKUP_TIMER_EXPIRED_reset 0x0
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm 0x2
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bp 1
 #define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bw 1
+#define AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t WKUP_TIMER_EXPIRED :1;
-        uint32_t WDOG_TIMER_BARK :1;
+        uint32_t wkup_timer_expired :1;
+        uint32_t wdog_timer_bark :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -197,7 +199,7 @@ typedef union {
 #define AON_TIMER__WKUP_CAUSE__CAUSE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t CAUSE :1;
+        uint32_t cause :1;
         uint32_t :31;
     } f;
     uint32_t w;

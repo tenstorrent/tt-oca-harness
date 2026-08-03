@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2024 TT
 
 // HMAC Wrapper - AXI to TL-UL Bridge using axi_to_tlul
@@ -10,13 +9,6 @@
 `include "axi/typedef.svh"
 
 module hmac_wrapper
-    import sep_pkg::*;
-    import sep_crypto_pkg::*;
-    import tlul_pkg::*;
-    import prim_mubi_pkg::*;
-    import prim_alert_pkg::*;
-    import keymgr_pkg::*;
-    import hmac_wrapper_key_reg_pkg::*;
 #(
     parameter int unsigned ADDR_WIDTH = 32,
     parameter int unsigned DATA_WIDTH = 32
@@ -25,8 +17,8 @@ module hmac_wrapper
     input logic rst_ni,
 
     // AXI struct interface (64-bit from demux)
-    input  sep_32_64_6_12_axi_req_t  hmac_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t hmac_axi_resp_o,
+    input  sep_pkg::sep_32_64_6_12_axi_req_t  hmac_axi_req_i,
+    output sep_pkg::sep_32_64_6_12_axi_resp_t hmac_axi_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req_i,
@@ -114,7 +106,7 @@ module hmac_wrapper
 
     // OpenTitan HMAC has fixed BlockAw=13 (8KB internal address space)
     localparam logic [31:0] HMAC_ADDR_MASK = 32'h0000_1FFF;  // 13 bits for AW=13
-    // Extract lower 13 bits of the normalized SEP addrmap base address.
+    // Extract lower 13 bits of system base address (from och_sep_top_reg.svh via sep_pkg)
     localparam logic [31:0] HMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_HMAC_BASE_ADDR & HMAC_ADDR_MASK;
 
     always_comb begin
@@ -186,7 +178,7 @@ module hmac_wrapper
     // ============================================================================
 
     // HW interface wires for the generated CSR block
-    hmac_wrapper_key__out_t key_csr_hwif_out;
+    hmac_wrapper_key_reg_pkg::hmac_wrapper_key__out_t key_csr_hwif_out;
 
     // Build the keymgr_pkg::hw_key_req_t struct from CSR outputs
     keymgr_pkg::hw_key_req_t hmac_keymgr_key;
@@ -200,7 +192,7 @@ module hmac_wrapper
     end
 
     // Instantiate the PeakRDL-generated HMAC key CSR register block
-    localparam int unsigned HMAC_KEY_CSR_ADDR_WIDTH = HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+    localparam int unsigned HMAC_KEY_CSR_ADDR_WIDTH = hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
     hmac_wrapper_key_reg u_hmac_wrapper_key_reg (
         .clk       (clk_i),

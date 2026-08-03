@@ -556,6 +556,6 @@ module idma_inst64_top #(
     // ASSERTION
     //--------------------------------------
     // The DMUSER field op-code supports axi user field width only up to 64 Bits.
-    `ASSERT_INIT(CheckAxiUserField, AxiUserWidth <= 64);
+    `OCAH_PULP_ASSERT_INIT(CheckAxiUserField, AxiUserWidth <= 64);
 
 endmodule

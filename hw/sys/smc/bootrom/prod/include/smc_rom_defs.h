@@ -198,6 +198,9 @@
 #define SMC_BOOT_SUCCESS 0xacafaca1 /* Boot completed successfully */
 #define SMC_BOOT_FAILURE 0xdeadbeef /* Boot failed */
 
+/* Written to scratch register 15 when execution enters EBREAK-filled ROM padding. */
+#define ROM_PADDING_TRAP_STATUS 0xBADF00D0
+
 /* Boot status indication codes */
 #define SMC_BOOT_I2C_INDICATION 0xBEEF0002      /* I2C boot mode selected */
 #define SMC_BOOT_RECOVERY_INDICATION 0xBEEF0003 /* Recovery boot mode */
@@ -249,6 +252,7 @@
 #define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC000BB04
 #define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000F800
 #define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL 0xC00390F8
+#define ROM_PADDING_TRAP_STATUS_VAL 0xBADF00D0
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK_VAL 0x00002000
 #define SMC_STRAP_MEM_BIST_BYPASS_MASK_VAL 0x00400000 /* (1U << (54 - 32)) */
 #define SMC_EFUSE_RESERVED_0_SRAM_AUTO_ZERO_DISABLE_MASK_VAL 0x40

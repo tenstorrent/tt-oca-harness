@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // DMA Wrapper
-//
-//-----------------------------------------------------------------------------
-
 
 module idma_wrapper #(
 		parameter  int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
@@ -14,6 +10,10 @@ module idma_wrapper #(
 		parameter  int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
 
 		parameter  int unsigned DMA_MST_MAX_TXNS = 16,
+
+		// All in-flight transactions the ctrl port admits, for the frontend clock-gate snoop.
+		// Must cover what the upstream fabric can present on dma_ctrl_axi_req_i[0]
+		parameter  int unsigned CTRL_OUTSTANDING_TX = 16,
 
 		parameter  int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, otherwise dma ctrl read bus will stall on cmd start
 		parameter  int unsigned M2B_FIFO_DEPTH = 0,
@@ -117,7 +117,8 @@ module idma_wrapper #(
 	assign dma_busy = dma_frontend_wakeup | dma_backend_busy;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		// Full AXI4 ctrl port: all IDs, both directions (see CTRL_OUTSTANDING_TX)
+		.OutstandingTx(CTRL_OUTSTANDING_TX),
 		.DenyDelay(1),
 		.HystWidth(CG_HYSTERESIS_W)
 	) frontend_cg (

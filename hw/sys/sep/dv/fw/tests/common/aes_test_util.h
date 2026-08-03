@@ -85,15 +85,15 @@ static inline int check_no_alert(const char *tag) {
 /* ------------------------------------------------------------------ */
 
 static inline void write_data_in(const uint32_t in[4]) {
-    for (int i = 0; i < 4; i++) WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_0_BASE_ADDR(i), in[i]);
+    for (int i = 0; i < 4; i++) WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(i), in[i]);
 }
 
 static inline void read_data_out(uint32_t out[4]) {
-    for (int i = 0; i < 4; i++) out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_0_BASE_ADDR(i));
+    for (int i = 0; i < 4; i++) out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(i));
 }
 
 static inline void read_iv_out(uint32_t iv_out[4]) {
-    for (int i = 0; i < 4; i++) iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i));
+    for (int i = 0; i < 4; i++) iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i));
 }
 
 static inline void print_block(const char *label, const uint32_t block[4]) {
@@ -148,19 +148,19 @@ static inline int configure_aes_full(uint32_t operation, uint32_t mode, uint32_t
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < key_words; i++)
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), key_share0[i]);
-    for (int i = key_words; i < 8; i++) WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), key_share0[i]);
+    for (int i = key_words; i < 8; i++) WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
 
     if (key_share1 != NULL) {
         for (int i = 0; i < 8; i++)
-            WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), key_share1[i]);
+            WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), key_share1[i]);
     } else {
-        for (int i = 0; i < 8; i++) WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        for (int i = 0; i < 8; i++) WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_idle() != 0) return -1;
 
-    for (int i = 0; i < 4; i++) WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), iv[i]);
+    for (int i = 0; i < 4; i++) WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), iv[i]);
 
     return 0;
 }

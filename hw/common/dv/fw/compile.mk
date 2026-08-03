@@ -36,10 +36,11 @@ ocah_fw_common_mk := 1
 #                           set, postprocessing is a real target instead of an
 #                           ELF recipe side effect (e.g. .ecc.hex)
 #   FW_TEST_POSTPROCESS_DEPS - files that invalidate the primary sidecar target
-# Test discovery (canonical tests/<name>/<name>.c); a subsystem declares only
-# deltas, or opts out entirely by pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>):
+# Test discovery (canonical tests/<name>/<name>.c, plus sibling .c/.S in the
+# same dir); a subsystem declares only deltas, or opts out entirely by
+# pre-setting FW_TEST_NAMES (+ FW_TEST_SRCS_<t>):
 #   FW_TEST_EXCLUDE_NAMES  - test dir names to skip
-#   FW_TEST_EXTRA_SRCS_<t> - extra .c compiled into test <t>
+#   FW_TEST_EXTRA_SRCS_<t> - extra .c/.S compiled into test <t>
 #
 # Each test links against exactly one mode. Output artifacts are named
 # <test>/<test>.<mode>.{elf,map,dis,sym}.
@@ -87,7 +88,8 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c))
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c)) \
+  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/gen/c))
 FW_INCLUDES += $(if $(strip $(FW_REG_SYS)),$(call ocah_fw_reg_includes,$(FW_REG_SYS)))
 
 # Derived build variables.
@@ -130,7 +132,7 @@ FW_TEST_SRCS := $(filter-out \
   $(wildcard $(FW_DIR)/tests/*/*.c))
 FW_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_TEST_SRCS)))))
 $(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_DIR)/tests/$(t)/*.c))))
-$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests/$(t)/*.c) $(FW_TEST_EXTRA_SRCS_$(t))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests/$(t)/*.c $(FW_DIR)/tests/$(t)/*.S) $(FW_TEST_EXTRA_SRCS_$(t))))
 endif
 
 FW_TEST_SELECTED := $(if $(strip $(TEST)),$(strip $(TEST)),$(FW_TEST_NAMES))
@@ -180,13 +182,13 @@ endef
 endif
 
 define ocah_fw_test_obj_rule
-$(FW_TEST_BUILD_DIR)/$(1)/$(notdir $(2:.c=.o)): $(2) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
-	$$(CC) $$(FW_CFLAGS) $$(FW_INCLUDES) $$(FW_TEST_INCLUDES) $$(FW_EXTRA_CFLAGS) $$(FW_TEST_EXTRA_CFLAGS) $$(DEPFLAGS) -c "$$<" -o "$$@"
+$(FW_TEST_BUILD_DIR)/$(1)/$(notdir $(basename $(2)).o): $(2) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
+	$$(CC) $(if $(filter %.S %.s,$(2)),$$(FW_ASFLAGS) $$(FW_INCLUDES) $$(FW_EXTRA_CFLAGS) $$(DEPFLAGS) -x assembler-with-cpp,$$(FW_CFLAGS) $$(FW_INCLUDES) $$(FW_TEST_INCLUDES) $$(FW_EXTRA_CFLAGS) $$(FW_TEST_EXTRA_CFLAGS) $$(DEPFLAGS)) -c "$$<" -o "$$@"
 endef
 
 define ocah_fw_test_rules
 FW_TEST_SRCS_FOR_$(1) := $$(if $$(strip $$(FW_TEST_SRCS_$(1))),$$(FW_TEST_SRCS_$(1)),$$(FW_TEST_SRC_$(1))) $$(FW_TEST_COMMON_SRCS)
-FW_TEST_OBJS_$(1) := $$(addprefix $(FW_TEST_BUILD_DIR)/$(1)/,$$(notdir $$(FW_TEST_SRCS_FOR_$(1):.c=.o)))
+FW_TEST_OBJS_$(1) := $$(addprefix $(FW_TEST_BUILD_DIR)/$(1)/,$$(addsuffix .o,$$(basename $$(notdir $$(FW_TEST_SRCS_FOR_$(1))))))
 $$(foreach src,$$(FW_TEST_SRCS_FOR_$(1)),$$(eval $$(call ocah_fw_test_obj_rule,$(1),$$(src))))
 
 FW_TEST_MODE_FOR_$(1) := $$(call ocah_fw_test_mode,$(1))

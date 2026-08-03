@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP System CSRs
-//
-//-----------------------------------------------------------------------------
 
 module sep_system_csr
 (
     input  logic                                                              clk_i,
+    input  logic                                                              clk_ref_i,
     input  logic                                                              rst_ni,
 	input  logic                                                              rst_warm_ni,
 	input  logic                                                              test_en_i,
@@ -49,7 +47,10 @@ module sep_system_csr
 	output logic [31:1]                                                       nmi_vec_o,
 
 	// External TRNG source selection (from sep_cpu_ctrl EXT_TRNG_SRC_SEL register)
-	output logic [1:0]                                                        ext_trng_src_sel_o
+	output logic [2:0]                                                        ext_trng_src_sel_o,
+
+	// Key Manager emergency wipe control (from sep_cpu_ctrl KM_WIPE_CTRL register)
+	output logic                                                              km_wipe_state_o
 );
 
 	////////////////////////////////////////////////////////////////////////////
@@ -81,83 +82,23 @@ module sep_system_csr
 	sep_cpu_ctrl_reg_pkg::sep_cpu_ctrl__in_t  sep_cpu_ctrl_hwif_in;
 	sep_cpu_ctrl_reg_pkg::sep_cpu_ctrl__out_t sep_cpu_ctrl_hwif_out;
 
-	// CLOCK_GATE_CTRL outputs
-	logic        spacc_cg_enable;
-	logic        pka_cg_enable;
-	logic        dma_cg_enable;
-	logic        mailbox_cg_en;
-	logic        fabric_cg_enable;
-	logic        filter_in_cg_enable;
-	logic        sram_cg_enable;
-	logic        zeroer_cg_enable;
-	logic        alias_remap_cg_enable;
-	logic        filter_out_cg_enable;
-	logic        ot_hmac_cg_enable;
-	logic        entropy_fifo_cg_enable;
-	logic [5:0]  cg_hysteresis;
+	// CLOCK_GATE_CTRL
+	logic clock_gate_ctrl_rsvd;
 
-	// PKA_CTRL outputs
-	logic pka_dpa_disable;
-	logic pka_noise_src;
-	logic pka_noise_src_valid;
+	// TIMEOUT_INTERRUPT
+	logic timeout_interrupt_rsvd;
 
-	// SPACC_CTRL outputs
-	logic spacc_dpa_disable;
-	logic spacc_dpa_rand;
-	logic spacc_dpa_rand_vld;
+	// TIMEOUT_ENABLE
+	logic timeout_enable_rsvd;
 
-	// TIMEOUT_COUNT outputs (10 registers, each 48 bits)
-	logic [47:0] timeout_count_troot;
-	logic [47:0] timeout_count_dma;
-	logic [47:0] timeout_count_spacc;
-	logic [47:0] timeout_count_sys_in;
-	logic [47:0] timeout_count_mailbox_inbound;
-	logic [47:0] timeout_count_mailbox_outbound;
-	logic [47:0] timeout_count_entropy_write;
-	logic [47:0] timeout_count_entropy_read;
-	logic [47:0] timeout_count_filter_out;
-	logic [47:0] timeout_count_alias_remap;
+	// TIMEOUT_COUNT
+	logic timeout_count_rsvd [7:0];
 
-	// TIMEOUT_ENABLE outputs
-	logic troot_timeout_en;
-	logic sys_in_timeout_en;
-	logic spacc_timeout_en;
-	logic dma_data_timeout_en;
-	logic alias_remap_timeout_en;
-	logic filter_out_timeout_en;
-	logic entropy_read_timeout_en;
-	logic entropy_write_timeout_en;
-	logic inbound_mailbox_timeout_en;
-	logic outbound_mailbox_timeout_en;
+	// TIMEOUT_CLEAR
+	logic timeout_clear_rsvd;
 
-	// TIMEOUT_CLEAR outputs
-	logic troot_timeout_clear;
-	logic sys_in_timeout_clear;
-	logic spacc_timeout_clear;
-	logic dma_data_timeout_clear;
-	logic alias_remap_timeout_clear;
-	logic filter_out_timeout_clear;
-	logic entropy_read_timeout_clear;
-	logic entropy_write_timeout_clear;
-	logic inbound_mailbox_timeout_clear;
-	logic outbound_mailbox_timeout_clear;
-
-	// TIMEOUT_MODE outputs (each 2 bits)
-	logic [1:0] troot_timeout_mode;
-	logic [1:0] sys_in_timeout_mode;
-	logic [1:0] spacc_timeout_mode;
-	logic [1:0] dma_data_timeout_mode;
-	logic [1:0] alias_remap_timeout_mode;
-	logic [1:0] filter_out_timeout_mode;
-	logic [1:0] entropy_read_timeout_mode;
-	logic [1:0] entropy_write_timeout_mode;
-	logic [1:0] inbound_mailbox_timeout_mode;
-	logic [1:0] outbound_mailbox_timeout_mode;
-
-	// ENTROPY_FIFO_CTRL outputs
-	logic       backpressure_empty_reads;
-	logic [4:0] entropy_fifo_interrupt_threshold;
-	logic       entropy_fifo_interrupt_en;
+	// TIMEOUT_MODE
+	logic timeout_mode_rsvd;
 
 	// RAS_BANK_INFO outputs
 	logic [3:0] ras_bank_chip;
@@ -166,33 +107,19 @@ module sep_system_csr
 	// SEP_SW_DEBUG output
 	logic [31:0] sep_sw_debug;
 
-	// REFERENCE_COUNTER input
+	// REFERENCE_COUNTER
 	logic [63:0] reference_counter;
-
-	// TODO: Timeouts unused for now
-	// TIMEOUT_INTERRUPT inputs
-	logic troot_timeout_int;
-	logic sys_in_timeout_int;
-	logic spacc_timeout_int;
-	logic dma_data_timeout_int;
-	logic alias_remap_timeout_int;
-	logic filter_out_timeout_int;
-	logic entropy_read_timeout_int;
-	logic entropy_write_timeout_int;
-	logic inbound_mailbox_timeout_int;
-	logic outbound_mailbox_timeout_int;
+	logic [63:0] ref_count_from_reg;
+	logic        ref_count_wr_swacc;
+	logic        ref_count_wr_swacc_q;
 
 	// SEP_TEST_CTRL inputs
 	logic sep_standalone;
-	logic fast_spacc_en;
 	logic fast_pka_en;
 	logic fast_sram_en;
 	logic fast_dccm_en;
 	logic fast_iccm_en;
 	logic fast_spi_en;
-
-	// ENTROPY_FIFO_CTRL input
-	logic [5:0] entropy_fifo_num_entries;
 
 	////////////////////////////////////////////////////////////////////////////
 	// AXI Demux
@@ -739,78 +666,22 @@ module sep_system_csr
 	// hwif_out Signal Assignments
 	////////////////////////////////////////////////////////////////////////////
 
-	// CLOCK_GATE_CTRL
-	assign spacc_cg_enable        = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.spacc_cg_enable.value;
-	assign pka_cg_enable          = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.pka_cg_enable.value;
-	assign dma_cg_enable          = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.dma_cg_enable.value;
-	assign mailbox_cg_en          = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.mailbox_cg_en.value;
-	assign fabric_cg_enable       = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.fabric_cg_enable.value;
-	assign filter_in_cg_enable    = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.filter_in_cg_enable.value;
-	assign sram_cg_enable         = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.sram_cg_enable.value;
-	assign zeroer_cg_enable       = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.zeroer_cg_enable.value;
-	assign alias_remap_cg_enable  = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.alias_remap_cg_enable.value;
-	assign filter_out_cg_enable   = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.filter_out_cg_enable.value;
-	assign ot_hmac_cg_enable      = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value;
-	assign entropy_fifo_cg_enable = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value;
-	assign cg_hysteresis          = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.cg_hysteresis.value;
+	// Reserved placeholder registers (clock-gate control / timeout monitors
+	// unimplemented): outputs sunk into unused *_rsvd nets.
+	assign clock_gate_ctrl_rsvd = sep_cpu_ctrl_hwif_out.CLOCK_GATE_CTRL.pka_cg_enable.value;
 
-	// PKA_CTRL
-	assign pka_dpa_disable     = sep_cpu_ctrl_hwif_out.PKA_CTRL.pka_dpa_disable.value;
-	assign pka_noise_src       = sep_cpu_ctrl_hwif_out.PKA_CTRL.pka_noise_src.value;
-	assign pka_noise_src_valid = sep_cpu_ctrl_hwif_out.PKA_CTRL.pka_noise_src_valid.value;
+	assign timeout_count_rsvd[0] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_DMA.reserved.value;
+	assign timeout_count_rsvd[1] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_SYS_IN.reserved.value;
+	assign timeout_count_rsvd[2] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value;
+	assign timeout_count_rsvd[3] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value;
+	assign timeout_count_rsvd[4] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value;
+	assign timeout_count_rsvd[5] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ENTROPY_READ.reserved.value;
+	assign timeout_count_rsvd[6] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_FILTER_OUT.reserved.value;
+	assign timeout_count_rsvd[7] = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value;
 
-	// SPACC_CTRL
-	assign spacc_dpa_disable  = sep_cpu_ctrl_hwif_out.SPACC_CTRL.spacc_dpa_disable.value;
-	assign spacc_dpa_rand     = sep_cpu_ctrl_hwif_out.SPACC_CTRL.spacc_dpa_rand.value;
-	assign spacc_dpa_rand_vld = sep_cpu_ctrl_hwif_out.SPACC_CTRL.spacc_dpa_rand_vld.value;
-
-	// TIMEOUT_COUNT
-	assign timeout_count_troot            = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_TROOT.data.value;
-	assign timeout_count_dma              = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_DMA.data.value;
-	assign timeout_count_spacc            = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_SPACC.data.value;
-	assign timeout_count_sys_in           = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_SYS_IN.data.value;
-	assign timeout_count_mailbox_inbound  = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value;
-	assign timeout_count_mailbox_outbound = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value;
-	assign timeout_count_entropy_write    = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ENTROPY_WRITE.data.value;
-	assign timeout_count_entropy_read     = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ENTROPY_READ.data.value;
-	assign timeout_count_filter_out       = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_FILTER_OUT.data.value;
-	assign timeout_count_alias_remap      = sep_cpu_ctrl_hwif_out.TIMEOUT_COUNT_ALIAS_REMAP.data.value;
-
-	// TIMEOUT_ENABLE
-	assign troot_timeout_en            = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.troot_timeout_en.value;
-	assign sys_in_timeout_en           = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.sys_in_timeout_en.value;
-	assign spacc_timeout_en            = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.spacc_timeout_en.value;
-	assign dma_data_timeout_en         = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.dma_data_timeout_en.value;
-	assign alias_remap_timeout_en      = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.alias_remap_timeout_en.value;
-	assign filter_out_timeout_en       = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.filter_out_timeout_en.value;
-	assign entropy_read_timeout_en     = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.entropy_read_timeout_en.value;
-	assign entropy_write_timeout_en    = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.entropy_write_timeout_en.value;
-	assign inbound_mailbox_timeout_en  = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value;
-	assign outbound_mailbox_timeout_en = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value;
-
-	// TIMEOUT_CLEAR
-	assign troot_timeout_clear            = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.troot_timeout_clear.value;
-	assign sys_in_timeout_clear           = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.sys_in_timeout_clear.value;
-	assign spacc_timeout_clear            = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.spacc_timeout_clear.value;
-	assign dma_data_timeout_clear         = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.dma_data_timeout_clear.value;
-	assign alias_remap_timeout_clear      = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.alias_remap_timeout_clear.value;
-	assign filter_out_timeout_clear       = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.filter_out_timeout_clear.value;
-	assign entropy_read_timeout_clear     = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.entropy_read_timeout_clear.value;
-	assign entropy_write_timeout_clear    = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.entropy_write_timeout_clear.value;
-	assign inbound_mailbox_timeout_clear  = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value;
-	assign outbound_mailbox_timeout_clear = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value;
-
-	// TIMEOUT_MODE
-	assign troot_timeout_mode            = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.troot_timeout_mode.value;
-	assign sys_in_timeout_mode           = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.sys_in_timeout_mode.value;
-	assign spacc_timeout_mode            = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.spacc_timeout_mode.value;
-	assign dma_data_timeout_mode         = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.dma_data_timeout_mode.value;
-	assign alias_remap_timeout_mode      = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.alias_remap_timeout_mode.value;
-	assign filter_out_timeout_mode       = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.filter_out_timeout_mode.value;
-	assign entropy_read_timeout_mode     = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.entropy_read_timeout_mode.value;
-	assign entropy_write_timeout_mode    = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.entropy_write_timeout_mode.value;
-	assign inbound_mailbox_timeout_mode  = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value;
-	assign outbound_mailbox_timeout_mode = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value;
+	assign timeout_enable_rsvd = sep_cpu_ctrl_hwif_out.TIMEOUT_ENABLE.reserved.value;
+	assign timeout_clear_rsvd  = sep_cpu_ctrl_hwif_out.TIMEOUT_CLEAR.reserved.value;
+	assign timeout_mode_rsvd   = sep_cpu_ctrl_hwif_out.TIMEOUT_MODE.reserved.value;
 
 	// Address/Size
 	assign sep_global_base_addr_o   = sep_cpu_ctrl_hwif_out.SEP_GLOBAL_BASE_ADDR.addr.value;
@@ -819,7 +690,7 @@ module sep_system_csr
 	assign smu_global_base_addr_o   = sep_cpu_ctrl_hwif_out.SMU_GLOBAL_BASE_ADDR.addr.value;
 	assign smu_region_size_o        = 56'(sep_cpu_ctrl_hwif_out.SMU_REGION_SIZE.size.value);
 
-	// RAS_BANK_INFO
+	// RAS_BANK_INFO - TODO: to be implemented in the future
 	assign ras_bank_chip     = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_chip.value;
 	assign ras_bank_instance = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_instance.value;
 
@@ -831,19 +702,9 @@ module sep_system_csr
 	////////////////////////////////////////////////////////////////////////////
 
 	// Tie off all undriven signals to 0
-	assign troot_timeout_int = 0;
-	assign sys_in_timeout_int = 0;
-	assign spacc_timeout_int = 0;
-	assign dma_data_timeout_int = 0;
-	assign alias_remap_timeout_int = 0;
-	assign filter_out_timeout_int = 0;
-	assign entropy_read_timeout_int = 0;
-	assign entropy_write_timeout_int = 0;
-	assign inbound_mailbox_timeout_int = 0;
-	assign outbound_mailbox_timeout_int = 0;
+	assign timeout_interrupt_rsvd = 0;
 
 	assign sep_standalone = 0;
-	assign fast_spacc_en = 0;
 	assign fast_pka_en = 0;
 	assign fast_sram_en = 0;
 	assign fast_dccm_en = 0;
@@ -851,38 +712,38 @@ module sep_system_csr
 	assign fast_spi_en = 0;
 
 	// REFERENCE_COUNTER
-	prim_clk_counter #(
-    	.WIDTH             (64)
+	// Delay wr_swacc one cycle so the update value is sampled after the CSR field
+	// has captured the SW write data
+	always_ff @(posedge clk_i or negedge rst_ni) begin
+		if (!rst_ni) begin
+			ref_count_wr_swacc_q <= 1'b0;
+		end else begin
+			ref_count_wr_swacc_q <= ref_count_wr_swacc;
+		end
+	end
+
+	prim_refclk_count_w_cdc #(
+		.REF_COUNT_WIDTH    (64)
 	) reference_counter_counter (
-		.i_refclk          (clk_i),
-		.i_refclk_cnt_done (1'b0),
-		.i_refclk_reset_n  (rst_ni),
-		.i_clk             (clk_i),
-		.i_reset_n         (rst_ni),
-		.i_test_mode       (test_en_i),
-		.i_scan_rst_n      (scan_rst_ni),
-		.i_cnt_en          (1'b1),
-		.o_clk_cnt         (reference_counter),
-		.o_clk_cnt_valid   (/* UNUSED */)
+		.i_refclk           (clk_ref_i),
+		.i_prstb            (rst_ni),
+		.i_cnt_en           (1'b1),
+		.i_cnt_update       (ref_count_wr_swacc_q),
+		.i_cnt_update_value (ref_count_from_reg),
+		.i_out_clk          (clk_i),
+		.o_count            (reference_counter)
 	);
+
+	assign ref_count_from_reg = sep_cpu_ctrl_hwif_out.REFERENCE_COUNTER.rc.value;
+	assign ref_count_wr_swacc = sep_cpu_ctrl_hwif_out.REFERENCE_COUNTER.rc.wr_swacc;
 
 	assign sep_cpu_ctrl_hwif_in.REFERENCE_COUNTER.rc.next = reference_counter;
 
-	// TIMEOUT_INTERRUPT
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.troot_timeout_int.next           = troot_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.sys_in_timeout_int.next          = sys_in_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.spacc_timeout_int.next           = spacc_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.dma_data_timeout_int.next        = dma_data_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.alias_remap_timeout_int.next     = alias_remap_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.filter_out_timeout_int.next      = filter_out_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.entropy_read_timeout_int.next    = entropy_read_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.entropy_write_timeout_int.next   = entropy_write_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.inbound_mailbox_timeout_int.next = inbound_mailbox_timeout_int;
-	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.outbound_mailbox_timeout_int.next = outbound_mailbox_timeout_int;
+	// TIMEOUT_INTERRUPT - RSVD (timeout monitors unimplemented)
+	assign sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next = timeout_interrupt_rsvd;
 
 	// SEP_TEST_CTRL
 	assign sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.sep_standalone.next = sep_standalone;
-	assign sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_spacc_en.next  = fast_spacc_en;
 	assign sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_pka_en.next    = fast_pka_en;
 	assign sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_sram_en.next   = fast_sram_en;
 	assign sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_dccm_en.next   = fast_dccm_en;
@@ -904,6 +765,9 @@ module sep_system_csr
 
 	// EXT_TRNG_SRC_SEL
 	assign ext_trng_src_sel_o = sep_cpu_ctrl_hwif_out.EXT_TRNG_SRC_SEL.sel.value;
+
+	// KM_WIPE_CTRL
+	assign km_wipe_state_o = sep_cpu_ctrl_hwif_out.KM_WIPE_CTRL.wipe_state.value;
 
 	///////////////////////
 	// Scratch Registers //

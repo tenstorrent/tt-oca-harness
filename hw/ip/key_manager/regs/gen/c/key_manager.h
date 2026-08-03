@@ -29,22 +29,22 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_KPV__CTRL_REG__LOCK_USE_bp 1
 #define KM_KPV__CTRL_REG__LOCK_USE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_3_2_bm 0xc
-#define KM_KPV__CTRL_REG__RSVD_3_2_bp 2
-#define KM_KPV__CTRL_REG__RSVD_3_2_bw 2
-#define KM_KPV__CTRL_REG__RSVD_3_2_reset 0x0
+#define KM_KPV__CTRL_REG__ERASE_bm 0x4
+#define KM_KPV__CTRL_REG__ERASE_bp 2
+#define KM_KPV__CTRL_REG__ERASE_bw 1
+#define KM_KPV__CTRL_REG__ERASE_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_3_bm 0x8
+#define KM_KPV__CTRL_REG__RSVD_3_bp 3
+#define KM_KPV__CTRL_REG__RSVD_3_bw 1
+#define KM_KPV__CTRL_REG__RSVD_3_reset 0x0
 #define KM_KPV__CTRL_REG__EXTEND_bm 0x70
 #define KM_KPV__CTRL_REG__EXTEND_bp 4
 #define KM_KPV__CTRL_REG__EXTEND_bw 3
 #define KM_KPV__CTRL_REG__EXTEND_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_8_7_bm 0x180
-#define KM_KPV__CTRL_REG__RSVD_8_7_bp 7
-#define KM_KPV__CTRL_REG__RSVD_8_7_bw 2
-#define KM_KPV__CTRL_REG__RSVD_8_7_reset 0x0
-#define KM_KPV__CTRL_REG__DEST_VALID_bm 0x1fe00
-#define KM_KPV__CTRL_REG__DEST_VALID_bp 9
-#define KM_KPV__CTRL_REG__DEST_VALID_bw 8
-#define KM_KPV__CTRL_REG__DEST_VALID_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_16_7_bm 0x1ff80
+#define KM_KPV__CTRL_REG__RSVD_16_7_bp 7
+#define KM_KPV__CTRL_REG__RSVD_16_7_bw 10
+#define KM_KPV__CTRL_REG__RSVD_16_7_reset 0x0
 #define KM_KPV__CTRL_REG__LAST_DWORD_bm 0x1e0000
 #define KM_KPV__CTRL_REG__LAST_DWORD_bp 17
 #define KM_KPV__CTRL_REG__LAST_DWORD_bw 4
@@ -524,6 +524,36 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 26
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
 
+// reg - km_csr::otp_read_lock_cold_reg
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xffffffc0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 6
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
+
 // addrmap - km_csr
 typedef struct __attribute__ ((__packed__)) {
     uint32_t VERSION;
@@ -625,6 +655,7 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t OTP_CLASS_KEY_CPL_7;
     uint32_t OTP_READ_LOCK;
     uint32_t OTP_CHANGE_STATUS;
+    uint32_t OTP_READ_LOCK_COLD;
 } km_csr_t;
 
 // reg - km_drbg_sampler::data_reg
@@ -1761,7 +1792,7 @@ typedef struct __attribute__ ((__packed__)) {
     km_kpv_t kpv;
     uint8_t RESERVED_d888_dfff[0x778];
     km_csr_t kmcsr;
-    uint8_t RESERVED_e308_efff[0xcf8];
+    uint8_t RESERVED_e30c_efff[0xcf4];
     km_drbg_sampler_t drbg_sampler;
     uint8_t RESERVED_f010_ffff[0xff0];
     km_mailbox_km_t mailbox_km;

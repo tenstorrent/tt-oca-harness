@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Generated from i3c-core/src/i3c_wrapper.sv - DO NOT EDIT MANUALLY
+// Adapted from i3c-core/src/i3c_wrapper.sv — maintained in-tree (full-AXI4 core, open-drain SCL)
 
 module i3c_wrapper
-  import I3CCSR_pkg::CONTROLLER_SUPPORT;
-  import I3CCSR_pkg::TARGET_SUPPORT;
 #(
     parameter int unsigned AxiLiteDataWidth = 32,
     parameter int unsigned AxiLiteAddrWidth = 32,
@@ -15,18 +13,6 @@ module i3c_wrapper
     parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH,
     parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH,
 
-    // HCI FIFO depth parameters (active when CONTROLLER_SUPPORT=1)
-    parameter int unsigned HciRespFifoDepth = I3CCSR_pkg::resp_fifo_size,
-    parameter int unsigned HciCmdFifoDepth = I3CCSR_pkg::cmd_fifo_size,
-    parameter int unsigned HciRxFifoDepth = I3CCSR_pkg::rx_fifo_size,
-    parameter int unsigned HciTxFifoDepth = I3CCSR_pkg::tx_fifo_size,
-    parameter int unsigned HciIbiFifoDepth = I3CCSR_pkg::ibi_fifo_size,
-    // TTI FIFO depth parameters (active when TARGET_SUPPORT=1)
-    parameter int unsigned TtiRxDescFifoDepth = I3CCSR_pkg::tti_rx_desc_fifo_size,
-    parameter int unsigned TtiTxDescFifoDepth = I3CCSR_pkg::tti_tx_desc_fifo_size,
-    parameter int unsigned TtiRxFifoDepth = I3CCSR_pkg::tti_rx_fifo_size,
-    parameter int unsigned TtiTxFifoDepth = I3CCSR_pkg::tti_tx_fifo_size,
-    parameter int unsigned TtiIbiFifoDepth = I3CCSR_pkg::tti_ibi_fifo_size,
     // Dummy parameter for trailing comma handling
     parameter int unsigned DummyParam = 0
 ) (
@@ -90,69 +76,83 @@ module i3c_wrapper
 
     // DCT memory export interface (active when CONTROLLER_SUPPORT=1)
     input  i3c_pkg::dct_mem_src_t  dct_mem_src_i,
-    output i3c_pkg::dct_mem_sink_t dct_mem_sink_o
+    output i3c_pkg::dct_mem_sink_t dct_mem_sink_o,
+
+    // RLT (reverse-lookup table) memory export interface (active when CONTROLLER_SUPPORT=1)
+    input  i3c_pkg::rlt_mem_src_t  rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t rlt_mem_sink_o
 );
 
+  logic core_scl_o;   // core SCL output is the bus level (1=release), not a pad OE
+  logic core_sda_oe;  // core drives this only in target mode (tied 0 for active controller)
+
   i3c #(
-      .AxiLiteDataWidth(AxiLiteDataWidth),
-      .AxiLiteAddrWidth(AxiLiteAddrWidth),
+      .AxiDataWidth(AxiLiteDataWidth),
+      .AxiAddrWidth(AxiLiteAddrWidth),
+      .AxiUserWidth(32),
+      .AxiIdWidth(1),
+
       .CsrDataWidth(CsrDataWidth),
       .CsrAddrWidth(CsrAddrWidth),
       .DatAw(DatAw),
       .DctAw(DctAw)
-      // HCI FIFO depth parameters
-      ,.HciRespFifoDepth(HciRespFifoDepth)
-      ,.HciCmdFifoDepth(HciCmdFifoDepth)
-      ,.HciRxFifoDepth(HciRxFifoDepth)
-      ,.HciTxFifoDepth(HciTxFifoDepth)
-      ,.HciIbiFifoDepth(HciIbiFifoDepth)
-      // TTI FIFO depth parameters
-      ,.TtiRxDescFifoDepth(TtiRxDescFifoDepth)
-      ,.TtiTxDescFifoDepth(TtiTxDescFifoDepth)
-      ,.TtiRxFifoDepth(TtiRxFifoDepth)
-      ,.TtiTxFifoDepth(TtiTxFifoDepth)
-      ,.TtiIbiFifoDepth(TtiIbiFifoDepth)
   ) i3c (
       .clk_i,
       .rst_ni,
 
-      // AXI4-Lite Write Address Channel
+      // AXI4 Write Address Channel (AXI-Lite -> AXI4, single beat)
+      .awaddr_i (AxiLiteAddrWidth'(awaddr_i)),
+      .awburst_i(2'b01),                       // INCR; irrelevant for awlen==0
+      .awsize_i (3'($clog2(AxiLiteDataWidth/8))),
+      .awlen_i  (8'd0),
+      .awuser_i ({32{1'b0}}),
+      .awid_i   ({1{1'b0}}),
+      .awlock_i (1'b0),
       .awvalid_i(awvalid_i),
       .awready_o(awready_o),
-      .awaddr_i(awaddr_i),
-      .awprot_i(awprot_i),
 
-      // AXI4-Lite Write Data Channel
+      // AXI4 Write Data Channel
+      .wdata_i (wdata_i),
+      .wstrb_i (wstrb_i),
+      .wuser_i ({32{1'b0}}),
+      .wlast_i (1'b1),
       .wvalid_i(wvalid_i),
       .wready_o(wready_o),
-      .wdata_i(wdata_i),
-      .wstrb_i(wstrb_i),
 
-      // AXI4-Lite Write Response Channel
+      // AXI4 Write Response Channel
+      .bresp_o (bresp_o),
+      .bid_o   (),
+      .buser_o (),
       .bvalid_o(bvalid_o),
       .bready_i(bready_i),
-      .bresp_o(bresp_o),
 
-      // AXI4-Lite Read Address Channel
+      // AXI4 Read Address Channel
+      .araddr_i (AxiLiteAddrWidth'(araddr_i)),
+      .arburst_i(2'b01),
+      .arsize_i (3'($clog2(AxiLiteDataWidth/8))),
+      .arlen_i  (8'd0),
+      .aruser_i ({32{1'b0}}),
+      .arid_i   ({1{1'b0}}),
+      .arlock_i (1'b0),
       .arvalid_i(arvalid_i),
       .arready_o(arready_o),
-      .araddr_i(araddr_i),
-      .arprot_i(arprot_i),
 
-      // AXI4-Lite Read Data Channel
+      // AXI4 Read Data Channel
+      .rdata_o (rdata_o),
+      .rresp_o (rresp_o),
+      .rid_o   (),
+      .ruser_o (),
+      .rlast_o (),
       .rvalid_o(rvalid_o),
       .rready_i(rready_i),
-      .rdata_o(rdata_o),
-      .rresp_o(rresp_o),
 
 
       .i3c_scl_i  (scl_i),
-      .i3c_scl_o  (scl_o),
+      .i3c_scl_o  (core_scl_o),
       .i3c_sda_i  (sda_i),
       .i3c_sda_o  (sda_o),
       .sel_od_pp_o(sel_od_pp_o),
-      .i3c_sda_oe_o(sda_oe),
-      .i3c_scl_oe_o(scl_oe),
+      .i3c_sda_oe_o(core_sda_oe),
 
       .dat_mem_src_i (dat_mem_src_i),   // Pass through from wrapper ports
       .dat_mem_sink_o(dat_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
@@ -160,13 +160,22 @@ module i3c_wrapper
       .dct_mem_src_i (dct_mem_src_i),   // Pass through from wrapper ports
       .dct_mem_sink_o(dct_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
 
+      .rlt_mem_src_i (rlt_mem_src_i),   // Pass through from wrapper ports
+      .rlt_mem_sink_o(rlt_mem_sink_o),  // Pass through to wrapper ports (driven by i3c.sv)
+
       .recovery_payload_available_o(recovery_payload_available_o),
       .recovery_image_activated_o  (recovery_image_activated_o),
 
-      .peripheral_reset_o,
-      .peripheral_reset_done_i,
-      .escalated_reset_o,
-      .irq_o
+      .peripheral_reset_o(peripheral_reset_o),
+      .peripheral_reset_done_i(peripheral_reset_done_i),
+      .escalated_reset_o(escalated_reset_o),
+      .irq_o(irq_o)
   );
+
+  // Open-drain pad OE derived here (core gives bus levels, not OE, in controller mode):
+  // drive low only; push-pull (sel_od_pp_o) drives both.
+  assign scl_o  = 1'b0;
+  assign scl_oe = ~core_scl_o;
+  assign sda_oe = sel_od_pp_o | ~sda_o;
 
 endmodule

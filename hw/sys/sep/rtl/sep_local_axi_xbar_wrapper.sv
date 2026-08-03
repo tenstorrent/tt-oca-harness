@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent
-//
+
 // Wrapper to adapt sep_local_axi_xbar (struct-based) to sep_pkg AXI req/resp types
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
 
 module sep_local_axi_xbar_wrapper
-    import sep_local_axi_xbar_pkg::*;
     (
         // Global Interface
         input  logic                                clk_i,
@@ -47,6 +45,9 @@ module sep_local_axi_xbar_wrapper
         output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,
         input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,
 
+        output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,
+        input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,
+
         output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,
         input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_system_peripherals_axi_resp_i,
 
@@ -65,36 +66,38 @@ module sep_local_axi_xbar_wrapper
     // =========================================================================
 
     // Initiator ports (inputs to xbar) - 3-bit ID
-    axi64_req_t  ifu_sram_req;
-    axi64_resp_t ifu_sram_resp;
-    axi64_req_t  lsu_req;
-    axi64_resp_t lsu_resp;
-    axi64_req_t  dbg_req;
-    axi64_resp_t dbg_resp;
-    axi64_req_t  dma_req;
-    axi64_resp_t dma_resp;
-    axi64_req_t  ext_req;
-    axi64_resp_t ext_resp;
+    sep_local_axi_xbar_pkg::axi64_req_t  ifu_sram_req;
+    sep_local_axi_xbar_pkg::axi64_resp_t ifu_sram_resp;
+    sep_local_axi_xbar_pkg::axi64_req_t  lsu_req;
+    sep_local_axi_xbar_pkg::axi64_resp_t lsu_resp;
+    sep_local_axi_xbar_pkg::axi64_req_t  dbg_req;
+    sep_local_axi_xbar_pkg::axi64_resp_t dbg_resp;
+    sep_local_axi_xbar_pkg::axi64_req_t  dma_req;
+    sep_local_axi_xbar_pkg::axi64_resp_t dma_resp;
+    sep_local_axi_xbar_pkg::axi64_req_t  ext_req;
+    sep_local_axi_xbar_pkg::axi64_resp_t ext_resp;
 
     // Target ports (outputs from xbar) - 6-bit ID
-    axi_out_req_t  cpu_tcm_req;
-    axi_out_resp_t cpu_tcm_resp;
-    axi_out_req_t  sram_req;
-    axi_out_resp_t sram_resp;
-    axi_out_req_t  dma_csr_req;
-    axi_out_resp_t dma_csr_resp;
-    axi_out_req_t  sep_wdt_req;
-    axi_out_resp_t sep_wdt_resp;
-    axi_out_req_t  sep_reset_ctrl_req;
-    axi_out_resp_t sep_reset_ctrl_resp;
-    axi_out_req_t  sep_crypto_req;
-    axi_out_resp_t sep_crypto_resp;
-    axi_out_req_t  sep_system_peripherals_req;
-    axi_out_resp_t sep_system_peripherals_resp;
-    axi_out_req_t  sep_io_req;
-    axi_out_resp_t sep_io_resp;
-    axi_out_req_t  axi_extension_req;
-    axi_out_resp_t axi_extension_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  cpu_tcm_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t cpu_tcm_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sram_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sram_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  dma_csr_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t dma_csr_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_wdt_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_wdt_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_reset_ctrl_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_reset_ctrl_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_crypto_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_crypto_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_system_peripherals_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_system_peripherals_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_io_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_io_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  entropy_fifo_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t entropy_fifo_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  axi_extension_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t axi_extension_resp;
     // =========================================================================
     // Input port assignments (sep_pkg -> xbar_pkg)
     // All input ports have 3-bit ID, 32-bit addr, 64-bit data, 12-bit user
@@ -157,6 +160,10 @@ module sep_local_axi_xbar_wrapper
     `AXI_ASSIGN_REQ_STRUCT(sep_io_axi_req_o, sep_io_req)
     `AXI_ASSIGN_RESP_STRUCT(sep_io_resp, sep_io_axi_resp_i)
 
+    // entropy_fifo
+    `AXI_ASSIGN_REQ_STRUCT(entropy_fifo_axi_req_o, entropy_fifo_req)
+    `AXI_ASSIGN_RESP_STRUCT(entropy_fifo_resp, entropy_fifo_axi_resp_i)
+
     // axi_extension
     `AXI_ASSIGN_REQ_STRUCT(axi_extension_axi_req_o, axi_extension_req)
     `AXI_ASSIGN_RESP_STRUCT(axi_extension_resp, axi_extension_axi_resp_i)
@@ -198,6 +205,8 @@ module sep_local_axi_xbar_wrapper
         .sep_system_peripherals_resp_i       (sep_system_peripherals_resp),
         .sep_io_req_o                        (sep_io_req),
         .sep_io_resp_i                       (sep_io_resp),
+        .entropy_fifo_req_o                  (entropy_fifo_req),
+        .entropy_fifo_resp_i                 (entropy_fifo_resp),
         .axi_extension_req_o                 (axi_extension_req),
         .axi_extension_resp_i                (axi_extension_resp)
     );
@@ -207,6 +216,7 @@ module sep_local_axi_xbar_wrapper
     // Verify sep_pkg types match sep_local_axi_xbar_pkg types
     // =========================================================================
 
+`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
     // Input ports (3-bit ID, 32-bit addr, 64-bit data, 12-bit user)
     initial begin : g_input_type_assertions
         // IFU SRAM
@@ -316,6 +326,14 @@ module sep_local_axi_xbar_wrapper
         assert ($bits(sep_io_axi_resp_i.r.id)   == $bits(sep_io_resp.r.id))   else $fatal(1, "SEP_IO R ID width mismatch");
         assert ($bits(sep_io_axi_resp_i.b.id)   == $bits(sep_io_resp.b.id))   else $fatal(1, "SEP_IO B ID width mismatch");
 
+        // entropy_fifo
+        assert ($bits(entropy_fifo_axi_req_o.aw.id)   == $bits(entropy_fifo_req.aw.id))   else $fatal(1, "ENTROPY_FIFO AW ID width mismatch");
+        assert ($bits(entropy_fifo_axi_req_o.aw.addr) == $bits(entropy_fifo_req.aw.addr)) else $fatal(1, "ENTROPY_FIFO AW ADDR width mismatch");
+        assert ($bits(entropy_fifo_axi_req_o.w.data)  == $bits(entropy_fifo_req.w.data))  else $fatal(1, "ENTROPY_FIFO W DATA width mismatch");
+        assert ($bits(entropy_fifo_axi_req_o.ar.id)   == $bits(entropy_fifo_req.ar.id))   else $fatal(1, "ENTROPY_FIFO AR ID width mismatch");
+        assert ($bits(entropy_fifo_axi_resp_i.r.id)   == $bits(entropy_fifo_resp.r.id))   else $fatal(1, "ENTROPY_FIFO R ID width mismatch");
+        assert ($bits(entropy_fifo_axi_resp_i.b.id)   == $bits(entropy_fifo_resp.b.id))   else $fatal(1, "ENTROPY_FIFO B ID width mismatch");
+
         // axi_extension
         assert ($bits(axi_extension_axi_req_o.aw.id)   == $bits(axi_extension_req.aw.id))   else $fatal(1, "AXI_EXTENSION AW ID width mismatch");
         assert ($bits(axi_extension_axi_req_o.aw.addr) == $bits(axi_extension_req.aw.addr)) else $fatal(1, "AXI_EXTENSION AW ADDR width mismatch");
@@ -407,11 +425,18 @@ module sep_local_axi_xbar_wrapper
         assert ($bits(sep_io_axi_resp_i.r.user)  == $bits(sep_io_resp.r.user))  else $fatal(1, "SEP_IO R USER width mismatch");
         assert ($bits(sep_io_axi_resp_i.b.user)  == $bits(sep_io_resp.b.user))  else $fatal(1, "SEP_IO B USER width mismatch");
 
+        assert ($bits(entropy_fifo_axi_req_o.aw.user)  == $bits(entropy_fifo_req.aw.user))  else $fatal(1, "ENTROPY_FIFO AW USER width mismatch");
+        assert ($bits(entropy_fifo_axi_req_o.w.user)   == $bits(entropy_fifo_req.w.user))   else $fatal(1, "ENTROPY_FIFO W USER width mismatch");
+        assert ($bits(entropy_fifo_axi_req_o.ar.user)  == $bits(entropy_fifo_req.ar.user))  else $fatal(1, "ENTROPY_FIFO AR USER width mismatch");
+        assert ($bits(entropy_fifo_axi_resp_i.r.user)  == $bits(entropy_fifo_resp.r.user))  else $fatal(1, "ENTROPY_FIFO R USER width mismatch");
+        assert ($bits(entropy_fifo_axi_resp_i.b.user)  == $bits(entropy_fifo_resp.b.user))  else $fatal(1, "ENTROPY_FIFO B USER width mismatch");
+
         assert ($bits(axi_extension_axi_req_o.aw.user)  == $bits(axi_extension_req.aw.user))  else $fatal(1, "AXI_EXTENSION AW USER width mismatch");
         assert ($bits(axi_extension_axi_req_o.w.user)   == $bits(axi_extension_req.w.user))   else $fatal(1, "AXI_EXTENSION W USER width mismatch");
         assert ($bits(axi_extension_axi_req_o.ar.user)  == $bits(axi_extension_req.ar.user))  else $fatal(1, "AXI_EXTENSION AR USER width mismatch");
         assert ($bits(axi_extension_axi_resp_i.r.user)  == $bits(axi_extension_resp.r.user))  else $fatal(1, "AXI_EXTENSION R USER width mismatch");
         assert ($bits(axi_extension_axi_resp_i.b.user)  == $bits(axi_extension_resp.b.user))  else $fatal(1, "AXI_EXTENSION B USER width mismatch");
     end
+`endif  // SYNTHESIS
 
 endmodule : sep_local_axi_xbar_wrapper

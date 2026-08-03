@@ -172,7 +172,7 @@ struct I3C_Driver {
                                   size_t *bytes_received);
     I3C_Status (*receive_payload_stream)(I3C_Driver *drv, uint8_t *buffer, size_t buffer_length,
                                          size_t *bytes_received, uint32_t timeout,
-                                         bool expect_excess_bytes);
+                                         bool expect_excess_bytes, bool is_flush);
 
     // Set the expected payload length on the hardware before a fifo_write (platform-specific).
     // Default stub is a no-op; platform drivers program SLV_CTRL.pr_pl.

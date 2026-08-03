@@ -228,6 +228,11 @@ typedef union {
 #define TB_CMD_SEP_MBOX_DRAIN_CTRL \
     0x0000002F /* Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); \
                   arg=1 arm, 0 disarm; result = 1 */
+#define TB_CMD_ABR_SK_LOAD \
+    0x00000030 /* Inject ABR shared-key word or pulse hwset: arg=word_idx(0-7) loads word from \
+                  last DRBG_SET_NEXT_VALUE; arg=0xFF pulses hwset; result = 1 */
+#define TB_CMD_ABR_SK_IRQ_STATUS_READ \
+    0x00000031 /* Read abr_mlkem_sharedkey_irq level; result = 0 or 1 */
 
 /* Testbench command status */
 #define TB_STATUS_IDLE 0x00000000 /* Ready for command */
@@ -250,7 +255,7 @@ typedef union {
  * Programmable IRQ entry (KMCSR IRQ_ENTRY_ADDR / IRQ_ENTRY_LOCK)
  *===========================================================================*/
 
-/** @brief VROM PC for `.text.alt_irq`; must match `km_exec_from_vrom.ld`. */
+/** @brief VROM PC for `.text.alt_irq`; must match `link/modes/vrom.ld`. */
 #define IRQ_ENTRY_ALT_VROM_PC 0x10000100u
 
 /** @brief Iterations to busy-wait after IRQ_SET before observing handler effects. */
@@ -1365,5 +1370,51 @@ static inline uint8_t tb_cold_boot_done_read(void) {
  * to memcpy() for array initialization before seeing any inline definition.
  * The linker needs an actual function symbol to resolve these calls. */
 void *memcpy(void *dest, const void *src, size_t n);
+
+/**
+ * Ask the testbench to load one word of the ABR ML-KEM shared key into
+ * tb_abr_sk_load_data[word_idx].  The value used is the last one set via
+ * tb_drbg_set_next_value().  Call for each word 0-7 in sequence, then call
+ * tb_abr_sk_assert_valid() to pulse hwset and transfer the full key into the
+ * abr_wrapper_key reg block.
+ *
+ * @param word_idx  Word index (0-7)
+ * @param timeout_cycles Maximum cycles to wait for acknowledgment
+ * @return 1 if successful, 0 on error/timeout
+ */
+static inline int tb_abr_sk_load_word(uint8_t word_idx, uint32_t timeout_cycles) {
+    if (!tb_send_cmd(TB_CMD_ABR_SK_LOAD, (uint32_t)(word_idx & 0x7), timeout_cycles)) {
+        return 0;
+    }
+    return (TB_CMD_RESULT != 0) ? 1 : 0;
+}
+
+/**
+ * Ask the testbench to pulse tb_abr_sk_load_valid, which drives hwset=1 on
+ * KEY_CTRL.KEY_VALID and we=1 on all KEY[*].data for one clock cycle.  Must
+ * be called after all 8 words have been loaded via tb_abr_sk_load_word().
+ *
+ * @param timeout_cycles Maximum cycles to wait for acknowledgment
+ * @return 1 if successful, 0 on error/timeout
+ */
+static inline int tb_abr_sk_assert_valid(uint32_t timeout_cycles) {
+    if (!tb_send_cmd(TB_CMD_ABR_SK_LOAD, 0xFF, timeout_cycles)) {
+        return 0;
+    }
+    return (TB_CMD_RESULT != 0) ? 1 : 0;
+}
+
+/**
+ * Read the current level of abr_mlkem_sharedkey_irq from the testbench.
+ *
+ * @param timeout_cycles Maximum cycles to wait for acknowledgment
+ * @return 1 if IRQ asserted, 0 if deasserted (or on error/timeout)
+ */
+static inline int tb_abr_sk_irq_status_read(uint32_t timeout_cycles) {
+    if (!tb_send_cmd(TB_CMD_ABR_SK_IRQ_STATUS_READ, 0, timeout_cycles)) {
+        return 0;
+    }
+    return (int)TB_CMD_RESULT;
+}
 
 #endif /* TEST_COMMON_H */

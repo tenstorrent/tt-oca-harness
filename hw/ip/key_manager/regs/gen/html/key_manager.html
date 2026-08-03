@@ -118,8 +118,9 @@
 <tr><td>0xE2F4</td><td><a href="#OTP_CLASS_KEY_CPL_5">OTP_CLASS_KEY_CPL_5</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</td></tr>
 <tr><td>0xE2F8</td><td><a href="#OTP_CLASS_KEY_CPL_6">OTP_CLASS_KEY_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</td></tr>
 <tr><td>0xE2FC</td><td><a href="#OTP_CLASS_KEY_CPL_7">OTP_CLASS_KEY_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</td></tr>
-<tr><td>0xE300</td><td><a href="#OTP_READ_LOCK">OTP_READ_LOCK</a></td><td>RW</td><td>OTP field read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero. Warm-reset domain.</td></tr>
+<tr><td>0xE300</td><td><a href="#OTP_READ_LOCK">OTP_READ_LOCK</a></td><td>RW</td><td>OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.</td></tr>
 <tr><td>0xE304</td><td><a href="#OTP_CHANGE_STATUS">OTP_CHANGE_STATUS</a></td><td>RW</td><td>OTP field change status. A bit is set when the corresponding field&#x27;s decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.</td></tr>
+<tr><td>0xE308</td><td><a href="#OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</a></td><td>RW</td><td>OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.</td></tr>
 <tr><td>0xF000</td><td><a href="#DATA">DATA</a></td><td>R</td><td>One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.</td></tr>
 <tr><td>0xF004</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.</td></tr>
 <tr><td>0xF008</td><td><a href="#STATUS">STATUS</a></td><td>RW</td><td>Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.</td></tr>
@@ -204,10 +205,10 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:21</td><td>rsvd_31_21</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>20:17</td><td>last_dword</td><td>RW</td><td>0x0</td><td>Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.</td></tr>
-<tr><td>16:9</td><td>dest_valid</td><td>RW</td><td>0x0</td><td>Which crypto block may consume this key. Firmware enforced.<br>bit 0: HMAC-SHA2 engine<br>bit 1: KMAC-SHA3 engine<br>bit 2: AES engine<br>bit 3: OTBN engine<br>bit 4: Adams Bridge ML-DSA seed<br>bit 5: Adams Bridge ML-KEM seed D<br>bit 6: Adams Bridge ML-KEM seed Z<br>bit 7: Adams Bridge ML-KEM message</td></tr>
-<tr><td>8:7</td><td>rsvd_8_7</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>16:7</td><td>rsvd_16_7</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>6:4</td><td>extend</td><td>RW</td><td>0x0</td><td>Zero-indexed number of additional slots for wide keys. Firmware enforced.</td></tr>
-<tr><td>3:2</td><td>rsvd_3_2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd_3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>erase</td><td>RW</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler) and the slot CTRL register is cleared.<br>Hardware self-clears this bit when the erase completes. Not blocked by<br>lock_write or lock_use.</td></tr>
 <tr><td>1</td><td>lock_use</td><td>RW</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.</td></tr>
 <tr><td>0</td><td>lock_write</td><td>RW</td><td>0x0</td><td>Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.</td></tr>
 </table>
@@ -761,6 +762,17 @@
 <tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
 <tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
 <tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+</table>
+<h3 id="OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
 </table>
 <h3 id="DATA">DATA</h3>
 <table>

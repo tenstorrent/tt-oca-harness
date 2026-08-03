@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP IO submodule typedefs and parameters
-//
-//-----------------------------------------------------------------------------
 
 package sep_io_pkg;
 
@@ -21,9 +18,10 @@ package sep_io_pkg;
 
     //=========================================================================
     // SPI Interface Types
-    // Uses explicit OE signals at the open wrapper boundary.
-    // Adopter overlays are responsible for any pad-specific polarity conversion.
-    // The open OpenTitan SPI path uses sd[3:0] (Quad SPI).
+    // Uses active-low OE/IE (_n suffix) to match tt_sep and smc_padring
+    // Cadence PHY has both OE and IE; OpenTitan only has OE (IE generated)
+    // Supports up to 8 data lines (Octal SPI) for Cadence xSPI
+    // OpenTitan uses only sd[3:0] (Quad SPI)
     //=========================================================================
 
     typedef struct packed {
@@ -35,7 +33,8 @@ package sep_io_pkg;
         logic       cs_n;
         logic       cs_oe;
 
-        // Data signals for the open Quad SPI path
+        // Data (directly active signals) - 8 lanes for Octal SPI
+        // OpenTitan only uses sd[3:0], Cadence uses sd[7:0]
         logic [3:0] sd;
         logic [3:0] sd_oe;
 

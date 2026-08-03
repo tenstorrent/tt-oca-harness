@@ -11,18 +11,18 @@ extern "C" {
 #include <assert.h>
 
 // reg - filter_ctrl::FILTER_CONFIG
-#define FILTER_CTRL__FILTER_CONFIG__READ_EN_bm 0x1
-#define FILTER_CTRL__FILTER_CONFIG__READ_EN_bp 0
-#define FILTER_CTRL__FILTER_CONFIG__READ_EN_bw 1
-#define FILTER_CTRL__FILTER_CONFIG__READ_EN_reset 0x0
-#define FILTER_CTRL__FILTER_CONFIG__WRITE_EN_bm 0x2
-#define FILTER_CTRL__FILTER_CONFIG__WRITE_EN_bp 1
-#define FILTER_CTRL__FILTER_CONFIG__WRITE_EN_bw 1
-#define FILTER_CTRL__FILTER_CONFIG__WRITE_EN_reset 0x0
-#define FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bm 0x10
-#define FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bp 4
-#define FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bw 1
-#define FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_reset 0x0
+#define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm 0x1
+#define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bp 0
+#define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bw 1
+#define FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_reset 0x0
+#define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm 0x2
+#define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bp 1
+#define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bw 1
+#define FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_reset 0x0
+#define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm 0x10
+#define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bp 4
+#define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bw 1
+#define FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_reset 0x0
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm 0x100
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bp 8
 #define FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bw 1
@@ -49,10 +49,10 @@ extern "C" {
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t read_en :1;
-        uint64_t write_en :1;
+        uint64_t read_allowed :1;
+        uint64_t write_allowed :1;
         uint64_t :2;
-        uint64_t addr_mode :1;
+        uint64_t entry_enabled :1;
         uint64_t :3;
         uint64_t allow_ns :1;
         uint64_t :3;

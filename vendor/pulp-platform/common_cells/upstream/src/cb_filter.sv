@@ -238,7 +238,7 @@ module hash_block #(
 `ifndef COMMON_CELLS_ASSERTS_OFF
   // assertions
   initial begin
-    `ASSUME_I(hash_conf, InpWidth > HashWidth,
+    `OCAH_PULP_ASSUME_I(hash_conf, InpWidth > HashWidth,
       $sformatf("%m:\nA Hash Function reduces the width of the input>\nInpWidth: %s\nOUT_WIDTH: %s",
           InpWidth, HashWidth))
   end

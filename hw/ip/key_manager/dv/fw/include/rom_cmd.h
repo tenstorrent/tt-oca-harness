@@ -82,6 +82,10 @@ rom_km_cmd_result_t rom_cmd_key_load(uint8_t payload_len, const uint32_t *payloa
 /** @brief Capture ML-KEM shared key from Adams Bridge into the KPV (CMD_ABR_SK_TRANSFER). */
 rom_km_cmd_result_t rom_cmd_abr_sk_transfer(const rom_km_cmd_abr_sk_transfer_args_t *args);
 
+/** @brief Set cold-reset-domain OTP read-lock bits; bits survive warm reset
+ * (CMD_OTP_READ_LOCK_COLD). */
+rom_km_cmd_result_t rom_cmd_otp_read_lock_cold(const rom_km_cmd_otp_read_lock_cold_args_t *args);
+
 /*===========================================================================
  * Handover Command Handlers (0x10-0x12)
  *===========================================================================*/

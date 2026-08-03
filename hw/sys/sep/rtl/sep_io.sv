@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP System IO
-//
-//-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
 
 module sep_io
-    import sep_io_pkg::*;
 #(
     parameter  int unsigned NUM_COMPONENTS = 1,
     localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1 // +1 for error slave
@@ -26,8 +22,8 @@ module sep_io
     output sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_o,
 
     // SPI
-    output sep_io_spi_req_t           sep_io_spi_req_o,
-    input  sep_io_spi_rsp_t           sep_io_spi_rsp_i
+    output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
+    input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i
 );
 
     /////////////////////////
@@ -51,7 +47,7 @@ module sep_io
     axi_dw_converter #(
         .AxiMaxReads         (16),
         .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit (input from crossbar)
-        .AxiMstPortDataWidth (DATA_WIDTH),                         // 32-bit (output to AXI-Lite)
+        .AxiMstPortDataWidth (sep_io_pkg::DATA_WIDTH),             // 32-bit (output to AXI-Lite)
         .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
         .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
         .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
@@ -75,8 +71,8 @@ module sep_io
     );
 
     axi_to_axi_lite #(
-        .AxiAddrWidth    (ADDR_WIDTH),
-        .AxiDataWidth    (DATA_WIDTH),
+        .AxiAddrWidth    (sep_io_pkg::ADDR_WIDTH),
+        .AxiDataWidth    (sep_io_pkg::DATA_WIDTH),
         .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
         .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
         .AxiMaxWriteTxns (16),
@@ -90,8 +86,8 @@ module sep_io
         .SpillR          (1'b0),
         .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
         .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
-        .lite_req_t      (axil_req_t),
-        .lite_resp_t     (axil_resp_t)
+        .lite_req_t      (sep_io_pkg::axil_req_t),
+        .lite_resp_t     (sep_io_pkg::axil_resp_t)
     ) axi_to_axi_lite (
         .clk_i,
         .rst_ni,
@@ -124,13 +120,13 @@ module sep_io
     end
 
     axi_lite_demux #(
-        .aw_chan_t       (axil_aw_chan_t),
-        .w_chan_t        (axil_w_chan_t),
-        .b_chan_t        (axil_b_chan_t),
-        .ar_chan_t       (axil_ar_chan_t),
-        .r_chan_t        (axil_r_chan_t),
-        .axi_req_t       (axil_req_t),
-        .axi_resp_t      (axil_resp_t),
+        .aw_chan_t       (sep_io_pkg::axil_aw_chan_t),
+        .w_chan_t        (sep_io_pkg::axil_w_chan_t),
+        .b_chan_t        (sep_io_pkg::axil_b_chan_t),
+        .ar_chan_t       (sep_io_pkg::axil_ar_chan_t),
+        .r_chan_t        (sep_io_pkg::axil_r_chan_t),
+        .axi_req_t       (sep_io_pkg::axil_req_t),
+        .axi_resp_t      (sep_io_pkg::axil_resp_t),
         .NoMstPorts      (NUM_SLAVES),
         .MaxTrans        (1),
         .FallThrough     (1'b0),
@@ -185,10 +181,10 @@ module sep_io
     );
 
     prim_axil_err_slv #(
-        .AXI_DATA_WIDTH (DATA_WIDTH),
-        .AXI_ADDR_WIDTH (ADDR_WIDTH),
-        .axil_req_t     (axil_req_t),
-        .axil_resp_t    (axil_resp_t)
+        .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
+        .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
+        .axil_req_t     (sep_io_pkg::axil_req_t),
+        .axil_resp_t    (sep_io_pkg::axil_resp_t)
     ) axil_err_slv (
         .clk_i,
         .rst_ni,

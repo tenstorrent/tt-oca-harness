@@ -1,8 +1,8 @@
 --- a/hw/ip/prim/rtl/prim_reg_cdc.sv
 +++ b/hw/ip/prim/rtl/prim_reg_cdc.sv
 @@ -220,21 +220,11 @@
-   `ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
-   `ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
+   `OCAH_OT_ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
+   `OCAH_OT_ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
  
 -  // If busy goes high, we must eventually see an ack.
 -  //
@@ -19,9 +19,9 @@
 -  // configuration for the main clock and the slow aon clock in our FPV tool setup).
 +  // If busy goes high, we must eventually see an ack
    `ifdef FPV_ON
--  `ASSERT(HungHandShake_A, $rose(src_req) |-> ##[0:40] src_ack, clk_src_i, !rst_src_ni)
+-  `OCAH_OT_ASSERT(HungHandShake_A, $rose(src_req) |-> ##[0:40] src_ack, clk_src_i, !rst_src_ni)
 +  `ifndef VERILATOR
-+    `ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
++    `OCAH_OT_ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
 +  `endif
      // TODO: #14913 check if we can add additional sim assertions.
    `endif

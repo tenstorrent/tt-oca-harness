@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2025 TT
 
 // AES Wrapper - AXI to TL-UL Bridge using axi_to_tlul
@@ -10,15 +9,6 @@
 `include "axi/typedef.svh"
 
 module aes_wrapper
-    import sep_pkg::*;
-    import sep_crypto_pkg::*;
-    import tlul_pkg::*;
-    import edn_pkg::*;
-    import lc_ctrl_pkg::*;
-    import prim_mubi_pkg::*;
-    import prim_alert_pkg::*;
-    import keymgr_pkg::*;
-    import aes_wrapper_key_reg_pkg::*;
 #(
     parameter int unsigned ADDR_WIDTH = 32,
     parameter int unsigned DATA_WIDTH = 32
@@ -27,8 +17,8 @@ module aes_wrapper
     input logic rst_ni,
 
     // AXI struct interface (64-bit from demux) — data/control path
-    input  sep_32_64_6_12_axi_req_t  aes_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t aes_axi_resp_o,
+    input  sep_pkg::sep_32_64_6_12_axi_req_t  aes_axi_req_i,
+    output sep_pkg::sep_32_64_6_12_axi_resp_t aes_axi_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,
@@ -161,7 +151,7 @@ module aes_wrapper
     // ============================================================================
 
     // HW interface wires for the generated CSR block
-    aes_wrapper_key__out_t key_csr_hwif_out;
+    aes_wrapper_key_reg_pkg::aes_wrapper_key__out_t key_csr_hwif_out;
 
     // Build the keymgr_pkg::hw_key_req_t struct from CSR outputs
     keymgr_pkg::hw_key_req_t aes_keymgr_key;
@@ -177,7 +167,7 @@ module aes_wrapper
 
     // Instantiate the PeakRDL-generated AES key CSR register block
     // (flat AXI4-Lite interface — we connect from the struct-based port)
-    localparam int unsigned AES_KEY_CSR_ADDR_WIDTH = AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+    localparam int unsigned AES_KEY_CSR_ADDR_WIDTH = aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
     aes_wrapper_key_reg u_aes_wrapper_key_reg (
         .clk       (clk_i),

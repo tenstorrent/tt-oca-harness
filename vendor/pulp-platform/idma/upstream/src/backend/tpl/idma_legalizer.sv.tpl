@@ -689,9 +689,9 @@ ${database[protocol]['legalizer_write_data_path']}
     // Assertions
     //--------------------------------------
     // only support the decomposition of incremental bursts
-    `ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsSRC, (ready_o & valid_i &
                   req_i.opt.src.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
-    `ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
+    `OCAH_PULP_ASSERT_NEVER(OnlyIncrementalBurstsDST, (ready_o & valid_i &
                   req_i.opt.dst.burst != axi_pkg::BURST_INCR), clk_i, !rst_ni)
 
 endmodule

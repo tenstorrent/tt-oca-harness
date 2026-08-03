@@ -119,7 +119,6 @@ module tb_top
     logic                       timer_int;
     logic                       soft_int;
 
-    logic        [31:0]         reset_vector;
     logic        [31:0]         nmi_vector;
     logic        [31:1]         jtag_id;
 
@@ -1005,7 +1004,6 @@ module tb_top
         jtag_id[31:28] = 4'b1;
         jtag_id[27:12] = '0;
         jtag_id[11:1]  = 11'h45;
-        reset_vector   = `RV_RESET_VEC;
         nmi_assert_int = 0;
         nmi_vector     = 32'hee000000;
 
@@ -1079,7 +1077,6 @@ veer_wrapper rvtop_wrapper (
     .rst_l                  ( rst_l         ),
     .dbg_rst_l              ( porst_l       ),
     .clk                    ( core_clk      ),
-    .rst_vec                ( reset_vector[31:1]),
     .nmi_int                ( nmi_int       ),
     .nmi_vec                ( nmi_vector[31:1]),
     .jtag_id                ( jtag_id[31:1]),

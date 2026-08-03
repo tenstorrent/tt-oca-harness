@@ -25,6 +25,7 @@
 
 #include "smc_addr.h"
 #include "avsbus_controller.h"
+#include "gpio_ctrl_addr.h"
 #include "dma_ctrl.h"
 #include "dfx_ctrl_status.h"
 #include "filter_ctrl.h"
@@ -54,6 +55,25 @@
 #include "i2c_wrap.h"
 #include "debug_module.h"
 #include "smc_cla.h"
-#include "smc_axil_extension.h"
+
+/*
+ * Per-pad gpio_ctrl addresses.
+ *
+ * These blocks live in the smc_external adopter window, which this profile
+ * reserves as opaque memory (hw/sys/smc/regs/include/smc_external.rdl), so no
+ * generated header names them. The layout below is the mandatory-map contract
+ * an adopter must honour, and matches the decode in hw/top/smc_ip_integration.sv.
+ * The 0x20 stride is load-bearing: the padring demux recovers the pad index as
+ * (addr - base) >> 5.
+ */
+#define SMC_TOP_GPIO_CTRL_COUNT 65
+#define SMC_TOP_GPIO_CTRL_STRIDE 0x20u
+#define SMC_TOP_GPIO_CTRL_WINDOW_OFFSET 0x100u
+
+#define SMC_TOP_GPIO_CTRL_BASE_ADDR(i) \
+    (SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SMC_TOP_GPIO_CTRL_WINDOW_OFFSET + \
+     (i)*SMC_TOP_GPIO_CTRL_STRIDE)
+#define SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(i) \
+    (SMC_TOP_GPIO_CTRL_BASE_ADDR(i) + GPIO_CTRL_CONTROL_BASE_ADDR)
 
 #endif /* SMC_H */
