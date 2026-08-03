@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+addrmap clp #(
+    boolean CALIPTRA_SS_MODE = false
+) {
+    // You can use the parameter in a description property to "see" it
+    desc = "Caliptra address map (SS_MODE = $CALIPTRA_SS_MODE)";
+
+    doe_reg doe_reg @ 0x1000_0000;
+
+    ecc_reg ecc_reg @ 0x1000_8000;
+
+    hmac_reg hmac_reg @ 0x1001_0000;
+
+    aes aes_reg @ 0x1001_1000;
+
+    aes_clp_reg aes_clp_reg @ 0x1001_1800;
+
+    kv_reg kv_reg @ 0x1001_8000;
+
+    pv_reg pv_reg @ 0x1001_A000;
+
+    dv_reg dv_reg @ 0x1001_C000;
+
+    sha512_reg sha512_reg @ 0x1002_0000;
+
+    sha256_reg sha256_reg @ 0x1002_8000;
+
+    abr_reg abr_reg @ 0x1003_0000;
+
+    kmac_reg kmac @ 0x1004_0000;
+
+    sha3_reg sha3 @ 0x1004_1000;
+
+    csrng csrng_reg @ 0x2000_2000;
+
+    entropy_src entropy_src_reg @ 0x2000_3000;
+
+    mbox_csr mbox_csr @ 0x3002_0000;
+
+    sha512_acc_csr sha512_acc_csr @ 0x3002_1000;
+
+    axi_dma_reg axi_dma_reg @ 0x3002_2000;
+
+    soc_ifc_reg soc_ifc_reg @ 0x3003_0000;
+
+    mem {name="Mailbox SRAM";
+         desc="Mailbox SRAM for Caliptra direct-mode accesses. Accessible to Caliptra only after acquiring mbox_lock.
+               [br]Caliptra Access: RW
+               [br]SOC Access:      -";
+         memwidth=32;
+         mementries = CALIPTRA_SS_MODE ? 4096 : 65536;  // SS mode: 16KB, Passive mode: 256KB
+         sw=rw;
+    } external mbox_sram @ 0x3004_0000;
+
+};

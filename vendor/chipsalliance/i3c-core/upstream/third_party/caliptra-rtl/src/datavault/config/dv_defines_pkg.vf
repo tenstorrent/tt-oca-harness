@@ -1,0 +1,2 @@
++incdir+${CALIPTRA_ROOT}/src/datavault/rtl
+${CALIPTRA_ROOT}/src/datavault/rtl/dv_defines_pkg.sv
