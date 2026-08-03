@@ -4,10 +4,6 @@
 [[system-management-controller]]
 == System Management Controller (SMC)
 
-// This file serves for PDF rendering, as HTML backend uses navigation bar from `doc/modules/ROOT/nav.adoc` that includes same content
-
-// PDF only: Include all sections to build complete document
-ifdef::backend-pdf[]
 :imagesdir: assets
 
 include::overview.adoc[leveloffset=0]
@@ -21,5 +17,3 @@ include::dma.adoc[leveloffset=0]
 include::zeroer.adoc[leveloffset=0]
 include::periphs.adoc[leveloffset=0]
 include::scan_protection.adoc[leveloffset=0]
-
-endif::backend-pdf[]
