@@ -142,8 +142,8 @@
 <div class="paragraph">
 <p>The I3C Core Controller provides a comprehensive register interface organized
 into five major sections accessible through an AXI4-Lite slave interface. The
-register space is organized into an 11-bit address space (0x000-0x4FF) per
-I3C instance, with each instance occupying 0x500 bytes of address space when
+register space is organized into a 12-bit address space (0x000-0xFFF) per
+I3C instance, with each instance occupying 0x1000 bytes of address space when
 multiple instances are implemented via i3ccore_wrapper.</p>
 </div>
 <div class="paragraph">
@@ -157,25 +157,27 @@ aligned and support only 32-bit access widths.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>I3CBase Section</strong> (0x00-0x6C): Core controller configuration and status
+<p><strong>I3CBase Section</strong> (0x00-0x68): Core controller configuration and status
 registers including bus control, capabilities, interrupts, and reset management</p>
 </li>
 <li>
-<p><strong>PIOControl Section</strong> (0x80-0xAC): Programmable I/O interface with queue
+<p><strong>PIOControl Section</strong> (0x80-0xB0): Programmable I/O interface with queue
 ports, threshold controls, and PIO-specific interrupt management</p>
 </li>
 <li>
-<p><strong>I3C_EC Section</strong> (0x100+): Extended Capabilities including Standby Controller
-Mode (0x100-0x12C), Target Transaction Interface (0x180+), Recovery Interface
-(0x200+), and SoC Management (0x280+)</p>
+<p><strong>I3C_EC Section</strong> (0x100-0x3A0): Extended Capabilities including Secure Firmware
+Recovery Interface (0x100-0x168), Standby Controller Mode (0x180-0x1C0), Target
+Transaction Interface (0x200-0x290), SoC Management Interface (0x300-0x390,
+includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
+(0x3A0)</p>
 </li>
 <li>
-<p><strong>DAT Section</strong> (0x300-0x3FC): Device Address Table with 128 entries (2 DWORDs
-per entry)</p>
+<p><strong>DAT Section</strong> (0x400-0x7FF): Device Address Table, 128-entry address window
+(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=32 (usable index 0-31)</p>
 </li>
 <li>
-<p><strong>DCT Section</strong> (0x400-0x4FC): Device Configuration Table with 128 entries
-(4 DWORDs per entry)</p>
+<p><strong>DCT Section</strong> (0x800-0xFFF): Device Configuration Table, 128-entry address window
+(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=32 (usable index 0-31)</p>
 </li>
 </ul>
 </div>
@@ -185,8 +187,8 @@ per entry)</p>
 <div class="paragraph">
 <p><strong>Address Alignment:</strong>
 * All registers are aligned to 32-bit boundaries (addresses are multiples of 4)
-* Effective address space per instance: 11 bits (0x000-0x4FF)
-* Instance spacing in multi-instance configurations: 0x500 bytes</p>
+* Effective address space per instance: 12 bits (0x000-0xFFF)
+* Instance spacing in multi-instance configurations: 0x1000 bytes</p>
 </div>
 <div class="paragraph">
 <p><strong>Access Width Requirements:</strong>
@@ -377,25 +379,25 @@ normal operation and initialization.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PIO interrupt signal enable - PIO interrupt routing</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x100</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x180</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STBY_CR_EXTCAP_HEADER</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Standby Controller extended capability header (CAP_ID=0x12)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x104</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x184</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STBY_CR_CONTROL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Standby Controller control - enable, DAA methods, target transaction enable</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x108</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x188</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STBY_CR_DEVICE_ADDR</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Standby Controller device address - dynamic and static addresses</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STBY_CR_CAPABILITIES</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Standby Controller capabilities (read-only)</p></td>
@@ -1129,8 +1131,8 @@ transaction completion status, error codes, and transferred byte count.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Response Descriptor Data</strong>: 32-bit response
 descriptor. Bits [31:28] = Error code (0x0=success, 0x1=CRC error, 0x2=parity
 error, 0x3=frame error, 0x4=address NACK, 0x7=transfer aborted, 0x8=I2C W NACK,
-0x9=I2C R NACK, 0xF=overflow/underflow). Bits [27:16] = Data length (actual
-bytes transferred). Bits [3:0] = Transaction ID (TID, matches command descriptor).</p></td>
+0x9=I2C R NACK, 0xF=overflow/underflow). Bits [27:24] = Transaction ID (TID,
+matches command descriptor). Bits [15:0] = Data length (actual bytes transferred).</p></td>
 </tr>
 </tbody>
 </table>
@@ -1140,17 +1142,14 @@ bytes transferred). Bits [3:0] = Transaction ID (TID, matches command descriptor
 <div class="ulist">
 <ul>
 <li>
-<p>Bits [3:0]: Transaction ID (TID) - matches TID from command descriptor for correlation</p>
-</li>
-<li>
-<p>Bits [7:4]: Reserved</p>
-</li>
-<li>
-<p>Bits [11:8]: Error Info - additional error-specific information</p>
-</li>
-<li>
-<p>Bits [27:16]: Data Length - actual number of bytes transferred before
+<p>Bits [15:0]: Data Length - actual number of bytes transferred before
 completion or error</p>
+</li>
+<li>
+<p>Bits [23:16]: Reserved</p>
+</li>
+<li>
+<p>Bits [27:24]: Transaction ID (TID) - matches TID from command descriptor for correlation</p>
 </li>
 <li>
 <p>Bits [31:28]: Error Status - primary error code indicating transaction outcome</p>
@@ -1720,7 +1719,7 @@ half full/empty</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="stby_cr_control-0x104-standby-controller-control"><a class="anchor" href="#stby_cr_control-0x104-standby-controller-control"></a><a class="link" href="#stby_cr_control-0x104-standby-controller-control">STBY_CR_CONTROL (0x104) - Standby Controller Control</a></h6>
+<h6 id="stby_cr_control-0x184-standby-controller-control"><a class="anchor" href="#stby_cr_control-0x184-standby-controller-control"></a><a class="link" href="#stby_cr_control-0x184-standby-controller-control">STBY_CR_CONTROL (0x184) - Standby Controller Control</a></h6>
 <div class="paragraph">
 <p><strong>Description:</strong> Control register for Standby Controller Mode operation. Enables
 secondary controller functionality, configures dynamic address assignment methods,

@@ -238,7 +238,23 @@ recovery mode versus normal mode.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">1.3. Boot ROM</a></h4>
+<h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.3. Reset Vector</a></h4>
+<div class="paragraph">
+<p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
+debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
+Boot ROM base address (<code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>) on JTAG reset
+(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
+BL0 Root-of-Trust code after any cold boot.</p>
+</div>
+<div class="paragraph">
+<p>A debugger may redirect the first instruction fetch by shifting an alternate
+address into the TDR through JTAG while the SEP CPU is held in reset. The
+programmed value persists until the TAP is reset. This supports bring-up and
+failure analysis flows that execute from a memory other than the Boot ROM.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">1.4. Boot ROM</a></h4>
 <div class="paragraph">
 <p>The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
@@ -268,7 +284,7 @@ and will use OTP as the backup storage.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.4. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
+<h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.5. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
 <div class="paragraph">
 <p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
@@ -435,7 +451,7 @@ against fault attacks.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">1.5. Dual Scratch Register Banks</a></h4>
+<h4 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">1.6. Dual Scratch Register Banks</a></h4>
 <div class="paragraph">
 <p>There shall be two sets of 16 x 32-bit scratch register banks
 instantiated at the SEP top level. Both are designed as simple SystemRDL
@@ -467,7 +483,7 @@ reset by a signal from the Watchdog Timer (WDT).</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">1.6. Direct Memory Access Controller (DMA)</a></h4>
+<h4 id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"><a class="anchor" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma"></a><a class="link" href="#direct-memory-access-controller-dma-direct-memory-access-controller-dma">1.7. Direct Memory Access Controller (DMA)</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA
@@ -617,7 +633,7 @@ streaming interfaces</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">1.7. Alarm Aggregation Processor (AGP)</a></h4>
+<h4 id="alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"><a class="anchor" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp"></a><a class="link" href="#alarm-aggregation-processor-agp-alarm-aggregation-processor-agp">1.8. Alarm Aggregation Processor (AGP)</a></h4>
 <div class="paragraph">
 <p><em>Note that this module will not be implemented in the first generation
 SEP and will be deferred to the second generation. The AGP use case is

@@ -257,28 +257,35 @@ timer interfaces (4 cores, 1KB each)</p></td>
 interface</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System Control</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and
 miscellaneous system control registers</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 - BASE + 0x000_4FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 - BASE + 0x000_3FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose I/O
-control and configuration (68 GPIO instances)</p></td>
+control and configuration (65 GPIO instances)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_AFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 - BASE + 0x000_5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C controller
+instances (6 instances)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral Controllers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT, AVSBus,
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus,
 I2C, and UART interfaces</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_DFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">20KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security, Timing &amp; DFT</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse,
@@ -319,11 +326,12 @@ memory spaces</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA) module</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_17FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Interface (Reserved)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller
-instances (6 planned) - NOT YET IMPLEMENTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
+extension window: mandatory technology-specific blocks (GPIO pads, PLL, PVT,
+eFuse SHIM) plus optional supplementary devices</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x080_0000 - BASE + 0x1FF_FFFF</p></td>
@@ -400,113 +408,85 @@ interface</p></td>
 configuration registers</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 - BASE + 0x000_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock generation
-and management</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 + (N×0x10)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">68 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 + (N×0x10)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface
 control</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4440 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">68 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3440 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad
 configuration</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Refclk Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4CC0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock GPIO
-control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO PoC/PBias Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4DE0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on and pad bias
-control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Process, Voltage,
-Temperature monitoring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 + (N×0x500)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C
+controller instances</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_8000 - BASE + 0x000_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_6FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive
 voltage scaling control</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_9FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_7FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C/SMBus
 communication interface</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_A000 - BASE + 0x000_AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_8000 - BASE + 0x000_8FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART communication
 interface</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Map</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_BFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_9FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse memory mapping
 interface</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C000 - BASE + 0x000_C0FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_A000 - BASE + 0x000_AFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse interface
 controller</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C100 - BASE + 0x000_C1FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse hardware
-abstraction layer</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D000 - BASE + 0x000_DFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_BFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry
 data processing</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_E000 - BASE + 0x000_EFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C000 - BASE + 0x000_CFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Multi-chiplet
 time synchronization</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP Control Registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_F000 - BASE + 0x000_F7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D000 - BASE + 0x000_D7FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 entries</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP
 control register block</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Control/Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_F800 - BASE + 0x000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D800 - BASE + 0x000_DFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT control
 and status for ROM</p></td>
@@ -595,11 +575,12 @@ space</p></td>
 module</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Wraps (Reserved)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 + (N×0x400)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6 planned</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller
-interfaces - NOT YET IMPLEMENTED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
+extension window, split into a mandatory and a supplementary region (see the
+AXI-Lite External Window section below)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Region</p></td>
@@ -639,13 +620,142 @@ error handling</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.3. Register Interface Standards</a></h4>
+<h4 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">1.3. AXI-Lite External Window</a></h4>
+<div class="paragraph">
+<p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
+window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
+technology- and vendor-specific implementations of memory-mapped blocks. The
+window is split into two regions (see <code>smc_external.rdl</code>); hardware treats
+both identically — the split is purely organizational:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
+Their function is dictated by the OCAH specifications, but their
+implementation is inherently technology- and vendor-specific — the GPIO pad
+controls, the PLL macro, the PVT sensors, and the eFuse SHIM.</p>
+</li>
+<li>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): optional region for any additional
+memory-mapped devices the adopter wants to expose. The reference
+integration places its vendor I3C controllers (nonfree overlay) here.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Addresses below are expressed as <code>BASE + offset</code> (<code>BASE</code> = <code>0xC000_0000</code>).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC AXI-Lite External Window — Mandatory Region</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Clock-Obs GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 (intf), BASE + 0x040_000C (ctrl)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation GPIO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Clock-Obs GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0010 (intf), BASE + 0x040_001C (ctrl)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock observation GPIO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO PoC/PBias Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0020</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on and pad bias
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Refclk Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_002C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock GPIO control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-Pad GPIO Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0100 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-pad
+control registers for the pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_1000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock generation and management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_2000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Process, Voltage, Temperature
+monitoring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_3000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter eFuse hardware abstraction
+layer</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_4000 + (N×0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor
+I3C controller wrappers (nonfree overlay)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The unallocated remainder of the window is passed through to the chip-level
+adopter external port.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.4. Register Interface Standards</a></h4>
 <div class="paragraph">
 <p>All SMC components use standard AMBA interfaces. We summarize the
 interfaces in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Register Interface Standards</caption>
+<caption class="title">Table 5. Register Interface Standards</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -686,12 +796,12 @@ interfaces in the following table:</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.4. Access Control and Security</a></h4>
+<h4 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.5. Access Control and Security</a></h4>
 <div class="paragraph">
 <p>The SMC implements the following access control mechanisms:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Access Control Mechanisms</caption>
+<caption class="title">Table 6. Access Control Mechanisms</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -725,13 +835,13 @@ reporting</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.5. Component-Specific Register Documentation</a></h4>
+<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.6. Component-Specific Register Documentation</a></h4>
 <div class="paragraph">
 <p>For detailed register-level documentation of each SMC component, refer
 to the individual component documentation:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. SMC Component Documentation</caption>
+<caption class="title">Table 7. SMC Component Documentation</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 50%;">

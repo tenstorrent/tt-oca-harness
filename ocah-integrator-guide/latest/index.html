@@ -1068,8 +1068,8 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cool reset input from GPIO pin 67.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pin 67 → Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cool reset input from GPIO pin 61.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pin 61 → Reset Unit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -3195,7 +3195,7 @@ the dedicated DTP documentation in <code>hw/dtp/doc/</code> for internal design 
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector gating debug interfaces.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle controller</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -4316,15 +4316,6 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU trace output for debug.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trace infrastructure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_vec</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:1]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU reset vector (PC at reset).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration tie-off</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
@@ -8515,20 +8506,20 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_extension_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite extension port request for adopter peripheral expansion.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite external port request for adopter peripheral expansion.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter peripherals</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_extension_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_resp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite extension port response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite external port response.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter peripherals</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to DECERR if unused</p></td>
 </tr>
@@ -9437,7 +9428,16 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP reset output for IP integration (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Plain SEP reset (post fuse-sense / JTAG override).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_ip_integration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_reset_n_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP combined reset (<code>sep_reset_n</code> &amp; WDT)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_ip_integration</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

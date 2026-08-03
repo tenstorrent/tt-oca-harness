@@ -1595,34 +1595,39 @@ signals (grouped into the per-slice <code>jtag_*_reset_ctrl_t</code> structs):</
 <div class="sect4">
 <h5 id="security-and-lifecycle-control"><a class="anchor" href="#security-and-lifecycle-control"></a><a class="link" href="#security-and-lifecycle-control">Security and Lifecycle Control</a></h5>
 <div class="paragraph">
-<p>The PTAP integrates with the chiplet lifecycle controller through the <code>feat_ctrl_i</code> input signal to enforce security policies on debug interfaces. This 64-bit feature control vector originates from the SEP eFuse controller and determines which debug features are accessible based on the current lifecycle state.</p>
+<p>The PTAP integrates with the chiplet lifecycle controller through the <code>feat_ctrl_i</code> input signal to enforce security policies on debug interfaces. This 64-bit feature control vector originates from the SEP eFuse controller and determines which debug features are accessible based on the current lifecycle state. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled).</p>
 </div>
 <div class="paragraph">
-<p>The PTAP derives three independent security disable signals from the feature control vector:</p>
+<p>The PTAP derives three independent security disable signals from the feature control vector. Each bridge is enabled only when <strong>all</strong> of its listed enables are asserted, so it is disabled when <strong>any</strong> one of them is deasserted:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 35%;">
-<col style="width: 65%;">
+<col style="width: 25%;">
+<col style="width: 37%;">
+<col style="width: 38%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Debug Interface</th>
 <th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
+<th class="tableblock halign-left valign-top">Security Disable Signal</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric JTAG2AXI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test || feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test || feat_ctrl_i.sep_debug || feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.sep_debug \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -1958,7 +1963,7 @@ signals (grouped into the per-slice <code>jtag_*_reset_ctrl_t</code> structs):</
 <td class="tableblock halign-left valign-top"><p class="tableblock">feat_ctrl_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector (security gating for debug interfaces)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces</p></td>
 </tr>
 </tbody>
 </table>

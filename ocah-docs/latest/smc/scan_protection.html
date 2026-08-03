@@ -195,248 +195,199 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect3">
-<h4 id="attack-countermeasures"><a class="anchor" href="#attack-countermeasures"></a><a class="link" href="#attack-countermeasures">1. Attack Countermeasures</a></h4>
+<div class="sect2">
+<h3 id="smc-scan-protection"><a class="anchor" href="#smc-scan-protection"></a><a class="link" href="#smc-scan-protection">1. eFuse Shadow Register Scan Protection</a></h3>
 <div class="paragraph">
-<p>Countermeasures include:</p>
+<p>DFT scan test and debug scandump share the scan chain infrastructure. Any flop
+placed on a scan chain can be shifted out, and any flop on a dumpable chain can
+be observed by a debug user. The SMC eFuse shadow registers hold the <code>LOCKS</code>
+field, which is the sole enforcement point for read and write access control
+over the entire SMC fuse map. If those flops were scannable, an attacker could
+shift a cleared <code>LOCKS</code> value into the shadow array and defeat the access
+controls without touching the fuse macro itself. This section describes how the
+<code>LOCKS</code> shadow words are excluded from every scan chain.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Protection of BL0 boot ROM and subsequent secure boot via digital
-signature verification</p>
-</li>
-<li>
-<p>Glitch and error detection</p>
-<div class="ulist">
-<ul>
-<li>
-<p>SRAMs and other memory structures such as FIFOs and register files
-are protected by parity (byte-wise) or SECDED</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Temporal noise injection, masking, secret splitting and obfuscation on
-sensitive operations</p>
-</li>
-<li>
-<p>Transaction filtering and firewalling</p>
-</li>
-<li>
-<p>Functional and physical isolation of private data assets
-e.g. cryptographic keys</p>
-</li>
-<li>
-<p>Anti-replay facilities e.g. non-volatile counterj in OTP</p>
-</li>
-<li>
-<p>Obfuscate data stored in SRAM and OTP memories</p>
-</li>
-</ul>
-</div>
+<div class="paragraph">
+<p>The asset classes referenced here (Class 1 / Class 2 / Class 3) are defined
+authoritatively in the SEP Lifecycle Controller chapter, <em>Asset and Scan-Chain
+Protection</em>. This section records how they apply to the SMC eFuse controller.</p>
 </div>
 <div class="sect3">
-<h4 id="debug-and-dft-security-considerations"><a class="anchor" href="#debug-and-dft-security-considerations"></a><a class="link" href="#debug-and-dft-security-considerations">2. Debug and DFT Security Considerations</a></h4>
+<h4 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">1.1. SMC eFuse Asset Classification</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC eFuse shadow register classification</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 25%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Class</th>
+<th class="tableblock halign-left valign-top">SMC content</th>
+<th class="tableblock halign-left valign-top">Scan policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 1a (confidentiality)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>none</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The SMC fuse map holds no device secrets&#8201;&#8212;&#8201;it carries identifiers
+(<code>CHIPLET_ID</code>, <code>PACKAGE_ID</code>, <code>I2C_I3C_ID</code>), memory repair data (<code>BIRA</code>), and
+topology / clocking / SPI configuration. There are no keys, no UIDs used as key
+material, and no token registers. Consequently no confidentiality masking is
+required.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 1b (integrity)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOCKS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Excluded from every scan chain. Never scannable, never dumpable, for any LC
+state or debug grant.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 2 (secret-bearing)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>none</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The SMC eFuse controller instantiates no cryptographic engine and no key
+vault, so it contributes no Class 2 scan roots and needs no dedicated
+secret-bearing chain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 3 (general)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All remaining fuse-map words</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Normal scan and scandump handling, subject to the SMC debug policy.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>The debug facilities and DFT share the scan chain infrastructure for
-their respective tasks. This is a security hazard as certain secret
-values will be resident in the registers: tokens, secrets, cryptographic
-keys. Unless prevented, an attacker could halt the chip execution and
-extract the register state containing these secrets. This section
-describes the countermeasures we take to prevent this from happening.</p>
+<p>Because SMC has no Class 1a asset, <code>secure_tm</code> is not used for secret
+disconnection in the SMC eFuse controller: <code>secure_tm_i</code> is tied to <code>1&#8217;b0</code> and
+<code>SECRET_SHADOW_RANGES</code> is left at <code>'0</code>. This differs from SEP, where
+<code>secure_tm</code> disconnects the UID / <code>CLASS_KEY</code> sources from their Class 2
+consumers.</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="implementation"><a class="anchor" href="#implementation"></a><a class="link" href="#implementation">1.2. Implementation</a></h4>
 <div class="paragraph">
-<p>One debug feature is scandump which provides access to all internal
-register states. We must ensure that a certain subset of registers
-holding secrets are never dumped out in this mode.</p>
-</div>
-<div class="paragraph">
-<p>There are three scenarios of how registers are handled for DFT scan test
-and debug scandump:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Full DFT and Debug access</p>
-</li>
-<li>
-<p>DFT access but no Debug access</p>
-</li>
-<li>
-<p>No DFT and no Debug access</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Consequently there will be two discrete scan chains to handle the
-registers in groups 1 and 2. The register instances (or module
-instances) will be labelled as belonging to one of the three groups and
-the DFT scan insertion tool will group the registers into the respective
-scan chains which will be managed for security in the TAP controller.</p>
-</div>
-<div class="paragraph">
-<p>These three groups correspond to the SEP asset classes defined
-authoritatively in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
-Protection</em>): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
-secret-bearing), group 3 = Class 1 (secrets and integrity-critical control
-fields).</p>
-</div>
-<div class="sect4">
-<h5 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">Debug and Scan Dump</a></h5>
-<div class="paragraph">
-<p>Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
-DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
-this mode, the user has near full control and observability of the chip
-state, but we must enforce security restrictions.</p>
-</div>
-<div class="paragraph">
-<p><strong>General logic (Class 3)</strong> scan dump is gated by the <code>*_DBG</code> feature-control
-bits (sourced from the OTP DIS vectors; <code>1&#8217;b0</code> = enabled, <code>1&#8217;b1</code> = disabled,
-irreversible) and the LC state&#8201;&#8212;&#8201;a scope&#8217;s general logic is dumpable only
-when its local gate (<code>SEP_DBG</code> / <code>CHIPLET_DBG</code>), the <code>SIP_DBG</code> debug-access
-path into the chiplet, and the LC state permit it.</p>
-</div>
-<div class="paragraph">
-<p><strong>Secret-bearing logic (Class 2)</strong>&#8201;&#8212;&#8201;crypto-engine key / round-key storage and
-the Key Manager key vault / shared key storage&#8201;&#8212;&#8201;is placed on a <strong>dedicated
-secret-bearing scan chain</strong> so DFT keeps coverage, but is <strong>never
-scan-dumpable</strong>, for any owner or LC state. It is governed by <code>secure_tm</code>, not
-the <code>*_DBG</code> bits: under <code>secure_tm = 1</code> the secret sources (UID / <code>CLASS_KEY</code>)
-are disconnected from these consumers, and under <code>secure_tm = 0</code> the chain is
-tied off.</p>
-</div>
-<div class="paragraph">
-<p><strong>Secrets and integrity-critical fields (Class 1)</strong> are excluded from every scan
-chain (never scannable):</p>
+<p><code>efuse_shadow_regs</code> keeps its shadow storage in two separately named arrays and
+reconstructs the public register view from both. The array holding Class 1 words
+is named with an <code>_n0_scan</code> suffix, which is the reserved naming handle the
+synthesis scan-insertion flow uses to identify the flops it must leave off all
+scan chains:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Class 1a (confidentiality): UIDs, <code>CLASS_KEY</code>, token-plaintext input
-registers (<code>*_TOKEN_I</code>).</p>
+<p><code>shadow_efuse_values_n0_scan</code>&#8201;&#8212;&#8201;Class 1 words, excluded from scan.</p>
 </li>
 <li>
-<p>Class 1b (integrity): <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
-<code>*_TOKEN_DIGEST</code> shadow registers.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="class-2-asset-manifest"><a class="anchor" href="#class-2-asset-manifest"></a><a class="link" href="#class-2-asset-manifest">Class 2 Asset Manifest and Naming</a></h5>
-<div class="paragraph">
-<p>The authoritative class definitions, scan-chain policy, and gating rules are
-in the Lifecycle Controller chapter (<em>Asset and Scan-Chain Protection</em>); Key
-Manager specifics are in the Key Manager chapter (<em>Scan and Scan-Dump
-Protection</em>). This section records the implementation manifest. A complete
-module instance is classified as Class 2 when it is the Key Manager, a
-device-secret-consuming cryptographic engine, an entropy engine, or sequential
-distribution logic that retains key, seed, random, digest-working, or round-key
-state. Classifying complete instances deliberately includes their control
-flops and avoids fragile per-register marking.</p>
-</div>
-<div class="paragraph">
-<p>The current SEP implementation has exactly 10 Class 2 RTL scan roots:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>sep_crypto.hmac_wrapper_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.sep_crypto_otbn_wrapper_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.aes_wrapper_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.kmac_wrapper_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.u_entropy_source_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.u_drbg_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.u_axis_edn_crypto_s3c_scan</code></p>
-</li>
-<li>
-<p><code>sep_crypto.u_key_manager_s3c_scan</code></p>
-</li>
-<li>
-<p><code>u_trng_wrapper_s3c_scan</code></p>
+<p><code>shadow_efuse_values</code>&#8201;&#8212;&#8201;Class 3 words, normal scan handling.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>_s3c_scan</code> suffix is reserved for Class 2 instance and generate-scope
-names. It is not a module-name or per-flop suffix. A nested <code>_n0_scan</code> name
-remains Class 1 and takes precedence over an enclosing <code>_s3c_scan</code> hierarchy.</p>
+<p>Which words land in the Class 1 array is set by the <code>CLASS1_SHADOW_RANGES</code>
+parameter. <code>smc_efuse_wrapper</code> drives it from <code>smc_efuse_pkg::Class1ShadowRanges</code>,
+which derives the range from the generated RDL metadata rather than hard-coding
+word indices, so the exclusion follows the register map if the map is
+regenerated:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
+    0: efuse_pkg::make_shadow_word_range(
+        LOCKS_REG_OFFSET, $bits(smc_efuse_map_locks_reg_t), NumFuseWordWidth),
+    default: '0
+};</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>Three writable companion SRAMs are also Class 2 assets:
-<code>u_km_sram</code>, <code>u_otbn_imem_sram</code>, and <code>u_otbn_dmem_sram</code>. Their macro instance
-names remain unchanged because <code>_s3c_scan</code> identifies RTL scan hierarchies;
-the owning memory-DFT/MBIST policy must provide the same never-dump outcome.
-<code>u_km_rom</code> is explicitly excluded because immutable executable contents
-cannot retain runtime secrets. The vendor TRNG core keeps its delivered DFT
-view beneath <code>u_trng_wrapper_s3c_scan</code>.</p>
+<p><code>LOCKS</code> sits at fuse-map offset <code>0x0</code> and is 64 bits wide, so this resolves to
+shadow words 0 and 1.</p>
 </div>
-</div>
-<div class="sect4">
-<h5 id="secure-test-mode-secure_tm-secure-test-mode-secure_tm"><a class="anchor" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm"></a><a class="link" href="#secure-test-mode-secure_tm-secure-test-mode-secure_tm">Secure Test Mode (SECURE_TM)</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC shadow word allocation</caption>
+<colgroup>
+<col style="width: 55%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Quantity</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse map size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 KB (24576 bits, 768 x 32-bit words)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 1 words (<code>shadow_efuse_values_n0_scan</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 (words 0-1, <code>LOCKS</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class 3 words (<code>shadow_efuse_values</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">766</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>We assert a GPIO pin strap to enable secure test mode. This generates
-the SECURE_TM signal which is consumed by</p>
+<p>Three <code>ASSERT_INIT</code> checks in <code>efuse_shadow_regs</code> verify at elaboration that the
+configured ranges are well formed, non-overlapping, and inside the shadow array,
+so a bad range map is a build failure rather than a silent loss of protection.</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="downstream-lock-path"><a class="anchor" href="#downstream-lock-path"></a><a class="link" href="#downstream-lock-path">1.3. Downstream Lock Path</a></h4>
+<div class="paragraph">
+<p>Excluding the <code>LOCKS</code> shadow flops is only sufficient if no scannable flop
+downstream of them re-derives the lock decision. In the SMC eFuse controller
+this holds by construction: <code>efuse_shadow_reg_access_control</code>, which compares the
+incoming APB address against the field map and produces the <code>write_locked</code> /
+<code>read_locked</code> decisions, is purely combinational. There is no intermediate state
+element between the Class 1 shadow words and the APB write-enable and read-data
+paths that they gate.</p>
+</div>
+<div class="paragraph">
+<p>The one sequential consumer of that logic is
+<code>locked_field_access_interrupt_o</code>, which reports that a locked-field access was
+attempted. It carries an access-violation event, not lock state, so observing it
+does not reveal or alter the <code>LOCKS</code> value.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="notes-for-dft"><a class="anchor" href="#notes-for-dft"></a><a class="link" href="#notes-for-dft">1.4. Notes for DFT</a></h4>
 <div class="ulist">
 <ul>
 <li>
-<p>TAP to enable scan test</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers</p>
+<p>The <code>_n0_scan</code> suffix is a Class 1 marker and takes precedence over any
+enclosing scan hierarchy. Do not rename it; the exclusion is carried entirely by
+the signal name, as there is no separate constraint list in this repository.</p>
 </li>
 <li>
-<p>Any downstream registers in the path from these registers to the test enablement signals for DTAP or fuse write enablement signals are also non-scannable</p>
-<div class="ulist">
-<ul>
+<p><code>efuse_shadow_regs</code> also declares <code>chiplet_state_change_completed_n0_scan</code> and
+<code>sop_state_change_completed_n0_scan</code>. These serve the SEP RMA token / LC state
+transition path. In the SMC instance <code>HAS_LC_STATE</code> is <code>1&#8217;b0</code> and both are driven
+to a constant <code>1&#8217;b1</code>, so they hold no SMC state; they are expected to be
+constant-propagated away.</p>
+</li>
 <li>
-<p>Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic</p>
+<p>Adding a secret or a new integrity-critical field to the SMC fuse map requires
+extending <code>Class1ShadowRanges</code> (and, for a confidentiality asset,
+<code>SECRET_SHADOW_RANGES</code> plus a real <code>secure_tm_i</code> source). Adding the register to
+the RDL alone does not confer scan protection.</p>
 </li>
 </ul>
 </div>
-</li>
-<li>
-<p>During scan test (<code>secure_tm = 1</code>) the secret-source outputs (UID / <code>CLASS_KEY</code>) are disconnected from the Class 2 secret-bearing consumers, so no real secret is shifted; during scan dump (<code>secure_tm = 0</code>) the Class 2 secret-bearing chain is tied off (never dumpable). See the Lifecycle Controller chapter, <em>`secure_tm` and Scan Dump</em>.</p>
-</li>
-<li>
-<p>Disable writing to any OTP fuse state to prevent updates.</p>
-</li>
-</ul>
 </div>
-</li>
-<li>
-<p>OTP controller</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Disable <em>writing</em> of shadow registers: LOCKS, LC_STATE, SIP_DIS and SYS_DIS</p>
-</li>
-<li>
-<p>Other shadow register fields may optionally also have write disabled</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
+<div class="sect3">
+<h4 id="verification"><a class="anchor" href="#verification"></a><a class="link" href="#verification">1.5. Verification</a></h4>
+<div class="paragraph">
+<p><code>smc_efuse_shadow_lock_matrix_test</code> exercises reads and writes across the
+<code>LOCKS</code> matrix and therefore covers the relocated words functionally, confirming
+that moving <code>LOCKS</code> into the Class 1 array does not change access-control
+behaviour.</p>
 </div>
 </div>
 </div>

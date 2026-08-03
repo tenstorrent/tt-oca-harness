@@ -289,14 +289,11 @@ send unsolicited messages to the SEP host via the mailbox response
 data.</p>
 </div>
 <div class="paragraph">
-<p>Both the KM ROM and SRAM memories are protected byte-wise odd parity
-bits to detect errors. When an error is detected, IRQ is issued
-automatically and a notification is also sent to the Alarm Processor
-(AP). No attempt is made to correct errors. The SEP CPU receives the IRQ
-and can force a remedial action through a command message. If faster
-response time is required to initiate countermeasures, the SEP CPU can
-configure the AP as a delegate. The AP can automatically initiate a
-wiping action of all secret data and force a reset of the KM.</p>
+<p>Both the KM ROM and SRAM memories are protected by byte-wise odd parity
+bits to detect errors. No attempt is made to correct errors. A detected
+parity error interrupts the KM CPU, which treats it as an unrecoverable
+fault: the KM notifies the SEP host and halts (see
+<a href="#unrecoverable-faults">Unrecoverable Faults</a>).</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -529,7 +526,8 @@ is asserted.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM/SRAM memory interfaces and parity logic; non-volatile SRAM scrambler
 lock state (<code>SCRAMBLER_CTRL.lock</code>, <code>SCRAMBLER_KEY</code>); the SEP-facing mailbox
 FIFOs and state machines; shared mailbox
-separator/status bits; the <code>BOOT_STATUS.COLD_BOOT_DONE</code> flag.</p></td>
+separator/status bits; the <code>BOOT_STATUS.COLD_BOOT_DONE</code> flag;
+the <code>OTP_READ_LOCK_COLD</code> register (cold-reset-domain OTP read-lock bits).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm + cold (<code>rst_warm_sync_no</code>)</p></td>
@@ -538,7 +536,8 @@ guarantee no in-flight transaction lingers across a warm reset — see
 below); the KMCSR warm subset (<code>IRQ_STATUS</code>/<code>IRQ_ENABLE</code>/<code>IRQ_SET</code>,
 <code>SOFT_RST_CODE</code>, <code>RECOVERABLE_ERR</code>, <code>SRAM_LOCK</code> write-lock bits,
 <code>SRAM_LOCK</code> violation bits, <code>SRAM_EXEC_MODE</code>,
-<code>IRQ_ENTRY_ADDR</code>/<code>IRQ_ENTRY_LOCK</code>, and the firmware test-bench registers);
+<code>IRQ_ENTRY_ADDR</code>/<code>IRQ_ENTRY_LOCK</code>, <code>OTP_READ_LOCK</code>,
+<code>OTP_CHANGE_STATUS</code>, and the firmware test-bench registers);
 all DRBG sampler CSRs and datapath-control state; the KPV per-slot lock
 bits (<code>lock_write</code>, <code>lock_use</code>); and the KM-side mailbox
 write/read state machines, IRQ, control, and status fields.</p></td>
@@ -708,8 +707,12 @@ the KM.</p>
 </div>
 <div class="paragraph">
 <p>Cryptographic keys are stored in the Key and Policy Vault (KPV) block.
-The life cycle, demotion and test mode (<code>secure_tm</code>) states are input to
-the KM CSR register block. The KPV key-entry contents are secret-bearing:
+The life cycle and demotion states are provided to the KM CSR register
+block and are consumed by KM firmware as key-derivation inputs. The
+test-mode signal (<code>secure_tm</code>) is a <strong>hardware</strong> input to the same block but
+is not a firmware-readable value: it gates the secret-bearing scan and
+scan-dump paths and inhibits key derivation in hardware during scan test
+(see <a href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a>). The KPV key-entry contents are secret-bearing:
 they may be placed on a scan chain for test coverage but must never be
 scan-dumpable (see <a href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a>).</p>
 </div>
@@ -1053,7 +1056,7 @@ xxx[2:0].</p>
 <ul>
 <li>
 <p>Prevents KM firmware from overwriting this key entry’s data register
-and the control fields <em>extend</em>, <em>dest_valid</em>, and <em>last_dword</em> until
+and the control fields <em>extend</em> and <em>last_dword</em> until
 the next KM reset (cleared by either a cold or a warm reset — the KPV
 per-slot lock bits are in the warm reset domain). The control bits
 <em>lock_write</em> and <em>lock_use</em> (lower two bits) remain writable even when <em>lock_write</em>
@@ -1079,7 +1082,23 @@ write-one-only.</p>
 </div>
 </li>
 <li>
-<p>Reserved[3:2]</p>
+<p>Erase[2]</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Write-one to start a hardware erase of this slot. The hardware
+overwrites all 16 key words of the slot with pseudorandom data and
+clears the slot CTRL register — including <em>lock_write</em> and <em>lock_use</em> — so
+the slot becomes reusable. Erase is intentionally <strong>not</strong> blocked by
+<em>lock_write</em> or <em>lock_use</em>. The hardware self-clears this bit when the
+erase completes; firmware can poll it to detect completion. This field is
+read-any, write-one-only.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Reserved[3]</p>
 </li>
 <li>
 <p>Extend[6:4]</p>
@@ -1104,18 +1123,7 @@ slot entries with <em>extend</em> set to 5. This is enforced by firmware.</p>
 </div>
 </li>
 <li>
-<p>Dest_valid[16:9]</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Restricts which cryptographic block can consume this key entry. This
-is enforced by firmware. The eight destination bits select HMAC, KMAC,
-AES, and OTBN (bits 0–3) plus the four Adams Bridge seed sideload inputs
-— ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, and ML-KEM message
-(bits 4–7).</p>
-</li>
-</ul>
-</div>
+<p>Reserved[16:9]</p>
 </li>
 <li>
 <p>Last_dword[20:17]</p>
@@ -1200,44 +1208,77 @@ reset to zero: all 512 key entry data registers, all 32 KPV control
 registers, and the KPV scrambler key and scrambler control registers
 (enable and lock) are cleared to zero.</p>
 </div>
+<div class="paragraph">
+<p>In the SEP, <em>wipe_state</em> is driven by the software-controlled
+<code>sep_cpu_ctrl.KM_WIPE_CTRL.wipe_state</code> register bit. SEP firmware triggers
+a wipe by writing the bit to 0 and then to 1; the bit must be returned to 0
+before a subsequent write can produce a new rising edge. Because the bit is
+a registered level, the one-clock-period hold requirement is satisfied by
+the register itself. The emergency wipe is software-initiated only: no
+hardware tamper or alarm source asserts <em>wipe_state</em>.</p>
+</div>
 </div>
 <div class="sect4">
 <h5 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a></h5>
 <div class="paragraph">
-<p>KM secret-bearing storage&#8201;&#8212;&#8201;the KPV key-entry data registers, the KPV scrambler
-key, derived/round keys, and any downstream logic that holds key material&#8201;&#8212;&#8201;is
-treated as <strong>Class 2</strong> in the SEP scan-chain protection model (see the SEP
-Lifecycle Controller chapter, <em>Asset and Scan-Chain Protection</em>):</p>
+<p>For simplicity, the <strong>entire</strong> KM&#8201;&#8212;&#8201;every register and downstream logic block,
+including the KPV, KMCSR, mailbox, and DRBG sampler&#8201;&#8212;&#8201;is treated
+as <strong>Class 2</strong> in the SEP scan-chain protection model (see the SEP Lifecycle
+Controller chapter, <em>Asset and Scan-Chain Protection</em>):</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Scannable for test.</strong> These registers may be placed on a scan chain so DFT
+<p><strong>Scannable for test.</strong> KM registers may be placed on a scan chain so DFT
 achieves maximum coverage. During scan test the secure-test-mode signal
 <code>secure_tm = 1</code> disconnects the secret-source shadow registers (<code>*_UID</code>,
-<code>CLASS_KEY</code>) from downstream logic and inhibits key derivation, so
-the KPV and key consumers hold no real key material while being shifted.</p>
+<code>CLASS_KEY</code>) at the eFuse boundary, before they reach the Key Manager, so the
+Key Manager captures no real secret and key derivation is starved of key
+material while registers are being shifted.</p>
 </li>
 <li>
-<p><strong>Never scan-dumpable.</strong> During debug (<code>secure_tm = 0</code>) the dedicated
-secret-bearing scan chain is tied off, so KM key material can never be extracted
-via scan dump&#8201;&#8212;&#8201;in any LC state and for any owner (chiplet or SiP). This
-protection is governed solely by <code>secure_tm</code>; it is <strong>not</strong> gated by, and cannot be
-overridden by, the <code>*_DBG</code> feature-control bits.</p>
+<p><strong>Never scan-dumpable.</strong> During debug (<code>secure_tm = 0</code>) the dedicated KM
+scan chain is tied off, so no KM register or key material can ever be
+extracted via scan dump&#8201;&#8212;&#8201;in any LC state and for any owner (chiplet or
+SiP). This protection is governed solely by <code>secure_tm</code>; it is <strong>not</strong> gated
+by, and cannot be overridden by, the <code>*_DBG</code> feature-control bits.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The secret <em>source</em> values the KM consumes from OTP (<code>CHIPLET_UID</code>, <code>SIP_UID</code>,
-<code>SYS_UID</code>, <code>CLASS_KEY</code>) are <strong>Class 1</strong> and are excluded from every scan chain
-entirely (never scannable); see the LCC chapter. KM firmware-visible policy (KPV
-<code>lock_use</code> / <code>lock_write</code>, scrambler lock, wipe) governs runtime <em>software</em>
-access and is independent of the scan / scan-dump protection described here.</p>
+<p>The complete Key Manager forms one Class 2 scan boundary. This boundary includes
+the processor, key vault, control and status logic, mailboxes, entropy sampling,
+memory-scrambling logic, internal interconnect, reset conditioning, and register
+blocks. Classifying the full subsystem intentionally includes some non-secret
+control state and avoids fragile per-register policy.</p>
 </div>
 <div class="paragraph">
-<p>The <code>*<em>DBG</code> feature-control bits (<code>SEP_DBG</code>, <code>SIP_DBG</code>, <code>CHIPLET_DBG</code>, defined in
-the LCC chapter) are coarse-grained, per-scope debug enables for _general</em> logic;
-they do not apply to the KM secret-bearing chain.</p>
+<p>Unique identifiers and the class root key supplied by OTP are Class 1 assets and
+remain outside every scan chain. In secure test mode, these sources are replaced
+with a valid zero value at the eFuse shadow boundary, so the Key Manager only
+ever observes zero and needs no isolation logic of its own. Lifecycle and
+demotion policy remain available.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager copies of the unique identifiers and the class root key are
+volatile: they are cleared by cold reset and by warm reset, which also carries
+the firmware soft reset, and they reload from the shadow bus on the cycle after
+the reset releases. Lifecycle and demotion captures persist across a warm
+reset because firmware relies on them for policy decisions.</p>
+</div>
+<div class="paragraph">
+<p>Firmware-enforced runtime access policy is independent of scan and scan-dump
+protection.</p>
+</div>
+<div class="paragraph">
+<p>The writable Key Manager SRAM is a Class 2 companion memory because it may
+retain firmware, key, or message working state. Its memory-test policy must
+enforce the same never-dump requirement. Immutable ROM is excluded because it
+cannot retain runtime secrets.</p>
+</div>
+<div class="paragraph">
+<p>General-logic debug enablement does not apply to the Key Manager&#8217;s
+secret-bearing scan chain.</p>
 </div>
 </div>
 <div class="sect4">
@@ -1265,20 +1306,18 @@ internal device measurements such as PCR quotes.</p>
 </div>
 <div class="paragraph">
 <p>Platform Configuration Registers (PCR) are a set of registers which
-store system integrity measurement data. These are stored in a separate
-component called the PCR Vault (PCRV) described in more detail below.</p>
+store system integrity measurement data. These are stored in a dedicated
+component called the PCR Vault (PCRV). PCRV implementation is deferred to
+a future OCAH version.</p>
 </div>
 <div class="paragraph">
-<p>Another use case is loading the EK and AK attestation keys into KPV.</p>
-</div>
-<div class="paragraph">
-<p>The mechanism is very simple. The SEP host has write-only access to KPV
-through a backdoor interface. It can address and write to any of the
-Entry and Control registers to which the KM has granted access.
-Typically, after writing the key entries, the firmware will assert the
-lock control register field. The KM can read the entries and derive
-further keys from the data and populate other key entries with the KDF
-processing results.</p>
+<p>Another use case is loading the EK and AK attestation keys into the KPV. The
+SEP host provisions these keys over the mailbox command protocol; KM firmware
+validates the request and writes the supplied key material into KPV slots on
+the host&#8217;s behalf, then asserts the slot lock control field. The host has no
+direct write path into the KPV&#8201;&#8212;&#8201;all provisioning is mediated by KM
+firmware. Once the entries are in place, the KM can read them and derive
+further keys, populating other KPV slots with the KDF results.</p>
 </div>
 </div>
 <div class="sect4">
@@ -1364,7 +1403,7 @@ read-only: a write completes with an AXI SLVERR response and does not change
 the value.</p>
 </div>
 <div class="paragraph">
-<p>The interrupt aggregation logic collects eleven hardware event sources into a single CPU interrupt. Each source has a sticky status bit in <code>IRQ_STATUS</code> (write-one-to-clear), a mask bit in <code>IRQ_ENABLE</code>, and a software-trigger bit in <code>IRQ_SET</code> for ISR testing. The aggregated interrupt output is the logical OR of <code>IRQ_STATUS</code> and <code>IRQ_ENABLE</code>.</p>
+<p>The interrupt aggregation logic collects eleven hardware event sources into a single CPU interrupt. Each source has a sticky status bit in <code>IRQ_STATUS</code> (write-one-to-clear), a mask bit in <code>IRQ_ENABLE</code>, and a software-trigger bit in <code>IRQ_SET</code> for ISR testing. The aggregated interrupt output is the logical OR of the masked status bits (<code>IRQ_STATUS &amp; IRQ_ENABLE</code>).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1936,7 +1975,7 @@ read privilege over the fuse array beyond the SEP host&#8217;s. Key binding alwa
 uses the hardwired life-cycle value above, not a value fetched over this path.</p>
 </div>
 <div class="paragraph">
-<p><strong>Demotion and PCR.</strong> The owner demotion state is hardwired from the Lifecycle
+<p><strong>Demotion and PCR.</strong> The owner demotion state is hardwired from the Life Cycle
 Controller (LCC); PCR values come from the KM&#8217;s internal PCR Vault (PCRV).
 Together with the life-cycle state, these are the life-cycle/runtime contexts a
 key can be bound to (see <a href="#chip-configuration">[chip-configuration]</a>).</p>
@@ -1995,7 +2034,12 @@ relationship.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_READ_LOCK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write-one-to-set read-lock bits (warm reset domain), one per field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-one-to-set read-lock bits (warm reset domain), one per field. Cleared by warm or cold reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_READ_LOCK_COLD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-one-to-set read-lock bits (cold reset domain), one per field. Survives warm reset; cleared only by cold reset. Effective lock = <code>OTP_READ_LOCK</code> | <code>OTP_READ_LOCK_COLD</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_CHANGE_STATUS</code></p></td>
@@ -2069,27 +2113,44 @@ convention (three consecutive writes) so it commits even under a single-bit
 glitch. <code>OTP_CHANGE_STATUS</code> shares the same warm reset domain for the same
 reasons.</p>
 </div>
+<div class="paragraph">
+<p>A parallel <strong>cold-reset-domain</strong> register, <code>OTP_READ_LOCK_COLD</code>, provides the
+same write-one-to-set, per-field locking semantics but survives warm reset
+(including soft reset) and is cleared only by cold reset. The effective
+read-lock for each field is the OR of the corresponding bits in <code>OTP_READ_LOCK</code>
+and <code>OTP_READ_LOCK_COLD</code>; either register alone is sufficient to suppress CSR
+readback. The SEP host can set cold-domain lock bits at any time by issuing
+<code>CMD_OTP_READ_LOCK_COLD</code> (0x28) over the KM mailbox. This allows the SEP host
+to establish read-locks that persist across warm resets for the entire duration
+of a power cycle, independently of the warm-reset lock applied by ROM firmware.</p>
+</div>
 <div id="root-keys-and-hierarchy" class="paragraph">
 <p><strong>Root keys and the key hierarchy</strong></p>
 </div>
 <div class="paragraph">
-<p>From each UID the KM (ROM firmware) derives two domain-separated root keys:</p>
+<p>From each UID the KM (ROM firmware) derives two domain-separated root keys.
+The current life-cycle state is an input to both derivations:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>a <strong>software root key</strong> — <code>SW_root = KDF(UID, "SW_ROOT")</code></p>
+<p>a <strong>software root key</strong> — <code>SW_root = KDF(UID, "SW_ROOT", lc_state)</code></p>
 </li>
 <li>
-<p>a <strong>hardware root key</strong> — <code>HW_root = KDF(UID, "HW_ROOT")</code></p>
+<p>a <strong>hardware root key</strong> — <code>HW_root = KDF(UID, "HW_ROOT", lc_state)</code></p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>The distinct domain-separation labels make the two roots cryptographically
-independent even though they share a UID. The roots are then used, with
-additional context, to derive the <strong>key hierarchy</strong>. A leaf key is
-<code>KDF(selected_root, context || user_input || label)</code>, where <code>||</code> denotes
+independent even though they share a UID, and the life-cycle binding makes the
+roots — and every key derived from them — specific to the life-cycle state they
+were derived under. The demotion state is deliberately <strong>not</strong> a root input: it
+is a volatile control, cleared on reset and set by firmware during boot, so it
+is undefined at root-derivation time. Keys that must be bound to demotion bind
+it at leaf-key derivation instead (see <a href="#chip-configuration">[chip-configuration]</a>). The roots are
+then used, with additional context, to derive the <strong>key hierarchy</strong>. A leaf key
+is <code>KDF(selected_root, context || user_input || label)</code>, where <code>||</code> denotes
 concatenation and <code>context</code> is the selected configuration (life-cycle state,
 demotion, PCR, &#8230;&#8203;).</p>
 </div>
@@ -2160,15 +2221,15 @@ together with <code>user_input</code> it determines the key:</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Life-cycle state the key is bound to.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Life-cycle state the key is bound to. Always bound for UID-derived keys: the roots themselves bind the life-cycle state (see <a href="#root-keys-and-hierarchy">[root-keys-and-hierarchy]</a>), so explicit selection is meaningful only for keys derived from injected user-input keys.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>demote_1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet-owner demotion state the key is bound to.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion 1 (local-debug / DBG_1) state the key is bound to.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>demote_2</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner demotion state the key is bound to.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion 2 (inter-chiplet debug-bypass / DBG_2) state the key is bound to.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pcr</code></p></td>
@@ -2182,17 +2243,21 @@ further per-derivation input.</p>
 </div>
 <div class="paragraph">
 <p><strong>Selection.</strong> The requester chooses <strong>which configuration fields to bind</strong> — any
-subset of the fields above (for example <code>lc_state</code> only, or <code>lc_state</code> plus a
-PCR) — and there is no restriction on the values it may select (access control
-over <code>uid_select</code> is left open for a future revision). The KM derives the key
-bound to exactly that selected subset, and ROM records the binding so the
-key&#8217;s lifetime can be tracked.</p>
+subset of the fields above (for example a demotion state only, or a PCR plus
+both demotion states) — and there is no restriction on the values it may
+select (access control over <code>uid_select</code> is left open for a future revision).
+The KM derives the key bound to exactly that selected subset, and ROM records
+the binding so the key&#8217;s lifetime can be tracked. A UID-derived key is
+life-cycle-bound regardless of this selection, through its root ancestry.</p>
 </div>
 <div class="paragraph">
 <p><strong>Lifetime.</strong> The lifetime of every UID-derived key is tied to the specific
-fields it is bound to. When any bound field&#8217;s value changes, that key becomes
-stale and is revoked; keys that do not bind the changed field are unaffected.
-A revoked key must be re-derived before use. The mechanism is described in
+fields it is bound to. When a bound demotion state or PCR changes, that key
+becomes stale and is revoked; keys that do not bind the changed field are
+unaffected. The life-cycle state is the exception: because the roots bind it,
+a life-cycle transition invalidates the roots and, with them, the entire
+UID-derived hierarchy — regardless of each key&#8217;s selected binding. A revoked
+key must be re-derived before use. The mechanism is described in
 <strong>Key revocation</strong> below.</p>
 </div>
 <div id="key-revocation" class="paragraph">
@@ -2220,24 +2285,35 @@ keys with it.)</p>
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>Action.</strong> Revoking a key wipes it from its KPV slot and shreds its
-crypto-engine binding (zeroes the side-loaded key and drops its valid
-indication). A revoked key must be re-derived before it can be used again.</p>
+<p>A life-cycle transition additionally invalidates the roots themselves — the
+roots bind the life-cycle state — so it revokes the <strong>entire</strong> UID-derived
+hierarchy through the parent cascade, regardless of each key&#8217;s selected
+binding.</p>
+</div>
+<div class="paragraph">
+<p><strong>Action.</strong> Revoking a key erases it from its KPV slot — using the per-slot
+hardware Erase control, which overwrites the key data through the KPV scrambler
+and clears the slot CTRL register (including its lock bits) so the slot is
+immediately reusable — and shreds its crypto-engine binding (zeroes the
+side-loaded key and drops its valid indication). A revoked key must be
+re-derived before it can be used again.</p>
 </div>
 <div class="paragraph">
 <p><strong>Mechanism.</strong> Revocation is performed entirely by ROM firmware; there is no
 hardware key-use interlock. On <strong>any</strong> change to a bound configuration field, ROM
-walks its key registry and revokes the affected keys — wiping them from the KPV
-and shredding their crypto-engine bindings — together with any keys derived
-from them; the keys are re-derived on next use. Hardware support is limited to
-the interrupts that notify the KM CPU:</p>
+walks its key registry and revokes the affected keys — hardware-erasing them
+from the KPV and shredding their crypto-engine bindings — together with any keys
+derived from them; the keys are re-derived on next use. Hardware support is the
+per-slot KPV Erase controller plus the interrupts that notify the KM CPU:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
 <p><strong>Life-cycle state and demotion</strong> — typically configured per boot, but ROM does
 not assume they are immutable at run time: a change at any time triggers the
-same registry walk and revocation.</p>
+same registry walk and revocation. A demotion change revokes only the keys
+that bound demotion; a life-cycle change sweeps the entire UID-derived
+hierarchy, roots included.</p>
 </li>
 <li>
 <p><strong>PCR</strong> — a run-time field. A PCR change raises an interrupt to the KM CPU,
@@ -2249,11 +2325,6 @@ requested over the mailbox) raises the KM inbound interrupt and triggers the
 same sweep, cascading to derived keys.</p>
 </li>
 </ul>
-</div>
-<div class="paragraph">
-<p><em>Future enhancement:</em> the PCR Vault is presently a standalone component that the
-KM reads over the fabric; a future revision may relocate the PCR Vault into the
-KM, simplifying the PCR-change interrupt and read path.</p>
 </div>
 <div class="paragraph">
 <p>A cold reset wipes all key material unconditionally; a warm reset re-enters
@@ -2784,6 +2855,9 @@ firmware includes the following major functional areas:</p>
 <p>CRC support functions</p>
 </li>
 <li>
+<p>SP 800-108r1 counter-mode key derivation</p>
+</li>
+<li>
 <p>Key registry and key lifecycle management</p>
 </li>
 <li>
@@ -3051,6 +3125,11 @@ before a command handler is allowed to act on the payload.</p>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>0x27</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_ABR_SK_TRANSFER</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Capture the Adams Bridge ML-KEM shared key into the KPV.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>0x28</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_OTP_READ_LOCK_COLD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set cold-reset-domain OTP field read-lock bits (survive warm reset).</p></td>
 </tr>
 </tbody>
 </table>
@@ -4286,7 +4365,7 @@ the revoked key.</p>
 <p>This command transfers a key from the KPV to one or more crypto engines,
 given a valid key handle and a bitfield of requested destinations.
 Requested destination crypto engines must be permitted by the
-corresponding bit in the <code>DEST_VALID</code> field of the KPV slot.</p>
+destination-policy bitmask stored for the key handle in the key registry.</p>
 </div>
 <div class="paragraph">
 <p><strong>Payload</strong></p>
@@ -5256,8 +5335,9 @@ the KM to consume the pending shared key and store it as a managed KPV key.</p>
 <div class="paragraph">
 <p>The KM reads the 256-bit (8-word) shared key, clears the interface
 <code>KEY_VALID</code> (which zeroizes the source key registers), writes the key into a
-freshly allocated KPV slot with the SEP-supplied <code>DEST_VALID</code>, write-locks the
-slot, and returns a key handle usable by every other key-management command.</p>
+freshly allocated KPV slot, records the SEP-supplied <code>DEST_VALID</code> in the key
+registry, write-locks the slot, and returns a key handle usable by every other
+key-management command.</p>
 </div>
 <div class="paragraph">
 <p><strong>Payload</strong></p>
@@ -5498,11 +5578,267 @@ return argument containing the handle of the newly stored key.</p>
 </tbody>
 </table>
 </div>
+<div class="sect5">
+<h6 id="km-cmd-otp-read-lock-cold"><a class="anchor" href="#km-cmd-otp-read-lock-cold"></a><a class="link" href="#km-cmd-otp-read-lock-cold">0x28 - CMD_OTP_READ_LOCK_COLD</a></h6>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Sets one or more cold-reset-domain OTP field read-lock bits in the
+<code>OTP_READ_LOCK_COLD</code> register.  The effective read-lock for each OTP
+field is the OR of the corresponding bit in <code>OTP_READ_LOCK</code> (warm
+reset domain) and <code>OTP_READ_LOCK_COLD</code> (cold reset domain).  When
+either lock bit is set, hardware returns zero for that field&#8217;s value
+and complement words.</p>
+</div>
+<div class="paragraph">
+<p>Unlike <code>OTP_READ_LOCK</code>, bits set by this command survive warm reset
+(including soft reset) and are cleared only by cold reset.  This
+allows the SEP host to apply permanent read-locks that persist for
+the lifetime of a power cycle, regardless of subsequent warm resets.</p>
+</div>
+<div class="paragraph">
+<p><strong>Payload</strong></p>
+</div>
+<div class="paragraph">
+<p>A bitmask selecting which OTP fields to lock. Bits <code>[31:6]</code> are
+reserved and must be zero; a non-zero reserved field returns
+<code>invalid_arg</code>. Writing 0 is a no-op; already-set bits are unaffected
+(write-one-to-set, idempotent).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 33. Command Payload</caption>
+<colgroup>
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top">[31]</th>
+<th class="tableblock halign-center valign-top">[30]</th>
+<th class="tableblock halign-center valign-top">[29]</th>
+<th class="tableblock halign-center valign-top">[28]</th>
+<th class="tableblock halign-center valign-top">[27]</th>
+<th class="tableblock halign-center valign-top">[26]</th>
+<th class="tableblock halign-center valign-top">[25]</th>
+<th class="tableblock halign-center valign-top">[24]</th>
+<th class="tableblock halign-center valign-top">[23]</th>
+<th class="tableblock halign-center valign-top">[22]</th>
+<th class="tableblock halign-center valign-top">[21]</th>
+<th class="tableblock halign-center valign-top">[20]</th>
+<th class="tableblock halign-center valign-top">[19]</th>
+<th class="tableblock halign-center valign-top">[18]</th>
+<th class="tableblock halign-center valign-top">[17]</th>
+<th class="tableblock halign-center valign-top">[16]</th>
+<th class="tableblock halign-center valign-top">[15]</th>
+<th class="tableblock halign-center valign-top">[14]</th>
+<th class="tableblock halign-center valign-top">[13]</th>
+<th class="tableblock halign-center valign-top">[12]</th>
+<th class="tableblock halign-center valign-top">[11]</th>
+<th class="tableblock halign-center valign-top">[10]</th>
+<th class="tableblock halign-center valign-top">[9]</th>
+<th class="tableblock halign-center valign-top">[8]</th>
+<th class="tableblock halign-center valign-top">[7]</th>
+<th class="tableblock halign-center valign-top">[6]</th>
+<th class="tableblock halign-center valign-top">[5]</th>
+<th class="tableblock halign-center valign-top">[4]</th>
+<th class="tableblock halign-center valign-top">[3]</th>
+<th class="tableblock halign-center valign-top">[2]</th>
+<th class="tableblock halign-center valign-top">[1]</th>
+<th class="tableblock halign-center valign-top">[0]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top" colspan="26"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>D</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>LC</code></p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 34. LOCK_BITS Field Encoding</caption>
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 20%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_LIFE_CYCLE</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>D</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_DEMOTION_STATE</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cU</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_CHIPLET_UID_VAL/CPL</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SiU</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_SIP_UID_VAL/CPL</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SU</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_SYS_UID_VAL/CPL</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_CLASS_KEY_VAL/CPL</code> reads.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Response</strong></p>
+</div>
+<div class="paragraph">
+<p>If any reserved bit <code>[31:6]</code> is set, the command returns <code>RESP_CMD</code>
+<em>invalid_arg</em> with <code>return_arg</code> = the raw <code>lock_bits</code> word received.</p>
+</div>
+<div class="paragraph">
+<p>On success the command applies the lock bits (triple-write convention)
+and returns <code>RESP_CMD</code> <em>success</em> with <code>return_arg</code> = the resulting
+<code>OTP_READ_LOCK_COLD</code> register value after the write.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 35. RESP_CMD <em>Success</em> Return Argument</caption>
+<colgroup>
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+<col style="width: 3.125%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top">[31]</th>
+<th class="tableblock halign-center valign-top">[30]</th>
+<th class="tableblock halign-center valign-top">[29]</th>
+<th class="tableblock halign-center valign-top">[28]</th>
+<th class="tableblock halign-center valign-top">[27]</th>
+<th class="tableblock halign-center valign-top">[26]</th>
+<th class="tableblock halign-center valign-top">[25]</th>
+<th class="tableblock halign-center valign-top">[24]</th>
+<th class="tableblock halign-center valign-top">[23]</th>
+<th class="tableblock halign-center valign-top">[22]</th>
+<th class="tableblock halign-center valign-top">[21]</th>
+<th class="tableblock halign-center valign-top">[20]</th>
+<th class="tableblock halign-center valign-top">[19]</th>
+<th class="tableblock halign-center valign-top">[18]</th>
+<th class="tableblock halign-center valign-top">[17]</th>
+<th class="tableblock halign-center valign-top">[16]</th>
+<th class="tableblock halign-center valign-top">[15]</th>
+<th class="tableblock halign-center valign-top">[14]</th>
+<th class="tableblock halign-center valign-top">[13]</th>
+<th class="tableblock halign-center valign-top">[12]</th>
+<th class="tableblock halign-center valign-top">[11]</th>
+<th class="tableblock halign-center valign-top">[10]</th>
+<th class="tableblock halign-center valign-top">[9]</th>
+<th class="tableblock halign-center valign-top">[8]</th>
+<th class="tableblock halign-center valign-top">[7]</th>
+<th class="tableblock halign-center valign-top">[6]</th>
+<th class="tableblock halign-center valign-top">[5]</th>
+<th class="tableblock halign-center valign-top">[4]</th>
+<th class="tableblock halign-center valign-top">[3]</th>
+<th class="tableblock halign-center valign-top">[2]</th>
+<th class="tableblock halign-center valign-top">[1]</th>
+<th class="tableblock halign-center valign-top">[0]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top" colspan="26"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cU</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>D</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>LC</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div class="sect4">
 <h5 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">Response Message Reference</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Response Message</caption>
+<caption class="title">Table 36. Response Message</caption>
 <colgroup>
 <col style="width: 3.125%;">
 <col style="width: 3.125%;">
@@ -5604,7 +5940,7 @@ sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. KM Response Summary</caption>
+<caption class="title">Table 37. KM Response Summary</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 35%;">
@@ -5662,7 +5998,7 @@ direct commands from the SEP with this response.</p>
 signed 8-bit return code, and an optional argument.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Response Payload</caption>
+<caption class="title">Table 38. Response Payload</caption>
 <colgroup>
 <col style="width: 3.125%;">
 <col style="width: 3.125%;">
@@ -5752,7 +6088,7 @@ signed 8-bit return code, and an optional argument.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Return Codes</caption>
+<caption class="title">Table 39. Return Codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -5872,7 +6208,7 @@ recoverable fault.</p>
 <p>A signed 8-bit code indicating the cause of the fault.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. Response Payload</caption>
+<caption class="title">Table 40. Response Payload</caption>
 <colgroup>
 <col style="width: 3.125%;">
 <col style="width: 3.125%;">
@@ -5951,7 +6287,7 @@ recoverable fault.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. Fault Codes</caption>
+<caption class="title">Table 41. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6009,7 +6345,7 @@ unrecoverable fault. Core execution has halted.</p>
 <p>A signed 8-bit code indicating the cause of the fault.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. Response Payload</caption>
+<caption class="title">Table 42. Response Payload</caption>
 <colgroup>
 <col style="width: 3.125%;">
 <col style="width: 3.125%;">
@@ -6088,7 +6424,7 @@ unrecoverable fault. Core execution has halted.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. Fault Codes</caption>
+<caption class="title">Table 43. Fault Codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6464,9 +6800,10 @@ not yet consumed.</p>
 <p><strong>Lock.</strong>  OTP secret fields and the <code>rom_persist</code> SRAM region are locked, and
 the KPV is sealed against mutable firmware: using the key registry, every
 registered slot is read-locked (<code>lock_use</code>) and every free slot is overwritten
-with PRNG data (a free-but-write-locked slot, such as a revoked key, is
-read-locked instead).  The SRAM write-lock mask is set to cover all 512-byte
-regions that contain the loaded image.</p>
+with PRNG data (a free-but-write-locked slot is read-locked instead).  Revoked
+keys are hardware-erased at revocation time, so their slots are wiped and fully
+unlocked (ordinary free slots) by this point.  The SRAM write-lock mask is set
+to cover all 512-byte regions that contain the loaded image.</p>
 </li>
 <li>
 <p><strong>Disable IRQs and flush the mailbox.</strong>  All KMCSR/mailbox IRQ enables are
@@ -7509,68 +7846,45 @@ of times with random words sourced from the DRBG.</p>
 <p>Locks the KPV scrambler.</p>
 </div>
 <div class="paragraph">
-<p><strong>Shred KPV</strong></p>
+<p><strong>Erase Slot</strong></p>
 </div>
 <div class="paragraph">
-<p>Purges KPV key data registers with random data from the PRNG and clears
-the control registers. It has the following execution flow:</p>
+<p>Hardware-erases the key at a given base slot index. The function uses the
+<code>EXTEND</code> field of the base slot control register to span all associated key
+slots, and for each spanned slot:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Clears all slot control registers, skipping any registers that are
-write-locked.</p>
+<p>Asserts the slot&#8217;s <code>CTRL.erase</code> trigger. The write-1 trigger is issued
+three times per slot so a single skipped store (e.g. from a fault-injection
+glitch) cannot prevent the erase from starting.</p>
 </li>
 <li>
-<p>Writes random data sourced from the PRNG to all key data registers.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Reseeds the PRNG from the DRBG.</p>
-</li>
-<li>
-<p>Writes the registers in a pseudorandom order that is seeded from the
-PRNG, skipping any registers that are write-locked.</p>
-</li>
-<li>
-<p>Performs this entire sequence a total of <code>SHRED_ITER+1</code> times.</p>
+<p>Polls the slot&#8217;s <code>erase</code> bit until the hardware self-clears it.</p>
 </li>
 </ol>
 </div>
-</li>
-</ol>
+<div class="paragraph">
+<p>The hardware overwrites every key word of each slot (through the KPV
+scrambler) and clears the slot control register, including the lock bits.
+Erase is not blocked by <code>lock_write</code> or <code>lock_use</code>, so the slots are wiped
+and reusable when the function returns.</p>
 </div>
 <div class="paragraph">
 <p><strong>Shred Slot</strong></p>
 </div>
 <div class="paragraph">
-<p>Purges a given key slot with random data from the PRNG and clears its
-control registers. It has the following execution flow:</p>
+<p>Shreds a single key slot by invoking <strong>Erase Slot</strong> on it <code>SHRED_ITER+1</code>
+times. Because it uses the hardware erase path it also wipes write-locked
+slots and clears their control registers.</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Clears the slot control register, returning with an error if the slot is
-write-locked.</p>
-</li>
-<li>
-<p>Writes random data sourced from the PRNG to the given slot.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Reseeds the PRNG from the DRBG.</p>
-</li>
-<li>
-<p>Writes the slot words in a pseudorandom order that is seeded from the
-PRNG.</p>
-</li>
-<li>
-<p>Performs this entire sequence a total of <code>SHRED_ITER+1</code> times.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p><strong>Shred KPV</strong></p>
 </div>
-</li>
-</ol>
+<div class="paragraph">
+<p>Shreds every KPV slot by invoking <strong>Shred Slot</strong> on each slot, so each slot is
+hardware-erased <code>SHRED_ITER+1</code> times. Write-locked slots are wiped too.</p>
 </div>
 <div class="paragraph">
 <p><strong>Write Key</strong></p>
@@ -7588,16 +7902,8 @@ the following:</p>
 <p>The key data</p>
 </li>
 <li>
-<p>The key length (in 32-bit words)</p>
-</li>
-<li>
-<p>Valid crypto engine destinations for the key</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>It has the following execution flow:</p>
-</div>
+<p>The key length (in 32-bit words)
+It has the following execution flow:</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -7626,14 +7932,13 @@ the following:</p>
 <p>The <code>LAST_DWORD</code> field of all other required key slots must be set
 to 15.</p>
 </li>
-<li>
-<p>The given bitmask of valid crypto engine destinations is written to all
-required key slots.</p>
-</li>
 </ol>
 </div>
 </li>
 </ol>
+</div>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p><strong>Read Key</strong></p>
@@ -7648,16 +7953,8 @@ function returns the following:</p>
 <p>The key data</p>
 </li>
 <li>
-<p>The key length (in 32-bit words)</p>
-</li>
-<li>
-<p>Valid crypto engine destinations for the key</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>It has the following execution flow:</p>
-</div>
+<p>The key length (in 32-bit words)
+It has the following execution flow:</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -7690,14 +7987,13 @@ where <code>LAST_DWORD</code> comes from the final key slot.</p>
 <code>16 * EXTEND + (LAST_DWORD + 1)</code>, where <code>EXTEND</code> comes from the base key
 slot and <code>LAST_DWORD</code> comes from the final key slot.</p>
 </li>
-<li>
-<p>The bitmask of valid crypto engine destinations is derived from the
-base key slot.</p>
-</li>
 </ol>
 </div>
 </li>
 </ol>
+</div>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p><strong>Write-Lock Key</strong></p>
@@ -7822,6 +8118,146 @@ acknowledgement rather than toggling the enable per event.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">Key Derivation Function Library</a></h5>
+<div class="paragraph">
+<p>The <code>rom_kdf</code> library implements the NIST SP 800-108r1 counter-mode key
+derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
+The KDF is defined by the following construction, where <code>i</code> and <code>L</code> are
+unsigned 16-bit big-endian values and <code>L</code> is the requested output length
+in bits:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>K(i) = HMAC-SHA-256(key, BE16(i) || input[192] || BE16(L))
+out  = leftmost L bits of K(1) || K(2) || ...</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The counter starts at 1. The library computes
+<code>ceil(L / 256)</code> HMAC iterations and copies <code>ceil(L / 8)</code> bytes to the
+caller&#8217;s output buffer. <code>L</code> is in the range 1 through 8192 bits. If <code>L</code>
+is not byte-aligned, the final output byte is copied in full and the
+caller ignores the bits beyond <code>L</code>. Because <code>L</code> is included in every HMAC
+message, outputs requested at different lengths are cryptographically
+separated; a shorter output is not a prefix of a longer output.</p>
+</div>
+<div class="paragraph">
+<p>The input is a fixed 192-byte <code>km_kdf_input_t</code>. The library copies this
+structure into the HMAC message verbatim. Structure fields use the
+PicoRV32 in-memory byte representation; only the surrounding counter and
+output-length fields are big-endian.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 44. KDF Fixed Input Layout</caption>
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 25%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-center valign-top">Byte Offset</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>0-1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM ABI version mixed into the derivation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_class</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Class of the derived key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_type</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Type of the derived key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_owner</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Owner of the derived key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_domain</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parent-inherited domain, forged by the KM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>6-7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>flags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provenance and operational flags, forged by the KM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>8-9</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>purpose</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Public purpose metadata.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>10-11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_bits</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Requested derived-key size recorded in the input.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>12-15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>caps</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Capabilities requested for the derived key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>16-19</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>device_state</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Live life-cycle and demotion state sampled by the KM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>20-31</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rsvd</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved; all bytes are zero.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>32-63</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>label</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed operation label providing domain separation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>64-127</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>context</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Caller- or ROM-provided derivation context.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>128-191</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>entropy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG input for ephemeral operations; otherwise all zero.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>rom_kdf_800_108()</code> uses <code>rom_hmac_sha256()</code> for each counter iteration.
+An HMAC key of at most 64 bytes is passed directly to HMAC. A longer key is
+first reduced to a 32-byte SHA-256 digest as specified by RFC 2104. This
+normalization permits parent keys up to the KM symmetric-key limit of
+1024 bytes while retaining the HMAC library&#8217;s 64-byte key limit.</p>
+</div>
+<div class="paragraph">
+<p>The KDF rejects null required pointers, a null key with non-zero length,
+and output lengths outside the supported range. Invalid arguments leave
+the output buffer unchanged. If SHA-256 or HMAC fails after validation,
+the KDF zeroes the complete requested output region before returning an
+error. The implementation also securely clears its normalized key,
+HMAC message, and digest scratch buffers before returning.</p>
+</div>
+<div class="paragraph">
+<p><code>rom_kdf_selftest()</code> provides the KDF power-on known-answer test. It
+derives a 512-bit output from an embedded 32-byte key and 192-byte input,
+thereby exercising two counter iterations, and compares the result with
+the embedded expected value. A boot flow that derives real key material
+must run this test first and fail closed if it does not pass.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">CRC Function Library</a></h5>
 <div class="paragraph">
 <p>The CRC function library contains routines for CRC computations. The
@@ -7842,7 +8278,7 @@ and engine behavior.</p>
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. CRC-8/ROHC Parameters</caption>
+<caption class="title">Table 45. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -7895,7 +8331,7 @@ from least significant byte to most significant byte.</p>
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. CRC-32C Parameters</caption>
+<caption class="title">Table 46. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -7966,8 +8402,8 @@ are permanently invalidated when they are destroyed.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>A mapping from key handles to a base slot index, as well as a CRC-32C
-value for the associated key.</p>
+<p>A mapping from key handles to a base slot index, a CRC-32C value for the
+associated key, and an 8-bit <code>DEST_VALID</code> destination-policy bitmask.</p>
 </li>
 <li>
 <p>A mapping from slot indexes to a key handle. A key handle value of NULL
@@ -8003,6 +8439,14 @@ error if the key handle does not exist or has been invalidated.</p>
 error if the key handle does not exist or has been invalidated.</p>
 </div>
 <div class="paragraph">
+<p><strong>Get Key Destinations</strong></p>
+</div>
+<div class="paragraph">
+<p>Returns the registered <code>DEST_VALID</code> destination-policy bitmask for a key,
+given a key handle. Returns an error if the key handle does not exist or has
+been invalidated.</p>
+</div>
+<div class="paragraph">
 <p><strong>Generate Handle</strong></p>
 </div>
 <div class="paragraph">
@@ -8015,6 +8459,9 @@ error if the key handle does not exist or has been invalidated.</p>
 </li>
 <li>
 <p>A CRC-32C of the key data</p>
+</li>
+<li>
+<p>The valid crypto engine destinations for the key</p>
 </li>
 </ul>
 </div>
@@ -8041,8 +8488,8 @@ to any existing key slot.</p>
 </div>
 </li>
 <li>
-<p>Updates the registry with the generated key handle and associated
-CRC-32C.</p>
+<p>Updates the registry with the generated key handle, CRC-32C, and
+destination-policy bitmask.</p>
 </li>
 </ol>
 </div>
@@ -8224,7 +8671,10 @@ if none are available.</p>
 an error if invalid.</p>
 </li>
 <li>
-<p>Write-locks and read-locks all slots associated with the key.</p>
+<p>Hardware-erases all slots associated with the key: each slot&#8217;s <code>CTRL.erase</code>
+trigger is asserted, and firmware waits until the hardware self-clears it. The
+erase overwrites the key data through the KPV scrambler and clears each slot&#8217;s
+CTRL register (including the lock bits), so the slots are wiped and reusable.</p>
 </li>
 <li>
 <p>Destroys the given key handle.</p>
@@ -8265,7 +8715,8 @@ an error if invalid.</p>
 returning with an error if invalid.</p>
 </li>
 <li>
-<p>Checks that <strong>all</strong> requested crypto engine destinations are allowed,
+<p>Gets the destination-policy bitmask from the key registry and checks that
+<strong>all</strong> requested crypto engine destinations are allowed,
 returning with an error if any are invalid.</p>
 </li>
 <li>

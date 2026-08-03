@@ -385,8 +385,8 @@ bypasses repair logic when asserted, assuming SRAM arrays are defect-free.</p>
 </div>
 <div class="paragraph">
 <p>Repair completion and success are reported through DFT Control Status registers
-(<code>DFX_CTRL_STATUS_SOC</code> at <code>0xC000F800</code> and <code>DFX_CTRL_STATUS_SEP_SMC</code> at
-<code>0xC000F80C</code>). The <code>mem_repair_done</code> bit indicates completion, while
+(<code>DFX_CTRL_STATUS_SOC</code> at <code>0xC000D800</code> and <code>DFX_CTRL_STATUS_SEP_SMC</code> at
+<code>0xC000D80C</code>). The <code>mem_repair_done</code> bit indicates completion, while
 <code>mem_repair_success</code> indicates successful repair. The SMC ROM firmware monitors
 these bits during initialization to verify repair completion before proceeding
 with boot operations.</p>

@@ -235,7 +235,7 @@ handle</p>
 <code>meta/crossbars/configs/sep_local_axi_xbar.yaml</code>, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
-and eight targets.</p>
+and ten targets.</p>
 </div>
 <div class="paragraph">
 <p>A few access paths are intentionally outside this crossbar:</p>
@@ -263,8 +263,26 @@ not present.</p>
 scratch register bank, the AP/STEE remap regions, and the outbound
 routing to SMC/SMN resources.</p>
 </div>
+<div class="paragraph">
+<p>The <strong>Entropy Pool</strong> target is <code>sep_entropy_fifo</code> (0x1095_0000): a 64-bit
+read-only entropy drain aperture, filled autonomously by a native EDN
+endpoint on a separate hardware path (not this crossbar). Writes to it
+terminate with <code>BRESP=SLVERR</code>.</p>
+</div>
+<div class="paragraph">
+<p>The <strong>System Interface</strong> initiator is the external inbound master. It does
+not attach to this crossbar directly; it enters SEP through the dedicated
+<code>smn_inbound</code> port and the inbound traffic filter (block-by-default), then
+through the <code>sep_system_peripherals</code> inner crossbar. That inner crossbar
+reaches the <strong>mailboxes</strong> and <strong>system CSRs</strong> directly, and loops everything
+else back into this crossbar&#8217;s System Interface row. The inbound filter
+controls which addresses the external master may reach; it is block-by-default
+after POR and configured by SEP firmware.</p>
+</div>
 <table class="tableblock frame-all grid-all fit-content">
 <colgroup>
+<col>
+<col>
 <col>
 <col>
 <col>
@@ -279,7 +297,7 @@ routing to SMC/SMN resources.</p>
 <tbody>
 <tr>
 <th class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock">Masters</p></th>
-<th class="tableblock halign-center valign-top" colspan="8"><p class="tableblock">Crossbar</p></th>
+<th class="tableblock halign-center valign-top" colspan="10"><p class="tableblock">Crossbar</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">Dedicated Path</p></th>
 </tr>
 <tr>
@@ -287,9 +305,11 @@ routing to SMC/SMN resources.</p>
 <th class="tableblock halign-center valign-top"><p class="tableblock">Scratch SRAM</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">DMA CSR</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">WDT</p></th>
+<th class="tableblock halign-center valign-top"><p class="tableblock">Reset Ctrl</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">Crypto Periph</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">System Periph</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">IO Periph</p></th>
+<th class="tableblock halign-center valign-top"><p class="tableblock">Entropy Pool</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">AXI Extension</p></th>
 <th class="tableblock halign-center valign-top"><p class="tableblock">Boot ROM</p></th>
 </tr>
@@ -297,6 +317,8 @@ routing to SMC/SMN resources.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU IFI</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
@@ -316,10 +338,14 @@ routing to SMC/SMN resources.</p>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU DBG</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
@@ -340,6 +366,8 @@ routing to SMC/SMN resources.</p>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System I/F</p></td>
@@ -347,8 +375,10 @@ routing to SMC/SMN resources.</p>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">C</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">N/C</p></td>

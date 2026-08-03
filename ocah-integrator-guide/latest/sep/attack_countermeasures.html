@@ -225,23 +225,24 @@ scan chains which will be managed for security in the TAP controller.</p>
 <div class="paragraph">
 <p>These three groups correspond to the SEP asset classes defined
 authoritatively in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
-Protection</em>): group 1 = Class 5 (general), group 2 = Class 2 (crypto / KM
+Protection</em>): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
 secret-bearing), group 3 = Class 1 (secrets and integrity-critical control
 fields).</p>
 </div>
 <div class="sect4">
 <h5 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">Debug and Scan Dump</a></h5>
 <div class="paragraph">
-<p>Debug mode is enabled when the device’s Life Cycle (LC) state equals PROD_DBG_1/2. In
+<p>Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
+DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
 this mode, the user has near full control and observability of the chip
 state, but we must enforce security restrictions.</p>
 </div>
 <div class="paragraph">
-<p><strong>General logic (Class 5)</strong> scan dump is gated by the per-scope <code>*_DBG</code>
-feature-control bits and the LC state&#8201;&#8212;&#8201;a scope&#8217;s general logic is dumpable
-only when its <code>SEP_DBG</code> / <code>SIP_DBG</code> / <code>CHIPLET_DBG</code> bit (sourced from the OTP
-DIS vectors; <code>1&#8217;b0</code> = enabled, <code>1&#8217;b1</code> = disabled, irreversible) and the LC
-state permit it.</p>
+<p><strong>General logic (Class 3)</strong> scan dump is gated by the <code>*_DBG</code> feature-control
+bits (sourced from the OTP DIS vectors; <code>1&#8217;b0</code> = enabled, <code>1&#8217;b1</code> = disabled,
+irreversible) and the LC state&#8201;&#8212;&#8201;a scope&#8217;s general logic is dumpable only
+when its local gate (<code>SEP_DBG</code> / <code>CHIPLET_DBG</code>), the <code>SIP_DBG</code> debug-access
+path into the chiplet, and the LC state permit it.</p>
 </div>
 <div class="paragraph">
 <p><strong>Secret-bearing logic (Class 2)</strong>&#8201;&#8212;&#8201;crypto-engine key / round-key storage and
@@ -268,33 +269,70 @@ registers (<code>*_TOKEN_I</code>).</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect4">
+<h5 id="class-2-asset-manifest"><a class="anchor" href="#class-2-asset-manifest"></a><a class="link" href="#class-2-asset-manifest">Class 2 Asset Manifest and Naming</a></h5>
 <div class="paragraph">
-<p>The authoritative class-by-class mapping (asset lists, scan chains, gating
-bits) is in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
-Protection</em>); Key Manager specifics are in the Key Manager chapter (<em>Scan and
-Scan-Dump Protection</em>). The Class 2 secure-scan subcomponents are:</p>
+<p>The authoritative class definitions, scan-chain policy, and gating rules are
+in the Lifecycle Controller chapter (<em>Asset and Scan-Chain Protection</em>); Key
+Manager specifics are in the Key Manager chapter (<em>Scan and Scan-Dump
+Protection</em>). This section records the implementation manifest. A complete
+module instance is classified as Class 2 when it is the Key Manager, a
+device-secret-consuming cryptographic engine, an entropy engine, or sequential
+distribution logic that retains key, seed, random, digest-working, or round-key
+state. Classifying complete instances deliberately includes their control
+flops and avoids fragile per-register marking.</p>
+</div>
+<div class="paragraph">
+<p>The current SEP implementation has exactly 10 Class 2 RTL scan roots:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Key Manager&#8201;&#8212;&#8201;key vault / shared key storage</p>
+<p><code>sep_crypto.hmac_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p>AES&#8201;&#8212;&#8201;key storage, round-key storage</p>
+<p><code>sep_crypto.sep_crypto_otbn_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p>HMAC&#8201;&#8212;&#8201;key storage</p>
+<p><code>sep_crypto.aes_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p>OTBN&#8201;&#8212;&#8201;key storage</p>
+<p><code>sep_crypto.kmac_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p>KMAC&#8201;&#8212;&#8201;key storage</p>
+<p><code>sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan</code></p>
 </li>
 <li>
-<p><em>TODO: confirm the full Class 2 block list with the SEP team</em></p>
+<p><code>sep_crypto.u_entropy_source_s3c_scan</code></p>
+</li>
+<li>
+<p><code>sep_crypto.u_drbg_s3c_scan</code></p>
+</li>
+<li>
+<p><code>sep_crypto.u_axis_edn_crypto_s3c_scan</code></p>
+</li>
+<li>
+<p><code>sep_crypto.u_key_manager_s3c_scan</code></p>
+</li>
+<li>
+<p><code>u_trng_wrapper_s3c_scan</code></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The <code>_s3c_scan</code> suffix is reserved for Class 2 instance and generate-scope
+names. It is not a module-name or per-flop suffix. A nested <code>_n0_scan</code> name
+remains Class 1 and takes precedence over an enclosing <code>_s3c_scan</code> hierarchy.</p>
+</div>
+<div class="paragraph">
+<p>Three writable companion SRAMs are also Class 2 assets:
+<code>u_km_sram</code>, <code>u_otbn_imem_sram</code>, and <code>u_otbn_dmem_sram</code>. Their macro instance
+names remain unchanged because <code>_s3c_scan</code> identifies RTL scan hierarchies;
+the owning memory-DFT/MBIST policy must provide the same never-dump outcome.
+<code>u_km_rom</code> is explicitly excluded because immutable executable contents
+cannot retain runtime secrets. The vendor TRNG core keeps its delivered DFT
+view beneath <code>u_trng_wrapper_s3c_scan</code>.</p>
 </div>
 </div>
 <div class="sect4">

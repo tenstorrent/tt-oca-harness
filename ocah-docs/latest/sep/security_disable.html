@@ -198,65 +198,74 @@
 <div class="sect3">
 <h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1. Security Disable (SEC_DIS)</a></h4>
 <div class="paragraph">
-<p>The token secret itself is not stored in RTL; instead, the RTL stores the
-token hash value and compares it against a hash of the token input.
-Upon deassertion of power-on-reset, the fuse sense logic is initially
-activated but it may malfunction turning the chiplet into a disabled
-``brick''. The malfunction may manifest as the fuse state machine
-hanging or returning invalid values and writing these into the shadow
-register bank. During bring-up of A0 parts we will provide a secure
-bypass unlock mechanism to enable
-workaround of this fatal scenario and open the part for debug access by
-overriding the life-cycle control&#8201;&#8212;&#8201;forcing all feature-control bits on
-regardless of the LC state and the SIP_DIS/SYS_DIS disables. Test-group
-(scan/DFT) features additionally require SECURE_TM = 1 (see below).</p>
+<p>Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
+silicon. On deassertion of power-on reset, the fuse sense logic runs before
+anything else, and a malfunction there&#8201;&#8212;&#8201;the fuse state machine hanging, or
+invalid values being written into the shadow register bank&#8201;&#8212;&#8201;would leave the
+life-cycle control closed and turn the chiplet into a disabled ``brick''.
+SEC_DIS provides a secure unlock mechanism to recover such a part for debug:
+it overrides the life-cycle control, forcing all feature-control bits on
+regardless of the LC state and the SIP_DIS / SYS_DIS disables. Test-group
+(scan/DFT) features additionally require SECURE_TM = 1, per the SEC_DIS /
+SECURE_TM rules in the Life Cycle Controller chapter.</p>
 </div>
 <div class="paragraph">
-<p>There shall be a secret 256-bit constant named SEC_DIS_TOKEN_HASH
-embedded in the fuse controller component hardware gates (<em>not the OTP
-fuse bank</em>). The SEC_DIS_TOKEN_I is passed into the SEP via the JTAG
-port, hashed and redundantly compared with SEC_DIS_TOKEN_HASH as
-illustrated earlier. If the two values match i.e. hash(SEC_DIS_TOKEN_I) == SEC_DIS_TOKEN_HASH, then we override the life cycle control to open debug and test access; the
-resulting feature-control output follows the SEC_DIS / SECURE_TM rules in the
-Lifecycle Controller chapter. The comparison logic must be purely
-combinational logic with the SEC_DIS_TOKEN constant never being latched
-into any potentially scannable register. When SEC_DIS is activated, the
-SEP will be able to boot even if the fuse sense logic never completes.</p>
+<p>SEC_DIS is activated by presenting a secret token: SEC_DIS_TOKEN_I is passed
+into the SEP via the JTAG port, hashed, and redundantly compared against an
+embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
+SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
+debug and test access, and the feature-control output follows the SEC_DIS /
+SECURE_TM rules in the Life Cycle Controller chapter. Once SEC_DIS is active,
+the SEP can boot even if the fuse sense logic never completes.</p>
 </div>
 <div class="paragraph">
-<p>The JTAG accessible register holding the token input values
-(SEC_DIS_TOKEN_I, RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I) <strong><em>shall not
-have a reset</em></strong>. This will enable us to debug very early events
-immediately after reset assuming we have previously pushed the correct
-SEC_DIS_TOKEN into that register i.e. the SEC_DIS state is retained
-after reset. Furthermore, that JTAG register must not be scannable. The
-reason is that once we’ve asserted SEC_DIS functionality, we may be in
-the process of conducting DFT scan tests. We must not inadvertently
-override the value in this register, turning the security unlock off and
-thus preventing the test from continuing.</p>
+<p>SEC_DIS is intended for A0 silicon only and is removed in later revisions
+(A1/B0) by a simple metal-mask ECO: the token comparator&#8217;s enable is
+implemented in a metal-programmable revision cell, strapped to 1 (comparator
+enabled) in A0 silicon and re-strapped to 0 at top metal in later revisions,
+so the feature is killed without a re-spin.</p>
 </div>
 <div class="paragraph">
-<p>We intend to disable the SEC_DIS feature after A0 ie. A1/B0 silicon
-revisions. To accomplish this, we will have an additional 1-bit constant
-passed in as a top level parameter named SEC_DIS_ENABLE. When the
-parameter value is set to 1 (in A0 silicon) the SEC_DIS_TOKEN comparator
-will be enabled. Otherwise the comparator is disabled. For A1/B0 silicon
-revisions the SEC_DIS_ENABLE parameter is set to 0 to disable the
-feature. The goal is to disable the feature with a simple metal mask ECO
-change.</p>
+<p>Implementation requirements:</p>
 </div>
-<div class="paragraph">
-<p>Knowledge of the secret SEC_DIS_TOKEN constant shall be strictly
-controlled. The final value of SEC_DIS_TOKEN_HASH value will be injected
-into the logic at the logic synthesis stage by the PD team. The constant
-is passed in at the chiplet top level using a parameter that traverses
-the instance hierarchy i.e. chiplet top to SMU to SEP to Fuse
-Controller. The constant is encoded in gates implementing the token
-comparator after logic synthesis. One member of the DV team will perform
-final verification of the SEC_DIS_TOKEN functionality on the post-layout
-extracted netlist with <strong><em>gate level simulation</em></strong>. The value of the
-SEC_DIS_UNLOCK token shall be stored in a secure database (HSM) which
-also holds the private keys for code signing.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>The token secret itself is never stored in RTL; the RTL stores only the
+token hash value, and the hardware forces every presented token through the
+hash engine before the digest comparison&#8201;&#8212;&#8201;there is no path that presents a
+digest to the comparator directly. The 256-bit SEP_SEC_DISABLE_TOKEN_DIGEST
+constant is therefore not itself a secret (recovering the token from it
+requires a SHA-256 preimage): it may be publicly known and may be carried in
+plain RTL. It resides in the fuse controller component hardware gates (<em>not
+the OTP fuse bank</em>).</p>
+</li>
+<li>
+<p>The comparison logic must be purely combinational, and the
+SEP_SEC_DISABLE_TOKEN_DIGEST constant must never be latched into any
+potentially scannable register. This is an integrity requirement, not confidentiality:
+the expected digest must not be perturbable&#8201;&#8212;&#8201;for example scan-shifted&#8201;&#8212;&#8201;into a value whose preimage an attacker knows.</p>
+</li>
+<li>
+<p>The JTAG-accessible register holding the token input values
+(SEC_DIS_TOKEN_I, RMA_SIP_TOKEN_I, and RMA_CHIPLET_TOKEN_I) <strong><em>shall not have
+a reset</em></strong>, so that the SEC_DIS state is retained across reset for early-event
+debug. That register must also not be scannable: DFT scan tests may be
+running while SEC_DIS is asserted, and a scan pattern must not inadvertently
+overwrite the register&#8201;&#8212;&#8201;dropping the security unlock and stopping the test.</p>
+</li>
+<li>
+<p>The secrecy of the scheme rests entirely on the SEC_DIS_TOKEN value, never
+on the hash. The token shall be a full-entropy 256-bit random value, and
+knowledge of it shall be strictly controlled: it shall be generated and
+stored in a secure database (HSM). Because only its integrity matters, the
+SEP_SEC_DISABLE_TOKEN_DIGEST may be bound at any convenient point in the
+implementation flow&#8201;&#8212;&#8201;for example as an RTL parameter passed down the
+instance hierarchy (chiplet top to SMU to SEP to fuse controller). One member of the DV team
+shall perform final verification of the SEC_DIS_TOKEN functionality on the
+post-layout extracted netlist with <strong><em>gate-level simulation</em></strong>.</p>
+</li>
+</ul>
 </div>
 </div>
 </article>
