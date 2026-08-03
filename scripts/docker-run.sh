@@ -30,6 +30,11 @@
 #                               /tmp/ocah-podman-<uid>); used by CI accounts
 #      OCAH_SKIP_GID_FIXUP     set to 1 to skip re-running under the passwd
 #                               primary group for rootless podman (see below)
+#      OCAH_TOOLCHAIN_ROOTFS   extracted firmware-image rootfs; when set (and
+#                               bwrap is present) `run`/`run-here` use
+#                               bubblewrap instead of podman/docker (see below)
+#      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
+#                               (space-separated; each bound at its own path)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,8 +54,23 @@ EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 DOCKER_CTX="${ROOT}/tools/docker"
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
+# Will this invocation actually need a container engine? The toolchain
+# subcommands can be served by the bubblewrap backend (see below), in which case
+# no engine - and none of the rootless-podman preparation underneath - is needed.
+# The doc/EDA subcommands use pulled images and always need an engine.
+NEEDS_ENGINE=1
+case "${1:-}" in
+    run|run-here|verify|shell)
+        if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] \
+           && [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]] \
+           && command -v bwrap >/dev/null 2>&1; then
+            NEEDS_ENGINE=0
+        fi ;;
+esac
+
 if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
 elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
+elif [[ "$NEEDS_ENGINE" == 0 ]]; then ENGINE=none VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 
 # Rootless podman's newuidmap/newgidmap helpers refuse to set up the user
@@ -67,7 +87,7 @@ else echo "error: podman or docker is required" >&2; exit 1; fi
 # reading stdin from /dev/null so an unexpected password prompt fails fast
 # instead of hanging CI, and only re-exec on success. A one-shot guard var
 # prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
-if [[ "$ENGINE" == podman && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
+if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
     _pw_gid="$(getent passwd "$(id -u)" | cut -d: -f4)"
     if [[ -n "$_pw_gid" && "$_pw_gid" != "$(id -g)" ]]; then
         _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"; _pw_grp="${_pw_grp:-$_pw_gid}"
@@ -91,7 +111,7 @@ fi
 # local disk, and - keyed by uid - stable so a loaded image persists across jobs
 # on the same runner. Hosts with a proper session (writable /run/user/<uid>) are
 # left untouched. Override the base dir with OCAH_PODMAN_DIR.
-if [[ "$ENGINE" == podman ]]; then
+if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 ]]; then
     _rt="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
     if [[ ! -w "$_rt" ]]; then
         _base="${OCAH_PODMAN_DIR:-${TMPDIR:-/tmp}/ocah-podman-$(id -u)}"
@@ -165,7 +185,67 @@ run_image() {
     "$ENGINE" run --rm "${f[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
 }
 
+# --- bubblewrap backend -----------------------------------------------------
+# The firmware image only supplies a toolchain (riscv64-unknown-elf-gcc,
+# picolibc, make, python3-pyelftools) - it needs no daemon, no network and no
+# persistent state. Rootless podman, by contrast, keeps a per-user pause process
+# and user-namespace bookkeeping in XDG_RUNTIME_DIR, which on shared CI/LSF
+# nodes fails in ways we do not control: `newuidmap` refuses a job-specific
+# primary group, and `podman system migrate` run before a group change leaves a
+# namespace the later process cannot join ("cannot re-exec process to join the
+# existing user namespace").
+#
+# Bubblewrap avoids that whole class: it is a single stateless binary that
+# creates a fresh unprivileged user namespace per invocation, with no pause
+# process, no image store and no group-matching requirement. Point
+# OCAH_TOOLCHAIN_ROOTFS at a rootfs extracted from the firmware image (the
+# `docker save` layers untarred in order) to run the *same* toolchain binaries
+# locally, in CI and on Jenkins without a container engine.
+#
+# Paths are 1:1 (the repo is bound at its own host path), which is what the
+# nonfree DV cgen stage needs, so this backend serves `run` and `run-here`
+# identically; `run` just starts in the repo root.
+TOOLCHAIN_ROOTFS="${OCAH_TOOLCHAIN_ROOTFS:-}"
+
+use_bwrap() {
+    [[ -n "$TOOLCHAIN_ROOTFS" ]] || return 1
+    if [[ ! -x "${TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]]; then
+        echo "docker-run: warning: OCAH_TOOLCHAIN_ROOTFS='$TOOLCHAIN_ROOTFS' has no" \
+             "usr/bin/riscv64-unknown-elf-gcc; falling back to $ENGINE" >&2
+        return 1
+    fi
+    if ! command -v bwrap >/dev/null 2>&1; then
+        echo "docker-run: warning: OCAH_TOOLCHAIN_ROOTFS set but bwrap is not installed;" \
+             "falling back to $ENGINE" >&2
+        return 1
+    fi
+    return 0
+}
+
+# bwrap_run WORKDIR CMD... : run CMD in the extracted rootfs, with host paths 1:1.
+bwrap_run() {
+    local workdir="$1"; shift
+    [[ "${1:-}" == "-it" ]] && shift   # no TTY plumbing needed; bwrap inherits it
+    local binds=(--bind "$TOOLCHAIN_ROOTFS" / --dev /dev --proc /proc --tmpfs /run)
+    # /tmp is shared (not --tmpfs) so build temporaries and any caller-provided
+    # scratch paths stay visible to the host, matching the container's -v mounts.
+    binds+=(--bind /tmp /tmp)
+    # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
+    # bender filelists and generated collateral all resolve unchanged.
+    binds+=(--bind "$ROOT" "$ROOT")
+    local extra
+    for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
+        [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
+    done
+    # HOME may sit outside the bound trees; give it a writable stand-in.
+    bwrap "${binds[@]}" --chdir "$workdir" \
+        --setenv PATH /usr/local/bin:/usr/bin:/bin \
+        --setenv HOME /tmp \
+        "$@"
+}
+
 run() {
+    if use_bwrap; then bwrap_run "$ROOT" "$@"; return; fi
     ensure_image
     run_image "$IMAGE" "$@"
 }
@@ -175,6 +255,7 @@ run() {
 # picolibc firmware builds with absolute `make -C` paths spanning both this repo
 # and nonfree/, which would not resolve under `run`'s /work remap.
 run_here() {
+    if use_bwrap; then bwrap_run "$PWD" "$@"; return; fi
     ensure_image
     run_image_1to1 "$IMAGE" "$@"
 }
