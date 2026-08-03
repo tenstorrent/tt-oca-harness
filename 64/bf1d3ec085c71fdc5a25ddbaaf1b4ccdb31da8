@@ -1,0 +1,26 @@
+scripts/docker-run.sh
+  s_d605cb93395a31::t_d160f14fd55b76 90
+  s_d605cb93395a31::t_b97925871edde0 57-70,73
+  s_d605cb93395a31::t_d9273eadbf047a 114
+  s_d605cb93395a31::t_db6a80e7f2e0d1 33-37
+  s_d605cb93395a31::t_4d395aa5b02137 258
+  s_d605cb93395a31::t_fab8f919db88f5 188-246,248
+ocah.mk
+  s_d605cb93395a31::t_3b0e600eb85307 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "64bf1d3ec085c71fdc5a25ddbaaf1b4ccdb31da8",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
