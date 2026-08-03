@@ -1,6 +1,4 @@
-/* Hide placeholder navbar items (upstream demo content only: any leftover
-   Home/Products/Services/Download not otherwise replaced) -- explicit
-   exceptions for every real item we've added. */
+/* Hide placeholder navbar items -- explicit exceptions for every real item we've added. */
 .navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
 .navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
     display: none !important;
@@ -79,6 +77,97 @@
    Menu structure is left unchanged; this block only touches color,
    background, and typography.
    ======================================== */
+/* Each family is declared once per    weight/style actually supplied; 
+	the system-font fallback in each --oca-font-* stack below only applies 
+	if a given font file fails to load. */
+@font-face {
+    font-family: "Degular Display";
+    src: url("../fonts/DegularDisplay-Light.otf") format("opentype");
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Display";
+    src: url("../fonts/DegularDisplay-Medium.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Display";
+    src: url("../fonts/DegularDisplay-Semibold.otf") format("opentype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Text";
+    src: url("../fonts/DegularText-Medium.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Text";
+    src: url("../fonts/DegularText-MediumItalic.otf") format("opentype");
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Degular Text";
+    src: url("../fonts/DegularText-Bold.otf") format("opentype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Neue Haas Unica Pro";
+    src: url("../fonts/NeueHaasUnicaPro-Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Neue Haas Unica Pro";
+    src: url("../fonts/NeueHaasUnicaPro-Medium.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Bold.otf") format("opentype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Oblique.otf") format("opentype");
+    font-weight: 400;
+    font-style: oblique;
+    font-display: swap;
+}
+
 :root {
     --oca-green: #103525;
     --oca-cream: #EEEAE0;
@@ -86,12 +175,10 @@
     --oca-gold: #F6BC42;
     --oca-orange: #F6931E;
     --oca-text: #484848;
-    /* Roboto is already loaded by the antora-ui-default bundle itself, so
-       list it first -- closer visual match than a generic system stack,
-       and costs nothing extra to use. */
-    --oca-font-display: "Roboto", Georgia, "Iowan Old Style", serif;
-    --oca-font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
-    --oca-font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
+    --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
+    --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
+    --oca-font-emphasis: "Degular Text", -apple-system, "Segoe UI", sans-serif;
+    --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
 /* Top navbar -> match OCA's cream navbar */
@@ -223,6 +310,7 @@
 .doc h2,
 .doc h3 {
     font-family: var(--oca-font-display);
+    font-weight: 300;
     color: var(--oca-green);
 }
 
@@ -230,6 +318,20 @@
 .doc {
     font-family: var(--oca-font-body);
     color: var(--oca-text);
+}
+
+/* Emphasis (bold/italic inline text) -> Degular Text, distinct from the
+   Neue Haas Unica Pro body face. */
+.doc strong,
+.doc b {
+    font-family: var(--oca-font-emphasis);
+    font-weight: 700;
+}
+
+.doc em,
+.doc i {
+    font-family: var(--oca-font-emphasis);
+    font-style: italic;
 }
 
 /* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
@@ -254,8 +356,40 @@
    ======================================== */
 .footer {
     background-color: var(--oca-green) !important;
-    text-align: center;
     padding: 20px;
+}
+
+/* Grid keeps the message block centered on the full footer width (matching
+   the previous centered layout) while pinning the OCA logo to the left
+   edge, using an empty mirrored third column rather than justify-content
+   tricks that would recenter the logo. */
+.footer-inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+}
+
+.footer-oca-logo {
+    height: 32px;
+    justify-self: start;
+}
+
+.footer-main {
+    grid-column: 2;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .footer-inner {
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-oca-logo {
+        margin-bottom: 8px;
+    }
 }
 
 .footer .oca-footer-text,
