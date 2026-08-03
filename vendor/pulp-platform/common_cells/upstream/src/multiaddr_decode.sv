@@ -126,8 +126,8 @@ module multiaddr_decode #(
   // Assumptions and assertions
   `ifndef COMMON_CELLS_ASSERTS_OFF
   initial begin : proc_check_parameters
-    `ASSUME_I(norules_0, NoRules > 0, $sformatf("At least one rule needed"))
-    `ASSUME_I(addr_width_not_equal, $bits(addr_i) == $bits(addr_map_i[0].addr),
+    `OCAH_PULP_ASSUME_I(norules_0, NoRules > 0, $sformatf("At least one rule needed"))
+    `OCAH_PULP_ASSUME_I(addr_width_not_equal, $bits(addr_i) == $bits(addr_map_i[0].addr),
              $sformatf("Input address has %d bits and address map has %d bits.",
                        $bits(addr_i), $bits(addr_map_i[0].addr)))
   end
@@ -139,7 +139,7 @@ module multiaddr_decode #(
     if (!$isunknown(addr_map_i)) begin
       for (int unsigned i = 0; i < NoRules; i++) begin
         // check the SLV ids
-        `ASSUME_I(check_idx, addr_map_i[i].idx < NoIndices,
+        `OCAH_PULP_ASSUME_I(check_idx, addr_map_i[i].idx < NoIndices,
             $sformatf("This rule has a IDX that is not allowed!!!\n\
             Violating rule %d.\n\
             Rule> IDX: %h\n\

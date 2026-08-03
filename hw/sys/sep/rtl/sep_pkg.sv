@@ -5,6 +5,11 @@ package sep_pkg;
 
     `include "axi/typedef.svh"
 
+    // TODO: Consider including och_sep_top_reg.svh here once efuse register
+    //       naming collision is resolved (sep_efuse_map_reg.svh uses same
+    //       identifier names with offset-based addresses vs absolute addresses
+    //       in och_sep_top_reg.svh)
+
     parameter bit EN_EXTERNAL_MST = 1'b1;
 
     //////////
@@ -255,7 +260,7 @@ package sep_pkg;
     // Mailbox
     localparam int unsigned NUM_MAILBOXES = 8;
     localparam int unsigned MAILBOX_DEPTH = 8;
-    localparam int unsigned MAILBOX_SIZE = 32'h1000; // 4 KB
+    localparam int unsigned MAILBOX_SIZE = och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb
 
     // System CSRs
     localparam int unsigned SYSTEM_CSR_DEMUX_PORTS = 9;
@@ -449,14 +454,14 @@ package sep_pkg;
         SEP_ROM_MUX_PORT_LSU = 1
     } sep_rom_mux_port_t;
 
-    // TODO: we dont need this for now
-    typedef logic sep_cpu_icache_req_t;
-    typedef logic sep_cpu_icache_rsp_t;
-
     typedef logic sep_mailbox_slv_req_t;
     typedef logic sep_mailbox_slv_rsp_t;
 
-    parameter int unsigned NUM_INTERNAL_IRQS = 32;
+    // Internal SEP interrupt sources occupying the low PIC slots; see the
+    // sep_internal_interrupts aggregation in sep.sv for the slot map. Growing this
+    // shifts the external sources up and narrows NUM_EXTERNAL_IRQS accordingly.
+    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall.
+    parameter int unsigned NUM_INTERNAL_IRQS = 38;
     parameter int unsigned NUM_EXTERNAL_IRQS = pt.PIC_TOTAL_INT - NUM_INTERNAL_IRQS;
 
     /////////////////////////////////////////////
@@ -473,14 +478,21 @@ package sep_pkg;
     parameter int unsigned NUM_AP_OUTPUT_REMAP_IDX_START = 19; // 512KB region granularity
     parameter int unsigned NUM_STEE_OUTPUT_REMAP_IDX_START = 19; //  512KB region granularity
 
+    // Fixed size of the SEP local alias remap window. This is decoupled from the
+    // SMU-programmable SEP_REGION_SIZE CSR (exported as sep_region_size_o to size the
+    // SMU-visible aperture); the local alias window is a fixed architectural constant.
+    localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_SIZE = 56'h3000_0000; // 768 MiB
+    localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_BASE = 56'h1000_0000; // 0x1000_0000 - 0x3FFF_FFFF
+    localparam logic [55:0] SEP_GLOBAL_REGION_SIZE      = 56'h4000_0000; // 1 GiB
+
     localparam logic [3:0] SEP_SOURCE_ID = 4'b1111;
     localparam logic [3:0] MMODE_SOURCE_ID = 4'b1100;
     localparam logic [3:0] SMC_SOURCE_ID = 4'b0011;
     localparam logic [3:0] OTHERS_SOURCE_ID = 4'b0000;
 
     typedef struct packed {
-        logic [2:0] aw_remap_hit_debug;
-        logic [2:0] ar_remap_hit_debug;
+        logic [$clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS)-1:0] aw_remap_hit_debug;
+        logic [$clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS)-1:0] ar_remap_hit_debug;
     } remap_debug_t;
 
     typedef struct packed {

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
 
 /**
  * @file km_kpv.sv
@@ -17,7 +14,7 @@
  *
  *          Per-slot CTRL registers implement:
  *          - lock_write / lock_use sticky W1S bits.
- *          - extend, dest_valid, last_dword: software-programmed per slot.
+ *          - extend and last_dword: software-programmed per slot.
  *
  *          Scrambler key/ctrl lock: the stored scrambler key is held in a
  *          local flop; when locked the CSR returns zero to software but
@@ -29,23 +26,25 @@
  * @param axil_req_t          KM-side AXI-Lite request type.
  * @param axil_resp_t         KM-side AXI-Lite response type.
  */
+
 module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     import km_kpv_reg_pkg::*;
     import km_kpv_addrmap_pkg::*; #(
     parameter type axil_req_t  = km_axil_req_t,
     parameter type axil_resp_t = km_axil_resp_t
 ) (
-    input  wire logic clk_i,
-    input  wire logic cold_rst_ni,   // Cold reset: AASD — resets entire KPV
-    input  wire logic warm_rst_ni,   // Warm reset: synchronous — resets KM-port CPUIF + lock bits
+    input  logic clk_i,
+    input  logic cold_rst_ni,   // Cold reset: AASD — resets entire KPV
+    input  logic warm_rst_ni,   // Warm reset: synchronous — resets KM-port CPUIF + lock bits
 
     // KM port (from crossbar, base 0x0000_D000)
-    input  wire axil_req_t  km_axil_req_i,
+    input  axil_req_t  km_axil_req_i,
     output axil_resp_t      km_axil_resp_o,
 
     // Wipe: pulse high for one cycle to zero entire KPV next cycle
-    input  wire logic        wipe_pulse_i
+    input  logic        wipe_pulse_i
 );
+
 
     /** @brief Internal register address width (12 bits = 4 KB per port). */
     localparam int unsigned ADDR_W = 12;
@@ -116,6 +115,43 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     );
 
     //==========================================================================
+    // Per-slot erase controller (LFSR + FSM)
+    //
+    // When a slot's CTRL.erase bit is set, the eraser walks the 16 words of
+    // that slot, emitting a logical {slot, word} address and pseudo-random
+    // data.  These are routed through the shared KPV scrambler and the regfile
+    // write port (the eraser takes priority while busy).  On completion an
+    // erase_done pulse clears the slot CTRL register (including erase + locks).
+    //==========================================================================
+    logic [31:0] erase_req;
+    logic        erase_wr_en;
+    logic [4:0]  erase_slot;
+    logic [3:0]  erase_word;
+    logic [31:0] erase_wr_data;
+    logic [31:0] erase_done;
+    logic        erase_busy;
+
+    always_comb begin
+        for (int i = 0; i < 32; i++)
+            erase_req[i] = kpv_hwif_out.CTRL[i].erase.value;
+    end
+
+    km_kpv_eraser #(
+        .NUM_SLOTS     (32),
+        .WORDS_PER_SLOT(16)
+    ) u_eraser (
+        .clk_i        (clk_i),
+        .cold_rst_ni  (cold_rst_ni),
+        .erase_req_i  (erase_req),
+        .wr_en_o      (erase_wr_en),
+        .wr_slot_o    (erase_slot),
+        .wr_word_o    (erase_word),
+        .wr_data_o    (erase_wr_data),
+        .erase_done_o (erase_done),
+        .busy_o       (erase_busy)
+    );
+
+    //==========================================================================
     // KPV hwif_in: CTRL swwel, scrambler key/ctrl lock, wipe via hwclr/next
     //==========================================================================
 
@@ -149,13 +185,13 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
             // SW write lock.
             kpv_hwif_in.CTRL[i].extend.swwel =
                 kpv_hwif_out.CTRL[i].lock_write.value;
-            kpv_hwif_in.CTRL[i].dest_valid.swwel =
-                kpv_hwif_out.CTRL[i].lock_write.value;
             kpv_hwif_in.CTRL[i].last_dword.swwel =
                 kpv_hwif_out.CTRL[i].lock_write.value;
-            // Wipe: clear sticky W1S fields via hwclr
-            kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i;
-            kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i;
+            // Wipe (all slots) or per-slot erase completion: clear sticky
+            // W1S fields and the self-clearing erase trigger via hwclr.
+            kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i | erase_done[i];
+            kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i | erase_done[i];
+            kpv_hwif_in.CTRL[i].erase.hwclr      = wipe_pulse_i | erase_done[i];
         end
         // Scrambler key/ctrl lock
         kpv_hwif_in.KPV_SCRAMBLER_KEY.key.swwel =
@@ -178,15 +214,12 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     //==========================================================================
     always_comb begin
         for (int i = 0; i < 32; i++) begin
-            if (wipe_pulse_i) begin
+            if (wipe_pulse_i || erase_done[i]) begin
                 kpv_hwif_in.CTRL[i].extend.next     = 3'h0;
-                kpv_hwif_in.CTRL[i].dest_valid.next  = 8'h0;
                 kpv_hwif_in.CTRL[i].last_dword.next  = 4'h0;
             end else begin
                 kpv_hwif_in.CTRL[i].extend.next =
                     kpv_hwif_out.CTRL[i].extend.value;
-                kpv_hwif_in.CTRL[i].dest_valid.next =
-                    kpv_hwif_out.CTRL[i].dest_valid.value;
                 kpv_hwif_in.CTRL[i].last_dword.next =
                     kpv_hwif_out.CTRL[i].last_dword.value;
             end
@@ -236,13 +269,20 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         kpv_hwif_out.CTRL[km_ext_slot].last_dword.value;
 
     // --- KM scrambler (write path: scramble; read path: descramble) ---
+    // Inputs are muxed: while the eraser is busy it borrows the scrambler to
+    // produce scrambled random data.  The KM CPU does not drive a key-data
+    // access through the scrambler during an erase (it only polls CTRL.erase
+    // via the regblock), so there is no contention.
     logic [8:0]  km_scrambler_addr;
+    logic [31:0] km_scrambler_in_data;
     logic [8:0]  km_scrambler_phys_addr;
     logic [31:0] km_scrambler_write_out;
     logic [31:0] km_scrambler_read_out;
     logic [31:0] rf_rd_data;
 
-    assign km_scrambler_addr = {km_ext_slot, km_ext_word};
+    assign km_scrambler_addr = erase_busy ? {erase_slot, erase_word}
+                                          : {km_ext_slot, km_ext_word};
+    assign km_scrambler_in_data = erase_busy ? erase_wr_data : km_ext_wr_data;
 
     scrambler_512x32 #(
         .ADDR_WIDTH(9),
@@ -251,7 +291,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         .addr_i                (km_scrambler_addr),
         .scrambler_key_i       (scrambler_key_stored),
         .scrambled_addr_o      (km_scrambler_phys_addr),
-        .write_data_i          (km_ext_wr_data),
+        .write_data_i          (km_scrambler_in_data),
         .scrambled_write_data_o(km_scrambler_write_out),
         .scrambled_read_data_i (rf_rd_data),
         .read_data_o           (km_scrambler_read_out)
@@ -285,16 +325,27 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     logic [31:0] rf_wr_a_data;
     logic [8:0]  rf_rd_addr;
 
-    // KM write port: external req, write, !lock_write
-    assign rf_wr_a_en = km_ext_active & km_ext_is_wr & ~km_ext_lock_write;
-    assign rf_wr_a_addr = kpv_scrambler_enable ?
-        km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
-    assign rf_wr_a_data = kpv_scrambler_enable ?
-        km_scrambler_write_out : km_ext_wr_data;
+    // Write port: eraser (priority while busy) or KM external write
+    // (external req, write, !lock_write).  Erase is not gated by lock_write.
+    assign rf_wr_a_en = erase_busy ? erase_wr_en
+                                   : (km_ext_active & km_ext_is_wr & ~km_ext_lock_write);
+    assign rf_wr_a_addr = kpv_scrambler_enable ? km_scrambler_phys_addr :
+        (erase_busy ? {erase_slot, erase_word} : {km_ext_slot, km_ext_word});
+    assign rf_wr_a_data = kpv_scrambler_enable ? km_scrambler_write_out :
+        (erase_busy ? erase_wr_data : km_ext_wr_data);
 
     // KM read port: physical addr when scrambled, else logical
     assign rf_rd_addr = kpv_scrambler_enable ?
         km_scrambler_phys_addr : {km_ext_slot, km_ext_word};
+
+    // The eraser borrows the shared scrambler and regfile write port while
+    // busy (it has priority), so a concurrent KM external key-data write would
+    // be silently dropped even though its wr_ack still asserts.  Firmware only
+    // polls CTRL.erase (a regblock read) during an erase and never issues a key
+    // write while one is in flight, so this collision must never occur.
+    `OCAH_OT_ASSERT_NEVER(KmNoKeyWriteDuringErase,
+                  erase_busy && km_ext_active && km_ext_is_wr,
+                  clk_i, !cold_rst_ni || !warm_rst_ni)
 
     km_kpv_regfile #(
         .NUM_SLOTS     (32),
@@ -416,4 +467,3 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
 endmodule : km_kpv
 
-`default_nettype wire

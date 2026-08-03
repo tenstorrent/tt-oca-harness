@@ -9,414 +9,112 @@ addrmap sep_cpu_ctrl {
         regwidth = 64;
         accesswidth = 64;
         field  {
-            sw=r;
-            hw=w;
+            sw=rw;
+            hw=rw;
+            wr_swacc = true;
             desc="SEP REFERENCE COUNTER, counting after deassert of cold reset";
-        } rc [63:0];
+        } rc [63:0] = 0x0;
     };
 
+    // TODO: Clock-gate control - NOT YET IMPLEMENTED (reserved placeholder with named fields).
     reg CLOCK_GATE_CTRL {
         regwidth = 64;
         accesswidth = 64;
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the SPAcc/ Default is 1, this is using a static clkgater, meaning out clock is enabled by default";
-        } spacc_cg_enable [0:0] = 0x1;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the PKA, default should be 1, using clkgater, meaining out clock is enabled";
-        } pka_cg_enable [1:1] = 0x1;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the DMA, using clk_gater, deafault should be 0";
-        } dma_cg_enable [2:2] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the mailbox,using clk_gater, default should be 0";
-        } mailbox_cg_en [3:3] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the fabric";
-        } fabric_cg_enable [4:4] = 0x0;
-
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the inbound filters, using clk_gater, default should be 0";
-        } filter_in_cg_enable [6:6] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the sram, using clkgater, default should be 1";
-        } sram_cg_enable [7:7] = 0x1;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the zeroer, using clkgater, but this enable has been inverted, so shouould use 0 as default";
-        } zeroer_cg_enable [8:8] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the alias remap, using clk_gater, default should be 0";
-        } alias_remap_cg_enable [9:9] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the outbound filters, even using clkgater, but this enable has been inverted, so should use 0 as default";
-        } filter_out_cg_enable [10:10] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the opentitan hmac engine/ default is 0, out clock is always enabled";
-        } ot_hmac_cg_enable [11:11] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Clockgate enable for the entropy fifo, using clk_gater, default should be 0";
-        } entropy_fifo_cg_enable [12:12] = 0x0;
+        desc = "TODO: clock-gate control - placeholder fields, not yet implemented.";
 
         field {
             sw=rw;
             hw=r;
-            desc="Clockgate hysteresis";
-        } cg_hysteresis [21:16] = 0x1f;
+            desc="Reserved - PKA clock-gate enable, not yet implemented.";
+        } pka_cg_enable [0:0] = 0x0;
     };
 
-   reg TIMEOUT_INTERRUPT {
-       regwidth = 64;
-       accesswidth = 64;
-
-       desc = "Timeout interrupt";
-
-       field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for troot axi";
-        } troot_timeout_int [0:0] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for sys in axi";
-        } sys_in_timeout_int [1:1] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for spacc axi";
-        } spacc_timeout_int [2:2] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for dma data axi";
-        } dma_data_timeout_int [3:3] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for dma data axi";
-        } alias_remap_timeout_int [4:4] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for dma data axi";
-        } filter_out_timeout_int [5:5] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for entropy fifo read axil";
-        } entropy_read_timeout_int [6:6] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for entropy fifo write axil";
-        } entropy_write_timeout_int [7:7] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for entropy fifo inbound mailbox";
-        } inbound_mailbox_timeout_int [8:8] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
-            desc="Timeout interrupt for entropy fifo outbound mailbox";
-        } outbound_mailbox_timeout_int [9:9] = 0x0;
-   };
-
+    // TODO: PKA control - NOT YET IMPLEMENTED (reserved placeholder with named fields).
     reg PKA_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "TODO: PKA control - placeholder fields, not yet implemented.";
+
         field {
             sw=rw;
             hw=r;
-            desc="pka_dpa_disable";
-        } pka_dpa_disable[0:0] = 0x1;
+            desc="Reserved - disable DPA countermeasures in PKA, not yet implemented.";
+        } pka_dpa_disable [0:0] = 0x0;
+
         field {
             sw=rw;
             hw=r;
-            desc="pka_noise_src";
-        } pka_noise_src[8:8] = 0x0;
+            desc="Reserved - PKA noise source select, not yet implemented.";
+        } pka_noise_src [1:1] = 0x0;
+
         field {
             sw=rw;
             hw=r;
-            desc="pka_noise_src_valid";
-        } pka_noise_src_valid[16:16] = 0x0;
+            desc="Reserved - PKA noise source valid, not yet implemented.";
+        } pka_noise_src_valid [2:2] = 0x0;
     };
 
-    reg SPACC_CTRL {
+    // TODO: Per-block timeout interrupt, count, enable, clear, mode - NOT YET IMPLEMENTED (reserved placeholders).
+    reg TIMEOUT_INTERRUPT {
+        regwidth = 64;
+        accesswidth = 64;
+
+        desc = "Reserved - per-block timeout interrupt not yet implemented.";
+
         field {
-            sw=rw;
-            hw=r;
-            desc="spacc_dpa_disable";
-        } spacc_dpa_disable[0:0] = 0x1;
-        field {
-            sw=rw;
-            hw=r;
-            desc="spacc_dpa_rand";
-        } spacc_dpa_rand[8:8] = 0x0;
-        field {
-            sw=rw;
-            hw=r;
-            desc="spacc_dpa_rand_vld";
-        } spacc_dpa_rand_vld[16:16] = 0x0;
+            sw=r;
+            hw=w;
+            desc="Reserved - timeout interrupt status not yet implemented.";
+        } reserved [0:0] = 0x0;
     };
 
     reg TIMEOUT_COUNT {
         regwidth = 64;
         accesswidth = 64;
+        desc = "Reserved - per-block timeout count/threshold not yet implemented.";
 
-        field  {
+        field {
             sw=rw;
             hw=r;
-            desc="Timeout value";
-        } data [47:0] = 0x0;
+            desc="Reserved - timeout count not yet implemented.";
+        } reserved [0:0] = 0x0;
     };
 
     reg TIMEOUT_ENABLE {
         regwidth = 64;
         accesswidth = 64;
+        desc = "Reserved - per-block timeout enable not yet implemented.";
 
-        field  {
+        field {
             sw=rw;
             hw=r;
-            desc="Timeout enable for troot axi";
-        } troot_timeout_en [0:0] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for sys in axi";
-        } sys_in_timeout_en [1:1] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for spacc axi";
-        } spacc_timeout_en [2:2] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for dma data axi";
-        } dma_data_timeout_en [3:3] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for input alias remap";
-        } alias_remap_timeout_en [4:4] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for output filter";
-        } filter_out_timeout_en [5:5] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for entropy read";
-        } entropy_read_timeout_en [6:6] = 0x0;
-
-        field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for entropy write";
-        } entropy_write_timeout_en [7:7] = 0x0;
-
-         field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for inbound mailbox";
-        } inbound_mailbox_timeout_en [8:8] = 0x0;
-
-         field  {
-            sw=rw;
-            hw=r;
-            desc="Timeout enable for outbound mailbox";
-        } outbound_mailbox_timeout_en [9:9] = 0x0;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
     };
 
     reg TIMEOUT_CLEAR {
         regwidth = 64;
         accesswidth = 64;
+        desc = "Reserved - per-block timeout interrupt-clear not yet implemented.";
 
-        field  {
+        field {
             sw=w;
             hw=r;
             singlepulse=true;
-            desc="Timeout interrupt clear for troot axi";
-        } troot_timeout_clear [0:0] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for sys in axi";
-        } sys_in_timeout_clear [1:1] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for spacc axi";
-        } spacc_timeout_clear [2:2] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for dma data axi";
-        } dma_data_timeout_clear [3:3] = 0x0;
-
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for input alias remap";
-        } alias_remap_timeout_clear [4:4] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for output filter";
-        } filter_out_timeout_clear [5:5] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for entropy read";
-        } entropy_read_timeout_clear [6:6] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for entropy write";
-        } entropy_write_timeout_clear [7:7] = 0x0;
-
-         field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for inbound mailbox";
-        } inbound_mailbox_timeout_clear [8:8] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            singlepulse=true;
-            desc="Timeout interrupt clear for outbound mailbox";
-        } outbound_mailbox_timeout_clear [9:9] = 0x0;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
     };
 
     reg TIMEOUT_MODE {
         regwidth = 64;
         accesswidth = 64;
+        desc = "Reserved - per-block timeout mode not yet implemented.";
 
-        field  {
+        field {
             sw=w;
             hw=r;
-            desc="Timeout mode for troot axi";
-        } troot_timeout_mode [1:0] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for sys in axi";
-        } sys_in_timeout_mode [3:2] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for spacc axi";
-        } spacc_timeout_mode [5:4] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for dma data axi";
-        } dma_data_timeout_mode [7:6] = 0x0;
-
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for input alias remap";
-        } alias_remap_timeout_mode [9:8] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for output filter";
-        } filter_out_timeout_mode [11:10] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for entropy read";
-        } entropy_read_timeout_mode [13:12] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for entropy write";
-        } entropy_write_timeout_mode [15:14] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for inbound mailbox";
-        } inbound_mailbox_timeout_mode [17:16] = 0x0;
-
-        field  {
-            sw=w;
-            hw=r;
-            desc="Timeout mode for outbound mailbox";
-        } outbound_mailbox_timeout_mode [19:18] = 0x0;
+            desc="Reserved - timeout monitors not yet implemented.";
+        } reserved [0:0] = 0x0;
     };
 
     reg SEP_VERSION_ID {
@@ -465,14 +163,8 @@ addrmap sep_cpu_ctrl {
         field  {
             sw=r;
             hw=w;
-            desc="Fast SPAcc Enable";
-        } fast_spacc_en [26:26] = 0x0;
-
-        field  {
-            sw=r;
-            hw=w;
             desc="SEP is standalone (not part of eg SMU)";
-        } sep_standalone [25:25] = 0x0;
+        } sep_standalone [26:26] = 0x0;
     };
 
     reg SEP_GLOBAL_BASE_ADDR {
@@ -490,7 +182,7 @@ addrmap sep_cpu_ctrl {
         field {
             sw = rw;
             hw = r;
-        } addr[55:0] = 0xC0000000; // TODO: Update once spec is defined
+        } addr[55:0] = 0xD0000000;
     };
 
     reg SEP_REGION_SIZE {
@@ -627,9 +319,10 @@ addrmap sep_cpu_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "TRNG source select per stream. Bit N selects the source for stream N.
+            desc = "TRNG source select per stream. Bit N selects the source for stream N
+                    (bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).
                     0 = internal DRBG output, 1 = external TRNG (default).";
-        } sel[1:0] = 0x3;
+        } sel[2:0] = 0x7;
     };
 
     reg EXT_TRNG_SRC_SEL_LOCK {
@@ -645,29 +338,38 @@ addrmap sep_cpu_ctrl {
         } lock[0:0] = 0x0;
     };
 
+    reg KM_WIPE_CTRL {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Key Manager emergency wipe control.";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.";
+        } wipe_state[0:0] = 0x0;
+    };
+
     // ----------------------------------------------
 
     // Core Specific Address Space 0x0 - 0x0ffff
     CLOCK_GATE_CTRL       CLOCK_GATE_CTRL                         @ 0x8;
     REFERENCE_COUNTER     REFERENCE_COUNTER                       @ 0x10;
     TIMEOUT_INTERRUPT     TIMEOUT_INTERRUPT                       @ 0x18;
-
     PKA_CTRL              PKA_CTRL                                @ 0x20;
-    SPACC_CTRL            SPACC_CTRL                              @ 0x30;
 
-    TIMEOUT_COUNT         TIMEOUT_COUNT_TROOT                     @ 0x40;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_DMA                       @ 0x48;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_SPACC                     @ 0x50;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_SYS_IN                    @ 0x58;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_INBOUND           @ 0x60;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_OUTBOUND          @ 0x68;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_WRITE             @ 0x70;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_READ              @ 0x78;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_FILTER_OUT                @ 0x80;
-    TIMEOUT_COUNT         TIMEOUT_COUNT_ALIAS_REMAP               @ 0x88;
-    TIMEOUT_ENABLE        TIMEOUT_ENABLE                          @ 0x90;
-    TIMEOUT_CLEAR         TIMEOUT_CLEAR                           @ 0x98;
-    TIMEOUT_MODE          TIMEOUT_MODE                            @ 0xA0;
+    // Per-block timeout count/threshold slots - reserved until implemented.
+    TIMEOUT_COUNT         TIMEOUT_COUNT_DMA                       @ 0x28;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_SYS_IN                    @ 0x30;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_INBOUND           @ 0x38;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_MAILBOX_OUTBOUND          @ 0x40;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_WRITE             @ 0x48;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ENTROPY_READ              @ 0x50;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_FILTER_OUT                @ 0x58;
+    TIMEOUT_COUNT         TIMEOUT_COUNT_ALIAS_REMAP               @ 0x60;
+    TIMEOUT_ENABLE        TIMEOUT_ENABLE                          @ 0x68;
+    TIMEOUT_CLEAR         TIMEOUT_CLEAR                           @ 0x70;
+    TIMEOUT_MODE          TIMEOUT_MODE                            @ 0x78;
 
     SEP_TEST_CTRL         SEP_TEST_CTRL                           @ 0xb0;
 
@@ -691,6 +393,7 @@ addrmap sep_cpu_ctrl {
 
     EXT_TRNG_SRC_SEL      EXT_TRNG_SRC_SEL                        @ 0x190;
     EXT_TRNG_SRC_SEL_LOCK EXT_TRNG_SRC_SEL_LOCK                   @ 0x198;
+    KM_WIPE_CTRL          KM_WIPE_CTRL                            @ 0x1A0;
 
     // Generic Address Space 0x1000 - 0x1fff
     SEP_VERSION_ID        SEP_VERSION_ID                          @ 0x1000;

@@ -48,6 +48,16 @@ PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
 
+# SPI flash transport selection. 0 = Cadence xSPI (default, memory-mapped XIP),
+# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is dropped
+# by --gc-sections at link time.
+BOOT_SPI_CONTROLLER_OT ?= 0
+# OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
+# 0 = secure DMA (default), 1 = CPU programmed I/O.
+BOOT_OT_SPI_USE_PIO ?= 0
+# OpenTitan timing/device profile index (used only when BOOT_SPI_CONTROLLER_OT=1).
+BOOT_OT_SPI_PROFILE ?= 0
+
 BUILD_DIR := build
 LINK_DIR  := link
 SRC_DIR   := src
@@ -76,7 +86,7 @@ BIN_TO_SPI    := $(TOOLS_DIR)/bin_to_spi_preload.py
 
 OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.o \
 	$(BUILD_DIR)/boot_straps.o $(BUILD_DIR)/pll_init.o \
-	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_dma.o \
+	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
 	$(BUILD_DIR)/manifest_load.o $(BUILD_DIR)/rom_handoff.o \
 	$(BUILD_DIR)/rom_mem_clear.o $(BUILD_DIR)/status_ring.o \
 	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/fuse_lock.o \
@@ -84,19 +94,33 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o
 
-# rv32im (no C) + no relax, matching the internal ROM build.
-CC_ABI   := -march=rv32im_zicsr -mabi=ilp32
+# Optional extra sources injected by a nonfree overlay build (absolute .c paths).
+# Their strong symbols override the weak stubs in src/ at link time (e.g. the
+# Cadence xSPI driver nonfree/hw/sys/sep/dv/fw/bootcode/src/sep_spi_cdns.c
+# overriding the weak src/sep_spi.c stub). Same pattern as the SMC prod ROM's
+# NONFREE_DRIVER_SOURCES.
+NONFREE_BOOTCODE_SOURCES ?=
+NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
+OBJS += $(NONFREE_BOOTCODE_OBJS)
+
+# rv32im (no C) + no relax, matching the internal ROM build. zifencei is spelled
+# out because binutils >= 2.38 rejects fence.i (rom_handoff.c) without it.
+CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
+	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
+	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
+	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
 ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
 	$(CC_ABI)
 LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(CC_ABI)
 
-ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.metadata --only-section=.metadata.*
+ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.metadata --only-section=.metadata.* \
+	--only-section=.rodata --only-section=.rodata.* --only-section=.srodata --only-section=.srodata.*
 DTCM_ELF_SECTIONS := --only-section=.rodata --only-section=.rodata.* --only-section=.srodata --only-section=.srodata.* \
 	--only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
@@ -120,18 +144,23 @@ $(BUILD_DIR)/rom_metadata.o: $(SRC_DIR)/rom_metadata.c $(BUILD_DIR)/bl0_version.
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
 
+# Compile rule for NONFREE_BOOTCODE_SOURCES (static pattern rule so Make maps
+# each object back to its out-of-tree source path).
+$(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(NONFREE_BOOTCODE_SOURCES))" -o "$@"
+
 $(ELF): $(OBJS) $(LINK_DIR)/rom.ld
 	$(GCC_PREFIX)-gcc $(LDFLAGS) $(OBJS) -o "$@"
 	python3 $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@" 2>/dev/null || true
 	$(GCC_PREFIX)-objdump -d -S "$@" > "$(BUILD_DIR)/boot_rom.dis"
 	$(GCC_PREFIX)-nm -B -n "$@" > "$(BUILD_DIR)/boot_rom.sym"
 
-# Boot ROM responder image: ROM sections only. elf-to-vmem.py emits every byte
-# from ROM_BASE to the highest LOAD address, so we must strip the DCCM sections
-# first (their LMA is in DCCM -> a full-ELF binary would span the ~2.8 GB gap).
+# Boot ROM responder image. elf-to-vmem.py selects allocatable sections by load
+# address (LMA): .text/.metadata/.rodata/.srodata reside in ROM, and .data's
+# initial image has a ROM LMA (AT> rom) even though it executes from DCCM, so it
+# lands in the ROM image and vector.S copies it to DCCM at boot.
 $(VMEM): $(ELF) $(ELF_TO_VMEM)
-	$(GCC_PREFIX)-objcopy $(ROM_ELF_SECTIONS) "$(ELF)" "$(BUILD_DIR)/boot_rom.romonly.elf"
-	python3 $(ELF_TO_VMEM) --base $(ROM_BASE) -o "$@" "$(BUILD_DIR)/boot_rom.romonly.elf"
+	python3 $(ELF_TO_VMEM) --base $(ROM_BASE) -o "$@" "$(ELF)"
 
 $(ITCM_HEX): $(ELF)
 	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(ROM_ELF_SECTIONS) --change-addresses "-$(ROM_BASE)" "$@"
@@ -156,7 +185,7 @@ ensure-pack-deps:
 
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
 $(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
-	PYTHONPATH="$(TOOLS_DIR)" OCH_ROOT="$(DV_ROOT)" ROOT="$(TOOLS_DIR)" \
+	PYTHONPATH="$(TOOLS_DIR)$(if $(PYTHONPATH),:$(PYTHONPATH))" OCH_ROOT="$(DV_ROOT)" ROOT="$(TOOLS_DIR)" \
 		python3 -m tt_boot_manifest.pack_images --config "$(PACK_CONFIG)" --out "$(NS_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(NS_BOOT_BIN)" "$(NS_SPI_HEX)"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(NS_SPI_HEX)" > "$@"

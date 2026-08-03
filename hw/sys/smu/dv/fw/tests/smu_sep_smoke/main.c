@@ -10,16 +10,14 @@
 #define RESULT_WORDS 16u
 #define DONE_MARKER 0xC0DEF00Du
 
-static uint32_t mix(uint32_t value)
-{
+static uint32_t mix(uint32_t value) {
     value ^= value << 13;
     value ^= value >> 17;
     value ^= value << 5;
     return value;
 }
 
-int main(void)
-{
+int main(void) {
     volatile uint32_t *result = RESULT_BASE;
     uint32_t acc = 0x3357u;
     uint32_t check = 0u;

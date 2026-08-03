@@ -82,14 +82,14 @@ module prim_cg_req #(
     ////////////////////////////////////////////////////////////////////////////////
 
     // Validate parameters
-    `ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
+    `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
 
     // Validate input signals
-    `ASSERT_KNOWN(QActiveKnown_A, qactive_i, clk_i, !rst_ni)
-    `ASSERT_KNOWN(QAcceptKnown_A, qaccept_ni, clk_i, !rst_ni)
-    `ASSERT_KNOWN(QDenyKnown_A, qdeny_i, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(QActiveKnown_A, qactive_i, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(QAcceptKnown_A, qaccept_ni, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(QDenyKnown_A, qdeny_i, clk_i, !rst_ni)
 
     // Counter should not exceed DenyDelay
-    `ASSERT(CounterBounds_A, count_q <= count_t'(DenyDelay), clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(CounterBounds_A, count_q <= count_t'(DenyDelay), clk_i, !rst_ni)
 
 endmodule

@@ -23,7 +23,7 @@
 
 
 localparam int unsigned ENTROPY_SOURCE_REG_MAP_BASE_ADDR                                                          = 32'h00000000;
-localparam int unsigned ENTROPY_SOURCE_REG_MAP_SIZE                                                               = 32'h00000154;
+localparam int unsigned ENTROPY_SOURCE_REG_MAP_SIZE                                                               = 32'h0000017C;
 
 
 localparam int unsigned COMPONENT_ID_REG_OFFSET                                                                   = 32'h00000000;
@@ -92,8 +92,8 @@ localparam int unsigned DECORRELATOR_CTRL_REG_OFFSET                            
 localparam int unsigned DECORRELATOR_CTRL_REG_ADDR                                                                = 32'h000000A0;
 localparam int unsigned DECORRELATOR_MASK_REG_OFFSET                                                              = 32'h000000A4;
 localparam int unsigned DECORRELATOR_MASK_REG_ADDR                                                                = 32'h000000A4;
-localparam int unsigned STARTUP_CTRL_REG_OFFSET                                                                   = 32'h000000B0;
-localparam int unsigned STARTUP_CTRL_REG_ADDR                                                                     = 32'h000000B0;
+localparam int unsigned MAIN_SM_STATUS_REG_OFFSET                                                                 = 32'h000000B4;
+localparam int unsigned MAIN_SM_STATUS_REG_ADDR                                                                   = 32'h000000B4;
 localparam int unsigned GENERATOR_0_HEALTH_STATUS_REG_OFFSET                                                      = 32'h000000C0;
 localparam int unsigned GENERATOR_0_HEALTH_STATUS_REG_ADDR                                                        = 32'h000000C0;
 localparam int unsigned GENERATOR_1_HEALTH_STATUS_REG_OFFSET                                                      = 32'h000000C4;
@@ -160,6 +160,26 @@ localparam int unsigned ALERT_SUMMARY_FAIL_COUNTS_REG_OFFSET                    
 localparam int unsigned ALERT_SUMMARY_FAIL_COUNTS_REG_ADDR                                                        = 32'h0000014C;
 localparam int unsigned ALERT_FAIL_COUNTS_REG_OFFSET                                                              = 32'h00000150;
 localparam int unsigned ALERT_FAIL_COUNTS_REG_ADDR                                                                = 32'h00000150;
+localparam int unsigned FIPS_LOCK_REG_OFFSET                                                                      = 32'h00000154;
+localparam int unsigned FIPS_LOCK_REG_ADDR                                                                        = 32'h00000154;
+localparam int unsigned ALERT_THRESHOLD_REG_OFFSET                                                                = 32'h00000158;
+localparam int unsigned ALERT_THRESHOLD_REG_ADDR                                                                  = 32'h00000158;
+localparam int unsigned MIN_ENTROPY_H_REG_OFFSET                                                                  = 32'h0000015C;
+localparam int unsigned MIN_ENTROPY_H_REG_ADDR                                                                    = 32'h0000015C;
+localparam int unsigned RECOMMENDED_THRESHOLDS_REG_OFFSET                                                         = 32'h00000160;
+localparam int unsigned RECOMMENDED_THRESHOLDS_REG_ADDR                                                           = 32'h00000160;
+localparam int unsigned BIW_OBS_CTRL_REG_OFFSET                                                                   = 32'h00000164;
+localparam int unsigned BIW_OBS_CTRL_REG_ADDR                                                                     = 32'h00000164;
+localparam int unsigned BIW_OBS_STATUS_REG_OFFSET                                                                 = 32'h00000168;
+localparam int unsigned BIW_OBS_STATUS_REG_ADDR                                                                   = 32'h00000168;
+localparam int unsigned BIW_OBS_RDATA_REG_OFFSET                                                                  = 32'h0000016C;
+localparam int unsigned BIW_OBS_RDATA_REG_ADDR                                                                    = 32'h0000016C;
+localparam int unsigned NOISE_OBS_CTRL_REG_OFFSET                                                                 = 32'h00000170;
+localparam int unsigned NOISE_OBS_CTRL_REG_ADDR                                                                   = 32'h00000170;
+localparam int unsigned NOISE_OBS_STATUS_REG_OFFSET                                                               = 32'h00000174;
+localparam int unsigned NOISE_OBS_STATUS_REG_ADDR                                                                 = 32'h00000174;
+localparam int unsigned NOISE_OBS_RDATA_REG_OFFSET                                                                = 32'h00000178;
+localparam int unsigned NOISE_OBS_RDATA_REG_ADDR                                                                  = 32'h00000178;
 
 
 //==============================================================================
@@ -167,7 +187,7 @@ localparam int unsigned ALERT_FAIL_COUNTS_REG_ADDR                              
 //==============================================================================
 
 localparam longint unsigned ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT                                               = 32'h01000001;
-localparam longint unsigned ENTROPY_SOURCE_CTRL_REG_DEFAULT                                                       = 32'h10000000;
+localparam longint unsigned ENTROPY_SOURCE_CTRL_REG_DEFAULT                                                       = 32'h10000002;
 localparam longint unsigned ENTROPY_SOURCE_STATUS_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT                                                = 32'h00000000;
@@ -199,7 +219,7 @@ localparam longint unsigned ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT            
 localparam longint unsigned ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT                                              = 32'h00000FFF;
 localparam longint unsigned ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT                                          = 32'h0003F000;
 localparam longint unsigned ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT                                          = 32'h000000FF;
-localparam longint unsigned ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT                                  = 32'h00000000;
@@ -233,6 +253,16 @@ localparam longint unsigned ENTROPY_SOURCE_MARKOV_HI_TOTAL_FAILS_REG_DEFAULT    
 localparam longint unsigned ENTROPY_SOURCE_MARKOV_LO_TOTAL_FAILS_REG_DEFAULT                                      = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_ALERT_SUMMARY_FAIL_COUNTS_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned ENTROPY_SOURCE_ALERT_FAIL_COUNTS_REG_DEFAULT                                          = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_FIPS_LOCK_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_ALERT_THRESHOLD_REG_DEFAULT                                            = 32'h00000004;
+localparam longint unsigned ENTROPY_SOURCE_MIN_ENTROPY_H_REG_DEFAULT                                              = 32'h0000000C;
+localparam longint unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_REG_DEFAULT                                     = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_CTRL_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_BIW_OBS_RDATA_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_DEFAULT                                           = 32'h00000000;
+localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_REG_DEFAULT                                            = 32'h00000000;
 
 
 
@@ -251,6 +281,9 @@ localparam int unsigned ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_SHIFT         
 
 localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_MASK                                                            = 32'h1;
 localparam int unsigned ENTROPY_SOURCE_CTRL_RESET_SHIFT                                                           = 0;
+
+localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_MASK                                                    = 32'h2;
+localparam int unsigned ENTROPY_SOURCE_CTRL_MODULE_ENABLE_SHIFT                                                   = 1;
 
 localparam int unsigned ENTROPY_SOURCE_CTRL_AUTOTUNE_ENABLE_MASK                                                  = 32'h10;
 localparam int unsigned ENTROPY_SOURCE_CTRL_AUTOTUNE_ENABLE_SHIFT                                                 = 4;
@@ -285,6 +318,18 @@ localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_FIFO_OVERFLOW_SHIFT          
 localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_FIFO_UNDERFLOW_MASK                                            = 32'h1000;
 localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_FIFO_UNDERFLOW_SHIFT                                           = 12;
 
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_MASK                                        = 32'h10000;
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_SHIFT                                       = 16;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_AUTOTUNE_FAIL_MASK                                             = 32'h100000;
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_AUTOTUNE_FAIL_SHIFT                                            = 20;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_BIW_OBS_OVERFLOW_MASK                                          = 32'h1000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_BIW_OBS_OVERFLOW_SHIFT                                         = 24;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_NOISE_OBS_OVERFLOW_MASK                                        = 32'h10000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_STATUS_NOISE_OBS_OVERFLOW_SHIFT                                       = 28;
+
 localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_HEALTH_TEST_FAILED_MASK                                        = 32'h1;
 localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_HEALTH_TEST_FAILED_SHIFT                                       = 0;
 
@@ -297,6 +342,18 @@ localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_FIFO_OVERFLOW_SHIFT          
 localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_FIFO_UNDERFLOW_MASK                                            = 32'h1000;
 localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_FIFO_UNDERFLOW_SHIFT                                           = 12;
 
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_PERSISTENT_FAILURE_MASK                                        = 32'h10000;
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_PERSISTENT_FAILURE_SHIFT                                       = 16;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_AUTOTUNE_FAIL_MASK                                             = 32'h100000;
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_AUTOTUNE_FAIL_SHIFT                                            = 20;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_BIW_OBS_OVERFLOW_MASK                                          = 32'h1000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_BIW_OBS_OVERFLOW_SHIFT                                         = 24;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_NOISE_OBS_OVERFLOW_MASK                                        = 32'h10000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_ENABLE_NOISE_OBS_OVERFLOW_SHIFT                                       = 28;
+
 localparam int unsigned ENTROPY_SOURCE_INTR_TEST_HEALTH_TEST_FAILED_MASK                                          = 32'h1;
 localparam int unsigned ENTROPY_SOURCE_INTR_TEST_HEALTH_TEST_FAILED_SHIFT                                         = 0;
 
@@ -308,6 +365,18 @@ localparam int unsigned ENTROPY_SOURCE_INTR_TEST_FIFO_OVERFLOW_SHIFT            
 
 localparam int unsigned ENTROPY_SOURCE_INTR_TEST_FIFO_UNDERFLOW_MASK                                              = 32'h1000;
 localparam int unsigned ENTROPY_SOURCE_INTR_TEST_FIFO_UNDERFLOW_SHIFT                                             = 12;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_PERSISTENT_FAILURE_MASK                                          = 32'h10000;
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_PERSISTENT_FAILURE_SHIFT                                         = 16;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_AUTOTUNE_FAIL_MASK                                               = 32'h100000;
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_AUTOTUNE_FAIL_SHIFT                                              = 20;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_BIW_OBS_OVERFLOW_MASK                                            = 32'h1000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_BIW_OBS_OVERFLOW_SHIFT                                           = 24;
+
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_NOISE_OBS_OVERFLOW_MASK                                          = 32'h10000000;
+localparam int unsigned ENTROPY_SOURCE_INTR_TEST_NOISE_OBS_OVERFLOW_SHIFT                                         = 28;
 
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_BUSY_MASK                                                    = 32'h1;
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_BUSY_SHIFT                                                   = 0;
@@ -456,8 +525,23 @@ localparam int unsigned ENTROPY_SOURCE_DECORRELATOR_CTRL_SAMPLE_CLK_DIV_SHIFT   
 localparam int unsigned ENTROPY_SOURCE_DECORRELATOR_MASK_ENTROPY_BYTE_MASK_MASK                                   = 32'hFF;
 localparam int unsigned ENTROPY_SOURCE_DECORRELATOR_MASK_ENTROPY_BYTE_MASK_SHIFT                                  = 0;
 
-localparam int unsigned ENTROPY_SOURCE_STARTUP_CTRL_DELAY_CYCLES_MASK                                             = 32'hFFFF;
-localparam int unsigned ENTROPY_SOURCE_STARTUP_CTRL_DELAY_CYCLES_SHIFT                                            = 0;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_STATE_MASK                                                  = 32'h1FF;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_STATE_SHIFT                                                 = 0;
+
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_IDLE_MASK                                                   = 32'h200;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_IDLE_SHIFT                                                  = 9;
+
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_MASK                                                  = 32'h400;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_SHIFT                                                 = 10;
+
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_MASK                                                    = 32'h800;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_SHIFT                                                   = 11;
+
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_BOOT_PHASE_DONE_MASK                                        = 32'h1000;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_BOOT_PHASE_DONE_SHIFT                                       = 12;
+
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_CNTR_CLR_OK_MASK                                      = 32'h2000;
+localparam int unsigned ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_CNTR_CLR_OK_SHIFT                                     = 13;
 
 localparam int unsigned ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_STATUS_MASK                                      = 32'hFF;
 localparam int unsigned ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_STATUS_SHIFT                                     = 0;
@@ -570,6 +654,57 @@ localparam int unsigned ENTROPY_SOURCE_ALERT_FAIL_COUNTS_MARKOV_HI_FAIL_COUNT_SH
 localparam int unsigned ENTROPY_SOURCE_ALERT_FAIL_COUNTS_REPCNT_FAIL_COUNT_MASK                                   = 32'hF0000;
 localparam int unsigned ENTROPY_SOURCE_ALERT_FAIL_COUNTS_REPCNT_FAIL_COUNT_SHIFT                                  = 16;
 
+localparam int unsigned ENTROPY_SOURCE_FIPS_LOCK_LOCK_MASK                                                        = 32'h1;
+localparam int unsigned ENTROPY_SOURCE_FIPS_LOCK_LOCK_SHIFT                                                       = 0;
+
+localparam int unsigned ENTROPY_SOURCE_ALERT_THRESHOLD_THRESHOLD_MASK                                             = 32'hFFFF;
+localparam int unsigned ENTROPY_SOURCE_ALERT_THRESHOLD_THRESHOLD_SHIFT                                            = 0;
+
+localparam int unsigned ENTROPY_SOURCE_MIN_ENTROPY_H_H_MASK                                                       = 32'hFF;
+localparam int unsigned ENTROPY_SOURCE_MIN_ENTROPY_H_H_SHIFT                                                      = 0;
+
+localparam int unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_RCT_LIMIT_MASK                                      = 32'hFFFF;
+localparam int unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_RCT_LIMIT_SHIFT                                     = 0;
+
+localparam int unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_APT_LIMIT_MASK                                      = 32'hFFFF0000;
+localparam int unsigned ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_APT_LIMIT_SHIFT                                     = 16;
+
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_CTRL_RAW_ENABLE_MASK                                               = 32'h1;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_CTRL_RAW_ENABLE_SHIFT                                              = 0;
+
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_MASK                                                  = 32'h7F;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_SHIFT                                                 = 0;
+
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_WPTR_MASK                                                   = 32'h1F00;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_WPTR_SHIFT                                                  = 8;
+
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_RPTR_MASK                                                   = 32'h1F0000;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_RPTR_SHIFT                                                  = 16;
+
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_RDATA_RDATA_MASK                                                   = 32'hFFFFFFFF;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_RDATA_RDATA_SHIFT                                                  = 0;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_RAW_ENABLE_MASK                                             = 32'h1;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_RAW_ENABLE_SHIFT                                            = 0;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_FLUSH_MASK                                                  = 32'h2;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_FLUSH_SHIFT                                                 = 1;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_LANE_SEL_MASK                                               = 32'hF0;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_LANE_SEL_SHIFT                                              = 4;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_MASK                                                = 32'h7F;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_SHIFT                                               = 0;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_WPTR_MASK                                                 = 32'h1F00;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_WPTR_SHIFT                                                = 8;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_RPTR_MASK                                                 = 32'h1F0000;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_RPTR_SHIFT                                                = 16;
+
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_RDATA_MASK                                                 = 32'hFFFFFFFF;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_RDATA_SHIFT                                                = 0;
+
 
 
 
@@ -591,7 +726,8 @@ typedef struct packed {
     logic [0:0]   bypass_entropy_compressor ;
     logic [2:0]   rsvd_1 ;
     logic [0:0]   autotune_enable ;
-    logic [2:0]   rsvd_0 ;
+    logic [1:0]   rsvd_0 ;
+    logic [0:0]   module_enable ;
     logic [0:0]   reset ;
 } entropy_source_ctrl_reg_t;
 
@@ -611,6 +747,14 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   noise_obs_overflow ;
+    logic [2:0]   rsvd_6 ;
+    logic [0:0]   biw_obs_overflow ;
+    logic [2:0]   rsvd_5 ;
+    logic [0:0]   autotune_fail ;
+    logic [2:0]   rsvd_4 ;
+    logic [0:0]   persistent_failure ;
+    logic [2:0]   rsvd_3 ;
     logic [0:0]   fifo_underflow ;
     logic [2:0]   rsvd_2 ;
     logic [0:0]   fifo_overflow ;
@@ -623,6 +767,14 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   noise_obs_overflow ;
+    logic [2:0]   rsvd_6 ;
+    logic [0:0]   biw_obs_overflow ;
+    logic [2:0]   rsvd_5 ;
+    logic [0:0]   autotune_fail ;
+    logic [2:0]   rsvd_4 ;
+    logic [0:0]   persistent_failure ;
+    logic [2:0]   rsvd_3 ;
     logic [0:0]   fifo_underflow ;
     logic [2:0]   rsvd_2 ;
     logic [0:0]   fifo_overflow ;
@@ -635,6 +787,14 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   noise_obs_overflow ;
+    logic [2:0]   rsvd_6 ;
+    logic [0:0]   biw_obs_overflow ;
+    logic [2:0]   rsvd_5 ;
+    logic [0:0]   autotune_fail ;
+    logic [2:0]   rsvd_4 ;
+    logic [0:0]   persistent_failure ;
+    logic [2:0]   rsvd_3 ;
     logic [0:0]   fifo_underflow ;
     logic [2:0]   rsvd_2 ;
     logic [0:0]   fifo_overflow ;
@@ -832,8 +992,13 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [15:0]   delay_cycles ;
-} entropy_source_startup_ctrl_reg_t;
+    logic [0:0]   alert_cntr_clr_ok ;
+    logic [0:0]   boot_phase_done ;
+    logic [0:0]   err ;
+    logic [0:0]   alert ;
+    logic [0:0]   idle ;
+    logic [8:0]   state ;
+} entropy_source_main_sm_status_reg_t;
 
 
 
@@ -1036,6 +1201,78 @@ typedef struct packed {
     logic [3:0]   apt_hi_fail_count ;
     logic [3:0]   apt_lo_fail_count ;
 } entropy_source_alert_fail_counts_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   lock ;
+} entropy_source_fips_lock_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   threshold ;
+} entropy_source_alert_threshold_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   h ;
+} entropy_source_min_entropy_h_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   apt_limit ;
+    logic [15:0]   rct_limit ;
+} entropy_source_recommended_thresholds_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   raw_enable ;
+} entropy_source_biw_obs_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [4:0]   rptr ;
+    logic [2:0]   rsvd_1 ;
+    logic [4:0]   wptr ;
+    logic [0:0]   rsvd_0 ;
+    logic [6:0]   level ;
+} entropy_source_biw_obs_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   rdata ;
+} entropy_source_biw_obs_rdata_reg_t;
+
+
+
+typedef struct packed {
+    logic [3:0]   lane_sel ;
+    logic [1:0]   rsvd_0 ;
+    logic [0:0]   flush ;
+    logic [0:0]   raw_enable ;
+} entropy_source_noise_obs_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [4:0]   rptr ;
+    logic [2:0]   rsvd_1 ;
+    logic [4:0]   wptr ;
+    logic [0:0]   rsvd_0 ;
+    logic [6:0]   level ;
+} entropy_source_noise_obs_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   rdata ;
+} entropy_source_noise_obs_rdata_reg_t;
 
 
 

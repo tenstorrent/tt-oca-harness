@@ -1,21 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Unit
-//
-//-----------------------------------------------------------------------------
-
 
 module smu #(
+  parameter int unsigned MAX_TRANS = 2,
     parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
 
-    // SEP (Secure Execution Processor) enable
-    parameter bit           SEP                   = 1'b1,
+    // SEP (Secure Execution Processor) enable. Declared int unsigned (not bit) so VC
+    // SpyGlass `elaborate -param SEP=0` can override it; -gfile cannot override bit-typed params.
+    parameter int unsigned  SEP                   = 1,
 
     // SEP security-disable token digest. Tied off to '0 at the SMU level; to be
     // replaced with the actual token digest embedded in the netlist at synthesis.
     parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,
+
+    // Number of external-TRNG AXI-stream endpoints between SEP crypto and the TRNG.
+    parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
+
+    // Type parameters for SMC CPU memory interfaces (cannot be in packed struct)
+    parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
+    parameter  type         rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
+    parameter  type         scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
+    parameter  type         scratch_ram_rsp_t     = chipyard_4core_mem_pkg::scratch_ram_rsp_t,
+    parameter  type         l1_icache_tag_req_t   = chipyard_4core_mem_pkg::l1_icache_tag_req_t,
+    parameter  type         l1_icache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,
+    parameter  type         l1_icache_data_req_t  = chipyard_4core_mem_pkg::l1_icache_data_req_t,
+    parameter  type         l1_icache_data_rsp_t  = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,
+    parameter  type         l1_dcache_tag_req_t   = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,
+    parameter  type         l1_dcache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,
+    parameter  type         l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
+    parameter  type         l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
+
+    // Derived localparams from Cfg
+    localparam int unsigned NUM_CPU_CORES         = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
+    localparam int unsigned NUM_CPU_INTERRUPTS    = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
+    localparam int unsigned NUM_EXT_INTERRUPTS    = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS,
+
+    localparam int unsigned NUM_SRAM_BANKS        = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS        : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
+    localparam int unsigned NUM_ICACHE_TAG_BANKS  = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+    localparam int unsigned NUM_ICACHE_DATA_BANKS = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+    localparam int unsigned NUM_DCACHE_TAG_BANKS  = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+    localparam int unsigned NUM_DCACHE_DATA_BANKS = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS,
 
     // Type parameter for the external IC_RESET TDR slice exposed to the SMU caller.
     parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
@@ -27,8 +53,8 @@ module smu #(
                              XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - 1,  // SMU exposes 8; DTP [0] reserved for SMC
                              DTP_XTRIG_NUM_INT_CT = dtp_pkg::DEFAULT_NUM_INT_CT,
                              DTP_XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,
-                             DTP_XTRIG_INT_CT_MODE = {Cfg.XTRIG_INT_CT_MODE, 2'b00},  // Bits [1:0] = 0 for SMC pulse sync
-                             JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
+                             JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1,
+    localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE = {Cfg.XTRIG_INT_CT_MODE, 2'b00}  // Bits [1:0] = 0 for SMC pulse sync
 ) (
     // Clock and Reset
     input  logic  clk_smu_i,
@@ -125,6 +151,7 @@ module smu #(
     // SMC Resets
     output logic  rst_primary_ref_clk_no,
     output logic  rst_primary_smc_clk_no,
+    output logic  rst_primary_periph_clk_no,
 
     // =========================================================================
     // SMU AXI Crossbar External Ports (toward SMN)
@@ -134,17 +161,9 @@ module smu #(
     output smu_axi_xbar_pkg::axi_out_req_t      smu_axi_out_req_o,
     input  smu_axi_xbar_pkg::axi_out_resp_t     smu_axi_out_resp_i,
 
-    // PLL Interface AXI-Lite
-    output smc_pkg::smc_axil_32_32_req_t  axil_pll_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t axil_pll_resp_i,
-
-    // PVT Interface AXI-Lite
-    output smc_pkg::smc_axil_32_32_req_t  axil_pvt_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t axil_pvt_resp_i,
-
-    // AXI-L interface for adopter peripheral extension
-    output smc_pkg::smc_axil_32_32_req_t  smc_axil_extension_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t smc_axil_extension_resp_i,
+    // AXI-L interface for adopter peripheral external
+    output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,
+    input  smc_pkg::smc_axil_32_32_resp_t smc_external_resp_i,
 
     // eFuse Interface
     output smc_pkg::smc_axil_32_32_req_t      smc_efuse_bank_ctrl_req_o,
@@ -152,10 +171,6 @@ module smu #(
     output smc_efuse_pkg::fuse_command_req_t    smc_efuse_shim_command_req_o,
     input  smc_efuse_pkg::fuse_command_resp_t   smc_efuse_shim_command_resp_i,
     output smc_efuse_pkg::efuse_map_t           smc_shadow_regs_o,
-
-    // GPIO Shim Interface
-    output gpio_pkg::gpio_axil_req_t  axil_req_gpio_ctrl_o,
-    input  gpio_pkg::gpio_axil_resp_t axil_resp_gpio_ctrl_i,
 
     // GPIO Data Signals
     output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  lsio_interface_select_o,
@@ -228,18 +243,18 @@ module smu #(
     output logic  sync_irq_o,
 
     // CPU Memory Signals
-    output chipyard_4core_mem_pkg::rom_req_t            rom_intf_req_o,
-    input  chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp_i,
-    output chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req_o      [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp_i      [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req_o    [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i    [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o    [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i    [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+    output rom_req_t  rom_intf_req_o,
+    input  rom_rsp_t  rom_intf_rsp_i,
+    output scratch_ram_req_t  scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],
+    input  scratch_ram_rsp_t  scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],
+    output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],
+    input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],
+    output l1_icache_data_req_t  l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],
+    input  l1_icache_data_rsp_t  l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],
+    output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],
+    input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],
+    output l1_dcache_data_req_t  l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],
+    input  l1_dcache_data_rsp_t  l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],
 
     // Memory Init
     input  logic  disable_sram_auto_init_i,
@@ -288,21 +303,43 @@ module smu #(
     output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t  sep_crypto_pka_dmem_sram_req_o,
     input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t  sep_crypto_pka_dmem_sram_rsp_i,
 
+    // Adams Bridge external SRAM interface (tech macros in sep_ip_integration)
+    output sep_crypto_pkg::abr_mem_req_t                   abr_mem_req_o,
+    input  sep_crypto_pkg::abr_mem_rsp_t                   abr_mem_rsp_i,
+
+    // External TRNG
+    output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,
+    input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,
+    input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
+    output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+    input  logic                               ext_trng_irq_i,
+    input  logic                               ext_trng_alarm_i,
+
+    // Ring-oscillator sample clock for SEP entropy_source (async to clk_i)
+    input  logic                               entropy_rosc_sample_clk_i,
+
+    // JTAG-generated SEP reset/override control
+    output sep_pkg::jtag_sep_reset_ctrl_t      jtag_sep_reset_ctrl_o,
+
+    // SEP OpenTitan SPI request
+    output sep_io_pkg::sep_io_spi_req_t        sep_io_spi_req_o,
+
     output km_intf_pkg::km_rom_mem_req_t   sep_km_rom_mem_req_o,
     input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,
     output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
     input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
 
-    // SPI IRQ output from the open SPI controller, optionally muxed with adopter logic
+    // SPI IRQ output from OT SPI to be muxed together with external SPI controller
     output logic                        ot_spi_irq_o,
 
-    // SPI IRQ from the selected open or adopter-provided SPI integration
+    // Muxed SPI IRQ from sep_ip_integration (Cadence or OT)
     input  logic                        spi_irq_i,
 
     output sep_pkg::sep_32_64_6_12_axi_req_t   sep_axi_extension_req_o,
     input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_axi_extension_resp_i,
 
-    output logic  sep_reset_n_o,
+    output logic  sep_reset_n_o,      // plain SEP reset -> Cadence xSPI wrap in sep_ip_integration
+    output logic  sep_cpu_reset_n_o,  // sep_reset_n & WDT reset -> sep_ip_integration memories
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
 
@@ -310,6 +347,7 @@ module smu #(
 
     output logic [1:0]  lcc_demote_state_1_o,
     output logic [1:0]  lcc_demote_state_2_o,
+    output logic secure_tm_o,
 
     output logic  sep_fuse_sense_done_o,
 
@@ -324,6 +362,9 @@ module smu #(
     output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_sink_o,
     input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
     output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_sink_o,
+    input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,
+    output logic                                                  gated_clk_periph_i3c_o,
 
     // Debug bus
     input  logic [127:0]  ext_debug_bus_i,
@@ -339,8 +380,8 @@ module smu #(
     //--------------------------------------------------------------------------
 
     // Zero-pad ext_interrupts_i to full NUM_EXT_INTERRUPTS width for SMC
-    logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] ext_interrupts_padded;
-    assign ext_interrupts_padded = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS'(ext_interrupts_i);
+    logic [NUM_EXT_INTERRUPTS-1:0] ext_interrupts_padded;
+    assign ext_interrupts_padded = NUM_EXT_INTERRUPTS'(ext_interrupts_i);
 
     logic powergood_stable;
 
@@ -396,11 +437,12 @@ module smu #(
 
     // JTAG SEP Reset Control Overrides (driven by DTP's SEP slice of the IC_RESET TDR)
     sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl;
+    assign jtag_sep_reset_ctrl_o = jtag_sep_reset_ctrl;
 
     // CLA custom actions map to SEP CPU debug controls
     // cla_ext_action_custom[0] - mpc_debug_halt_req
     // cla_ext_action_custom[1] - mpc_debug_run_req
-    // cla_ext_action_custom[2] - mpc_reset_run_req
+    // cla_ext_action_custom[2] - mpc_reset_run_req (inverted: action asserted = Debug Mode)
     // cla_ext_action_custom[3] - i_cpu_halt_req
     // cla_ext_action_custom[4] - i_cpu_run_req
     logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
@@ -626,7 +668,22 @@ module smu #(
     // SMC Instantiation
     //--------------------------------------------------------------------------
 
-    smc u_smc (
+    smc #(
+        .MAX_TRANS(MAX_TRANS),
+        .SMC_CPU_CONFIG(smc_pkg::smc_cpu_config_e'(Cfg.SMC_CPU_CONFIG)),
+        .rom_req_t(rom_req_t),
+        .rom_rsp_t(rom_rsp_t),
+        .scratch_ram_req_t(scratch_ram_req_t),
+        .scratch_ram_rsp_t(scratch_ram_rsp_t),
+        .l1_icache_tag_req_t(l1_icache_tag_req_t),
+        .l1_icache_tag_rsp_t(l1_icache_tag_rsp_t),
+        .l1_icache_data_req_t(l1_icache_data_req_t),
+        .l1_icache_data_rsp_t(l1_icache_data_rsp_t),
+        .l1_dcache_tag_req_t(l1_dcache_tag_req_t),
+        .l1_dcache_tag_rsp_t(l1_dcache_tag_rsp_t),
+        .l1_dcache_data_req_t(l1_dcache_data_req_t),
+        .l1_dcache_data_rsp_t(l1_dcache_data_rsp_t)
+    ) u_smc (
         .clk_smc_i                           (clk_smu_i),
         .clk_ref_i                           (clk_ref_i),
         .clk_periph_i                        (clk_periph_i),
@@ -636,6 +693,7 @@ module smu #(
         .rst_cold_stable_ref_clk_no          (rst_cold_stable_ref_clk_no),
         .rst_primary_ref_clk_no              (rst_primary_ref_clk_no),
         .rst_primary_smc_clk_no              (rst_primary_smc_clk_no),
+        .rst_primary_periph_clk_no           (rst_primary_periph_clk_no),
         .rst_wdt_smc_clk_no                  (rst_wdt_n),
         .sys_axi_in_req_i                    (smc_sys_axi_in_req),
         .sys_axi_in_resp_o                   (smc_sys_axi_in_resp),
@@ -649,19 +707,13 @@ module smu #(
         .output_axi_resp_i                   (smc_output_axi_resp),
         .axil_dtp_csr_req_o                  (smc_axil_dtp_csr_req),
         .axil_dtp_csr_resp_i                 (smc_axil_dtp_csr_resp),
-        .axil_pll_req_o                      (axil_pll_req_o),
-        .axil_pll_resp_i                     (axil_pll_resp_i),
-        .axil_pvt_req_o                      (axil_pvt_req_o),
-        .axil_pvt_resp_i                     (axil_pvt_resp_i),
-        .axil_extension_req_o                (smc_axil_extension_req_o),
-        .axil_extension_resp_i               (smc_axil_extension_resp_i),
+        .smc_external_req_o                  (smc_external_req_o),
+        .smc_external_resp_i                 (smc_external_resp_i),
         .efuse_bank_ctrl_req_o               (smc_efuse_bank_ctrl_req_o),
         .efuse_bank_ctrl_resp_i              (smc_efuse_bank_ctrl_resp_i),
         .efuse_shim_command_req_o            (smc_efuse_shim_command_req_o),
         .efuse_shim_command_resp_i           (smc_efuse_shim_command_resp_i),
         .shadow_regs_o                       (smc_shadow_regs_o),
-        .axil_req_gpio_ctrl_o                (axil_req_gpio_ctrl_o),
-        .axil_resp_gpio_ctrl_i               (axil_resp_gpio_ctrl_i),
         .lsio_interface_select_o             (lsio_interface_select_o),
         .pad2core_i                          (pad2core_i),
         .core2pad_o                          (core2pad_o),
@@ -776,6 +828,9 @@ module smu #(
         .i3c_dat_mem_sink_o              (i3c_dat_mem_sink_o),
         .i3c_dct_mem_src_i               (i3c_dct_mem_src_i),
         .i3c_dct_mem_sink_o              (i3c_dct_mem_sink_o),
+        .gated_clk_periph_i3c_o          (gated_clk_periph_i3c_o),
+        .i3c_rlt_mem_src_i               (i3c_rlt_mem_src_i),
+        .i3c_rlt_mem_sink_o              (i3c_rlt_mem_sink_o),
 
         .gpio_interrupt_o                (gpio_interrupt_o),
         .uart_interrupt_o                (uart_interrupt_o)
@@ -791,20 +846,20 @@ module smu #(
         // SEP Instantiation
         // ==================================================================
 
-        logic [31:0] reset_vector;
-        assign reset_vector = och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR;
-
         sep #(
             .KM_LATCHED_MEM_RDATA  (Cfg.SEP_KM_LATCHED_MEM_RDATA),
-            .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN)
+            .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN),
+            .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS)
         ) u_sep (
             .clk_i                         (clk_smu_i),
+            .clk_ref_i                     (clk_ref_i),
             .clk_wdt_i                     (clk_sep_wdt_i),
             .rst_ni                        (rst_primary_smc_clk_no),
-            .dbg_rstb_i                    (rst_primary_smc_clk_no),
+            .dbg_rstb_i                    (powergood_stable),
             .wdt_rst_ni                    (rst_wdt_n),
 
             .sep_reset_n_o                 (sep_reset_n_o),
+            .sep_cpu_reset_n_o             (sep_cpu_reset_n_o),
             .wdt_timer_rst_req_o           (sep_wdt_timer_rst_req),
 
             .jtag_tck                      (dtp_sep_stap_tap_ctrl.tck),
@@ -822,7 +877,7 @@ module smu #(
 
             .mpc_debug_halt_req            (cla_ext_action_custom[0]),
             .mpc_debug_run_req             (cla_ext_action_custom[1]),
-            .mpc_reset_run_req             (cla_ext_action_custom[2]),
+            .mpc_reset_run_req             (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
 
             .i_cpu_halt_req                (cla_ext_action_custom[3]),
             .i_cpu_run_req                 (cla_ext_action_custom[4]),
@@ -843,7 +898,6 @@ module smu #(
 
             .sep_cpu_trace                 (sep_cpu_trace_o),
 
-            .rst_vec                       (reset_vector[31:1]), // TODO: by default point to address of ROM
             .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
             .timer_int                     (1'b0),   // TODO: interrupt routing TBD
@@ -874,6 +928,18 @@ module smu #(
             .sep_crypto_pka_dmem_sram_req  (sep_crypto_pka_dmem_sram_req_o),
             .sep_crypto_pka_dmem_sram_rsp  (sep_crypto_pka_dmem_sram_rsp_i),
 
+            .abr_mem_req                   (abr_mem_req_o),
+            .abr_mem_rsp                   (abr_mem_rsp_i),
+
+            // External TRNG loopback + entropy sample clock (closed in smu_wrapper)
+            .entropy_rosc_sample_clk_i     (entropy_rosc_sample_clk_i),
+            .ext_trng_axil_req_o           (ext_trng_axil_req_o),
+            .ext_trng_axil_resp_i          (ext_trng_axil_resp_i),
+            .ext_trng_axis_req_i           (ext_trng_axis_req_i),
+            .ext_trng_axis_rsp_o           (ext_trng_axis_rsp_o),
+            .ext_trng_irq_i                (ext_trng_irq_i),
+            .ext_trng_alarm_i              (ext_trng_alarm_i),
+
             .lcc_demote_state_1_o          (lcc_demote_state_1_o),
             .lcc_demote_state_2_o          (lcc_demote_state_2_o),
 
@@ -897,6 +963,7 @@ module smu #(
             .feat_ctrl_o                   (sep_feat_ctrl),
             .lc_sigint_err_o               (sep_lc_sigint_err),
             .security_disable_o            (sep_security_disable),
+            .secure_tm_o                   (secure_tm_o),
 
             .smc_mailbox_interrupt_o       (sep_mailbox_interrupts),
 
@@ -920,10 +987,10 @@ module smu #(
             .ext_debug_bus_o               (sep_ext_debug_bus)
         );
 
-        axi_local_alias_remap #(
+        axi_window_remap #(
             .axi_req_t          (sep_pkg::sep_56_64_6_12_axi_req_t),
             .axi_resp_t         (sep_pkg::sep_56_64_6_12_axi_resp_t),
-            .AXI_ADDR_WIDTH     (56)
+            .AXI_ADDR_WIDTH     (smu_pkg::AXI_ADDR_WIDTH)
         ) sep_ext_to_smc_axi_local_alias_remap (
             .slv_req_i          (sep_ext_to_smc_axi_req),
             .slv_resp_o         (sep_ext_to_smc_axi_resp),
@@ -1042,6 +1109,9 @@ module smu #(
         // ==================================================================
         assign ot_spi_irq_o = sep_io_spi_req.irq;
 
+        // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
+        assign sep_io_spi_req_o = sep_io_spi_req;
+
         // ==================================================================
         // SEP SPI signal assignments (connect struct to intermediate signals)
         // ==================================================================
@@ -1074,7 +1144,9 @@ module smu #(
             .AXI_DATA_WIDTH (32),
             .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
             .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
-            .RESP           (axi_pkg::RESP_DECERR)
+            .RESP           (axi_pkg::RESP_DECERR),
+            .RESP_WIDTH     (32),
+            .RESP_DATA      (32'hBADCAB1E)
         ) u_sep_otp_axil_err_slv (
             .clk_i       (clk_ref_i),
             .rst_ni      (rst_primary_ref_clk_no),
@@ -1087,6 +1159,12 @@ module smu #(
         // tie the TDI input back to DTP to 0)
         // ==================================================================
         assign sep_stap_tdo_to_dtp = 1'b0;
+
+        // ==================================================================
+        // SEP Security Disable & Secure TM
+        // ==================================================================
+        assign sep_security_disable = 1'b0;
+        assign secure_tm_o = 1'b0;
 
         // ==================================================================
         // Lifecycle state -- original standalone behavior
@@ -1179,11 +1257,15 @@ module smu #(
         assign sep_efuse_shim_command_req_o     = '0;
         assign sep_crypto_pka_imem_sram_req_o   = '0;
         assign sep_crypto_pka_dmem_sram_req_o   = '0;
+        assign abr_mem_req_o                    = '0;
+        assign ext_trng_axil_req_o              = '0;
+        assign ext_trng_axis_rsp_o              = '{default: '0};
         assign sep_km_rom_mem_req_o             = '0;
         assign sep_km_sram_mem_req_o            = '0;
-        assign sep_io_spi_req_o                 = '0;
+        assign sep_io_spi_req                   = '0;
         assign sep_axi_extension_req_o          = '0;
         assign sep_reset_n_o                    = 1'b1;
+        assign sep_cpu_reset_n_o                = 1'b1;
         assign sep_cpu_trace_o                  = '0;
         assign lcc_demote_state_1_o             = '0;
         assign lcc_demote_state_2_o             = '0;

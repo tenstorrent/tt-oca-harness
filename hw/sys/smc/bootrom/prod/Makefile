@@ -69,7 +69,14 @@ REG_DIR    := registers
 SCRIPTS_DIR := scripts
 
 BUILD_DIR  := build
-OUT_DIR    := $(BUILD_DIR)/$(BUILD_TYPE)
+# DV-only ROM padding self-test builds (never a production image).
+# ROM_PADDING_SELFTEST=1 jumps into EBREAK padding; =2 executes a generic EBREAK.
+ROM_PADDING_SELFTEST ?=
+ifneq ($(ROM_PADDING_SELFTEST),)
+    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)_padding_selftest$(ROM_PADDING_SELFTEST)
+else
+    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)
+endif
 OBJ_DIR    := $(OUT_DIR)/obj
 BIN_DIR    := $(OUT_DIR)/bin
 HEX_DIR    := $(OUT_DIR)/hex
@@ -176,6 +183,20 @@ else ifeq ($(BUILD_TYPE),release)
     ifeq ($(ENABLE_RELEASE_PRINTS),1)
         DEFINES += -DDEBUG=1
     endif
+endif
+
+ifneq ($(ROM_PADDING_SELFTEST),)
+    DEFINES += -DROM_PADDING_SELFTEST=$(ROM_PADDING_SELFTEST)
+endif
+
+# I3C_CORE knob (default cadence): select the OCA i3c-core (MIPI HCI) driver
+# (i3c_hci_driver.c) instead of the platform Cadence override. All driver .c
+# files are always compiled; the define picks exactly one implementation (the
+# HCI driver body is #ifdef'd in, the Cadence override and the weak-stub
+# receive paths stay untouched otherwise). Inherited from the environment, so
+# `I3C_CORE=swap make ...` (or the DV build) propagates it here.
+ifeq ($(I3C_CORE),swap)
+    DEFINES += -DI3C_USE_HCI_CORE
 endif
 
 # =============================================================================

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_sram_interface.sv
@@ -27,38 +23,39 @@
  * @param SRAM_ADDR_WIDTH       Word-address width for the SRAM.
  * @param SRAM_NUM_LOCK_REGIONS Number of 512-byte write-lock regions.
  */
+
 module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,
     parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // SRAM_SIZE_BYTES / 512
 ) (
     // Clock and Reset
-    input  wire logic   clk_i,
-    input  wire logic   rst_ni,
+    input  logic   clk_i,
+    input  logic   rst_ni,
 
     // PicoRV32 native memory interface (input from CPU)
-    input  wire logic   mem_valid_i,      // Memory request valid
+    input  logic   mem_valid_i,      // Memory request valid
     output logic        mem_ready_o,      // Memory ready (data available)
-    input  wire logic [31:0] mem_addr_i,       // Byte address
-    input  wire logic [31:0] mem_wdata_i,      // Write data
-    input  wire logic [3:0] mem_wstrb_i,      // Write strobe (non-zero = write)
-    input  wire logic [3:0] mem_rstrb_i,      // Read strobe (byte lanes consumed by CPU)
+    input  logic [31:0] mem_addr_i,       // Byte address
+    input  logic [31:0] mem_wdata_i,      // Write data
+    input  logic [3:0] mem_wstrb_i,      // Write strobe (non-zero = write)
+    input  logic [3:0] mem_rstrb_i,      // Read strobe (byte lanes consumed by CPU)
     output logic [31:0] mem_rdata_o,      // Read data
 
     // PicoRV32 look-ahead interface (for prefetching)
-    input  wire logic   mem_la_read_i,    // Look-ahead read signal (1 cycle before mem_valid)
-    input  wire logic [31:0] mem_la_addr_i,    // Look-ahead address
-    input  wire logic [3:0] mem_la_rstrb_i,   // Look-ahead read strobe
+    input  logic   mem_la_read_i,    // Look-ahead read signal (1 cycle before mem_valid)
+    input  logic [31:0] mem_la_addr_i,    // Look-ahead address
+    input  logic [3:0] mem_la_rstrb_i,   // Look-ahead read strobe
 
     // SRAM memory interface (exposed at subsystem boundary)
     output km_sram_mem_req_t sram_mem_req_o,
-    input  wire km_sram_mem_rsp_t sram_mem_rsp_i,
+    input  km_sram_mem_rsp_t sram_mem_rsp_i,
 
     // Scrambler control (from KMCSR)
-    input  wire logic [31:0] scrambler_key_i,  // Scrambler key
-    input  wire logic   scrambler_en_i,   // Scrambler enable
+    input  logic [31:0] scrambler_key_i,  // Scrambler key
+    input  logic   scrambler_en_i,   // Scrambler enable
 
     // SRAM write-lock (from KMCSR): bit[i]=1 locks region i (512 bytes each)
-    input  wire logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,
+    input  logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,
 
     // Parity error output (to KMCSR)
     output logic        parity_error_o,   // Parity error detected (pulse)
@@ -329,20 +326,19 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////
 
     // SRAM request only asserted for look-ahead reads, regular reads, or writes
-    `ASSERT(SramReqOnlyForValidOps_A,
+    `OCAH_OT_ASSERT(SramReqOnlyForValidOps_A,
         sram_mem_req_o.req |-> (mem_la_read_i || mem_valid_i),
         clk_i, !rst_ni)
 
     // mem_ready only asserts when mem_valid is also asserted
-    `ASSERT(MemReadyOnlyWhenValid_A,
+    `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A,
         mem_ready_o |-> mem_valid_i,
         clk_i, !rst_ni)
 
     // SRAM reads only complete after a matching read request has been accepted.
-    `ASSERT(ReadCompletesAfterAccept_A,
+    `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A,
         sram_mem_rsp_i.rvalid |-> read_pending_q || read_accept,
         clk_i, !rst_ni)
 
 endmodule : km_sram_interface
 
-`default_nettype wire

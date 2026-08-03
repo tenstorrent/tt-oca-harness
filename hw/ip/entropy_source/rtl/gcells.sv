@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Generic Standard Cells
-//
-// Description:
-// Wrapper modules around technology specific standard cells. These are modules
-// are primarily used by the ring oscillators which need to be tightly
-// constrained.
-//------------------------------------------------------------------------------
+/**
+ * @file gcells.sv
+ * @brief Library of generic standard cell wrappers for ring oscillators.
+ *
+ * @details This file contains wrapper modules around technology-specific
+ *          standard cells, including buffers, inverters, NAND gates,
+ *          multiplexers, flip-flops, and synchronizers. These cells are
+ *          primarily used by ring oscillators which require tight timing
+ *          constraints and protection from logic synthesis optimization.
+ *          The file includes multiple related gate-cell modules: gbuff,
+ *          ginv, gnand2, gmux2, gdff, gdffqb, and gdffsync.
+ */
 
 /* verilator lint_off DECLFILENAME */
+
 module gbuff (
     input  logic d_i,
     output logic z_o
@@ -89,6 +94,7 @@ endmodule
 // Synchronizer
 // Two cascaded flip-flops with optional
 // metastable behavior in simulation
+// verilog_lint: waive module-filename
 module gdffsync (
     input  logic d_i,
     input  logic cp_i,
@@ -97,7 +103,7 @@ module gdffsync (
   `ifdef SIMULATION
     logic df0_o, df1_i, dfe_i, dfe_o, edgein, metasig;
     // 1st stage flip-flop
-    gdff df0 (
+    gdff u_df0 (
         .d_i,
         .cdn_i (1'b1),
         .cp_i,
@@ -105,16 +111,16 @@ module gdffsync (
     );
     // HL|LH edge detector
     assign edgein = df0_o ^ d_i;
-    gdff dfe (
+    gdff u_dfe (
         .d_i   (edgein),
         .cdn_i (1'b1),
         .cp_i,
         .q_o   (dfe_o)
     );
     // 2nd flip-flop randomly goes metastable on HL|LH edges
-    assign metasig = dfe_o & $random;
+    assign metasig = dfe_o & $random;  // verilog_lint: waive invalid-system-task-function
     assign df1_i = metasig ^ df0_o;
-    gdff df1 (
+    gdff u_df1 (
         .d_i   (df1_i),
         .cdn_i (1'b1),
         .cp_i,
@@ -131,13 +137,13 @@ module gdffsync (
     // then is sampled by 2nd flip-flop
     logic metasig;
 
-    gdff df0 (
+    gdff u_df0 (
         .d_i,
         .cdn_i (1'b1),
         .cp_i,
         .q_o   (metasig)
     );
-    gdff df1 (
+    gdff u_df1 (
         .d_i   (metasig),
         .cdn_i (1'b1),
         .cp_i,

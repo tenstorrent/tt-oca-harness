@@ -30,7 +30,7 @@ The table below reflects the generated crossbar connectivity defined in
 `meta/crossbars/configs/sep_local_axi_xbar.yaml`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
-and eight targets.
+and ten targets.
 
 A few access paths are intentionally outside this crossbar:
 
@@ -47,16 +47,30 @@ The *System Periph* target aggregates the System Bus interface, the dual
 scratch register bank, the AP/STEE remap regions, and the outbound
 routing to SMC/SMN resources.
 
-[%autowidth,cols="<,^,^,^,^,^,^,^,^,^",frame=all,grid=all]
-|===
-.2+h|Masters 8+^h|Crossbar ^h|Dedicated Path
-h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Crypto Periph h|System Periph h|IO Periph h|AXI Extension h|Boot ROM
+The *Entropy Pool* target is `sep_entropy_fifo` (0x1095_0000): a 64-bit
+read-only entropy drain aperture, filled autonomously by a native EDN
+endpoint on a separate hardware path (not this crossbar). Writes to it
+terminate with `BRESP=SLVERR`.
 
-|CPU IFI |N/C |C |N/C |N/C |N/C |N/C |N/C |N/C |C
-|CPU LSU |N/C |C |C |C |C |C |C |C |C
-|CPU DBG |N/C |C |C |C |C |C |C |C |N/C
-|DMA |C |C |N/C |C |C |C |C |C |N/C
-|System I/F |N/C |C |C |C |C |N/C |C |C |N/C
+The *System Interface* initiator is the external inbound master. It does
+not attach to this crossbar directly; it enters SEP through the dedicated
+`smn_inbound` port and the inbound traffic filter (block-by-default), then
+through the `sep_system_peripherals` inner crossbar. That inner crossbar
+reaches the *mailboxes* and *system CSRs* directly, and loops everything
+else back into this crossbar's System Interface row. The inbound filter
+controls which addresses the external master may reach; it is block-by-default
+after POR and configured by SEP firmware.
+
+[%autowidth,cols="<,^,^,^,^,^,^,^,^,^,^,^",frame=all,grid=all]
+|===
+.2+h|Masters 10+^h|Crossbar ^h|Dedicated Path
+h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Reset Ctrl h|Crypto Periph h|System Periph h|IO Periph h|Entropy Pool h|AXI Extension h|Boot ROM
+
+|CPU IFI |N/C |C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |C
+|CPU LSU |N/C |C |C |C |C |C |C |C |C |C |C
+|CPU DBG |N/C |C |C |C |C |C |C |C |C |C |N/C
+|DMA |C |C |N/C |C |C |C |C |C |N/C |C |N/C
+|System I/F |N/C |C |C |C |N/C |C |N/C |C |C |C |N/C
 |===
 
 [[subsystem-external-interfaces]]

@@ -25,9 +25,9 @@ extern "C" {
 #define KMAC__INTR_STATE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t KMAC_ERR :1;
+        uint32_t kmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t kmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -48,9 +48,9 @@ typedef union {
 #define KMAC__INTR_ENABLE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t KMAC_ERR :1;
+        uint32_t kmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t kmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -71,9 +71,9 @@ typedef union {
 #define KMAC__INTR_TEST__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t KMAC_ERR :1;
+        uint32_t kmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t kmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -90,8 +90,8 @@ typedef union {
 #define KMAC__ALERT_TEST__FATAL_FAULT_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t RECOV_OPERATION_ERR :1;
-        uint32_t FATAL_FAULT_ERR :1;
+        uint32_t recov_operation_err :1;
+        uint32_t fatal_fault_err :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -104,7 +104,7 @@ typedef union {
 #define KMAC__CFG_REGWEN__EN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t EN :1;
+        uint32_t en :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -157,23 +157,23 @@ typedef union {
 #define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KMAC_EN :1;
-        uint32_t KSTRENGTH :3;
-        uint32_t MODE :2;
+        uint32_t kmac_en :1;
+        uint32_t kstrength :3;
+        uint32_t mode :2;
         uint32_t :2;
-        uint32_t MSG_ENDIANNESS :1;
-        uint32_t STATE_ENDIANNESS :1;
+        uint32_t msg_endianness :1;
+        uint32_t state_endianness :1;
         uint32_t :2;
-        uint32_t SIDELOAD :1;
+        uint32_t sideload :1;
         uint32_t :3;
-        uint32_t ENTROPY_MODE :2;
+        uint32_t entropy_mode :2;
         uint32_t :1;
-        uint32_t ENTROPY_FAST_PROCESS :1;
-        uint32_t MSG_MASK :1;
+        uint32_t entropy_fast_process :1;
+        uint32_t msg_mask :1;
         uint32_t :3;
-        uint32_t ENTROPY_READY :1;
+        uint32_t entropy_ready :1;
         uint32_t :1;
-        uint32_t EN_UNSUPPORTED_MODESTRENGTH :1;
+        uint32_t en_unsupported_modestrength :1;
         uint32_t :5;
     } f;
     uint32_t w;
@@ -194,11 +194,11 @@ typedef union {
 #define KMAC__CMD__ERR_PROCESSED_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t CMD :6;
+        uint32_t cmd :6;
         uint32_t :2;
-        uint32_t ENTROPY_REQ :1;
-        uint32_t HASH_CNT_CLR :1;
-        uint32_t ERR_PROCESSED :1;
+        uint32_t entropy_req :1;
+        uint32_t hash_cnt_clr :1;
+        uint32_t err_processed :1;
         uint32_t :21;
     } f;
     uint32_t w;
@@ -235,14 +235,14 @@ typedef union {
 #define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SHA3_IDLE :1;
-        uint32_t SHA3_ABSORB :1;
-        uint32_t SHA3_SQUEEZE :1;
+        uint32_t sha3_idle :1;
+        uint32_t sha3_absorb :1;
+        uint32_t sha3_squeeze :1;
         uint32_t :5;
-        uint32_t FIFO_DEPTH :5;
+        uint32_t fifo_depth :5;
         uint32_t :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t FIFO_FULL :1;
+        uint32_t fifo_empty :1;
+        uint32_t fifo_full :1;
         uint32_t ALERT_FATAL_FAULT :1;
         uint32_t ALERT_RECOV_CTRL_UPDATE_ERR :1;
         uint32_t :14;
@@ -261,9 +261,9 @@ typedef union {
 #define KMAC__ENTROPY_PERIOD__WAIT_TIMER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t PRESCALER :10;
+        uint32_t prescaler :10;
         uint32_t :6;
-        uint32_t WAIT_TIMER :16;
+        uint32_t wait_timer :16;
     } f;
     uint32_t w;
 } kmac__ENTROPY_PERIOD_t;
@@ -275,7 +275,7 @@ typedef union {
 #define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HASH_CNT :10;
+        uint32_t hash_cnt :10;
         uint32_t :22;
     } f;
     uint32_t w;
@@ -288,7 +288,7 @@ typedef union {
 #define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t THRESHOLD :10;
+        uint32_t threshold :10;
         uint32_t :22;
     } f;
     uint32_t w;
@@ -300,32 +300,32 @@ typedef union {
 #define KMAC__ENTROPY_SEED__SEED_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SEED :32;
+        uint32_t seed :32;
     } f;
     uint32_t w;
 } kmac__ENTROPY_SEED_t;
 
-// reg - kmac::KEY_SHARE0_0
-#define KMAC__KEY_SHARE0_0__KEY_0_bm 0xffffffff
-#define KMAC__KEY_SHARE0_0__KEY_0_bp 0
-#define KMAC__KEY_SHARE0_0__KEY_0_bw 32
+// reg - kmac::KEY_SHARE0
+#define KMAC__KEY_SHARE0__KEY_0_bm 0xffffffff
+#define KMAC__KEY_SHARE0__KEY_0_bp 0
+#define KMAC__KEY_SHARE0__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KEY_0 :32;
+        uint32_t key_0 :32;
     } f;
     uint32_t w;
-} kmac__KEY_SHARE0_0_t;
+} kmac__KEY_SHARE0_t;
 
-// reg - kmac::KEY_SHARE1_0
-#define KMAC__KEY_SHARE1_0__KEY_0_bm 0xffffffff
-#define KMAC__KEY_SHARE1_0__KEY_0_bp 0
-#define KMAC__KEY_SHARE1_0__KEY_0_bw 32
+// reg - kmac::KEY_SHARE1
+#define KMAC__KEY_SHARE1__KEY_0_bm 0xffffffff
+#define KMAC__KEY_SHARE1__KEY_0_bp 0
+#define KMAC__KEY_SHARE1__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KEY_0 :32;
+        uint32_t key_0 :32;
     } f;
     uint32_t w;
-} kmac__KEY_SHARE1_0_t;
+} kmac__KEY_SHARE1_t;
 
 // reg - kmac::KEY_LEN
 #define KMAC__KEY_LEN__LEN_bm 0x7
@@ -334,23 +334,23 @@ typedef union {
 #define KMAC__KEY_LEN__LEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t LEN :3;
+        uint32_t len :3;
         uint32_t :29;
     } f;
     uint32_t w;
 } kmac__KEY_LEN_t;
 
-// reg - kmac::PREFIX_0
-#define KMAC__PREFIX_0__PREFIX_0_bm 0xffffffff
-#define KMAC__PREFIX_0__PREFIX_0_bp 0
-#define KMAC__PREFIX_0__PREFIX_0_bw 32
-#define KMAC__PREFIX_0__PREFIX_0_reset 0x0
+// reg - kmac::PREFIX
+#define KMAC__PREFIX__PREFIX_0_bm 0xffffffff
+#define KMAC__PREFIX__PREFIX_0_bp 0
+#define KMAC__PREFIX__PREFIX_0_bw 32
+#define KMAC__PREFIX__PREFIX_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t PREFIX_0 :32;
+        uint32_t prefix_0 :32;
     } f;
     uint32_t w;
-} kmac__PREFIX_0_t;
+} kmac__PREFIX_t;
 
 // reg - kmac::ERR_CODE
 #define KMAC__ERR_CODE__ERR_CODE_bm 0xffffffff
@@ -359,19 +359,19 @@ typedef union {
 #define KMAC__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ERR_CODE :32;
+        uint32_t err_code :32;
     } f;
     uint32_t w;
 } kmac__ERR_CODE_t;
 
 // mem - kmac::STATE
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1];
+    uint32_t mem[128];
 } kmac__STATE_t;
 
 // mem - kmac::MSG_FIFO
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1];
+    uint32_t mem[512];
 } kmac__MSG_FIFO_t;
 
 // addrmap - kmac
@@ -388,15 +388,15 @@ typedef struct __attribute__ ((__packed__)) {
     kmac__ENTROPY_REFRESH_HASH_CNT_t ENTROPY_REFRESH_HASH_CNT;
     kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t ENTROPY_REFRESH_THRESHOLD_SHADOWED;
     kmac__ENTROPY_SEED_t ENTROPY_SEED;
-    kmac__KEY_SHARE0_0_t KEY_SHARE0_0[16];
-    kmac__KEY_SHARE1_0_t KEY_SHARE1_0[16];
+    kmac__KEY_SHARE0_t KEY_SHARE0[16];
+    kmac__KEY_SHARE1_t KEY_SHARE1[16];
     kmac__KEY_LEN_t KEY_LEN;
-    kmac__PREFIX_0_t PREFIX_0[11];
+    kmac__PREFIX_t PREFIX[11];
     kmac__ERR_CODE_t ERR_CODE;
     uint8_t RESERVED_e4_3ff[0x31c];
-    kmac__STATE_t STATE[128];
+    kmac__STATE_t STATE;
     uint8_t RESERVED_600_7ff[0x200];
-    kmac__MSG_FIFO_t MSG_FIFO[512];
+    kmac__MSG_FIFO_t MSG_FIFO;
 } kmac_t;
 
 

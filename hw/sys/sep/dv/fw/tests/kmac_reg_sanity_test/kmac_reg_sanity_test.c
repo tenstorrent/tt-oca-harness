@@ -134,10 +134,10 @@ static int test_prefix_rw(void) {
     printf("\n=== Test 4: PREFIX Register Read/Write ===\n");
 
     uint32_t test_val = 0x12345678;
-    check_rw("PREFIX_0", OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0), test_val, test_val);
+    check_rw("PREFIX_0", OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), test_val, test_val);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0), 0x0);
-    uint32_t readback = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(0));
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x0);
+    uint32_t readback = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0));
     if (readback == 0x0) {
         printf("PASS: PREFIX_0 restored to 0\n");
     } else {
@@ -154,10 +154,10 @@ static int test_entropy_period_rw(void) {
     uint32_t test_val = 0xFFFF03FF;
     WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
     kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
-    printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.PRESCALER,
-           ep.f.WAIT_TIMER);
+    printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.prescaler,
+           ep.f.wait_timer);
 
-    if (ep.f.PRESCALER == 0x3FF && ep.f.WAIT_TIMER == 0xFFFF) {
+    if (ep.f.prescaler == 0x3FF && ep.f.wait_timer == 0xFFFF) {
         printf("PASS: ENTROPY_PERIOD fields correct\n");
     } else {
         printf("FAIL: ENTROPY_PERIOD field mismatch\n");

@@ -404,8 +404,8 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_req_gpio_ctrl_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_resp_gpio_ctrl_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_axil_extension_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_axil_extension_resp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_resp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_efuse_bank_ctrl_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_efuse_bank_ctrl_resp_i*}] -add_delay

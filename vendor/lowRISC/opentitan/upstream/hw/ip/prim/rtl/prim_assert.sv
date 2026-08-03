@@ -1,52 +1,42 @@
-// Contains assertions picked out from OT prim_assert.svh such that they can be used in conjunction
-// with the TT common_cells assertions.
+// Copyright lowRISC contributors (OpenTitan project).
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
 
-// FIXME: This is really a hack to get the TT common_cells assertions to work with the OT prim_assert.svh.
-// Revisit this in the future.
+// Macros and helper code for using assertions.
+//  - Provides default clk and rst options to simplify code
+//  - Provides boiler plate template for common assertions
 
-// Helper macro to convert a block of code into a Verilog string
-`define PRIM_STRINGIFY(__x) `"__x`"
+`ifndef PRIM_ASSERT_SV
+`define PRIM_ASSERT_SV
 
-// Default clk and rst options to simplify code
-`define ASSERT_DEFAULT_CLK clk_i
-`define ASSERT_DEFAULT_RST !rst_ni
+///////////////////
+// Helper macros //
+///////////////////
 
-`ifdef VERILATOR
-`define ASSERT(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST)
-`define ASSERT_INIT(__name, __prop)
-`else
-`define ASSERT(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  __name: assert property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop))       \
-    else begin                                                                           \
-      `ASSERT_ERROR(__name)                                                              \
-    end
+// Default clk and reset signals used by assertion macros below.
+`define OCAH_OT_ASSERT_DEFAULT_CLK clk_i
+`define OCAH_OT_ASSERT_DEFAULT_RST !rst_ni
 
-`define ASSERT_INIT(__name, __prop)    \
-  initial begin                        \
-    __name: assert (__prop)            \
-      else begin                       \
-        `ASSERT_ERROR(__name)          \
-      end                              \
-  end
-`endif
+// Converts an arbitrary block of code into a Verilog string
+`define OCAH_OT_PRIM_STRINGIFY(__x) `"__x`"
 
-`define ASSERT_ERROR(__name)                                                              \
-`ifdef UVM                                                                                \
-  uvm_pkg::uvm_report_error("ASSERT FAILED", `PRIM_STRINGIFY(__name), uvm_pkg::UVM_NONE, \
-                            `__FILE__, `__LINE__, "", 1);                                 \
-`else                                                                                     \
-`ifdef SIM                                                                                \
+// ASSERT_ERROR logs an error message with either `uvm_error or with $error.
+//
+// This somewhat duplicates `DV_ERROR macro defined in hw/dv/sv/dv_utils/dv_macros.svh. The reason
+// for redefining it here is to avoid creating a dependency.
+`define OCAH_OT_ASSERT_ERROR(__name)                                                             \
+`ifdef UVM                                                                               \
+  uvm_pkg::uvm_report_error("ASSERT FAILED", `OCAH_OT_PRIM_STRINGIFY(__name), uvm_pkg::UVM_NONE, \
+                            `__FILE__, `__LINE__, "", 1);                                \
+`else                                                                                    \
   $error("%0t: (%0s:%0d) [%m] [ASSERT FAILED] %0s", $time, `__FILE__, `__LINE__,         \
-         `PRIM_STRINGIFY(__name));                                                        \
-`else                                                                                     \
-  $error("[%m] [ASSERT FAILED] %0s", `PRIM_STRINGIFY(__name));                           \
-`endif                                                                                    \
+         `OCAH_OT_PRIM_STRINGIFY(__name));                                                       \
 `endif
 
 // This macro is suitable for conditionally triggering lint errors, e.g., if a Sec parameter takes
 // on a non-default value. This may be required for pre-silicon/FPGA evaluation but we don't want
 // to allow this for tapeout.
-`define ASSERT_STATIC_LINT_ERROR(__name, __prop)     \
+`define OCAH_OT_ASSERT_STATIC_LINT_ERROR(__name, __prop)     \
   localparam int __name = (__prop) ? 1 : 2;          \
   always_comb begin                                  \
     logic unused_assert_static_lint_error;           \
@@ -55,96 +45,130 @@
 
 // Static assertions for checks inside SV packages. If the conditions is not true, this will
 // trigger an error during elaboration.
-`define ASSERT_STATIC_IN_PACKAGE(__name, __prop)              \
+`define OCAH_OT_ASSERT_STATIC_IN_PACKAGE(__name, __prop)              \
   function automatic bit assert_static_in_package_``__name(); \
     bit unused_bit [((__prop) ? 1 : -1)];                     \
     unused_bit = '{default: 1'b0};                            \
     return unused_bit[0];                                     \
   endfunction
 
-`define ASSERT_INIT_NET(__name, __prop)                                                   \
-  initial begin                                                                      \
-    // When a net is assigned with a value, the assignment is evaluated after        \
-    // initial in Xcelium. Add 1ps delay to check value after the assignment is      \
-    // completed.                                                                    \
-    #1ps;                                                                            \
-    __name: assert (__prop)                                                          \
-      else begin                                                                     \
-        `ASSERT_ERROR(__name)                                                        \
-      end                                                                            \
-  end                                                                                \
+// The basic helper macros are actually defined in "implementation headers". The macros should do
+// the same thing in each case (except for the dummy flavour), but in a way that the respective
+// tools support.
+//
+// If the tool supports assertions in some form, we also define OCAH_OT_INC_ASSERT (which can be
+// used to hide signal definitions that are only used for assertions).
+//
+// The list of basic macros supported is:
+//
+//  ASSERT_I:     Immediate assertion. Note that immediate assertions are sensitive to simulation
+//                glitches.
+//
+//  ASSERT_INIT:  Assertion in initial block. Can be used for things like parameter checking.
+//
+//  ASSERT_INIT_NET: Assertion in initial block. Can be used for initial value of a net.
+//
+//  ASSERT_FINAL: Assertion in final block. Can be used for things like queues being empty at end of
+//                sim, all credits returned at end of sim, state machines in idle at end of sim.
+//
+//  ASSERT_AT_RESET: Assertion just before reset. Can be used to check sum-like properties that get
+//                   cleared at reset.
+//                   Note that unless your simulation ends with a reset, the property does not get
+//                   checked at end of simulation; use ASSERT_AT_RESET_AND_FINAL if the property
+//                   should also get checked at end of simulation.
+//
+//  ASSERT_AT_RESET_AND_FINAL: Assertion just before reset and in final block. Can be used to check
+//                             sum-like properties before every reset and at the end of simulation.
+//
+//  ASSERT:       Assert a concurrent property directly. It can be called as a module (or
+//                interface) body item.
+//
+//                Note: We use (__rst !== '0) in the disable iff statements instead of (__rst ==
+//                '1). This properly disables the assertion in cases when reset is X at the
+//                beginning of a simulation. For that case, (reset == '1) does not disable the
+//                assertion.
+//
+//  ASSERT_NEVER: Assert a concurrent property NEVER happens
+//
+//  ASSERT_KNOWN: Assert that signal has a known value (each bit is either '0' or '1') after reset.
+//                It can be called as a module (or interface) body item.
+//
+//  COVER:        Cover a concurrent property
+//
+//  ASSUME:       Assume a concurrent property
+//
+//  ASSUME_I:     Assume an immediate property
 
-`define ASSERT_I(__name, __prop) \
-  __name: assert (__prop)        \
-    else begin                   \
-      `ASSERT_ERROR(__name)      \
-    end
-
-`define ASSERT_FINAL(__name, __prop)                                         \
-`ifndef FPV_ON                                                               \
-  final begin                                                                \
-    __name: assert (__prop || $test$plusargs("disable_assert_final_checks")) \
-      else begin                                                             \
-        `ASSERT_ERROR(__name)                                                \
-      end                                                                    \
-  end                                                                        \
+`ifdef YOSYS
+ `include "prim_assert_yosys_macros.svh"
+ `define OCAH_OT_INC_ASSERT
+`else
+ // Enable assertions for every flow except synthesis and Verilator
+ `ifndef VERILATOR
+ `ifndef SYNTHESIS
+   `define OCAH_OT_INC_ASSERT
+ `endif
+ `endif
+ `include "prim_assert_standard_macros.svh"
 `endif
 
-`define ASSERT_NEVER(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  __name: assert property (@(posedge __clk) disable iff ((__rst) !== '0) not (__prop))         \
-    else begin                                                                                 \
-      `ASSERT_ERROR(__name)                                                                    \
-    end
+//////////////////////////////
+// Complex assertion macros //
+//////////////////////////////
 
-`define ASSERT_KNOWN(__name, __sig, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-`ifndef FPV_ON                                                                                \
-  `ASSERT(__name, !$isunknown(__sig), __clk, __rst)                                           \
-`endif
+// Assert that signal is an active-high pulse with pulse length of 1 clock cycle
+`define OCAH_OT_ASSERT_PULSE(__name, __sig, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
+  `OCAH_OT_ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
 
-`define COVER(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  __name: cover property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop));
+// Assert that a property is true only when an enable signal is set.  It can be called as a module
+// (or interface) body item.
+`define OCAH_OT_ASSERT_IF(__name, __prop, __enable, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
+  `OCAH_OT_ASSERT(__name, (__enable) |-> (__prop), __clk, __rst)
 
-`define ASSUME(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  __name: assume property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop))       \
-    else begin                                                                           \
-      `ASSERT_ERROR(__name)                                                              \
-    end
-
-`define ASSUME_I(__name, __prop) \
-  __name: assume (__prop)        \
-    else begin                   \
-      `ASSERT_ERROR(__name)      \
-    end
-
-`define ASSERT_PULSE(__name, __sig, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  `ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
-
-`define ASSERT_IF(__name, __prop, __enable, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  `ASSERT(__name, (__enable) |-> (__prop), __clk, __rst)
-
-`define ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
+// Assert that signal has a known value (each bit is either '0' or '1') after reset if enable is
+// set.  It can be called as a module (or interface) body item.
+`define OCAH_OT_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
 `ifndef FPV_ON                                                                                             \
-  `ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                               \
-  `ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)                                           \
+  `OCAH_OT_ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                               \
+  `OCAH_OT_ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)                                           \
 `endif
 
-`define ASSUME_FPV(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
+//////////////////////////////////
+// For formal verification only //
+//////////////////////////////////
+
+// Note that the existing set of ASSERT macros specified above shall be used for FPV,
+// thereby ensuring that the assertions are evaluated during DV simulations as well.
+
+// ASSUME_FPV
+// Assume a concurrent property during formal verification only.
+`define OCAH_OT_ASSUME_FPV(__name, __prop, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
 `ifdef FPV_ON                                                                                \
-   `ASSUME(__name, __prop, __clk, __rst)                                                     \
+   `OCAH_OT_ASSUME(__name, __prop, __clk, __rst)                                                     \
 `endif
 
-`define ASSUME_I_FPV(__name, __prop) \
+// ASSUME_I_FPV
+// Assume a concurrent property during formal verification only.
+`define OCAH_OT_ASSUME_I_FPV(__name, __prop) \
 `ifdef FPV_ON                        \
-   `ASSUME_I(__name, __prop)         \
+   `OCAH_OT_ASSUME_I(__name, __prop)         \
 `endif
 
-`define COVER_FPV(__name, __prop, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
+// COVER_FPV
+// Cover a concurrent property during formal verification
+`define OCAH_OT_COVER_FPV(__name, __prop, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
 `ifdef FPV_ON                                                                               \
-   `COVER(__name, __prop, __clk, __rst)                                                     \
+   `OCAH_OT_COVER(__name, __prop, __clk, __rst)                                                     \
 `endif
 
-`define ASSERT_FPV_LINEAR_FSM(__name, __state, __type, __clk = `ASSERT_DEFAULT_CLK, __rst = `ASSERT_DEFAULT_RST) \
-  `ifdef INC_ASSERT                                                                                              \
+// FPV assertion that proves that the FSM control flow is linear (no loops)
+// The sequence triggers whenever the state changes and stores the current state as "initial_state".
+// Then thereafter we must never see that state again until reset.
+// It is possible for the reset to release ahead of the clock.
+// Create a small "gray" window beyond the usual rst time to avoid
+// checking.
+`define OCAH_OT_ASSERT_FPV_LINEAR_FSM(__name, __state, __type, __clk = `OCAH_OT_ASSERT_DEFAULT_CLK, __rst = `OCAH_OT_ASSERT_DEFAULT_RST) \
+  `ifdef OCAH_OT_INC_ASSERT                                                                                              \
      bit __name``_cond;                                                                                          \
      always_ff @(posedge __clk or posedge __rst) begin                                                           \
        if (__rst) begin                                                                                          \
@@ -158,9 +182,10 @@
        (!$stable(__state) & __name``_cond, initial_state = $past(__state)) |->                                   \
            (__state != initial_state) until !(__name``_cond);                                                    \
      endproperty                                                                                                 \
-   `ASSERT(__name, __name``_p, __clk, 0)                                                                         \
+   `OCAH_OT_ASSERT(__name, __name``_p, __clk, 0)                                                                         \
   `endif
-
 
 `include "prim_assert_sec_cm.svh"
 `include "prim_flop_macros.sv"
+
+`endif // PRIM_ASSERT_SV

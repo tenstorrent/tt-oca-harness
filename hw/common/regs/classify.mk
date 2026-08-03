@@ -41,6 +41,7 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 # Tops that get the shared catalog on their -I path: composite tops, plus plain
 # wrapper/top RDLs that include sibling blocks by bare filename.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
+  edn \
   i2c_wrap \
   key_manager \
   oca_i3c_wrap \

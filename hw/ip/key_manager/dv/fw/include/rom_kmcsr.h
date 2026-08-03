@@ -42,6 +42,10 @@
 /** @brief SRAM region write-lock register. */
 #define ROM_KMCSR_SRAM_LOCK_REG \
     (*(volatile km_csr__sram_lock_reg_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
+/** @brief SRAM execute-permission mode register (volatile; write-1-only, cleared by warm or cold
+ * reset). */
+#define ROM_KMCSR_SRAM_EXEC_MODE_REG \
+    (*(volatile km_csr__sram_exec_mode_reg_t *)KEY_MANAGER_KMCSR_SRAM_EXEC_MODE_BASE_ADDR)
 
 /**
  * @brief Read KMCSR hardware version register.
@@ -110,6 +114,32 @@ static inline uint32_t rom_kmcsr_sram_lock_read(void) {
 
 static inline void rom_kmcsr_sram_lock_set(uint32_t mask) {
     ROM_KMCSR_SRAM_LOCK_REG.w = mask;
+}
+
+/**
+ * @brief Enable SRAM execution mode (write-1-only), with triple write.
+ *
+ * Sets SRAM_EXEC_MODE.enable.  Once set, instruction fetch is permitted from
+ * ROM and from write-locked SRAM regions; all other regions remain forbidden.
+ * Cleared by warm or cold reset.  The register write is issued three
+ * consecutive times to harden against single-event upsets and voltage-glitch
+ * attacks that could cause a write to be skipped.
+ */
+static inline void rom_kmcsr_sram_exec_mode_set(void) {
+    km_csr__sram_exec_mode_reg_t w = {0};
+    w.f.enable = 1u;
+    ROM_KMCSR_SRAM_EXEC_MODE_REG.w = w.w;
+    ROM_KMCSR_SRAM_EXEC_MODE_REG.w = w.w;
+    ROM_KMCSR_SRAM_EXEC_MODE_REG.w = w.w;
+}
+
+/**
+ * @brief Read the current SRAM_EXEC_MODE.enable bit.
+ *
+ * @return 1 if SRAM execution mode is enabled, 0 otherwise.
+ */
+static inline uint8_t rom_kmcsr_sram_exec_mode_read(void) {
+    return ROM_KMCSR_SRAM_EXEC_MODE_REG.f.enable ? 1u : 0u;
 }
 
 /**

@@ -149,19 +149,19 @@ static int configure_aes_ecb_enc_auto(const uint32_t iv[4]) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
     }
     for (int i = 4; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), iv[i]);
     }
 
     return 0;
@@ -179,19 +179,19 @@ static void cleanup_aes(void) {
 
 static void write_data_in(const uint32_t in[4]) {
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_0_BASE_ADDR(i), in[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(i), in[i]);
     }
 }
 
 static void read_data_out(uint32_t out[4]) {
     for (int i = 0; i < 4; i++) {
-        out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_0_BASE_ADDR(i));
+        out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(i));
     }
 }
 
 static void read_iv(uint32_t iv_out[4]) {
     for (int i = 0; i < 4; i++) {
-        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i));
+        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i));
     }
 }
 
@@ -322,10 +322,10 @@ static int test_key_iv_clear_invalidate_previous_key(void) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_input_ready() != 0) return -1;
@@ -415,7 +415,7 @@ static int test_aes_sw_reset_probe(void) {
 
     /* Write known IV so we can check it is cleared */
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), probe_iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), probe_iv[i]);
     }
 
     /* ---- Step 2: Apply software reset ---- */
@@ -463,10 +463,10 @@ static int test_aes_sw_reset_probe(void) {
     if (wait_for_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_input_ready() != 0) return -1;

@@ -200,15 +200,15 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
     // -------------------------------------------------------------------------
     // Assertions
     // -------------------------------------------------------------------------
-    `ASSERT(AxisEdnAllAckSmHealthy_A, !(|ack_sm_err))
+    `OCAH_OT_ASSERT(AxisEdnAllAckSmHealthy_A, !(|ack_sm_err))
 
-    `ASSERT(AxisEdnStableDataWhenStall_A,
+    `OCAH_OT_ASSERT(AxisEdnStableDataWhenStall_A,
         axis_req_i.tvalid && !axis_rsp_o.tready |=> $stable(axis_req_i.tdata))
-    `ASSERT(AxisEdnStableStrbWhenStall_A,
+    `OCAH_OT_ASSERT(AxisEdnStableStrbWhenStall_A,
         axis_req_i.tvalid && !axis_rsp_o.tready |=> $stable(axis_req_i.tstrb))
-    `ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
+    `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
 
-    `ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
+    `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 
 endmodule : drbg_axis_edn_adapter
 

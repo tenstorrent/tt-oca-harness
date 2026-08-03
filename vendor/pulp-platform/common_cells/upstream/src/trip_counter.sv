@@ -46,6 +46,6 @@ module trip_counter #(
     assign last_o = (q_o == bound_i);
     assign trip_o = last_o && en_i;
 
-    `TT_PULP_ASSERT(CounterExceedsBound, !(en_i && (q_o + delta_i) > bound_i))
+    `OCAH_PULP_ASSERT(CounterExceedsBound, !(en_i && (q_o + delta_i) > bound_i))
 
 endmodule

@@ -80,7 +80,7 @@ module prim_reg_cdc #(
   // A src_ack should only be sent if there was a src_req.
   // src_busy_q asserts whenever there is a src_req.  By association,
   // whenever src_ack is seen, then src_busy must be high.
-  `ASSERT(SrcAckBusyChk_A, src_ack |-> src_busy_q, clk_src_i, !rst_src_ni)
+  `OCAH_OT_ASSERT(SrcAckBusyChk_A, src_ack |-> src_busy_q, clk_src_i, !rst_src_ni)
 
   assign src_busy_o = src_busy_q;
 
@@ -161,7 +161,7 @@ module prim_reg_cdc #(
   // the intent clearer, it ends up causing coverage holes from the tool's perspective since that
   // condition cannot be met.
   // Thus we add an assertion here to ensure the condition is always satisfied.
-  `ASSERT(BusySrcReqChk_A, busy |-> !src_req, clk_src_i, !rst_src_ni)
+  `OCAH_OT_ASSERT(BusySrcReqChk_A, busy |-> !src_req, clk_src_i, !rst_src_ni)
 
   // reserved bits are not used
   logic unused_wd;
@@ -217,13 +217,13 @@ module prim_reg_cdc #(
   // reset.
   assign {dst_we_o, dst_re_o, dst_regwen_o} = txn_bits_q & {TxnWidth{dst_req}};
 
-  `ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
-  `ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
+  `OCAH_OT_ASSERT_KNOWN(SrcBusyKnown_A, src_busy_o, clk_src_i, !rst_src_ni)
+  `OCAH_OT_ASSERT_KNOWN(DstReqKnown_A, dst_req, clk_dst_i, !rst_dst_ni)
 
   // If busy goes high, we must eventually see an ack
   `ifdef FPV_ON
   `ifndef VERILATOR
-    `ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
+    `OCAH_OT_ASSERT(HungHandShake_A, $rose(src_req) |-> strong(##[0:$] src_ack), clk_src_i, !rst_src_ni)
   `endif
     // TODO: #14913 check if we can add additional sim assertions.
   `endif

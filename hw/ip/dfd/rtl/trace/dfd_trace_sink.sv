@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
  // Trace Sink: Implements the Trace SRAM for the two trace sink modes
+
 module dfd_trace_sink
   import dfd_tn_pkg::*;
   import dfd_tr_csr_pkg::*;

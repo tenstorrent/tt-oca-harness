@@ -1,21 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+`ifndef _OTBN_RDL_DEFINED
+`define _OTBN_RDL_DEFINED
+
+`include "opentitan_udps.rdl"
+
 addrmap otbn {
+    name = "OpenTitan Big Number Accelerator";
+    desc = "Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures";
     reg {
         field {
             sw = rw;
             onwrite = woclr;
             hw = rw;
             desc = "OTBN has completed the operation.";
-        } DONE[0:0] = 0x0;
+        } done[0:0] = 0x0;
     } INTR_STATE @ 0x0;
     reg {
         field {
             sw = rw;
             hw = r;
             desc = "Enable interrupt when !!INTR_STATE.done is set.";
-        } DONE[0:0] = 0x0;
+        } done[0:0] = 0x0;
     } INTR_ENABLE @ 0x4;
     reg {
         field {
@@ -23,7 +30,7 @@ addrmap otbn {
             hw = r;
             swmod = true;
             desc = "Write 1 to force !!INTR_STATE.done to 1.";
-        } DONE[0:0] = 0x0;
+        } done[0:0] = 0x0;
     } external INTR_TEST @ 0x8;
     reg {
         field {
@@ -31,13 +38,13 @@ addrmap otbn {
             hw = r;
             swmod = true;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } FATAL[0:0] = 0x0;
+        } fatal[0:0] = 0x0;
         field {
             sw = w;
             hw = r;
             swmod = true;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } RECOV[1:1] = 0x0;
+        } recov[1:1] = 0x0;
     } external ALERT_TEST @ 0xC;
     reg {
         field {
@@ -51,7 +58,7 @@ addrmap otbn {
             | 0xd8  | EXECUTE       | Starts the execution of the program stored in the instruction memory, starting at address zero. |
             | 0xc3  | SEC_WIPE_DMEM | Securely removes all contents from the data memory. |
             | 0x1e  | SEC_WIPE_IMEM | Securely removes all contents from the instruction  memory. |";
-        } CMD[7:0] = 0x0;
+        } cmd[7:0] = 0x0;
     } external CMD @ 0x10;
     reg {
         field {
@@ -64,7 +71,7 @@ addrmap otbn {
             recoverable errors.
 
             Writes are ignored if OTBN is not idle.";
-        } SOFTWARE_ERRS_FATAL[0:0] = 0x0;
+        } software_errs_fatal[0:0] = 0x0;
     } external CTRL @ 0x14;
     reg {
         field {
@@ -84,7 +91,7 @@ addrmap otbn {
             | 0x04  | BUSY_SEC_WIPE_INT  | OTBN is busy securely wiping the internal state.      |
             | 0xFF  | LOCKED             | OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section \"Reaction to Fatal Errors\". |
             ";
-        } STATUS[7:0] = 0x4;
+        } status[7:0] = 0x4;
     } STATUS @ 0x18;
     reg {
         field {
@@ -92,139 +99,139 @@ addrmap otbn {
             hw = rw;
             swmod = true;
             desc = "A `BAD_DATA_ADDR` error was observed.";
-        } BAD_DATA_ADDR[0:0] = 0x0;
+        } bad_data_addr[0:0] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `BAD_INSN_ADDR` error was observed.";
-        } BAD_INSN_ADDR[1:1] = 0x0;
+        } bad_insn_addr[1:1] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `CALL_STACK` error was observed.";
-        } CALL_STACK[2:2] = 0x0;
+        } call_stack[2:2] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "An `ILLEGAL_INSN` error was observed.";
-        } ILLEGAL_INSN[3:3] = 0x0;
+        } illegal_insn[3:3] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `LOOP` error was observed.";
-        } LOOP[4:4] = 0x0;
+        } loop[4:4] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `KEY_INVALID` error was observed.";
-        } KEY_INVALID[5:5] = 0x0;
+        } key_invalid[5:5] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "An `RND_REP_CHK_FAIL` error was observed.";
-        } RND_REP_CHK_FAIL[6:6] = 0x0;
+        } rnd_rep_chk_fail[6:6] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "An `RND_FIPS_CHK_FAIL` error was observed.";
-        } RND_FIPS_CHK_FAIL[7:7] = 0x0;
+        } rnd_fips_chk_fail[7:7] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `IMEM_INTG_VIOLATION` error was observed.";
-        } IMEM_INTG_VIOLATION[16:16] = 0x0;
+        } imem_intg_violation[16:16] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `DMEM_INTG_VIOLATION` error was observed.";
-        } DMEM_INTG_VIOLATION[17:17] = 0x0;
+        } dmem_intg_violation[17:17] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `REG_INTG_VIOLATION` error was observed.";
-        } REG_INTG_VIOLATION[18:18] = 0x0;
+        } reg_intg_violation[18:18] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `BUS_INTG_VIOLATION` error was observed.";
-        } BUS_INTG_VIOLATION[19:19] = 0x0;
+        } bus_intg_violation[19:19] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `BAD_INTERNAL_STATE` error was observed.";
-        } BAD_INTERNAL_STATE[20:20] = 0x0;
+        } bad_internal_state[20:20] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "An `ILLEGAL_BUS_ACCESS` error was observed.";
-        } ILLEGAL_BUS_ACCESS[21:21] = 0x0;
+        } illegal_bus_access[21:21] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `LIFECYCLE_ESCALATION` error was observed.";
-        } LIFECYCLE_ESCALATION[22:22] = 0x0;
+        } lifecycle_escalation[22:22] = 0x0;
         field {
             sw = rw;
             hw = rw;
             swmod = true;
             desc = "A `FATAL_SOFTWARE` error was observed.";
-        } FATAL_SOFTWARE[23:23] = 0x0;
+        } fatal_software[23:23] = 0x0;
     } external ERR_BITS @ 0x1C;
     reg {
         field {
             sw = r;
             hw = w;
             desc = "A `IMEM_INTG_VIOLATION` error was observed.";
-        } IMEM_INTG_VIOLATION[0:0] = 0x0;
+        } imem_intg_violation[0:0] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `DMEM_INTG_VIOLATION` error was observed.";
-        } DMEM_INTG_VIOLATION[1:1] = 0x0;
+        } dmem_intg_violation[1:1] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `REG_INTG_VIOLATION` error was observed.";
-        } REG_INTG_VIOLATION[2:2] = 0x0;
+        } reg_intg_violation[2:2] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `BUS_INTG_VIOLATION` error was observed.";
-        } BUS_INTG_VIOLATION[3:3] = 0x0;
+        } bus_intg_violation[3:3] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `BAD_INTERNAL_STATE` error was observed.";
-        } BAD_INTERNAL_STATE[4:4] = 0x0;
+        } bad_internal_state[4:4] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `ILLEGAL_BUS_ACCESS` error was observed.";
-        } ILLEGAL_BUS_ACCESS[5:5] = 0x0;
+        } illegal_bus_access[5:5] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `LIFECYCLE_ESCALATION` error was observed.";
-        } LIFECYCLE_ESCALATION[6:6] = 0x0;
+        } lifecycle_escalation[6:6] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "A `FATAL_SOFTWARE` error was observed.";
-        } FATAL_SOFTWARE[7:7] = 0x0;
+        } fatal_software[7:7] = 0x0;
     } FATAL_ALERT_CAUSE @ 0x20;
     reg {
         field {
@@ -232,7 +239,7 @@ addrmap otbn {
             hw = rw;
             swmod = true;
             desc = "The number of executed instructions.";
-        } INSN_CNT[31:0] = 0x0;
+        } insn_cnt[31:0] = 0x0;
     } external INSN_CNT @ 0x24;
     reg {
         field {
@@ -240,12 +247,16 @@ addrmap otbn {
             hw = rw;
             swmod = true;
             desc = "Checksum accumulator";
-        } CHECKSUM[31:0] = 0x0;
+        } checksum[31:0] = 0x0;
     } external LOAD_CHECKSUM @ 0x28;
     mem {
         memwidth = 0x20;
-    } external IMEM[4096] @ 0x4000 += 0x4;
+        mementries = 0x1000;
+    } external IMEM @ 0x4000;
     mem {
         memwidth = 0x20;
-    } external DMEM[4096] @ 0x8000 += 0x4;
+        mementries = 0x1000;
+    } external DMEM @ 0x8000;
 };
+
+`endif // _OTBN_RDL_DEFINED

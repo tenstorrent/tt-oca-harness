@@ -168,6 +168,15 @@ package smc_efuse_pkg;
     logic [NumFuseWords-1:0][NumFuseWordWidth-1:0] values;
   } efuse_map_t;
 
+  // Class 1 storage is selected by field identity; all locations and widths
+  // are derived directly from the generated RDL metadata.
+  localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
+      0: efuse_pkg::make_shadow_word_range(
+          efuse_offset(SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
+          $bits(smc_efuse_map_locks_reg_t), NumFuseWordWidth),
+      default: '0
+  };
+
   // Lock field Description
   // lock[2:1] write: 00 -> unlock;11 -> lock ;10 -> set only;
   // lock[0]  read: 0 -> readable; 1 -> read locked

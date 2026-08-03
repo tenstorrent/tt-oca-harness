@@ -139,8 +139,8 @@ module axi_hang_detector
     // Assertions //
     ////////////////
 
-    `ASSERT_KNOWN(IrqKnownO_A,       irq_o)
-    `ASSERT_KNOWN(BusActiveKnownO_A, bus_active_o)
-    `ASSERT_INIT(ParamOutstandingTx_A, OutstandingTx >= 1)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A,       irq_o)
+    `OCAH_OT_ASSERT_KNOWN(BusActiveKnownO_A, bus_active_o)
+    `OCAH_OT_ASSERT_INIT(ParamOutstandingTx_A, OutstandingTx >= 1)
 
 endmodule

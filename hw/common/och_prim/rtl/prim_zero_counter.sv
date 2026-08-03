@@ -24,7 +24,7 @@ module prim_zero_counter #(
   output logic                 o_empty
 );
 
-  `include "tt_assert.svh"
+  `include "ocah_assert.svh"
 
   if (WIDTH == 1) begin : gen_degenerate_lzc
 
@@ -89,6 +89,6 @@ module prim_zero_counter #(
 
   end : gen_lzc
 
-  `TT_ASSERT_INIT(WidthConstraintA, WIDTH >= 1)
+  `OCAH_ASSERT_INIT(WidthConstraintA, WIDTH >= 1)
 
 endmodule : prim_zero_counter

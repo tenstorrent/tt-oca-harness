@@ -285,11 +285,9 @@ module smc_uvm_top
     input  wire logic         jtag_axi_rready /*verilator public_flat_rw*/,
 
     // Per-interface AXI-Lite idle observability (OR of aw_valid/w_valid/ar_valid
-    // on each of the five SMC downstream AXI-Lite master interfaces).
+    // on each of the SMC downstream AXI-Lite master interfaces).
     output logic tb_axil_dtp_csr_active /*verilator public_flat_rw*/,
-    output logic tb_axil_pll_active /*verilator public_flat_rw*/,
-    output logic tb_axil_pvt_active /*verilator public_flat_rw*/,
-    output logic tb_axil_extension_active /*verilator public_flat_rw*/,
+    output logic tb_axil_external_active /*verilator public_flat_rw*/,
     output logic tb_axil_efuse_bank_active /*verilator public_flat_rw*/,
     output logic tb_axil_any_master_active /*verilator public_flat_rw*/,
 
@@ -439,10 +437,10 @@ module smc_uvm_top
         assign tb_telemetry_afready[tel_i] = 1'b1;
     end
 
-    // NOTE: the PLL / PVT / adopter-GPIO-ctrl / peripheral-extension AXI-Lite
-    // macro windows and the eFuse bank/shim macro are absorbed into
-    // hw/top/smc_ip_integration.sv (instantiated inside smc_wrapper as
-    // u_smc.axil_pll_req_o etc. feeding u_smc_ip_integration directly) --
+    // NOTE: the adopter external window (PLL / PVT / GPIO ctrl) and the eFuse
+    // bank/shim macro are absorbed into hw/top/smc_ip_integration.sv
+    // (instantiated inside smc_wrapper as u_smc.smc_external_req_o feeding
+    // u_smc_ip_integration directly) --
     // they are no longer boundary ports of smc_wrapper, so there is nothing
     // to declare/terminate for them at this TB level (see header comment).
     // DTP CSR (axil_dtp_csr_req_o) remains a smc_wrapper boundary port.
@@ -927,8 +925,7 @@ module smc_uvm_top
     // DUT: smc_wrapper (smc + smc_ip_integration + smc_cpu_mem_integration).
     //
     // Ports absorbed by smc_ip_integration and NOT present on this boundary:
-    // axil_pll_*, axil_pvt_*, axil_req_gpio_ctrl_*, axil_extension_*,
-    // efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
+    // smc_external_*, efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
     // pad2core_en_o, core2pad_en_o (internal smc_wrapper nets → gpio_pad_io).
     // CPU ROM/scratch/L1$ are absorbed by smc_cpu_mem_integration.
     // ------------------------------------------------------------------
@@ -1118,22 +1115,22 @@ module smc_uvm_top
     assign tb_axil_dtp_csr_active    = u_dut.u_smc.axil_dtp_csr_req_o.aw_valid
                                      | u_dut.u_smc.axil_dtp_csr_req_o.w_valid
                                      | u_dut.u_smc.axil_dtp_csr_req_o.ar_valid;
-    assign tb_axil_pll_active        = u_dut.u_smc.axil_pll_req_o.aw_valid | u_dut.u_smc.axil_pll_req_o.w_valid | u_dut.u_smc.axil_pll_req_o.ar_valid;
-    assign tb_axil_pvt_active        = u_dut.u_smc.axil_pvt_req_o.aw_valid | u_dut.u_smc.axil_pvt_req_o.w_valid | u_dut.u_smc.axil_pvt_req_o.ar_valid;
-    assign tb_axil_extension_active  = u_dut.u_smc.axil_extension_req_o.aw_valid | u_dut.u_smc.axil_extension_req_o.w_valid | u_dut.u_smc.axil_extension_req_o.ar_valid;
+    assign tb_axil_external_active   = u_dut.u_smc.smc_external_req_o.aw_valid
+                                     | u_dut.u_smc.smc_external_req_o.w_valid
+                                     | u_dut.u_smc.smc_external_req_o.ar_valid;
     assign tb_axil_efuse_bank_active = u_dut.u_smc.efuse_bank_ctrl_req_o.aw_valid | u_dut.u_smc.efuse_bank_ctrl_req_o.w_valid |
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
-    assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_pll_active | tb_axil_pvt_active | tb_axil_extension_active | tb_axil_efuse_bank_active;
+    assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;
 
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
-        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
     assign tb_cpu_cluster_isolate =
-        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.cluster_boundary_isolate;
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.cluster_boundary_isolate;
     assign tb_cpu_debug_dmactive =
-        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactive;
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
-        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactiveAck;
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
 
     // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
     // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.

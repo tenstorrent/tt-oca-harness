@@ -22,7 +22,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (s.f.SHA3_IDLE) return 0;
+        if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
     return -1;
@@ -91,28 +91,28 @@ static int test_real_kmac_done(void) {
 
     /* Configure SHA3-256 */
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 0;
-    cfg.f.MODE = 0x0;
-    cfg.f.KSTRENGTH = 0x2;
-    cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
-    cfg.f.ENTROPY_READY = 0;
+    cfg.f.kmac_en = 0;
+    cfg.f.mode = 0x0;
+    cfg.f.kstrength = 0x2;
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     setup_entropy();
 
-    cfg.f.ENTROPY_READY = 1;
+    cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     printf("  entropy_ready set\n");
 
     /* START then PROCESS (empty message hash) */
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29;
+    cmd.f.cmd = 29;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  START issued\n");
 
-    cmd.f.CMD = 46;
+    cmd.f.cmd = 46;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  PROCESS issued\n");
 
@@ -130,7 +130,7 @@ static int test_real_kmac_done(void) {
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
-    cmd.f.CMD = 22;
+    cmd.f.cmd = 22;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;

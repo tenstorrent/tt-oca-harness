@@ -28,6 +28,7 @@ FROM debian:trixie-slim@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883
 RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         python3 \
+        python3-pyelftools \
         gcc-riscv64-unknown-elf \
         picolibc-riscv64-unknown-elf \
     && rm -rf /var/lib/apt/lists/*

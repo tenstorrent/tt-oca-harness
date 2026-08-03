@@ -1,35 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
+
 // drbg
 //
 // Top-level DRBG wrapper around entropy_source, CSRNG, and EDN glue.
-//----------------------------------------------------------
-
-`default_nettype none
-
 
 /**
  * @file drbg.sv
  * @brief Top-level DRBG wrapper around CSRNG, EDN, and wrapper-local datapaths.
  *
- * @details Integrates the wrapper-local entropy router, CSRNG seed adapter,
- *          EDN endpoint AXI-Stream adapters, and separate CSRNG/EDN 64-bit
- *          AXI-Lite control ports. All wrapper logic stays in the single
- *          `clk_i` / `rst_ni` domain. Reset may assert asynchronously but must
- *          deassert synchronously to `clk_i`; the wrapper adds no internal
- *          reset-domain crossings or autonomous CSR control sequencing.
+ * @details Integrates the CSRNG seed adapter, EDN endpoint AXI-Stream
+ *          adapters, and separate CSRNG/EDN 64-bit AXI-Lite control ports. The
+ *          producer-driven `entropy_stream_*` input feeds the seed packer
+ *          directly; the entropy source is fire-and-forget, and words offered
+ *          while the seed path is full are dropped without ever forming a
+ *          partial seed. All wrapper logic stays in the single `clk_i` / `rst_ni`
+ *          domain. Reset may assert asynchronously but must deassert
+ *          synchronously to `clk_i`; the wrapper adds no internal reset-domain
+ *          crossings or autonomous CSR control sequencing.
  *
- * @param INGRESS_FIFO_DEPTH Shared depth for the distribution and CSRNG-word FIFOs.
  * @param SEED_FIFO_DEPTH Depth of the complete-seed queue feeding CSRNG.
  * @param EDN_ENDPOINT_COUNT Number of exposed EDN endpoint AXI-Stream outputs.
  * @param EDN_NATIVE_ENDPOINT_COUNT Number of native EDN req/rsp endpoints (bypass AXI-Stream).
  * @param ENDPOINT_FIFO_DEPTH Depth of each EDN endpoint AXI-Stream FIFO.
  */
+
 module drbg import drbg_pkg::*; #(
-    parameter int unsigned INGRESS_FIFO_DEPTH = DRBG_DEFAULT_INGRESS_FIFO_DEPTH,
     parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH,
     parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT,
     parameter int unsigned EDN_NATIVE_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT,
@@ -43,33 +40,30 @@ module drbg import drbg_pkg::*; #(
     parameter type edn_axil_req_t = drbg_axil64_req_t,
     parameter type edn_axil_rsp_t = drbg_axil64_resp_t
 ) (
-    input  wire logic clk_i,
-    input  wire logic rst_ni,
+    input  logic clk_i,
+    input  logic rst_ni,
 
-    input  wire logic [31:0] entropy_stream_data_i,
-    input  wire logic   entropy_stream_vld_i,
-
-    output drbg_axis_req_t entropy_axis_o,
-    input  wire drbg_axis_rsp_t entropy_axis_i,
+    input  logic [31:0] entropy_stream_data_i,
+    input  logic   entropy_stream_vld_i,
 
     output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_o,
-    input  wire drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i,
+    input  drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i,
 
     // Native EDN endpoints (bypass AXI-Stream adapter). Port width is 1 when COUNT==0.
-    input  wire edn_pkg::edn_req_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_req_i,
+    input  edn_pkg::edn_req_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_req_i,
     output edn_pkg::edn_rsp_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_rsp_o,
 
-    input  wire csrng_axil_req_t csrng_axil_req_i,
+    input  csrng_axil_req_t csrng_axil_req_i,
     output csrng_axil_rsp_t csrng_axil_rsp_o,
-    input  wire edn_axil_req_t edn_axil_req_i,
+    input  edn_axil_req_t edn_axil_req_i,
     output edn_axil_rsp_t   edn_axil_rsp_o,
 
-    input  wire prim_mubi_pkg::mubi8_t otp_en_csrng_sw_app_read_i,
-    input  wire lc_ctrl_pkg::lc_tx_t   lc_hw_debug_en_i,
+    input  prim_mubi_pkg::mubi8_t otp_en_csrng_sw_app_read_i,
+    input  lc_ctrl_pkg::lc_tx_t   lc_hw_debug_en_i,
 
-    input  wire prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,
+    input  prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,
     output prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o,
-    input  wire prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i,
+    input  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0] edn_alert_rx_i,
     output prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o,
 
     output logic intr_cs_cmd_req_done_o,
@@ -102,16 +96,11 @@ module drbg import drbg_pkg::*; #(
     logic edn_bridge_forwarded_read_pulse;
     logic edn_bridge_forwarded_write_pulse;
 
-    logic entropy_route_distribution_pulse;
-    logic entropy_route_csrng_pulse;
-    logic entropy_drop_pulse;
-    logic distribution_fifo_full;
-    logic csrng_fifo_full;
-    logic [$clog2(INGRESS_FIFO_DEPTH + 1)-1:0] distribution_fifo_depth;
-    logic [$clog2(INGRESS_FIFO_DEPTH + 1)-1:0] csrng_fifo_depth;
-
-    logic csrng_word_valid;
-    logic [31:0] csrng_word_data;
+    // Entropy stream feeds the seed packer directly. The entropy source is
+    // fire-and-forget (no ready), and prim_packer_fifo declines a word when its
+    // wready is low (only during the 1-cycle full-seed handoff), dropping
+    // fungible raw words without ever forming a partial seed. csrng_word_ready
+    // is therefore observed for assertions/status only, not back-pressure.
     logic csrng_word_ready;
 
     entropy_src_pkg::entropy_src_hw_if_req_t csrng_entropy_req;
@@ -140,37 +129,17 @@ module drbg import drbg_pkg::*; #(
     logic [EDN_ENDPOINT_COUNT-1:0][$clog2(ENDPOINT_FIFO_DEPTH + 1)-1:0] endpoint_fifo_depth;
 
     // =========================================================================
-    // Entropy ingress, seed packing, and endpoint AXI-Stream adaptation
+    // Seed packing and endpoint AXI-Stream adaptation
     // =========================================================================
 
-    drbg_entropy_router #(
-        .INGRESS_FIFO_DEPTH(INGRESS_FIFO_DEPTH)
-    ) u_entropy_router (
-        .clk_i                    (clk_i),
-        .rst_ni                   (rst_ni),
-        .entropy_stream_vld_i     (entropy_stream_vld_i),
-        .entropy_stream_data_i    (entropy_stream_data_i),
-        .entropy_axis_o           (entropy_axis_o),
-        .entropy_axis_i           (entropy_axis_i),
-        .csrng_word_valid_o       (csrng_word_valid),
-        .csrng_word_data_o        (csrng_word_data),
-        .csrng_word_ready_i       (csrng_word_ready),
-        .distribution_accept_o    (entropy_route_distribution_pulse),
-        .csrng_accept_o           (entropy_route_csrng_pulse),
-        .entropy_drop_o           (entropy_drop_pulse),
-        .distribution_fifo_full_o (distribution_fifo_full),
-        .csrng_fifo_full_o        (csrng_fifo_full),
-        .distribution_fifo_depth_o(distribution_fifo_depth),
-        .csrng_fifo_depth_o       (csrng_fifo_depth)
-    );
-
+    // Pack the entropy stream into complete seeds for CSRNG.
     drbg_csrng_seed_adapter #(
         .SEED_FIFO_DEPTH(SEED_FIFO_DEPTH)
     ) u_csrng_seed_adapter (
         .clk_i                 (clk_i),
         .rst_ni                (rst_ni),
-        .csrng_word_valid_i    (csrng_word_valid),
-        .csrng_word_data_i     (csrng_word_data),
+        .csrng_word_valid_i    (entropy_stream_vld_i),
+        .csrng_word_data_i     (entropy_stream_data_i),
         .csrng_word_ready_o    (csrng_word_ready),
         .entropy_src_hw_if_req_i(csrng_entropy_req),
         .entropy_src_hw_if_rsp_o(csrng_entropy_rsp),
@@ -181,6 +150,13 @@ module drbg import drbg_pkg::*; #(
         .packer_word_count_o   (seed_packer_word_count),
         .seed_queue_depth_o    (seed_queue_depth)
     );
+
+    // The entropy source is a fire-and-forget producer with no ready signal. The
+    // packer drops any word offered while it holds a complete seed, which is
+    // acceptable because conditioned words are fungible and no partial seed is
+    // ever formed. Its write-ready is therefore unused; sink it for lint.
+    logic unused_csrng_word_ready;
+    assign unused_csrng_word_ready = csrng_word_ready;
 
     drbg_edn_axis_adapter #(
         .EDN_ENDPOINT_COUNT (EDN_ENDPOINT_COUNT),
@@ -332,35 +308,29 @@ module drbg import drbg_pkg::*; #(
     // Assertions
     // =========================================================================
 
-    `ASSERT_INIT(IngressDepthValid_A, INGRESS_FIFO_DEPTH > 0)
-    `ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
-    `ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-    `ASSERT_INIT(TotalEndpointCountValid_A, EDN_TOTAL_ENDPOINTS > 0)
-    `ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+    `OCAH_OT_ASSERT_INIT(TotalEndpointCountValid_A, EDN_TOTAL_ENDPOINTS > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
-    `ASSERT(CsrngNoTlOnUnsupported_A, csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
-    `ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
-    `ASSERT(EntropyAxisStrbFull_A, entropy_axis_o.tvalid |-> entropy_axis_o.tstrb == 4'hF)
-    `ASSERT(SeedFipsTopLevel_A, seed_queue_valid |-> seed_queue_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
+    `OCAH_OT_ASSERT(CsrngNoTlOnUnsupported_A, csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
+    `OCAH_OT_ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
+    `OCAH_OT_ASSERT(SeedFipsTopLevel_A, seed_queue_valid |-> seed_queue_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
 
-    `ASSERT_KNOWN(EntropyAxisTvalidKnown_A, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTdataKnown_A, entropy_axis_o.tdata, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN_IF(EntropyAxisTstrbKnown_A, entropy_axis_o.tstrb, entropy_axis_o.tvalid)
-    `ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
-    `ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)
-    `ASSERT_KNOWN(IntrCsCmdReqDoneKnown_A, intr_cs_cmd_req_done_o)
-    `ASSERT_KNOWN(IntrCsEntropyReqKnown_A, intr_cs_entropy_req_o)
-    `ASSERT_KNOWN(IntrCsHwInstExcKnown_A, intr_cs_hw_inst_exc_o)
-    `ASSERT_KNOWN(IntrCsFatalErrKnown_A, intr_cs_fatal_err_o)
-    `ASSERT_KNOWN(IntrEdnCmdReqDoneKnown_A, intr_edn_cmd_req_done_o)
-    `ASSERT_KNOWN(IntrEdnFatalErrKnown_A, intr_edn_fatal_err_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
+    `OCAH_OT_ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsCmdReqDoneKnown_A, intr_cs_cmd_req_done_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsEntropyReqKnown_A, intr_cs_entropy_req_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsHwInstExcKnown_A, intr_cs_hw_inst_exc_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrCsFatalErrKnown_A, intr_cs_fatal_err_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrEdnCmdReqDoneKnown_A, intr_edn_cmd_req_done_o)
+    `OCAH_OT_ASSERT_KNOWN(IntrEdnFatalErrKnown_A, intr_edn_fatal_err_o)
 
     for (genvar i = 0; i < EDN_ENDPOINT_COUNT; i++) begin : gen_edn_axis_known
-        `ASSERT_KNOWN(EdnAxisTvalidKnown_A, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EdnAxisTdataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EdnAxisTstrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN(EdnAxisTvalidKnown_A, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EdnAxisTdataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EdnAxisTstrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
     end
 
 endmodule : drbg
 
-`default_nettype wire

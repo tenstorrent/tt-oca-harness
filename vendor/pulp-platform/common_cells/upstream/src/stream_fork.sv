@@ -125,7 +125,7 @@ module stream_fork #(
                             // of the '1 literal when assigned to a port of parametrized width.
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(n_oup_0, N_OUP >= 1, "Number of outputs must be at least 1!")
+    `OCAH_PULP_ASSERT_INIT(n_oup_0, N_OUP >= 1, "Number of outputs must be at least 1!")
 `endif
 
 endmodule

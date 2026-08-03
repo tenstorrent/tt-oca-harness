@@ -90,8 +90,8 @@
 |`axil_pll_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |PLL control AXI-Lite response. |PLL shim |N/A
 |`axil_pvt_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |PVT monitoring AXI-Lite request. |PVT shim |N/A
 |`axil_pvt_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |PVT monitoring AXI-Lite response. |PVT shim |N/A
-|`smc_axil_extension_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC AXI-Lite extension port request for adopter peripheral expansion. |Adopter peripherals |N/A
-|`smc_axil_extension_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC AXI-Lite extension port response. |Adopter peripherals |Tie to DECERR if unused
+|`smc_external_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC AXI-Lite external port request for adopter peripheral expansion. |Adopter peripherals |N/A
+|`smc_external_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC AXI-Lite external port response. |Adopter peripherals |Tie to DECERR if unused
 
 |`smc_efuse_bank_ctrl_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC eFuse bank control AXI-Lite request. |eFuse shim |N/A
 |`smc_efuse_bank_ctrl_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC eFuse bank control AXI-Lite response. |eFuse shim |N/A
@@ -215,7 +215,8 @@
 |`sep_axi_extension_req_o` |`sep_pkg::sep_32_64_6_12_axi_req_t` |Output |- |SEP AXI extension port request passthrough. |Adopter peripherals |N/A
 |`sep_axi_extension_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused
 
-|`sep_reset_n_o` |`logic` |Output |1 |SEP reset output for IP integration (active low). |`sep_ip_integration` |N/A
+|`sep_reset_n_o` |`logic` |Output |1 |Plain SEP reset (post fuse-sense / JTAG override). |`sep_ip_integration` |N/A
+|`sep_cpu_reset_n_o` |`logic` |Output |1 |SEP combined reset (`sep_reset_n` & WDT)|`sep_ip_integration` |N/A
 |`sep_cpu_trace_o` |`sep_pkg::sep_cpu_trace_t` |Output |- |SEP CPU trace output. |Trace infrastructure |N/A
 |`lcc_demote_state_1_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 1. |External lifecycle logic |N/A
 |`lcc_demote_state_2_o` |`logic` |Output |`[1:0]` |SEP lifecycle demote state 2. |External lifecycle logic |N/A

@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // Efuse Interface Controller
-//
-//-----------------------------------------------------------------------------
-
 
 module efuse_interface_controller
 #(
@@ -66,6 +62,8 @@ module efuse_interface_controller
 
     // SEP has LC state, SMC does not
     parameter bit HAS_LC_STATE = 1'b1,
+    parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,
+    parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,
     parameter int unsigned LC_STATE_WIDTH = 4,
     parameter int unsigned LC_STATE_BIT_POSITION = 0,
 
@@ -423,8 +421,8 @@ module efuse_interface_controller
             ) u_efuse_security_tokens (
                 .clk_i                      (clk_i),
                 .rst_ni                     (rst_ni),
+                .test_en_i                  (test_en_i),
                 .fuse_sense_done_i          (fuse_sense_done),
-                .secure_tm_i                (secure_tm_i),
 
                 .apb_req_i                  (apb_endpoint_reqs[efuse_pkg::EFUSE_MMR_REG_MAP]),
                 .apb_resp_o                 (apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP]),
@@ -683,6 +681,8 @@ module efuse_interface_controller
         .REG_ADDR_WIDTH      (EFUSE_MAP_REG_MAP_WIDTH),
 
         .HAS_LC_STATE        (HAS_LC_STATE),
+        .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
+        .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
         .LC_STATE_WIDTH      (LC_STATE_WIDTH),
 
         .TOKEN_MATCH_CODE    (TOKEN_MATCH_CODE),
@@ -834,11 +834,11 @@ module efuse_interface_controller
   // intentionally drive OOB, disable these assertions via the simulator.
 
   // Assert that program addresses are within valid range
-  `ASSERT(ProgramAddrValid_A,
+  `OCAH_OT_ASSERT(ProgramAddrValid_A,
       reg_interface_program_go |-> !reg_interface_program_addr_oob, clk_i, !rst_ni)
 
   // Assert that read addresses are within valid range
-  `ASSERT(ReadAddrValid_A,
+  `OCAH_OT_ASSERT(ReadAddrValid_A,
       reg_interface_read_go |-> !reg_interface_read_addr_oob, clk_i, !rst_ni)
 
 endmodule : efuse_interface_controller

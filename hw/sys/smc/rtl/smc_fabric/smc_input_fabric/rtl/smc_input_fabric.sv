@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller Input Fabric
-//
-//-----------------------------------------------------------------------------
 
 module smc_input_fabric
 #(
@@ -73,7 +70,8 @@ module smc_input_fabric
 	output smc_pkg::remap_debug_t                                                         remap_debug_jtag_o,
 	output smc_pkg::remap_debug_t                                                         remap_debug_log_o,
 	output smc_pkg::remap_debug_t                                                         remap_debug_dma_o,
-	output axi_filter_pkg::filter_debug_t                                                 filter_debug_o,
+	output logic [$clog2(NumFilters)-1:0]                                                 write_filter_hit_debug_o,
+	output logic [$clog2(NumFilters)-1:0]                                                 read_filter_hit_debug_o,
 
 	// Clock gater activity indicators
 	output logic                                                                          sys_in_filter_clk_active_o,
@@ -259,6 +257,7 @@ module smc_input_fabric
 		.axi_resp_t		(smc_pkg::smc_56_64_6_12_axi_resp_t),
 		.NoMstPorts		(2),
 		.MaxTrans		(smc_pkg::FABRIC_MAX_TRANS),
+		.AxiLookBits	(smc_pkg::FABRIC_ID_LOOKUP_BITS),
 		.UniqueIds		(1'b0),
 		.SpillAw		(1'b1),
 		.SpillW			(1'b0),
@@ -307,7 +306,8 @@ module smc_input_fabric
 	logic filter_clk; // gated clock for AXI filter
 
 	axi_cg_snoop #(
-		.OutstandingTx(smc_pkg::FABRIC_MAX_TRANS),
+		// ALL IDs, both directions
+		.OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) sys_in_filter_cg (
@@ -349,6 +349,7 @@ module smc_input_fabric
 		.AxiIdWidth          (smc_pkg::SYS_IN_ID_WIDTH),
 		.AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
 		.MaxTrans            (smc_pkg::FABRIC_MAX_TRANS),
+		.AxiLookBits         (smc_pkg::FABRIC_ID_LOOKUP_BITS),
 		.ErrSlvMaxTrans      (smc_pkg::ERR_SLV_MAX_TRANS),
 		.FlopReqEn           (FilterReqPipelineEnable),
 		.FlopRespEn          (FilterRspPipelineEnable),
@@ -378,7 +379,8 @@ module smc_input_fabric
 		.axi_filtered_out_req_o		(sys_axi_in_filtered_req),
 		.axi_filtered_out_resp_i	(sys_axi_in_filtered_resp),
 
-		.filter_debug_o				(filter_debug_o)
+		.write_filter_hit_debug_o	(write_filter_hit_debug_o),
+		.read_filter_hit_debug_o	(read_filter_hit_debug_o)
 	);
 
 

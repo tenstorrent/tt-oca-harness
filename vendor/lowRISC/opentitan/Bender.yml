@@ -188,6 +188,8 @@ sources:
       - upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
 
       # OpenTitan reggen-generated register tops.
       - upstream/hw/ip/csrng/rtl/csrng_block_encrypt.sv

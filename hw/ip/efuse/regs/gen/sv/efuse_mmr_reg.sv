@@ -75,10 +75,12 @@ module efuse_mmr_reg (
     assign s_apb_pslverr = cpuif_rd_err | cpuif_wr_err;
 
     logic cpuif_req_masked;
+    logic external_pending;
 
     // Read & write latencies are balanced. Stalls not required
-    assign cpuif_req_stall_rd = '0;
-    assign cpuif_req_stall_wr = '0;
+    // except if external
+    assign cpuif_req_stall_rd = external_pending;
+    assign cpuif_req_stall_wr = external_pending;
     assign cpuif_req_masked = cpuif_req
                             & !(!cpuif_req_is_wr & cpuif_req_stall_rd)
                             & !(cpuif_req_is_wr & cpuif_req_stall_wr);
@@ -97,6 +99,8 @@ module efuse_mmr_reg (
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
+    logic decoded_req_is_external;
+
     logic [6:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
@@ -106,22 +110,44 @@ module efuse_mmr_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
+        automatic logic is_external;
+        is_external = '0;
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.RMA_SIP_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
+            is_external |= cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
         end
         decoded_reg_strb.TOKEN_EOP = cpuif_req_masked & (cpuif_addr == 7'h60) & cpuif_req_is_wr;
         decoded_reg_strb.RMA_SIP_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h64) & !cpuif_req_is_wr;
         decoded_reg_strb.RMA_CHIPLET_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h68) & !cpuif_req_is_wr;
         decoded_reg_strb.SEC_DISABLE_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h6c) & !cpuif_req_is_wr;
         decoded_err = '0;
+        decoded_req_is_external = is_external;
+    end
+    logic external_wr_ack;
+    logic external_rd_ack;
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            external_pending <= '0;
+        end else begin
+            if(decoded_req_is_external & ~external_wr_ack & ~external_rd_ack) external_pending <= '1;
+            else if(external_wr_ack | external_rd_ack) external_pending <= '0;
+            `ifndef SYNTHESIS
+                assert_bad_ext_wr_ack: assert(!external_wr_ack || (external_pending | decoded_req_is_external))
+                    else $error("An external wr_ack strobe was asserted when no external request was active");
+                assert_bad_ext_rd_ack: assert(!external_rd_ack || (external_pending | decoded_req_is_external))
+                    else $error("An external rd_ack strobe was asserted when no external request was active");
+            `endif
+        end
     end
 
     // Pass down signals to next stage
@@ -135,24 +161,6 @@ module efuse_mmr_reg (
     // Field logic
     //--------------------------------------------------------------------------
     typedef struct {
-        struct {
-            struct {
-                logic [31:0] next;
-                logic load_next;
-            } token;
-        } RMA_SIP_TOKEN_I[8];
-        struct {
-            struct {
-                logic [31:0] next;
-                logic load_next;
-            } token;
-        } RMA_CHIPLET_TOKEN_I[8];
-        struct {
-            struct {
-                logic [31:0] next;
-                logic load_next;
-            } token;
-        } SEC_DISABLE_TOKEN_I[8];
         struct {
             struct {
                 logic next;
@@ -173,21 +181,6 @@ module efuse_mmr_reg (
     typedef struct {
         struct {
             struct {
-                logic [31:0] value;
-            } token;
-        } RMA_SIP_TOKEN_I[8];
-        struct {
-            struct {
-                logic [31:0] value;
-            } token;
-        } RMA_CHIPLET_TOKEN_I[8];
-        struct {
-            struct {
-                logic [31:0] value;
-            } token;
-        } SEC_DISABLE_TOKEN_I[8];
-        struct {
-            struct {
                 logic value;
             } rma_sip_token_go;
             struct {
@@ -201,67 +194,25 @@ module efuse_mmr_reg (
     field_storage_t field_storage;
 
     for(genvar i0=0; i0<8; i0++) begin
-        // Field: efuse_mmr.RMA_SIP_TOKEN_I[].token
-        always_comb begin
-            automatic logic [31:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.RMA_SIP_TOKEN_I[i0].token.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.RMA_SIP_TOKEN_I[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage.RMA_SIP_TOKEN_I[i0].token.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-                load_next_c = '1;
-            end
-            field_combo.RMA_SIP_TOKEN_I[i0].token.next = next_c;
-            field_combo.RMA_SIP_TOKEN_I[i0].token.load_next = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(field_combo.RMA_SIP_TOKEN_I[i0].token.load_next) begin
-                field_storage.RMA_SIP_TOKEN_I[i0].token.value <= field_combo.RMA_SIP_TOKEN_I[i0].token.next;
-            end
-        end
-        assign hwif_out.RMA_SIP_TOKEN_I[i0].token.value = field_storage.RMA_SIP_TOKEN_I[i0].token.value;
+        // External register: efuse_mmr.RMA_SIP_TOKEN_I[]
+        assign hwif_out.RMA_SIP_TOKEN_I[i0].req = decoded_reg_strb.RMA_SIP_TOKEN_I[i0];
+        assign hwif_out.RMA_SIP_TOKEN_I[i0].req_is_wr = decoded_req_is_wr;
+        assign hwif_out.RMA_SIP_TOKEN_I[i0].wr_data = decoded_wr_data;
+        assign hwif_out.RMA_SIP_TOKEN_I[i0].wr_biten = decoded_wr_biten;
     end
     for(genvar i0=0; i0<8; i0++) begin
-        // Field: efuse_mmr.RMA_CHIPLET_TOKEN_I[].token
-        always_comb begin
-            automatic logic [31:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.RMA_CHIPLET_TOKEN_I[i0].token.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage.RMA_CHIPLET_TOKEN_I[i0].token.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-                load_next_c = '1;
-            end
-            field_combo.RMA_CHIPLET_TOKEN_I[i0].token.next = next_c;
-            field_combo.RMA_CHIPLET_TOKEN_I[i0].token.load_next = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(field_combo.RMA_CHIPLET_TOKEN_I[i0].token.load_next) begin
-                field_storage.RMA_CHIPLET_TOKEN_I[i0].token.value <= field_combo.RMA_CHIPLET_TOKEN_I[i0].token.next;
-            end
-        end
-        assign hwif_out.RMA_CHIPLET_TOKEN_I[i0].token.value = field_storage.RMA_CHIPLET_TOKEN_I[i0].token.value;
+        // External register: efuse_mmr.RMA_CHIPLET_TOKEN_I[]
+        assign hwif_out.RMA_CHIPLET_TOKEN_I[i0].req = decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0];
+        assign hwif_out.RMA_CHIPLET_TOKEN_I[i0].req_is_wr = decoded_req_is_wr;
+        assign hwif_out.RMA_CHIPLET_TOKEN_I[i0].wr_data = decoded_wr_data;
+        assign hwif_out.RMA_CHIPLET_TOKEN_I[i0].wr_biten = decoded_wr_biten;
     end
     for(genvar i0=0; i0<8; i0++) begin
-        // Field: efuse_mmr.SEC_DISABLE_TOKEN_I[].token
-        always_comb begin
-            automatic logic [31:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.SEC_DISABLE_TOKEN_I[i0].token.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage.SEC_DISABLE_TOKEN_I[i0].token.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-                load_next_c = '1;
-            end
-            field_combo.SEC_DISABLE_TOKEN_I[i0].token.next = next_c;
-            field_combo.SEC_DISABLE_TOKEN_I[i0].token.load_next = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(field_combo.SEC_DISABLE_TOKEN_I[i0].token.load_next) begin
-                field_storage.SEC_DISABLE_TOKEN_I[i0].token.value <= field_combo.SEC_DISABLE_TOKEN_I[i0].token.next;
-            end
-        end
-        assign hwif_out.SEC_DISABLE_TOKEN_I[i0].token.value = field_storage.SEC_DISABLE_TOKEN_I[i0].token.value;
+        // External register: efuse_mmr.SEC_DISABLE_TOKEN_I[]
+        assign hwif_out.SEC_DISABLE_TOKEN_I[i0].req = decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0];
+        assign hwif_out.SEC_DISABLE_TOKEN_I[i0].req_is_wr = decoded_req_is_wr;
+        assign hwif_out.SEC_DISABLE_TOKEN_I[i0].wr_data = decoded_wr_data;
+        assign hwif_out.SEC_DISABLE_TOKEN_I[i0].wr_biten = decoded_wr_biten;
     end
     // Field: efuse_mmr.TOKEN_EOP.rma_sip_token_go
     always_comb begin
@@ -345,16 +296,58 @@ module efuse_mmr_reg (
     //--------------------------------------------------------------------------
     // Write response
     //--------------------------------------------------------------------------
-    assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
+    always_comb begin
+        automatic logic wr_ack;
+        wr_ack = '0;
+        for(int i0=0; i0<8; i0++) begin
+            wr_ack |= hwif_in.RMA_SIP_TOKEN_I[i0].wr_ack;
+        end
+        for(int i0=0; i0<8; i0++) begin
+            wr_ack |= hwif_in.RMA_CHIPLET_TOKEN_I[i0].wr_ack;
+        end
+        for(int i0=0; i0<8; i0++) begin
+            wr_ack |= hwif_in.SEC_DISABLE_TOKEN_I[i0].wr_ack;
+        end
+        external_wr_ack = wr_ack;
+    end
+    assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
     assign cpuif_wr_err = '0;
 
     //--------------------------------------------------------------------------
     // Readback
     //--------------------------------------------------------------------------
+    logic readback_external_rd_ack_c;
+    always_comb begin
+        automatic logic rd_ack;
+        rd_ack = '0;
+        for(int i0=0; i0<8; i0++) begin
+            rd_ack |= hwif_in.RMA_SIP_TOKEN_I[i0].rd_ack;
+        end
+        for(int i0=0; i0<8; i0++) begin
+            rd_ack |= hwif_in.RMA_CHIPLET_TOKEN_I[i0].rd_ack;
+        end
+        for(int i0=0; i0<8; i0++) begin
+            rd_ack |= hwif_in.SEC_DISABLE_TOKEN_I[i0].rd_ack;
+        end
+        readback_external_rd_ack_c = rd_ack;
+    end
+
+    logic readback_external_rd_ack;
+
+    assign readback_external_rd_ack = readback_external_rd_ack_c;
 
     logic [6:0] rd_mux_addr;
-    assign rd_mux_addr = decoded_addr;
+    logic [6:0] pending_rd_addr;
+    // Hold read mux address to guarantee it is stable throughout any external accesses
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            pending_rd_addr <= '0;
+        end else begin
+            if(decoded_req) pending_rd_addr <= decoded_addr;
+        end
+    end
+    assign rd_mux_addr = decoded_req ? decoded_addr : pending_rd_addr;
 
     logic readback_err;
     logic readback_done;
@@ -364,17 +357,17 @@ module efuse_mmr_reg (
         readback_data_var = '0;
         for(int i0=0; i0<8; i0++) begin
             if(rd_mux_addr == 7'h0 + (7)'(i0) * 7'h4) begin
-                readback_data_var[31:0] = field_storage.RMA_SIP_TOKEN_I[i0].token.value;
+                readback_data_var = hwif_in.RMA_SIP_TOKEN_I[i0].rd_data;
             end
         end
         for(int i0=0; i0<8; i0++) begin
             if(rd_mux_addr == 7'h20 + (7)'(i0) * 7'h4) begin
-                readback_data_var[31:0] = field_storage.RMA_CHIPLET_TOKEN_I[i0].token.value;
+                readback_data_var = hwif_in.RMA_CHIPLET_TOKEN_I[i0].rd_data;
             end
         end
         for(int i0=0; i0<8; i0++) begin
             if(rd_mux_addr == 7'h40 + (7)'(i0) * 7'h4) begin
-                readback_data_var[31:0] = field_storage.SEC_DISABLE_TOKEN_I[i0].token.value;
+                readback_data_var = hwif_in.SEC_DISABLE_TOKEN_I[i0].rd_data;
             end
         end
         if(rd_mux_addr == 7'h64) begin
@@ -387,11 +380,12 @@ module efuse_mmr_reg (
             readback_data_var[5:0] = hwif_in.SEC_DISABLE_TOKEN_MATCH.token_match_status.next;
         end
         readback_data = readback_data_var;
-        readback_done = decoded_req & ~decoded_req_is_wr;
+        readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
         readback_err = '0;
     end
 
-    assign cpuif_rd_ack = readback_done;
+    assign external_rd_ack = readback_external_rd_ack;
+    assign cpuif_rd_ack = readback_done | readback_external_rd_ack;
     assign cpuif_rd_data = readback_data;
     assign cpuif_rd_err = readback_err;
 endmodule

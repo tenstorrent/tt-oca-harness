@@ -8,24 +8,21 @@
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</a></td><td>R</td><td>Timeout interrupt</td></tr>
-<tr><td>0x20</td><td><a href="#PKA_CTRL">PKA_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x30</td><td><a href="#SPACC_CTRL">SPACC_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x40</td><td><a href="#TIMEOUT_COUNT_TROOT">TIMEOUT_COUNT_TROOT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x48</td><td><a href="#TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x50</td><td><a href="#TIMEOUT_COUNT_SPACC">TIMEOUT_COUNT_SPACC</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x58</td><td><a href="#TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x60</td><td><a href="#TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x68</td><td><a href="#TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x70</td><td><a href="#TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x78</td><td><a href="#TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x80</td><td><a href="#TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x88</td><td><a href="#TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x90</td><td><a href="#TIMEOUT_ENABLE">TIMEOUT_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x98</td><td><a href="#TIMEOUT_CLEAR">TIMEOUT_CLEAR</a></td><td>W</td><td>-</td></tr>
-<tr><td>0xA0</td><td><a href="#TIMEOUT_MODE">TIMEOUT_MODE</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
+<tr><td>0x10</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</a></td><td>R</td><td>Reserved - per-block timeout interrupt not yet implemented.</td></tr>
+<tr><td>0x20</td><td><a href="#PKA_CTRL">PKA_CTRL</a></td><td>RW</td><td>TODO: PKA control - placeholder fields, not yet implemented.</td></tr>
+<tr><td>0x28</td><td><a href="#TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x30</td><td><a href="#TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x38</td><td><a href="#TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x40</td><td><a href="#TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x48</td><td><a href="#TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x50</td><td><a href="#TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x58</td><td><a href="#TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x60</td><td><a href="#TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</a></td><td>RW</td><td>Reserved - per-block timeout count/threshold not yet implemented.</td></tr>
+<tr><td>0x68</td><td><a href="#TIMEOUT_ENABLE">TIMEOUT_ENABLE</a></td><td>RW</td><td>Reserved - per-block timeout enable not yet implemented.</td></tr>
+<tr><td>0x70</td><td><a href="#TIMEOUT_CLEAR">TIMEOUT_CLEAR</a></td><td>W</td><td>Reserved - per-block timeout interrupt-clear not yet implemented.</td></tr>
+<tr><td>0x78</td><td><a href="#TIMEOUT_MODE">TIMEOUT_MODE</a></td><td>W</td><td>Reserved - per-block timeout mode not yet implemented.</td></tr>
 <tr><td>0xB0</td><td><a href="#SEP_TEST_CTRL">SEP_TEST_CTRL</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xC0</td><td><a href="#SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xC8</td><td><a href="#SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</a></td><td>RW</td><td>-</td></tr>
@@ -41,173 +38,100 @@
 <tr><td>0x188</td><td><a href="#SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</a></td><td>RW</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The<br>NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 <tr><td>0x190</td><td><a href="#EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</a></td><td>RW</td><td>Per-stream external TRNG source selection for crypto subsystem entropy muxes.</td></tr>
 <tr><td>0x198</td><td><a href="#EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</a></td><td>RW</td><td>Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.</td></tr>
+<tr><td>0x1A0</td><td><a href="#KM_WIPE_CTRL">KM_WIPE_CTRL</a></td><td>RW</td><td>Key Manager emergency wipe control.</td></tr>
 <tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
 </table>
 <h2>Register Details:</h2>
 <h3 id="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>21:16</td><td>cg_hysteresis</td><td>RW</td><td>0x1F</td><td>Clockgate hysteresis</td></tr>
-<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>12</td><td>entropy_fifo_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the entropy fifo, using clk_gater, default should be 0</td></tr>
-<tr><td>11</td><td>ot_hmac_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the opentitan hmac engine/ default is 0, out clock is always enabled</td></tr>
-<tr><td>10</td><td>filter_out_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the outbound filters, even using clkgater, but this enable has been inverted, so should use 0 as default</td></tr>
-<tr><td>9</td><td>alias_remap_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the alias remap, using clk_gater, default should be 0</td></tr>
-<tr><td>8</td><td>zeroer_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the zeroer, using clkgater, but this enable has been inverted, so shouould use 0 as default</td></tr>
-<tr><td>7</td><td>sram_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the sram, using clkgater, default should be 1</td></tr>
-<tr><td>6</td><td>filter_in_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the inbound filters, using clk_gater, default should be 0</td></tr>
-<tr><td>5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>fabric_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the fabric</td></tr>
-<tr><td>3</td><td>mailbox_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the mailbox,using clk_gater, default should be 0</td></tr>
-<tr><td>2</td><td>dma_cg_enable</td><td>RW</td><td>0x0</td><td>Clockgate enable for the DMA, using clk_gater, deafault should be 0</td></tr>
-<tr><td>1</td><td>pka_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the PKA, default should be 1, using clkgater, meaining out clock is enabled</td></tr>
-<tr><td>0</td><td>spacc_cg_enable</td><td>RW</td><td>0x1</td><td>Clockgate enable for the SPAcc/ Default is 1, this is using a static clkgater, meaning out clock is enabled by default</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>pka_cg_enable</td><td>RW</td><td>0x0</td><td>Reserved - PKA clock-gate enable, not yet implemented.</td></tr>
 </table>
 <h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>rc</td><td>R</td><td>-</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset</td></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset</td></tr>
 </table>
 <h3 id="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>outbound_mailbox_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo outbound mailbox</td></tr>
-<tr><td>8</td><td>inbound_mailbox_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo inbound mailbox</td></tr>
-<tr><td>7</td><td>entropy_write_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo write axil</td></tr>
-<tr><td>6</td><td>entropy_read_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for entropy fifo read axil</td></tr>
-<tr><td>5</td><td>filter_out_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
-<tr><td>4</td><td>alias_remap_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
-<tr><td>3</td><td>dma_data_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for dma data axi</td></tr>
-<tr><td>2</td><td>spacc_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for spacc axi</td></tr>
-<tr><td>1</td><td>sys_in_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for sys in axi</td></tr>
-<tr><td>0</td><td>troot_timeout_int</td><td>R</td><td>0x0</td><td>Timeout interrupt for troot axi</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved - timeout interrupt status not yet implemented.</td></tr>
 </table>
 <h3 id="PKA_CTRL">PKA_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>pka_noise_src_valid</td><td>RW</td><td>0x0</td><td>pka_noise_src_valid</td></tr>
-<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>pka_noise_src</td><td>RW</td><td>0x0</td><td>pka_noise_src</td></tr>
-<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>pka_dpa_disable</td><td>RW</td><td>0x1</td><td>pka_dpa_disable</td></tr>
-</table>
-<h3 id="SPACC_CTRL">SPACC_CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>spacc_dpa_rand_vld</td><td>RW</td><td>0x0</td><td>spacc_dpa_rand_vld</td></tr>
-<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>spacc_dpa_rand</td><td>RW</td><td>0x0</td><td>spacc_dpa_rand</td></tr>
-<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>spacc_dpa_disable</td><td>RW</td><td>0x1</td><td>spacc_dpa_disable</td></tr>
-</table>
-<h3 id="TIMEOUT_COUNT_TROOT">TIMEOUT_COUNT_TROOT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>pka_noise_src_valid</td><td>RW</td><td>0x0</td><td>Reserved - PKA noise source valid, not yet implemented.</td></tr>
+<tr><td>1</td><td>pka_noise_src</td><td>RW</td><td>0x0</td><td>Reserved - PKA noise source select, not yet implemented.</td></tr>
+<tr><td>0</td><td>pka_dpa_disable</td><td>RW</td><td>0x0</td><td>Reserved - disable DPA countermeasures in PKA, not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
-</table>
-<h3 id="TIMEOUT_COUNT_SPACC">TIMEOUT_COUNT_SPACC</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>47:0</td><td>data</td><td>RW</td><td>0x0</td><td>Timeout value</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_ENABLE">TIMEOUT_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>outbound_mailbox_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for outbound mailbox</td></tr>
-<tr><td>8</td><td>inbound_mailbox_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for inbound mailbox</td></tr>
-<tr><td>7</td><td>entropy_write_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for entropy write</td></tr>
-<tr><td>6</td><td>entropy_read_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for entropy read</td></tr>
-<tr><td>5</td><td>filter_out_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for output filter</td></tr>
-<tr><td>4</td><td>alias_remap_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for input alias remap</td></tr>
-<tr><td>3</td><td>dma_data_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for dma data axi</td></tr>
-<tr><td>2</td><td>spacc_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for spacc axi</td></tr>
-<tr><td>1</td><td>sys_in_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for sys in axi</td></tr>
-<tr><td>0</td><td>troot_timeout_en</td><td>RW</td><td>0x0</td><td>Timeout enable for troot axi</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_CLEAR">TIMEOUT_CLEAR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>outbound_mailbox_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for outbound mailbox</td></tr>
-<tr><td>8</td><td>inbound_mailbox_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for inbound mailbox</td></tr>
-<tr><td>7</td><td>entropy_write_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for entropy write</td></tr>
-<tr><td>6</td><td>entropy_read_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for entropy read</td></tr>
-<tr><td>5</td><td>filter_out_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for output filter</td></tr>
-<tr><td>4</td><td>alias_remap_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for input alias remap</td></tr>
-<tr><td>3</td><td>dma_data_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for dma data axi</td></tr>
-<tr><td>2</td><td>spacc_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for spacc axi</td></tr>
-<tr><td>1</td><td>sys_in_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for sys in axi</td></tr>
-<tr><td>0</td><td>troot_timeout_clear</td><td>W</td><td>0x0</td><td>Timeout interrupt clear for troot axi</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_MODE">TIMEOUT_MODE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:18</td><td>outbound_mailbox_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for outbound mailbox</td></tr>
-<tr><td>17:16</td><td>inbound_mailbox_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for inbound mailbox</td></tr>
-<tr><td>15:14</td><td>entropy_write_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for entropy write</td></tr>
-<tr><td>13:12</td><td>entropy_read_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for entropy read</td></tr>
-<tr><td>11:10</td><td>filter_out_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for output filter</td></tr>
-<tr><td>9:8</td><td>alias_remap_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for input alias remap</td></tr>
-<tr><td>7:6</td><td>dma_data_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for dma data axi</td></tr>
-<tr><td>5:4</td><td>spacc_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for spacc axi</td></tr>
-<tr><td>3:2</td><td>sys_in_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for sys in axi</td></tr>
-<tr><td>1:0</td><td>troot_timeout_mode</td><td>W</td><td>0x0</td><td>Timeout mode for troot axi</td></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <h3 id="SEP_TEST_CTRL">SEP_TEST_CTRL</h3>
 <table>
@@ -217,9 +141,8 @@
 <tr><td>29</td><td>fast_dccm_en</td><td>R</td><td>0x0</td><td>Fast DCCM Enable</td></tr>
 <tr><td>28</td><td>fast_sram_en</td><td>R</td><td>0x0</td><td>Fast SRAM Enable</td></tr>
 <tr><td>27</td><td>fast_pka_en</td><td>R</td><td>0x0</td><td>Fast PKA Enable</td></tr>
-<tr><td>26</td><td>fast_spacc_en</td><td>R</td><td>0x0</td><td>Fast SPAcc Enable</td></tr>
-<tr><td>25</td><td>sep_standalone</td><td>R</td><td>0x0</td><td>SEP is standalone (not part of eg SMU)</td></tr>
-<tr><td>24:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>sep_standalone</td><td>R</td><td>0x0</td><td>SEP is standalone (not part of eg SMU)</td></tr>
+<tr><td>25:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</h3>
 <table>
@@ -231,7 +154,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xC0000000</td><td>-</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xD0000000</td><td>-</td></tr>
 </table>
 <h3 id="SEP_REGION_SIZE">SEP_REGION_SIZE</h3>
 <table>
@@ -299,14 +222,20 @@
 <h3 id="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>sel</td><td>RW</td><td>0x3</td><td>TRNG source select per stream. Bit N selects the source for stream N.<br>0 = internal DRBG output, 1 = external TRNG (default).</td></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>sel</td><td>RW</td><td>0x7</td><td>TRNG source select per stream. Bit N selects the source for stream N<br>(bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).<br>0 = internal DRBG output, 1 = external TRNG (default).</td></tr>
 </table>
 <h3 id="EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
+</table>
+<h3 id="KM_WIPE_CTRL">KM_WIPE_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.</td></tr>
 </table>
 <h3 id="SEP_VERSION_ID">SEP_VERSION_ID</h3>
 <table>

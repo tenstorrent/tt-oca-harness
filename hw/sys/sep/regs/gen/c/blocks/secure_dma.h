@@ -93,49 +93,49 @@ typedef union {
 } secure_dma__ALERT_TEST_t;
 
 // reg - secure_dma::SRC_ADDR_LO
-#define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bm 0xffffffff
-#define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bp 0
-#define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_bw 32
-#define SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_reset 0x0
+#define SECURE_DMA__SRC_ADDR_LO__ADDR_bm 0xffffffff
+#define SECURE_DMA__SRC_ADDR_LO__ADDR_bp 0
+#define SECURE_DMA__SRC_ADDR_LO__ADDR_bw 32
+#define SECURE_DMA__SRC_ADDR_LO__ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SRC_ADDR_LO :32;
+        uint32_t ADDR :32;
     } f;
     uint32_t w;
 } secure_dma__SRC_ADDR_LO_t;
 
 // reg - secure_dma::SRC_ADDR_HI
-#define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bm 0xffffffff
-#define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bp 0
-#define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_bw 32
-#define SECURE_DMA__SRC_ADDR_HI__SRC_ADDR_HI_reset 0x0
+#define SECURE_DMA__SRC_ADDR_HI__ADDR_bm 0xffffffff
+#define SECURE_DMA__SRC_ADDR_HI__ADDR_bp 0
+#define SECURE_DMA__SRC_ADDR_HI__ADDR_bw 32
+#define SECURE_DMA__SRC_ADDR_HI__ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SRC_ADDR_HI :32;
+        uint32_t ADDR :32;
     } f;
     uint32_t w;
 } secure_dma__SRC_ADDR_HI_t;
 
 // reg - secure_dma::DST_ADDR_LO
-#define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bm 0xffffffff
-#define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bp 0
-#define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_bw 32
-#define SECURE_DMA__DST_ADDR_LO__DST_ADDR_LO_reset 0x0
+#define SECURE_DMA__DST_ADDR_LO__ADDR_bm 0xffffffff
+#define SECURE_DMA__DST_ADDR_LO__ADDR_bp 0
+#define SECURE_DMA__DST_ADDR_LO__ADDR_bw 32
+#define SECURE_DMA__DST_ADDR_LO__ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DST_ADDR_LO :32;
+        uint32_t ADDR :32;
     } f;
     uint32_t w;
 } secure_dma__DST_ADDR_LO_t;
 
 // reg - secure_dma::DST_ADDR_HI
-#define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bm 0xffffffff
-#define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bp 0
-#define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_bw 32
-#define SECURE_DMA__DST_ADDR_HI__DST_ADDR_HI_reset 0x0
+#define SECURE_DMA__DST_ADDR_HI__ADDR_bm 0xffffffff
+#define SECURE_DMA__DST_ADDR_HI__ADDR_bp 0
+#define SECURE_DMA__DST_ADDR_HI__ADDR_bw 32
+#define SECURE_DMA__DST_ADDR_HI__ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DST_ADDR_HI :32;
+        uint32_t ADDR :32;
     } f;
     uint32_t w;
 } secure_dma__DST_ADDR_HI_t;
@@ -222,37 +222,37 @@ typedef union {
 } secure_dma__CFG_REGWEN_t;
 
 // reg - secure_dma::TOTAL_DATA_SIZE
-#define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bm 0xffffffff
-#define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bp 0
-#define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_bw 32
-#define SECURE_DMA__TOTAL_DATA_SIZE__DATA_SIZE_reset 0x0
+#define SECURE_DMA__TOTAL_DATA_SIZE__SIZE_bm 0xffffffff
+#define SECURE_DMA__TOTAL_DATA_SIZE__SIZE_bp 0
+#define SECURE_DMA__TOTAL_DATA_SIZE__SIZE_bw 32
+#define SECURE_DMA__TOTAL_DATA_SIZE__SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DATA_SIZE :32;
+        uint32_t SIZE :32;
     } f;
     uint32_t w;
 } secure_dma__TOTAL_DATA_SIZE_t;
 
 // reg - secure_dma::CHUNK_DATA_SIZE
-#define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bm 0xffffffff
-#define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bp 0
-#define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_bw 32
-#define SECURE_DMA__CHUNK_DATA_SIZE__DATA_SIZE_reset 0x0
+#define SECURE_DMA__CHUNK_DATA_SIZE__SIZE_bm 0xffffffff
+#define SECURE_DMA__CHUNK_DATA_SIZE__SIZE_bp 0
+#define SECURE_DMA__CHUNK_DATA_SIZE__SIZE_bw 32
+#define SECURE_DMA__CHUNK_DATA_SIZE__SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DATA_SIZE :32;
+        uint32_t SIZE :32;
     } f;
     uint32_t w;
 } secure_dma__CHUNK_DATA_SIZE_t;
 
 // reg - secure_dma::TRANSFER_WIDTH
-#define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm 0x3
-#define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bp 0
-#define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bw 2
-#define SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset 0x2
+#define SECURE_DMA__TRANSFER_WIDTH__WIDTH_bm 0x3
+#define SECURE_DMA__TRANSFER_WIDTH__WIDTH_bp 0
+#define SECURE_DMA__TRANSFER_WIDTH__WIDTH_bw 2
+#define SECURE_DMA__TRANSFER_WIDTH__WIDTH_reset 0x2
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t TRANSACTION_WIDTH :2;
+        uint32_t WIDTH :2;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -420,17 +420,17 @@ typedef union {
     uint32_t w;
 } secure_dma__ERROR_CODE_t;
 
-// reg - secure_dma::SHA2_DIGEST_0
-#define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bm 0xffffffff
-#define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bp 0
-#define SECURE_DMA__SHA2_DIGEST_0__DATA_0_bw 32
-#define SECURE_DMA__SHA2_DIGEST_0__DATA_0_reset 0x0
+// reg - secure_dma::SHA2_DIGEST
+#define SECURE_DMA__SHA2_DIGEST__DATA_bm 0xffffffff
+#define SECURE_DMA__SHA2_DIGEST__DATA_bp 0
+#define SECURE_DMA__SHA2_DIGEST__DATA_bw 32
+#define SECURE_DMA__SHA2_DIGEST__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DATA_0 :32;
+        uint32_t DATA :32;
     } f;
     uint32_t w;
-} secure_dma__SHA2_DIGEST_0_t;
+} secure_dma__SHA2_DIGEST_t;
 
 // reg - secure_dma::HANDSHAKE_INTR_ENABLE
 #define SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bm 0x7ff
@@ -471,29 +471,29 @@ typedef union {
     uint32_t w;
 } secure_dma__CLEAR_INTR_BUS_t;
 
-// reg - secure_dma::INTR_SRC_ADDR_0
-#define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bm 0xffffffff
-#define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bp 0
-#define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_bw 32
-#define SECURE_DMA__INTR_SRC_ADDR_0__ADDR_0_reset 0x0
+// reg - secure_dma::INTR_SRC_ADDR
+#define SECURE_DMA__INTR_SRC_ADDR__ADDR_bm 0xffffffff
+#define SECURE_DMA__INTR_SRC_ADDR__ADDR_bp 0
+#define SECURE_DMA__INTR_SRC_ADDR__ADDR_bw 32
+#define SECURE_DMA__INTR_SRC_ADDR__ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ADDR_0 :32;
+        uint32_t ADDR :32;
     } f;
     uint32_t w;
-} secure_dma__INTR_SRC_ADDR_0_t;
+} secure_dma__INTR_SRC_ADDR_t;
 
-// reg - secure_dma::INTR_SRC_WR_VAL_0
-#define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bm 0xffffffff
-#define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bp 0
-#define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_bw 32
-#define SECURE_DMA__INTR_SRC_WR_VAL_0__WR_VAL_0_reset 0x0
+// reg - secure_dma::INTR_SRC_WR_VAL
+#define SECURE_DMA__INTR_SRC_WR_VAL__WR_VAL_bm 0xffffffff
+#define SECURE_DMA__INTR_SRC_WR_VAL__WR_VAL_bp 0
+#define SECURE_DMA__INTR_SRC_WR_VAL__WR_VAL_bw 32
+#define SECURE_DMA__INTR_SRC_WR_VAL__WR_VAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t WR_VAL_0 :32;
+        uint32_t WR_VAL :32;
     } f;
     uint32_t w;
-} secure_dma__INTR_SRC_WR_VAL_0_t;
+} secure_dma__INTR_SRC_WR_VAL_t;
 
 // addrmap - secure_dma
 typedef struct __attribute__ ((__packed__)) {
@@ -519,13 +519,48 @@ typedef struct __attribute__ ((__packed__)) {
     secure_dma__DST_CONFIG_t DST_CONFIG;
     secure_dma__STATUS_t STATUS;
     secure_dma__ERROR_CODE_t ERROR_CODE;
-    secure_dma__SHA2_DIGEST_0_t SHA2_DIGEST_0[16];
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_0;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_1;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_2;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_3;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_4;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_5;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_6;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_7;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_8;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_9;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_10;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_11;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_12;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_13;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_14;
+    secure_dma__SHA2_DIGEST_t SHA2_DIGEST_15;
     secure_dma__HANDSHAKE_INTR_ENABLE_t HANDSHAKE_INTR_ENABLE;
     secure_dma__CLEAR_INTR_SRC_t CLEAR_INTR_SRC;
     secure_dma__CLEAR_INTR_BUS_t CLEAR_INTR_BUS;
-    secure_dma__INTR_SRC_ADDR_0_t INTR_SRC_ADDR_0[11];
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_0;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_1;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_2;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_3;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_4;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_5;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_6;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_7;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_8;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_9;
+    secure_dma__INTR_SRC_ADDR_t INTR_SRC_ADDR_10;
     uint8_t RESERVED_d0_123[0x54];
-    secure_dma__INTR_SRC_WR_VAL_0_t INTR_SRC_WR_VAL_0[11];
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_0;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_1;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_2;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_3;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_4;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_5;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_6;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_7;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_8;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_9;
+    secure_dma__INTR_SRC_WR_VAL_t INTR_SRC_WR_VAL_10;
 } secure_dma_t;
 
 

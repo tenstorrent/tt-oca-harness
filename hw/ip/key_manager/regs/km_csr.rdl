@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+// Copyright 2026 Tenstorrent Inc.
 
 // Key Manager Control and Status Registers (KMCSR)
 // SystemRDL 2.0 Register Definition
 //
-// Copyright 2026 Tenstorrent Inc.
 //
 // Base Address: 0x0000_E000
 // Size: 4KB (0x1000)
@@ -1187,11 +1187,21 @@ addrmap km_csr {
     //=========================================================================
     // OTP_READ_LOCK Register (0x300) - Write-1-only, warm reset domain
     //=========================================================================
-    // One lock bit per OTP readout field. Writing 1 to a bit prevents software
-    // from reading the corresponding OTP field (km_csr.sv returns zero).
+    // Warm-reset-domain read-lock register.  One lock bit per OTP readout
+    // field, same layout as OTP_READ_LOCK_COLD.  These bits are cleared by
+    // any warm or cold reset; ROM firmware re-applies them on every boot
+    // (warm or cold) before handing control to mutable firmware.
+    //
+    // The effective read-lock for each OTP field is the OR of the corresponding
+    // bit in OTP_READ_LOCK and OTP_READ_LOCK_COLD.  Either register alone is
+    // sufficient to suppress CSR readback for a field (km_csr.sv returns zero).
+    //
+    // ROM firmware sets these bits using a triple-write convention
+    // (rom_otp_set_read_lock).  The warm-reset domain is enforced by
+    // resetsignal = WARM_RST_N on every field.
     reg otp_read_lock_reg {
         name = "OTP_READ_LOCK";
-        desc = "OTP field read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero. Warm-reset domain.";
+        desc = "OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.";
 
         field {
             name = "LIFE_CYCLE";
@@ -1263,6 +1273,90 @@ addrmap km_csr {
     };
 
     otp_read_lock_reg OTP_READ_LOCK @ 0x300;
+
+    //=========================================================================
+    // OTP_READ_LOCK_COLD Register (0x308) - Write-1-only, cold reset domain
+    //=========================================================================
+    // Parallel cold-reset-domain read-lock register.  One lock bit per OTP
+    // readout field, same layout as OTP_READ_LOCK.  These bits survive warm
+    // reset (including soft reset) and are cleared only by cold reset.
+    //
+    // The effective read-lock for each OTP field is the OR of the corresponding
+    // bit in OTP_READ_LOCK and OTP_READ_LOCK_COLD.  Either register alone is
+    // sufficient to suppress CSR readback for a field (km_csr.sv returns zero).
+    //
+    // SEP host may set cold-reset read-lock bits via CMD_OTP_READ_LOCK_COLD
+    // (0x28).  The cold-reset domain is enforced by the absence of
+    // resetsignal = WARM_RST_N; the generated regblock uses arst_n (wired to
+    // cold_rst_ni in km_csr.sv) as the only reset for these fields.
+    reg otp_read_lock_cold_reg {
+        name = "OTP_READ_LOCK_COLD";
+        desc = "OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK | OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.";
+
+        field {
+            name = "LIFE_CYCLE";
+            desc = "Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } life_cycle[0:0];
+
+        field {
+            name = "DEMOTION";
+            desc = "Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } demotion[1:1];
+
+        field {
+            name = "CHIPLET_UID";
+            desc = "Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } chiplet_uid[2:2];
+
+        field {
+            name = "SIP_UID";
+            desc = "Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sip_uid[3:3];
+
+        field {
+            name = "SYS_UID";
+            desc = "Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sys_uid[4:4];
+
+        field {
+            name = "CLASS_KEY";
+            desc = "Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } class_key[5:5];
+
+        field {
+            name = "RSVD";
+            desc = "Reserved";
+            sw = r;
+            hw = na;
+            reset = 26'h0;
+        } rsvd[31:6];
+    };
+
+    otp_read_lock_cold_reg OTP_READ_LOCK_COLD @ 0x308;
 
     //=========================================================================
     // OTP_CHANGE_STATUS Register (0x304) - Sticky per-field change flags

@@ -1,6 +1,8 @@
 /* Copyright 2019 SiFive, Inc */
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include "smc_rom_defs.h"
+
 #define METAL_MSTATUS_MIE_SHIFT 8
 #define METAL_MSTATUS_MPP_M     3
 #define METAL_MSTATUS_MPP_SHIFT 11
@@ -65,10 +67,29 @@ early_trap_vector:
     csrr t1, mepc
     csrr t2, mtval
 
+    /*
+     * Unused ROM contains EBREAK instructions. Classify a breakpoint whose
+     * MEPC is in [__rom_used_end, __rom_end) as a ROM padding trap.
+     */
+    li   t3, 3
+    bne  t0, t3, generic_trap_fail
+
+    la   t3, __rom_used_end
+    la   t4, __rom_end
+    bltu t1, t3, generic_trap_fail
+    bgeu t1, t4, generic_trap_fail
+
+    li t5, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
+    li t6, ROM_PADDING_TRAP_STATUS_VAL
+    sw t6, 0(t5)
+    j trap_infinite_loop
+
+generic_trap_fail:
     # Store 0xffffffff to 0xC0039080 (Embedded test fail)
     li t5, 0xC0039080
     li t6, 0xffffffff
     sw t6, 0(t5)
 
-    j early_trap_vector
+trap_infinite_loop:
+    j trap_infinite_loop
     .cfi_endproc

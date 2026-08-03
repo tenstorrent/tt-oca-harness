@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // GPIO typedefs and parameters
-//
-//-----------------------------------------------------------------------------
 
 package gpio_pkg;
 
@@ -22,6 +19,5 @@ package gpio_pkg;
     typedef logic [DATA_WIDTH    -1:0] data_t;
     typedef logic [STRB_WIDTH    -1:0] strb_t;
     `AXI_LITE_TYPEDEF_ALL(gpio_axil, addr_t, data_t, strb_t)
-
 
 endpackage

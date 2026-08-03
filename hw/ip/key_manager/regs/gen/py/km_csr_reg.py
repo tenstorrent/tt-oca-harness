@@ -4,7 +4,7 @@
 from ctypes import Structure, Union, c_uint32
 
 KM_CSR_REG_MAP_BASE_ADDR = 0x00000000
-KM_CSR_REG_MAP_SIZE = 0x00000308
+KM_CSR_REG_MAP_SIZE = 0x0000030C
 VERSION_REG_OFFSET = 0x00000000
 VERSION_REG_ADDR = 0x00000000
 CTRL_REG_OFFSET = 0x00000004
@@ -195,6 +195,8 @@ OTP_READ_LOCK_REG_OFFSET = 0x00000300
 OTP_READ_LOCK_REG_ADDR = 0x00000300
 OTP_CHANGE_STATUS_REG_OFFSET = 0x00000304
 OTP_CHANGE_STATUS_REG_ADDR = 0x00000304
+OTP_READ_LOCK_COLD_REG_OFFSET = 0x00000308
+OTP_READ_LOCK_COLD_REG_ADDR = 0x00000308
 KM_CSR_VERSION_REG_REG_DEFAULT = 0x00010000
 class KM_CSR_VERSION_REG_reg_t(Structure):
     _fields_ = [
@@ -1144,6 +1146,40 @@ class KM_CSR_OTP_CHANGE_STATUS_REG_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(KM_CSR_OTP_CHANGE_STATUS_REG_reg_u, self).__init__(*args, **kwargs)
         self.val = KM_CSR_OTP_CHANGE_STATUS_REG_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+KM_CSR_OTP_READ_LOCK_COLD_REG_REG_DEFAULT = 0x00000000
+class KM_CSR_OTP_READ_LOCK_COLD_REG_reg_t(Structure):
+    _fields_ = [
+        ('life_cycle', c_uint32, 1),
+        ('demotion', c_uint32, 1),
+        ('chiplet_uid', c_uint32, 1),
+        ('sip_uid', c_uint32, 1),
+        ('sys_uid', c_uint32, 1),
+        ('class_key', c_uint32, 1),
+        ('rsvd', c_uint32, 26),
+    ]
+
+KM_CSR_OTP_READ_LOCK_COLD_REG_REG_DEFAULT = 0x00000000
+
+class KM_CSR_OTP_READ_LOCK_COLD_REG_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', KM_CSR_OTP_READ_LOCK_COLD_REG_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(KM_CSR_OTP_READ_LOCK_COLD_REG_reg_u, self).__init__(*args, **kwargs)
+        self.val = KM_CSR_OTP_READ_LOCK_COLD_REG_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

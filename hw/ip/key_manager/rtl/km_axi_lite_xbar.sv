@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_axi_lite_xbar.sv
@@ -29,6 +25,7 @@
  * @param axil_ar_chan_t   Read address channel type.
  * @param axil_r_chan_t    Read data channel type.
  */
+
 module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
     // AXI-Lite interface types
     parameter type axil_req_t  = km_axil_req_t,
@@ -41,49 +38,49 @@ module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
     parameter type axil_r_chan_t  = km_axil_r_chan_t
 ) (
     // Clock and Reset
-    input  wire logic clk_i,
-    input  wire logic rst_ni,
-    input  wire logic test_i,
+    input  logic clk_i,
+    input  logic rst_ni,
+    input  logic test_i,
 
     // Slave Port (from KM CPU)
-    input  wire axil_req_t slv_req_i,
+    input  axil_req_t slv_req_i,
     output axil_resp_t slv_resp_o,
 
     // Master Ports (to peripherals)
     // Internal peripherals
     output axil_req_t  kpv_req_o,
-    input  wire axil_resp_t kpv_resp_i,
+    input  axil_resp_t kpv_resp_i,
 
     output axil_req_t  kmcsr_req_o,
-    input  wire axil_resp_t kmcsr_resp_i,
+    input  axil_resp_t kmcsr_resp_i,
 
     output axil_req_t  drbg_req_o,
-    input  wire axil_resp_t drbg_resp_i,
+    input  axil_resp_t drbg_resp_i,
 
     output axil_req_t  mbox_req_o,
-    input  wire axil_resp_t mbox_resp_i,
+    input  axil_resp_t mbox_resp_i,
 
     // External crypto engine ports
     output axil_req_t  otbn_req_o,
-    input  wire axil_resp_t otbn_resp_i,
+    input  axil_resp_t otbn_resp_i,
 
     output axil_req_t  aes_req_o,
-    input  wire axil_resp_t aes_resp_i,
+    input  axil_resp_t aes_resp_i,
 
     output axil_req_t  kmac_req_o,
-    input  wire axil_resp_t kmac_resp_i,
+    input  axil_resp_t kmac_resp_i,
 
     output axil_req_t  hmac_req_o,
-    input  wire axil_resp_t hmac_resp_i,
+    input  axil_resp_t hmac_resp_i,
 
     output axil_req_t  abr_req_o,
-    input  wire axil_resp_t abr_resp_i,
+    input  axil_resp_t abr_resp_i,
 
     // OTP/eFuse pass-through port (index 8, OTP_BASE_ADDR-OTP_END_ADDR).
     // Addresses are forwarded unchanged; key_manager.sv applies the
     // OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.
     output axil_req_t  otp_req_o,
-    input  wire axil_resp_t otp_resp_i
+    input  axil_resp_t otp_resp_i
 );
 
     //=========================================================================
@@ -407,4 +404,3 @@ module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
 
 endmodule : km_axi_lite_xbar
 
-`default_nettype wire

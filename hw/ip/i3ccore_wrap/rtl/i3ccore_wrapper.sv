@@ -6,17 +6,14 @@
 // Multi-instance I3C Core wrapper with bus demultiplexer
 // Routes bus requests to individual I3C instances based on address
 
-
 module i3ccore_wrapper
   import i3ccore_wrap_pkg::*;
   import i3c_pkg::*;
-  import I3CCSR_pkg::CONTROLLER_SUPPORT;
-  import I3CCSR_pkg::TARGET_SUPPORT;
 #(
     parameter int unsigned NUM_I3C = 2,
     parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH,
     parameter int unsigned BASE_ADDR = 0,
-    parameter int unsigned INSTANCE_SPACING = 32'h500,  // Address space per instance
+    parameter int unsigned INSTANCE_SPACING = i3ccore_wrap_pkg::I3C_INSTANCE_SPACING,  // Address space per instance
 
     // I3C Core parameters
     parameter int unsigned DatAw = i3c_pkg::DatAw,
@@ -24,19 +21,6 @@ module i3ccore_wrapper
 
     parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH,
     parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH,
-
-    // HCI FIFO depth parameters (active when CONTROLLER_SUPPORT=1)
-    parameter int unsigned HciRespFifoDepth = I3CCSR_pkg::resp_fifo_size,
-    parameter int unsigned HciCmdFifoDepth = I3CCSR_pkg::cmd_fifo_size,
-    parameter int unsigned HciRxFifoDepth = I3CCSR_pkg::rx_fifo_size,
-    parameter int unsigned HciTxFifoDepth = I3CCSR_pkg::tx_fifo_size,
-    parameter int unsigned HciIbiFifoDepth = I3CCSR_pkg::ibi_fifo_size,
-    // TTI FIFO depth parameters (active when TARGET_SUPPORT=1)
-    parameter int unsigned TtiRxDescFifoDepth = I3CCSR_pkg::tti_rx_desc_fifo_size,
-    parameter int unsigned TtiTxDescFifoDepth = I3CCSR_pkg::tti_tx_desc_fifo_size,
-    parameter int unsigned TtiRxFifoDepth = I3CCSR_pkg::tti_rx_fifo_size,
-    parameter int unsigned TtiTxFifoDepth = I3CCSR_pkg::tti_tx_fifo_size,
-    parameter int unsigned TtiIbiFifoDepth = I3CCSR_pkg::tti_ibi_fifo_size,
 
     localparam int unsigned SelectWidth = (NUM_I3C > 32'd1) ? $clog2(NUM_I3C) : 32'd1,
     localparam type select_t = logic [SelectWidth-1:0]
@@ -97,7 +81,11 @@ module i3ccore_wrapper
     input  i3c_pkg::dat_mem_src_t  [NUM_I3C-1:0] dat_mem_src_i,
     output i3c_pkg::dat_mem_sink_t [NUM_I3C-1:0] dat_mem_sink_o,
     input  i3c_pkg::dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src_i,
-    output i3c_pkg::dct_mem_sink_t [NUM_I3C-1:0] dct_mem_sink_o
+    output i3c_pkg::dct_mem_sink_t [NUM_I3C-1:0] dct_mem_sink_o,
+
+    // I3C RLT (reverse-lookup table) memory interfaces (NUM_I3C instances)
+    input  i3c_pkg::rlt_mem_src_t  [NUM_I3C-1:0] rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t [NUM_I3C-1:0] rlt_mem_sink_o
 );
 
   `include "axi/typedef.svh"
@@ -133,17 +121,26 @@ module i3ccore_wrapper
   assign rresp_o = axil_resp.r.resp;
 
   // Calculate instance select from address (use write address if valid, else read address)
-  select_t select;
-  reg_addr_t adjusted_addr;
-  assign adjusted_addr = (awvalid_i ? awaddr_i : araddr_i) - BASE_ADDR;
+  select_t read_select, write_select;
+  reg_addr_t read_adjusted_addr, write_adjusted_addr;
+  assign read_adjusted_addr = araddr_i - BASE_ADDR;
+  assign write_adjusted_addr = awaddr_i - BASE_ADDR;
 
   // Instance selection based on address range (INSTANCE_SPACING per instance)
   always_comb begin
-    select = '0;
+    read_select = '0;
     for (int i = 0; i < NUM_I3C; i++) begin
-      if ((adjusted_addr >= i * INSTANCE_SPACING) &&
-          (adjusted_addr < (i + 1) * INSTANCE_SPACING)) begin
-        select = select_t'(i);
+      if ((read_adjusted_addr >= i * INSTANCE_SPACING) &&
+          (read_adjusted_addr < (i + 1) * INSTANCE_SPACING)) begin
+        read_select = select_t'(i);
+      end
+    end
+
+    write_select = '0;
+    for (int i = 0; i < NUM_I3C; i++) begin
+      if ((write_adjusted_addr >= i * INSTANCE_SPACING) &&
+          (write_adjusted_addr < (i + 1) * INSTANCE_SPACING)) begin
+        write_select = select_t'(i);
       end
     end
   end
@@ -170,8 +167,8 @@ module i3ccore_wrapper
       .rst_ni(rst_ni),
       .test_i(1'b0),
       .slv_req_i(axil_req),
-      .slv_aw_select_i(select),
-      .slv_ar_select_i(select),
+      .slv_aw_select_i(write_select),
+      .slv_ar_select_i(read_select),
       .slv_resp_o(axil_resp),
       .mst_reqs_o(axil_req_demuxed),
       .mst_resps_i(axil_resp_demuxed)
@@ -196,18 +193,6 @@ module i3ccore_wrapper
         .DctAw(DctAw),
         .CsrAddrWidth(CsrAddrWidth),
         .CsrDataWidth(CsrDataWidth)
-        // HCI FIFO depth parameters
-        ,.HciRespFifoDepth(HciRespFifoDepth)
-        ,.HciCmdFifoDepth(HciCmdFifoDepth)
-        ,.HciRxFifoDepth(HciRxFifoDepth)
-        ,.HciTxFifoDepth(HciTxFifoDepth)
-        ,.HciIbiFifoDepth(HciIbiFifoDepth)
-        // TTI FIFO depth parameters
-        ,.TtiRxDescFifoDepth(TtiRxDescFifoDepth)
-        ,.TtiTxDescFifoDepth(TtiTxDescFifoDepth)
-        ,.TtiRxFifoDepth(TtiRxFifoDepth)
-        ,.TtiTxFifoDepth(TtiTxFifoDepth)
-        ,.TtiIbiFifoDepth(TtiIbiFifoDepth)
     ) u_i3c_wrapper (
         .clk_i(clk_i),
         .rst_ni(rst_ni),
@@ -260,7 +245,11 @@ module i3ccore_wrapper
         .dat_mem_src_i (dat_mem_src_i[idx]),
         .dat_mem_sink_o(dat_mem_sink_o[idx]),
         .dct_mem_src_i (dct_mem_src_i[idx]),
-        .dct_mem_sink_o(dct_mem_sink_o[idx])
+        .dct_mem_sink_o(dct_mem_sink_o[idx]),
+
+        // RLT memory interface
+        .rlt_mem_src_i (rlt_mem_src_i[idx]),
+        .rlt_mem_sink_o(rlt_mem_sink_o[idx])
     );
 
     // Response handling

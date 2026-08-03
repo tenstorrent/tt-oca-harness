@@ -4,6 +4,8 @@
 [[efuse-peripheral-module]]
 ==== eFuse
 
+TODO
+
 ===== Description and Features
 
 include::architecture.adoc[]
