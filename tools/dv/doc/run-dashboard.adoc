@@ -1,0 +1,920 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dv-dashboard]]
+= DV and FV Dashboard
+:imagesdir: assets
+
+`tools/dv/run_dashboard.py` is the entry point for the static OCAH DV/FV
+reporting pipeline. It converts completed `run_dv.py` results into a
+dashboard-specific JSON record, renders per-DUT and aggregate HTML, maintains
+optional trend history, and publishes a static directory.
+
+It does not launch simulation, discover and run every DUT, provide a database,
+or serve the generated pages.
+
+[NOTE]
+====
+The product-facing dashboard page in the OCAH TRM is a separate visual
+placeholder. This command implements static report generation, but no
+repository CI workflow currently invokes the complete collect-to-publish
+pipeline automatically.
+====
+
+== Architecture
+
+image::dv-dashboard-pipeline.drawio.svg[Current static dashboard data pipeline,scaledwidth=95.0%]
+
+The four subcommands communicate only through files:
+
+[source,text]
+----
+run_dv.py result.json
+  -> collect
+  -> normalized <dut>.result.json
+       -> report
+       -> dashboard (+ optional history)
+            -> publish
+----
+
+This includes a schema-conversion boundary. The native run result is not the
+same JSON contract consumed by `report` and `dashboard`.
+
+The implementation modules are:
+
+[cols="<3,<5",options="header"]
+|===
+|Module |Responsibility
+
+|`dashboard/collect_results.py`
+|Locate one native result, derive test and regression detail, normalize fields,
+and copy selected coverage artifacts.
+
+|`dashboard/schema.py`
+|Create normalized records, aggregate summaries, failure buckets, coverage
+closure views, and trend points.
+
+|`dashboard/gen_report.py`
+|Render one normalized DUT result as self-contained static HTML.
+
+|`dashboard/gen_dashboard.py`
+|Load many normalized results and render aggregate HTML, summary JSON, and
+optional history JSON.
+
+|`dashboard/publish_reports.py`
+|Write a manifest and copy or synchronize a static directory to timestamped
+and `latest` destinations.
+
+|`dashboard/html.py`
+|Escape values and provide the embedded stylesheet and HTML helpers.
+|===
+
+[[dashboard-syntax-overview]]
+=== Syntax at a Glance
+
+The dashboard CLI has four file-oriented operations:
+
+[source,text]
+----
+run_dashboard.py collect
+  --dut DUT
+  [--run-dir RUN_DIR_OR_RESULT_JSON]
+  [--output NORMALIZED_RESULT_JSON]
+
+run_dashboard.py report
+  --result NORMALIZED_RESULT_JSON
+  --html-out DUT_REPORT_HTML
+  [--json-out COPIED_RESULT_JSON]
+
+run_dashboard.py dashboard
+  --results RESULT_OR_GLOB [RESULT_OR_GLOB ...]
+  --html-out DASHBOARD_HTML
+  --summary-out SUMMARY_JSON
+  [--history-in HISTORY_JSON]
+  [--history-out HISTORY_JSON]
+
+run_dashboard.py publish
+  --source STATIC_BUNDLE_DIR
+  --publish-root LOCAL_OR_GS_OR_S3_DESTINATION
+  [--name NAME]
+  [--timestamp TIMESTAMP]
+----
+
+Use the shortest path that answers the question:
+
+[cols="<3,<4,<3",options="header"]
+|===
+|Question |Command path |Primary output
+
+|Did one DUT pass, and why?
+|`collect -> report`
+|`<dut>.html`
+
+|Which DUTs passed in this regression?
+|`collect` once per DUT, then `dashboard`
+|`index.html`, `summary.json`
+
+|Did coverage meet its threshold?
+|Run with coverage, then `collect -> report` or `dashboard`
+|Coverage status, metrics, thresholds, and holes
+
+|How is coverage changing over time?
+|`dashboard --history-in ... --history-out ...`
+|`history.json` plus trend rows
+
+|How is a completed static bundle distributed?
+|`publish`
+|Timestamped and `latest` trees
+|===
+
+[[dashboard-status-formation]]
+=== How Pass/Fail Forms the Dashboard
+
+There are two aggregation levels:
+
+. `collect` converts one native runner result into one normalized DUT/flow
+  record.
+. `dashboard` aggregates normalized DUT/flow records into flow and test
+  summaries.
+
+The collector intentionally reduces the native status vocabulary:
+
+[cols="<2,<3,<3",options="header"]
+|===
+|Native `run_dv.py` status |Normalized dashboard status |Aggregate flow bucket
+
+|`PASS` |`PASS` |Passing
+|`FAIL` |`FAIL` |Failing
+|`ERROR` |`FAIL` |Failing
+|`TIMEOUT` |`FAIL` |Failing
+|`UNKNOWN` |`UNKNOWN` |Unknown
+|===
+
+The original native value remains in `source.native_status`, so an
+infrastructure `ERROR`, test `FAIL`, and `TIMEOUT` can still be distinguished
+when inspecting the normalized JSON.
+
+At aggregate level:
+
+[source,text]
+----
+flows.passing  = count(result.status == "PASS")
+flows.failing  = count(result.status == "FAIL")
+flows.unknown  = flows.total - flows.passing - flows.failing
+flows.pass_rate = 100 * flows.passing / flows.total
+
+tests.total     = sum(result.tests.total)
+tests.passing   = sum(result.tests.passing)
+tests.pass_rate = 100 * tests.passing / tests.total
+----
+
+The overall flow status and test pass rate answer different questions. A DUT
+can have many passing tests but remain a failing flow because one test,
+coverage threshold, or infrastructure stage failed.
+
+[[dashboard-coverage-formation]]
+=== How Coverage Forms the Dashboard
+
+Coverage starts in the native runner's top-level `coverage` object. Collection
+preserves that object, copies available report/manifest files into the static
+bundle, and rewrites their artifact paths. Report and dashboard rendering then
+read these fields:
+
+[cols="<3,<5",options="header"]
+|===
+|Field |Dashboard meaning
+
+|`coverage.status`
+|Outcome of native coverage merge/report stages.
+
+|`coverage.total_percent`
+|Tool-specific compatibility score displayed as total coverage.
+
+|`coverage.metrics`
+|Available metric values such as line, condition, toggle, branch, FSM,
+assertion, and functional coverage.
+
+|`coverage.threshold`, `coverage.threshold_met`
+|Required compatibility threshold and whether the score met it.
+
+|`coverage.policy_thresholds`
+|Per-metric and per-population policy gates.
+
+|`coverage.details_available`
+|Whether detailed native coverage observations were normalized.
+
+|`coverage.holes_summary`
+|Counts and bounded samples of open, accepted, and unclassified holes.
+
+|`coverage.comparison_key`
+|Identity used to decide whether trend points have comparable tool, target,
+scope, and policy context.
+|===
+
+Typical forms are:
+
+[cols="<3,<2,<2,<4",options="header"]
+|===
+|Runner condition |Coverage status |Total |Dashboard interpretation
+
+|Coverage not requested
+|`SKIP`
+|`null`
+|Display no score; this is not zero-percent coverage.
+
+|Report generated and thresholds met
+|`PASS`
+|Numeric
+|Display metrics and a passing threshold result.
+
+|Report below a compatibility or policy threshold
+|`FAIL`
+|Numeric or unavailable
+|Display the failed threshold and closure details.
+
+|Collection exists but details are unavailable
+|Preserved native status
+|Possibly numeric
+|Display the score but mark detailed hole analysis unavailable.
+|===
+
+Coverage remains per DUT. The aggregate dashboard deliberately does not
+average percentages across DUTs or tools.
+
+[[dashboard-worked-example]]
+=== Worked Pass/Fail and Coverage Example
+
+Assume collection produces these two normalized records:
+
+[cols="<2,<2,<2,<2,<2,<2",options="header"]
+|===
+|DUT |Status |Passing/total |Test pass rate |Coverage |Threshold
+
+|`dtp`
+|`PASS`
+|10/10
+|100%
+|84.2% (`PASS`)
+|80%, met
+
+|`sep`
+|`FAIL`
+|8/10
+|80%
+|72.5% (`FAIL`)
+|80%, not met
+|===
+
+An abbreviated normalized `dtp.result.json` has this form:
+
+[source,json]
+----
+{
+  "schema_version": "0.1",
+  "flow": "dtp",
+  "status": "PASS",
+  "source": {
+    "collector": "run_dv-result",
+    "native_status": "PASS"
+  },
+  "tests": {
+    "total": 10,
+    "passing": 10,
+    "failing": 0,
+    "pass_rate": 100.0
+  },
+  "coverage": {
+    "status": "PASS",
+    "total_percent": 84.2,
+    "metrics": {
+      "line": 88.0,
+      "toggle": 80.4
+    },
+    "threshold": 80.0,
+    "threshold_met": true,
+    "details_available": true,
+    "holes_summary": {
+      "open": 3,
+      "accepted": 2,
+      "unclassified": 0
+    }
+  }
+}
+----
+
+Aggregating `dtp` and `sep` yields this summary shape:
+
+[source,json]
+----
+{
+  "flows": {
+    "total": 2,
+    "passing": 1,
+    "failing": 1,
+    "unknown": 0,
+    "pass_rate": 50.0
+  },
+  "tests": {
+    "total": 20,
+    "passing": 18,
+    "failing": 2,
+    "skipped": 0,
+    "unknown": 0,
+    "pass_rate": 90.0
+  },
+  "coverage": {
+    "average_total_percent": null,
+    "cross_tool_average_disabled": true,
+    "available": 2,
+    "missing": 0
+  }
+}
+----
+
+The HTML dashboard therefore shows one of two flows passing, 18 of 20 tests
+passing, and each DUT's coverage separately. It does not report `(84.2 +
+72.5) / 2` as a project-wide coverage score.
+
+[NOTE]
+====
+This example has no retries, skipped tests, or unknown tests. See
+<<dashboard-counter-semantics,test-counter semantics>> for the current
+skip/unknown caveat.
+====
+
+[[dashboard-environment]]
+== Environment and path rules
+
+Unlike `run_dv.py`, the dashboard entry point does not re-execute through the
+locked `uv` environment and does not synchronize the DV namespace bridge.
+Invoke it with Python 3.11 through 3.13 from an environment that can import the
+repository's `tools/dv` packages. From the repository root, either of these
+forms is suitable:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py --help
+
+uv run --project . --locked --group dv \
+  python tools/dv/run_dashboard.py --help
+----
+
+The dashboard does not require an EDA tool. GCS publication requires `gsutil`;
+S3 publication requires the AWS CLI.
+
+Most explicit dashboard paths are resolved from the shell's current working
+directory with `Path.resolve()`. This differs from `run_dv.py`, whose relative
+run/output overrides are repository-root-relative. Use absolute paths in CI or
+launch the dashboard from the repository root.
+
+The default `collect --output` is `<repo>/reports/latest/<dut>.result.json`.
+Prefer an explicit ignored or out-of-tree staging directory so generated
+reports do not appear as source changes.
+
+== Complete manual workflow
+
+The following example collects two DUTs, creates per-DUT reports, creates an
+aggregate dashboard with history, and publishes a local bundle:
+
+[source,bash]
+----
+work=$(mktemp -d "${TMPDIR:-/tmp}/ocah-dv-dashboard.XXXXXX")
+bundle="$work/bundle"
+history="${TMPDIR:-/tmp}/ocah-dv-dashboard-history.json"
+publish_root="${TMPDIR:-/tmp}/ocah-dv-published"
+mkdir -p "$bundle"
+
+python3 tools/dv/run_dashboard.py collect \
+  --dut dtp \
+  --output "$bundle/dtp.result.json"
+
+python3 tools/dv/run_dashboard.py collect \
+  --dut sep \
+  --output "$bundle/sep.result.json"
+
+python3 tools/dv/run_dashboard.py report \
+  --result "$bundle/dtp.result.json" \
+  --html-out "$bundle/dtp.html"
+
+python3 tools/dv/run_dashboard.py report \
+  --result "$bundle/sep.result.json" \
+  --html-out "$bundle/sep.html"
+
+python3 tools/dv/run_dashboard.py dashboard \
+  --results "$bundle/*.result.json" \
+  --html-out "$bundle/index.html" \
+  --summary-out "$bundle/summary.json" \
+  --history-in "$history" \
+  --history-out "$history"
+
+python3 tools/dv/run_dashboard.py publish \
+  --source "$bundle" \
+  --publish-root "$publish_root" \
+  --name dv
+----
+
+Quote glob patterns when Python should expand them. An unquoted shell glob may
+work, but it changes argument expansion and fails differently when there are no
+matches.
+
+`collect` handles exactly one DUT. A multi-DUT job must call it once per DUT,
+as shown above.
+
+Use a fresh bundle directory for every generation. Reusing an old source can
+mix stale result files into a glob, and collection does not remove a previously
+staged coverage report when a newer run has no corresponding coverage output.
+
+== Collect one DUT result
+
+The `collect` subcommand resolves `--dut` using the same DUT registry and
+directory conventions as the runner's simulation mode:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py collect \
+  --dut dtp \
+  --run-dir hw/sys/dtp/dv/build/runs/20260803_080000__verilator__smoke \
+  --output /tmp/ocah-dv-dashboard/latest/dtp.result.json
+----
+
+When `--run-dir` is omitted, collection reads:
+
+[source,text]
+----
+<dut-dv-root>/build/runs/latest/result.json
+----
+
+`--run-dir` may name a run directory or a file literally named `result.json`.
+The explicit path is current-working-directory-relative, not
+repository-root-relative.
+
+When passing a file, it must still be the result inside its original run tree:
+the collector treats the file's parent as the run root. An exported copy loses
+automatic discovery of regression, leaf, JUnit, and optional `run.json`
+material.
+
+[CAUTION]
+====
+`collect` has no `--mode` option and resolves the DUT's simulation
+configuration/test catalog. Collecting an explicit formal result therefore
+still requires a simulation-resolvable DUT, and test enrichment uses the
+simulation catalog.
+====
+
+Collection performs these steps:
+
+. Load the native run-level result.
+. Load `stages/regress/regression.json` when present.
+. Load leaf fragments and test metadata to build `tests_detail`.
+. Record JUnit/xUnit paths and whether they exist.
+. Convert the native result to dashboard schema version `"0.1"`.
+. Copy selected coverage output beside the normalized result.
+. Write the normalized result.
+
+Coverage staging uses:
+
+[source,text]
+----
+<output-parent>/
+├── <dut>.result.json
+└── artifacts/
+    └── <dut>/
+        └── coverage/
+            ├── coverage.json
+            └── report/
+----
+
+Only coverage report and manifest material is copied. Native logs, result
+fragments, JUnit files, waveforms, and run directories remain references to
+their original paths.
+
+[WARNING]
+====
+If no usable native `result.json` is found, `collect` writes an `UNKNOWN`
+normalized record and exits successfully. Treat `status`, not process exit code
+alone, as the collection result.
+====
+
+== Native-to-dashboard normalization
+
+The formats and their owners are:
+
+[cols="<2,<2,<4",options="header"]
+|===
+|Version |Produced by |Purpose
+
+|Integer `1`
+|`run_dv.py`
+|Authoritative native run, stage, regression, and leaf result contract.
+
+|String `"0.1"`
+|`collect`, `dashboard`
+|Normalized per-DUT records and aggregate `summary.json`.
+
+|String `"0.2"`
+|`dashboard --history-out`
+|Trend-point history.
+
+|String `"0.1"`
+|`publish`
+|Publication manifest, matching the dashboard schema constant.
+|===
+
+Important transformations are not lossless:
+
+[cols="<3,<5",options="header"]
+|===
+|Field |Transformation
+
+|Status
+|Native `PASS` remains `PASS`; `UNKNOWN` remains `UNKNOWN`; every other native
+status, including `FAIL`, `ERROR`, and `TIMEOUT`, becomes dashboard `FAIL`.
+The original value is retained in `source.native_status`.
+
+|Git metadata
+|Top-level dashboard `git` is queried at collection time. The native run's Git
+metadata remains under `run_metadata.git`.
+
+|Timing
+|Dashboard duration is the sum of native stage durations. For parallel
+regressions it is not wall-clock elapsed time.
+
+|Tests
+|The collector passes native total and passing counts into the dashboard
+schema. The initial failing count is calculated as `total - passing`.
+
+|Test detail
+|Regression `jobs` are converted to `tests_detail`; retries can therefore
+produce several attempt records for one final test.
+
+|Coverage
+|The native coverage object is retained and selected report/manifest files are
+rewritten to their staged locations.
+
+|Run metadata
+|Native tool, versions, executor, generated time, overrides, and Git
+information are nested under `run_metadata`. `run_metadata.selection` comes
+only from `regression.json`; selected native artifacts are instead copied into
+the dashboard record's top-level `artifacts`.
+|===
+
+The collector performs only shallow native validation: the input must be a JSON
+object with a `status` field. It does not enforce native schema version,
+required fields, or agreement between the native `flow` and `--dut`.
+
+`report` and `dashboard` likewise do not enforce schema version `"0.1"` or
+required field types. The version is the intended contract, but a wrong-schema
+dictionary can still produce misleading successful output.
+
+== Generate a per-DUT report
+
+`report` consumes normalized collector JSON, not the native runner JSON:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py report \
+  --result /tmp/ocah-dv-dashboard/latest/dtp.result.json \
+  --html-out /tmp/ocah-dv-dashboard/latest/dtp.html \
+  --json-out /tmp/ocah-dv-dashboard/latest/dtp.report.json
+----
+
+The optional JSON output is a copy of the input. The generated HTML includes:
+
+* status, framework, tool, revision, branch, and duration;
+* test totals and detailed test records;
+* coverage metrics, thresholds, holes, and waiver data;
+* artifacts and run metadata;
+* JUnit paths and collector warnings;
+* failed and flaky regression tests;
+* rerun commands and failure buckets.
+
+HTML and CSS are embedded in one file. Relative/absolute filesystem paths and
+HTTP(S) URLs passed to the link helper become hyperlinks; other URI schemes are
+rendered as plain text. The report generator does not copy link targets or
+rewrite repository-relative paths for the HTML output location.
+
+The `report` command also does not add its HTML path to
+`artifacts.report`/`artifacts.html` in the normalized result. Consequently, the
+aggregate dashboard does not automatically link a DUT name to a separately
+generated per-DUT page.
+
+== Generate an aggregate dashboard
+
+The `dashboard` subcommand loads any number of normalized JSON paths or glob
+patterns:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py dashboard \
+  --results '/tmp/ocah-dv-dashboard/latest/*.result.json' \
+  --html-out /tmp/ocah-dv-dashboard/latest/index.html \
+  --summary-out /tmp/ocah-dv-dashboard/latest/summary.json
+----
+
+The static page and summary include:
+
+* flow and test pass rates;
+* failing, skipped, and unknown test counters;
+* failed and flaky regression counts;
+* per-DUT and per-category status;
+* coverage closure, policy thresholds, and sampled holes;
+* merged failure buckets;
+* optional coverage trend rows;
+* original normalized results under `summary.json.results`.
+
+No aggregate coverage average is computed, even when all inputs use one tool.
+Coverage remains per DUT because simulator, target, instrumentation, and policy
+contexts may not be comparable.
+
+[[dashboard-counter-semantics]]
+Normalized per-DUT records initially calculate `tests.failing` as
+`total - passing` and do not emit skipped/unknown counters. Per-DUT dashboard
+rows therefore show skipped/unknown as zero. The aggregate later adds
+detail-derived skipped/unknown counts without subtracting them from failing, so
+the displayed status counters can overlap and sum to more than `tests.total`.
+
+=== Trend history
+
+Supply both an existing history input and a history output to update trends:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py dashboard \
+  --results '/tmp/ocah-dv-dashboard/latest/*.result.json' \
+  --html-out /tmp/ocah-dv-dashboard/latest/index.html \
+  --summary-out /tmp/ocah-dv-dashboard/latest/summary.json \
+  --history-in /tmp/ocah-dv-dashboard/history.json \
+  --history-out /tmp/ocah-dv-dashboard/history.json
+----
+
+If `--history-in` is absent or does not name a file, history starts empty.
+Each point receives an identifier derived from the ordered collected-result
+list, run directories, coverage comparison keys, and Git revisions.
+Re-generating an identical ordered input list replaces that point. Reordering
+inputs or passing overlapping patterns can create a different point or
+duplicate DUT records.
+
+History storage has no retention limit. The HTML renders the last 20 stored
+points without sorting them chronologically, so archive or prune the JSON
+externally when necessary.
+
+[WARNING]
+====
+Missing input paths and unmatched glob patterns are silently ignored. An empty
+input set still generates a successful empty dashboard. Validate the
+`flows.total` field in `summary.json` in CI.
+====
+
+== Publish a static bundle
+
+Local publication creates a timestamped history tree and a replaceable
+`latest` tree:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py publish \
+  --source /tmp/ocah-dv-dashboard/latest \
+  --publish-root /srv/www/ocah \
+  --name dv
+----
+
+The resulting shape is:
+
+[source,text]
+----
+<publish-root>/
+└── <name>/
+    ├── <YYYYMMDD_HHMMSS>/
+    └── latest/
+----
+
+The default name is `dashboard`. The default timestamp uses local time. Pass
+`--timestamp` to make publication paths reproducible.
+
+GCS and S3 roots are selected by URI prefix:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py publish \
+  --source /tmp/ocah-dv-dashboard/latest \
+  --publish-root gs://example-bucket/ocah \
+  --name dv
+
+python3 tools/dv/run_dashboard.py publish \
+  --source /tmp/ocah-dv-dashboard/latest \
+  --publish-root s3://example-bucket/ocah \
+  --name dv
+----
+
+Before copying, `publish` writes `manifest.json` into the source directory. The
+manifest records publication identity, source result paths found in
+`summary.json`, and an output-file inventory.
+
+[WARNING]
+====
+Publication is replacement-based. Local destinations are deleted before each
+copy. GCS uses `gsutil rsync -d`; S3 uses `aws s3 sync --delete`. Verify
+`--publish-root`, `--name`, and `--timestamp` before running the command.
+
+Never set `--timestamp latest`: both local and remote publication would make
+the history and `latest` destinations identical. For local publication,
+`--name` and `--timestamp` are otherwise not validated. Use only simple
+relative path components, never `..` or absolute paths, and keep `--source`
+disjoint from both destination trees. Replacement is not atomic, and
+unsafe/overlapping values can delete content outside the intended tree,
+including the source itself.
+
+The publisher does not scan for credentials or enforce a public-artifact
+allowlist. Review the complete source tree before publishing it.
+====
+
+== CLI reference
+
+=== `collect`
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Option |Requirement/default |Meaning
+
+|`--dut NAME`
+|Required
+|Resolve and collect one DUT.
+
+|`--run-dir PATH`
+|Default: DUT `build/runs/latest`
+|Native run directory or a file named `result.json`.
+
+|`--output PATH`
+|Default: `<repo>/reports/latest/<dut>.result.json`
+|Normalized dashboard result destination.
+|===
+
+=== `report`
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Option |Requirement/default |Meaning
+
+|`--result PATH`
+|Required
+|Normalized schema-`"0.1"` result.
+
+|`--html-out PATH`
+|Required
+|Per-DUT static HTML destination.
+
+|`--json-out PATH`
+|Optional
+|Copy the normalized input JSON.
+|===
+
+=== `dashboard`
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Option |Requirement/default |Meaning
+
+|`--results PATH ...`
+|Required
+|One or more normalized-result paths or glob patterns.
+
+|`--html-out PATH`
+|Required
+|Aggregate static HTML destination.
+
+|`--summary-out PATH`
+|Required
+|Aggregate schema-`"0.1"` JSON destination.
+
+|`--history-in PATH`
+|Optional
+|Existing history JSON when the file exists.
+
+|`--history-out PATH`
+|Optional
+|Write updated schema-`"0.2"` history JSON.
+|===
+
+=== `publish`
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Option |Requirement/default |Meaning
+
+|`--source DIR`
+|Required
+|Complete static directory to publish.
+
+|`--publish-root PATH`
+|Required
+|Local directory, `gs://` bucket path, or `s3://` bucket path.
+
+|`--name NAME`
+|Default: `dashboard`
+|Safe relative directory/key component below the publication root.
+
+|`--timestamp VALUE`
+|Default: local `YYYYMMDD_HHMMSS`
+|Timestamped history directory/key.
+|===
+
+Normal completion returns `0`, while argparse and explicitly handled
+I/O/configuration/copy/sync failures return `2`. Malformed field types are not
+fully validated and may instead produce an uncaught traceback with another
+nonzero exit. A successfully generated record or dashboard may still contain
+`UNKNOWN` status or zero inputs.
+
+== Operational checks
+
+After generation, verify machine-readable output before publication:
+
+[source,bash]
+----
+python3 -m json.tool "$bundle/dtp.result.json" >/dev/null
+python3 -m json.tool "$bundle/summary.json" >/dev/null
+python3 -m json.tool "$history" >/dev/null
+----
+
+Recommended CI assertions include:
+
+* each expected DUT result file exists;
+* `schema_version` has the expected string value;
+* no expected DUT has `status = "UNKNOWN"`;
+* `summary.json.flows.total` equals the requested DUT count;
+* staged coverage paths exist when coverage was expected;
+* the publication source contains only approved files.
+
+== Troubleshooting
+
+=== Imports fail before a subcommand runs
+
+The dashboard has no automatic environment bootstrap. Launch it from the
+repository root through the locked `uv` command shown in
+<<dashboard-environment,Environment and path rules>>, or activate an equivalent Python
+environment.
+
+=== Collection reports missing `run.json`
+
+The collector looks for optional `<run>/run.json`, but the current runner does
+not emit it. The warning is expected and does not change collection status.
+Use native `result.json`, stage records, and regression metadata for
+reproducibility.
+
+=== Collection produced UNKNOWN but exited zero
+
+Check that `--run-dir` resolves from the current directory and contains
+`result.json`, or pass the full path to that file. Also confirm that the JSON is
+an object with a `status` field. Collection deliberately creates an UNKNOWN
+record when no native result can be consumed.
+
+=== Dashboard generated no DUT rows
+
+Quote result globs, inspect whether they match files, and check
+`summary.json.flows.total`. Missing paths are ignored rather than treated as
+errors.
+
+=== Published links are broken
+
+Place generated HTML beside the normalized results and staged coverage
+directory. Native log, JUnit, wave, and run-directory links are not copied by
+the collector and may remain repository-relative after publication. Package
+those artifacts separately or avoid presenting the bundle as self-contained.
+
+=== A DUT name is not linked to its report
+
+This is a current integration gap. `report` does not write the generated HTML
+path back into the normalized result, while `dashboard` links only
+`artifacts.report` or `artifacts.html`.
+
+[[dashboard-current-limitations]]
+== Current limitations and roadmap boundary
+
+Treat these as implementation constraints, not intended architecture:
+
+* Collection is one DUT per command; automatic registry-wide collection and CI
+  orchestration remain external.
+* Collection has no formal-mode selector and always resolves the simulation
+  DUT view for catalog enrichment.
+* Native input validation is shallow and does not confirm schema version or
+  DUT identity; downstream normalized-schema validation is also absent.
+* Native `ERROR` and `TIMEOUT` statuses collapse into dashboard `FAIL`.
+* Per-DUT skipped/unknown counters remain zero, aggregate counters can overlap,
+  and regression detail can count retry attempts rather than only final tests.
+* Failure buckets may be counted more than once when already-aggregated
+  regression buckets and per-test buckets are merged.
+* Collector Git metadata reflects collection time, and summed stage duration
+  is not parallel wall-clock duration.
+* Only coverage artifacts are staged; other report links can break after
+  relocation or publication.
+* Per-DUT HTML is not automatically linked from the aggregate dashboard.
+* Unmatched result paths produce an empty successful dashboard.
+* Trend history grows without a retention policy.
+* `publish` mutates its source by writing `manifest.json`; the first manifest's
+  file inventory may omit the newly written manifest itself.
+* Local publication does not constrain name/timestamp paths; all publication
+  replaces destination trees non-atomically and has no secret scan.
+
+There is no implemented database service, live dashboard server, automatic
+artifact retention policy, or end-to-end repository CI integration. Add those
+capabilities only after defining their ownership and preserving the file
+contracts documented here.

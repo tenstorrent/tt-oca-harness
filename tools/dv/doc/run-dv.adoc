@@ -1,0 +1,836 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dv-runner]]
+= DV and FV Runner
+:imagesdir: assets
+
+`tools/dv/run_dv.py` is the contributor-facing launcher for native OCAH
+simulation and formal flows. It resolves a DUT, validates the configuration,
+builds a concrete stage plan, invokes the selected backend, and writes durable
+logs and schema-version-1 result files.
+
+[NOTE]
+====
+This page describes the implementation in the current source tree. The
+architecture notes used to design the runner also contain roadmap material;
+unsupported roadmap features are identified in <<runner-current-limitations>>.
+====
+
+== Architecture
+
+image::dv-runner-architecture.drawio.svg[Current DV/FV runner control flow,scaledwidth=95.0%]
+
+The entry point is intentionally thin. It prepares the Python environment and
+then delegates command parsing and orchestration to `tools/dv/runlib/cli.py`.
+The runner modules divide responsibility as follows:
+
+[cols="<2,<4",options="header"]
+|===
+|Module |Responsibility
+
+|`runlib/cli.py`
+|CLI validation, DUT selection, stage planning, scheduling, and top-level
+result writing.
+
+|`runlib/config.py`
+|TOML loading, strict schema checks, profile/DUT merging, test-list expansion,
+target selection, and run-mode resolution.
+
+|`runlib/stages.py`
+|Backend command rendering and execution, artifact layout, timeout handling,
+coverage stages, and generated replay material.
+
+|`runlib/logparse.py`
+|Structured-result and log-evidence policy used to classify simulation output.
+
+|`runlib/results.py`
+|Run, regression, per-test, and per-attempt result schemas and status rollups.
+
+|`runlib/waves.py`
+|Wave format validation, failure-window calculation, retention, viewer
+commands, and same-seed replay metadata.
+|===
+
+The runner and the dashboard do not call each other. Their integration boundary
+is the run-level `result.json`.
+ifdef::backend-html5[]
+See xref:run-dashboard.adoc[DV and FV Dashboard].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<dv-dashboard,DV and FV Dashboard>>.
+endif::backend-pdf[]
+
+== Prerequisites and bootstrap
+
+Run the launcher with Python 3:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --list
+----
+
+Before parsing the command, the launcher:
+
+. Finds the repository root by walking upward from `run_dv.py` until it finds
+  both `Bender.yml` and `pyproject.toml`.
+. Exports that path as `OCH_ROOT`.
+. Re-executes the command through
+  `uv run --project <repo-root> --locked --group dv`.
+. Synchronizes the generated `build/dv/python` namespace bridge and adds it to
+  `sys.path` and `PYTHONPATH`.
+
+The supported Python range is 3.11 through 3.13. Install
+https://docs.astral.sh/uv/[`uv`] before the first run. The locked `dv`
+dependency group provides cocotb and the shared Python DV packages.
+
+`OCAH_DV_SKIP_UV=1` skips only the `uv` re-execution. Use it for a
+pre-provisioned CI or developer environment that already supplies the required
+packages. Repository-root discovery, `OCH_ROOT`, and namespace synchronization
+still occur.
+
+[WARNING]
+====
+The selected stage may additionally require Bender, a simulator or formal
+tool, coverage utilities, `make`, a firmware toolchain, and commercial-tool
+license configuration. Use `--doctor` before a real run, but note that it is a
+targeted availability check rather than a complete license or toolchain test.
+====
+
+The launcher may be invoked from any working directory because repository and
+checked-in paths are resolved from the script location. Relative `--run-dir`
+and `--result` paths, however, are resolved from the repository root.
+
+== Quick start
+
+Start with configuration and environment checks:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --list
+python3 tools/dv/run_dv.py --validate-configs
+python3 tools/dv/run_dv.py --doctor --dut dtp
+python3 tools/dv/run_dv.py --dut dtp --items smoke --tool verilator --dry-run
+----
+
+Run one deterministic test:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --items dtp_sanity_test \
+  --tool verilator
+----
+
+Run a tagged local regression:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut smc_wrapper \
+  --tag smoke \
+  --sim-jobs 4
+----
+
+Reproduce one recorded failure with the same seed:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --items dtp_sanity_test \
+  --stage sim \
+  --seed 12345 \
+  --waves fst
+----
+
+Use `--help` as the generated, source-of-truth option summary:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --help
+----
+
+== Selection model
+
+=== DUT and tool
+
+`--dut NAME` selects both the design and its DV environment. Resolution checks
+`hw/common/dv/configs/duts.toml` first, then the bounded conventions
+`hw/<name>/dv`, `hw/sys/<name>/dv`, `hw/ip/<name>/dv`,
+`hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
+`hw/common/prim/<name>/dv`.
+
+Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
+`<name>_formal_cfg.toml` or the registry's `formal_cfg` override:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut <dut> --mode formal --items <task>
+----
+
+`--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
+present in the flow's `tools` allowlist and in `simulators.toml`.
+
+The shared cocotb profile currently allows these simulation backends:
+
+[cols="<2,<2,<2,<3",options="header"]
+|===
+|Tool |Binary |Default waves |Coverage backend
+
+|Verilator |`verilator` |FST |`verilator_coverage`
+|VCS |`vcs` |VPD |URG
+|Xcelium |`xrun` |SHM |IMC
+|===
+
+The simulator registry also defines Jasper (`jg`) and VC Formal (`vcf`) as
+formal backends. A DUT still needs a formal configuration before either can be
+selected.
+
+=== Tests, groups, and tags
+
+`--items` accepts test names and group names from the resolved test catalog.
+Groups expand in definition order. Overlapping selections are de-duplicated in
+first-seen order unless `--allow-duplicates` is present.
+
+If `--items` is omitted, the runner selects the `smoke` group when it exists;
+otherwise it selects the first test in the catalog.
+
+`--tag` is repeatable and uses OR semantics across tags:
+
+[source,bash]
+----
+# All tests carrying either tag.
+python3 tools/dv/run_dv.py --dut dtp --tag smoke --tag ci
+
+# Only CI-tagged tests within the smoke group.
+python3 tools/dv/run_dv.py --dut dtp --items smoke --tag ci
+----
+
+With `--items`, tags filter the expanded selection. Without `--items`, tags
+search the complete catalog.
+
+=== Targets and run modes
+
+Each selected test resolves a build target from its `target` field or the DUT
+default. Shared build stages run once per unique target, serially, before the
+test leaves execute. This permits one group to contain tests that consume
+different build images.
+
+Run-mode selection uses:
+
+[source,text]
+----
+--run-mode
+  > the test's first run_modes entry
+  > [defaults].run_mode
+  > "smoke"
+----
+
+Run-mode arguments and test arguments change runtime behavior without changing
+the selected test name.
+
+[CAUTION]
+====
+The current runner does not reject an unknown `--run-mode` name. An unknown
+name contributes no run-mode arguments or timeout, so verify the name in the
+DUT configuration before using it.
+====
+
+== Configuration and precedence
+
+Configuration ownership is intentionally split:
+
+[cols="<3,<4",options="header"]
+|===
+|Path |Owns
+
+|`hw/common/dv/configs/duts.toml`
+|Explicit DUT aliases and config-path overrides.
+
+|`hw/common/dv/configs/profiles/*.toml`
+|Shared framework, tool allowlist, scheduler policy, defaults, and stage graph.
+
+|`hw/common/dv/configs/simulators.toml`
+|Tool binaries, capabilities, wave formats, parser extensions, and common
+build/coverage defaults.
+
+|`hw/common/dv/configs/executors.toml`
+|Executor declarations. Only `local` dispatch is implemented.
+
+|`hw/common/dv/configs/parsers.toml`
+|Shared positive-evidence and failure-detection policies.
+
+|`<dut-dv-root>/<dut>_sim_cfg.toml`
+|DUT identity, profile selection, test-list pointer, source/build intent,
+targets, modes, and DUT-specific overrides.
+
+|`<dut-dv-root>/testlists/*.toml`
+|Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
+arguments, and optional firmware metadata.
+
+|`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
+|Optional detailed coverage thresholds, exclusions, and hole dispositions.
+|===
+
+The broad merge order reported by `--dry-run` is:
+
+[source,text]
+----
+simulator defaults < shared profile < DUT configuration < supported CLI overrides
+----
+
+Some domains have more specific rules:
+
+* Single-test seed: `--seed` > test seed > `[defaults].seed` > `1`.
+* Simulation-leaf timeout: `--timeout` > test `timeout_sec` > run-mode
+  `timeout_sec` > `[defaults].timeout_sec`.
+* Runtime arguments append in order: profile/DUT `[sim].args`, run-mode
+  `args`, test `args`, then CLI `--sim-arg` and `--plusarg`.
+* Regression multiplicity: a test's `reseed` value overrides `--reseed` for
+  that test.
+* A positive `[build.options].build_jobs` value currently overrides CLI-derived
+  build concurrency; otherwise `--build-jobs`, then `--sim-jobs`, supplies it.
+
+CLI overrides are curated rather than arbitrary TOML replacement. Stable
+settings belong in checked-in configuration; pass-through flags are intended
+for one-off debugging.
+
+== Stage planning
+
+The canonical logical stage names are:
+
+[source,text]
+----
+flist
+c_compile
+hdl_compile
+elaborate
+sim
+regress
+cov_merge
+cov_report
+formal
+clean
+----
+
+The actual stage set is supplied by the selected profile and DUT. A logical
+stage's configured `kind` chooses its backend implementation. For example, the
+shared cocotb profile maps `flist` to `bender_filelist`, `hdl_compile` to
+`cocotb_build`, and `sim` to `cocotb_sim`.
+
+Without explicit `--stage`, simulation selects the available stages from:
+
+[source,text]
+----
+flist -> c_compile? -> hdl_compile -> elaborate? -> sim
+----
+
+`c_compile` is inserted when a selected test declares firmware and the flow
+provides that stage. A group or multiple selected tests use the same path, but
+the simulation leaves run through the scheduler.
+
+Important stage rules:
+
+* `--stage NAME` is repeatable and runs the requested stages in order.
+  `filelist` is accepted as an alias for `flist`; comma-separated names are not.
+* `--build-only` selects available `flist`, `hdl_compile`, and `elaborate`
+  stages. Firmware `c_compile` can still be inserted on this implicit path.
+* `--run-only` omits planned `flist`, `hdl_compile`, and `elaborate` stages.
+  Firmware `c_compile` can still be inserted, and a cocotb simulation can build
+  its model when no prebuilt model is available.
+* `--regress`, a group, multiple tests, `--reseed`, `--retry`, or
+  `--max-failures` enables scheduler behavior.
+* If `--stage regress` is requested but the flow provides only `sim`, the
+  scheduler dispatches the `sim` stage.
+* Explicit stages do not generally gain implicit prerequisites. For example,
+  `--stage sim` expects an existing generated filelist and required firmware
+  outputs. The cocotb backend can still build its model, and a parallel
+  scheduler can insert an `hdl_compile`/`elaborate` prebuild before its leaves.
+
+Stage-control precedence is explicit `--stage`, then `--build-only`, then
+`--run-only`, then `--regress` or the mode default.
+
+[WARNING]
+====
+`--stage clean` recursively removes every path configured for that DUT. Most
+current DUTs include the complete `<dut-dv-root>/build` tree, so the command can
+delete cached models and all prior runs. Inspect the `REMOVE` plan with
+`--stage clean --dry-run` before executing it.
+====
+
+=== Coverage stages
+
+On the implicit path, `--cov` instruments simulation and appends `cov_merge`
+and `cov_report` when the flow provides them:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --items smoke \
+  --tool xcelium \
+  --cov
+----
+
+With explicit stages, `--cov` enables collection but does not append merge or
+report:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --items dtp_sanity_test \
+  --stage sim \
+  --tool xcelium \
+  --cov
+
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --run-dir hw/sys/dtp/dv/build/runs/latest \
+  --stage cov_merge \
+  --stage cov_report \
+  --fail-under 80
+----
+
+Non-dry-run coverage-only replay requires an existing `result.json`. The runner
+recovers the original tool, rejects a mismatched `--tool`, preserves
+non-coverage stage history, and replaces the replayed coverage records. A dry
+run can render a placeholder plan without that file, but cannot restore the
+original tool or history.
+
+Coverage merge/report accepts at most one known target and one known build
+fingerprint. A multi-target run cannot be merged as one coverage database;
+all-unknown legacy input provenance is accepted as a compatibility fallback.
+Coverage-only replay resolves the current/default target rather than restoring
+an original non-default target; use replay only when target and build-affecting
+configuration still match. This is especially important for the VCS design
+coverage database.
+
+The compatibility threshold uses `--fail-under`, then
+`[coverage.<tool>].fail_under`, then `0.0`. Detailed coverage-policy thresholds
+are enforced in addition to that scalar threshold.
+
+== Regression and reproducibility
+
+Scheduler mode expands the selection into `(test, target, seed)` leaves. It
+runs shared target builds first and then executes local leaves with up to
+`--sim-jobs` workers.
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut smc_wrapper \
+  --items smoke \
+  --regress \
+  --reseed 10 \
+  --retry 1 \
+  --sim-jobs 8
+----
+
+When scheduler mode executes `sim` or `regress`, seeds are fresh random
+positive integers and are recorded in leaf and regression results. `--seed` is
+rejected for those scheduler runs. Reproduce a leaf as a single simulation
+with the recorded item and seed:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut smc_wrapper \
+  --items <failed-test> \
+  --stage sim \
+  --tool <recorded-tool> \
+  --seed <recorded-seed>
+----
+
+`--retry N` retries a non-passing leaf up to `N` times. Earlier failures remain
+in `regression.json`; the final effective attempt determines the leaf result.
+A leaf that passes after a failed attempt is recorded as flaky.
+
+`--max-failures N` stops launching new serial leaves after `N` final failures
+and records the remainder as `SKIP`. Supplying this option disables the
+parallel worker path so the threshold can be enforced deterministically.
+
+== Waveform debug
+
+Use `--waves [FMT]` to capture every selected simulation. Omitting `FMT` uses
+the tool default. Use `--waves-on-fail [FMT]` to run normally first and then
+perform a debug-only wave rerun for each final non-passing leaf:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut dtp \
+  --items smoke \
+  --waves-on-fail fst \
+  --wave-window 100us \
+  --wave-margin 10us
+----
+
+The debug rerun never replaces or masks the original result. Its artifacts are
+attached as debug evidence.
+
+Wave times require a unit: `fs`, `ps`, `ns`, `us`, `ms`, or `s`.
+`--wave-start`/`--wave-end` request an explicit interval.
+`--wave-window` derives a start time from a timestamp found in the failure log;
+when a window is requested, the default post-failure margin is `10us`.
+
+Retention defaults are:
+
+* `all` for `--waves`;
+* `failed` for `--waves-on-fail`;
+* `none` when waves are not requested.
+
+If both wave modes are supplied, `--waves-on-fail` makes the default retention
+`failed`.
+
+Override them with `--wave-retention {all,failed,none}`. Kept wave directories
+include a copied log and `debug_context.json` with viewer and same-seed replay
+commands.
+
+[NOTE]
+====
+Exact ranged dumping is currently enforced only for Xcelium SHM and VCS FSDB.
+Other backend/format combinations record the requested range and set
+`range_supported` to false.
+====
+
+== CLI reference
+
+=== Selection, actions, and stages
+
+[cols="<3,<7",options="header"]
+|===
+|Option |Behavior
+
+|`--dut NAME`
+|Select a DUT. Required for execution; optional for global introspection.
+
+|`--mode {sim,formal}`
+|Select simulation or formal configuration. Default: `sim`.
+
+|`--items ITEM ...`
+|Select tests or groups. Default: `smoke` group, otherwise the first test.
+
+|`--tag TAG`
+|Repeatable OR filter. Filters `--items`, or searches the full catalog alone.
+
+|`--allow-duplicates`
+|Keep duplicate tests produced by overlapping groups.
+
+|`--tool TOOL`
+|Override the selected backend.
+
+|`--run-mode NAME`
+|Override the test/default run mode.
+
+|`--list`
+|List selectable DUTs, or details for `--dut`.
+
+|`--validate-configs`
+|Validate registries and every selectable simulation DUT. Exit `2` if any fail.
+
+|`--doctor`
+|Report configuration and tool availability. With no selected DUT/tool it is
+an informational survey.
+
+|`--dry-run`
+|Render commands and artifacts without executing backend tools or writing
+result files.
+
+|`--stage NAME`
+|Run a canonical stage. Repeat for multiple stages.
+
+|`--build-only`
+|Select the available build path.
+
+|`--run-only`
+|Omit planned build stages and select the simulation or formal run stage.
+Firmware/model preparation may still occur.
+
+|`--rebuild`
+|Request a fresh cocotb model build for the Verilator/Xcelium Python-runner
+paths. The classic VCS Make path remains dependency-driven and incremental.
+
+|`--timeout SEC`
+|Bound supported subprocess stages and override the configured simulation-leaf
+timeout. Bender filelist generation and in-process cocotb build stages are
+currently unbounded.
+|===
+
+Action dispatch precedence is `--validate-configs`, `--doctor`, `--list`, then
+execution. These flags are not an argparse-exclusive group, so avoid combining
+them in automation.
+
+=== Output and execution
+
+[cols="<3,<7",options="header"]
+|===
+|Option |Behavior
+
+|`--run-dir DIR`
+|Use an explicit run directory. Relative paths use the repository root.
+
+|`--result PATH`
+|Write an additional copy of the top-level result JSON.
+
+|`--quiet`
+|Print only the final result and essential artifacts.
+
+|`--verbose`
+|Stream backend output while retaining the normal logs.
+
+|`--ui {auto,pretty,plain}`
+|Choose terminal rendering. Default: `auto`.
+
+|`--sim-jobs N`
+|Set scheduler fan-out. Default: `1`; must be at least `1`.
+
+|`--build-jobs N`
+|Set backend/model build concurrency when configuration does not supply it;
+otherwise derives from `--sim-jobs`.
+
+|`--executor NAME`
+|Select an allowed executor. Only `local` dispatch is implemented.
+
+|`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
+|Record resource-request metadata. The local executor does not consume it.
+|===
+
+=== Regression, waves, and coverage
+
+[cols="<3,<7",options="header"]
+|===
+|Option |Behavior
+
+|`--regress`
+|Enter local scheduler mode.
+
+|`--seed N`
+|Set a deterministic single-simulation seed. Rejected when scheduler mode
+executes `sim` or `regress`.
+
+|`--reseed N`
+|Generate `N` random seeds per selected regression test. Must be at least `1`.
+
+|`--retry N`
+|Retry each non-passing leaf up to `N` times. Default: `0`.
+
+|`--max-failures N`
+|Stop launching new leaves after the threshold; must be non-negative.
+
+|`--waves [FMT]`
+|Capture waves for selected leaves; omitted format means the tool default.
+
+|`--waves-on-fail [FMT]`
+|Rerun final non-passing leaves with waves.
+
+|`--wave-start TIME`, `--wave-end TIME`
+|Request an explicit capture range.
+
+|`--wave-window TIME`, `--wave-margin TIME`
+|Request a failure-centered range.
+
+|`--wave-retention {all,failed,none}`
+|Control wave pruning.
+
+|`--cov`
+|Enable coverage instrumentation and, on an implicit run, merge/report stages.
+
+|`--fail-under PCT`
+|Override the report threshold. Valid range: 0 through 100.
+|===
+
+=== Pass-through and formal options
+
+[cols="<3,<7",options="header"]
+|===
+|Option |Behavior
+
+|`--define VALUE`
+|Repeatable HDL `+define+` override.
+
+|`--comp-arg ARG`
+|Repeatable HDL compile/elaboration argument.
+
+|`--c-arg ARG`
+|Repeatable C, firmware, DPI, or native-model build argument.
+
+|`--sim-arg ARG`
+|Repeatable simulator-runtime argument.
+
+|`--plusarg ARG`
+|Repeatable Verilog runtime plusarg, including its leading `+`, for example
+`--plusarg +FOO=1`.
+
+|`--proof-depth N`
+|Formal bounded-proof depth override.
+
+|`--formal-arg ARG`
+|Repeatable formal backend argument.
+
+|`--app NAME`
+|Formal app/task override.
+|===
+
+Simulation-only options are rejected in formal mode, and formal-only options
+are rejected in simulation mode.
+
+== Output and result contract
+
+Automatically allocated runs use UTC and live below the selected DUT:
+
+[source,text]
+----
+<dut-dv-root>/build/runs/<YYYYMMDD_HHMMSS>__<tool>__<label>/
+----
+
+The label is the first selected group, a single test name, `multi`, or `build`.
+Name collisions gain `_01`, `_02`, and so on. The `latest` symlink is updated
+only for automatically allocated runs.
+
+The following representative layout separates shared stages from test-major
+leaf output:
+
+[source,text]
+----
+<run>/
+├── result.json
+├── stages/
+│   ├── flist/{scripts,env,logs}/
+│   ├── hdl_compile/{scripts,env,logs}/
+│   └── regress/regression.json
+├── <test>/                         # flat single-test invocation
+│   ├── result.json
+│   ├── scripts/
+│   ├── env/
+│   ├── logs/
+│   ├── results/results.xml
+│   ├── coverage/
+│   └── waves/
+├── <test>/seed_<seed>/attempt_<n>/ # scheduler leaf
+│   └── ...
+└── cov/
+    ├── coverage.json
+    ├── <tool-specific-merged-database>
+    └── report/
+        ├── summary.json
+        ├── coverage-details.json
+        ├── coverage-details.raw.json
+        └── policy-application.json
+----
+
+Nested regressions also write `<test>/result.json` rollups. Most subprocess
+stages emit replayable shell scripts; in-process cocotb HDL builds and `clean`
+are exceptions. Environment snapshots redact values when variable names
+indicate licenses, tokens, secrets, passwords, credentials, API keys, private
+keys, or authentication data.
+
+`result.json` uses schema version `1` and records the resolved flow, tool,
+executor, selected items, CLI overrides, test/coverage summary, Git metadata,
+tool versions, and per-stage details. It is the authoritative run result.
+
+=== Status and exit codes
+
+[cols="<2,<2,<5",options="header"]
+|===
+|Status |Exit code |Meaning
+
+|`PASS` |0 |All required stage evidence passed.
+|`FAIL` |1 |A backend stage returned nonzero, or a test, proof, or coverage
+threshold failed.
+|`ERROR` |2 |Configuration, infrastructure, or invocation failed.
+|`TIMEOUT` |124 |A stage exceeded its resolved timeout.
+|`UNKNOWN` |5 |The parser could not prove pass or classify a stronger failure.
+|`SKIP` |n/a |A scheduler leaf was intentionally skipped; not a run-level status.
+|===
+
+Run-level aggregation uses:
+
+[source,text]
+----
+ERROR > TIMEOUT > FAIL > UNKNOWN > PASS
+----
+
+For simulation, return code zero is not sufficient for `PASS`. The selected
+parser policy examines structured XML, hard-failure markers, required and
+failure patterns, framework summaries, and positive pass evidence. Missing or
+ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+
+== Troubleshooting
+
+=== A different DUT's config blocks the run
+
+Normal execution validates every selectable simulation DUT before resolving
+the requested one. Run `--validate-configs` and fix every reported failure; a
+stale registry entry or config can block an otherwise unrelated DUT.
+
+=== The selected tool is missing
+
+Run:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
+----
+
+`--doctor` checks configured binaries on `PATH`, supported Python packages, and
+the presence count of configured license environment variables. It does not
+check out a license or comprehensively probe Bender, Make, coverage utilities,
+or every firmware toolchain.
+
+=== A zero-return-code simulation is UNKNOWN
+
+Inspect the leaf `result.json` fields `reason` and `parser.evidence`, then check
+the recorded log and `results/results.xml`. A missing, empty, or malformed
+structured result and absent positive log summary correctly fail closed.
+
+=== An explicit sim-only run cannot find build or firmware output
+
+`--stage sim` does not add `flist` or firmware compilation. A parallel cocotb
+scheduler may insert a model prebuild, and a cocotb simulation may build its
+model, but the generated filelist and required firmware outputs must already
+exist. Run the missing preparation stages first, or use the implicit path.
+
+=== VCS cannot load cocotb
+
+The classic VCS Make/VPI path currently requires a cocotb version earlier than
+2.0. The runner checks `<repo>/venv/bin/python` before the active interpreter.
+Provision that environment with a compatible cocotb version before selecting
+VCS.
+
+=== Coverage was collected but no report appeared
+
+With explicit `--stage sim --cov`, run `cov_merge` and `cov_report` explicitly
+against the same run directory. Verify that the selected tool's coverage
+utility (`verilator_coverage`, URG, or IMC) is available.
+
+[[runner-current-limitations]]
+== Current limitations and roadmap boundary
+
+The following behaviors are not part of the implemented runner contract:
+
+* Only the `local` executor dispatches work. Queue, core, memory, and wall-time
+  flags are metadata; non-local scheduling remains roadmap work.
+* Formal CLI and stage plumbing exist, but this checkout contains no
+  `*_formal_cfg.toml`; a DUT cannot run formal mode until one is added.
+* `run.json`, background execution, and job lifecycle/status commands described
+  in older architecture notes are not emitted or implemented.
+* `--dry-run` avoids backend execution and result writes, but bootstrap may
+  still provision the locked `uv` environment and update the generated
+  namespace bridge.
+* Configured test/run-mode timeouts apply to simulation leaves. CLI
+  `--timeout` reaches many subprocess stages, but Bender filelist generation
+  and in-process Verilator/Xcelium cocotb build stages are currently unbounded.
+* An explicit `--run-dir` is reused as supplied, is not made unique, and does
+  not update `latest`. Choose an empty directory unless performing the
+  documented coverage replay.
+* `--max-failures 0` satisfies the current stop condition immediately and
+  therefore skips every scheduler leaf. The aggregate currently reports
+  `PASS` and exits `0` despite running no tests; use a positive threshold.
+* Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB.
+
+Do not infer support for LSF/SLURM, site-local TOML overrides, background jobs,
+or automatically discovered formal flows from architecture documents until
+those features are present in code and configuration.
