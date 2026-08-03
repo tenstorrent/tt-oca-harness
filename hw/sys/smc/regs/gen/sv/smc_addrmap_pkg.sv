@@ -35,98 +35,36 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h14;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 
-localparam longint unsigned SMC_TOP_SMC_PLL_WRAP_BASE_ADDR = 64'hC0003000;
-localparam longint unsigned SMC_TOP_SMC_PLL_WRAP_SIZE = 64'hEE8;
-
-localparam longint unsigned SMC_TOP_SMC_PLL_WRAP_FOOTPRINT_BASE_ADDR = 64'hC0003000;
-localparam longint unsigned SMC_TOP_SMC_PLL_WRAP_FOOTPRINT_SIZE = 64'hEE8;
-
 function automatic longint unsigned SMC_TOP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
-    return 64'hC0004000 + (gpio_intf_idx * 64'h10);
+    return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_NUM = 64'h44;
+localparam longint unsigned SMC_TOP_GPIO_INTF_NUM = 64'h41;
 localparam longint unsigned SMC_TOP_GPIO_INTF_SIZE = 64'hC;
 localparam longint unsigned SMC_TOP_GPIO_INTF_STRIDE = 64'h10;
-localparam longint unsigned SMC_TOP_GPIO_INTF_TOTAL_SIZE = 64'h440;
+localparam longint unsigned SMC_TOP_GPIO_INTF_TOTAL_SIZE = 64'h410;
 
-function automatic longint unsigned SMC_TOP_GPIO_CTRL_BASE_ADDR(input int unsigned gpio_ctrl_idx);
-    return 64'hC0004440 + (gpio_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_GPIO_CTRL_NUM = 64'h44;
-localparam longint unsigned SMC_TOP_GPIO_CTRL_SIZE = 64'h4;
-localparam longint unsigned SMC_TOP_GPIO_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_GPIO_CTRL_TOTAL_SIZE = 64'h880;
-
-localparam longint unsigned SMC_TOP_GPIO_REFCLK_CTRL_BASE_ADDR = 64'hC0004CC0;
-localparam longint unsigned SMC_TOP_GPIO_REFCLK_CTRL_SIZE = 64'h4;
-
-localparam longint unsigned SMC_TOP_GPIO_POC_PBIAS_CTRL_BASE_ADDR = 64'hC0004DE0;
-localparam longint unsigned SMC_TOP_GPIO_POC_PBIAS_CTRL_SIZE = 64'hC;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR = 64'hC0005000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_FOOTPRINT_BASE_ADDR = 64'hC0005000;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_BASE_ADDR = 64'hC0005500;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_FOOTPRINT_BASE_ADDR = 64'hC0005500;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_BASE_ADDR = 64'hC0005A00;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_FOOTPRINT_BASE_ADDR = 64'hC0005A00;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_BASE_ADDR = 64'hC0005F00;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_FOOTPRINT_BASE_ADDR = 64'hC0005F00;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_BASE_ADDR = 64'hC0006400;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_FOOTPRINT_BASE_ADDR = 64'hC0006400;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_BASE_ADDR = 64'hC0006900;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_FOOTPRINT_BASE_ADDR = 64'hC0006900;
-localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_FOOTPRINT_SIZE = 64'h500;
-
-localparam longint unsigned SMC_TOP_SMC_PVT_WRAP_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_PVT_WRAP_SIZE = 64'h948;
-
-localparam longint unsigned SMC_TOP_SMC_PVT_WRAP_FOOTPRINT_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_PVT_WRAP_FOOTPRINT_SIZE = 64'h948;
-
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR = 64'hC0008000;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE = 64'h5C;
 
-localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_BASE_ADDR = 64'hC0009000;
+localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_BASE_ADDR = 64'hC0005000;
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_SIZE = 64'hE0C;
 
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009000 + (i2c_idx * 64'h200);
+    return 64'hC0005000 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_NUM = 64'h3;
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_SIZE = 64'h84;
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_STRIDE = 64'h200;
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TOTAL_SIZE = 64'h600;
 
-localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR = 64'hC0009E00;
+localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR = 64'hC0005E00;
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE = 64'hC;
 
-localparam longint unsigned SMC_TOP_SMC_UART_WRAP_BASE_ADDR = 64'hC000A000;
+localparam longint unsigned SMC_TOP_SMC_UART_WRAP_BASE_ADDR = 64'hC0006000;
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_SIZE = 64'h1000;
 
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A000 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006000 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE = 64'h280;
@@ -134,50 +72,47 @@ localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_STRIDE = 
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_TOTAL_SIZE = 64'h1000;
 
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A000 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006000 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE = 64'h4;
 
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A100 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006100 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE = 64'h28;
 
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A200 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006200 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE = 64'h80;
 
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC000B000;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC0007000;
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SIZE = 64'hC00;
 
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'hC0008000;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
 
-localparam longint unsigned SMC_TOP_EFUSE_SHIM_CTRL_BASE_ADDR = 64'hC000C100;
-localparam longint unsigned SMC_TOP_EFUSE_SHIM_CTRL_SIZE = 64'h4;
-
-localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR = 64'hC000D000;
+localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR = 64'hC0009000;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE = 64'h300;
 
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D000 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009000 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_NUM = 64'h3;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE = 64'h100;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE = 64'h100;
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TOTAL_SIZE = 64'h300;
 
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR = 64'hC000E000;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR = 64'hC000A000;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE = 64'h24;
 
-localparam longint unsigned SMC_TOP_DTP_CTRL_REG_BASE_ADDR = 64'hC000F000;
+localparam longint unsigned SMC_TOP_DTP_CTRL_REG_BASE_ADDR = 64'hC000B000;
 localparam longint unsigned SMC_TOP_DTP_CTRL_REG_SIZE = 64'h800;
 
-localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000F800;
+localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
@@ -445,6 +380,60 @@ localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_BASE_ADDR = 64'hC0039000;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_SIZE = 64'h2C0;
 
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR = 64'hC003A000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_BASE_ADDR = 64'hC003A000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003A000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_0_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_BASE_ADDR = 64'hC003B000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_BASE_ADDR = 64'hC003B000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003B000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_1_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_BASE_ADDR = 64'hC003C000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_BASE_ADDR = 64'hC003C000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003C000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_2_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_BASE_ADDR = 64'hC003D000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_BASE_ADDR = 64'hC003D000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003D000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_3_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_BASE_ADDR = 64'hC003E000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_BASE_ADDR = 64'hC003E000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003E000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_4_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_BASE_ADDR = 64'hC003F000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_BASE_ADDR = 64'hC003F000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_SIZE = 64'h500;
+
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'hC003F000;
+localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_5_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR = 64'hC0040000;
 localparam longint unsigned SMC_TOP_SPM_ROM_MEMORY_SIZE = 64'h20000;
 
@@ -454,11 +443,11 @@ localparam longint unsigned SMC_TOP_SPM_MEMORY_SIZE = 64'h100000;
 localparam longint unsigned SMC_TOP_SMC_CLA_BASE_ADDR = 64'hC0160000;
 localparam longint unsigned SMC_TOP_SMC_CLA_SIZE = 64'h8FF8;
 
-localparam longint unsigned SMC_TOP_SMC_AXIL_EXTENSION_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_AXIL_EXTENSION_SIZE = 64'h1800;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
 
-localparam longint unsigned SMC_TOP_SMC_AXIL_EXTENSION_FOOTPRINT_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_AXIL_EXTENSION_FOOTPRINT_SIZE = 64'h1800;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_BASE_ADDR = 64'hC0400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_SIZE = 64'h400000;
 
 localparam longint unsigned SMC_TOP_ECAM_REGION_BASE_ADDR = 64'hC0800000;
 localparam longint unsigned SMC_TOP_ECAM_REGION_SIZE = 64'h800000;
@@ -549,319 +538,311 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BAS
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC0002A08;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
-    return 64'hC0004000 + (gpio_intf_idx * 64'h10);
+    return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_NUM = 64'h44;
+localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
-    return 64'hC0004004 + (gpio_intf_idx * 64'h10);
+    return 64'hC0003004 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h44;
+localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
-    return 64'hC0004008 + (gpio_intf_idx * 64'h10);
+    return 64'hC0003008 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h44;
-function automatic longint unsigned SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(input int unsigned gpio_ctrl_idx);
-    return 64'hC0004440 + (gpio_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_GPIO_CTRL_CONTROL_NUM = 64'h44;
-localparam longint unsigned SMC_TOP_GPIO_REFCLK_CTRL_CONTROL_BASE_ADDR = 64'hC0004CC0;
-localparam longint unsigned SMC_TOP_GPIO_POC_PBIAS_CTRL_CONTROL_BASE_ADDR = 64'hC0004DE0;
-localparam longint unsigned SMC_TOP_GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_BASE_ADDR = 64'hC0004DE8;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR = 64'hC0008000;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR = 64'hC0008004;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR = 64'hC0008008;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_BASE_ADDR = 64'hC000800C;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR = 64'hC0008020;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR = 64'hC0008024;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR = 64'hC0008028;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR = 64'hC0008030;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR = 64'hC0008034;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_BASE_ADDR = 64'hC0008038;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR = 64'hC0008050;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_1_BASE_ADDR = 64'hC0008054;
-localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR = 64'hC0008058;
+localparam longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR = 64'hC0004000;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR = 64'hC0004004;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR = 64'hC0004008;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_BASE_ADDR = 64'hC000400C;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR = 64'hC0004020;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR = 64'hC0004024;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR = 64'hC0004028;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR = 64'hC0004030;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR = 64'hC0004034;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_BASE_ADDR = 64'hC0004038;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR = 64'hC0004050;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_1_BASE_ADDR = 64'hC0004054;
+localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR = 64'hC0004058;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009000 + (i2c_idx * 64'h200);
+    return 64'hC0005000 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009004 + (i2c_idx * 64'h200);
+    return 64'hC0005004 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_TEST_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009008 + (i2c_idx * 64'h200);
+    return 64'hC0005008 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_INTR_TEST_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000900C + (i2c_idx * 64'h200);
+    return 64'hC000500C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009010 + (i2c_idx * 64'h200);
+    return 64'hC0005010 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009014 + (i2c_idx * 64'h200);
+    return 64'hC0005014 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009018 + (i2c_idx * 64'h200);
+    return 64'hC0005018 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000901C + (i2c_idx * 64'h200);
+    return 64'hC000501C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009020 + (i2c_idx * 64'h200);
+    return 64'hC0005020 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009024 + (i2c_idx * 64'h200);
+    return 64'hC0005024 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009028 + (i2c_idx * 64'h200);
+    return 64'hC0005028 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000902C + (i2c_idx * 64'h200);
+    return 64'hC000502C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009030 + (i2c_idx * 64'h200);
+    return 64'hC0005030 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009034 + (i2c_idx * 64'h200);
+    return 64'hC0005034 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_VAL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009038 + (i2c_idx * 64'h200);
+    return 64'hC0005038 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_VAL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000903C + (i2c_idx * 64'h200);
+    return 64'hC000503C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009040 + (i2c_idx * 64'h200);
+    return 64'hC0005040 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009044 + (i2c_idx * 64'h200);
+    return 64'hC0005044 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009048 + (i2c_idx * 64'h200);
+    return 64'hC0005048 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000904C + (i2c_idx * 64'h200);
+    return 64'hC000504C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009050 + (i2c_idx * 64'h200);
+    return 64'hC0005050 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009054 + (i2c_idx * 64'h200);
+    return 64'hC0005054 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009058 + (i2c_idx * 64'h200);
+    return 64'hC0005058 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000905C + (i2c_idx * 64'h200);
+    return 64'hC000505C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009060 + (i2c_idx * 64'h200);
+    return 64'hC0005060 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_TIMEOUT_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009064 + (i2c_idx * 64'h200);
+    return 64'hC0005064 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009068 + (i2c_idx * 64'h200);
+    return 64'hC0005068 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000906C + (i2c_idx * 64'h200);
+    return 64'hC000506C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ACK_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_ACQ_FIFO_NEXT_DATA_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009070 + (i2c_idx * 64'h200);
+    return 64'hC0005070 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_ACQ_FIFO_NEXT_DATA_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_NACK_HANDLER_TIMEOUT_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009074 + (i2c_idx * 64'h200);
+    return 64'hC0005074 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_HOST_NACK_HANDLER_TIMEOUT_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009078 + (i2c_idx * 64'h200);
+    return 64'hC0005078 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC000907C + (i2c_idx * 64'h200);
+    return 64'hC000507C + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(input int unsigned i2c_idx);
-    return 64'hC0009080 + (i2c_idx * 64'h200);
+    return 64'hC0005080 + (i2c_idx * 64'h200);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(input int unsigned I2C_CTRL_idx);
-    return 64'hC0009E00 + (I2C_CTRL_idx * 64'h4);
+    return 64'hC0005E00 + (I2C_CTRL_idx * 64'h4);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A000 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006000 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A100 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006100 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A104 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006104 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A108 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006108 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A10C + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC000610C + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A110 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006110 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A114 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006114 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A118 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006118 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A11C + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC000611C + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ECR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A120 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006120 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ECR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A124 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006124 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A200 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006200 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A204 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006204 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A208 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006208 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A210 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006210 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A214 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006214 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A218 + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC0006218 + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx);
-    return 64'hC000A21C + (uart_log_engine_wrap_idx * 64'h400);
+    return 64'hC000621C + (uart_log_engine_wrap_idx * 64'h400);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_TEST_NUM = 64'h4;
 function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(input int unsigned uart_log_engine_wrap_idx, input int unsigned LOG_CTRL_idx);
-    return 64'hC000A240 + (uart_log_engine_wrap_idx * 64'h400) + (LOG_CTRL_idx * 64'h4);
+    return 64'hC0006240 + (uart_log_engine_wrap_idx * 64'h400) + (LOG_CTRL_idx * 64'h4);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC000B000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR = 64'hC000B008;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR = 64'hC000B028;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR = 64'hC000B048;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR = 64'hC000B848;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR = 64'hC000B888;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR = 64'hC000B8A8;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007000;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR = 64'hC0007008;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR = 64'hC0007028;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR = 64'hC0007048;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR = 64'hC0007848;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR = 64'hC0007888;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR = 64'hC00078A8;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(input int unsigned I2C_I3C_ID_idx);
-    return 64'hC000B8AC + (I2C_I3C_ID_idx * 64'h8);
+    return 64'hC00078AC + (I2C_I3C_ID_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM = 64'h9;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR = 64'hC000B8F4;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR = 64'hC000B8F8;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR = 64'hC000B8FC;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR = 64'hC00078F4;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR = 64'hC00078F8;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR = 64'hC00078FC;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(input int unsigned RESERVED_idx);
-    return 64'hC000BAFC + (RESERVED_idx * 64'h4);
+    return 64'hC0007AFC + (RESERVED_idx * 64'h4);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_RESERVED_NUM = 64'h41;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'hC000C000;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'hC000C004;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR = 64'hC000C008;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR = 64'hC000C00C;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'hC000C010;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'hC000C014;
-localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'hC000C018;
-localparam longint unsigned SMC_TOP_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'hC000C100;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'hC0008000;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'hC0008004;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR = 64'hC0008008;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR = 64'hC000800C;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'hC0008010;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'hC0008014;
+localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'hC0008018;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D000 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009000 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D004 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009004 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_STATUS_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D008 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009008 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_STATUS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_ENABLE_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D00C + (telemetry_receiver_idx * 64'h100);
+    return 64'hC000900C + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_ENABLE_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_TEST_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D010 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009010 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_TEST_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D014 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009014 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'hC000D018 + (telemetry_receiver_idx * 64'h100);
+    return 64'hC0009018 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_NUM = 64'h3;
 function automatic longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(input int unsigned telemetry_receiver_idx, input int unsigned TELEMETRY_COUNTER_idx);
-    return 64'hC000D080 + (telemetry_receiver_idx * 64'h100) + (TELEMETRY_COUNTER_idx * 64'h4);
+    return 64'hC0009080 + (telemetry_receiver_idx * 64'h100) + (TELEMETRY_COUNTER_idx * 64'h4);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_NUM = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR = 64'hC000E000;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR = 64'hC000E004;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR = 64'hC000E008;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR = 64'hC000E00C;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR = 64'hC000E010;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR = 64'hC000E014;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR = 64'hC000E018;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR = 64'hC000E01C;
-localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR = 64'hC000E020;
-localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000F800;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000F808;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000F810;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR = 64'hC000A000;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR = 64'hC000A004;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR = 64'hC000A008;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR = 64'hC000A00C;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR = 64'hC000A010;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR = 64'hC000A014;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR = 64'hC000A018;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR = 64'hC000A01C;
+localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR = 64'hC000A020;
+localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000B800;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000B808;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000B810;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR = 64'hC0010008;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR = 64'hC0010010;

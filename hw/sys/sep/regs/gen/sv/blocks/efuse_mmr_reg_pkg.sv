@@ -7,6 +7,26 @@ package efuse_mmr_reg_pkg;
     localparam EFUSE_MMR_REG_MIN_ADDR_WIDTH = 7;
     localparam EFUSE_MMR_REG_SIZE = 'h70;
 
+    typedef struct packed {
+        logic [31:0] token;
+    } efuse_mmr__RMA_TOKEN_I__external__fields__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        efuse_mmr__RMA_TOKEN_I__external__fields__in_t rd_data;
+        logic wr_ack;
+    } efuse_mmr__RMA_TOKEN_I__external__in_t;
+
+    typedef struct packed {
+        logic [31:0] token;
+    } efuse_mmr__SEC_DISABLE_TOKEN_I__external__fields__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        efuse_mmr__SEC_DISABLE_TOKEN_I__external__fields__in_t rd_data;
+        logic wr_ack;
+    } efuse_mmr__SEC_DISABLE_TOKEN_I__external__in_t;
+
     typedef struct {
         logic [5:0] next;
     } efuse_mmr__TOKEN_MATCH__token_match_status__in_t;
@@ -16,26 +36,35 @@ package efuse_mmr_reg_pkg;
     } efuse_mmr__TOKEN_MATCH__in_t;
 
     typedef struct {
+        efuse_mmr__RMA_TOKEN_I__external__in_t RMA_SIP_TOKEN_I[8];
+        efuse_mmr__RMA_TOKEN_I__external__in_t RMA_CHIPLET_TOKEN_I[8];
+        efuse_mmr__SEC_DISABLE_TOKEN_I__external__in_t SEC_DISABLE_TOKEN_I[8];
         efuse_mmr__TOKEN_MATCH__in_t RMA_SIP_TOKEN_MATCH;
         efuse_mmr__TOKEN_MATCH__in_t RMA_CHIPLET_TOKEN_MATCH;
         efuse_mmr__TOKEN_MATCH__in_t SEC_DISABLE_TOKEN_MATCH;
     } efuse_mmr__in_t;
 
-    typedef struct {
-        logic [31:0] value;
-    } efuse_mmr__RMA_TOKEN_I__token__out_t;
+    typedef struct packed {
+        logic [31:0] token;
+    } efuse_mmr__RMA_TOKEN_I__external__fields__out_t;
 
     typedef struct {
-        efuse_mmr__RMA_TOKEN_I__token__out_t token;
-    } efuse_mmr__RMA_TOKEN_I__out_t;
+        logic req;
+        logic req_is_wr;
+        efuse_mmr__RMA_TOKEN_I__external__fields__out_t wr_data;
+        efuse_mmr__RMA_TOKEN_I__external__fields__out_t wr_biten;
+    } efuse_mmr__RMA_TOKEN_I__external__out_t;
+
+    typedef struct packed {
+        logic [31:0] token;
+    } efuse_mmr__SEC_DISABLE_TOKEN_I__external__fields__out_t;
 
     typedef struct {
-        logic [31:0] value;
-    } efuse_mmr__SEC_DISABLE_TOKEN_I__token__out_t;
-
-    typedef struct {
-        efuse_mmr__SEC_DISABLE_TOKEN_I__token__out_t token;
-    } efuse_mmr__SEC_DISABLE_TOKEN_I__out_t;
+        logic req;
+        logic req_is_wr;
+        efuse_mmr__SEC_DISABLE_TOKEN_I__external__fields__out_t wr_data;
+        efuse_mmr__SEC_DISABLE_TOKEN_I__external__fields__out_t wr_biten;
+    } efuse_mmr__SEC_DISABLE_TOKEN_I__external__out_t;
 
     typedef struct {
         logic value;
@@ -56,9 +85,9 @@ package efuse_mmr_reg_pkg;
     } efuse_mmr__TOKEN_EOP__out_t;
 
     typedef struct {
-        efuse_mmr__RMA_TOKEN_I__out_t RMA_SIP_TOKEN_I[8];
-        efuse_mmr__RMA_TOKEN_I__out_t RMA_CHIPLET_TOKEN_I[8];
-        efuse_mmr__SEC_DISABLE_TOKEN_I__out_t SEC_DISABLE_TOKEN_I[8];
+        efuse_mmr__RMA_TOKEN_I__external__out_t RMA_SIP_TOKEN_I[8];
+        efuse_mmr__RMA_TOKEN_I__external__out_t RMA_CHIPLET_TOKEN_I[8];
+        efuse_mmr__SEC_DISABLE_TOKEN_I__external__out_t SEC_DISABLE_TOKEN_I[8];
         efuse_mmr__TOKEN_EOP__out_t TOKEN_EOP;
     } efuse_mmr__out_t;
 endpackage

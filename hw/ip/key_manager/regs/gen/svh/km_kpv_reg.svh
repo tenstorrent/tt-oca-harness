@@ -1432,17 +1432,17 @@ localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_SHIFT                        
 localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_MASK                                                             = 32'h2;
 localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_SHIFT                                                            = 1;
 
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_2_MASK                                                             = 32'hC;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_2_SHIFT                                                            = 2;
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_MASK                                                                = 32'h4;
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_SHIFT                                                               = 2;
+
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_MASK                                                               = 32'h8;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_SHIFT                                                              = 3;
 
 localparam int unsigned KM_KPV_CTRL_REG_EXTEND_MASK                                                               = 32'h70;
 localparam int unsigned KM_KPV_CTRL_REG_EXTEND_SHIFT                                                              = 4;
 
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_8_7_MASK                                                             = 32'h180;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_8_7_SHIFT                                                            = 7;
-
-localparam int unsigned KM_KPV_CTRL_REG_DEST_VALID_MASK                                                           = 32'h1FE00;
-localparam int unsigned KM_KPV_CTRL_REG_DEST_VALID_SHIFT                                                          = 9;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_MASK                                                            = 32'h1FF80;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_SHIFT                                                           = 7;
 
 localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_MASK                                                           = 32'h1E0000;
 localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_SHIFT                                                          = 17;
@@ -1475,10 +1475,10 @@ typedef struct packed {
 typedef struct packed {
     logic [10:0]   rsvd_31_21 ;
     logic [3:0]   last_dword ;
-    logic [7:0]   dest_valid ;
-    logic [1:0]   rsvd_8_7 ;
+    logic [9:0]   rsvd_16_7 ;
     logic [2:0]   extend ;
-    logic [1:0]   rsvd_3_2 ;
+    logic [0:0]   rsvd_3 ;
+    logic [0:0]   erase ;
     logic [0:0]   lock_use ;
     logic [0:0]   lock_write ;
 } km_kpv_ctrl_reg_reg_t;

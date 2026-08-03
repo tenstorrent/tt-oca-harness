@@ -2,15 +2,15 @@
 ======
 *Register Arrays:* This register map contains the following register arrays:
 
-* *KEY_SHARE0_0[16]*: 16 registers
+* *KEY_SHARE0[16]*: 16 registers
   ** Base Address: 0x30
   ** Address Increment: 0x4 per register
 
-* *KEY_SHARE1_0[16]*: 16 registers
+* *KEY_SHARE1[16]*: 16 registers
   ** Base Address: 0x70
   ** Address Increment: 0x4 per register
 
-* *PREFIX_0[11]*: 11 registers
+* *PREFIX[11]*: 11 registers
   ** Base Address: 0xB4
   ** Address Increment: 0x4 per register
 
@@ -32,10 +32,10 @@
 | 0x24 | ENTROPY_REFRESH_HASH_CNT | R a| -
 | 0x28 | ENTROPY_REFRESH_THRESHOLD_SHADOWED | RW a| -
 | 0x2C | ENTROPY_SEED | W a| -
-| 0x30 - 0x6C | KEY_SHARE0_0[16] | W a| -
-| 0x70 - 0xAC | KEY_SHARE1_0[16] | W a| -
+| 0x30 - 0x6C | KEY_SHARE0[16] | W a| -
+| 0x70 - 0xAC | KEY_SHARE1[16] | W a| -
 | 0xB0 | KEY_LEN | W a| -
-| 0xB4 - 0xDC | PREFIX_0[11] | RW a| -
+| 0xB4 - 0xDC | PREFIX[11] | RW a| -
 | 0xE0 | ERR_CODE | R a| -
 |===
 
@@ -44,15 +44,15 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `KMAC_ERR` | RW | 0x0 a| KMAC/SHA3 error occurred. ERR_CODE register shows the details
-| 1 | `FIFO_EMPTY` | R | 0x0 a| The message FIFO is empty.
+| 2 | `kmac_err` | RW | 0x0 a| KMAC/SHA3 error occurred. ERR_CODE register shows the details
+| 1 | `fifo_empty` | R | 0x0 a| The message FIFO is empty.
 This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
 i) The KMAC block is not exercised by a hardware application interface.
 ii) The SHA3 block is in the Absorb state.
 iii) Software has not yet written the Process command to finish the absorption process.
 For the interrupt to be raised, the message FIFO must also have been full previously.
 Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
-| 0 | `KMAC_DONE` | RW | 0x0 a| KMAC/SHA3 absorbing has been completed
+| 0 | `kmac_done` | RW | 0x0 a| KMAC/SHA3 absorbing has been completed
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -60,9 +60,9 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `KMAC_ERR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.kmac_err is set.
-| 1 | `FIFO_EMPTY` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.fifo_empty is set.
-| 0 | `KMAC_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.kmac_done is set.
+| 2 | `kmac_err` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.kmac_err is set.
+| 1 | `fifo_empty` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.fifo_empty is set.
+| 0 | `kmac_done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.kmac_done is set.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -70,9 +70,9 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `KMAC_ERR` | W | 0x0 a| Write 1 to force !!INTR_STATE.kmac_err to 1.
-| 1 | `FIFO_EMPTY` | W | 0x0 a| Write 1 to force !!INTR_STATE.fifo_empty to 1.
-| 0 | `KMAC_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.kmac_done to 1.
+| 2 | `kmac_err` | W | 0x0 a| Write 1 to force !!INTR_STATE.kmac_err to 1.
+| 1 | `fifo_empty` | W | 0x0 a| Write 1 to force !!INTR_STATE.fifo_empty to 1.
+| 0 | `kmac_done` | W | 0x0 a| Write 1 to force !!INTR_STATE.kmac_done to 1.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -80,8 +80,8 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `FATAL_FAULT_ERR` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
-| 0 | `RECOV_OPERATION_ERR` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 1 | `fatal_fault_err` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `recov_operation_err` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -89,7 +89,7 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `EN` | R | 0x1 a| Configuration enable.
+| 0 | `en` | R | 0x1 a| Configuration enable.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -97,7 +97,7 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 |===
 | Bits | Field | Access | Reset | Description
 | 31:27 | `Reserved` | - | - a| Reserved
-| 26 | `EN_UNSUPPORTED_MODESTRENGTH` | RW | 0x0 a| Enable Unsupported Mode and Strength configs.
+| 26 | `en_unsupported_modestrength` | RW | 0x0 a| Enable Unsupported Mode and Strength configs.
 
 SW may set this field for KMAC to move forward with unsupported
 Keccak Mode and Strength configurations, such as cSHAKE512.
@@ -105,16 +105,16 @@ Keccak Mode and Strength configurations, such as cSHAKE512.
 If not set, KMAC won't propagate the SW command (CmdStart) to the
 rest of the blocks (AppIntf, KMAC Core, SHA3).
 | 25 | `Reserved` | - | - a| Reserved
-| 24 | `ENTROPY_READY` | RW | 0x0 a| Entropy Ready status.
+| 24 | `entropy_ready` | RW | 0x0 a| Entropy Ready status.
 
 Software sets this field to allow the entropy generator in KMAC to
 fetch the entropy and run.
 | 23:21 | `Reserved` | - | - a| Reserved
-| 20 | `MSG_MASK` | RW | 0x0 a| Message Masking with PRNG.
+| 20 | `msg_mask` | RW | 0x0 a| Message Masking with PRNG.
 
 If 1, KMAC applies PRNG to the input messages to the Keccak module
 when KMAC mode is on.
-| 19 | `ENTROPY_FAST_PROCESS` | RW | 0x0 a| Entropy Fast process mode.
+| 19 | `entropy_fast_process` | RW | 0x0 a| Entropy Fast process mode.
 
 If 1, entropy logic uses garbage data while not processing the KMAC
 key block. It will re-use previous entropy value and will not
@@ -123,21 +123,21 @@ entropy while processing the secret key block. This process should
 not be used if SCA resistance is required because it may cause side
 channel leakage.
 | 18 | `Reserved` | - | - a| Reserved
-| 17:16 | `ENTROPY_MODE` | RW | 0x0 a| Entropy Mode
+| 17:16 | `entropy_mode` | RW | 0x0 a| Entropy Mode
 
 Using this field, software can configure mode of operation of the internal pseudo-random number generator (PRNG).
 
 Note that once software has configured a value different from `idle_mode` after reset, and set the !!CFG_SHADOWED.entropy_ready bit afterwards, the PRNG configuration cannot be changed anymore (unless an EDN request timeout occurs when running in EDN mode).
 Further writes to this field will change the value received upon reading the register, but they will be ignored by the internal hardware.
 | 15:13 | `Reserved` | - | - a| Reserved
-| 12 | `SIDELOAD` | RW | 0x1 a| Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.
+| 12 | `sideload` | RW | 0x1 a| Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.
 
 If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC
 operation. KMAC uses the sideloaded key regardless of this
 configuration when KeyMgr initiates the KMAC operation for
 Key Derivation Function (KDF).
 | 11:10 | `Reserved` | - | - a| Reserved
-| 9 | `STATE_ENDIANNESS` | RW | 0x0 a| State Endianness.
+| 9 | `state_endianness` | RW | 0x0 a| State Endianness.
 
 If 1 then each individual word in the !!STATE output register
 is converted to big-endian byte order.
@@ -145,7 +145,7 @@ The order of the words in relation to one another is not
 changed.
 This setting does not affect how the state is interpreted
 during computation.
-| 8 | `MSG_ENDIANNESS` | RW | 0x0 a| Message Endianness.
+| 8 | `msg_endianness` | RW | 0x0 a| Message Endianness.
 
 If 1 then each individual multi-byte value, regardless of its
 alignment, written to !!MSG_FIFO will be added to the message
@@ -157,18 +157,18 @@ affected by this setting.
 From a hardware perspective byte swaps are performed on a TL-UL
 word granularity.
 | 7:6 | `Reserved` | - | - a| Reserved
-| 5:4 | `MODE` | RW | 0x0 a| Keccak hashing mode.
+| 5:4 | `mode` | RW | 0x0 a| Keccak hashing mode.
 
 This module supports SHA3 main hashing algorithm and the part
 of its derived functions, SHAKE and cSHAKE with limitations.
 This field is to select the mode.
-| 3:1 | `KSTRENGTH` | RW | 0x0 a| Hashing Strength
+| 3:1 | `kstrength` | RW | 0x0 a| Hashing Strength
 
 3 bit field to select the security strength of SHA3 hashing
 engine. If mode field is set to SHAKE or cSHAKE, only 128 and
 256 strength can be selected. Other value will result error
 when hashing starts.
-| 0 | `KMAC_EN` | RW | 0x0 a| KMAC datapath enable.
+| 0 | `kmac_en` | RW | 0x0 a| KMAC datapath enable.
 
 If this bit is 1, the incoming message is processed in KMAC
 with the secret key.
@@ -179,16 +179,16 @@ with the secret key.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
-| 10 | `ERR_PROCESSED` | W | - a| When error occurs and one of the state machine stays at
+| 10 | `err_processed` | W | - a| When error occurs and one of the state machine stays at
 Error handling state, SW may process the error based on
 ERR_CODE, then let FSM back to the reset state
-| 9 | `HASH_CNT_CLR` | W | - a| Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
-| 8 | `ENTROPY_REQ` | W | - a| Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
+| 9 | `hash_cnt_clr` | W | - a| Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
+| 8 | `entropy_req` | W | - a| Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
 This will also clear !!ENTROPY_REFRESH_HASH_CNT.
 
 Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.
 | 7:6 | `Reserved` | - | - a| Reserved
-| 5:0 | `CMD` | W | - a| Issue a command to the KMAC/SHA3 IP. The command is sparse
+| 5:0 | `cmd` | W | - a| Issue a command to the KMAC/SHA3 IP. The command is sparse
 encoded. To prevent sw from writing multiple commands at once,
 the field is defined as enum.
 |===
@@ -208,8 +208,8 @@ ii) storage errors in the shadow registers
 iii) errors in the message, round, or key counter
 iv) any internal FSM entering an invalid state
 v) an error in the redundant lfsr
-| 15 | `FIFO_FULL` | R | - a| Message FIFO Full indicator
-| 14 | `FIFO_EMPTY` | R | 0x1 a| Message FIFO Empty indicator.
+| 15 | `fifo_full` | R | - a| Message FIFO Full indicator
+| 14 | `fifo_empty` | R | 0x1 a| Message FIFO Empty indicator.
 
 The FIFO's `Pass` parameter is set to `1'b 1`. So, by default, if
 the SHA engine is ready, the write data to FIFO just passes
@@ -221,19 +221,19 @@ state, **1**.
 
 See the "Message FIFO" section in the spec for the reason.
 | 13 | `Reserved` | - | - a| Reserved
-| 12:8 | `FIFO_DEPTH` | R | - a| Count of occupied entries in the message FIFO.
+| 12:8 | `fifo_depth` | R | - a| Count of occupied entries in the message FIFO.
 | 7:3 | `Reserved` | - | - a| Reserved
-| 2 | `SHA3_SQUEEZE` | R | - a| If 1, SHA3 completes sponge absorbing stage.
+| 2 | `sha3_squeeze` | R | - a| If 1, SHA3 completes sponge absorbing stage.
 In this stage, SW can manually run the hashing engine.
-| 1 | `SHA3_ABSORB` | R | - a| If 1, SHA3 is receiving message stream and processing it
-| 0 | `SHA3_IDLE` | R | 0x1 a| If 1, SHA3 hashing engine is in idle state.
+| 1 | `sha3_absorb` | R | - a| If 1, SHA3 is receiving message stream and processing it
+| 0 | `sha3_idle` | R | 0x1 a| If 1, SHA3 hashing engine is in idle state.
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .ENTROPY_PERIOD Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `WAIT_TIMER` | RW | 0x0 a| EDN request wait timer.
+| 31:16 | `wait_timer` | RW | 0x0 a| EDN request wait timer.
 
 The entropy module in KMAC waits up to this field in the timer pulse
 after it sends request to EDN module. If the timer expires, the
@@ -244,7 +244,7 @@ If there is a pending EDN request during wait timer update, then this update is 
 If 0, the entropy module waits the EDN response always. If EDN does
 not respond in this configuration, the software shall reset the IP.
 | 15:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `PRESCALER` | RW | 0x0 a| EDN Wait timer prescaler.
+| 9:0 | `prescaler` | RW | 0x0 a| EDN Wait timer prescaler.
 
 EDN Wait timer has 16 bit value. The timer value is increased when the timer pulse is generated. Timer pulse is raises when the number of the clock cycles hit this prescaler value.
 
@@ -256,7 +256,7 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `HASH_CNT` | R | 0x0 a| Hash (KMAC) counter
+| 9:0 | `hash_cnt` | R | 0x0 a| Hash (KMAC) counter
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -264,28 +264,28 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `THRESHOLD` | RW | 0x0 a| Hash Threshold
+| 9:0 | `threshold` | RW | 0x0 a| Hash Threshold
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .ENTROPY_SEED Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `SEED` | W | - a| 32-bit chunk of the entropy generator seed
+| 31:0 | `seed` | W | - a| 32-bit chunk of the entropy generator seed
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.KEY_SHARE0_0[16] Register
+.KEY_SHARE0[16] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `KEY_0` | W | - a| 32-bit chunk of up-to 512-bit Secret Key
+| 31:0 | `key_0` | W | - a| 32-bit chunk of up-to 512-bit Secret Key
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.KEY_SHARE1_0[16] Register
+.KEY_SHARE1[16] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `KEY_0` | W | - a| 32-bit chunk of up-to 512-bit Secret Key
+| 31:0 | `key_0` | W | - a| 32-bit chunk of up-to 512-bit Secret Key
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -293,21 +293,21 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `LEN` | W | 0x0 a| Key length choice
+| 2:0 | `len` | W | 0x0 a| Key length choice
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.PREFIX_0[11] Register
+.PREFIX[11] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `PREFIX_0` | RW | 0x0 a| 32-bit chunk of Encoded NS Prefix
+| 31:0 | `prefix_0` | RW | 0x0 a| 32-bit chunk of Encoded NS Prefix
 |===
 
 [cols="1,1,1,1,3", options="header"]
 .ERR_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `ERR_CODE` | R | 0x0 a| If the `kmac_err` interrupt occurs, this register has information on the error cause.
+| 31:0 | `err_code` | R | 0x0 a| If the `kmac_err` interrupt occurs, this register has information on the error cause.
 Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.
 This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.
 |===

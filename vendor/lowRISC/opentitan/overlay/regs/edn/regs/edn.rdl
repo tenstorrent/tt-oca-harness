@@ -1,29 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef _EDN_RDL_DEFINED
+`define _EDN_RDL_DEFINED
+
+`include "opentitan_udps.rdl"
+
 addrmap edn {
+    name = "Entropy Distribution Network";
+    desc = "Distributes random numbers produced by CSRNG to hardware blocks";
     reg {
         field {
             sw = rw;
             onwrite = woclr;
             hw = rw;
             desc = "Asserted when a software CSRNG request has completed.";
-        } EDN_CMD_REQ_DONE[0:0] = 0x0;
+        } edn_cmd_req_done[0:0] = 0x0;
         field {
             sw = rw;
             onwrite = woclr;
             hw = rw;
             desc = "Asserted when a FIFO error occurs.";
-        } EDN_FATAL_ERR[1:1] = 0x0;
+        } edn_fatal_err[1:1] = 0x0;
     } INTR_STATE @ 0x0;
     reg {
         field {
             sw = rw;
             hw = r;
             desc = "Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.";
-        } EDN_CMD_REQ_DONE[0:0] = 0x0;
+        } edn_cmd_req_done[0:0] = 0x0;
         field {
             sw = rw;
             hw = r;
             desc = "Enable interrupt when !!INTR_STATE.edn_fatal_err is set.";
-        } EDN_FATAL_ERR[1:1] = 0x0;
+        } edn_fatal_err[1:1] = 0x0;
     } INTR_ENABLE @ 0x4;
     reg {
         field {
@@ -31,13 +41,13 @@ addrmap edn {
             hw = r;
             swmod = true;
             desc = "Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.";
-        } EDN_CMD_REQ_DONE[0:0] = 0x0;
+        } edn_cmd_req_done[0:0] = 0x0;
         field {
             sw = w;
             hw = r;
             swmod = true;
             desc = "Write 1 to force !!INTR_STATE.edn_fatal_err to 1.";
-        } EDN_FATAL_ERR[1:1] = 0x0;
+        } edn_fatal_err[1:1] = 0x0;
     } external INTR_TEST @ 0x8;
     reg {
         field {
@@ -45,13 +55,13 @@ addrmap edn {
             hw = r;
             swmod = true;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } RECOV_ALERT[0:0] = 0x0;
+        } recov_alert[0:0] = 0x0;
         field {
             sw = w;
             hw = r;
             swmod = true;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } FATAL_ALERT[1:1] = 0x0;
+        } fatal_alert[1:1] = 0x0;
     } external ALERT_TEST @ 0xC;
     reg {
         field {
@@ -412,3 +422,5 @@ addrmap edn {
         } MAIN_SM_STATE[8:0] = 0xC1;
     } MAIN_SM_STATE @ 0x44;
 };
+
+`endif // _EDN_RDL_DEFINED

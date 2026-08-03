@@ -60,8 +60,8 @@ int main(void) {
     cfg_hi = READ_REG(in_cfg_addr + 4);
     printf("Inbound filter[%u] default cfg_lo=0x%08x cfg_hi=0x%08x\n", TEST_FILTER_IDX, cfg_lo,
            cfg_hi);
-    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bm) != 0) {
-        printf("Inbound filter default addr_mode should be 0\n");
+    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm) != 0) {
+        printf("Inbound filter default entry_enabled should be 0\n");
         pass = 0;
     }
     if (cfg_hi != 0) {
@@ -73,8 +73,8 @@ int main(void) {
     cfg_hi = READ_REG(out_cfg_addr + 4);
     printf("Outbound filter[%u] default cfg_lo=0x%08x cfg_hi=0x%08x\n", TEST_OUT_FILTER_IDX, cfg_lo,
            cfg_hi);
-    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bm) != 0) {
-        printf("Outbound filter default addr_mode should be 0\n");
+    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm) != 0) {
+        printf("Outbound filter default entry_enabled should be 0\n");
         pass = 0;
     }
     if (cfg_hi != 0) {
@@ -87,8 +87,8 @@ int main(void) {
                                    MAILBOX_0_APERTURE_SIZE - 1u);
 
     programmed_cfg =
-        FILTER_CTRL__FILTER_CONFIG__READ_EN_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_EN_bm |
-        FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bm | FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |
+        FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |
+        FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm |
         FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm;
     write64_split(in_cfg_addr, programmed_cfg);
     if (!check_eq32("Inbound filter programmed cfg", READ_REG(in_cfg_addr), programmed_cfg | 0u)) {
@@ -100,7 +100,7 @@ int main(void) {
     write64_split(in_end_addr, 0u);
 
     cfg_lo = READ_REG(in_cfg_addr);
-    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ADDR_MODE_bm) != 0) {
+    if ((cfg_lo & FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm) != 0) {
         printf("Inbound filter restore did not clear addr_mode, cfg=0x%08x\n", cfg_lo);
         pass = 0;
     } else {

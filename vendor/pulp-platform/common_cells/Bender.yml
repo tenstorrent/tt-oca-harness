@@ -12,13 +12,13 @@ package:
 
 # Sources are vendored from upstream pulp-platform/common_cells into upstream/ via the
 # `vendor_package` entry in the root Bender.yml (bender vendor init). The TT-local delta
-# (bare ASSERT -> TT_PULP_ASSERT rename per the vendoring playbook, CDC SYNC_STAGES 2->3 defaults,
+# (bare ASSERT -> OCAH_PULP_ASSERT rename per the vendoring playbook, CDC SYNC_STAGES 2->3 defaults,
 # lint/sim casts) is
 # applied as vendor/patches/common_cells/0001-tt-common_cells-delta.patch. src/sync.sv is
 # left as pure upstream (generic 2-stage) and is shimmed out via common_cell_sync_shim;
-# tt-oca-hw uses hw/common/sync.sv instead. The TT Bender target gating (common_cells_rtl,
+# OCA uses hw/common/sync.sv instead. The TT Bender target gating (common_cells_rtl,
 # common_cell_sync_shim, common_cells_simulation/test/synth_test) is reproduced from the fork
-# because ~25 of tt-oca-hw's Makefiles pass those targets.
+# because ~25 of OCA's Makefiles pass those targets.
 
 # Inert: the Bender.local override forces common_verification to the locally vendored path
 # package for every consumer. Points at the upstream pulp-platform commit actually vendored

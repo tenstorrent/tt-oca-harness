@@ -115,6 +115,7 @@ module id_queue #(
     linked_data_t [CAPACITY-1:0]    linked_data_d,  linked_data_q;
 
     logic                           full,
+                                    empty,
                                     match_in_id_valid,
                                     match_out_id_valid,
                                     no_in_id_match,
@@ -411,8 +412,8 @@ module id_queue #(
 
     // Validate parameters.
 `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(id_width_0, ID_WIDTH >= 1, "The ID must at least be one bit wide!")
-    `ASSERT_INIT(capacity_0, CAPACITY >= 1, "The queue must have capacity of at least one entry!")
+    `OCAH_PULP_ASSERT_INIT(id_width_0, ID_WIDTH >= 1, "The ID must at least be one bit wide!")
+    `OCAH_PULP_ASSERT_INIT(capacity_0, CAPACITY >= 1, "The queue must have capacity of at least one entry!")
 `endif
 
 endmodule

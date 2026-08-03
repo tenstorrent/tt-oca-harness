@@ -96,7 +96,6 @@ FCOV_BINS: dict[str, dict[str, set[str]]] = {
 TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_smoke_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),
-        ("xbar_route_cg", "sep0_path", "decerr"),
     ],
     "smc_reset_ctrl_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),

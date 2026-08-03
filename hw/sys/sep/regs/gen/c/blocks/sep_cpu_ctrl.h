@@ -11,76 +11,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_cpu_ctrl::CLOCK_GATE_CTRL
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SPACC_CG_ENABLE_bm 0x1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SPACC_CG_ENABLE_bp 0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SPACC_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SPACC_CG_ENABLE_reset 0x1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bm 0x2
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bp 1
+#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bm 0x1
+#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bp 0
 #define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_reset 0x1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__DMA_CG_ENABLE_bm 0x4
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__DMA_CG_ENABLE_bp 2
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__DMA_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__DMA_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bm 0x8
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bp 3
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FABRIC_CG_ENABLE_bm 0x10
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FABRIC_CG_ENABLE_bp 4
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FABRIC_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FABRIC_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_IN_CG_ENABLE_bm 0x40
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_IN_CG_ENABLE_bp 6
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_IN_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_IN_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SRAM_CG_ENABLE_bm 0x80
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SRAM_CG_ENABLE_bp 7
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SRAM_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__SRAM_CG_ENABLE_reset 0x1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ZEROER_CG_ENABLE_bm 0x100
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ZEROER_CG_ENABLE_bp 8
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ZEROER_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ZEROER_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ALIAS_REMAP_CG_ENABLE_bm 0x200
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ALIAS_REMAP_CG_ENABLE_bp 9
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ALIAS_REMAP_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ALIAS_REMAP_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_OUT_CG_ENABLE_bm 0x400
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_OUT_CG_ENABLE_bp 10
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_OUT_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__FILTER_OUT_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__OT_HMAC_CG_ENABLE_bm 0x800
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__OT_HMAC_CG_ENABLE_bp 11
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__OT_HMAC_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__OT_HMAC_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ENTROPY_FIFO_CG_ENABLE_bm 0x1000
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ENTROPY_FIFO_CG_ENABLE_bp 12
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ENTROPY_FIFO_CG_ENABLE_bw 1
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__ENTROPY_FIFO_CG_ENABLE_reset 0x0
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__CG_HYSTERESIS_bm 0x3f0000
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__CG_HYSTERESIS_bp 16
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__CG_HYSTERESIS_bw 6
-#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__CG_HYSTERESIS_reset 0x1f
+#define SEP_CPU_CTRL__CLOCK_GATE_CTRL__PKA_CG_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t spacc_cg_enable :1;
         uint64_t pka_cg_enable :1;
-        uint64_t dma_cg_enable :1;
-        uint64_t mailbox_cg_en :1;
-        uint64_t fabric_cg_enable :1;
-        uint64_t :1;
-        uint64_t filter_in_cg_enable :1;
-        uint64_t sram_cg_enable :1;
-        uint64_t zeroer_cg_enable :1;
-        uint64_t alias_remap_cg_enable :1;
-        uint64_t filter_out_cg_enable :1;
-        uint64_t ot_hmac_cg_enable :1;
-        uint64_t entropy_fifo_cg_enable :1;
-        uint64_t :3;
-        uint64_t cg_hysteresis :6;
-        uint64_t :42;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__CLOCK_GATE_CTRL_t;
@@ -89,6 +27,7 @@ typedef union {
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bm 0xffffffffffffffff
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bp 0
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bw 64
+#define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t rc :64;
@@ -97,59 +36,14 @@ typedef union {
 } sep_cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_INTERRUPT
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__TROOT_TIMEOUT_INT_bm 0x1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__TROOT_TIMEOUT_INT_bp 0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__TROOT_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__TROOT_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SYS_IN_TIMEOUT_INT_bm 0x2
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SYS_IN_TIMEOUT_INT_bp 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SYS_IN_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SYS_IN_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SPACC_TIMEOUT_INT_bm 0x4
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SPACC_TIMEOUT_INT_bp 2
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SPACC_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__SPACC_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__DMA_DATA_TIMEOUT_INT_bm 0x8
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__DMA_DATA_TIMEOUT_INT_bp 3
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__DMA_DATA_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__DMA_DATA_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ALIAS_REMAP_TIMEOUT_INT_bm 0x10
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ALIAS_REMAP_TIMEOUT_INT_bp 4
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ALIAS_REMAP_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ALIAS_REMAP_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__FILTER_OUT_TIMEOUT_INT_bm 0x20
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__FILTER_OUT_TIMEOUT_INT_bp 5
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__FILTER_OUT_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__FILTER_OUT_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_READ_TIMEOUT_INT_bm 0x40
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_READ_TIMEOUT_INT_bp 6
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_READ_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_READ_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_WRITE_TIMEOUT_INT_bm 0x80
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_WRITE_TIMEOUT_INT_bp 7
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_WRITE_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__ENTROPY_WRITE_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__INBOUND_MAILBOX_TIMEOUT_INT_bm 0x100
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__INBOUND_MAILBOX_TIMEOUT_INT_bp 8
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__INBOUND_MAILBOX_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__INBOUND_MAILBOX_TIMEOUT_INT_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__OUTBOUND_MAILBOX_TIMEOUT_INT_bm 0x200
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__OUTBOUND_MAILBOX_TIMEOUT_INT_bp 9
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__OUTBOUND_MAILBOX_TIMEOUT_INT_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__OUTBOUND_MAILBOX_TIMEOUT_INT_reset 0x0
+#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bm 0x1
+#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bp 0
+#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_bw 1
+#define SEP_CPU_CTRL__TIMEOUT_INTERRUPT__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t troot_timeout_int :1;
-        uint64_t sys_in_timeout_int :1;
-        uint64_t spacc_timeout_int :1;
-        uint64_t dma_data_timeout_int :1;
-        uint64_t alias_remap_timeout_int :1;
-        uint64_t filter_out_timeout_int :1;
-        uint64_t entropy_read_timeout_int :1;
-        uint64_t entropy_write_timeout_int :1;
-        uint64_t inbound_mailbox_timeout_int :1;
-        uint64_t outbound_mailbox_timeout_int :1;
-        uint64_t :54;
+        uint64_t reserved :1;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__TIMEOUT_INTERRUPT_t;
@@ -158,248 +52,82 @@ typedef union {
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bm 0x1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bp 0
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_bw 1
-#define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_reset 0x1
-#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bm 0x100
-#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bp 8
+#define SEP_CPU_CTRL__PKA_CTRL__PKA_DPA_DISABLE_reset 0x0
+#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bm 0x2
+#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bp 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_bw 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_reset 0x0
-#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bm 0x10000
-#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bp 16
+#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bm 0x4
+#define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bp 2
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_bw 1
 #define SEP_CPU_CTRL__PKA_CTRL__PKA_NOISE_SRC_VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t pka_dpa_disable :1;
-        uint32_t :7;
-        uint32_t pka_noise_src :1;
-        uint32_t :7;
-        uint32_t pka_noise_src_valid :1;
-        uint32_t :15;
+        uint64_t pka_dpa_disable :1;
+        uint64_t pka_noise_src :1;
+        uint64_t pka_noise_src_valid :1;
+        uint64_t :61;
     } f;
-    uint32_t w;
+    uint64_t w;
 } sep_cpu_ctrl__PKA_CTRL_t;
 
-// reg - sep_cpu_ctrl::SPACC_CTRL
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_DISABLE_bm 0x1
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_DISABLE_bp 0
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_DISABLE_bw 1
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_DISABLE_reset 0x1
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_bm 0x100
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_bp 8
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_bw 1
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_reset 0x0
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_VLD_bm 0x10000
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_VLD_bp 16
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_VLD_bw 1
-#define SEP_CPU_CTRL__SPACC_CTRL__SPACC_DPA_RAND_VLD_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t spacc_dpa_disable :1;
-        uint32_t :7;
-        uint32_t spacc_dpa_rand :1;
-        uint32_t :7;
-        uint32_t spacc_dpa_rand_vld :1;
-        uint32_t :15;
-    } f;
-    uint32_t w;
-} sep_cpu_ctrl__SPACC_CTRL_t;
-
 // reg - sep_cpu_ctrl::TIMEOUT_COUNT
-#define SEP_CPU_CTRL__TIMEOUT_COUNT__DATA_bm 0xffffffffffff
-#define SEP_CPU_CTRL__TIMEOUT_COUNT__DATA_bp 0
-#define SEP_CPU_CTRL__TIMEOUT_COUNT__DATA_bw 48
-#define SEP_CPU_CTRL__TIMEOUT_COUNT__DATA_reset 0x0
+#define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bm 0x1
+#define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bp 0
+#define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_bw 1
+#define SEP_CPU_CTRL__TIMEOUT_COUNT__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t data :48;
-        uint64_t :16;
+        uint64_t reserved :1;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__TIMEOUT_COUNT_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_ENABLE
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__TROOT_TIMEOUT_EN_bm 0x1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__TROOT_TIMEOUT_EN_bp 0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__TROOT_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__TROOT_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SYS_IN_TIMEOUT_EN_bm 0x2
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SYS_IN_TIMEOUT_EN_bp 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SYS_IN_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SYS_IN_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SPACC_TIMEOUT_EN_bm 0x4
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SPACC_TIMEOUT_EN_bp 2
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SPACC_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__SPACC_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__DMA_DATA_TIMEOUT_EN_bm 0x8
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__DMA_DATA_TIMEOUT_EN_bp 3
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__DMA_DATA_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__DMA_DATA_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ALIAS_REMAP_TIMEOUT_EN_bm 0x10
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ALIAS_REMAP_TIMEOUT_EN_bp 4
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ALIAS_REMAP_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ALIAS_REMAP_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__FILTER_OUT_TIMEOUT_EN_bm 0x20
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__FILTER_OUT_TIMEOUT_EN_bp 5
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__FILTER_OUT_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__FILTER_OUT_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_READ_TIMEOUT_EN_bm 0x40
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_READ_TIMEOUT_EN_bp 6
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_READ_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_READ_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_WRITE_TIMEOUT_EN_bm 0x80
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_WRITE_TIMEOUT_EN_bp 7
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_WRITE_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__ENTROPY_WRITE_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__INBOUND_MAILBOX_TIMEOUT_EN_bm 0x100
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__INBOUND_MAILBOX_TIMEOUT_EN_bp 8
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__INBOUND_MAILBOX_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__INBOUND_MAILBOX_TIMEOUT_EN_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__OUTBOUND_MAILBOX_TIMEOUT_EN_bm 0x200
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__OUTBOUND_MAILBOX_TIMEOUT_EN_bp 9
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__OUTBOUND_MAILBOX_TIMEOUT_EN_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_ENABLE__OUTBOUND_MAILBOX_TIMEOUT_EN_reset 0x0
+#define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bm 0x1
+#define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bp 0
+#define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_bw 1
+#define SEP_CPU_CTRL__TIMEOUT_ENABLE__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t troot_timeout_en :1;
-        uint64_t sys_in_timeout_en :1;
-        uint64_t spacc_timeout_en :1;
-        uint64_t dma_data_timeout_en :1;
-        uint64_t alias_remap_timeout_en :1;
-        uint64_t filter_out_timeout_en :1;
-        uint64_t entropy_read_timeout_en :1;
-        uint64_t entropy_write_timeout_en :1;
-        uint64_t inbound_mailbox_timeout_en :1;
-        uint64_t outbound_mailbox_timeout_en :1;
-        uint64_t :54;
+        uint64_t reserved :1;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__TIMEOUT_ENABLE_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_CLEAR
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__TROOT_TIMEOUT_CLEAR_bm 0x1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__TROOT_TIMEOUT_CLEAR_bp 0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__TROOT_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__TROOT_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SYS_IN_TIMEOUT_CLEAR_bm 0x2
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SYS_IN_TIMEOUT_CLEAR_bp 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SYS_IN_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SYS_IN_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SPACC_TIMEOUT_CLEAR_bm 0x4
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SPACC_TIMEOUT_CLEAR_bp 2
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SPACC_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__SPACC_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__DMA_DATA_TIMEOUT_CLEAR_bm 0x8
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__DMA_DATA_TIMEOUT_CLEAR_bp 3
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__DMA_DATA_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__DMA_DATA_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ALIAS_REMAP_TIMEOUT_CLEAR_bm 0x10
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ALIAS_REMAP_TIMEOUT_CLEAR_bp 4
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ALIAS_REMAP_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ALIAS_REMAP_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__FILTER_OUT_TIMEOUT_CLEAR_bm 0x20
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__FILTER_OUT_TIMEOUT_CLEAR_bp 5
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__FILTER_OUT_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__FILTER_OUT_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_READ_TIMEOUT_CLEAR_bm 0x40
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_READ_TIMEOUT_CLEAR_bp 6
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_READ_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_READ_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_WRITE_TIMEOUT_CLEAR_bm 0x80
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_WRITE_TIMEOUT_CLEAR_bp 7
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_WRITE_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__ENTROPY_WRITE_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__INBOUND_MAILBOX_TIMEOUT_CLEAR_bm 0x100
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__INBOUND_MAILBOX_TIMEOUT_CLEAR_bp 8
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__INBOUND_MAILBOX_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__INBOUND_MAILBOX_TIMEOUT_CLEAR_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__OUTBOUND_MAILBOX_TIMEOUT_CLEAR_bm 0x200
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__OUTBOUND_MAILBOX_TIMEOUT_CLEAR_bp 9
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__OUTBOUND_MAILBOX_TIMEOUT_CLEAR_bw 1
-#define SEP_CPU_CTRL__TIMEOUT_CLEAR__OUTBOUND_MAILBOX_TIMEOUT_CLEAR_reset 0x0
+#define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bm 0x1
+#define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bp 0
+#define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_bw 1
+#define SEP_CPU_CTRL__TIMEOUT_CLEAR__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t troot_timeout_clear :1;
-        uint64_t sys_in_timeout_clear :1;
-        uint64_t spacc_timeout_clear :1;
-        uint64_t dma_data_timeout_clear :1;
-        uint64_t alias_remap_timeout_clear :1;
-        uint64_t filter_out_timeout_clear :1;
-        uint64_t entropy_read_timeout_clear :1;
-        uint64_t entropy_write_timeout_clear :1;
-        uint64_t inbound_mailbox_timeout_clear :1;
-        uint64_t outbound_mailbox_timeout_clear :1;
-        uint64_t :54;
+        uint64_t reserved :1;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__TIMEOUT_CLEAR_t;
 
 // reg - sep_cpu_ctrl::TIMEOUT_MODE
-#define SEP_CPU_CTRL__TIMEOUT_MODE__TROOT_TIMEOUT_MODE_bm 0x3
-#define SEP_CPU_CTRL__TIMEOUT_MODE__TROOT_TIMEOUT_MODE_bp 0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__TROOT_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__TROOT_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SYS_IN_TIMEOUT_MODE_bm 0xc
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SYS_IN_TIMEOUT_MODE_bp 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SYS_IN_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SYS_IN_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SPACC_TIMEOUT_MODE_bm 0x30
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SPACC_TIMEOUT_MODE_bp 4
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SPACC_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__SPACC_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__DMA_DATA_TIMEOUT_MODE_bm 0xc0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__DMA_DATA_TIMEOUT_MODE_bp 6
-#define SEP_CPU_CTRL__TIMEOUT_MODE__DMA_DATA_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__DMA_DATA_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ALIAS_REMAP_TIMEOUT_MODE_bm 0x300
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ALIAS_REMAP_TIMEOUT_MODE_bp 8
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ALIAS_REMAP_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ALIAS_REMAP_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__FILTER_OUT_TIMEOUT_MODE_bm 0xc00
-#define SEP_CPU_CTRL__TIMEOUT_MODE__FILTER_OUT_TIMEOUT_MODE_bp 10
-#define SEP_CPU_CTRL__TIMEOUT_MODE__FILTER_OUT_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__FILTER_OUT_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_READ_TIMEOUT_MODE_bm 0x3000
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_READ_TIMEOUT_MODE_bp 12
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_READ_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_READ_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_WRITE_TIMEOUT_MODE_bm 0xc000
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_WRITE_TIMEOUT_MODE_bp 14
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_WRITE_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__ENTROPY_WRITE_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__INBOUND_MAILBOX_TIMEOUT_MODE_bm 0x30000
-#define SEP_CPU_CTRL__TIMEOUT_MODE__INBOUND_MAILBOX_TIMEOUT_MODE_bp 16
-#define SEP_CPU_CTRL__TIMEOUT_MODE__INBOUND_MAILBOX_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__INBOUND_MAILBOX_TIMEOUT_MODE_reset 0x0
-#define SEP_CPU_CTRL__TIMEOUT_MODE__OUTBOUND_MAILBOX_TIMEOUT_MODE_bm 0xc0000
-#define SEP_CPU_CTRL__TIMEOUT_MODE__OUTBOUND_MAILBOX_TIMEOUT_MODE_bp 18
-#define SEP_CPU_CTRL__TIMEOUT_MODE__OUTBOUND_MAILBOX_TIMEOUT_MODE_bw 2
-#define SEP_CPU_CTRL__TIMEOUT_MODE__OUTBOUND_MAILBOX_TIMEOUT_MODE_reset 0x0
+#define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bm 0x1
+#define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bp 0
+#define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_bw 1
+#define SEP_CPU_CTRL__TIMEOUT_MODE__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t troot_timeout_mode :2;
-        uint64_t sys_in_timeout_mode :2;
-        uint64_t spacc_timeout_mode :2;
-        uint64_t dma_data_timeout_mode :2;
-        uint64_t alias_remap_timeout_mode :2;
-        uint64_t filter_out_timeout_mode :2;
-        uint64_t entropy_read_timeout_mode :2;
-        uint64_t entropy_write_timeout_mode :2;
-        uint64_t inbound_mailbox_timeout_mode :2;
-        uint64_t outbound_mailbox_timeout_mode :2;
-        uint64_t :44;
+        uint64_t reserved :1;
+        uint64_t :63;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__TIMEOUT_MODE_t;
 
 // reg - sep_cpu_ctrl::SEP_TEST_CTRL
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bm 0x2000000
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bp 25
+#define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bm 0x4000000
+#define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bp 26
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_bw 1
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__SEP_STANDALONE_reset 0x0
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPACC_EN_bm 0x4000000
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPACC_EN_bp 26
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPACC_EN_bw 1
-#define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPACC_EN_reset 0x0
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bm 0x8000000
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bp 27
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_PKA_EN_bw 1
@@ -422,9 +150,8 @@ typedef union {
 #define SEP_CPU_CTRL__SEP_TEST_CTRL__FAST_SPI_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t :25;
+        uint32_t :26;
         uint32_t sep_standalone :1;
-        uint32_t fast_spacc_en :1;
         uint32_t fast_pka_en :1;
         uint32_t fast_sram_en :1;
         uint32_t fast_dccm_en :1;
@@ -451,7 +178,7 @@ typedef union {
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bm 0xffffffffffffff
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bp 0
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bw 56
-#define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_reset 0xc0000000
+#define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_reset 0xd0000000
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t addr :56;
@@ -606,14 +333,14 @@ typedef union {
 } sep_cpu_ctrl__SEP_NMI_VEC_LOCK_t;
 
 // reg - sep_cpu_ctrl::EXT_TRNG_SRC_SEL_sel_c607e53d
-#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm 0x3
+#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm 0x7
 #define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bp 0
-#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bw 2
-#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_reset 0x3
+#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bw 3
+#define SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint64_t sel :2;
-        uint64_t :62;
+        uint64_t sel :3;
+        uint64_t :61;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d_t;
@@ -630,6 +357,19 @@ typedef union {
     } f;
     uint64_t w;
 } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK_t;
+
+// reg - sep_cpu_ctrl::KM_WIPE_CTRL
+#define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bm 0x1
+#define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bp 0
+#define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_bw 1
+#define SEP_CPU_CTRL__KM_WIPE_CTRL__WIPE_STATE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint64_t wipe_state :1;
+        uint64_t :63;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__KM_WIPE_CTRL_t;
 
 // reg - sep_cpu_ctrl::SEP_VERSION_ID
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bm 0xffffffff
@@ -651,12 +391,7 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__REFERENCE_COUNTER_t REFERENCE_COUNTER;
     sep_cpu_ctrl__TIMEOUT_INTERRUPT_t TIMEOUT_INTERRUPT;
     sep_cpu_ctrl__PKA_CTRL_t PKA_CTRL;
-    uint8_t RESERVED_24_2f[0xc];
-    sep_cpu_ctrl__SPACC_CTRL_t SPACC_CTRL;
-    uint8_t RESERVED_34_3f[0xc];
-    sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_TROOT;
     sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_DMA;
-    sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_SPACC;
     sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_SYS_IN;
     sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_MAILBOX_INBOUND;
     sep_cpu_ctrl__TIMEOUT_COUNT_t TIMEOUT_COUNT_MAILBOX_OUTBOUND;
@@ -667,7 +402,7 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__TIMEOUT_ENABLE_t TIMEOUT_ENABLE;
     sep_cpu_ctrl__TIMEOUT_CLEAR_t TIMEOUT_CLEAR;
     sep_cpu_ctrl__TIMEOUT_MODE_t TIMEOUT_MODE;
-    uint8_t RESERVED_a8_af[0x8];
+    uint8_t RESERVED_80_af[0x30];
     sep_cpu_ctrl__SEP_TEST_CTRL_t SEP_TEST_CTRL;
     uint8_t RESERVED_b4_bf[0xc];
     sep_cpu_ctrl__SEP_GLOBAL_BASE_ADDR_t SEP_GLOBAL_BASE_ADDR;
@@ -691,7 +426,8 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__SEP_NMI_VEC_LOCK_t SEP_NMI_VEC_LOCK;
     sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d_t EXT_TRNG_SRC_SEL;
     sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK_t EXT_TRNG_SRC_SEL_LOCK;
-    uint8_t RESERVED_1a0_fff[0xe60];
+    sep_cpu_ctrl__KM_WIPE_CTRL_t KM_WIPE_CTRL;
+    uint8_t RESERVED_1a8_fff[0xe58];
     sep_cpu_ctrl__SEP_VERSION_ID_t SEP_VERSION_ID;
 } sep_cpu_ctrl_t;
 

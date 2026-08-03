@@ -1,32 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP Secure Enclave Processor
-//
-//-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
 
 module sep
-    import sep_pkg::*;
-    import secure_dma_reg_pkg::*;
-    import sep_crypto_pkg::*;
-    import sep_io_pkg::*;
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2,
+    parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
     // During synthesis, to be replaced with the actual token digest embedded in the netlist
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
         input  logic clk_i,
+        input  logic clk_ref_i,           // Free-running reference clock for REFERENCE_COUNTER
         input  logic clk_wdt_i,           // 200 kHz clock for WDT timer
         input  logic rst_ni,
         input  logic dbg_rstb_i,          // EL2 debugger reset
         input  logic wdt_rst_ni,          // Aggregated WDT Resets from SMC and SEP
 
-        output logic sep_reset_n_o,       // Reset for SEP IP integration
-        output logic wdt_timer_rst_req_o, // WDT reset (for memory interface in sep_wrapper)
+        output logic sep_reset_n_o,       // SEP reset (efuse-sense-done, after JTAG override)
+        output logic sep_cpu_reset_n_o,   // sep_reset_n & WDT reset; resets CPU + SEP IP integration
+        output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
         input  logic jtag_tck,    // JTAG clk
         input  logic jtag_tms,    // JTAG TMS
@@ -68,10 +63,8 @@ module sep
         input  logic [31:0] dmi_uncore_rdata,
         output logic        dmi_active,
 
-        output sep_cpu_trace_t sep_cpu_trace,
+        output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
-        // TODO: These values should be tied to constants in the top level (need to figure out memory map)
-        input logic [31:1] rst_vec,  // PC to jump to @ reset
         input logic [31:1] jtag_id,
 
         // Interrupt inputs
@@ -85,14 +78,14 @@ module sep
         // output logic irq_o,
 
         // Memory macro interfaces
-        output sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-        input  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+        output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
+        input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
-        output sep_sram_req_t    sep_sram_req,
-        input  sep_sram_rsp_t    sep_sram_rsp,
+        output sep_pkg::sep_sram_req_t    sep_sram_req,
+        input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp,
 
-        output sep_sram_req_t    sep_boot_rom_req,
-        input  sep_sram_rsp_t    sep_boot_rom_rsp,
+        output sep_pkg::sep_sram_req_t    sep_boot_rom_req,
+        input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp,
 
         /////////
         // SMN External AXI interfaces
@@ -115,19 +108,23 @@ module sep
         input logic entropy_rosc_sample_clk_i,
 
         // OTBN external SRAM interfaces (from prim_ram_1p_scr_ext inside OTBN)
-        output sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req,
-        input  sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
+        output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req,
+        input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
 
-        output sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
-        input  sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
+        output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
+        input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
+
+        // Adams Bridge external SRAM interface (tech macros in sep_ip_integration)
+        output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req,
+        input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp,
 
         // External TRNG AXI-Lite passthrough (to sep_ip_integration in sep_wrapper)
         output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,
         input  sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_i,
 
         // External TRNG AXI-Stream (from sep_ip_integration)
-        input  ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
-        output ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+        input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
+        output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
 
         // External TRNG irq (PIC); alarm reserved for RAS (wired in sep_wrapper → sep)
         input logic ext_trng_irq_i,
@@ -153,10 +150,10 @@ module sep
         /////////
         // IO
         /////////
-        output sep_io_spi_req_t sep_io_spi_req_o,
-        input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
+        output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
+        input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-        // SPI IRQ from the selected open or adopter-provided SPI integration
+        // Muxed SPI IRQ from sep_ip_integration (Cadence or OT, selected by spi_sel)
         input  logic spi_irq_i,
 
         /////////////
@@ -167,6 +164,7 @@ module sep
         output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
         output logic lc_sigint_err_o,
         output logic security_disable_o,
+        output logic secure_tm_o,
 
         ////////////////////////
         // Mailbox Interrupts //
@@ -191,8 +189,8 @@ module sep
         // AXI Extension //
         ///////////////////
 
-        output sep_32_64_6_12_axi_req_t  axi_extension_axi_req_o,
-        input  sep_32_64_6_12_axi_resp_t axi_extension_axi_resp_i,
+        output sep_pkg::sep_32_64_6_12_axi_req_t  axi_extension_axi_req_o,
+        input  sep_pkg::sep_32_64_6_12_axi_resp_t axi_extension_axi_resp_i,
 
         ///////////////////////////////
         // SMC Address Configuration //
@@ -249,6 +247,10 @@ module sep
     logic [5:0] sep_efuse_token_match_sip_debug;
     logic [5:0] sep_efuse_token_match_chiplet_debug;
 
+    sep_pkg::remap_debug_t         local_masters_remap_debug;
+    logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
+    logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug,  inbound_read_filter_hit_debug;
+
   `ifdef RV_LOCKSTEP_ENABLE
     logic cpu_disable_corruption_detection;
     logic cpu_lockstep_err_injection_en;
@@ -259,60 +261,48 @@ module sep
     assign cpu_lockstep_err_injection_en = '0;
   `endif
 
-    // Ingress AXI4 interface
-    // Egress AXI4 interface
-    // CPU imem TTCM interface
-    // CPU dmem TTCM interface
-    // CPU irom interface
-    // scratchpad SRAM interface
-    // OTBN imem interface
-    // OTBN dmem interface
-    // TRNG entropy interface
-    // Fuse controller interface
-    // JTAG interface
-    // safety/error interface
-    // peripheral IO - UART, SPI
-
     // Bridge structs for AXI4 wrappers (slaves)
-    sep_32_64_3_12_axi_req_t  smn_inbound_to_sep_axi_req;
-    sep_32_64_3_12_axi_resp_t smn_inbound_to_sep_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  smn_inbound_to_sep_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t smn_inbound_to_sep_axi_resp;
 
-    sep_32_64_3_12_axi_req_t  ifu_sram_axi_req;
-    sep_32_64_3_12_axi_resp_t ifu_sram_axi_resp;
-    sep_32_64_3_12_axi_req_t  dbg_axi_req;
-    sep_32_64_3_12_axi_resp_t dbg_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  ifu_sram_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t ifu_sram_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  dbg_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t dbg_axi_resp;
 
-    sep_32_64_3_12_axi_req_t  dma_axi_req;
-    sep_32_64_3_12_axi_resp_t dma_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  dma_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t dma_axi_resp;
 
-    sep_32_64_6_12_axi_req_t  dma_csr_req;
-    sep_32_64_6_12_axi_resp_t dma_csr_rsp;
-    sep_32_64_6_12_axi_req_t  sram_req;
-    sep_32_64_6_12_axi_resp_t sram_rsp;
-    sep_32_64_3_12_axi_req_t  ifu_rom_axi_req;
-    sep_32_64_3_12_axi_resp_t ifu_rom_axi_resp;
-    sep_32_64_3_12_axi_req_t  lsu_rom_axi_req;
-    sep_32_64_3_12_axi_resp_t lsu_rom_axi_resp;
-    sep_32_64_3_12_axi_req_t  lsu_xbar_axi_req;
-    sep_32_64_3_12_axi_resp_t lsu_xbar_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_rsp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sram_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sram_rsp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  ifu_rom_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t ifu_rom_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  lsu_rom_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_axi_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_axi_resp;
 
-    sep_32_64_3_12_axi_req_t  [SEP_ROM_MUX_NUM_PORTS-1:0] rom_mux_req;
-    sep_32_64_3_12_axi_resp_t [SEP_ROM_MUX_NUM_PORTS-1:0] rom_mux_resp;
-    sep_32_64_4_12_axi_req_t  rom_axi_req;
-    sep_32_64_4_12_axi_resp_t rom_axi_resp;
+    sep_pkg::sep_32_64_3_12_axi_req_t  [sep_pkg::SEP_ROM_MUX_NUM_PORTS-1:0] rom_mux_req;
+    sep_pkg::sep_32_64_3_12_axi_resp_t [sep_pkg::SEP_ROM_MUX_NUM_PORTS-1:0] rom_mux_resp;
+    sep_pkg::sep_32_64_4_12_axi_req_t  rom_axi_req;
+    sep_pkg::sep_32_64_4_12_axi_resp_t rom_axi_resp;
 
-    sep_32_64_6_12_axi_req_t  cpu_tcm_axi_req;
-    sep_32_64_6_12_axi_resp_t cpu_tcm_axi_resp;
-    sep_32_64_6_12_axi_req_t  sep_crypto_axi_req;
-    sep_32_64_6_12_axi_resp_t sep_crypto_axi_resp;
-    sep_32_64_6_12_axi_req_t  sep_io_axi_req;
-    sep_32_64_6_12_axi_resp_t sep_io_axi_resp;
-    sep_32_64_6_12_axi_req_t  sep_system_peripherals_axi_req;
-    sep_32_64_6_12_axi_resp_t sep_system_peripherals_axi_resp;
-    sep_32_64_6_12_axi_req_t  sep_wdt_axi_req;
-    sep_32_64_6_12_axi_resp_t sep_wdt_axi_resp;
-    sep_32_64_6_12_axi_req_t  sep_reset_ctrl_axi_req;
-    sep_32_64_6_12_axi_resp_t sep_reset_ctrl_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  cpu_tcm_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t cpu_tcm_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_crypto_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_crypto_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  entropy_fifo_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t entropy_fifo_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_system_peripherals_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_system_peripherals_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_wdt_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_wdt_axi_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_reset_ctrl_axi_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_reset_ctrl_axi_resp;
 
     logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] sep_interrupts;
     logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts;
@@ -332,6 +322,8 @@ module sep
     logic intr_dma_done;
     logic intr_dma_chunk_done;
     logic intr_dma_error;
+    logic dma_alert;
+    logic wdt_alert;
 
     // Crypto subsystem interrupt signals (from sep_crypto)
     logic intr_hmac_done;
@@ -347,9 +339,17 @@ module sep
     logic intr_edn_cmd_req_done;
     logic intr_edn_fatal_err;
     logic intr_otbn_done;
+    logic intr_abr_error;
+    logic intr_abr_notif;
     logic km_unrecoverable_err;
     logic km_recoverable_err;
     logic crypto_alert;
+
+    // Entropy-pool FIFO: native EDN fill bundle (out of sep_crypto) + status IRQs
+    edn_pkg::edn_req_t entropy_pool_edn_req;
+    edn_pkg::edn_rsp_t entropy_pool_edn_rsp;
+    logic entropy_pool_low;
+    logic entropy_pool_fill_stall;
 
     logic [31:1] nmi_vec;
 
@@ -373,7 +373,8 @@ module sep
     logic sep_cpu_reset_n; // This is the reset signal for the CPU
     logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
     sep_pkg::sep_sw_rst_t sep_sw_rst_no; // Software-controllable resets from sep_reset_ctrl
-    logic [1:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
+    logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
+    logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
 
     //////////////////
     // AXI Crossbar //
@@ -418,6 +419,9 @@ module sep
         .sep_io_axi_req_o                   (sep_io_axi_req),
         .sep_io_axi_resp_i                  (sep_io_axi_resp),
 
+        .entropy_fifo_axi_req_o             (entropy_fifo_axi_req),
+        .entropy_fifo_axi_resp_i            (entropy_fifo_axi_resp),
+
         .sep_system_peripherals_axi_req_o   (sep_system_peripherals_axi_req),
         .sep_system_peripherals_axi_resp_i  (sep_system_peripherals_axi_resp),
 
@@ -442,29 +446,38 @@ module sep
         sep_internal_interrupts         = '0;
         sep_internal_interrupts[7:0]    = sep_mailbox_interrupt;
         sep_internal_interrupts[8]      = intr_dma_done;
-        sep_internal_interrupts[9]      = spi_irq_i;
-        sep_internal_interrupts[10]     = intr_dma_chunk_done;
-        sep_internal_interrupts[11]     = intr_dma_error;
-        sep_internal_interrupts[12]     = km_mbox_irq;
-        sep_internal_interrupts[13]     = entropy_source_irq;
-        sep_internal_interrupts[14]     = ext_trng_irq;
-        sep_internal_interrupts[15]     = intr_hmac_done;
-        sep_internal_interrupts[16]     = intr_hmac_fifo_empty;
-        sep_internal_interrupts[17]     = intr_hmac_err;
-        sep_internal_interrupts[18]     = intr_kmac_done;
-        sep_internal_interrupts[19]     = intr_kmac_fifo_empty;
-        sep_internal_interrupts[20]     = intr_kmac_err;
-        sep_internal_interrupts[21]     = intr_cs_cmd_req_done;
-        sep_internal_interrupts[22]     = intr_cs_entropy_req;
-        sep_internal_interrupts[23]     = intr_cs_hw_inst_exc;
-        sep_internal_interrupts[24]     = intr_cs_fatal_err;
-        sep_internal_interrupts[25]     = intr_edn_cmd_req_done;
-        sep_internal_interrupts[26]     = intr_edn_fatal_err;
-        sep_internal_interrupts[27]     = intr_otbn_done;
-        sep_internal_interrupts[28]     = km_unrecoverable_err;
-        sep_internal_interrupts[29]     = km_recoverable_err;
-        sep_internal_interrupts[30]     = crypto_alert;
-        sep_internal_interrupts[31]     = locked_field_access_interrupt;
+        sep_internal_interrupts[9]      = intr_dma_chunk_done;
+        sep_internal_interrupts[10]     = intr_dma_error;
+        sep_internal_interrupts[11]     = dma_alert;
+        sep_internal_interrupts[12]     = wdt_alert;
+        sep_internal_interrupts[13]     = spi_irq_i;
+        sep_internal_interrupts[14]     = km_mbox_irq;
+        sep_internal_interrupts[15]     = entropy_source_irq;
+        sep_internal_interrupts[16]     = ext_trng_irq;
+        sep_internal_interrupts[17]     = intr_hmac_done;
+        sep_internal_interrupts[18]     = intr_hmac_fifo_empty;
+        sep_internal_interrupts[19]     = intr_hmac_err;
+        sep_internal_interrupts[20]     = intr_kmac_done;
+        sep_internal_interrupts[21]     = intr_kmac_fifo_empty;
+        sep_internal_interrupts[22]     = intr_kmac_err;
+        sep_internal_interrupts[23]     = intr_cs_cmd_req_done;
+        sep_internal_interrupts[24]     = intr_cs_entropy_req;
+        sep_internal_interrupts[25]     = intr_cs_hw_inst_exc;
+        sep_internal_interrupts[26]     = intr_cs_fatal_err;
+        sep_internal_interrupts[27]     = intr_edn_cmd_req_done;
+        sep_internal_interrupts[28]     = intr_edn_fatal_err;
+        sep_internal_interrupts[29]     = intr_otbn_done;
+        sep_internal_interrupts[30]     = km_unrecoverable_err;
+        sep_internal_interrupts[31]     = km_recoverable_err;
+        sep_internal_interrupts[32]     = crypto_alert;
+        sep_internal_interrupts[33]     = locked_field_access_interrupt;
+        sep_internal_interrupts[34]     = intr_abr_error;
+        sep_internal_interrupts[35]     = intr_abr_notif;
+        // Entropy-pool FIFO: separate PIC lines so firmware can distinguish a
+        // transient low-water condition (informational, pool draining faster than
+        // it fills) from a sustained EDN stall (fault, fill path not making progress).
+        sep_internal_interrupts[36]     = entropy_pool_low;
+        sep_internal_interrupts[37]     = entropy_pool_fill_stall;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -520,8 +533,7 @@ module sep
         .dmi_uncore_rdata               (dmi_uncore_rdata),
         .dmi_active                     (dmi_active),
 
-        // jtag_id, rst_vec and nmi_vec should be tied to constant in the top level or sourced from a CSR
-        .rst_vec                        (rst_vec),
+        // jtag_id and nmi_vec should be tied to constant in the top level or sourced from a CSR
         .nmi_vec                        (nmi_vec),
         .jtag_id                        (jtag_id),
 
@@ -576,8 +588,7 @@ module sep
         .cpu_tcm_axi_req_i              (cpu_tcm_axi_req),
         .cpu_tcm_axi_resp_o             (cpu_tcm_axi_resp),
 
-        .sep_local_base_addr_i          (sep_local_base_addr[31:0]),
-        .sep_region_size_i              (sep_region_size[31:0])
+        .sep_local_base_addr_i          (sep_local_base_addr[31:0])
     );
 
     ///////////////////////////
@@ -585,17 +596,17 @@ module sep
     ///////////////////////////
 
     memory_interface #(
-        .MEM_ADDR_WIDTH   (SEP_MEM_ADDR_WIDTH),
-        .MEM_DATA_WIDTH   (SEP_MEM_DATA_WIDTH),
-        .MEM_ID_WIDTH     (SEP_32_64_6_12_ID_WIDTH),
-        .mem_req_t        (sep_sram_req_t),
-        .mem_rsp_t        (sep_sram_rsp_t),
-        .mem_axi_req_t    (sep_32_64_6_12_axi_req_t),
-        .mem_axi_resp_t   (sep_32_64_6_12_axi_resp_t),
-        .CSR_ADDR_WIDTH   (SEP_32_64_6_12_ADDR_WIDTH),
-        .CSR_DATA_WIDTH   (SEP_32_64_6_12_DATA_WIDTH),
-        .csr_axil_req_t   (sep_axilite_xbar_req_t),
-        .csr_axil_resp_t  (sep_axilite_xbar_resp_t),
+        .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
+        .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
+        .MEM_ID_WIDTH     (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+        .mem_req_t        (sep_pkg::sep_sram_req_t),
+        .mem_rsp_t        (sep_pkg::sep_sram_rsp_t),
+        .mem_axi_req_t    (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .mem_axi_resp_t   (sep_pkg::sep_32_64_6_12_axi_resp_t),
+        .CSR_ADDR_WIDTH   (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .CSR_DATA_WIDTH   (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
+        .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
         .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR),
         .NUM_BANKS        (1)
@@ -617,27 +628,27 @@ module sep
     // ROM Memory Interface //
     //////////////////////////
 
-    assign rom_mux_req[SEP_ROM_MUX_PORT_IFU]  = ifu_rom_axi_req;
-    assign ifu_rom_axi_resp                   = rom_mux_resp[SEP_ROM_MUX_PORT_IFU];
-    assign rom_mux_req[SEP_ROM_MUX_PORT_LSU]  = lsu_rom_axi_req;
-    assign lsu_rom_axi_resp                   = rom_mux_resp[SEP_ROM_MUX_PORT_LSU];
+    assign rom_mux_req[sep_pkg::SEP_ROM_MUX_PORT_IFU]  = ifu_rom_axi_req;
+    assign ifu_rom_axi_resp                   = rom_mux_resp[sep_pkg::SEP_ROM_MUX_PORT_IFU];
+    assign rom_mux_req[sep_pkg::SEP_ROM_MUX_PORT_LSU]  = lsu_rom_axi_req;
+    assign lsu_rom_axi_resp                   = rom_mux_resp[sep_pkg::SEP_ROM_MUX_PORT_LSU];
 
     axi_mux #(
-        .SlvAxiIDWidth (SEP_32_64_3_12_ID_WIDTH),
-        .slv_aw_chan_t (sep_32_64_3_12_axi_aw_chan_t),
-        .mst_aw_chan_t (sep_32_64_4_12_axi_aw_chan_t),
-        .w_chan_t      (sep_32_64_3_12_axi_w_chan_t),
-        .slv_b_chan_t  (sep_32_64_3_12_axi_b_chan_t),
-        .mst_b_chan_t  (sep_32_64_4_12_axi_b_chan_t),
-        .slv_ar_chan_t (sep_32_64_3_12_axi_ar_chan_t),
-        .mst_ar_chan_t (sep_32_64_4_12_axi_ar_chan_t),
-        .slv_r_chan_t  (sep_32_64_3_12_axi_r_chan_t),
-        .mst_r_chan_t  (sep_32_64_4_12_axi_r_chan_t),
-        .slv_req_t     (sep_32_64_3_12_axi_req_t),
-        .slv_resp_t    (sep_32_64_3_12_axi_resp_t),
-        .mst_req_t     (sep_32_64_4_12_axi_req_t),
-        .mst_resp_t    (sep_32_64_4_12_axi_resp_t),
-        .NoSlvPorts    (SEP_ROM_MUX_NUM_PORTS),
+        .SlvAxiIDWidth (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
+        .slv_aw_chan_t (sep_pkg::sep_32_64_3_12_axi_aw_chan_t),
+        .mst_aw_chan_t (sep_pkg::sep_32_64_4_12_axi_aw_chan_t),
+        .w_chan_t      (sep_pkg::sep_32_64_3_12_axi_w_chan_t),
+        .slv_b_chan_t  (sep_pkg::sep_32_64_3_12_axi_b_chan_t),
+        .mst_b_chan_t  (sep_pkg::sep_32_64_4_12_axi_b_chan_t),
+        .slv_ar_chan_t (sep_pkg::sep_32_64_3_12_axi_ar_chan_t),
+        .mst_ar_chan_t (sep_pkg::sep_32_64_4_12_axi_ar_chan_t),
+        .slv_r_chan_t  (sep_pkg::sep_32_64_3_12_axi_r_chan_t),
+        .mst_r_chan_t  (sep_pkg::sep_32_64_4_12_axi_r_chan_t),
+        .slv_req_t     (sep_pkg::sep_32_64_3_12_axi_req_t),
+        .slv_resp_t    (sep_pkg::sep_32_64_3_12_axi_resp_t),
+        .mst_req_t     (sep_pkg::sep_32_64_4_12_axi_req_t),
+        .mst_resp_t    (sep_pkg::sep_32_64_4_12_axi_resp_t),
+        .NoSlvPorts    (sep_pkg::SEP_ROM_MUX_NUM_PORTS),
         .MaxWTrans     (4),
         .FallThrough   (1'b0),
         .SpillAw       (1'b0),
@@ -656,17 +667,17 @@ module sep
     );
 
     memory_interface #(
-        .MEM_ADDR_WIDTH   (SEP_MEM_ADDR_WIDTH),
-        .MEM_DATA_WIDTH   (SEP_MEM_DATA_WIDTH),
-        .MEM_ID_WIDTH     (SEP_32_64_4_12_ID_WIDTH),
-        .mem_req_t        (sep_sram_req_t),
-        .mem_rsp_t        (sep_sram_rsp_t),
-        .mem_axi_req_t    (sep_32_64_4_12_axi_req_t),
-        .mem_axi_resp_t   (sep_32_64_4_12_axi_resp_t),
-        .CSR_ADDR_WIDTH   (SEP_32_64_4_12_ADDR_WIDTH),
-        .CSR_DATA_WIDTH   (SEP_32_64_4_12_DATA_WIDTH),
-        .csr_axil_req_t   (sep_axilite_xbar_req_t),
-        .csr_axil_resp_t  (sep_axilite_xbar_resp_t),
+        .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
+        .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
+        .MEM_ID_WIDTH     (sep_pkg::SEP_32_64_4_12_ID_WIDTH),
+        .mem_req_t        (sep_pkg::sep_sram_req_t),
+        .mem_rsp_t        (sep_pkg::sep_sram_rsp_t),
+        .mem_axi_req_t    (sep_pkg::sep_32_64_4_12_axi_req_t),
+        .mem_axi_resp_t   (sep_pkg::sep_32_64_4_12_axi_resp_t),
+        .CSR_ADDR_WIDTH   (sep_pkg::SEP_32_64_4_12_ADDR_WIDTH),
+        .CSR_DATA_WIDTH   (sep_pkg::SEP_32_64_4_12_DATA_WIDTH),
+        .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
+        .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
         .CSR_BASE_ADDR    (32'h0),
         .MEM_BASE_ADDR    (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR),
         .NUM_BANKS        (1)
@@ -712,6 +723,10 @@ module sep
         // Entropy source interrupt
         .entropy_source_irq_o                   (entropy_source_irq),
 
+        // Native EDN endpoint routed to the fabric-level entropy-pool FIFO
+        .entropy_pool_edn_req_i                 (entropy_pool_edn_req),
+        .entropy_pool_edn_rsp_o                 (entropy_pool_edn_rsp),
+
         // External TRNG AXI-Lite passthrough
         .ext_trng_axil_req_o                    (ext_trng_axil_req_o),
         .ext_trng_axil_resp_i                   (ext_trng_axil_resp_i),
@@ -737,7 +752,7 @@ module sep
         .lc_sigint_err_o                        (lc_sigint_err_o),
         .shadow_regs_o                          (),
         .fuse_sense_done_o                      (sep_fuse_sense_done_o),
-        .secure_tm_o                            (), // TODO
+        .secure_tm_o                            (secure_tm_o),
 
         // Key Manager interfaces
         .km_rom_mem_req_o                       (km_rom_mem_req_o),
@@ -758,6 +773,7 @@ module sep
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),
 
         .ext_trng_src_sel_i                     (ext_trng_src_sel),
+        .km_wipe_state_i                        (km_wipe_state),
 
         // Crypto subsystem interrupts
         .intr_hmac_done_o                       (intr_hmac_done),
@@ -773,11 +789,16 @@ module sep
         .intr_edn_cmd_req_done_o                (intr_edn_cmd_req_done),
         .intr_edn_fatal_err_o                   (intr_edn_fatal_err),
         .intr_otbn_done_o                       (intr_otbn_done),
+        .intr_abr_error_o                       (intr_abr_error),
+        .intr_abr_notif_o                       (intr_abr_notif),
 
         .sep_crypto_pka_imem_sram_req_o         (sep_crypto_pka_imem_sram_req),
         .sep_crypto_pka_imem_sram_rsp_i         (sep_crypto_pka_imem_sram_rsp),
         .sep_crypto_pka_dmem_sram_req_o         (sep_crypto_pka_dmem_sram_req),
         .sep_crypto_pka_dmem_sram_rsp_i         (sep_crypto_pka_dmem_sram_rsp),
+
+        .abr_mem_req_o                          (abr_mem_req),
+        .abr_mem_rsp_i                          (abr_mem_rsp),
 
         .crypto_alert_o                         (crypto_alert),
 
@@ -807,12 +828,40 @@ module sep
         .sep_io_spi_rsp_i  (sep_io_spi_rsp_i)
     );
 
+    //////////////////////
+    // Entropy-Pool FIFO //
+    //////////////////////
+
+    // Fabric-level entropy pool: filled by the native EDN endpoint routed out of
+    // sep_crypto, drained read-only over a dedicated sep_local_axi_xbar output
+    // (0x1095_0000). The aperture is read-only; writes return BRESP=SLVERR.
+    sep_entropy_fifo u_entropy_fifo (
+        .clk_i                    (clk_i),
+        .rst_ni                   (rst_ni),
+
+        .test_en_i                (test_en_i),
+
+        // Native EDN fill (HW pull from sep_crypto)
+        .edn_req_o                (entropy_pool_edn_req),
+        .edn_rsp_i                (entropy_pool_edn_rsp),
+
+        // AXI-Lite read-only drain from the local xbar
+        .entropy_fifo_axi_req_i   (entropy_fifo_axi_req),
+        .entropy_fifo_axi_resp_o  (entropy_fifo_axi_resp),
+
+        // Status / interrupts to the SEP PIC
+        .pool_low_o               (entropy_pool_low),
+        .fill_stall_o             (entropy_pool_fill_stall),
+        .fifo_level_o             ()
+    );
+
     ///////////////////////////////
     // System Peripherals Module //
     ///////////////////////////////
 
     sep_system_peripherals sep_system_peripherals(
         .clk_i                            (clk_i),
+        .clk_ref_i                        (clk_ref_i),
         .rst_ni                           (sep_reset_n),
         .rst_warm_ni                      (sep_cpu_reset_n),
 
@@ -839,11 +888,13 @@ module sep
         .sep_ext_to_smc_axi_resp_i        (sep_ext_to_smc_axi_resp_i),
 
         // Address Remap Interface
-        .local_masters_remap_debug_o      (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
+        .local_masters_remap_debug_o      (local_masters_remap_debug),
 
         // Filter Interface
-        .outbound_filter_debug_o          (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
-        .inbound_filter_debug_o           (/* UNUSED */), // TODO: In Grendel these are connected to o_sep_debug
+        .outbound_write_filter_hit_debug_o (outbound_write_filter_hit_debug),
+        .outbound_read_filter_hit_debug_o  (outbound_read_filter_hit_debug),
+        .inbound_write_filter_hit_debug_o  (inbound_write_filter_hit_debug),
+        .inbound_read_filter_hit_debug_o   (inbound_read_filter_hit_debug),
 
         // Mailbox Interface
         .mailbox_inbound_interrupt_o      (smc_mailbox_interrupt_o),
@@ -864,7 +915,8 @@ module sep
         .sep_global_base_addr_o           (sep_global_base_addr),
         .sep_region_size_o                (sep_region_size),
 
-        .ext_trng_src_sel_o               (ext_trng_src_sel)
+        .ext_trng_src_sel_o               (ext_trng_src_sel),
+        .km_wipe_state_o                  (km_wipe_state)
     );
 
     /////////
@@ -881,6 +933,7 @@ module sep
         .sep_wdt_axi_resp_o      (sep_wdt_axi_resp),
         .intr_wdog_timer_bark_o  (intr_wdog_timer_bark),
         .wdt_timer_rst_req_o     (wdt_timer_rst_req),
+        .wdt_alert_o             (wdt_alert),
         .wdt_debug_sleep_mode_i  (wdt_debug_sleep_mode)
     );
 
@@ -957,7 +1010,7 @@ module sep
 
     sep_dma_wrap #(
         .SECURE_DMA_REG_MAP_BASE_ADDR (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
-        .AlertAsyncOn           ({NumAlerts{1'b1}}),
+        .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
         .AlertSkewCycles        (1'b0),
         .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
         .EnableRspDataIntgCheck (1'b1),  // ENABLE integrity checking (was 1'b0)
@@ -975,18 +1028,17 @@ module sep
         .intr_dma_done_o        (intr_dma_done),
         .intr_dma_chunk_done_o  (intr_dma_chunk_done),
         .intr_dma_error_o       (intr_dma_error),
-        .alert_rx_i             ('0),
-        .alert_tx_o             (/* UNUSED */),
+        .dma_alert_o            (dma_alert),
         .reg_req_i              (dma_csr_req),
         .reg_resp_o             (dma_csr_rsp),
         .dma_req_o              (dma_axi_req),
         .dma_resp_i             (dma_axi_resp),
-        .sep_local_base_addr_i  (sep_local_base_addr[31:0]),
-        .sep_region_size_i      (sep_region_size[31:0])
+        .sep_local_base_addr_i  (sep_local_base_addr[31:0])
     );
 
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
     assign sep_reset_n_o        = sep_reset_n;
+    assign sep_cpu_reset_n_o    = sep_cpu_reset_n;
     assign security_disable_o   = security_disable;
 
     // External debug bus assignment (384 bits, 16-bit aligned fields)
@@ -1041,8 +1093,22 @@ module sep
             10'b0,                 // [223:214] Reserved padding
             sep_efuse_token_match_chiplet_debug,  // [213:208]
 
-            // [207:0] Reserved for future use
-            208'b0
+            // [207:192] Local masters address-remap hit debug
+            10'b0,                        // [207:198] Reserved padding
+            local_masters_remap_debug,    // [197:192]
+
+            // [191:176] Outbound filter hit debug
+            {(16 - 2*$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)){1'b0}},
+            outbound_write_filter_hit_debug,
+            outbound_read_filter_hit_debug,
+
+            // [175:160] Inbound filter hit debug
+            {(16 - 2*$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)){1'b0}},
+            inbound_write_filter_hit_debug,
+            inbound_read_filter_hit_debug,
+
+            // [159:0] Reserved for future use
+            160'b0
         };
 
 endmodule

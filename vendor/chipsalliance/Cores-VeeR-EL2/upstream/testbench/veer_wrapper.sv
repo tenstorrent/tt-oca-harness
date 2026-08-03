@@ -23,7 +23,6 @@ module veer_wrapper
     input logic        clk,
     input logic        rst_l,
     input logic        dbg_rst_l,
-    input logic [31:1] rst_vec,
     input logic        nmi_int,
     input logic [31:1] nmi_vec,
     input logic [31:1] jtag_id,

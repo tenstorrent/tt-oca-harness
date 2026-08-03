@@ -10,8 +10,10 @@
 // "primary" manifest and boots from the SMC-SRAM manifest path instead. No
 // Cadence registers are touched, so the real ROM still runs end-to-end.
 //
-// Replace this stub with the real Cadence xSPI driver once the OSS DUT provides
-// that controller (see cpu.toml TODO / sep-rom-non-secure-boot-design.md).
+// All symbols are WEAK: a build that carries the real Cadence xSPI driver
+// (nonfree sep_spi_cdns.c, injected via the Makefile NONFREE_BOOTCODE_SOURCES
+// hook) overrides them at link time -- same weak-stub/strong-override pattern
+// as the SMC prod ROM drivers.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,15 +21,15 @@
 #include "sep_spi.h"
 #include "rom_virt_console.h"
 
-void spi_set_rotate(bool rotate) {
+__attribute__((weak)) void spi_set_rotate(bool rotate) {
     (void)rotate;
 }
 
-void spi_set_sysclk(uint16_t freq_mhz) {
+__attribute__((weak)) void spi_set_sysclk(uint16_t freq_mhz) {
     (void)freq_mhz;
 }
 
-uint32_t spi_init(void) {
+__attribute__((weak)) uint32_t spi_init(void) {
     // Non-zero -> the OSS `sep` has no Cadence xSPI, so SPI is unavailable and
     // the ROM takes its non-SPI (SMC-SRAM) manifest path. The testbench serves
     // the manifest+BL1 from a behavioral memory at the SMC-SRAM base.
@@ -35,10 +37,10 @@ uint32_t spi_init(void) {
     return 1u;
 }
 
-uint32_t spi_reinit(void) {
+__attribute__((weak)) uint32_t spi_reinit(void) {
     return 1u;
 }
 
-bool spi_primary_tlv_failed(void) {
+__attribute__((weak)) bool spi_primary_tlv_failed(void) {
     return true;
 }

@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// *  Tenstorrent Inc.
+// *
+// * of Tenstorrent Inc.  The intellectual and technical concepts contained
+// * written permission is obtained from Tenstorrent Inc.
+
 /*
  Author: Joey Chen
 

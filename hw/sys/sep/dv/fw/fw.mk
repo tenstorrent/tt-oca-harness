@@ -19,7 +19,8 @@ FW_REG_SYS := sep
 
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
-FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
+# drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
+FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # Test sources predate strict prototypes / native register headers; keep these
 # relaxations so they compile unchanged.
@@ -27,7 +28,8 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-function-declaration \
   -Wno-incompatible-pointer-types \
   -Wno-strict-prototypes
-FW_TEST_LINKER_SCRIPT := $(FW_DIR)/link/exec_from_tcms.ld
+# Only link mode: link/modes/tcm.ld, auto-discovered by compile.mk.
+FW_DEFAULT_TEST_MODE := tcm
 FW_TEST_LDFLAGS = $(FW_LDFLAGS)
 
 define FW_TEST_POSTPROCESS

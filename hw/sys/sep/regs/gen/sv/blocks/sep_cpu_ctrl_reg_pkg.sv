@@ -17,64 +17,15 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__troot_timeout_int__in_t;
+    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__reserved__in_t;
 
     typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__sys_in_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__spacc_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__dma_data_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__alias_remap_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__filter_out_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__entropy_read_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__entropy_write_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__inbound_mailbox_timeout_int__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__TIMEOUT_INTERRUPT__outbound_mailbox_timeout_int__in_t;
-
-    typedef struct {
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__troot_timeout_int__in_t troot_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__sys_in_timeout_int__in_t sys_in_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__spacc_timeout_int__in_t spacc_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__dma_data_timeout_int__in_t dma_data_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__alias_remap_timeout_int__in_t alias_remap_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__filter_out_timeout_int__in_t filter_out_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__entropy_read_timeout_int__in_t entropy_read_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__entropy_write_timeout_int__in_t entropy_write_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__inbound_mailbox_timeout_int__in_t inbound_mailbox_timeout_int;
-        sep_cpu_ctrl__TIMEOUT_INTERRUPT__outbound_mailbox_timeout_int__in_t outbound_mailbox_timeout_int;
+        sep_cpu_ctrl__TIMEOUT_INTERRUPT__reserved__in_t reserved;
     } sep_cpu_ctrl__TIMEOUT_INTERRUPT__in_t;
 
     typedef struct {
         logic next;
     } sep_cpu_ctrl__SEP_TEST_CTRL__sep_standalone__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__SEP_TEST_CTRL__fast_spacc_en__in_t;
 
     typedef struct {
         logic next;
@@ -98,7 +49,6 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         sep_cpu_ctrl__SEP_TEST_CTRL__sep_standalone__in_t sep_standalone;
-        sep_cpu_ctrl__SEP_TEST_CTRL__fast_spacc_en__in_t fast_spacc_en;
         sep_cpu_ctrl__SEP_TEST_CTRL__fast_pka_en__in_t fast_pka_en;
         sep_cpu_ctrl__SEP_TEST_CTRL__fast_sram_en__in_t fast_sram_en;
         sep_cpu_ctrl__SEP_TEST_CTRL__fast_dccm_en__in_t fast_dccm_en;
@@ -146,71 +96,20 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__spacc_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
     } sep_cpu_ctrl__CLOCK_GATE_CTRL__pka_cg_enable__out_t;
 
     typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__dma_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__mailbox_cg_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__fabric_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__filter_in_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__sram_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__zeroer_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__alias_remap_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__filter_out_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__ot_hmac_cg_enable__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__entropy_fifo_cg_enable__out_t;
-
-    typedef struct {
-        logic [5:0] value;
-    } sep_cpu_ctrl__CLOCK_GATE_CTRL__cg_hysteresis__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__spacc_cg_enable__out_t spacc_cg_enable;
         sep_cpu_ctrl__CLOCK_GATE_CTRL__pka_cg_enable__out_t pka_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__dma_cg_enable__out_t dma_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__mailbox_cg_en__out_t mailbox_cg_en;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__fabric_cg_enable__out_t fabric_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__filter_in_cg_enable__out_t filter_in_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__sram_cg_enable__out_t sram_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__zeroer_cg_enable__out_t zeroer_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__alias_remap_cg_enable__out_t alias_remap_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__filter_out_cg_enable__out_t filter_out_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__ot_hmac_cg_enable__out_t ot_hmac_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__entropy_fifo_cg_enable__out_t entropy_fifo_cg_enable;
-        sep_cpu_ctrl__CLOCK_GATE_CTRL__cg_hysteresis__out_t cg_hysteresis;
     } sep_cpu_ctrl__CLOCK_GATE_CTRL__out_t;
+
+    typedef struct {
+        logic [63:0] value;
+        logic wr_swacc;
+    } sep_cpu_ctrl__REFERENCE_COUNTER__rc__out_t;
+
+    typedef struct {
+        sep_cpu_ctrl__REFERENCE_COUNTER__rc__out_t rc;
+    } sep_cpu_ctrl__REFERENCE_COUNTER__out_t;
 
     typedef struct {
         logic value;
@@ -232,187 +131,34 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic value;
-    } sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_disable__out_t;
+    } sep_cpu_ctrl__TIMEOUT_COUNT__reserved__out_t;
 
     typedef struct {
-        logic value;
-    } sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_rand__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_rand_vld__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_disable__out_t spacc_dpa_disable;
-        sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_rand__out_t spacc_dpa_rand;
-        sep_cpu_ctrl__SPACC_CTRL__spacc_dpa_rand_vld__out_t spacc_dpa_rand_vld;
-    } sep_cpu_ctrl__SPACC_CTRL__out_t;
-
-    typedef struct {
-        logic [47:0] value;
-    } sep_cpu_ctrl__TIMEOUT_COUNT__data__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__TIMEOUT_COUNT__data__out_t data;
+        sep_cpu_ctrl__TIMEOUT_COUNT__reserved__out_t reserved;
     } sep_cpu_ctrl__TIMEOUT_COUNT__out_t;
 
     typedef struct {
         logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__troot_timeout_en__out_t;
+    } sep_cpu_ctrl__TIMEOUT_ENABLE__reserved__out_t;
 
     typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__sys_in_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__spacc_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__dma_data_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__alias_remap_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__filter_out_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__entropy_read_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__entropy_write_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__inbound_mailbox_timeout_en__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_ENABLE__outbound_mailbox_timeout_en__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__TIMEOUT_ENABLE__troot_timeout_en__out_t troot_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__sys_in_timeout_en__out_t sys_in_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__spacc_timeout_en__out_t spacc_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__dma_data_timeout_en__out_t dma_data_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__alias_remap_timeout_en__out_t alias_remap_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__filter_out_timeout_en__out_t filter_out_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__entropy_read_timeout_en__out_t entropy_read_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__entropy_write_timeout_en__out_t entropy_write_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__inbound_mailbox_timeout_en__out_t inbound_mailbox_timeout_en;
-        sep_cpu_ctrl__TIMEOUT_ENABLE__outbound_mailbox_timeout_en__out_t outbound_mailbox_timeout_en;
+        sep_cpu_ctrl__TIMEOUT_ENABLE__reserved__out_t reserved;
     } sep_cpu_ctrl__TIMEOUT_ENABLE__out_t;
 
     typedef struct {
         logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__troot_timeout_clear__out_t;
+    } sep_cpu_ctrl__TIMEOUT_CLEAR__reserved__out_t;
 
     typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__sys_in_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__spacc_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__dma_data_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__alias_remap_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__filter_out_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__entropy_read_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__entropy_write_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__inbound_mailbox_timeout_clear__out_t;
-
-    typedef struct {
-        logic value;
-    } sep_cpu_ctrl__TIMEOUT_CLEAR__outbound_mailbox_timeout_clear__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__TIMEOUT_CLEAR__troot_timeout_clear__out_t troot_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__sys_in_timeout_clear__out_t sys_in_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__spacc_timeout_clear__out_t spacc_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__dma_data_timeout_clear__out_t dma_data_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__alias_remap_timeout_clear__out_t alias_remap_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__filter_out_timeout_clear__out_t filter_out_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__entropy_read_timeout_clear__out_t entropy_read_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__entropy_write_timeout_clear__out_t entropy_write_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__inbound_mailbox_timeout_clear__out_t inbound_mailbox_timeout_clear;
-        sep_cpu_ctrl__TIMEOUT_CLEAR__outbound_mailbox_timeout_clear__out_t outbound_mailbox_timeout_clear;
+        sep_cpu_ctrl__TIMEOUT_CLEAR__reserved__out_t reserved;
     } sep_cpu_ctrl__TIMEOUT_CLEAR__out_t;
 
     typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__troot_timeout_mode__out_t;
+        logic value;
+    } sep_cpu_ctrl__TIMEOUT_MODE__reserved__out_t;
 
     typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__sys_in_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__spacc_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__dma_data_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__alias_remap_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__filter_out_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__entropy_read_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__entropy_write_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__inbound_mailbox_timeout_mode__out_t;
-
-    typedef struct {
-        logic [1:0] value;
-    } sep_cpu_ctrl__TIMEOUT_MODE__outbound_mailbox_timeout_mode__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__TIMEOUT_MODE__troot_timeout_mode__out_t troot_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__sys_in_timeout_mode__out_t sys_in_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__spacc_timeout_mode__out_t spacc_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__dma_data_timeout_mode__out_t dma_data_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__alias_remap_timeout_mode__out_t alias_remap_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__filter_out_timeout_mode__out_t filter_out_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__entropy_read_timeout_mode__out_t entropy_read_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__entropy_write_timeout_mode__out_t entropy_write_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__inbound_mailbox_timeout_mode__out_t inbound_mailbox_timeout_mode;
-        sep_cpu_ctrl__TIMEOUT_MODE__outbound_mailbox_timeout_mode__out_t outbound_mailbox_timeout_mode;
+        sep_cpu_ctrl__TIMEOUT_MODE__reserved__out_t reserved;
     } sep_cpu_ctrl__TIMEOUT_MODE__out_t;
 
     typedef struct {
@@ -498,7 +244,7 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__SEP_NMI_VEC_LOCK__out_t;
 
     typedef struct {
-        logic [1:0] value;
+        logic [2:0] value;
     } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d__sel_swwel_5b08e6ad__out_t;
 
     typedef struct {
@@ -514,12 +260,18 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK__out_t;
 
     typedef struct {
+        logic value;
+    } sep_cpu_ctrl__KM_WIPE_CTRL__wipe_state__out_t;
+
+    typedef struct {
+        sep_cpu_ctrl__KM_WIPE_CTRL__wipe_state__out_t wipe_state;
+    } sep_cpu_ctrl__KM_WIPE_CTRL__out_t;
+
+    typedef struct {
         sep_cpu_ctrl__CLOCK_GATE_CTRL__out_t CLOCK_GATE_CTRL;
+        sep_cpu_ctrl__REFERENCE_COUNTER__out_t REFERENCE_COUNTER;
         sep_cpu_ctrl__PKA_CTRL__out_t PKA_CTRL;
-        sep_cpu_ctrl__SPACC_CTRL__out_t SPACC_CTRL;
-        sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_TROOT;
         sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_DMA;
-        sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_SPACC;
         sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_SYS_IN;
         sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_MAILBOX_INBOUND;
         sep_cpu_ctrl__TIMEOUT_COUNT__out_t TIMEOUT_COUNT_MAILBOX_OUTBOUND;
@@ -541,5 +293,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_NMI_VEC_LOCK__out_t SEP_NMI_VEC_LOCK;
         sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d__out_t EXT_TRNG_SRC_SEL;
         sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK__out_t EXT_TRNG_SRC_SEL_LOCK;
+        sep_cpu_ctrl__KM_WIPE_CTRL__out_t KM_WIPE_CTRL;
     } sep_cpu_ctrl__out_t;
 endpackage

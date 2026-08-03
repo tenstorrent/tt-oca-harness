@@ -24,6 +24,7 @@ module sep_wrapper
 ) (
         input  logic clk_i,
         input  logic clk_wdt_i,
+        input  logic clk_ref_i,
         input  logic rst_ni,
         input  logic dbg_rstb_i,
         input  logic wdt_rst_ni,
@@ -115,6 +116,8 @@ module sep_wrapper
 
         output logic [383:0] ext_debug_bus_o,
 
+        output logic secure_tm_o,
+
         output logic [15:0] efuse_debug_bus_o
     );
 
@@ -139,6 +142,9 @@ module sep_wrapper
     logic sep_reset_n;
     logic wdt_timer_rst_req;
     logic sep_cpu_reset_n; // sep_reset_n gated by WDT reset; drives sep_ip_integration's memories
+
+    sep_crypto_pkg::abr_mem_req_t abr_mem_req;
+    sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
 
     km_intf_pkg::km_rom_mem_req_t  km_rom_mem_req;
     km_intf_pkg::km_rom_mem_rsp_t  km_rom_mem_rsp;
@@ -167,7 +173,6 @@ module sep_wrapper
 
     assign sep_reset_n_o        = sep_reset_n;
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
-    assign sep_cpu_reset_n      = sep_reset_n & ~wdt_timer_rst_req;
 
     /////////////////////
     // SEP core        //
@@ -182,6 +187,7 @@ module sep_wrapper
 
         .sep_reset_n_o       (sep_reset_n),
         .wdt_timer_rst_req_o (wdt_timer_rst_req),
+        .sep_cpu_reset_n_o   (sep_cpu_reset_n),
 
         .sep_cpu_tcm_req_o (sep_cpu_tcm_req),
         .sep_cpu_tcm_rsp_i (sep_cpu_tcm_rsp),
@@ -196,6 +202,9 @@ module sep_wrapper
         .sep_crypto_pka_imem_sram_rsp (sep_crypto_pka_imem_sram_rsp),
         .sep_crypto_pka_dmem_sram_req (sep_crypto_pka_dmem_sram_req),
         .sep_crypto_pka_dmem_sram_rsp (sep_crypto_pka_dmem_sram_rsp),
+
+        .abr_mem_req (abr_mem_req),
+        .abr_mem_rsp (abr_mem_rsp),
 
         .ext_trng_axil_req_o  (ext_trng_axil_req),
         .ext_trng_axil_resp_i (ext_trng_axil_resp),
@@ -231,6 +240,7 @@ module sep_wrapper
         .rst_ni (rst_ni),
 
         .sep_cpu_reset_n_i (sep_cpu_reset_n),
+        .sep_reset_n_i     (sep_reset_n),
 
         .test_en_i (test_en_i),
 
@@ -247,6 +257,9 @@ module sep_wrapper
         .sep_crypto_pka_imem_sram_rsp (sep_crypto_pka_imem_sram_rsp),
         .sep_crypto_pka_dmem_sram_req (sep_crypto_pka_dmem_sram_req),
         .sep_crypto_pka_dmem_sram_rsp (sep_crypto_pka_dmem_sram_rsp),
+
+        .abr_mem_req_i (abr_mem_req),
+        .abr_mem_rsp_o (abr_mem_rsp),
 
         .km_rom_mem_req_i (km_rom_mem_req),
         .km_rom_mem_rsp_o (km_rom_mem_rsp),

@@ -320,6 +320,7 @@ module km_csr_reg (
         logic OTP_CLASS_KEY_CPL_7;
         logic OTP_READ_LOCK;
         logic OTP_CHANGE_STATUS;
+        logic OTP_READ_LOCK_COLD;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -429,6 +430,7 @@ module km_csr_reg (
         decoded_reg_strb.OTP_CLASS_KEY_CPL_7 = cpuif_req_masked & (cpuif_addr == 10'h2fc) & !cpuif_req_is_wr;
         decoded_reg_strb.OTP_READ_LOCK = cpuif_req_masked & (cpuif_addr == 10'h300);
         decoded_reg_strb.OTP_CHANGE_STATUS = cpuif_req_masked & (cpuif_addr == 10'h304);
+        decoded_reg_strb.OTP_READ_LOCK_COLD = cpuif_req_masked & (cpuif_addr == 10'h308);
         decoded_err = '0;
     end
 
@@ -753,6 +755,32 @@ module km_csr_reg (
                 logic load_next;
             } class_key;
         } OTP_CHANGE_STATUS;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } life_cycle;
+            struct {
+                logic next;
+                logic load_next;
+            } demotion;
+            struct {
+                logic next;
+                logic load_next;
+            } chiplet_uid;
+            struct {
+                logic next;
+                logic load_next;
+            } sip_uid;
+            struct {
+                logic next;
+                logic load_next;
+            } sys_uid;
+            struct {
+                logic next;
+                logic load_next;
+            } class_key;
+        } OTP_READ_LOCK_COLD;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -1001,6 +1029,26 @@ module km_csr_reg (
                 logic value;
             } class_key;
         } OTP_CHANGE_STATUS;
+        struct {
+            struct {
+                logic value;
+            } life_cycle;
+            struct {
+                logic value;
+            } demotion;
+            struct {
+                logic value;
+            } chiplet_uid;
+            struct {
+                logic value;
+            } sip_uid;
+            struct {
+                logic value;
+            } sys_uid;
+            struct {
+                logic value;
+            } class_key;
+        } OTP_READ_LOCK_COLD;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -2675,6 +2723,144 @@ module km_csr_reg (
         end
     end
     assign hwif_out.OTP_CHANGE_STATUS.class_key.value = field_storage.OTP_CHANGE_STATUS.class_key.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.life_cycle
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.life_cycle.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.life_cycle.value | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.life_cycle.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.life_cycle.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.life_cycle.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.life_cycle.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.life_cycle.value <= field_combo.OTP_READ_LOCK_COLD.life_cycle.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.life_cycle.value = field_storage.OTP_READ_LOCK_COLD.life_cycle.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.demotion
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.demotion.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.demotion.value | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.demotion.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.demotion.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.demotion.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.demotion.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.demotion.value <= field_combo.OTP_READ_LOCK_COLD.demotion.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.demotion.value = field_storage.OTP_READ_LOCK_COLD.demotion.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.chiplet_uid
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.chiplet_uid.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.chiplet_uid.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.chiplet_uid.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value <= field_combo.OTP_READ_LOCK_COLD.chiplet_uid.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.chiplet_uid.value = field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.sip_uid
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.sip_uid.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.sip_uid.value | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.sip_uid.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.sip_uid.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.sip_uid.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.sip_uid.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.sip_uid.value <= field_combo.OTP_READ_LOCK_COLD.sip_uid.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.sip_uid.value = field_storage.OTP_READ_LOCK_COLD.sip_uid.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.sys_uid
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.sys_uid.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.sys_uid.value | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.sys_uid.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.sys_uid.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.sys_uid.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.sys_uid.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.sys_uid.value <= field_combo.OTP_READ_LOCK_COLD.sys_uid.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.sys_uid.value = field_storage.OTP_READ_LOCK_COLD.sys_uid.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.class_key
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.class_key.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.class_key.value | (decoded_wr_data[5:5] & decoded_wr_biten[5:5]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.class_key.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.class_key.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.class_key.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.class_key.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.class_key.value <= field_combo.OTP_READ_LOCK_COLD.class_key.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.class_key.value = field_storage.OTP_READ_LOCK_COLD.class_key.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -3029,6 +3215,15 @@ module km_csr_reg (
             readback_data_var[3] = field_storage.OTP_CHANGE_STATUS.sip_uid.value;
             readback_data_var[4] = field_storage.OTP_CHANGE_STATUS.sys_uid.value;
             readback_data_var[5] = field_storage.OTP_CHANGE_STATUS.class_key.value;
+            readback_data_var[31:6] = 26'h0;
+        end
+        if(rd_mux_addr == 10'h308) begin
+            readback_data_var[0] = field_storage.OTP_READ_LOCK_COLD.life_cycle.value;
+            readback_data_var[1] = field_storage.OTP_READ_LOCK_COLD.demotion.value;
+            readback_data_var[2] = field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value;
+            readback_data_var[3] = field_storage.OTP_READ_LOCK_COLD.sip_uid.value;
+            readback_data_var[4] = field_storage.OTP_READ_LOCK_COLD.sys_uid.value;
+            readback_data_var[5] = field_storage.OTP_READ_LOCK_COLD.class_key.value;
             readback_data_var[31:6] = 26'h0;
         end
         readback_data = readback_data_var;

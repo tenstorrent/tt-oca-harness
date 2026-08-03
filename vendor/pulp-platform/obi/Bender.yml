@@ -6,16 +6,16 @@
 # entry in the root Bender.yml (bender vendor init), pinned at v0.1.7 (the rev the TT fork was
 # based on). No TT patch is carried.
 #
-# This is a slimmed manifest pruned to the strict instantiation closure tt-oca-hw actually uses:
+# This is a slimmed manifest pruned to the strict instantiation closure OCA actually uses:
 # obi_pkg.sv plus the include/obi/typedef.svh header. idma's obi backend does
 # `include "obi/typedef.svh"` and instantiates the OBI_TYPEDEF_* macros, which reference
 # obi_pkg::{atop_t,memtype_t,prot_t}; that type usage is the only obi dependency in OCA.
 #
 # Everything else upstream is unused by OCA and not vendored: the standalone obi modules
 # (obi_xbar, obi_mux, obi_demux, obi_atop_resolver, obi_cut, obi_err_sbr, obi_intf,
-# obi_rready_converter, obi_sram_shim) were gated behind an `obi_rtl` target tt-oca-hw never passes
+# obi_rready_converter, obi_sram_shim) were gated behind an `obi_rtl` target OCA never passes
 # and are instantiated nowhere; apb_to_obi.sv compiled but was never instantiated (its only delta,
-# the bare-`ASSERT -> `TT_PULP_ASSERT rename, was the now-dropped assert-prefix patch); and
+# the bare-`ASSERT -> `OCAH_PULP_ASSERT rename, was the now-dropped assert-prefix patch); and
 # include/obi/assign.svh was used only by those pruned modules. Re-vendor them (and re-add any
 # needed patch) if/when OCA starts using them.
 

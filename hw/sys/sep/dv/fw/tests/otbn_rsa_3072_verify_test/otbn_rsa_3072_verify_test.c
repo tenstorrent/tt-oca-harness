@@ -24,8 +24,6 @@
  * 4. Extracts the SHA-256 digest from the padded result and compares with expected value
  *
  * Adapted from OpenTitan RSA reference implementation.
- * Ported from dv/sep/tests/ to fw/sep/tests/ (added test_pass/test_fail,
- * sep_outbound_filter_init).
  */
 
 #include <stdio.h>
@@ -70,10 +68,10 @@
 // ============================================================================
 
 // Memory access - word-indexed access to IMEM and DMEM
-#define OTBN_IMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), word)
-#define OTBN_DMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), word)
-#define OTBN_IMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), word, value)
-#define OTBN_DMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), word, value)
+#define OTBN_IMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, word)
+#define OTBN_DMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, word)
+#define OTBN_IMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, word, value)
+#define OTBN_DMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, word, value)
 
 // ============================================================================
 // OTBN DMEM Symbol Offsets (extracted from ELF symbol table)

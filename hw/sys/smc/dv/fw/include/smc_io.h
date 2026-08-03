@@ -8,7 +8,7 @@
  *
  * Aggregates the generic MMIO accessors and the per-peripheral register
  * helpers built on the native PeakRDL SMC_TOP_* map. Include this from drivers
- * and tests to get the full SMC helper surface (formerly smc_io.h). */
+ * and tests to get the full SMC helper surface. */
 
 #include "virt_console.h"
 #include "smc_reg_access.h"

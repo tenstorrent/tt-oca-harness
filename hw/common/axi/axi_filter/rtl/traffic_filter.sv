@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // Traffic Filter
-//
-//-----------------------------------------------------------------------------
 
 module traffic_filter #(
 	parameter bit EnSrcIdFilter = 1'b0,
@@ -22,7 +19,7 @@ module traffic_filter #(
     input logic          	cfg_allow_traffic_type_i,
 	input addr_t         	cfg_start_addr_i,          // spyglass disable W240
 	input addr_t         	cfg_end_addr_i,            // spyglass disable W240
-	input logic          	cfg_addr_mode_i,
+	input logic          	cfg_entry_enabled_i,
 	input logic          	cfg_burst_en_i,
 	input src_id_t       	cfg_src_id_i,
 	input group_id_t     	cfg_group_id_i,
@@ -68,6 +65,6 @@ module traffic_filter #(
 	end
 
 	assign tx_rule_pass_o = cfg_allow_traffic_type_i && tx_valid_i;
-	assign filter_hit_o   = &{cfg_addr_mode_i, tx_in_range, pass_src_id, pass_ns, pass_burst, pass_group_id};
+	assign filter_hit_o   = &{cfg_entry_enabled_i, tx_in_range, pass_src_id, pass_ns, pass_burst, pass_group_id};
 
 endmodule

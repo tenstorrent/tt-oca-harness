@@ -190,11 +190,15 @@ module smc_wrapper (
     input  logic [15:0]                                      smc_cpu_jtag_part_number_i,
     input  logic [3:0]                                       smc_cpu_jtag_version_i,
 
-    // I3C DAT/DCT memory interfaces (macro interfaces, passed straight through)
+    // I3C DAT/DCT/RLT memory interfaces and the gated I3C peripheral clock
+    // (macro interfaces, passed straight through)
     input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src_i,
     output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,
     input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src_i,
     output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,
+    input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,
+    output logic                                                 gated_clk_periph_i3c_o,
 
     output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                   gpio_interrupt_o,
     output logic [smc_config_pkg::NUM_UART-1:0]                  uart_interrupt_o,
@@ -207,17 +211,8 @@ module smc_wrapper (
     // Internal signals (smc <-> smc_ip_integration) //
     /////////////////////////////////////////////////
 
-    smc_pkg::smc_axil_32_32_req_t  axil_pll_req;
-    smc_pkg::smc_axil_32_32_resp_t axil_pll_resp;
-
-    smc_pkg::smc_axil_32_32_req_t  axil_pvt_req;
-    smc_pkg::smc_axil_32_32_resp_t axil_pvt_resp;
-
-    gpio_pkg::gpio_axil_req_t  axil_req_gpio_ctrl;
-    gpio_pkg::gpio_axil_resp_t axil_resp_gpio_ctrl;
-
-    smc_pkg::smc_axil_32_32_req_t  axil_extension_req;
-    smc_pkg::smc_axil_32_32_resp_t axil_extension_resp;
+    smc_pkg::smc_axil_32_32_req_t  smc_external_req;
+    smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
     smc_pkg::smc_axil_32_32_req_t     efuse_bank_ctrl_req;
     smc_pkg::smc_axil_32_32_resp_t    efuse_bank_ctrl_resp;
@@ -260,17 +255,8 @@ module smc_wrapper (
     smc u_smc (
         .*,
 
-        .axil_pll_req_o (axil_pll_req),
-        .axil_pll_resp_i(axil_pll_resp),
-
-        .axil_pvt_req_o (axil_pvt_req),
-        .axil_pvt_resp_i(axil_pvt_resp),
-
-        .axil_req_gpio_ctrl_o   (axil_req_gpio_ctrl),
-        .axil_resp_gpio_ctrl_i  (axil_resp_gpio_ctrl),
-
-        .axil_extension_req_o   (axil_extension_req),
-        .axil_extension_resp_i  (axil_extension_resp),
+        .smc_external_req_o  (smc_external_req),
+        .smc_external_resp_i (smc_external_resp),
 
         .efuse_bank_ctrl_req_o    (efuse_bank_ctrl_req),
         .efuse_bank_ctrl_resp_i   (efuse_bank_ctrl_resp),
@@ -304,17 +290,10 @@ module smc_wrapper (
         .clk_smc_i               (clk_smc_i),
         .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-        .axil_pll_req_i  (axil_pll_req),
-        .axil_pll_resp_o (axil_pll_resp),
+        .smc_external_req_i  (smc_external_req),
+        .smc_external_resp_o (smc_external_resp),
 
-        .axil_pvt_req_i  (axil_pvt_req),
-        .axil_pvt_resp_o (axil_pvt_resp),
-
-        .axil_req_gpio_ctrl_i  (axil_req_gpio_ctrl),
-        .axil_resp_gpio_ctrl_o (axil_resp_gpio_ctrl),
-
-        .axil_extension_req_i  (axil_extension_req),
-        .axil_extension_resp_o (axil_extension_resp),
+        .test_en_i (test_en_i),
 
         .efuse_bank_ctrl_req_i     (efuse_bank_ctrl_req),
         .efuse_bank_ctrl_resp_o    (efuse_bank_ctrl_resp),

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
 // SMC CPU Control Wrapper
-//
-//-------------------------------------------------
 
 module smc_cpu_ctrl_wrap
 #(
 	parameter bit NO_ADDR_REMAP = 1'b1,
+	parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
+	parameter int unsigned NumCPUCores	 			   = 1,
 
 	localparam int unsigned MaxCPUCores	 			   = 4
 ) (
@@ -23,15 +22,15 @@ module smc_cpu_ctrl_wrap
 	input  smc_pkg::smc_axil_32_64_req_t			axil_req_i,
 	output smc_pkg::smc_axil_32_64_resp_t		    axil_resp_o,
 
-	input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][57:0]			wb_reg_pc_i,
-	input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]					wb_pc_valid_i,
+	input  logic [NumCPUCores-1:0][57:0]			wb_reg_pc_i,
+	input  logic [NumCPUCores-1:0]					wb_pc_valid_i,
 
-	input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]					wdt_timeout_cluster_i,
+	input  logic [NumCPUCores-1:0]					wdt_timeout_cluster_i,
 	input  logic									chiplet_is_primary_i,
 	output logic									wdt_second_timeout_o,
 
-	output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]					core_reset_n_n0_scan_o,
-	output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0]			core_reset_vector_o,
+	output logic [NumCPUCores-1:0]					core_reset_n_n0_scan_o,
+	output logic [NumCPUCores-1:0][55:0]			core_reset_vector_o,
 	output logic									cluster_uncore_reset_n_n0_scan_o,
 	output logic									debug_reset_n_o,
 
@@ -40,6 +39,10 @@ module smc_cpu_ctrl_wrap
 	input  logic									drained_i
 );
 
+	localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ?
+																  			smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS :
+																  			smc_1core_cpu_pkg::DEFAULT_RESET_SETTINGS ;
+
 	///////////////////////
 	// Reference Counter //
 	///////////////////////
@@ -47,6 +50,17 @@ module smc_cpu_ctrl_wrap
 	localparam int unsigned RefCountWidth = 64; // 64 bit ref counter
 	logic [RefCountWidth-1:0] ref_count_sync, ref_count_from_reg;
 	logic ref_count_wr_swacc;
+	logic ref_count_wr_swacc_q;
+
+	// Delay wr_swacc one cycle so the update value is sampled after the CSR field
+	// has captured the SW write data
+	always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
+		if (!rst_primary_ni) begin
+			ref_count_wr_swacc_q <= 1'b0;
+		end else begin
+			ref_count_wr_swacc_q <= ref_count_wr_swacc;
+		end
+	end
 
 	prim_refclk_count_w_cdc #(
 		.REF_COUNT_WIDTH(RefCountWidth)
@@ -54,7 +68,7 @@ module smc_cpu_ctrl_wrap
 		.i_refclk(clk_ref_i),
 		.i_prstb(rst_primary_ni),
 		.i_cnt_en(1'b1),
-		.i_cnt_update(ref_count_wr_swacc),
+		.i_cnt_update(ref_count_wr_swacc_q),
 		.i_cnt_update_value(ref_count_from_reg),
 		.i_out_clk(clk_smc_i),
 		.o_count(ref_count_sync)
@@ -68,7 +82,7 @@ module smc_cpu_ctrl_wrap
 	logic [MaxCPUCores-1:0][55:0] int_core_reset_vector;
 
 	always_comb begin
-		for (int i = 0; i < smc_4core_cpu_pkg::NUM_CPU_CORES; i = i + 1) begin
+		for (int i = 0; i < NumCPUCores; i = i + 1) begin
 			core_reset_vector_o[i] = rst_warm_smc_clk_ni ? int_core_reset_vector[i] : 56'hC0040000;
 		end
 	end
@@ -77,13 +91,13 @@ module smc_cpu_ctrl_wrap
 
 	// Drain-handshake gated software resets (assigns live in the Reset Control
 	// Logic section below, where the pulse signals they reference are declared).
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] gated_core_reset_n;
+	logic [NumCPUCores-1:0] gated_core_reset_n;
 	logic                   gated_uncore_reset_n;
 
 	always_ff @(posedge clk_smc_i or negedge rst_warm_smc_clk_ni) begin
 		// flop both to prevent glitches
 		if (~rst_warm_smc_clk_ni) begin
-			core_reset_n_n0_scan_o <= {(smc_4core_cpu_pkg::NUM_CPU_CORES){1'b0}};
+			core_reset_n_n0_scan_o <= {(NumCPUCores){1'b0}};
 			cluster_uncore_reset_n_n0_scan_o <= 1'b0;
 		end else begin
 			core_reset_n_n0_scan_o <= gated_core_reset_n;
@@ -100,9 +114,9 @@ module smc_cpu_ctrl_wrap
 
 	// requested by fw team, would like a chain of 8 pc values to be stored for debug
 	localparam int unsigned NUM_PC_REGS = 8;
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][NUM_PC_REGS-1:0][58-1:0] wb_reg_pc_sr;
+	logic [NumCPUCores-1:0][NUM_PC_REGS-1:0][58-1:0] wb_reg_pc_sr;
 	always_ff @(posedge clk_smc_i) begin
-		for (int c = 0; c < smc_4core_cpu_pkg::NUM_CPU_CORES; c = c + 1) begin
+		for (int c = 0; c < NumCPUCores; c = c + 1) begin
 			if (~rst_primary_ni) begin
 				wb_reg_pc_sr[c] <= {(NUM_PC_REGS*58){1'b0}};
 			end else begin
@@ -116,7 +130,7 @@ module smc_cpu_ctrl_wrap
 	logic [MaxCPUCores-1:0][NUM_PC_REGS-1:0][58-1:0] int_wb_reg_pc_sr;
 	always_comb begin
 		int_wb_reg_pc_sr[MaxCPUCores-1:0] = {(MaxCPUCores*NUM_PC_REGS*58){1'b0}};
-		int_wb_reg_pc_sr[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] = wb_reg_pc_sr;
+		int_wb_reg_pc_sr[NumCPUCores-1:0] = wb_reg_pc_sr;
 	end
 
 	//////////////////////////
@@ -131,15 +145,13 @@ module smc_cpu_ctrl_wrap
 	logic [MaxCPUCores-1:0][31:0] cycle_count;
 	logic [MaxCPUCores-1:0] smc_wdt_timeout;
 
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] reset_wdt_count;
+	logic [NumCPUCores-1:0] reset_wdt_count;
 
-	assign reset_wdt_count = ~{(smc_4core_cpu_pkg::NUM_CPU_CORES){rst_primary_ni}} |
-	                         count_reset[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] |
-	                         ~wdt_timeout_cluster_i[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0];
+	assign reset_wdt_count = ~{(NumCPUCores){rst_primary_ni}} | count_reset[NumCPUCores-1:0] | ~wdt_timeout_cluster_i[NumCPUCores-1:0];
 
 	// wdt_timeout_cluster_i is from the rst_uncore_ni domain, which can be async reset, being captured on clk_smc_i
 	generate
-		for (genvar i = 0; i < smc_4core_cpu_pkg::NUM_CPU_CORES; i = i + 1) begin : gen_core_cycle_count
+		for (genvar i = 0; i < NumCPUCores; i = i + 1) begin : gen_core_cycle_count
 			always_ff @(posedge clk_smc_i) begin
 				if (reset_wdt_count[i]) begin
 					cycle_count[i] <= max_count;
@@ -154,7 +166,7 @@ module smc_cpu_ctrl_wrap
 
 	always_comb begin
 		smc_wdt_timeout = {(MaxCPUCores){1'b0}};
-		for (int i = 0; i < smc_4core_cpu_pkg::NUM_CPU_CORES; i = i + 1) begin
+		for (int i = 0; i < NumCPUCores; i = i + 1) begin
 			if (cycle_count[i] == 32'h0) begin
 				smc_wdt_timeout[i] = 1'b1;
 			end
@@ -169,13 +181,16 @@ module smc_cpu_ctrl_wrap
 		end
 	end
 
+	// Register interface
+	cpu_ctrl_reg_pkg::cpu_ctrl__in_t hwif_in;
+	cpu_ctrl_reg_pkg::cpu_ctrl__out_t hwif_out;
+
 	//////////////////////
 	// Scratch Register //
 	//////////////////////
 
 	// Unused by hardware, pulled out for debug
 	logic [31:0] scratch_reg[16];
-
 
 	assign scratch_reg[0] = hwif_out.SCRATCH[0].data.value;
 	assign scratch_reg[1] = hwif_out.SCRATCH[1].data.value;
@@ -193,9 +208,6 @@ module smc_cpu_ctrl_wrap
 	assign scratch_reg[13] = hwif_out.SCRATCH[13].data.value;
 	assign scratch_reg[14] = hwif_out.SCRATCH[14].data.value;
 	assign scratch_reg[15] = hwif_out.SCRATCH[15].data.value;
-
-
-
 
 	////////////////////////
 	// Register Interface //
@@ -215,15 +227,11 @@ module smc_cpu_ctrl_wrap
 	logic      [15:0] pre_reset_pulse_wait;
 	logic      [15:0] post_reset_pulse_wait;
 
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] core_resets_pulse_start ;
+	logic [NumCPUCores-1:0] core_resets_pulse_start ;
 	logic [MaxCPUCores-1:0] core_reset_pulse_out    ;
 	logic [MaxCPUCores-1:0] core_reset_pulse_done ;
 
 	logic [31:0] test_ctrl;
-
-	// Register interface
-	cpu_ctrl_reg_pkg::cpu_ctrl__in_t hwif_in;
-	cpu_ctrl_reg_pkg::cpu_ctrl__out_t hwif_out;
 
 	cpu_ctrl_reg cpu_ctrl_reg (
 		.clk(clk_smc_i),
@@ -231,7 +239,7 @@ module smc_cpu_ctrl_wrap
 
 		.s_axil_awready(axil_resp_o.aw_ready),
 		.s_axil_awvalid(axil_req_i.aw_valid),
-		.s_axil_awaddr(axil_req_i.aw.addr[12:0]),
+		.s_axil_awaddr(axil_req_i.aw.addr[cpu_ctrl_reg_pkg::CPU_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
 		.s_axil_awprot(axil_req_i.aw.prot),
 		.s_axil_wready(axil_resp_o.w_ready),
 		.s_axil_wvalid(axil_req_i.w_valid),
@@ -242,7 +250,7 @@ module smc_cpu_ctrl_wrap
 		.s_axil_bresp(axil_resp_o.b.resp),
 		.s_axil_arready(axil_resp_o.ar_ready),
 		.s_axil_arvalid(axil_req_i.ar_valid),
-		.s_axil_araddr(axil_req_i.ar.addr[12:0]),
+		.s_axil_araddr(axil_req_i.ar.addr[cpu_ctrl_reg_pkg::CPU_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
 		.s_axil_arprot(axil_req_i.ar.prot),
 		.s_axil_rready(axil_req_i.r_ready),
 		.s_axil_rvalid(axil_resp_o.r_valid),
@@ -261,13 +269,13 @@ module smc_cpu_ctrl_wrap
 	// SMC_ATTRIBUTES.mailbox_depth is defined as 4 bits in the register header, so we need to cast to 4 bits for LHS = RHS
 	assign hwif_in.SMC_ATTRIBUTES.mailbox_depth.next = 4'(smc_pkg::MAILBOX_DEPTH);
 	// SMC_ATTRIBUTES.num_cores is defined as 3 bits in the register header, so we need to cast to 3 bits for LHS = RHS
-	assign hwif_in.SMC_ATTRIBUTES.num_cores.next     = 3'(smc_4core_cpu_pkg::NUM_CPU_CORES);
+	assign hwif_in.SMC_ATTRIBUTES.num_cores.next     = 3'(NumCPUCores);
 	// If there is only one core, disable output remap
 	assign hwif_in.SMC_ATTRIBUTES.no_output_remap.next = NO_ADDR_REMAP;
 	// SMC_ATTRIBUTES.sram_size is defined as 6 bits in the register header, so we need to cast to 6 bits
-	assign hwif_in.SMC_ATTRIBUTES.sram_size.next = chipyard_4core_mem_pkg::SRAM_SIZE;
-	assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS;
-	assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS;
+	assign hwif_in.SMC_ATTRIBUTES.sram_size.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::SRAM_SIZE : chipyard_1core_mem_pkg::SRAM_SIZE;
+	assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS;
+	assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS;
 	assign hwif_in.SMC_ATTRIBUTES.chiplet_is_primary.next = chiplet_is_primary_i;
 
 	assign hwif_in.TEST_CTRL.data.next = test_ctrl;
@@ -286,7 +294,7 @@ module smc_cpu_ctrl_wrap
 	end
 
 	for (genvar i = 0; i < MaxCPUCores; i ++) begin : gen_reset_vector
-		if (i < smc_4core_cpu_pkg::NUM_CPU_CORES) begin : gen_used_reset_vector
+		if (i < NumCPUCores) begin : gen_used_reset_vector
 			assign int_core_reset_vector[i] = hwif_out.RESET_VECTOR[i].vector.value;
 		end else begin : gen_unused_reset_vector
 			assign int_core_reset_vector[i] = 56'h0;
@@ -328,7 +336,7 @@ module smc_cpu_ctrl_wrap
 
 	generate
 		for (genvar i = 0; i < MaxCPUCores; i++) begin: gen_pulse
-			if (i < smc_4core_cpu_pkg::NUM_CPU_CORES) begin : pulse_core_resets
+			if (i < NumCPUCores) begin : pulse_core_resets
 				prim_pulse_signal #(
 					.COUNT_WIDTH(16),
 					.IS_ACTIVE_HIGH(0)
@@ -356,8 +364,8 @@ module smc_cpu_ctrl_wrap
 	// (level, uncore, pulse) until the cluster reports drained_i.
 	logic                   sw_reset_req;
 	logic                   withhold;
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] pulse_start_req;
-	logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] pulse_start_pending;
+	logic [NumCPUCores-1:0] pulse_start_req;
+	logic [NumCPUCores-1:0] pulse_start_pending;
 
 	logic        pending;
 	logic        force_apply;
@@ -368,9 +376,13 @@ module smc_cpu_ctrl_wrap
 	logic        timeout_mode;
 	logic [15:0] timeout_cnt;
 
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reset_value;
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_wr_data;
+	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reg_value_n0_scan;
+
 	// Raw 1-cycle pulse-start request from the register write
 	always_comb begin
-		for (int core=0; core<smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin
+		for (int core=0; core<NumCPUCores; core++) begin
 			// reset core if register at index "core" written high
 			// pulse control starts at bit 4
 			pulse_start_req[core] = reset_ctrl_wr_en & external_wr_bit_mask[core+4] & external_wr_data[core+4];
@@ -379,10 +391,11 @@ module smc_cpu_ctrl_wrap
 
 	// Drain request: a held level/uncore reset, a pending pulse start, or a pulse
 	// in flight all keep the cluster isolated.
-	assign sw_reset_req = ~(&int_core_reset_n[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0])   // any core held in reset
-	                    | ~reg_uncore_reset_n
-	                    | (|pulse_start_pending)
-	                    | ~(&core_reset_pulse_done[smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]); // any pulse in flight
+	assign sw_reset_req = ~(&reset_ctrl_reg_value_n0_scan[NumCPUCores-1:0]) // any core held in reset (register level)
+                    | ~reg_uncore_reset_n
+                    | (|pulse_start_pending)
+                    | ~(&core_reset_pulse_done[NumCPUCores-1:0]);       // any pulse in flight
+
 	assign isolate_req_o = sw_reset_req;
 
 	assign timeout_value = hwif_out.RESET_TIMEOUT.timeout_value.value;
@@ -399,7 +412,7 @@ module smc_cpu_ctrl_wrap
 	// Unified gate: hold off level, uncore, and the pulse start until drained.
 	always_comb begin
 		gated_uncore_reset_n = withhold ? 1'b1 : reg_uncore_reset_n;
-		for (int core=0; core<smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin
+		for (int core=0; core<NumCPUCores; core++) begin
 			gated_core_reset_n[core]      = withhold ? 1'b1 : int_core_reset_n[core];
 			// The pulse module sees its start only once drained.
 			core_resets_pulse_start[core] = pulse_start_pending[core] & ~withhold;
@@ -412,7 +425,7 @@ module smc_cpu_ctrl_wrap
 		if (~rst_primary_ni) begin
 			pulse_start_pending <= '0;
 		end else begin
-			for (int core=0; core<smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin
+			for (int core=0; core<NumCPUCores; core++) begin
 				if (pulse_start_req[core]) begin
 					pulse_start_pending[core] <= 1'b1;
 				end else if (core_resets_pulse_start[core]) begin
@@ -438,10 +451,6 @@ module smc_cpu_ctrl_wrap
 		end
 	end
 
-	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reset_value;
-	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_wr_data;
-	cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t reset_ctrl_reg_value_n0_scan;
-
 	assign int_core_reset_n[0] = core_reset_pulse_done[0] ? reset_ctrl_reg_value_n0_scan.core0_reset_n_n0_scan : core_reset_pulse_out[0];
 	assign int_core_reset_n[1] = core_reset_pulse_done[1] ? reset_ctrl_reg_value_n0_scan.core1_reset_n_n0_scan : core_reset_pulse_out[1];
 	assign int_core_reset_n[2] = core_reset_pulse_done[2] ? reset_ctrl_reg_value_n0_scan.core2_reset_n_n0_scan : core_reset_pulse_out[2];
@@ -450,7 +459,7 @@ module smc_cpu_ctrl_wrap
 	assign reg_uncore_reset_n  = reset_ctrl_reg_value_n0_scan.uncore_reset_n_n0_scan;
 	assign debug_reset_n_o = reset_ctrl_reg_value_n0_scan.debug_reset_n_n0_scan;
 
-	assign reset_ctrl_reset_value = smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS;
+	assign reset_ctrl_reset_value = DEFAULT_RESET_SETTINGS;
 	// never write the value for the pulse start bits
 	assign reset_ctrl_wr_data = {((reset_ctrl_reg_value_n0_scan[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
 					~external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8]) |

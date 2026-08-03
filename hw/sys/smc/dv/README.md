@@ -3,9 +3,10 @@
 
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
-driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for the
-test-development reference and `docs/SMC_VPLAN.adoc` for the verification plan
-(AsciiDoc for TRM integration under `docs/trm`).
+driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for test development,
+`docs/SMC_VPLAN.adoc` for the verification plan, `docs/oss_smc_dev.md` for the
+porting plan, and `docs/smc_oss_execution_guide.md` for run recipes and recorded
+sign-off evidence.
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
@@ -58,14 +59,14 @@ hw/sys/smc/dv/
 ├── tb/                     # tb_top.sv, verilator_stubs/
 ├── testlists/
 ├── assets/
-├── docs/
+├── docs/                   # VPLAN, test-development, porting, execution guides
 └── smc_wrapper_sim_cfg.toml
 ```
 
 ## Run
 
 ```bash
-module load verilator/5.046 gcc/13.2.1   # C++20 for cocotb -fcoroutines
+module load verilator/5.050 gcc/13.2.1   # C++20 for cocotb -fcoroutines; 5.050 fixes bad C++ init of nested unpacked structs seen with 5.046
 PY=tools/dv/run_dv.py
 python3 $PY --dut smc_wrapper --items smoke --tool verilator
 python3 $PY --dut smc_wrapper --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim

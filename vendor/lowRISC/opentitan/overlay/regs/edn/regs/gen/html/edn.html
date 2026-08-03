@@ -32,29 +32,29 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>EDN_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
-<tr><td>0</td><td>EDN_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>EDN_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_fatal_err is set.</td></tr>
-<tr><td>0</td><td>EDN_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_fatal_err is set.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.</td></tr>
 </table>
 <h3 id="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>EDN_FATAL_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_fatal_err to 1.</td></tr>
-<tr><td>0</td><td>EDN_CMD_REQ_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_fatal_err to 1.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.</td></tr>
 </table>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FATAL_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
-<tr><td>0</td><td>RECOV_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>1</td><td>fatal_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>recov_alert</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
 </table>
 <h3 id="REGWEN">REGWEN</h3>
 <table>

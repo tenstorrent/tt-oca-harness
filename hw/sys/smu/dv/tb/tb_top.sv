@@ -25,6 +25,8 @@ module smu_uvm_top
     input  wire logic clk_periph_i,
     input  wire logic rst_cold_ni,
     input  wire logic powergood_i,
+    // External boot-sequence done gate (SMU_006); default-drive 1'b1 in base bring-up
+    input  wire logic ext_boot_seq_done_i,
 
     // Primary JTAG TAP (cocotb OcahJtagTap)
     input  wire logic jtag_tck,
@@ -76,10 +78,9 @@ module smu_uvm_top
     output logic [31:0] jtag_ptap_state,
     output logic [31:0] jtag_ptap_inst_decoded,
 
-    // Macro AXI-Lite activity (OR of aw/w/ar valid on boundary masters)
-    output logic tb_axil_pll_active /*verilator public_flat_rw*/,
-    output logic tb_axil_pvt_active /*verilator public_flat_rw*/,
-    output logic tb_axil_extension_active /*verilator public_flat_rw*/,
+    // Macro AXI-Lite activity (OR of aw/w/ar valid on the boundary master).
+    // PLL, PVT and the extension slot share the single smc_external window.
+    output logic tb_axil_external_active /*verilator public_flat_rw*/,
 
     // WDT first-timeout pin observe (ChipYard rst export; clamped under isolate)
     output logic tb_wdt_first_timeout /*verilator public_flat_rw*/,
@@ -257,15 +258,13 @@ module smu_uvm_top
     // ------------------------------------------------------------------
     // Macro / memory / unused boundary nets
     // ------------------------------------------------------------------
-    smc_axil_32_32_req_t  axil_pll_req, axil_pvt_req, axil_ext_req;
-    smc_axil_32_32_resp_t axil_pll_resp, axil_pvt_resp, axil_ext_resp;
+    smc_axil_32_32_req_t  smc_external_req;
+    smc_axil_32_32_resp_t smc_external_resp;
     smc_axil_32_32_req_t  smc_efuse_bank_ctrl_req;
     smc_axil_32_32_resp_t smc_efuse_bank_ctrl_resp;
     smc_efuse_pkg::fuse_command_req_t  smc_efuse_shim_command_req;
     smc_efuse_pkg::fuse_command_resp_t smc_efuse_shim_command_resp;
     smc_efuse_pkg::efuse_map_t         smc_shadow_regs;
-    gpio_pkg::gpio_axil_req_t  axil_gpio_ctrl_req;
-    gpio_pkg::gpio_axil_resp_t axil_gpio_ctrl_resp;
 
     rom_req_t              smc_rom_req;
     rom_rsp_t              smc_rom_rsp;
@@ -384,17 +383,11 @@ module smu_uvm_top
 
     // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —
     // no TB err_slv placeholder; macro/PLL/PVT tests deferred until real IP.
-    assign tb_axil_pll_active =
-        axil_pll_req.aw_valid | axil_pll_req.w_valid | axil_pll_req.ar_valid;
-    assign tb_axil_pvt_active =
-        axil_pvt_req.aw_valid | axil_pvt_req.w_valid | axil_pvt_req.ar_valid;
-    assign tb_axil_extension_active =
-        axil_ext_req.aw_valid | axil_ext_req.w_valid | axil_ext_req.ar_valid;
-    // Leave axil_*_resp undriven (no TB terminator hack).
-    assign axil_pll_resp       = '0;
-    assign axil_pvt_resp       = '0;
-    assign axil_ext_resp       = '0;
-    assign axil_gpio_ctrl_resp = '0;
+    assign tb_axil_external_active = smc_external_req.aw_valid
+                                   | smc_external_req.w_valid
+                                   | smc_external_req.ar_valid;
+    // Leave the boundary response undriven (no TB terminator hack).
+    assign smc_external_resp = '0;
 
     // ------------------------------------------------------------------
     // DUT: smu with SEP=0
@@ -472,19 +465,13 @@ module smu_uvm_top
         .smu_axi_in_resp_o           (smu_axi_in_resp),
         .smu_axi_out_req_o           (smu_axi_out_req),
         .smu_axi_out_resp_i          (smu_axi_out_resp),
-        .axil_pll_req_o              (axil_pll_req),
-        .axil_pll_resp_i             (axil_pll_resp),
-        .axil_pvt_req_o              (axil_pvt_req),
-        .axil_pvt_resp_i             (axil_pvt_resp),
-        .smc_axil_extension_req_o    (axil_ext_req),
-        .smc_axil_extension_resp_i   (axil_ext_resp),
+        .smc_external_req_o          (smc_external_req),
+        .smc_external_resp_i         (smc_external_resp),
         .smc_efuse_bank_ctrl_req_o   (smc_efuse_bank_ctrl_req),
         .smc_efuse_bank_ctrl_resp_i  (smc_efuse_bank_ctrl_resp),
         .smc_efuse_shim_command_req_o(smc_efuse_shim_command_req),
         .smc_efuse_shim_command_resp_i(smc_efuse_shim_command_resp),
         .smc_shadow_regs_o           (smc_shadow_regs),
-        .axil_req_gpio_ctrl_o        (axil_gpio_ctrl_req),
-        .axil_resp_gpio_ctrl_i       (axil_gpio_ctrl_resp),
         .lsio_interface_select_o     (lsio_sel),
         .pad2core_i                  (pad2core),
         .core2pad_o                  (core2pad),
@@ -510,7 +497,7 @@ module smu_uvm_top
         .fuse_sense_done_o,
         .fuse_reset_n_delayed_o,
         .skip_mem_repair_o           (),
-        .ext_boot_seq_done_i         (1'b1),
+        .ext_boot_seq_done_i         (ext_boot_seq_done_i),
         .temp_interrupt_i            (1'b0),
         .lc_state_o                  (lc_state_o),
         .lc_sigint_err_o             (lc_sigint_err_o),
@@ -597,9 +584,9 @@ module smu_uvm_top
     assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
 
     // WDT isolate clamp: observe only (no SV Force — inject pin removed).
-    assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+    assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
         .wdt_reset_raw[0];
-    assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper
+    assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
         .u_smc_cpu.cluster_boundary_isolate;
 
     // Hierarchical observe of DTP boot-stall / CLA clock-stop (no hw/ edit).

@@ -16,7 +16,7 @@ index ef97f2d3d..c489907c9 100644
  assign feedback_addr_o       = ar_addr;
  assign feedback_addr_valid_o = axi_ar_chan_ready_i && axi_ar_chan_valid_o;
 diff --git a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
-index b4ba4a700..56aba4250 100644
+index 9cc4dcd69..ab26a8c87 100644
 --- a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
 +++ b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
 @@ -231,11 +231,11 @@ end
@@ -90,7 +90,7 @@ index 44ac8ae2d..6bc59009f 100644
  
  endmodule
 diff --git a/src/frontend/desc64/idma_desc64_top.sv b/src/frontend/desc64/idma_desc64_top.sv
-index 629ed6a27..b9fcea0b8 100644
+index a6c1cbcfd..3d32c7a56 100644
 --- a/src/frontend/desc64/idma_desc64_top.sv
 +++ b/src/frontend/desc64/idma_desc64_top.sv
 @@ -458,7 +458,7 @@ stream_fifo #(
@@ -106,10 +106,10 @@ index 629ed6a27..b9fcea0b8 100644
  // and empty in lockstep. Capacity is tested at the idma_req fifo, the
  // other two ready signals are ignored.
  // pragma translate_off
--`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid);
--`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid);
-+`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
-+`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
+-`OCAH_PULP_ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid);
+-`OCAH_PULP_ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid);
++`OCAH_PULP_ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
++`OCAH_PULP_ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
  // pragma translate_on
  
  endmodule

@@ -39,7 +39,7 @@
 #include "sep_km_mailbox.h"
 #include "sep_reset.h"
 #include "sep_efuse.h"
-#include "sep_scratch.h"
+#include "sep_scratch_drv.h"
 
 // --- Shared coexistence protocol (MUST match km_rom_coexist.S and the cocotb
 //     observer sep_efuse_km_axil_cpu_mux_coexist_test.py). ---

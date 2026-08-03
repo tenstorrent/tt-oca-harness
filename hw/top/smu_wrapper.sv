@@ -39,6 +39,7 @@ module smu_wrapper
     parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
     parameter bit           SEP                   = 1'b1,
     parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,
+    parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
     parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
     localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,
@@ -138,6 +139,7 @@ module smu_wrapper
     // SMC Resets
     output logic  rst_primary_ref_clk_no,
     output logic  rst_primary_smc_clk_no,
+    output logic  rst_primary_periph_clk_no,
 
     // SMU AXI Crossbar External Ports (toward SMN)
     input  smu_axi_xbar_pkg::axi_56_64_req_t   smu_axi_in_req_i,
@@ -264,6 +266,18 @@ module smu_wrapper
     input  logic                        spi_irq_i,
 
     output logic  sep_reset_n_o,
+    output logic  sep_cpu_reset_n_o,
+
+    // JTAG-generated SEP reset/override control, driven by the internal DTP
+    output sep_pkg::jtag_sep_reset_ctrl_t  jtag_sep_reset_ctrl_o,
+
+    // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
+    output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
+
+    output logic  secure_tm_o,
+
+    // Ring-oscillator sample clock for SEP entropy_source (async to clk_smu_i)
+    input  logic  entropy_rosc_sample_clk_i,
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
 
@@ -280,11 +294,14 @@ module smu_wrapper
     // SEP straps
     input  sep_pkg::sep_straps_t  sep_straps_i,
 
-    // I3C DAT/DCT memory interfaces (macro interfaces, passed straight through)
+    // I3C DAT/DCT/RLT memory interfaces (macro interfaces, passed straight through)
     input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
     output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_sink_o,
     input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
     output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_sink_o,
+    input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,
+    output logic                                                  gated_clk_periph_i3c_o,
 
     // Debug bus
     input  logic [127:0]  ext_debug_bus_i,
@@ -301,17 +318,11 @@ module smu_wrapper
     // Signal Declarations //
     /////////////////////////
 
-    smc_pkg::smc_axil_32_32_req_t  axil_pll_req;
-    smc_pkg::smc_axil_32_32_resp_t axil_pll_resp;
-
-    smc_pkg::smc_axil_32_32_req_t  axil_pvt_req;
-    smc_pkg::smc_axil_32_32_resp_t axil_pvt_resp;
-
-    gpio_pkg::gpio_axil_req_t  axil_req_gpio_ctrl;
-    gpio_pkg::gpio_axil_resp_t axil_resp_gpio_ctrl;
-
-    smc_pkg::smc_axil_32_32_req_t  smc_axil_extension_req;
-    smc_pkg::smc_axil_32_32_resp_t smc_axil_extension_resp;
+    // Single AXI-Lite window covering the whole smc_external map; PLL, PVT,
+    // GPIO control and the extension slot are decoded inside
+    // smc_ip_integration.
+    smc_pkg::smc_axil_32_32_req_t  smc_external_req;
+    smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
@@ -331,10 +342,19 @@ module smu_wrapper
     sep_efuse_pkg::fuse_command_req_t  sep_efuse_shim_command_req;
     sep_efuse_pkg::fuse_command_resp_t sep_efuse_shim_command_resp;
 
-    // Reset gating the sim-only SEP memory macros, derived from smu.sv's
-    // re-exposed sep_reset_n_o.
-    logic sep_mem_rst_n;
-    assign sep_mem_rst_n = sep_reset_n_o;
+    // External TRNG loop: smu.sv exposes the SEP-side AXI-Lite master and AXI
+    // stream sink, and sep_ip_integration provides the model that closes it.
+    sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req;
+    sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp;
+
+    ext_trng_axis_req_t ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
+    ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
+
+    logic ext_trng_irq;
+    logic ext_trng_alarm;
+
+    sep_crypto_pkg::abr_mem_req_t abr_mem_req;
+    sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
 
     sep_pkg::sep_sram_req_t    sep_sram_req;
     sep_pkg::sep_sram_rsp_t    sep_sram_rsp;
@@ -364,21 +384,25 @@ module smu_wrapper
         .Cfg                   (Cfg),
         .SEP                   (SEP),
         .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
+        .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
         .ic_reset_ext_t         (ic_reset_ext_t)
     ) u_smu (
         .*,
 
-        .axil_pll_req_o (axil_pll_req),
-        .axil_pll_resp_i(axil_pll_resp),
+        .abr_mem_req_o (abr_mem_req),
+        .abr_mem_rsp_i (abr_mem_rsp),
 
-        .axil_pvt_req_o (axil_pvt_req),
-        .axil_pvt_resp_i(axil_pvt_resp),
+        .ext_trng_axil_req_o  (ext_trng_axil_req),
+        .ext_trng_axil_resp_i (ext_trng_axil_resp),
 
-        .smc_axil_extension_req_o  (smc_axil_extension_req),
-        .smc_axil_extension_resp_i (smc_axil_extension_resp),
+        .ext_trng_axis_req_i (ext_trng_axis_req),
+        .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-        .axil_req_gpio_ctrl_o  (axil_req_gpio_ctrl),
-        .axil_resp_gpio_ctrl_i (axil_resp_gpio_ctrl),
+        .ext_trng_irq_i   (ext_trng_irq),
+        .ext_trng_alarm_i (ext_trng_alarm),
+
+        .smc_external_req_o  (smc_external_req),
+        .smc_external_resp_i (smc_external_resp),
 
         .pad2core_i    (pad2core),
         .core2pad_o    (core2pad),
@@ -425,17 +449,10 @@ module smu_wrapper
         .clk_smc_i               (clk_smu_i),
         .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-        .axil_pll_req_i  (axil_pll_req),
-        .axil_pll_resp_o (axil_pll_resp),
+        .smc_external_req_i  (smc_external_req),
+        .smc_external_resp_o (smc_external_resp),
 
-        .axil_pvt_req_i  (axil_pvt_req),
-        .axil_pvt_resp_o (axil_pvt_resp),
-
-        .axil_req_gpio_ctrl_i  (axil_req_gpio_ctrl),
-        .axil_resp_gpio_ctrl_o (axil_resp_gpio_ctrl),
-
-        .axil_extension_req_i  (smc_axil_extension_req),
-        .axil_extension_resp_o (smc_axil_extension_resp),
+        .test_en_i (test_en_i),
 
         .efuse_bank_ctrl_req_i     (smc_efuse_bank_ctrl_req),
         .efuse_bank_ctrl_resp_o    (smc_efuse_bank_ctrl_resp),
@@ -456,20 +473,14 @@ module smu_wrapper
     // SEP IP Integration  //
     /////////////////////////
 
-    // sep_ip_integration's TRNG DECERR termination is instantiated for
-    // interface parity with sep_wrapper.sv; smu.sv's internal sep.sv
-    // instance keeps its TRNG ports internal, so this side is tied off.
-    sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_tieoff;
-    sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_unused;
-    ext_trng_axis_rsp_t ext_trng_axis_rsp_tieoff [1:0];
-    assign ext_trng_axil_req_tieoff = '0;
-    assign ext_trng_axis_rsp_tieoff = '{default: '0};
-
-    sep_ip_integration u_sep_ip_integration (
+    sep_ip_integration #(
+        .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS)
+    ) u_sep_ip_integration (
         .clk_i  (clk_smu_i),
         .rst_ni (rst_primary_smc_clk_no),
 
-        .sep_cpu_reset_n_i (sep_mem_rst_n),
+        .sep_cpu_reset_n_i (sep_cpu_reset_n_o),
+        .sep_reset_n_i     (sep_reset_n_o),
 
         .test_en_i (test_en_i),
 
@@ -497,14 +508,17 @@ module smu_wrapper
         .efuse_shim_command_req_i  (sep_efuse_shim_command_req),
         .efuse_shim_command_resp_o (sep_efuse_shim_command_resp),
 
-        .ext_trng_axil_req_i  (ext_trng_axil_req_tieoff),
-        .ext_trng_axil_resp_o (ext_trng_axil_resp_unused),
+        .ext_trng_axil_req_i  (ext_trng_axil_req),
+        .ext_trng_axil_resp_o (ext_trng_axil_resp),
 
-        .ext_trng_axis_req_o (),
-        .ext_trng_axis_rsp_i (ext_trng_axis_rsp_tieoff),
+        .ext_trng_axis_req_o (ext_trng_axis_req),
+        .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-        .ext_trng_irq_o   (),
-        .ext_trng_alarm_o (),
+        .ext_trng_irq_o   (ext_trng_irq),
+        .ext_trng_alarm_o (ext_trng_alarm),
+
+        .abr_mem_req_i (abr_mem_req),
+        .abr_mem_rsp_o (abr_mem_rsp),
 
         .axi_extension_axi_req_i  (sep_axi_extension_req),
         .axi_extension_axi_resp_o (sep_axi_extension_resp),

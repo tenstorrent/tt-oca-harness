@@ -121,9 +121,9 @@ module plru_tree #(
     end
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(entries_not_power_of_2, ENTRIES == 2**LogEntries, "Entries must be a power of two")
+    `OCAH_PULP_ASSERT_INIT(entries_not_power_of_2, ENTRIES == 2**LogEntries, "Entries must be a power of two")
 
-    `TT_PULP_ASSERT(output_onehot, $onehot0(plru_o), clk_i, !rst_ni,
+    `OCAH_PULP_ASSERT(output_onehot, $onehot0(plru_o), clk_i, !rst_ni,
             "More than one bit set in PLRU output.")
 `endif
 

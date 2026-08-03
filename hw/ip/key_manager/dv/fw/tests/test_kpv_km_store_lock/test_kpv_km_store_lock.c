@@ -30,7 +30,6 @@
 
 #define SLOT_ID 1
 #define CTRL_EXTEND_VAL 2u
-#define CTRL_DEST_VALID_VAL 0x5Au
 #define CTRL_LAST_DWORD_VAL 3u /* words 0..3 valid */
 
 static void clear_axi_slverr(void) {
@@ -49,7 +48,7 @@ int main(void) {
     if (!tb_set_timeout(50000)) TEST_FAIL("timeout");
 
     /* -----------------------------------------------------------------------
-     * 1. Store key data and CTRL metadata (extend, dest_valid, last_dword).
+     * 1. Store key data and CTRL metadata (extend and last_dword).
      * ----------------------------------------------------------------------- */
     TEST_SUBTEST_START("Store key and CTRL, read back");
     KPV_KEY_WORD_REG(SLOT_ID, 0).w = 0xCAFEBABEu;
@@ -60,7 +59,6 @@ int main(void) {
     km_kpv__ctrl_reg_t ctrl = {.w = 0u};
     ctrl.f.last_dword = CTRL_LAST_DWORD_VAL;
     ctrl.f.extend = CTRL_EXTEND_VAL;
-    ctrl.f.dest_valid = CTRL_DEST_VALID_VAL;
     KPV_CTRL_REG(SLOT_ID).w = ctrl.w;
 
     uint32_t r0 = KPV_KEY_WORD_REG(SLOT_ID, 0).w;
@@ -69,10 +67,8 @@ int main(void) {
         TEST_FAIL("Key readback: expected 0xCAFEBABE/0xDEADBEEF, got 0x%08X/0x%08X", r0, r1);
     }
     km_kpv__ctrl_reg_t ctrl_read = {.w = KPV_CTRL_REG(SLOT_ID).w};
-    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL ||
-        ctrl_read.f.dest_valid != CTRL_DEST_VALID_VAL) {
-        TEST_FAIL("CTRL readback: extend=0x%X dest_valid=0x%X last_dword=0x%X",
-                  (unsigned)ctrl_read.f.extend, (unsigned)ctrl_read.f.dest_valid,
+    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL) {
+        TEST_FAIL("CTRL readback: extend=0x%X last_dword=0x%X", (unsigned)ctrl_read.f.extend,
                   (unsigned)ctrl_read.f.last_dword);
     }
     TEST_SUBTEST_PASS();
@@ -107,16 +103,12 @@ int main(void) {
     km_kpv__ctrl_reg_t ctrl_try = {.w = KPV_CTRL_REG(SLOT_ID).w};
     ctrl_try.f.last_dword = 0u;
     ctrl_try.f.extend = 0u;
-    ctrl_try.f.dest_valid = 0u;
     KPV_CTRL_REG(SLOT_ID).w = ctrl_try.w;
 
     ctrl_read.w = KPV_CTRL_REG(SLOT_ID).w;
-    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL ||
-        ctrl_read.f.dest_valid != CTRL_DEST_VALID_VAL) {
-        TEST_FAIL("CTRL metadata should be unchanged after write (last_dword=0x%X extend=0x%X "
-                  "dest_valid=0x%X)",
-                  (unsigned)ctrl_read.f.last_dword, (unsigned)ctrl_read.f.extend,
-                  (unsigned)ctrl_read.f.dest_valid);
+    if (ctrl_read.f.last_dword != CTRL_LAST_DWORD_VAL || ctrl_read.f.extend != CTRL_EXTEND_VAL) {
+        TEST_FAIL("CTRL metadata should be unchanged after write (last_dword=0x%X extend=0x%X)",
+                  (unsigned)ctrl_read.f.last_dword, (unsigned)ctrl_read.f.extend);
     }
     TEST_SUBTEST_PASS();
 

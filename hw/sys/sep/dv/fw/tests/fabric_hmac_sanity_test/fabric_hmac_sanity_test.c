@@ -34,14 +34,14 @@ int main(void) {
     uint32_t err_code = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
 
     printf("HMAC_CFG    = 0x%08x\n", cfg.w);
-    printf("HMAC_STATUS = 0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.HMAC_IDLE,
-           status.f.FIFO_EMPTY, status.f.FIFO_FULL, status.f.FIFO_DEPTH);
+    printf("HMAC_STATUS = 0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.hmac_idle,
+           status.f.fifo_empty, status.f.fifo_full, status.f.fifo_depth);
     printf("HMAC_ERR_CODE = 0x%08x\n", err_code);
 
-    if (!check_bit("HMAC idle", status.f.HMAC_IDLE)) {
+    if (!check_bit("HMAC idle", status.f.hmac_idle)) {
         pass = 0;
     }
-    if (!check_bit("HMAC FIFO empty", status.f.FIFO_EMPTY)) {
+    if (!check_bit("HMAC FIFO empty", status.f.fifo_empty)) {
         pass = 0;
     }
     if (err_code != 0u) {
@@ -49,19 +49,19 @@ int main(void) {
         pass = 0;
     }
 
-    hmac__INTR_TEST_t intr_test = {.f.HMAC_DONE = 1};
+    hmac__INTR_TEST_t intr_test = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, intr_test.w);
 
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (!check_bit("HMAC INTR_TEST hmac_done", intr.f.HMAC_DONE)) {
+    if (!check_bit("HMAC INTR_TEST hmac_done", intr.f.hmac_done)) {
         pass = 0;
     }
 
-    hmac__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+    hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
 
     intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
-    if (intr.f.HMAC_DONE != 0) {
+    if (intr.f.hmac_done != 0) {
         printf("HMAC hmac_done interrupt did not clear\n");
         pass = 0;
     }

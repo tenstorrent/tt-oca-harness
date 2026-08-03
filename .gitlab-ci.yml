@@ -1,25 +1,46 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+default:
+  tags: [chiplet-ip]
+
 stages:
   - init
   - nonfree
 
+# The only nonfree knob CI sets: swap ocah.mk's SSH default for an HTTPS URL
+# carrying the runner's access token (NONFREE_REPO_PAT is a masked project
+# variable). Which commit to check out stays in ocah.mk, so the open tree and the
+# nonfree tree always move in lockstep. Both jobs inherit this, and the trigger
+# job hands it to the child pipeline, which has to re-clone nonfree into its own
+# workspace (trigger:forward:yaml_variables defaults to true and covers inherited
+# variables).
+variables:
+  OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
+
+# Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), and manual web triggers.
+.ci_rules: &ci_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'web'
+
 init:
   stage: init
+  <<: *ci_rules
   script:
     - make ocah-nonfree-init
-      OCAH_NONFREE_REMOTE="https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
   artifacts:
     paths:
       - nonfree/ci.yml
 
-# TODO: re-enable once nonfree CI is enabled
-# nonfree:
-#   stage: nonfree
-#   needs: [ init ]
-#   trigger:
-#     include:
-#       - artifact: nonfree/ci.yml
-#         job: init
-#     strategy: depend
+nonfree:
+  stage: nonfree
+  needs: [ init ]
+  <<: *ci_rules
+  trigger:
+    include:
+      - artifact: nonfree/ci.yml
+        job: init
+    strategy: depend

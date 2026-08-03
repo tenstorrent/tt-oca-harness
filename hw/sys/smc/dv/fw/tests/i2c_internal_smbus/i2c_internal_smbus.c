@@ -127,7 +127,7 @@
  * @param controller_mode true for Controller mode, false for Target mode
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1; // Enable GPIO pad mux
@@ -355,10 +355,6 @@ int main(void) {
     //-------------//
     // RESET & PLL //
     //-------------//
-
-    // Note: peripherals_out_of_reset() is no longer available (commented out in smc_io.h)
-    // Peripherals are now managed by hardware reset controller
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C Internal SMBus Alert Test         ##\n");
@@ -371,8 +367,6 @@ int main(void) {
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
 
-    // Note: peripherals_out_of_reset() and program_clocks_quasar()
-    // are not needed in this environment (handled by testbench)
     simputs("  System ready\n");
 
     write_scratch(1, 0x00000011);

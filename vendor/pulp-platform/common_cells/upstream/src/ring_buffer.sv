@@ -132,7 +132,7 @@ module ring_buffer #(
     end
 
     // Read pointer should not overtake write pointer.
-    `TT_PULP_ASSERT(
+    `OCAH_PULP_ASSERT(
         ReadPtrOvertakesWritePtr,
         advance_i |-> step_i <= max_step,
         clk_i, !rst_ni,
@@ -140,7 +140,7 @@ module ring_buffer #(
     );
 
     // Write pointer should not overtake read pointer.
-    `TT_PULP_ASSERT(
+    `OCAH_PULP_ASSERT(
         WritePtrOvertakesReadPtr,
         wvalid_i && wready_o
             |-> !((wptr_q[AddrWidth-1:0] == rptr_d[AddrWidth-1:0]) && !(wptr_q == rptr_d)),
@@ -151,7 +151,7 @@ module ring_buffer #(
     // When rptr_o < wptr_o, the valid range is [rptr_o, wptr_o).
     // When rptr_o > wptr_o (wrap-around), the valid range is [rptr_o, Depth) U [0, wptr_o).
     // When rptr_o == wptr_o and !empty (buffer is full), all addresses are valid.
-    `TT_PULP_ASSERT(
+    `OCAH_PULP_ASSERT(
         ReadAddrOutOfBounds,
         rvalid_i && rready_o |->
         (
@@ -164,10 +164,10 @@ module ring_buffer #(
     );
 
     // Interfaces should be stable when valid is asserted but not ready
-    `ASSERT_STABLE(WriteStable, wvalid_i, wready_o, wdata_i)
-    `ASSERT_STABLE(ReadStable, rvalid_i, rready_o, raddr_i)
+    `OCAH_PULP_ASSERT_STABLE(WriteStable, wvalid_i, wready_o, wdata_i)
+    `OCAH_PULP_ASSERT_STABLE(ReadStable, rvalid_i, rready_o, raddr_i)
 
     // Currently only power-of-2 depths are supported, could be loosened in future
-    `ASSERT_INIT(CheckDepthPow2, cf_math_pkg::is_power_of_2(Depth))
+    `OCAH_PULP_ASSERT_INIT(CheckDepthPow2, cf_math_pkg::is_power_of_2(Depth))
 
 endmodule

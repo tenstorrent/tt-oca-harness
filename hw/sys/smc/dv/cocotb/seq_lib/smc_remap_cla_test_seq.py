@@ -4,16 +4,111 @@
 
 Bundles three previously-unreached fabric-side surfaces:
 
-* SMC_MMODE_REMAP_0..7 (0xC001_3000+ stride 0x08) — machine-mode
-  remap table entries.
-* SMC_CLA_REG (0xC016_0000) — Cluster Local Aggregator registers.
-* SMC_ALIAS_REMAP_0..7 (0xC001_2000+ stride 0x20) full sweep — P0/P1-4
-  only touch entry 0.
+* SMC_MMODE_REMAP_0..7 — machine-mode remap table entries (ATTRS).
+* SMC_CLA_REG — Cluster Local Aggregator window (error-slave probes).
+* SMC_ALIAS_REMAP_0..7 full sweep — P0/P1-4 only touch entry 0.
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 from .smc_csr_seq_utils import SmcCsrSeq
+
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_reg import (  # noqa: E402
+    SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR,
+    SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR,
+    SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR,
+    SMC_CLA_REG_MAP_BASE_ADDR,
+    SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_3__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_4__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
+)
+
+# Per-entry ATTRS addresses from the generated map.
+MMODE_REMAP_ATTRS_ADDRS = (
+    SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_3__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_4__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
+)
+
+# Per-entry START/END/ATTRS from the generated map.
+ALIAS_REMAP_REGS = (
+    ("ALIAS_REMAP_0_START", SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_0_END", SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_0_ATTRS", SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_1_START", SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_1_END", SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_1_ATTRS", SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_2_START", SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_2_END", SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_2_ATTRS", SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_3_START", SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_3_END", SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_3_ATTRS", SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_4_START", SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_4_END", SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_4_ATTRS", SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_5_START", SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_5_END", SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_5_ATTRS", SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_6_START", SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_6_END", SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_6_ATTRS", SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR),
+    ("ALIAS_REMAP_7_START", SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR),
+    ("ALIAS_REMAP_7_END", SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR),
+    ("ALIAS_REMAP_7_ATTRS", SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR),
+)
+
+# Arbitrary in-window probes of the CLA error-slave decode (power-gated /
+# absent in the OSS bench). Offsets are not named registers in the generated
+# map — only the block base is authoritative.
+CLA_WINDOW_PROBES = (
+    ("CLA_WINDOW_OFF0", SMC_CLA_REG_MAP_BASE_ADDR + 0x0),
+    ("CLA_WINDOW_OFF4", SMC_CLA_REG_MAP_BASE_ADDR + 0x4),
+    ("CLA_WINDOW_OFF8", SMC_CLA_REG_MAP_BASE_ADDR + 0x8),
+)
+
+_EXPECTED_ACCESSES = (
+    len(MMODE_REMAP_ATTRS_ADDRS) + len(ALIAS_REMAP_REGS) + len(CLA_WINDOW_PROBES)
+)
 
 
 class smc_remap_cla_test_seq(SmcCsrSeq):
@@ -21,22 +116,15 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
         # MMODE_REMAP + ALIAS_REMAP are real fabric CSRs and decode/return OKAY
         # here: csr_read gates each on the scoreboard's resp_ok, so a broken remap
         # decode fails the test.
-        # MMODE_REMAP 0..7 (stride 0x08, ATTRS-only per entry).
-        for i in range(8):
-            await self.csr_read(
-                f"MMODE_REMAP_{i}_ATTRS", 0xC001_3000 + i * 0x08
-            )
-        # ALIAS_REMAP 0..7 (stride 0x20, START/END/ATTRS per entry).
-        for i in range(8):
-            base = 0xC001_2000 + i * 0x20
-            await self.csr_read(f"ALIAS_REMAP_{i}_START", base + 0x00)
-            await self.csr_read(f"ALIAS_REMAP_{i}_END",   base + 0x08)
-            await self.csr_read(f"ALIAS_REMAP_{i}_ATTRS", base + 0x10)
+        for i, addr in enumerate(MMODE_REMAP_ATTRS_ADDRS):
+            await self.csr_read(f"MMODE_REMAP_{i}_ATTRS", addr)
+        for name, addr in ALIAS_REMAP_REGS:
+            await self.csr_read(name, addr)
         # SMC_CLA_REG is an error-slave window (SLVERR, data=0) in the OSS bench
         # (CLA is power-gated / absent). Assert the error response deterministically
         # -- fails if it ever starts returning OKAY.
-        await self.csr_read_expect_error("CLA_CTRL",   0xC016_0000)
-        await self.csr_read_expect_error("CLA_STATUS", 0xC016_0004)
-        await self.csr_read_expect_error("CLA_INTR",   0xC016_0008)
-        # 8 (MMODE) + 24 (ALIAS x 3 fields) + 3 (CLA) = 35
-        assert self.accesses == 35, "MMODE + ALIAS + CLA sweep count mismatch"
+        for name, addr in CLA_WINDOW_PROBES:
+            await self.csr_read_expect_error(name, addr)
+        assert self.accesses == _EXPECTED_ACCESSES, (
+            "MMODE + ALIAS + CLA sweep count mismatch"
+        )

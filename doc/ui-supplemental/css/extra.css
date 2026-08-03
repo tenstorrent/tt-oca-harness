@@ -1,399 +1,375 @@
-/* Hide placeholder navbar items */
-.navbar-end .navbar-item.has-dropdown,
-.navbar-end .navbar-item:not(.navbar-brand) {
+/* Hide placeholder navbar items (upstream demo content only: any leftover
+   Home/Products/Services/Download not otherwise replaced) -- explicit
+   exceptions for every real item we've added. */
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu) {
     display: none !important;
 }
 
-/* Import custom documentation CSS - note: @import doesn't work in bundled CSS, so we'll include content directly */
-
-/* OCH Documentation Styling */
-/* Import register tables CSS for table styling */
-@import url("register_tables.css");
-
-/* Import image zoom CSS for lightbox functionality */
-@import url("image-zoom.css");
-
-/* ========================================
-   COLLAPSIBLE TOC STYLING
-   ======================================== */
-/* REMOVED: TOC styling for legacy builds - Antora uses its own navigation */
-
-/* ========================================
-   FIXED TOC LAYOUT
-   ======================================== */
-/* REMOVED: TOC layout for legacy builds - Antora uses its own navigation */
-/* Responsive table container for horizontal scrolling */
-.table-responsive,
-.rdl-container {
-    overflow-x: auto;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+/* Guides / Downloads dropdowns -- keep visible, style to match navbar */
+.navbar-end .navbar-item.guides-menu,
+.navbar-end .navbar-item.downloads-menu {
+    display: flex !important;
+    align-items: center;
 }
 
-/* Ensure tables maintain minimum width for readability */
-.table-responsive table,
-.rdl-container table {
-    min-width: 600px;
-    width: 100%;
+.navbar-end .navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+    background: none !important;
 }
 
-/* Enhanced responsive table handling */
-@media (max-width: 1200px) {
-
-    /* Force horizontal scrolling on narrow screens */
-    .wy-table-responsive,
-    div.table-responsive,
-    .rdl-container,
-    .register-table-wrapper {
-        overflow-x: auto;
-        overflow-y: visible;
-        width: 100%;
-        margin-bottom: 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
-        border-radius: 4px;
-    }
-
-    /* Ensure tables don't collapse too much */
-    table {
-        min-width: 700px !important;
-        white-space: nowrap;
-    }
-
-    /* Prevent text wrapping in narrow columns */
-    .bit_data,
-    .addr_header,
-    td.bit_header,
-    td.addr_header {
-        white-space: nowrap;
-        min-width: 80px;
-    }
+.navbar-dropdown {
+    background-color: var(--oca-cream) !important;
+    border: 1px solid var(--oca-green);
 }
 
-/* Auto-wrap tables in responsive containers */
-.content table {
+/* Explicit show/hide behavior for the dropdown, rather than relying on the
+   underlying bundle's own hover CSS -- these dropdowns (Guides, Downloads)
+   were hidden by our own earlier blanket rule from day one, so this is the
+   first time they've actually needed to work, and the bundle's built-in
+   hover trigger was never actually verified. Self-contained fix: */
+/* Safety net: if the underlying bundle sets overflow:hidden anywhere in
+   this chain (common for the mobile burger-menu collapse animation), it
+   would silently clip the dropdown the moment it extends below the navbar,
+   even though display:block is correctly applied -- which matches exactly
+   what's being seen (CSS confirmed loaded and hover registering, but
+   nothing visible). Force it back open here rather than hunting for the
+   exact ancestor. */
+.header,
+.navbar,
+.navbar-menu,
+.navbar-end {
+    overflow: visible !important;
+}
+
+.navbar-item.has-dropdown {
+    position: relative;
+}
+
+.navbar-item.has-dropdown .navbar-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 500;
+}
+
+.navbar-item.has-dropdown:hover .navbar-dropdown,
+.navbar-item.has-dropdown:focus-within .navbar-dropdown,
+.navbar-item.has-dropdown.is-active .navbar-dropdown {
+    display: block !important;
+}
+
+.navbar-dropdown .navbar-item {
+    display: block !important;
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
+}
+
+.navbar-dropdown .navbar-item:hover {
+    background-color: var(--oca-green) !important;
+    color: #ffffff !important;
+}
+
+/* Tenstorrent link -- keep visible, style to match navbar */
+.navbar-end .navbar-item.tt-link {
+    display: flex !important;
+    align-items: center;
+}
+
+.navbar-end .navbar-item.tt-link img {
     display: block;
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
 }
 
-/* Ensure consistent table styling across different containers */
-.wy-table-responsive table,
-.table-responsive table,
-table {
-    margin-bottom: 0;
-    border: 1px solid var(--reg-content-border-color);
-}
-
-/* Register tables specific styling */
-.register-table-wrapper {
-    overflow-x: auto;
-    width: 100%;
-    margin: 1em 0;
-}
-
-.register-table-wrapper table {
-    min-width: 800px;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-/* Style for the raw HTML register tables */
-.raw-html-container {
-    overflow-x: auto;
-    width: 100%;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-}
-
-.raw-html-container table {
-    min-width: 800px;
-    width: 100%;
-}
-
-/* Ensure bit layout tables are also scrollable */
-table[class*="bit"],
-table[class*="reg"] {
-    min-width: 700px !important;
-}
-
-/* CSS variables for consistent theming */
+/* ========================================
+   OCA ECOSYSTEM VISUAL ALIGNMENT (WP1 M2)
+   Palette and font names sourced from openchipletatlas.org page inspection,
+   2026-07-14. Menu structure is left unchanged; this block only touches
+   color, background, and typography.
+   ======================================== */
 :root {
-    --reg-content-border-color: #ddd;
+    --oca-green: #103525;
+    --oca-cream: #EEEAE0;
+    --oca-cream-light: #F8F4EB;
+    --oca-gold: #F6BC42;
+    --oca-orange: #F6931E;
+    --oca-text: #484848;
+    /* Roboto is already loaded by the antora-ui-default bundle itself, so
+       list it first -- closer visual match than a generic system stack,
+       and costs nothing extra to use. Swap for real Tenstorrent fonts once
+       supplied -- see tracking doc To-Do. */
+    --oca-font-display: "Roboto", Georgia, "Iowan Old Style", serif;
+    --oca-font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
+    --oca-font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
-/* Dark mode support */
-[data-theme="dark"] {
-    --reg-content-border-color: #444;
+/* Top navbar -> match OCA's cream navbar */
+.navbar {
+    background-color: var(--oca-cream) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Wrapper for any container that includes raw HTML register tables */
-.section .raw-html,
-.section .raw {
-    overflow-x: auto;
-    margin: 1em 0;
+.navbar-item,
+.navbar-link {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
 }
 
-.section .raw-html table,
-.section .raw table {
-    min-width: 800px;
-    width: 100%;
+/* Logo swap: hide default text title, show OCA logo image instead */
+.navbar-brand a.navbar-item {
+    background: url("../img/oca.png") no-repeat left center;
+    background-size: contain;
+    text-indent: -9999px;
+    width: 120px;
+    overflow: hidden;
 }
 
-/* Specific targeting for the raw HTML directive containers */
-.raw-html-container,
-.raw,
-div[class*="raw"] {
-    overflow-x: auto !important;
-    margin: 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Navbar title text, positioned in-flow right after the OCA logo (not
+   centered) -- avoids the earlier centered-overlay approach, which
+   overlapped the Guides/Downloads menus at narrower widths since it was
+   absolutely positioned independent of surrounding content width.
+   Real HTML content now (see header-content.hbs), not a CSS pseudo-element,
+   so it participates properly in the navbar's normal layout flow. */
+.navbar-brand .oca-title-text {
+    font-family: var(--oca-font-display);
+    font-size: 1.1rem;
+    color: var(--oca-text);
+    white-space: nowrap;
+    padding-left: 8px;
+}
+
+/* Hide the title text at narrow widths rather than let it wrap/collide --
+   logo + Guides/Downloads/Tenstorrent take priority on small screens. */
+@media (max-width: 900px) {
+    .navbar-brand .oca-title-text {
+        display: none;
+    }
+}
+
+/* Sidebar -> OCA dark green, white text (2026-07-15 restyle) */
+.nav-container {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu {
+    background-color: var(--oca-green) !important;
+}
+
+.nav-panel-menu .nav-text,
+.nav-panel-menu .nav-link,
+.nav-panel-menu a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+}
+
+.nav-panel-menu .is-current-path > .nav-link,
+.nav-panel-menu a:hover {
+    color: var(--oca-gold) !important;
+}
+
+/* Component/version switcher panel (".nav-panel-explore") -- shows when
+   toggled from the context bar below the page nav tree. Kept CREAM against
+   the new dark-green sidebar so it reads as a distinct, clickable control
+   rather than blending in -- this was the specific problem flagged
+   2026-07-15 (messy, easy-to-miss pop-up). */
+.nav-panel-explore {
+    background-color: var(--oca-cream) !important;
+    border: 2px solid var(--oca-green);
     border-radius: 4px;
 }
 
-/* Target all embedded HTML tables from SystemRDL */
-.raw table,
-.raw-html-container table,
-div[class*="raw"] table {
-    min-width: 800px !important;
-    width: 100%;
-    border-collapse: collapse;
+.nav-panel-explore .title,
+.nav-panel-explore .component .title a {
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-body);
 }
 
-/* Make sure all tables in the document have horizontal scroll when needed */
-.document table,
-.content table,
-.section table {
-    max-width: 100%;
-    overflow-x: auto;
-    display: block;
+/* Version "pill" buttons inside the switcher -- fixed-width font + orange
+   accent, matching Tenstorrent's own button convention (reference:
+   tenstorrent.com "Developers" button), replacing the default dark-grey. */
+.nav-panel-explore .versions .version a,
+.nav-panel-explore .version.is-current a {
+    font-family: var(--oca-font-mono);
+    background-color: var(--oca-orange) !important;
+    color: var(--oca-green) !important;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.nav-panel-explore .versions .version a:hover {
+    background-color: var(--oca-gold) !important;
+}
+
+/* The collapsed bottom-left toggle that shows/hides .nav-panel-explore.
+   NOTE: exact class name not yet confirmed against the real build -- this
+   selector is antora-ui-default's documented name (".context-bar" /
+   ".context-toggle"). If this doesn't visually hit after rebuilding, open
+   dev tools, click the element, and confirm the real class name so this
+   rule can be corrected. */
+.context-bar,
+.context-toggle {
+    background-color: var(--oca-cream) !important;
+    color: var(--oca-text) !important;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    line-height: 1.25;
+    padding: 6px 10px;
+    border-top: 2px solid var(--oca-green);
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.context-bar .title,
+.context-toggle .title {
+    font-size: 0.68rem;
+}
+
+.context-bar .version,
+.context-toggle .version {
+    font-family: var(--oca-font-mono);
+    font-size: 0.6rem;
+    background-color: var(--oca-orange) !important;
+    color: var(--oca-green) !important;
+    border-radius: 999px;
+    padding: 1px 6px;
     white-space: nowrap;
 }
 
-/* But reset display for tables that should remain as table */
-.document table table,
-.content table table {
-    display: table;
+/* Headings -> OCA display font + green */
+.doc h1,
+.doc h2,
+.doc h3 {
+    font-family: var(--oca-font-display);
+    color: var(--oca-green);
+}
+
+/* Body copy */
+.doc {
+    font-family: var(--oca-font-body);
+    color: var(--oca-text);
+}
+
+/* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
+.doc a {
+    color: var(--oca-green);
+}
+
+.doc a:hover {
+    color: var(--oca-gold);
+}
+
+/* Code/mono elements */
+.doc code,
+.doc pre {
+    font-family: var(--oca-font-mono);
 }
 
 /* ========================================
-   SECTION STYLING CUSTOMIZATIONS
+   FOOTER RESTYLE (2026-07-16), matching OCA reference screenshot.
+   Requires the accompanying doc/ui-supplemental/partials/footer-content.hbs
+   override -- CSS alone cannot add the Tenstorrent link/icon.
    ======================================== */
-
-/* Make section numbers black instead of blue and bold */
-.section-number,
-h1 .section-number,
-h2 .section-number,
-h3 .section-number,
-h4 .section-number,
-h5 .section-number,
-h6 .section-number {
-    color: #000 !important;
-    font-weight: bold !important;
+.footer {
+    background-color: var(--oca-green) !important;
+    text-align: center;
+    padding: 20px;
 }
 
-/* Make section titles (after numbers) normal weight and black */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    color: #000 !important;
-    font-weight: normal !important;
+.footer .oca-footer-text,
+.footer .oca-footer-text a {
+    color: #ffffff !important;
+    font-family: var(--oca-font-body);
+    font-size: 0.95rem;
 }
 
-/* Override Furo theme's blue section colors */
-.content h1 a,
-.content h2 a,
-.content h3 a,
-.content h4 a,
-.content h5 a,
-.content h6 a {
-    color: #000 !important;
-    text-decoration: none !important;
+.footer .footer-tt-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
 }
 
-/* Override any blue link colors in headers */
-.content h1 a:hover,
-.content h2 a:hover,
-.content h3 a:hover,
-.content h4 a:hover,
-.content h5 a:hover,
-.content h6 a:hover {
-    color: #000 !important;
+.footer .footer-tt-icon {
+    height: 20px;
+    vertical-align: middle;
 }
 
-/* Make sure toctree numbers are also black and bold */
-.toctree-wrapper .section-number,
-.toctree .section-number {
-    color: #000 !important;
-    font-weight: bold !important;
-}
-
-/* Target any remaining blue elements that should be black */
-.content .section>h1,
-.content .section>h2,
-.content .section>h3,
-.content .section>h4,
-.content .section>h5,
-.content .section>h6 {
-    color: #000 !important;
-}
-
-/* Ensure headerlinks (¶ symbols) are also black */
-.headerlink {
-    color: #000 !important;
-}
-
-/* Dark mode support for section styling */
-[data-theme="dark"] .section-number,
-[data-theme="dark"] h1 .section-number,
-[data-theme="dark"] h2 .section-number,
-[data-theme="dark"] h3 .section-number,
-[data-theme="dark"] h4 .section-number,
-[data-theme="dark"] h5 .section-number,
-[data-theme="dark"] h6 .section-number {
-    color: #fff !important;
-}
-
-[data-theme="dark"] h1,
-[data-theme="dark"] h2,
-[data-theme="dark"] h3,
-[data-theme="dark"] h4,
-[data-theme="dark"] h5,
-[data-theme="dark"] h6 {
-    color: #fff !important;
-}
-
-[data-theme="dark"] .content h1 a,
-[data-theme="dark"] .content h2 a,
-[data-theme="dark"] .content h3 a,
-[data-theme="dark"] .content h4 a,
-[data-theme="dark"] .content h5 a,
-[data-theme="dark"] .content h6 a {
-    color: #fff !important;
-}
-
-[data-theme="dark"] .headerlink {
-    color: #fff !important;
+/* De-emphasized license attribution, kept for MPL-2.0 compliance rather
+   than removed outright -- see tracking doc. */
+.footer .oca-footer-fineprint {
+    color: var(--oca-cream) !important;
+    opacity: 0.6;
+    font-size: 0.72rem;
+    margin-top: 6px;
 }
 
 /* ========================================
-   NAVIGATION SIDEBAR STYLING
+   VERIFICATION DASHBOARD .
    ======================================== */
-
-/* Target navigation toctree links - make them black */
-.toctree-l1>a,
-.toctree-l2>a,
-.toctree-l3>a,
-.toctree-l4>a,
-.toctree-l5>a,
-.toctree-l6>a {
-    color: #000 !important;
-    font-weight: normal !important;
+.dashboard-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0 1.5em 0;
+    font-family: var(--oca-font-body);
 }
 
-/* Target navigation links on hover - keep them black */
-.toctree-l1>a:hover,
-.toctree-l2>a:hover,
-.toctree-l3>a:hover,
-.toctree-l4>a:hover,
-.toctree-l5>a:hover,
-.toctree-l6>a:hover {
-    color: #000 !important;
+.dashboard-table th {
+    background-color: var(--oca-cream);
+    color: var(--oca-text);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid #ddd;
 }
 
-/* Current/active navigation item - keep black */
-.toctree-l1>a.current,
-.toctree-l2>a.current,
-.toctree-l3>a.current,
-.toctree-l4>a.current,
-.toctree-l5>a.current,
-.toctree-l6>a.current {
-    color: #000 !important;
+.dashboard-table td {
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: 600;
 }
 
-/* Override any sidebar link colors */
-.sidebar-drawer .toctree-l1 a,
-.sidebar-drawer .toctree-l2 a,
-.sidebar-drawer .toctree-l3 a,
-.sidebar-drawer .toctree-l4 a,
-.sidebar-drawer .toctree-l5 a,
-.sidebar-drawer .toctree-l6 a {
-    color: #000 !important;
-    font-weight: normal !important;
+.dashboard-table td:first-child {
+    text-align: left;
+    font-weight: normal;
+    background-color: #fafafa;
 }
 
-/* Target the navigation numbers specifically to make them bold */
-.toctree-l1>a::before,
-.toctree-l2>a::before,
-.toctree-l3>a::before,
-.toctree-l4>a::before,
-.toctree-l5>a::before,
-.toctree-l6>a::before {
-    font-weight: bold !important;
+.dash-pass {
+    background-color: #4caf50;
+    color: #ffffff;
 }
 
-/* Alternative approach: Use regex-like targeting for numbers at start of navigation text */
-.toctree-l1>a,
-.toctree-l2>a,
-.toctree-l3>a,
-.toctree-l4>a,
-.toctree-l5>a,
-.toctree-l6>a {
-    /* Custom styling for navigation items with numbers */
-    background: linear-gradient(to right, transparent 0%, transparent 100%);
+.dash-warn {
+    background-color: #f6c343;
+    color: #2b2b2b;
 }
 
-/* More specific targeting for Furo theme navigation */
-.sidebar-tree .toctree-l1>a,
-.sidebar-tree .toctree-l2>a,
-.sidebar-tree .toctree-l3>a,
-.sidebar-tree .toctree-l4>a,
-.sidebar-tree .toctree-l5>a,
-.sidebar-tree .toctree-l6>a {
-    color: #000 !important;
-    font-weight: normal !important;
+.dash-fail {
+    background-color: #e05c5c;
+    color: #ffffff;
 }
 
-/* Target Furo's specific navigation classes */
-nav.bd-links a,
-.bd-toc nav a {
-    color: #000 !important;
-    font-weight: normal !important;
+.dashboard h3 {
+    font-family: var(--oca-font-display);
+    color: var(--oca-green);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
 }
 
-/* Dark mode support for navigation */
-[data-theme="dark"] .toctree-l1>a,
-[data-theme="dark"] .toctree-l2>a,
-[data-theme="dark"] .toctree-l3>a,
-[data-theme="dark"] .toctree-l4>a,
-[data-theme="dark"] .toctree-l5>a,
-[data-theme="dark"] .toctree-l6>a {
-    color: #fff !important;
+.dashboard-legend {
+    font-size: 0.85rem;
+    color: var(--oca-text);
 }
 
-[data-theme="dark"] .sidebar-drawer .toctree-l1 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l2 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l3 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l4 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l5 a,
-[data-theme="dark"] .sidebar-drawer .toctree-l6 a {
-    color: #fff !important;
-}
-
-[data-theme="dark"] nav.bd-links a,
-[data-theme="dark"] .bd-toc nav a {
-    color: #fff !important;
-}
-
-/* Style for bold numbers in navigation (applied via JavaScript) */
-.nav-number {
-    font-weight: bold !important;
-}
-
-.nav-title {
-    font-weight: normal !important;
+.dashboard-legend span {
+    display: inline-block;
+    border-radius: 3px;
+    margin-right: 2px;
 }

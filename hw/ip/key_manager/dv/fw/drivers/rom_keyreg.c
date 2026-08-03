@@ -82,6 +82,22 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
     return 0;
 }
 
+/**
+ * @brief Look up the permitted crypto-engine destinations for a handle.
+ *
+ * @param[in]  reg        Registry.
+ * @param[in]  handle     Key handle.
+ * @param[out] dest_valid Receives permitted destination bitmask.
+ * @return 0 on success, -1 if handle invalid.
+ */
+int rom_keyreg_get_dest_valid(const rom_km_keyreg_t *reg, uint8_t handle,
+                              rom_km_dest_bits_t *dest_valid) {
+    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
+
+    *dest_valid = reg->handles[handle].dest_valid;
+    return 0;
+}
+
 /*===========================================================================
  * Allocation / Destruction
  *===========================================================================*/
@@ -95,13 +111,15 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
  * @param[in]     crc       CRC-32C of key data.
  * @return Allocated handle (1-255) on success, -1 if exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc) {
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc,
+                        rom_km_dest_bits_t dest_valid) {
     if (reg->next_handle == 0) return -1;
 
     uint8_t h = reg->next_handle;
 
     reg->handles[h].base_slot = base_slot;
     reg->handles[h].valid = 1;
+    reg->handles[h].dest_valid = dest_valid;
     reg->handles[h].crc32 = crc;
 
     for (uint8_t s = 0; s < num_slots; s++) reg->slot_to_handle[base_slot + s] = h;

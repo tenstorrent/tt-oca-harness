@@ -33,7 +33,7 @@ static int wait_hmac_done(void) {
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) {
+        if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
     }
@@ -41,33 +41,33 @@ static int wait_hmac_done(void) {
         printf("  Timeout waiting for HMAC completion\n");
         return -1;
     }
-    hmac__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+    hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return 0;
 }
 
 static int hmac_reset_via_hash(void) {
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    cfg.f.SHA_EN = 1;
-    cfg.f.HMAC_EN = 0;
-    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.sha_en = 1;
+    cfg.f.hmac_en = 0;
+    cfg.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
-    hmac__CMD_t cmd_proc = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t cmd_proc = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
 
     if (wait_hmac_done() != 0) return -1;
 
     hmac__INTR_STATE_t clr_all = {.w = 0};
-    clr_all.f.HMAC_DONE = 1;
-    clr_all.f.FIFO_EMPTY = 1;
-    clr_all.f.HMAC_ERR = 1;
+    clr_all.f.hmac_done = 1;
+    clr_all.f.fifo_empty = 1;
+    clr_all.f.hmac_err = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clr_all.w);
 
     return 0;
@@ -90,17 +90,17 @@ int main(void) {
     printf("Step 1: Push MSG_FIFO when sha_en=0 (expect ERR_CODE=0x5 SwPushMsgWhenDisallowed)\n");
 
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     *fifo8 = 0xAA;
 
     uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
     if (!check_reg("ERR_CODE (push when sha_en=0 -> SwPushMsgWhenDisallowed)", err, 0x5)) pass = 0;
 
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.HMAC_ERR);
+    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.hmac_err);
 
     printf("  Resetting HMAC block...\n");
     if (hmac_reset_via_hash() != 0) {
@@ -117,17 +117,17 @@ int main(void) {
     printf("\nStep 2: SwHashStartWhenShaDisabled (expect ERR_CODE=0x2)\n");
 
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
     if (!check_reg("ERR_CODE (SwHashStartWhenShaDisabled)", err, 0x2)) pass = 0;
 
     intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
-    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.HMAC_ERR);
+    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.hmac_err);
 
     printf("  Resetting HMAC block...\n");
     if (hmac_reset_via_hash() != 0) {
@@ -144,27 +144,27 @@ int main(void) {
     printf("\nStep 3: SwHashStartWhenActive (expect ERR_CODE=0x4)\n");
 
     cfg.w = 0;
-    cfg.f.SHA_EN = 1;
-    cfg.f.HMAC_EN = 0;
-    cfg.f.DIGEST_SIZE = 1;
+    cfg.f.sha_en = 1;
+    cfg.f.hmac_en = 0;
+    cfg.f.digest_size = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     cmd.w = 0;
-    cmd.f.HASH_START = 1;
+    cmd.f.hash_start = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     cmd.w = 0;
-    cmd.f.HASH_START = 1;
+    cmd.f.hash_start = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
     if (!check_reg("ERR_CODE (SwHashStartWhenActive)", err, 0x4)) pass = 0;
 
     intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
-    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.HMAC_ERR);
+    printf("  INTR_STATE.hmac_err=%u (informational)\n", intr.f.hmac_err);
 
     printf("  Final cleanup: hash_process and wait...\n");
-    hmac__CMD_t cmd_proc = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t cmd_proc = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
     if (wait_hmac_done() != 0) {
         printf("  Final cleanup wait failed\n");
@@ -172,15 +172,15 @@ int main(void) {
     }
 
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     hmac__INTR_STATE_t clr_all = {.w = 0};
-    clr_all.f.HMAC_DONE = 1;
-    clr_all.f.FIFO_EMPTY = 1;
-    clr_all.f.HMAC_ERR = 1;
+    clr_all.f.hmac_done = 1;
+    clr_all.f.fifo_empty = 1;
+    clr_all.f.hmac_err = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clr_all.w);
 
     printf("\n========================================\n");

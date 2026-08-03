@@ -37,17 +37,17 @@ module prim_axil_err_slv #(
     ////////////////////////////////////////////////////////////////////////////
 
     // Parameter validation
-    `ASSERT_INIT(DataWidthValid_A, AXI_DATA_WIDTH >= 8 && $countones(AXI_DATA_WIDTH) == 1)
+    `OCAH_OT_ASSERT_INIT(DataWidthValid_A, AXI_DATA_WIDTH >= 8 && $countones(AXI_DATA_WIDTH) == 1)
 
     // AXI4-Lite protocol compliance
     // Write address channel: awvalid stays high until awready
-    `ASSERT(AwValidStable_A, axil_req_i.aw_valid && !axil_resp_o.aw_ready |=> axil_req_i.aw_valid, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(AwValidStable_A, axil_req_i.aw_valid && !axil_resp_o.aw_ready |=> axil_req_i.aw_valid, clk_i, !rst_ni)
 
     // Write data channel: wvalid stays high until wready
-    `ASSERT(WValidStable_A, axil_req_i.w_valid && !axil_resp_o.w_ready |=> axil_req_i.w_valid, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(WValidStable_A, axil_req_i.w_valid && !axil_resp_o.w_ready |=> axil_req_i.w_valid, clk_i, !rst_ni)
 
     // Read address channel: arvalid stays high until arready
-    `ASSERT(ArValidStable_A, axil_req_i.ar_valid && !axil_resp_o.ar_ready |=> axil_req_i.ar_valid, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ArValidStable_A, axil_req_i.ar_valid && !axil_resp_o.ar_ready |=> axil_req_i.ar_valid, clk_i, !rst_ni)
 
     ////////////////////////////////////////////////////////////////////////////
     // Signal Declarations

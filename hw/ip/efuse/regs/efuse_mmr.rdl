@@ -61,13 +61,13 @@ addrmap efuse_mmr {
     // Address Map
     ////////////////////////////////////////////////////////////////////////////
 
-    RMA_TOKEN_I         RMA_SIP_TOKEN_I[8]        @0x00;
-    RMA_TOKEN_I         RMA_CHIPLET_TOKEN_I[8]    @0x20;
-    SEC_DISABLE_TOKEN_I SEC_DISABLE_TOKEN_I[8]    @0x40;
-    TOKEN_EOP           TOKEN_EOP                 @0x60;
-    TOKEN_MATCH         RMA_SIP_TOKEN_MATCH       @0x64;
-    TOKEN_MATCH         RMA_CHIPLET_TOKEN_MATCH   @0x68;
-    TOKEN_MATCH         SEC_DISABLE_TOKEN_MATCH   @0x6C;
+    external RMA_TOKEN_I         RMA_SIP_TOKEN_I[8]        @0x00;
+    external RMA_TOKEN_I         RMA_CHIPLET_TOKEN_I[8]    @0x20;
+    external SEC_DISABLE_TOKEN_I SEC_DISABLE_TOKEN_I[8]    @0x40;
+    TOKEN_EOP                    TOKEN_EOP                 @0x60;
+    TOKEN_MATCH                  RMA_SIP_TOKEN_MATCH       @0x64;
+    TOKEN_MATCH                  RMA_CHIPLET_TOKEN_MATCH   @0x68;
+    TOKEN_MATCH                  SEC_DISABLE_TOKEN_MATCH   @0x6C;
 };
 
 `endif

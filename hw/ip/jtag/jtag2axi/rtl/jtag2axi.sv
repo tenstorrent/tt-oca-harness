@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // Module: jtag2axi
 // Description:
 //   This module generates single-beat AXI4 transactions based on inputs
@@ -27,8 +26,6 @@
 //                  from 0 to FIFO_DEPTH. Effective depth is pipeline_depth + 1.
 //   ATOP_WIDTH   : Width of the AWATOP signal (AXI5 atomic operations). Must
 //                  be 6 to match the PULP AXI channel typedef layout.
-//-----------------------------------------------------------------------------
-
 
 module jtag2axi #(
     parameter int ADDR_WIDTH   = 52,
@@ -232,9 +229,9 @@ module jtag2axi #(
     //--------------------------------------------------------------------------
     // Parameter Validation Assertions
     //--------------------------------------------------------------------------
-    `ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
-    `ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
-    `ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthRangeOk_A, (DATA_WIDTH >= 8) && (DATA_WIDTH <= 1024))
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(DataWidthPow2_A,    (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(AtopWidthIs6_A,     ATOP_WIDTH == 6)
 
     //--------------------------------------------------------------------------
     // JTAG TDR Shared Shift Register and Update Latches (TCK Domain)
@@ -501,6 +498,54 @@ module jtag2axi #(
     j2a_req_t  dst_req;
     j2a_resp_t dst_resp;
 
+    // ACLK-domain TLR-safe output stage. Fall-through registers eliminate
+    // the normal-operation ACLK bubble while retaining each beat when the
+    // fabric stalls. AW and W are joined before either is exposed.
+    j2a_aw_t aw_buf;
+    j2a_w_t  w_buf;
+    j2a_ar_t ar_buf;
+
+    logic aw_buf_valid;
+    logic w_buf_valid;
+    logic ar_buf_valid;
+    logic aw_buf_ready;
+    logic w_buf_ready;
+    logic ar_buf_ready;
+    logic aw_input_valid;
+    logic w_input_valid;
+    logic ar_input_valid;
+    logic [1:0] write_join_ready;
+    logic       write_pair_valid;
+    logic       write_pair_ready;
+    logic [1:0] write_fork_valid;
+    logic       write_pair_partial;
+    logic       write_pair_flush;
+
+    logic dst_clear_pending;
+    logic dst_clear_pending_q;
+    logic dst_clear_start;
+
+    logic write_discard_rsp_q;
+    logic read_discard_rsp_q;
+
+    localparam logic [1:0] OUTSTANDING_MAX = 2'b11;
+    logic [1:0] write_outstanding_q;
+    logic [1:0] write_outstanding_d;
+    logic [1:0] read_outstanding_q;
+    logic [1:0] read_outstanding_d;
+    logic [1:0] orphan_b_count_q;
+    logic [1:0] orphan_b_count_d;
+    logic [1:0] orphan_r_count_q;
+    logic [1:0] orphan_r_count_d;
+
+    logic ar_handshake;
+    logic b_handshake;
+    logic r_handshake;
+    logic r_last_handshake;
+    logic write_complete;
+    logic write_completion_is_orphan;
+    logic read_completion_is_orphan;
+
     //--------------------------------------------------------------------------
     // AXI CDC: bridges the internal TCK master to the external ACLK AXI pins
     //--------------------------------------------------------------------------
@@ -525,64 +570,273 @@ module jtag2axi #(
         .dst_clk_i           (i_aclk),
         .dst_rst_ni          (i_arstn),
         .dst_clear_i         (1'b0),
-        .dst_clear_pending_o (/* unused */),
+        .dst_clear_pending_o (dst_clear_pending),
         .dst_req_o           (dst_req),
         .dst_resp_i          (dst_resp)
     );
 
     //--------------------------------------------------------------------------
-    // External AXI pin wiring (dst_req -> outputs, inputs -> dst_resp)
+    // ACLK-domain TLR-safe AXI output stage
     //--------------------------------------------------------------------------
-    assign o_awid     = dst_req.aw.id;
-    assign o_awaddr   = dst_req.aw.addr;
-    assign o_awlen    = dst_req.aw.len;
-    assign o_awsize   = dst_req.aw.size;
-    assign o_awburst  = dst_req.aw.burst;
-    assign o_awlock   = dst_req.aw.lock;
-    assign o_awcache  = dst_req.aw.cache;
-    assign o_awprot   = dst_req.aw.prot;
-    assign o_awqos    = dst_req.aw.qos;
-    assign o_awregion = dst_req.aw.region;
-    assign o_awuser   = dst_req.aw.user;
-    assign o_awatop   = dst_req.aw.atop;
-    assign o_awvalid  = dst_req.aw_valid;
 
-    assign o_wdata  = dst_req.w.data;
-    assign o_wstrb  = dst_req.w.strb;
-    assign o_wlast  = dst_req.w.last;
-    assign o_wuser  = dst_req.w.user;
-    assign o_wvalid = dst_req.w_valid;
+    assign dst_clear_start = dst_clear_pending && !dst_clear_pending_q;
 
-    assign o_bready = dst_req.b_ready;
+    // Do not consume a CDC beat after its clear sequence has started. A
+    // partially assembled write is flushed; a complete pair is drained.
+    assign dst_resp.aw_ready = !dst_clear_pending && aw_buf_ready &&
+                               (write_outstanding_q != OUTSTANDING_MAX);
+    assign dst_resp.w_ready  = !dst_clear_pending && w_buf_ready &&
+                               (write_outstanding_q != OUTSTANDING_MAX);
+    assign dst_resp.ar_ready = !dst_clear_pending && ar_buf_ready &&
+                               (read_outstanding_q != OUTSTANDING_MAX);
 
-    assign o_arid     = dst_req.ar.id;
-    assign o_araddr   = dst_req.ar.addr;
-    assign o_arlen    = dst_req.ar.len;
-    assign o_arsize   = dst_req.ar.size;
-    assign o_arburst  = dst_req.ar.burst;
-    assign o_arlock   = dst_req.ar.lock;
-    assign o_arcache  = dst_req.ar.cache;
-    assign o_arprot   = dst_req.ar.prot;
-    assign o_arqos    = dst_req.ar.qos;
-    assign o_arregion = dst_req.ar.region;
-    assign o_aruser   = dst_req.ar.user;
-    assign o_arvalid  = dst_req.ar_valid;
+    assign aw_input_valid = dst_req.aw_valid && dst_resp.aw_ready;
+    assign w_input_valid  = dst_req.w_valid && dst_resp.w_ready;
+    assign ar_input_valid = dst_req.ar_valid && dst_resp.ar_ready;
+    assign write_pair_partial = aw_buf_valid ^ w_buf_valid;
+    assign write_pair_flush   = dst_clear_start && write_pair_partial;
 
-    assign o_rready = dst_req.r_ready;
+    // Each fall-through register accepts an independent CDC beat. stream_join
+    // waits for the complete write pair; stream_fork lets AW and W handshake
+    // independently while completing the input pair exactly once.
+    fall_through_register #(
+        .T(j2a_aw_t)
+    ) u_aw_ft_reg (
+        .clk_i      (i_aclk),
+        .rst_ni     (i_arstn),
+        .clr_i       (write_pair_flush),
+        .testmode_i(1'b0),
+        .valid_i    (aw_input_valid),
+        .ready_o    (aw_buf_ready),
+        .data_i     (dst_req.aw),
+        .valid_o    (aw_buf_valid),
+        .ready_i    (write_join_ready[1]),
+        .data_o     (aw_buf)
+    );
 
-    assign dst_resp.aw_ready = i_awready;
-    assign dst_resp.w_ready  = i_wready;
-    assign dst_resp.ar_ready = i_arready;
-    assign dst_resp.b_valid  = i_bvalid;
+    fall_through_register #(
+        .T(j2a_w_t)
+    ) u_w_ft_reg (
+        .clk_i      (i_aclk),
+        .rst_ni     (i_arstn),
+        .clr_i       (write_pair_flush),
+        .testmode_i(1'b0),
+        .valid_i    (w_input_valid),
+        .ready_o    (w_buf_ready),
+        .data_i     (dst_req.w),
+        .valid_o    (w_buf_valid),
+        .ready_i    (write_join_ready[0]),
+        .data_o     (w_buf)
+    );
+
+    stream_join #(
+        .N_INP(2)
+    ) u_write_join (
+        .inp_valid_i ({aw_buf_valid, w_buf_valid}),
+        .inp_ready_o (write_join_ready),
+        .oup_valid_o (write_pair_valid),
+        .oup_ready_i (write_pair_ready)
+    );
+
+    stream_fork #(
+        .N_OUP(2)
+    ) u_write_fork (
+        .clk_i   (i_aclk),
+        .rst_ni  (i_arstn),
+        .valid_i (write_pair_valid),
+        .ready_o (write_pair_ready),
+        .valid_o (write_fork_valid),
+        .ready_i ({i_awready, i_wready})
+    );
+
+    fall_through_register #(
+        .T(j2a_ar_t)
+    ) u_ar_ft_reg (
+        .clk_i      (i_aclk),
+        .rst_ni     (i_arstn),
+        .clr_i       (1'b0),
+        .testmode_i(1'b0),
+        .valid_i    (ar_input_valid),
+        .ready_o    (ar_buf_ready),
+        .data_i     (dst_req.ar),
+        .valid_o    (ar_buf_valid),
+        .ready_i    (i_arready),
+        .data_o     (ar_buf)
+    );
+
+    assign o_awvalid = write_fork_valid[1];
+    assign o_wvalid  = write_fork_valid[0];
+    assign o_arvalid = ar_buf_valid;
+
+    assign ar_handshake = o_arvalid && i_arready;
+    assign write_complete = write_pair_valid && write_pair_ready;
+
+    assign write_completion_is_orphan = write_discard_rsp_q || dst_clear_start;
+    assign read_completion_is_orphan  = read_discard_rsp_q || dst_clear_start;
+
+    assign o_awid     = aw_buf.id;
+    assign o_awaddr   = aw_buf.addr;
+    assign o_awlen    = aw_buf.len;
+    assign o_awsize   = aw_buf.size;
+    assign o_awburst  = aw_buf.burst;
+    assign o_awlock   = aw_buf.lock;
+    assign o_awcache  = aw_buf.cache;
+    assign o_awprot   = aw_buf.prot;
+    assign o_awqos    = aw_buf.qos;
+    assign o_awregion = aw_buf.region;
+    assign o_awuser   = aw_buf.user;
+    assign o_awatop   = aw_buf.atop;
+
+    assign o_wdata = w_buf.data;
+    assign o_wstrb = w_buf.strb;
+    assign o_wlast = w_buf.last;
+    assign o_wuser = w_buf.user;
+
+    assign o_arid     = ar_buf.id;
+    assign o_araddr   = ar_buf.addr;
+    assign o_arlen    = ar_buf.len;
+    assign o_arsize   = ar_buf.size;
+    assign o_arburst  = ar_buf.burst;
+    assign o_arlock   = ar_buf.lock;
+    assign o_arcache  = ar_buf.cache;
+    assign o_arprot   = ar_buf.prot;
+    assign o_arqos    = ar_buf.qos;
+    assign o_arregion = ar_buf.region;
+    assign o_aruser   = ar_buf.user;
+
+    // All requests outstanding when a clear starts belong to the old JTAG
+    // session.  Consume their ordered responses locally instead of allowing a
+    // stale B or R beat to satisfy the first request of the new session.
+    // A slave may return a response in the same cycle as the final request
+    // handshake.  Include that just-completed request here rather than
+    // inserting a response-channel bubble.
+    assign o_bready = ((write_outstanding_q != '0) || write_complete) &&
+                      ((orphan_b_count_q != '0) ||
+                       (write_complete && write_completion_is_orphan) ||
+                       (!dst_clear_pending && dst_req.b_ready));
+    assign o_rready = ((read_outstanding_q != '0) || ar_handshake) &&
+                      ((orphan_r_count_q != '0) ||
+                       (ar_handshake && read_completion_is_orphan) ||
+                       (!dst_clear_pending && dst_req.r_ready));
+
+    assign dst_resp.b_valid = i_bvalid &&
+                              ((write_outstanding_q != '0) || write_complete) &&
+                              (orphan_b_count_q == '0) && !dst_clear_pending;
     assign dst_resp.b.id     = i_bid;
     assign dst_resp.b.resp   = i_bresp;
     assign dst_resp.b.user   = i_buser;
-    assign dst_resp.r_valid  = i_rvalid;
+    assign dst_resp.r_valid  = i_rvalid &&
+                               ((read_outstanding_q != '0) || ar_handshake) &&
+                               (orphan_r_count_q == '0) && !dst_clear_pending;
     assign dst_resp.r.id     = i_rid;
     assign dst_resp.r.data   = i_rdata;
     assign dst_resp.r.resp   = i_rresp;
     assign dst_resp.r.last   = i_rlast;
     assign dst_resp.r.user   = i_ruser;
+
+    assign b_handshake      = i_bvalid && o_bready;
+    assign r_handshake      = i_rvalid && o_rready;
+    assign r_last_handshake = r_handshake && i_rlast;
+
+    // Track all fabric requests awaiting responses and the ordered prefix of
+    // those responses that must be discarded.  A new clear reclassifies every
+    // request remaining after the current cycle as orphaned.
+    always_comb begin
+        write_outstanding_d = write_outstanding_q;
+        unique case ({write_complete, b_handshake})
+            2'b10: write_outstanding_d = write_outstanding_q + 2'd1;
+            2'b01: write_outstanding_d = write_outstanding_q - 2'd1;
+            default: ;
+        endcase
+
+        read_outstanding_d = read_outstanding_q;
+        unique case ({ar_handshake, r_last_handshake})
+            2'b10: read_outstanding_d = read_outstanding_q + 2'd1;
+            2'b01: read_outstanding_d = read_outstanding_q - 2'd1;
+            default: ;
+        endcase
+
+        orphan_b_count_d = orphan_b_count_q;
+        if (dst_clear_start) begin
+            orphan_b_count_d = write_outstanding_d;
+        end else begin
+            unique case ({write_complete && write_completion_is_orphan,
+                          b_handshake && (orphan_b_count_q != '0)})
+                2'b10: orphan_b_count_d = orphan_b_count_q + 2'd1;
+                2'b01: orphan_b_count_d = orphan_b_count_q - 2'd1;
+                default: ;
+            endcase
+        end
+
+        orphan_r_count_d = orphan_r_count_q;
+        if (dst_clear_start) begin
+            orphan_r_count_d = read_outstanding_d;
+        end else begin
+            unique case ({ar_handshake && read_completion_is_orphan,
+                          r_last_handshake && (orphan_r_count_q != '0)})
+                2'b10: orphan_r_count_d = orphan_r_count_q + 2'd1;
+                2'b01: orphan_r_count_d = orphan_r_count_q - 2'd1;
+                default: ;
+            endcase
+        end
+    end
+
+    always_ff @(posedge i_aclk or negedge i_arstn) begin
+        if (!i_arstn) begin
+            dst_clear_pending_q <= 1'b0;
+            write_discard_rsp_q <= 1'b0;
+            read_discard_rsp_q  <= 1'b0;
+            write_outstanding_q <= '0;
+            read_outstanding_q  <= '0;
+            orphan_b_count_q    <= '0;
+            orphan_r_count_q    <= '0;
+        end else begin
+            dst_clear_pending_q <= dst_clear_pending;
+            write_outstanding_q <= write_outstanding_d;
+            read_outstanding_q  <= read_outstanding_d;
+            orphan_b_count_q    <= orphan_b_count_d;
+            orphan_r_count_q    <= orphan_r_count_d;
+
+            if (dst_clear_start) begin
+                // The fall-through registers flush a lone write half. A
+                // complete pair, including one with a channel already
+                // accepted, remains visible to stream_fork and drains.
+                if (write_pair_partial) begin
+                    write_discard_rsp_q <= 1'b0;
+                end else if (write_pair_valid) begin
+                    write_discard_rsp_q <= 1'b1;
+                end
+                if (ar_buf_valid) begin
+                    read_discard_rsp_q <= 1'b1;
+                end
+            end
+
+            if (write_complete) begin
+                write_discard_rsp_q <= 1'b0;
+            end
+            if (ar_handshake) begin
+                read_discard_rsp_q <= 1'b0;
+            end
+        end
+    end
+
+`ifndef SYNTHESIS
+    `OCAH_OT_ASSERT(AwValidStable_A,
+        o_awvalid && !i_awready |=> o_awvalid && $stable(aw_buf),
+        i_aclk, !i_arstn)
+    `OCAH_OT_ASSERT(WValidStable_A,
+        o_wvalid && !i_wready |=> o_wvalid && $stable(w_buf),
+        i_aclk, !i_arstn)
+    `OCAH_OT_ASSERT(ArValidStable_A,
+        o_arvalid && !i_arready |=> o_arvalid && $stable(ar_buf),
+        i_aclk, !i_arstn)
+    `OCAH_OT_ASSERT(AwHasWriteData_A,
+        o_awvalid |-> w_buf_valid,
+        i_aclk, !i_arstn)
+    `OCAH_OT_ASSERT(WaHasWriteAddress_A,
+        o_wvalid |-> aw_buf_valid,
+        i_aclk, !i_arstn)
+`endif
 
     //--------------------------------------------------------------------------
     // Series Request FIFO Storage (TCK)

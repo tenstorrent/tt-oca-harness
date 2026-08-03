@@ -46,8 +46,8 @@ module cross_trigger_matrix #(
     import cross_trigger_matrix_reg_pkg::*;
     import cross_trigger_matrix_pkg::*;
 
-    `ASSERT_STATIC_LINT_ERROR(NumCtSrcMatchesGen_A, NUM_CT_SRC == 26)
-    `ASSERT_STATIC_LINT_ERROR(NumCtDstInRange_A,
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtSrcMatchesGen_A, NUM_CT_SRC == 26)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstInRange_A,
                               NUM_CT_DST >= MIN_NUM_CT_DST && NUM_CT_DST <= MAX_NUM_CT_DST)
 
     // Register interface (no hwif_in needed - all registers are write-only from software)

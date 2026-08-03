@@ -60,7 +60,7 @@ ocah-regen-regs-clean:
 ## Refresh the committed vendored register RDLs from their upstream OpenTitan hjson.
 ## On-demand only: a clean checkout already has the RDLs and regen-regs never runs
 ## this (the committed RDL is never a make prerequisite of the hjson). Re-serializes
-## with tt-oca's reggen, so expect a format diff vs the checked-in tt-oca-hw output.
+## with tt-oca's reggen, so expect a format diff vs the checked-in RDL.
 ## @param RDL=aes Optional vendored RDL basename to refresh (default: all). A
 ## separate selector from TARGET, which classify.mk validates against top blocks.
 ocah_vhr_name = $(notdir $(basename $(call ocah_vhr_rdl,$(1))))

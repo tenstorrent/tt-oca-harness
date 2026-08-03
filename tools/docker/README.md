@@ -96,6 +96,12 @@ flows feed to the container are generated natively by `bender` beforehand and
 already contain host-absolute paths. Override the image tag with
 `OCAH_EDA_IMAGE=my-tag`.
 
+`run-here` is the firmware-image counterpart to `eda-run`: it runs in
+`ocah-toolchain` but mounts the repo at its host-absolute path (instead of
+`/work`) so commands that reference absolute host paths resolve inside the
+container. The DV `cgen` flow uses it to build firmware, e.g.
+`./scripts/docker-run.sh run-here make -C "$OCH_ROOT" -f ocah.mk ocah-dv-fw-tests TARGET=smc`.
+
 ## Manual docker commands
 
 Equivalent commands without the helper (run from `tt-oca/`):

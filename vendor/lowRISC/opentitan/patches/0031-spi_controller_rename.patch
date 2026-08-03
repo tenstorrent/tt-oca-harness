@@ -531,7 +531,7 @@ index 0000000..7c2ee11
 +
 +    // Due to the addition of the byte_sel as a N+1'th fifo stage, ensure
 +    // we have adequate resolution in our counter (tx_qd_o) to represent this.
-+    `ASSERT_INIT(TxDepth_A, TxDepth < 2 ** $size(tx_qd_o) - 1)
++    `OCAH_OT_ASSERT_INIT(TxDepth_A, TxDepth < 2 ** $size(tx_qd_o) - 1)
 +
 +endmodule
 diff --git a/hw/ip/spi_host/rtl/spi_controller_fsm.sv b/hw/ip/spi_host/rtl/spi_controller_fsm.sv
@@ -1154,11 +1154,11 @@ index 0000000..3f586e3
 +    ////////////////
 +
 +    // Assertions confirming valid user input
-+    `ASSERT(BidirOnlyInStdMode_A,
++    `OCAH_OT_ASSERT(BidirOnlyInStdMode_A,
 +        cmd_speed_d == Standard || !(cmd_rd_en_d && cmd_wr_en_d),
 +        clk_i, rst_ni)
-+    `ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
-+    `ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
++    `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
++    `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
 +
 +endmodule
 diff --git a/hw/ip/spi_host/rtl/spi_controller_shift_register.sv b/hw/ip/spi_host/rtl/spi_controller_shift_register.sv
@@ -1227,7 +1227,7 @@ index 0000000..c7b0ab4
 +    logic       rx_buf_valid_q;
 +    logic       rx_buf_valid_d;
 +
-+    `ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, rst_ni)
++    `OCAH_OT_ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, rst_ni)
 +
 +    assign next_bits  = full_cyc_i ? sd_i : sd_i_q;
 +    assign sr_shifted = speed_i == Standard ? {sr_q[6:0], next_bits[1]}   :
@@ -1786,7 +1786,7 @@ index e0ccdc1..0000000
 -
 -  // Due to the addition of the byte_sel as a N+1'th fifo stage, ensure
 -  // we have adequate resolution in our counter (tx_qd_o) to represent this.
--  `ASSERT_INIT(TxDepth_A, TxDepth < (2**$size(tx_qd_o)) - 1)
+-  `OCAH_OT_ASSERT_INIT(TxDepth_A, TxDepth < (2**$size(tx_qd_o)) - 1)
 -
 -endmodule : spi_host_data_fifos
 diff --git a/hw/ip/spi_host/rtl/spi_host_fsm.sv b/hw/ip/spi_host/rtl/spi_host_fsm.sv
@@ -2414,11 +2414,11 @@ index a346717..0000000
 -  // Assertions confirming valid user input.
 -  //
 -
--  `ASSERT(BidirOnlyInStdMode_A,
+-  `OCAH_OT_ASSERT(BidirOnlyInStdMode_A,
 -      cmd_speed_d == Standard || !(cmd_rd_en_d && cmd_wr_en_d),
 -      clk_i, rst_ni)
--  `ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
--  `ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
+-  `OCAH_OT_ASSERT(ValidSpeed_A, cmd_speed_d != RsvdSpd, clk_i, rst_ni)
+-  `OCAH_OT_ASSERT(ValidCSID_A, csid < NumCS, clk_i, rst_ni)
 -
 -endmodule
 diff --git a/hw/ip/spi_host/rtl/spi_host_shift_register.sv b/hw/ip/spi_host/rtl/spi_host_shift_register.sv
@@ -2482,7 +2482,7 @@ index e617041..0000000
 -  logic              rx_buf_valid_q;
 -  logic              rx_buf_valid_d;
 -
--  `ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, rst_ni)
+-  `OCAH_OT_ASSERT(SpeedValid, speed_i != RsvdSpd, clk_i, rst_ni)
 -
 -  assign next_bits  = full_cyc_i ? sd_i : sd_i_q;
 -  assign sr_shifted = (speed_i == Standard) ? {sr_q[6:0], next_bits[1]} :

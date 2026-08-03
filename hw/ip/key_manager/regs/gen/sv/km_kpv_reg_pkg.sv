@@ -22,14 +22,13 @@ package km_kpv_reg_pkg;
     } km_kpv__ctrl_reg__lock_use__in_t;
 
     typedef struct {
+        logic hwclr;
+    } km_kpv__ctrl_reg__erase__in_t;
+
+    typedef struct {
         logic [2:0] next;
         logic swwel;
     } km_kpv__ctrl_reg__extend__in_t;
-
-    typedef struct {
-        logic [7:0] next;
-        logic swwel;
-    } km_kpv__ctrl_reg__dest_valid__in_t;
 
     typedef struct {
         logic [3:0] next;
@@ -39,8 +38,8 @@ package km_kpv_reg_pkg;
     typedef struct {
         km_kpv__ctrl_reg__lock_write__in_t lock_write;
         km_kpv__ctrl_reg__lock_use__in_t lock_use;
+        km_kpv__ctrl_reg__erase__in_t erase;
         km_kpv__ctrl_reg__extend__in_t extend;
-        km_kpv__ctrl_reg__dest_valid__in_t dest_valid;
         km_kpv__ctrl_reg__last_dword__in_t last_dword;
     } km_kpv__ctrl_reg__in_t;
 
@@ -93,12 +92,12 @@ package km_kpv_reg_pkg;
     } km_kpv__ctrl_reg__lock_use__out_t;
 
     typedef struct {
-        logic [2:0] value;
-    } km_kpv__ctrl_reg__extend__out_t;
+        logic value;
+    } km_kpv__ctrl_reg__erase__out_t;
 
     typedef struct {
-        logic [7:0] value;
-    } km_kpv__ctrl_reg__dest_valid__out_t;
+        logic [2:0] value;
+    } km_kpv__ctrl_reg__extend__out_t;
 
     typedef struct {
         logic [3:0] value;
@@ -107,8 +106,8 @@ package km_kpv_reg_pkg;
     typedef struct {
         km_kpv__ctrl_reg__lock_write__out_t lock_write;
         km_kpv__ctrl_reg__lock_use__out_t lock_use;
+        km_kpv__ctrl_reg__erase__out_t erase;
         km_kpv__ctrl_reg__extend__out_t extend;
-        km_kpv__ctrl_reg__dest_valid__out_t dest_valid;
         km_kpv__ctrl_reg__last_dword__out_t last_dword;
     } km_kpv__ctrl_reg__out_t;
 

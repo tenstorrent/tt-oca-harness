@@ -42,7 +42,6 @@ static void fill_kpv_and_ctrl(void) {
         }
         KPV_CTRL_REG(s).f.last_dword = KPV_WORDS_PER_SLOT - 1u;
         KPV_CTRL_REG(s).f.extend = 1u;
-        KPV_CTRL_REG(s).f.dest_valid = 0xA5u;
     }
 }
 
@@ -57,7 +56,7 @@ static void verify_kpv_readback(void) {
             }
         }
         if (KPV_CTRL_REG(s).f.last_dword != KPV_WORDS_PER_SLOT - 1u ||
-            KPV_CTRL_REG(s).f.extend != 1u || KPV_CTRL_REG(s).f.dest_valid != 0xA5u) {
+            KPV_CTRL_REG(s).f.extend != 1u) {
             TEST_FAIL("KPV CTRL slot %u readback mismatch (val=0x%08X)", s,
                       (unsigned)KPV_CTRL_REG(s).w);
         }

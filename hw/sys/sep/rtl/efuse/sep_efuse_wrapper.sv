@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP eFuse Wrapper
 //
 //-----------------------------------------------------------------------------
@@ -20,7 +19,6 @@
 `include "axi/typedef.svh"
 
 module sep_efuse_wrapper
-    import sep_efuse_pkg::*;
 #(
 	// During synthesis, to be replaced with the actual token digest embedded in the netlist
 	parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
@@ -49,8 +47,8 @@ module sep_efuse_wrapper
 	output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,
 
     // Full AXI4 slave from local crossbar
-    input  sep_pkg::sep_crypto_axi_req_t           	   sep_efuse_axi_req_i,
-    output sep_pkg::sep_crypto_axi_resp_t               sep_efuse_axi_resp_o,
+    input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,
+    output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,
 
 	// Efuse Interface to SHIM
 	output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
@@ -86,16 +84,16 @@ module sep_efuse_wrapper
 	sep_efuse_axi32_resp_t sep_efuse_axi32_resp;
 
 	// Intermediate AXI4-Lite (after data-width conversion)
-    efuse_axil_req_t efuse_axil_req_i;
-    efuse_axil_resp_t efuse_axil_resp_o;
+    sep_efuse_pkg::efuse_axil_req_t efuse_axil_req_i;
+    sep_efuse_pkg::efuse_axil_resp_t efuse_axil_resp_o;
 
 	// JTAG AXI4-Lite Post-access-control demux
 	sep_efuse_pkg::efuse_axil_req_t  [1:0] axil_sep_otp_jtag_req_filtered;
     sep_efuse_pkg::efuse_axil_resp_t [1:0] axil_sep_otp_jtag_resp_filtered;
 
 	// AXI4-Lite after muxing the crossbar path with the Key Manager path
-	efuse_axil_req_t  efuse_axil_mux_req;
-	efuse_axil_resp_t efuse_axil_mux_resp;
+	sep_efuse_pkg::efuse_axil_req_t  efuse_axil_mux_req;
+	sep_efuse_pkg::efuse_axil_resp_t efuse_axil_mux_resp;
 
 	// JTAG access control policy signals
 	logic is_wr_access_token;
@@ -112,7 +110,7 @@ module sep_efuse_wrapper
 	logic [1:0] reset_cycle_cnt;
     logic fuse_sense_done_1dly;
     logic fuse_sense_done_posedge;
-    logic secure_tm;
+    logic secure_tm_n0_scan;
 
 	// First downsize AXI data width 64 -> 32, then convert to AXI-Lite
 	axi_dw_converter #(
@@ -158,8 +156,8 @@ module sep_efuse_wrapper
         .SpillR         (1'b0),
         .full_req_t     (sep_efuse_axi32_req_t),
         .full_resp_t    (sep_efuse_axi32_resp_t),
-        .lite_req_t     (efuse_axil_req_t),
-        .lite_resp_t    (efuse_axil_resp_t)
+        .lite_req_t     (sep_efuse_pkg::efuse_axil_req_t),
+        .lite_resp_t    (sep_efuse_pkg::efuse_axil_resp_t)
     ) sep_efuse_axi_to_axi_lite (
         .clk_i(clk_i),
         .rst_ni(rst_ni),
@@ -200,11 +198,11 @@ module sep_efuse_wrapper
 	//   - If security_disable is NOT asserted, the test_en strap is latched when SEP fuse sense is done.
 	always_ff @(posedge clk_i) begin
 		if (!rst_ni)
-			secure_tm <= 1'b0;
+			secure_tm_n0_scan <= 1'b0;
 		else if (security_disable && (reset_cycle_cnt == 2'd1))
-			secure_tm <= sep_straps_i.test_straps.test_en;
+			secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
 		else if (fuse_sense_done_posedge)
-			secure_tm <= sep_straps_i.test_straps.test_en;
+			secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
 	end
 
 	/////////////////////////////////////////////////////////////
@@ -229,13 +227,13 @@ module sep_efuse_wrapper
                                  (lc_state_local_raw[sep_pkg::LC_STATE_BIT_WIDTH-1:1] == 3'b001); // RMA_SIP STATE
 								 
     axi_lite_demux #(
-        .aw_chan_t(efuse_axil_aw_chan_t),
-        .w_chan_t(efuse_axil_w_chan_t),
-        .b_chan_t(efuse_axil_b_chan_t),
-        .ar_chan_t(efuse_axil_ar_chan_t),
-        .r_chan_t(efuse_axil_r_chan_t),
-        .axi_req_t(efuse_axil_req_t),
-        .axi_resp_t(efuse_axil_resp_t),
+        .aw_chan_t(sep_efuse_pkg::efuse_axil_aw_chan_t),
+        .w_chan_t(sep_efuse_pkg::efuse_axil_w_chan_t),
+        .b_chan_t(sep_efuse_pkg::efuse_axil_b_chan_t),
+        .ar_chan_t(sep_efuse_pkg::efuse_axil_ar_chan_t),
+        .r_chan_t(sep_efuse_pkg::efuse_axil_r_chan_t),
+        .axi_req_t(sep_efuse_pkg::efuse_axil_req_t),
+        .axi_resp_t(sep_efuse_pkg::efuse_axil_resp_t),
         .NoMstPorts(2),
         .MaxTrans(2),
         .FallThrough(1'b1),
@@ -274,13 +272,13 @@ module sep_efuse_wrapper
     // Merge the crossbar-sourced AXI-Lite path with the Key Manager AXI-Lite
     // path. Slave port 0 = crossbar path, slave port 1 = Key Manager.
     axi_lite_mux #(
-        .aw_chan_t   (efuse_axil_aw_chan_t),
-        .w_chan_t    (efuse_axil_w_chan_t),
-        .b_chan_t    (efuse_axil_b_chan_t),
-        .ar_chan_t   (efuse_axil_ar_chan_t),
-        .r_chan_t    (efuse_axil_r_chan_t),
-        .axi_req_t   (efuse_axil_req_t),
-        .axi_resp_t  (efuse_axil_resp_t),
+        .aw_chan_t   (sep_efuse_pkg::efuse_axil_aw_chan_t),
+        .w_chan_t    (sep_efuse_pkg::efuse_axil_w_chan_t),
+        .b_chan_t    (sep_efuse_pkg::efuse_axil_b_chan_t),
+        .ar_chan_t   (sep_efuse_pkg::efuse_axil_ar_chan_t),
+        .r_chan_t    (sep_efuse_pkg::efuse_axil_r_chan_t),
+        .axi_req_t   (sep_efuse_pkg::efuse_axil_req_t),
+        .axi_resp_t  (sep_efuse_pkg::efuse_axil_resp_t),
         .NoSlvPorts  (2),
         .MaxTrans    (2),
         .FallThrough (1'b1),
@@ -310,22 +308,22 @@ module sep_efuse_wrapper
 		.addr_t                     (sep_efuse_pkg::addr_t),
 		.data_t                     (sep_efuse_pkg::data_t),
 		.strb_t                     (sep_efuse_pkg::strb_t),
-		.efuse_axil_req_t           (efuse_axil_req_t),
-		.efuse_axil_resp_t          (efuse_axil_resp_t),
+		.efuse_axil_req_t           (sep_efuse_pkg::efuse_axil_req_t),
+		.efuse_axil_resp_t          (sep_efuse_pkg::efuse_axil_resp_t),
 
-		.efuse_axil_aw_chan_t       (efuse_axil_aw_chan_t),
-		.efuse_axil_w_chan_t        (efuse_axil_w_chan_t),
-		.efuse_axil_b_chan_t        (efuse_axil_b_chan_t),
-		.efuse_axil_ar_chan_t       (efuse_axil_ar_chan_t),
-		.efuse_axil_r_chan_t        (efuse_axil_r_chan_t),
-		.efuse_apb_req_t            (efuse_apb_req_t),
-		.efuse_apb_resp_t           (efuse_apb_resp_t),
+		.efuse_axil_aw_chan_t       (sep_efuse_pkg::efuse_axil_aw_chan_t),
+		.efuse_axil_w_chan_t        (sep_efuse_pkg::efuse_axil_w_chan_t),
+		.efuse_axil_b_chan_t        (sep_efuse_pkg::efuse_axil_b_chan_t),
+		.efuse_axil_ar_chan_t       (sep_efuse_pkg::efuse_axil_ar_chan_t),
+		.efuse_axil_r_chan_t        (sep_efuse_pkg::efuse_axil_r_chan_t),
+		.efuse_apb_req_t            (sep_efuse_pkg::efuse_apb_req_t),
+		.efuse_apb_resp_t           (sep_efuse_pkg::efuse_apb_resp_t),
 
-		.efuse_addr_t               (efuse_addr_bit_t),
-		.efuse_data_t               (efuse_data_t),
-		.efuse_word_counter_t       (efuse_word_counter_t),
-		.fuse_command_req_t         (fuse_command_req_t),
-		.fuse_command_resp_t        (fuse_command_resp_t),
+		.efuse_addr_t               (sep_efuse_pkg::efuse_addr_bit_t),
+		.efuse_data_t               (sep_efuse_pkg::efuse_data_t),
+		.efuse_word_counter_t       (sep_efuse_pkg::efuse_word_counter_t),
+		.fuse_command_req_t         (sep_efuse_pkg::fuse_command_req_t),
+		.fuse_command_resp_t        (sep_efuse_pkg::fuse_command_resp_t),
 
 		.SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
@@ -344,6 +342,8 @@ module sep_efuse_wrapper
 		.EFUSE_FIELDS               (sep_efuse_pkg::NUM_EFUSE_FIELDS),
 
 		.HAS_LC_STATE               (1'b1), // SEP has LC state
+		.CLASS1_SHADOW_RANGES       (sep_efuse_pkg::Class1ShadowRanges),
+		.SECRET_SHADOW_RANGES       (sep_efuse_pkg::SecretShadowRanges),
 		.LC_STATE_WIDTH             (sep_pkg::LC_STATE_BIT_WIDTH),
 		.LC_STATE_BIT_POSITION      (sep_pkg::LC_STATE_BIT_POSITION),
 
@@ -372,7 +372,7 @@ module sep_efuse_wrapper
 		.fuse_command_req_o		    (efuse_shim_command_req_o),
 		.fuse_command_resp_i		(efuse_shim_command_resp_i),
 
-		.secure_tm_i                (secure_tm),
+		.secure_tm_i                (secure_tm_n0_scan),
 		.security_disable_i         (1'b0), // in SEP we use internal security disable and tie off the input to efuse_interface
 		.efuse_field_map_i          (sep_efuse_pkg::EfuseFieldMap),
 
@@ -381,7 +381,7 @@ module sep_efuse_wrapper
 		.security_disable_o         (security_disable), // Used for LC control, and secure_tm latch logic
 		.shadow_regs_o              (shadow_regs_o),
 
-		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // In grendel this was mem_repair_done from SMC (now DTB?) and straps from SMC
+		.ext_boot_seq_done_i		(ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
 
 		.prod_dbg_active_i          (prod_dbg_active_i),
 
@@ -409,7 +409,7 @@ module sep_efuse_wrapper
 	// SEP LC state output
     assign lc_state_o = shadow_regs_o.f.lc_state.lc_state;
 
-	assign secure_tm_o = secure_tm;
+	assign secure_tm_o = secure_tm_n0_scan;
 	assign security_disable_o = security_disable;
 	assign fuse_sense_done_o = fuse_sense_done;
 

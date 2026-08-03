@@ -63,8 +63,8 @@ module efuse_shadow_reg_access_control
     ////////////////////////////////////////////////////////////////////////////
     // Parameter Validation
     ////////////////////////////////////////////////////////////////////////////
-    `ASSERT_INIT(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
-    `ASSERT_INIT(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
+    `OCAH_OT_ASSERT_INIT(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
+    `OCAH_OT_ASSERT_INIT(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
 
     ////////////////////////////////////////////////////////////////////////////
     // Signal Declarations
@@ -233,15 +233,15 @@ module efuse_shadow_reg_access_control
 
     // Generate address width checks for each efuse field
     // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `ASSERT_INIT(EfuseFieldStartAddrCheck_A,
+    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
     //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `ASSERT_INIT(EfuseFieldEndAddrCheck_A,
+    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
     //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
     // end
     // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `ASSERT_INIT(EfuseFieldStartAddrCheck_A,
+    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
     //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `ASSERT_INIT(EfuseFieldEndAddrCheck_A,
+    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
     //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
     // end
 

@@ -83,8 +83,6 @@ timeout_sec = 1800
 tags = ["ci", "p1_coverage_gap", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_cdns_i3c_axil_test → testlists/deferred.toml (needs_i3c_dat_dct)
-
 [[groups]]
 name = "p1_coverage_gap"
 tests = [

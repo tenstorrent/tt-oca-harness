@@ -43,11 +43,11 @@
 #define EXPECTED_INSN_CNT 39u
 
 static inline uint32_t otbn_dmem_read(uint32_t offset) {
-    return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), offset / 4u);
+    return READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u);
 }
 
 static inline void otbn_dmem_write(uint32_t offset, uint32_t value) {
-    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), offset / 4u, value);
+    WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, offset / 4u, value);
 }
 
 static void fail_and_halt(int code, const char *msg) {
@@ -85,7 +85,7 @@ static int step2_load_imem(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0u);
 
     for (size_t i = 0; i < otbn_otbn_smoke_imem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), (uint32_t)i, otbn_otbn_smoke_imem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_smoke_imem[i]);
     }
     printf("[STEP 2/8] IMEM loaded\n");
     return 0;
@@ -98,7 +98,7 @@ static int step3_load_dmem(void) {
     printf("[STEP 3/8] Loading OTBN DMEM (%zu words + inputs)...\n", otbn_otbn_smoke_dmem_words);
 
     for (size_t i = 0; i < otbn_otbn_smoke_dmem_words; ++i) {
-        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0), (uint32_t)i, otbn_otbn_smoke_dmem[i]);
+        WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, (uint32_t)i, otbn_otbn_smoke_dmem[i]);
     }
 
     /* Verify checksum */
@@ -221,7 +221,7 @@ int main(void) {
     printf("*  OTBN Firmware Control Flow Test (SEP-002) *\n");
     printf("**********************************************\n\n");
     printf("OTBN registers: csr=0x%08x imem=0x%08x dmem=0x%08x\n\n", OCH_SEP_TOP_OTBN_BASE_ADDR,
-           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR(0), OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR(0));
+           OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR);
 
     /* Execute all 8 steps */
     if (step1_check_idle() != 0) fail_and_halt(1, "OTBN not IDLE");

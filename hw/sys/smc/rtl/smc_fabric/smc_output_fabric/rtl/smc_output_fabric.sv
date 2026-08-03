@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller Output Fabric
-//
-//-----------------------------------------------------------------------------
-
 
 module smc_output_fabric
 #(
     parameter bit               NO_ADDR_REMAP = 1'b1,
     parameter int unsigned      NumFilters = 16,
-    parameter int unsigned      MaxTrans = 32,
+    parameter int unsigned      MaxTrans = smc_pkg::FABRIC_MAX_TRANS,
     parameter bit               FilterReqPipelineEnable = 1'b0,
     parameter bit               FilterRspPipelineEnable = 1'b0,
     parameter int unsigned      MmodeBaseAddr = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,
@@ -43,7 +39,8 @@ module smc_output_fabric
     input  output_remap_reg_pkg::output_remap__out_t   mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
     input  output_remap_reg_pkg::output_remap__out_t   xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
 
-    output axi_filter_pkg::filter_debug_t                     filter_debug_o,
+    output logic [$clog2(NumFilters)-1:0]                     write_filter_hit_debug_o,
+    output logic [$clog2(NumFilters)-1:0]                     read_filter_hit_debug_o,
 
     // Clock gater activity indicators
     output logic                                              fabric_clk_active_o,
@@ -52,7 +49,7 @@ module smc_output_fabric
     output logic                                              sys_out_filter_bus_active_o
 );
 
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     //////////////
     // Typedefs //
@@ -102,7 +99,9 @@ module smc_output_fabric
         logic fabric_clk; // gated clock for fabric demux + mux
 
         axi_cg_snoop #(
-            .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
+            // ALL IDs, both directions: tracks the remap demux/mux below, which are sized by the
+            // MaxTrans parameter of this module (per ID bucket) rather than by smc_pkg
+            .OutstandingTx(smc_pkg::FABRIC_ID_BUCKETS * MaxTrans),
             .DenyDelay(1),
             .HystWidth(smc_pkg::CG_HYSTERESIS_W)
         ) fabric_cg (
@@ -180,7 +179,7 @@ module smc_output_fabric
             .axi_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
             .NoMstPorts         (3),
             .MaxTrans           (MaxTrans),
-            .AxiLookBits        (3),
+            .AxiLookBits        (smc_pkg::FABRIC_ID_LOOKUP_BITS),
             .UniqueIds          (1'b0),
             .SelHashIds         (1'b0),
             .SpillAw            (1'b0),
@@ -301,8 +300,8 @@ module smc_output_fabric
         );
 
         // assertions
-        `TT_ASSERT(out_remap_write_one_hot_sel, (~(|write_slv_sel) || $onehot(write_slv_sel)), clk_i, !rst_ni)
-        `TT_ASSERT(out_remap_read_one_hot_sel, (~(|read_slv_sel) || $onehot(read_slv_sel)), clk_i, !rst_ni)
+        `OCAH_ASSERT(out_remap_write_one_hot_sel, (~(|write_slv_sel) || $onehot(write_slv_sel)), clk_i, !rst_ni)
+        `OCAH_ASSERT(out_remap_read_one_hot_sel, (~(|read_slv_sel) || $onehot(read_slv_sel)), clk_i, !rst_ni)
 
     end
 
@@ -313,7 +312,9 @@ module smc_output_fabric
     logic filter_clk; // gated clock for AXI filter
 
 	axi_cg_snoop #(
-		.OutstandingTx(MaxTrans),
+		// ALL IDs, both directions: matches the outbound filter's demux below, which takes
+		// MaxTrans from smc_pkg::FABRIC_MAX_TRANS (per ID bucket)
+		.OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) sys_out_filter_cg (
@@ -354,6 +355,8 @@ module smc_output_fabric
         .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
         .AxiIdWidth          (smc_pkg::SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH),
         .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
+        .MaxTrans            (smc_pkg::FABRIC_MAX_TRANS),
+        .AxiLookBits         (smc_pkg::FABRIC_ID_LOOKUP_BITS),
         .ErrSlvMaxTrans      (smc_pkg::ERR_SLV_MAX_TRANS),
         .FlopReqEn           (FilterReqPipelineEnable),
         .FlopRespEn          (FilterRspPipelineEnable),
@@ -383,7 +386,8 @@ module smc_output_fabric
         .axi_filtered_out_req_o     (axi_filtered_remapped_req_o),
         .axi_filtered_out_resp_i    (axi_filtered_remapped_resp_i),
 
-        .filter_debug_o             (filter_debug_o)
+        .write_filter_hit_debug_o   (write_filter_hit_debug_o),
+        .read_filter_hit_debug_o    (read_filter_hit_debug_o)
     );
 
 

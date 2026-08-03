@@ -78,26 +78,26 @@ module drbg_edn_axis_adapter import drbg_pkg::*; #(
         assign edn_req_o[i].edn_req = rst_ni && !endpoint_fifo_full_o[i];
         assign edn_axis_o[i].tstrb = 4'hF;
 
-        `ASSERT(EndpointAckRequiresReq_A,
+        `OCAH_OT_ASSERT(EndpointAckRequiresReq_A,
             edn_rsp_i[i].edn_ack |-> edn_req_o[i].edn_req)
-        `ASSERT(EndpointNoAckWhenFull_A,
+        `OCAH_OT_ASSERT(EndpointNoAckWhenFull_A,
             endpoint_fifo_full_o[i] |-> !edn_rsp_i[i].edn_ack)
-        `ASSERT(EndpointOutputStable_A,
+        `OCAH_OT_ASSERT(EndpointOutputStable_A,
             edn_axis_o[i].tvalid && !edn_axis_i[i].tready |=> $stable(edn_axis_o[i].tdata))
-        `ASSERT(EndpointStrbStable_A,
+        `OCAH_OT_ASSERT(EndpointStrbStable_A,
             edn_axis_o[i].tvalid && !edn_axis_i[i].tready |=> $stable(edn_axis_o[i].tstrb))
 
-        `ASSERT_KNOWN(EndpointReqKnown_A, edn_req_o[i].edn_req)
-        `ASSERT_KNOWN(EndpointAxisValidKnown_A, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EndpointAxisDataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN_IF(EndpointAxisStrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
-        `ASSERT_KNOWN(EndpointFifoFullKnown_A, endpoint_fifo_full_o[i])
-        `ASSERT_KNOWN(EndpointFifoDepthKnown_A, endpoint_fifo_depth_o[i])
-        `ASSERT(EndpointFifoHealthy_A, !endpoint_fifo_err[i])
+        `OCAH_OT_ASSERT_KNOWN(EndpointReqKnown_A, edn_req_o[i].edn_req)
+        `OCAH_OT_ASSERT_KNOWN(EndpointAxisValidKnown_A, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EndpointAxisDataKnown_A, edn_axis_o[i].tdata, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN_IF(EndpointAxisStrbKnown_A, edn_axis_o[i].tstrb, edn_axis_o[i].tvalid)
+        `OCAH_OT_ASSERT_KNOWN(EndpointFifoFullKnown_A, endpoint_fifo_full_o[i])
+        `OCAH_OT_ASSERT_KNOWN(EndpointFifoDepthKnown_A, endpoint_fifo_depth_o[i])
+        `OCAH_OT_ASSERT(EndpointFifoHealthy_A, !endpoint_fifo_err[i])
     end : gen_endpoints
 
-    `ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-    `ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+    `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
 endmodule : drbg_edn_axis_adapter
 

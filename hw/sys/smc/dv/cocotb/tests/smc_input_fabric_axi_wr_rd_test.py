@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""GitHub Project P0 alias for input/output fabric CSR precheck."""
+"""GitHub Project P0 alias for input/output fabric CSR precheck.
+
+DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
+DV-CARD-REVISION: 2   RECORD-SHA256: db0ca22b2fd47e6f6b8ce64003001ecabb325df82663f8bd54e76c4f02f28e7b
+DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
+"""
 
 from __future__ import annotations
 

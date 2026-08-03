@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP Crypto submodule typedefs and parameters
-//
-//-----------------------------------------------------------------------------
 
 package sep_crypto_pkg;
 
@@ -96,6 +93,17 @@ package sep_crypto_pkg;
         end_addr:   TRNG_END_ADDR
     };
 
+    // Adams Bridge (PQC: ML-DSA-87 / ML-KEM-1024): OCH spec 0x1094_0000-0x1094_FFFF
+    // (64 kB register aperture; AB's secret sk_ram is internal to the block).
+    localparam logic [31:0] ABR_REG_MAP_BASE_ADDR = 32'h1094_0000;
+    localparam logic [31:0] ABR_REG_MAP_END_ADDR  = 32'h1095_0000;
+
+    parameter axi_pkg::xbar_rule_32_t abr_rule = '{
+        idx:        11,
+        start_addr: ABR_REG_MAP_BASE_ADDR,
+        end_addr:   ABR_REG_MAP_END_ADDR
+    };
+
     // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
     // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
     typedef enum int unsigned {
@@ -110,18 +118,21 @@ package sep_crypto_pkg;
         SepCryptoAxiCsrng        = 8,
         SepCryptoAxiEdn          = 9,
         SepCryptoAxiEntropySrc   = 10,
-        SepCryptoAxiTrng         = 11
+        SepCryptoAxiTrng         = 11,
+        SepCryptoAxiAbr          = 12
     } sep_crypto_axi_port_e;
 
-    localparam int unsigned SEP_CRYPTO_NUM_AXI_MST     = 12;
+    localparam int unsigned SEP_CRYPTO_NUM_AXI_MST     = 13;
     localparam int unsigned SEP_CRYPTO_NUM_AXI_MST_SEL = $clog2(SEP_CRYPTO_NUM_AXI_MST);
 
-    /** @brief AXI-Stream endpoints on u_drbg edn_axis_o: [0]=Key Manager (via mux0), [1]=crypto adapter (via mux1) */
-    localparam int unsigned SEP_CRYPTO_EDN_ENDPOINT_COUNT = 2;
-    /** @brief Native EDN clients downstream of u_axis_edn_crypto: AES, KMAC, OTBN RND, OTBN URND */
+    /** @brief AXI-Stream endpoints on u_drbg_s3c_scan edn_axis_o, one per ext-TRNG mux leg:
+      *        [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy-pool adapter (mux2) */
+    localparam int unsigned SEP_CRYPTO_EDN_ENDPOINT_COUNT = 3;
+    /** @brief Native EDN clients downstream of u_axis_edn_crypto_s3c_scan:
+      *        AES, KMAC, OTBN RND, OTBN URND */
     localparam int unsigned SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT = 4;
-    /** @brief Native EDN ports on u_drbg (bypass AXI-Stream adapter); 0 — crypto use u_axis_edn_crypto only */
-    localparam int unsigned SEP_CRYPTO_DRBG_NATIVE_CLIENT_COUNT = 0;
+    /** @brief Native EDN client downstream of u_axis_edn_pool_s3c_scan: the SEP entropy-pool FIFO */
+    localparam int unsigned SEP_CRYPTO_POOL_EDN_CLIENT_COUNT = 1;
 
     //////////
     // AXI4-Lite 32-bit typedefs for OTBN data width conversion
@@ -169,6 +180,140 @@ package sep_crypto_pkg;
     typedef struct packed {
         logic[SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0] rdata;
     } sep_crypto_pka_dmem_sram_rsp_t;
+
+    //////////
+    // Adams Bridge (ABR) memory interface definitions
+    //
+    // These packed req/rsp structs mirror the `abr_mem_if` signal set (13 channels)
+    // so the ABR SRAM can be threaded up to sep_ip_integration as structs (OTBN
+    // convention above), instead of a virtual interface crossing the
+    // sep <-> sep_ip_integration sibling boundary under smu_wrapper.
+    //
+    // Widths are HARDCODED here (mirroring the OTBN geometry above) because this
+    // package is compiled BEFORE the vendored abr_params_pkg / abr_ctrl_pkg in the
+    // Bender source order, so it cannot import them. They are not optional at
+    // elaboration though, so the mirror is pinned to the vendor source from both
+    // ends: the g_abr_mem_* checks in sep_crypto_abr_wrapper.sv compare it against
+    // the vendor parameters, and g_abr_mem_depth_check in sep_ip_integration.sv compares
+    // it against the depths the SRAMs are built with. A vendor bump that changes any
+    // depth/width fails the build instead of silently truncating. Update together.
+    // Values derived from vendor/adams_bridge/src/abr_top/rtl/abr_params_pkg.sv and
+    // abr_ctrl_pkg.sv:
+    //   ABR_MEM_DATA_WIDTH  = COEFF_PER_CLK*MLDSA_Q_WIDTH = 4*24 = 96
+    //   ABR_MEM_W1    : DEPTH=512  -> ADDR_W=9 ; DATA_W=4
+    //   ABR_MEM_INST0 : DEPTH=832  -> ADDR_W=10; DATA_W=96
+    //   ABR_MEM_INST1 : DEPTH=64   -> ADDR_W=6 ; DATA_W=96
+    //   ABR_MEM_INST2 : DEPTH=1536 -> ADDR_W=11; DATA_W=96
+    //   SK_MEM_BANK   : DEPTH=596  -> ADDR_W=10; DATA_W=ABR_REG_WIDTH=32
+    //   SIG_Z_MEM     : DEPTH=224  -> ADDR_W=8 ; DATA_W=160; WSTROBE_W=20
+    //   PK_MEM        : DEPTH=64   -> ADDR_W=6 ; DATA_W=320; WSTROBE_W=40
+    //////////
+
+    // Adams Bridge build configuration. Single source for BOTH the abr_top instance
+    // (sep_crypto.sv -> sep_crypto_abr_wrapper) and the per-channel SRAM instances
+    // (sep_ip_integration). The engine and its memories must agree: MASKING_EN
+    // decides whether the four masked coefficient banks physically exist, and
+    // SRAM_LATENCY is the read latency abr_top's controller schedules against.
+    parameter bit          SEP_CRYPTO_ABR_MASKING_EN    = 1'b1;  // 2-share DOM masking
+    parameter int unsigned SEP_CRYPTO_ABR_SRAM_LATENCY  = 1;     // SRAM read latency (cycles)
+
+    parameter int unsigned SEP_CRYPTO_ABR_MEM_DATA_W    = 96;
+    parameter int unsigned SEP_CRYPTO_ABR_W1_ADDR_W     = 9;
+    parameter int unsigned SEP_CRYPTO_ABR_W1_DATA_W     = 4;
+    parameter int unsigned SEP_CRYPTO_ABR_INST0_ADDR_W  = 10;
+    parameter int unsigned SEP_CRYPTO_ABR_INST1_ADDR_W  = 6;
+    parameter int unsigned SEP_CRYPTO_ABR_INST2_ADDR_W  = 11;
+    parameter int unsigned SEP_CRYPTO_ABR_SK_ADDR_W     = 10;
+    parameter int unsigned SEP_CRYPTO_ABR_SK_DATA_W     = 32;
+    parameter int unsigned SEP_CRYPTO_ABR_SIGZ_ADDR_W   = 8;
+    parameter int unsigned SEP_CRYPTO_ABR_SIGZ_DATA_W   = 160;
+    parameter int unsigned SEP_CRYPTO_ABR_SIGZ_WSTRB_W  = 20;
+    parameter int unsigned SEP_CRYPTO_ABR_PK_ADDR_W     = 6;
+    parameter int unsigned SEP_CRYPTO_ABR_PK_DATA_W     = 320;
+    parameter int unsigned SEP_CRYPTO_ABR_PK_WSTRB_W    = 40;
+
+    // Plain (no byte-enable) 96-bit memory request channel. Shared by mem_inst0
+    // (10b addr), mem_inst1 (6b addr) and mem_inst2 (11b addr, the widest) + their
+    // masked twins, so the addr fields are sized to the WIDEST (INST2=11b); the
+    // narrower channels use the low bits and the unused MSBs stay zero.
+    typedef struct packed {
+        logic                                     we;
+        logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0]   waddr;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]     wdata;
+        logic                                     re;
+        logic [SEP_CRYPTO_ABR_INST2_ADDR_W-1:0]   raddr;
+    } abr_mem_ch_req_t;
+
+    // Byte-enabled memory request channel -- used for pk_mem (320b data, 6b addr,
+    // 40b strobe). sig_z_mem (160b/8b/20b) differs in width so it has dedicated
+    // fields in abr_mem_req_t below rather than reusing this type.
+    typedef struct packed {
+        logic                                     we;
+        logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]      waddr;
+        logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]      wdata;
+        logic [SEP_CRYPTO_ABR_PK_WSTRB_W-1:0]     wstrobe;
+        logic                                     re;
+        logic [SEP_CRYPTO_ABR_PK_ADDR_W-1:0]      raddr;
+    } abr_mem_be_ch_req_t;
+
+    // ABR memory request struct -- one field per `abr_mem_if` channel, req direction.
+    typedef struct packed {
+        // Clock carried alongside the request (OTBN convention) so the SRAM macros
+        // in sep_ip_integration are clocked identically to abr_top regardless of
+        // any crypto-clock gating between here and the wrapper.
+        logic                                   clk;
+        // w1_mem uses its own narrow addr/data; kept in dedicated fields.
+        logic                                   w1_we;
+        logic [SEP_CRYPTO_ABR_W1_ADDR_W-1:0]    w1_waddr;
+        logic [SEP_CRYPTO_ABR_W1_DATA_W-1:0]    w1_wdata;
+        logic                                   w1_re;
+        logic [SEP_CRYPTO_ABR_W1_ADDR_W-1:0]    w1_raddr;
+        // sk banks use narrow 32-bit data.
+        logic                                   sk_bank0_we;
+        logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]    sk_bank0_waddr;
+        logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank0_wdata;
+        logic                                   sk_bank0_re;
+        logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]    sk_bank0_raddr;
+        logic                                   sk_bank1_we;
+        logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]    sk_bank1_waddr;
+        logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank1_wdata;
+        logic                                   sk_bank1_re;
+        logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]    sk_bank1_raddr;
+        // 96-bit coefficient memories (share abr_mem_ch_req_t geometry).
+        abr_mem_ch_req_t                        mem_inst0_bank0;
+        abr_mem_ch_req_t                        mem_inst0_bank1;
+        abr_mem_ch_req_t                        mem_inst1;
+        abr_mem_ch_req_t                        mem_inst2;
+        abr_mem_ch_req_t                        mem_inst0_bank0_masked;
+        abr_mem_ch_req_t                        mem_inst0_bank1_masked;
+        abr_mem_ch_req_t                        mem_inst1_masked;
+        abr_mem_ch_req_t                        mem_inst2_masked;
+        // Byte-enabled memories.
+        logic                                   sig_z_we;
+        logic [SEP_CRYPTO_ABR_SIGZ_ADDR_W-1:0]  sig_z_waddr;
+        logic [SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0]  sig_z_wdata;
+        logic [SEP_CRYPTO_ABR_SIGZ_WSTRB_W-1:0] sig_z_wstrobe;
+        logic                                   sig_z_re;
+        logic [SEP_CRYPTO_ABR_SIGZ_ADDR_W-1:0]  sig_z_raddr;
+        abr_mem_be_ch_req_t                     pk_mem;
+    } abr_mem_req_t;
+
+    // ABR memory response struct -- one rdata field per `abr_mem_if` channel.
+    typedef struct packed {
+        logic [SEP_CRYPTO_ABR_W1_DATA_W-1:0]    w1_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank0_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank1_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst1_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst2_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank0_masked_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst0_bank1_masked_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst1_masked_rdata;
+        logic [SEP_CRYPTO_ABR_MEM_DATA_W-1:0]   mem_inst2_masked_rdata;
+        logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank0_rdata;
+        logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]    sk_bank1_rdata;
+        logic [SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0]  sig_z_rdata;
+        logic [SEP_CRYPTO_ABR_PK_DATA_W-1:0]    pk_rdata;
+    } abr_mem_rsp_t;
 
     typedef logic sep_crypto_fuse_req_t;
     typedef logic sep_crypto_fuse_rsp_t;

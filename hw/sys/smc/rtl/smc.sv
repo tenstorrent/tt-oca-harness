@@ -1,13 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Management Controller
-//
-//-----------------------------------------------------------------------------
 
 module smc
-(
+#(
+  parameter int unsigned MAX_TRANS = 2,
+  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_4CORE,
+
+  // based on what the CPU config is, change internal defines
+  // - types cannot use ternary operators so this has to be a parameter
+  parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
+  parameter  type         rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
+  parameter  type         scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
+  parameter  type         scratch_ram_rsp_t     = chipyard_4core_mem_pkg::scratch_ram_rsp_t,
+  parameter  type         l1_icache_tag_req_t   = chipyard_4core_mem_pkg::l1_icache_tag_req_t,
+  parameter  type         l1_icache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,
+  parameter  type         l1_icache_data_req_t  = chipyard_4core_mem_pkg::l1_icache_data_req_t,
+  parameter  type         l1_icache_data_rsp_t  = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,
+  parameter  type         l1_dcache_tag_req_t   = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,
+  parameter  type         l1_dcache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,
+  parameter  type         l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
+  parameter  type         l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
+
+  localparam int unsigned NUM_CPU_CORES         = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS,
+
+  localparam int unsigned NUM_SRAM_BANKS        = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS        : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS
+)(
     // Clocks from PLLs
     input  logic                                    clk_smc_i,
     input  logic                                    clk_ref_i,
@@ -27,8 +52,9 @@ module smc
     // Synced Resets Out
     output logic                                    rst_primary_ref_clk_no,
     output logic                                    rst_primary_smc_clk_no,
-    output logic                                    rst_wdt_smc_clk_no,
     output logic                                    rst_primary_periph_clk_no,
+    output logic                                    rst_wdt_smc_clk_no,
+    output logic                                    gated_clk_periph_i3c_o,
 
     // AXI Input
     input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t          sys_axi_in_req_i,
@@ -37,8 +63,8 @@ module smc
     input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t            jtag_axi_in_req_i,
     output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t           jtag_axi_in_resp_o,
 
-    input  smc_pkg::smc_axil_32_32_req_t                     axil_smc_otp_jtag_req_i,
-    output smc_pkg::smc_axil_32_32_resp_t                    axil_smc_otp_jtag_resp_o,
+    input  smc_pkg::smc_axil_32_32_req_t          axil_smc_otp_jtag_req_i,
+    output smc_pkg::smc_axil_32_32_resp_t         axil_smc_otp_jtag_resp_o,
 
     input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t          sep_axi_in_req_i,
     output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t         sep_axi_in_resp_o,
@@ -51,65 +77,55 @@ module smc
     output smc_pkg::smc_axil_32_32_req_t                     axil_dtp_csr_req_o,
     input  smc_pkg::smc_axil_32_32_resp_t                    axil_dtp_csr_resp_i,
 
-    // PLL Shim Interface
-    output smc_pkg::smc_axil_32_32_req_t                     axil_pll_req_o, // coming form peripheral wrapper
-    input  smc_pkg::smc_axil_32_32_resp_t                    axil_pll_resp_i,
 
-    // PVT Shim Interface
-    output smc_pkg::smc_axil_32_32_req_t                     axil_pvt_req_o, // coming form peripheral wrapper
-    input  smc_pkg::smc_axil_32_32_resp_t                    axil_pvt_resp_i,
 
-    output smc_efuse_pkg::efuse_map_t                        shadow_regs_o,
+    output smc_efuse_pkg::efuse_map_t                                                      shadow_regs_o,
 
-    // GPIO Shim Interface
-    output gpio_pkg::gpio_axil_req_t                         axil_req_gpio_ctrl_o,
-    input  gpio_pkg::gpio_axil_resp_t                        axil_resp_gpio_ctrl_i,
-
-    // AXI-L interface for adopter peripheral extension
-    output smc_pkg::smc_axil_32_32_req_t                     axil_extension_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t                    axil_extension_resp_i,
+    // AXI-L interface for adopter peripheral
+    output smc_pkg::smc_axil_32_32_req_t                                                            smc_external_req_o,
+    input  smc_pkg::smc_axil_32_32_resp_t                                                           smc_external_resp_i,
 
     // eFuse Interface to SHIM AXI-Lite
-    output smc_pkg::smc_axil_32_32_req_t                     efuse_bank_ctrl_req_o,
-    input  smc_pkg::smc_axil_32_32_resp_t                    efuse_bank_ctrl_resp_i,
+    output smc_pkg::smc_axil_32_32_req_t                                                          efuse_bank_ctrl_req_o,
+    input  smc_pkg::smc_axil_32_32_resp_t                                                         efuse_bank_ctrl_resp_i,
 
     // eFuse Command Interface to SHIM
-    output smc_efuse_pkg::fuse_command_req_t                 efuse_shim_command_req_o,
-    input  smc_efuse_pkg::fuse_command_resp_t                efuse_shim_command_resp_i,
+    output smc_efuse_pkg::fuse_command_req_t                                                        efuse_shim_command_req_o,
+    input  smc_efuse_pkg::fuse_command_resp_t                                                       efuse_shim_command_resp_i,
 
     // GPIO Data Signals (to external GPIO macros via gpio_shim instances)
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]               lsio_interface_select_o,
-    input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]               pad2core_i,
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]               core2pad_o,
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]               pad2core_en_o,
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]               core2pad_en_o,
+    output logic                                    [smc_pkg::NUM_GPIO_WRAPS-1:0]                   lsio_interface_select_o,
+    input  logic                                    [smc_pkg::NUM_GPIO_WRAPS-1:0]                   pad2core_i,
+    output logic                                    [smc_pkg::NUM_GPIO_WRAPS-1:0]                   core2pad_o,
+    output logic                                    [smc_pkg::NUM_GPIO_WRAPS-1:0]                   pad2core_en_o,
+    output logic                                    [smc_pkg::NUM_GPIO_WRAPS-1:0]                   core2pad_en_o,
 
     // GPIO External Pins - cool reset from GPIO pin 67
-    input logic                                              rst_cool_n_from_pin_i,
+    input logic                                                                                     rst_cool_n_from_pin_i,
 
     // SPI
-    input  logic                                             spi_enable_i,
-    input  logic                                             spi_clk_i,
-    input  logic [7:0]                                       spi_txd_i,
-    input  logic                                             spi_cs_n_i,
-    input  logic                                             spi_cs_oe_n_i,
-    input  logic                                             spi_cs_ie_n_i,
-    input  logic                                             spi_clk_ie_n_i,
-    input  logic                                             spi_clk_oe_n_i,
-    input  logic                                             spi_dqs_ie_n_i,
-    input  logic                                             spi_dqs_oe_n_i,
-    input  logic [7:0]                                       spi_dq_ie_n_i,
-    input  logic [7:0]                                       spi_dq_oe_n_i,
-    output logic [7:0]                                       spi_rxd_o,
-    output logic                                             spi_rxds_o,
-    input  logic                                             spi_mem_rebar_oepad_i,
-    input  logic                                             spi_mem_rebar_opad_i,
-    input  logic                                             spi_mem_rebar_iepad_i,
-    output logic                                             spi_mem_rebar_ipad_o,
+    input  logic                                                                                    spi_enable_i,
+    input  logic                                                                                    spi_clk_i,
+    input  logic [7:0]                                                                              spi_txd_i,
+    input  logic                                                                                    spi_cs_n_i,
+    input  logic                                                                                    spi_cs_oe_n_i,
+    input  logic                                                                                    spi_cs_ie_n_i,
+    input  logic                                                                                    spi_clk_ie_n_i,
+    input  logic                                                                                    spi_clk_oe_n_i,
+    input  logic                                                                                    spi_dqs_ie_n_i,
+    input  logic                                                                                    spi_dqs_oe_n_i,
+    input  logic [7:0]                                                                              spi_dq_ie_n_i,
+    input  logic [7:0]                                                                              spi_dq_oe_n_i,
+    output logic [7:0]                                                                              spi_rxd_o,
+    output logic                                                                                    spi_rxds_o,
+    input  logic                                                                                    spi_mem_rebar_oepad_i,
+    input  logic                                                                                    spi_mem_rebar_opad_i,
+    input  logic                                                                                    spi_mem_rebar_iepad_i,
+    output logic                                                                                    spi_mem_rebar_ipad_o,
 
     // ATB Telemetry
-    input logic                                              clk_telemetry_i,
-    input logic                                              rst_telemetry_ni,
+    input logic                                                                            clk_telemetry_i,
+    input logic                                                                            rst_telemetry_ni,
 
     input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,
     input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,
@@ -119,87 +135,87 @@ module smc
     input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,
 
     // DED
-    output logic                                             cluster_ded_o,
+    output logic                                                                           cluster_ded_o,
 
     // WDT
-    output logic                                             wdt_first_timeout_o,
-    output logic                                             wdt_second_timeout_o,
+    output logic                                                                           wdt_first_timeout_o,
+    output logic                                                                           wdt_second_timeout_o,
 
     // Region size
-    output smc_pkg::smc_axi_addr_t                           smc_global_base_o,
-    output logic [31:0]                                      smc_region_size_o,
+    output smc_pkg::smc_axi_addr_t                                                         smc_global_base_o,
+    output logic                                     [31:0]                                smc_region_size_o,
 
     // External interrupts
-    input  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] ext_interrupts_i,
-    input  logic [7:0]                                       sep_mailbox_interrupts_i,
-    input  logic                                             sep_wdt_reset_n_i,
+    input  logic                                     [NUM_EXT_INTERRUPTS-1:0]              ext_interrupts_i,
+    input  logic                                     [7:0]                                 sep_mailbox_interrupts_i,
+    input  logic                                                                           sep_wdt_reset_n_i,
 
-    output logic                                             fuse_sense_done_o,
-    output logic                                             fuse_reset_n_delayed_o,
+    output logic                                                                           fuse_sense_done_o,
+    output logic                                                                           fuse_reset_n_delayed_o,
 
     // External boot / memory-repair signals
-    output logic                                             skip_mem_repair_o,
-    input  logic                                             ext_boot_seq_done_i,
+    output logic                                                                           skip_mem_repair_o,
+    input  logic                                                                           ext_boot_seq_done_i,
 
     // SEP security disable
-    input  logic                                             sep_security_disable_i,
+    input  logic                                                                           sep_security_disable_i,
 
     // PVT
-    input  logic                                             temp_interrupt_i,
+    input  logic                                                                           temp_interrupt_i,
 
     // Lifecycle state
-    input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]             lc_state_i,
-    output logic                                             lc_sigint_err_o,
+    input  logic                                     [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,
+    output logic                                                                           lc_sigint_err_o,
 
     // RAS bank settings
-    output logic [3:0]                                       ras_bank_chip_o,
-    output logic [3:0]                                       ras_bank_instance_o,
+    output logic                                     [3:0]                                 ras_bank_chip_o,
+    output logic                                     [3:0]                                 ras_bank_instance_o,
 
     // NDM reset
-    input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]   ndmreset_request_i,
-    output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]   ndmreset_process_o,
+    input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]                                 ndmreset_request_i,
+    output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]                                 ndmreset_process_o,
 
     // Mailbox interrupts
-    output logic [smc_pkg::NUM_MAILBOXES-1:0]                ext_mailbox_interrupts_o,
+    output logic                                     [smc_pkg::NUM_MAILBOXES-1:0]          ext_mailbox_interrupts_o,
 
     // Reset Unit signals
-    input  logic                                             cfg_flr_pf_active_i,
-    output logic [31:0]                                      isolate_req_o,
+    input  logic                                                                           cfg_flr_pf_active_i,
+    output logic                                     [31:0]                                isolate_req_o,
 
-    input  logic [31:0]                                      ss_reset_complete_i,
-    output logic [31:0]                                      ss_config_o,
-    output smc_reset_unit_pkg::reset_ctrl_t                  ss_reset_ctrl_o [31:0],
+    input  logic                                     [31:0]                                ss_reset_complete_i,
+    output logic                                     [31:0]                                ss_config_o,
+    output smc_reset_unit_pkg::reset_ctrl_t                                                ss_reset_ctrl_o [31:0],
 
-    output logic                                             sync_irq_o,
+    output logic                                                                           sync_irq_o,
 
     // CPU Memory Signals
-    output chipyard_4core_mem_pkg::rom_req_t                 rom_intf_req_o,
-    input  chipyard_4core_mem_pkg::rom_rsp_t                 rom_intf_rsp_i,
-    output chipyard_4core_mem_pkg::scratch_ram_req_t         scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::scratch_ram_rsp_t         scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_tag_req_t       l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t       l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_icache_data_req_t      l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t      l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_tag_req_t       l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t       l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-    output chipyard_4core_mem_pkg::l1_dcache_data_req_t      l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-    input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t      l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+    output rom_req_t                                                                       rom_intf_req_o,
+    input  rom_rsp_t                                                                       rom_intf_rsp_i,
+    output scratch_ram_req_t                                                               scratch_ram_intf_req_o     [NUM_SRAM_BANKS-1:0],
+    input  scratch_ram_rsp_t                                                               scratch_ram_intf_rsp_i     [NUM_SRAM_BANKS-1:0],
+    output l1_icache_tag_req_t                                                             l1_icache_tag_intf_req_o   [NUM_ICACHE_TAG_BANKS-1:0],
+    input  l1_icache_tag_rsp_t                                                             l1_icache_tag_intf_rsp_i   [NUM_ICACHE_TAG_BANKS-1:0],
+    output l1_icache_data_req_t                                                            l1_icache_data_intf_req_o  [NUM_ICACHE_DATA_BANKS-1:0],
+    input  l1_icache_data_rsp_t                                                            l1_icache_data_intf_rsp_i  [NUM_ICACHE_DATA_BANKS-1:0],
+    output l1_dcache_tag_req_t                                                             l1_dcache_tag_intf_req_o   [NUM_DCACHE_TAG_BANKS-1:0],
+    input  l1_dcache_tag_rsp_t                                                             l1_dcache_tag_intf_rsp_i   [NUM_DCACHE_TAG_BANKS-1:0],
+    output l1_dcache_data_req_t                                                            l1_dcache_data_intf_req_o  [NUM_DCACHE_DATA_BANKS-1:0],
+    input  l1_dcache_data_rsp_t                                                            l1_dcache_data_intf_rsp_i  [NUM_DCACHE_DATA_BANKS-1:0],
 
-    input  logic                                             disable_sram_auto_init_i,
-    output logic                                             init_mem_done_o,
+    input  logic                                                                           disable_sram_auto_init_i,
+    output logic                                                                           init_mem_done_o,
 
     // System Timer OCTS Interface
-    input  logic                                             chiplet_is_primary_i,
-    output logic [63:0]                                      timer_count_o,
+    input  logic                                                                           chiplet_is_primary_i,
+    output logic [63:0]                                                                    timer_count_o,
 
     // Boot Stall
-    input  logic                                             boot_stall_jtag_ovrd_i,
-    input  logic                                             boot_stall_jtag_val_i,
-    output logic                                             boot_stall_combined_o,
+    input  logic                                                                           boot_stall_jtag_ovrd_i,
+    input  logic                                                                           boot_stall_jtag_val_i,
+    output logic                                                                           boot_stall_combined_o,
 
     // JTAG reset control signals
-    input  smc_pkg::jtag_smc_reset_ctrl_t                    jtag_reset_ctrl_i,
+    input  smc_pkg::jtag_smc_reset_ctrl_t                                                  jtag_reset_ctrl_i,
 
     // DFD signals
 		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						               cla_ext_action_custom_o,
@@ -214,41 +230,43 @@ module smc
     output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
     input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
 
-    input  logic [511:0]                                     ext_debug_bus_i, // Note: Ensure signals are 16-bit aligned within this bus
+    input  logic [511:0]                                                                   ext_debug_bus_i, // Note: Ensure signals are 16-bit aligned within this bus
 
     // Test mode
-    input  logic                                             test_en_i,
-    input  logic                                             scan_rst_ni,
+    input  logic                                                                           test_en_i,
+    input  logic                                                                           scan_rst_ni,
 
     // Captured straps input
-    input  logic [63:0]                                      captured_straps_i,
+    input  logic [63:0]                                                                    captured_straps_i,
 
 // indicators for DFT status
-    input  logic                                             mem_repair_done_i,
-    input  logic                                             mem_repair_success_i,
-    input  logic                                             mem_repair_abort_i,
-    input  logic                                             mbist_done_i,
-    input  logic                                             mbist_pass_i,
-    input  logic                                             mbist_abort_i,
+    input  logic                                                                                    mem_repair_done_i,
+    input  logic                                                                                    mem_repair_success_i,
+    input  logic                                                                                    mem_repair_abort_i,
+    input  logic                                                                                    mbist_done_i,
+    input  logic                                                                                    mbist_pass_i,
+    input  logic                                                                                    mbist_abort_i,
 
     // CPU Debug interfaces (JTAG)
-    input  logic                                             smc_cpu_jtag_TCK_i,
-    input  logic                                             smc_cpu_jtag_TMS_i,
-    input  logic                                             smc_cpu_jtag_TDI_i,
-    output logic                                             smc_cpu_jtag_TDO_data_o,
-    input  logic                                             smc_cpu_jtag_reset_i,
-    input  logic [10:0]                                      smc_cpu_jtag_mfr_id_i,
-    input  logic [15:0]                                      smc_cpu_jtag_part_number_i,
-    input  logic [3:0]                                       smc_cpu_jtag_version_i,
+    input  logic                                                                                    smc_cpu_jtag_TCK_i,
+    input  logic                                                                                    smc_cpu_jtag_TMS_i,
+    input  logic                                                                                    smc_cpu_jtag_TDI_i,
+    output logic                                                                                    smc_cpu_jtag_TDO_data_o,
+    input  logic                                                                                    smc_cpu_jtag_reset_i,
+    input  logic [10:0]                                                                             smc_cpu_jtag_mfr_id_i,
+    input  logic [15:0]                                                                             smc_cpu_jtag_part_number_i,
+    input  logic [3:0]                                                                              smc_cpu_jtag_version_i,
 
     // I3C DAT/DCT memory interfaces
-    input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src_i,
-    output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,
-    input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src_i,
-    output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,
+    input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dat_mem_src_i,
+    output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dat_mem_sink_o,
+    input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dct_mem_src_i,
+    output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_dct_mem_sink_o,
+    input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]                                    i3c_rlt_mem_src_i,
+    output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]                                    i3c_rlt_mem_sink_o,
 
-    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                   gpio_interrupt_o,
-    output logic [smc_config_pkg::NUM_UART-1:0]                  uart_interrupt_o
+    output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]                                                      gpio_interrupt_o,
+    output logic [smc_config_pkg::NUM_UART-1:0]                                                     uart_interrupt_o
 );
 
   //////////////
@@ -293,17 +311,18 @@ module smc
   smc_pkg::smc_axil_32_32_resp_t axil_peripherals_resp;
 
   // CPU wrapper bridge signals crossing between smc_base and smc_cpu_wrapper
-  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]              cpu_interrupts;
+  logic [NUM_CPU_INTERRUPTS-1:0]              cpu_interrupts;
   smc_pkg::smc_local_32_64_8_12_axi_req_t     cpu_axi_front_port_req;
   smc_pkg::smc_local_32_64_8_12_axi_resp_t    cpu_axi_front_port_resp;
   smc_pkg::smc_cpu_mmio_axi_req_t             cpu_axi_mmio_port_req;
   smc_pkg::smc_cpu_mmio_axi_resp_t            cpu_axi_mmio_port_resp;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][57:0]             cpu_wb_reg_pc;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
+  logic [NUM_CPU_CORES-1:0][57:0]             cpu_wb_reg_pc;
+  logic [NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
 
   smc_base # (
     .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),           // Enable address remap in the output fabric
-    .LOCAL_ALIAS_REGION_SIZE            (smc_pkg::LOCAL_ALIAS_REGION_SIZE) // Use smc address space for local alias region
+    .LOCAL_ALIAS_REGION_SIZE            (smc_pkg::LOCAL_ALIAS_REGION_SIZE), // Use smc address space for local alias region
+    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG)
   ) u_smc_base (
     // Clocks from PLLs
     .clk_smc_i                              (clk_smc_i),
@@ -412,7 +431,20 @@ module smc
   ///////////////////
 
   smc_cpu_wrapper # (
-    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP)
+    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),
+    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG),
+    .rom_req_t                          (rom_req_t),
+    .rom_rsp_t                          (rom_rsp_t),
+    .scratch_ram_req_t                  (scratch_ram_req_t),
+    .scratch_ram_rsp_t                  (scratch_ram_rsp_t),
+    .l1_icache_tag_req_t                (l1_icache_tag_req_t),
+    .l1_icache_tag_rsp_t                (l1_icache_tag_rsp_t),
+    .l1_icache_data_req_t               (l1_icache_data_req_t),
+    .l1_icache_data_rsp_t               (l1_icache_data_rsp_t),
+    .l1_dcache_tag_req_t                (l1_dcache_tag_req_t),
+    .l1_dcache_tag_rsp_t                (l1_dcache_tag_rsp_t),
+    .l1_dcache_data_req_t               (l1_dcache_data_req_t),
+    .l1_dcache_data_rsp_t               (l1_dcache_data_rsp_t)
   ) u_smc_cpu_wrapper (
     .clk_i                              (clk_smc_i),
     .clk_ref_i                          (clk_ref_i),
@@ -477,7 +509,7 @@ module smc
   // SMC Peripherals  //
   //////////////////////
 
-  smc_peripherals u_smc_peripherals (
+  smc_peripherals #(.MAX_TRANS(MAX_TRANS)) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),
     .clk_periph_i                          (clk_periph_i),
@@ -501,20 +533,12 @@ module smc
     .axil_log_engine_resp_i                (axil_log_engine_resp),
     .axil_dtp_csr_req_o                    (axil_dtp_csr_req_o),
     .axil_dtp_csr_resp_i                   (axil_dtp_csr_resp_i),
-    .axil_extension_req_o                  (axil_extension_req_o),
-    .axil_extension_resp_i                 (axil_extension_resp_i),
+    .smc_external_req_o                    (smc_external_req_o),
+    .smc_external_resp_i                   (smc_external_resp_i),
 
     .axil_smc_otp_jtag_req_i               (axil_smc_otp_jtag_req_i),
     .axil_smc_otp_jtag_resp_o              (axil_smc_otp_jtag_resp_o),
 
-    .axil_pll_req_o                        (axil_pll_req_o),
-    .axil_pll_resp_i                       (axil_pll_resp_i),
-    .axil_pvt_req_o                        (axil_pvt_req_o),
-    .axil_pvt_resp_i                       (axil_pvt_resp_i),
-
-    // AXIL to padring (GPIO Shims)
-    .axil_req_gpio_ctrl_o                  (axil_req_gpio_ctrl_o),
-    .axil_resp_gpio_ctrl_i                 (axil_resp_gpio_ctrl_i),
 
     // GPIO Hardware Interface
     .lsio_interface_select_o               (lsio_interface_select_o),
@@ -635,6 +659,9 @@ module smc
     .i3c_dat_mem_sink_o                    (i3c_dat_mem_sink_o),
     .i3c_dct_mem_src_i                     (i3c_dct_mem_src_i),
     .i3c_dct_mem_sink_o                    (i3c_dct_mem_sink_o),
+    .i3c_rlt_mem_src_i                     (i3c_rlt_mem_src_i),
+    .i3c_rlt_mem_sink_o                    (i3c_rlt_mem_sink_o),
+    .gated_clk_periph_i3c_o                (gated_clk_periph_i3c_o),
 
     // AVSBus Controller debug
     .avsbus_cur_state_debug_o              (avsbus_cur_state_debug),

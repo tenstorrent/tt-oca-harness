@@ -19,9 +19,7 @@ class SmcAxilItem(uvm_sequence_item):
         self.op: SmcAxilOp = SmcAxilOp.SAMPLE
         # Per-interface activity bits (1 = at least one *_valid handshake high).
         self.dtp_csr_active: int = -1
-        self.pll_active: int = -1
-        self.pvt_active: int = -1
-        self.extension_active: int = -1
+        self.external_active: int = -1
         self.efuse_bank_active: int = -1
         # OR-of-all across the five interfaces.
         self.any_master_active: int = -1
@@ -31,6 +29,5 @@ class SmcAxilItem(uvm_sequence_item):
         return (
             f"SmcAxilItem(op={self.op.value}, resolvable={self.resolvable}, "
             f"any={self.any_master_active}, dtp={self.dtp_csr_active}, "
-            f"pll={self.pll_active}, pvt={self.pvt_active}, "
-            f"ext={self.extension_active}, efuse={self.efuse_bank_active})"
+            f"ext={self.external_active}, efuse={self.efuse_bank_active})"
         )

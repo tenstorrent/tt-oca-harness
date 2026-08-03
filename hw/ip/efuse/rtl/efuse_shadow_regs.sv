@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // Efuse Shadow Regs
-//
-//-----------------------------------------------------------------------------
 
+`include "prim_assert.sv"
 
 module efuse_shadow_regs
 #(
@@ -18,6 +16,9 @@ module efuse_shadow_regs
     parameter int unsigned REG_ADDR_WIDTH = 12,
 
     parameter bit HAS_LC_STATE = 1'b0,
+    parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,
+    // Class 1a device secrets, masked on the hardware output under secure_tm.
+    parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,
 
     parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
 
@@ -84,10 +85,59 @@ module efuse_shadow_regs
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
 
-  efuse_map_t shadow_efuse;
+  // Keep Class 1 shadow words in a separately named storage array so the
+  // synthesis scan-exclusion flow can identify only those flops. The regular
+  // shadow array contains the remaining Class 3 fuse-map words.
+  // A packed array cannot have zero elements. The one-word SMC fallback is
+  // never read or written and is removed during elaboration/synthesis.
+  localparam int unsigned ActualNumClass1ShadowWords =
+      efuse_pkg::shadow_range_map_word_count(CLASS1_SHADOW_RANGES);
+  localparam int unsigned NumClass1ShadowWords =
+      (ActualNumClass1ShadowWords > 0) &&
+      (ActualNumClass1ShadowWords <= NumShadowWords) ? ActualNumClass1ShadowWords : 1;
+  localparam int unsigned NumNormalShadowWords =
+      ActualNumClass1ShadowWords < NumShadowWords ?
+      NumShadowWords - ActualNumClass1ShadowWords : 1;
 
-  logic chiplet_state_change_completed;
-  logic sop_state_change_completed;
+  logic [NumNormalShadowWords-1:0][SHADOW_REG_WORD_WIDTH-1:0] shadow_efuse_values;
+  logic [NumClass1ShadowWords-1:0][SHADOW_REG_WORD_WIDTH-1:0] shadow_efuse_values_n0_scan;
+  efuse_map_t shadow_efuse;
+  efuse_map_t shadow_efuse_masked;
+
+  // Reconstruct the public union view from the two storage arrays. Only the
+  // selected Class 1 words come from the *_n0_scan array.
+  always_comb begin
+    for (int i = 0; i < NumShadowWords; i++) begin
+      if (efuse_pkg::shadow_range_map_contains_word(CLASS1_SHADOW_RANGES, i)) begin
+        shadow_efuse.values[i] =
+            shadow_efuse_values_n0_scan[
+                efuse_pkg::class1_shadow_storage_idx(CLASS1_SHADOW_RANGES, i)];
+      end else begin
+        shadow_efuse.values[i] =
+            shadow_efuse_values[
+                efuse_pkg::normal_shadow_storage_idx(CLASS1_SHADOW_RANGES, i)];
+      end
+    end
+  end
+
+  // The hardware output to the rest of the design observes the masked view, so no
+  // Class 1a secret reaches a downstream consumer in secure test. Register reads
+  // keep using the unmasked view and stay governed by the normal access controls.
+  // Write merges, lock checks and LC state logic also use the unmasked view so a
+  // write under secure_tm cannot clear stored bits.
+  always_comb begin
+    shadow_efuse_masked = shadow_efuse;
+    if (secure_tm_i) begin
+      for (int i = 0; i < NumShadowWords; i++) begin
+        if (efuse_pkg::shadow_range_map_contains_word(SECRET_SHADOW_RANGES, i)) begin
+          shadow_efuse_masked.values[i] = '0;
+        end
+      end
+    end
+  end
+
+  logic chiplet_state_change_completed_n0_scan;
+  logic sop_state_change_completed_n0_scan;
 
   logic [LC_STATE_WIDTH-1:0] lc_state_raw_d;
   logic [2*LC_STATE_WIDTH-1:0] lc_state_diff_d;
@@ -142,7 +192,7 @@ module efuse_shadow_regs
 
         $display("[INFO] Initializing shadow_reg_preload array to default pattern (32'h00000000) due to missing preload file.");
         for (int i = 0; i < NumShadowWords; i++) begin : preload_not_found
-        if (HAS_LC_STATE && (i == 2)) begin : reset_lc_state
+        if (HAS_LC_STATE && (i == efuse_pkg::SHADOW_IDX_LC_STATE)) begin : reset_lc_state
           shadow_reg_preload[i] = {{(32-2*LC_STATE_WIDTH){1'b0}}, {LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}};
         end else begin : smc_case
           shadow_reg_preload[i] = 32'h0;
@@ -407,18 +457,28 @@ module efuse_shadow_regs
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       for (int i = 0; i < NumShadowWords; i++) begin : reset_shadow_registers
-        if (HAS_LC_STATE && (i == 2)) begin : reset_lc_state
-          shadow_efuse.values[i] <= efuse_data_t'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}});
+        if (efuse_pkg::shadow_range_map_contains_word(
+            CLASS1_SHADOW_RANGES, i)) begin : reset_class1_shadow_registers
+          if (HAS_LC_STATE &&
+              (i == efuse_pkg::SHADOW_IDX_LC_STATE)) begin : reset_lc_state
+            shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                CLASS1_SHADOW_RANGES, i)] <=
+                efuse_data_t'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}});
+          end else begin : reset_class1_shadow_reg
+            shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                CLASS1_SHADOW_RANGES, i)] <= efuse_data_t'(0);
+          end
         end else begin : reset_shadow_reg
-          shadow_efuse.values[i] <= efuse_data_t'(0);
+          shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+              CLASS1_SHADOW_RANGES, i)] <= efuse_data_t'(0);
         end
       end
 
       apb_resp_from_ac.pready <= 1'b0;
       apb_resp_from_ac.pslverr <= 1'b0;
       apb_resp_from_ac.prdata <= efuse_data_t'(0);
-      chiplet_state_change_completed <= 1'b0;
-      sop_state_change_completed <= 1'b0;
+      chiplet_state_change_completed_n0_scan <= 1'b0;
+      sop_state_change_completed_n0_scan <= 1'b0;
 
     end else begin
       /////////////////////////////////////////
@@ -426,10 +486,19 @@ module efuse_shadow_regs
       /////////////////////////////////////////
       if ((sim_skip_fuse_sense) && (!fuse_sense_done))begin : preload_shadow_regs
         for (int i = 0; i < NumShadowWords; i++) begin : preload_shadow_registers
-          if (HAS_LC_STATE && (i == 2)) begin
-            shadow_efuse.values[i] <= {shadow_reg_preload[i][31:2*LC_STATE_WIDTH], lc_state_diff_d};
+          if (efuse_pkg::shadow_range_map_contains_word(CLASS1_SHADOW_RANGES, i)) begin
+            if (HAS_LC_STATE && (i == efuse_pkg::SHADOW_IDX_LC_STATE)) begin
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES, i)] <=
+                  {shadow_reg_preload[i][31:2*LC_STATE_WIDTH], lc_state_diff_d};
+            end else begin
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES, i)] <= shadow_reg_preload[i];
+            end
           end else begin
-            shadow_efuse.values[i] <= shadow_reg_preload[i];
+            shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                CLASS1_SHADOW_RANGES, i)] <=
+                shadow_reg_preload[i];
           end
         end
         // If there is a request to the shadow registers before fuse sense is done, return bad cable
@@ -446,11 +515,24 @@ module efuse_shadow_regs
         if (fuse_command_resp.valid && (fuse_command_resp.status == 1'b0)) begin
           // Store the data at the current word index (before incrementing words_received)
           if (words_received_q < NumShadowWords) begin
-            if (HAS_LC_STATE && words_received_q == efuse_word_counter_t'(2)) begin
+            if (HAS_LC_STATE &&
+                words_received_q ==
+                    efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) begin
               // ShadowEfuseWidth' cast narrows the 9b word-count to the 8b array index, conventional in this module (not entirely necessary as guarded < NumShadowWords above)
-              shadow_efuse.values[ShadowEfuseWidth'(words_received_q)] <= {fuse_command_resp.data[31:2*LC_STATE_WIDTH], lc_state_diff_d};
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES, ShadowEfuseWidth'(words_received_q))] <=
+                  {fuse_command_resp.data[31:2*LC_STATE_WIDTH], lc_state_diff_d};
             end else begin
-              shadow_efuse.values[ShadowEfuseWidth'(words_received_q)] <= fuse_command_resp.data; // ShadowEfuseWidth' cast: 9b count -> 8b array index
+              if (efuse_pkg::shadow_range_map_contains_word(
+                  CLASS1_SHADOW_RANGES, ShadowEfuseWidth'(words_received_q))) begin
+                shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                    CLASS1_SHADOW_RANGES, ShadowEfuseWidth'(words_received_q))] <=
+                    fuse_command_resp.data;
+              end else begin
+                shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                    CLASS1_SHADOW_RANGES, ShadowEfuseWidth'(words_received_q))] <=
+                    fuse_command_resp.data;
+              end
             end
           end
         end
@@ -478,9 +560,27 @@ module efuse_shadow_regs
           else if ((apb_req_from_ac.pwrite) && !(write_locked)) begin
             // setup only and NOT LC_STATE access
             if ((write_setup_only) && !(is_lc_state_access)) begin
-              for (int b = 0; b < 4; b++) begin
-                if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                  shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8] <= apb_req_from_ac.pwdata[b*8+:8] | shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8];
+              if (efuse_pkg::shadow_range_map_contains_word(
+                  CLASS1_SHADOW_RANGES,
+                  (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))) begin
+                for (int b = 0; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8] |
+                        shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8];
+                  end
+                end
+              end else begin
+                for (int b = 0; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8] |
+                        shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8];
+                  end
                 end
               end
             // setup only and LC_STATE access
@@ -490,18 +590,64 @@ module efuse_shadow_regs
               // which applies set-only and token-gated logic on the raw [3:0] and produces
               // the complement in [7:4] via synthesis-protected anchor buffers.
               if (apb_req_from_ac.pstrb[0] && !apb_resp_from_ac.pready) begin
-                shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][2*LC_STATE_WIDTH-1:0] <= lc_state_diff_d;
+                if (efuse_pkg::shadow_range_map_contains_word(
+                    CLASS1_SHADOW_RANGES,
+                    (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))) begin
+                  shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                      CLASS1_SHADOW_RANGES,
+                      (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))
+                  ][2*LC_STATE_WIDTH-1:0] <=
+                      lc_state_diff_d;
+                end else begin
+                  shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                      CLASS1_SHADOW_RANGES,
+                      (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))
+                  ][2*LC_STATE_WIDTH-1:0] <=
+                      lc_state_diff_d;
+                end
               end
               // Upper bytes: writable as before
-              for (int b = 1; b < 4; b++) begin
-                if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                  shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8] <= apb_req_from_ac.pwdata[b*8+:8];
+              if (efuse_pkg::shadow_range_map_contains_word(
+                  CLASS1_SHADOW_RANGES,
+                  (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))) begin
+                for (int b = 1; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8];
+                  end
+                end
+              end else begin
+                for (int b = 1; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8];
+                  end
                 end
               end
             end else begin  // not setup only and NOT write locked, so it is writable
-              for (int b = 0; b < 4; b++) begin
-                if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
-                  shadow_efuse.values[(ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2)][b*8+:8] <= apb_req_from_ac.pwdata[b*8+:8];
+              if (efuse_pkg::shadow_range_map_contains_word(
+                  CLASS1_SHADOW_RANGES,
+                  (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))) begin
+                for (int b = 0; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8];
+                  end
+                end
+              end else begin
+                for (int b = 0; b < 4; b++) begin
+                  if (apb_req_from_ac.pstrb[b] && !apb_resp_from_ac.pready) begin
+                    shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
+                        CLASS1_SHADOW_RANGES,
+                        (ShadowEfuseWidth)'(apb_req_from_ac.paddr>>2))][b*8+:8] <=
+                        apb_req_from_ac.pwdata[b*8+:8];
+                  end
                 end
               end
             end
@@ -519,14 +665,25 @@ module efuse_shadow_regs
         // LC_STATE access
         end else if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) begin
-            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && !chiplet_state_change_completed) begin
-              shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][2*LC_STATE_WIDTH-1:0] <= lc_state_diff_d;
-              chiplet_state_change_completed <= 1'b1;
-            end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE && !sop_state_change_completed) begin
-              shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][2*LC_STATE_WIDTH-1:0] <= lc_state_diff_d;
-              sop_state_change_completed <= 1'b1;
-            end else begin  // added for a vcs warning Warning-[RT-NCMPRIF] No condition matches in statement
-              shadow_efuse.values <= shadow_efuse.values;
+            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
+                         !chiplet_state_change_completed_n0_scan) begin
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES,
+                  efuse_pkg::SHADOW_IDX_LC_STATE)][2*LC_STATE_WIDTH-1:0] <= lc_state_diff_d;
+              chiplet_state_change_completed_n0_scan <= 1'b1;
+            end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE &&
+                         !sop_state_change_completed_n0_scan) begin
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES,
+                  efuse_pkg::SHADOW_IDX_LC_STATE)][2*LC_STATE_WIDTH-1:0] <= lc_state_diff_d;
+              sop_state_change_completed_n0_scan <= 1'b1;
+            end else begin
+              shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                  CLASS1_SHADOW_RANGES,
+                  efuse_pkg::SHADOW_IDX_LC_STATE)][2*LC_STATE_WIDTH-1:0] <=
+                  shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
+                      CLASS1_SHADOW_RANGES,
+                      efuse_pkg::SHADOW_IDX_LC_STATE)][2*LC_STATE_WIDTH-1:0];
             end
           end
           apb_resp_from_ac.pready  <= 1'b0;
@@ -537,14 +694,15 @@ module efuse_shadow_regs
           apb_resp_from_ac.pready  <= 1'b0;
           apb_resp_from_ac.pslverr <= 1'b0;
           apb_resp_from_ac.prdata  <= efuse_data_t'(0);
-          chiplet_state_change_completed <= 1'b1; // No chiplet state change in SMC case so set it to 1'b1 permanently
-          sop_state_change_completed <= 1'b1;
+          // No chiplet state change in the SMC instance.
+          chiplet_state_change_completed_n0_scan <= 1'b1;
+          sop_state_change_completed_n0_scan <= 1'b1;
         end
       end  // end of APB ACCESS_AND_TRANSIENT_RMA_EN condition
     end  // end of (NOT RESET condition)
   end  //end of always block
 
-  assign shadow_efuse_o = shadow_efuse;
+  assign shadow_efuse_o = shadow_efuse_masked;
   assign fuse_sense_done_o = fuse_sense_done;
 
   // debug ports
@@ -552,5 +710,19 @@ module efuse_shadow_regs
   assign is_write_setup_only_o = write_setup_only;
   assign is_lc_state_access_o = is_lc_state_access;
   assign is_read_locked_o = read_locked;
+
+  `OCAH_OT_ASSERT_INIT(Class1ShadowRangesValid_A,
+      efuse_pkg::shadow_range_map_is_valid(CLASS1_SHADOW_RANGES, NumShadowWords))
+  `OCAH_OT_ASSERT_INIT(Class1ShadowCountFits_A,
+      ActualNumClass1ShadowWords <= NumShadowWords)
+  `OCAH_OT_ASSERT_INIT(SecretShadowRangesValid_A,
+      efuse_pkg::shadow_range_map_is_valid(SECRET_SHADOW_RANGES, NumShadowWords))
+
+  for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert
+    if (efuse_pkg::shadow_range_map_contains_word(SECRET_SHADOW_RANGES, i)) begin : gen_masked
+      `OCAH_OT_ASSERT(SecureTmSecretWordZero_A,
+          secure_tm_i |-> shadow_efuse_o.values[i] == '0, clk_i, !rst_ni)
+    end
+  end
 
 endmodule : efuse_shadow_regs

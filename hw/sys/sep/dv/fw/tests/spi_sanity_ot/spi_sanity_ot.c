@@ -100,15 +100,15 @@ int main(void) {
 
     // Test 3: CTRL (0x10) - default 0x0000007F (RX_WATERMARK=127)
     printf("\nTest 3: CTRL\n");
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     expected_val = 0x0000007F;
     printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     write_val = 0xA0001234; // Set SPIEN, OUTPUT_EN, and watermarks
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, write_val);
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, write_val);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     // Mask out SW_RST bit [30] which is write-only singlepulse
     expected_val = write_val & ~(1 << 30);
     printf("  Write 0x%08x, readback 0x%08x (expected 0x%08x) - %s\n", write_val, read_val,
@@ -117,15 +117,15 @@ int main(void) {
 
     // Test 4: CFG (0x18) - default 0x0
     printf("\nTest 4: CFG\n");
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     expected_val = 0x00000000;
     printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     write_val = 0xCF0F5678; // Set CPOL, CPHA, FULLCYC, timing fields, CLKDIV
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, write_val);
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, write_val);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
            (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;

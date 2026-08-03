@@ -14,11 +14,7 @@
 # is empty), and this TT bundle is generated from the patched templates with a TT generator config,
 # so it has no upstream equivalent: it lives under overlay/ (TT-owned collateral) and is committed
 # directly, not touched by bender vendor init.
-#
-# This is a slimmed manifest exposing only the idma_rtl set tt-oca-hw compiles (-t idma_rtl). The
-# fork's project-specific tt_custom/DFC tree, all project bender targets (keraunos/athena/quasar/
-# trizor/saturn/horizon/atlas/trinity_n4), the idma_synth/idma_test targets, and the
-# tt_tensix_common dependency are intentionally dropped (unused by OCA).
+
 
 package:
   name: idma

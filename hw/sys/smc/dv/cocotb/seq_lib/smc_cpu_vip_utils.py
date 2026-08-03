@@ -3,17 +3,36 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
-# Absolute addresses from smc_top_reg.svh (SMC_CPU_CTRL_* @ 0xC003_9000).
-CPU_CTRL_RESET_VECTOR_0 = 0xC003_9000
-CPU_CTRL_RESET_VECTOR_1 = 0xC003_9008
-CPU_CTRL_RESET_VECTOR_2 = 0xC003_9010
-CPU_CTRL_RESET_VECTOR_3 = 0xC003_9018
-CPU_CTRL_RESET_CTRL = 0xC003_9020
-CPU_CTRL_RESET_TIMEOUT = 0xC003_9030
-CPU_CTRL_SCRATCH_0 = 0xC003_9080
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+from smc_reg import (  # noqa: E402
+    CPU_CTRL_RESET_CTRL_REG_DEFAULT,
+    CPU_CTRL_RESET_VECTOR_REG_DEFAULT,
+    SMC_CPU_CTRL_RESET_CTRL_REG_ADDR,
+    SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_1__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR,
+    SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+)
+
+CPU_CTRL_RESET_VECTOR_0 = SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR
+CPU_CTRL_RESET_VECTOR_1 = SMC_CPU_CTRL_RESET_VECTOR_1__REG_ADDR
+CPU_CTRL_RESET_VECTOR_2 = SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR
+CPU_CTRL_RESET_VECTOR_3 = SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR
+CPU_CTRL_RESET_CTRL = SMC_CPU_CTRL_RESET_CTRL_REG_ADDR
+CPU_CTRL_RESET_TIMEOUT = SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR
+CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 
 # Freedom-metal __metal_synchronize_harts uses CLINT MSIP as a barrier.
 CLINT_MSIP_0 = 0xC800_0000
@@ -22,11 +41,11 @@ CLINT_MSIP_2 = 0xC800_0008
 CLINT_MSIP_3 = 0xC800_000C
 
 # Default RDL reset vector targets ROM window; hello_world links in scratch.
-CPU_RESET_VECTOR_ROM = 0xC004_0000
+CPU_RESET_VECTOR_ROM = CPU_CTRL_RESET_VECTOR_REG_DEFAULT & 0xFFFF_FFFF
 CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 
 # Matches CPU_CTRL_RESET_CTRL_REG_DEFAULT (cores+uncore released).
-CPU_RESET_CTRL_DEFAULT = 0x0000_010F
+CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
 # Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).
@@ -114,9 +133,9 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     then drop boot_stall so fuse_reset / mem-init / tile reset release samples
     the scratch (or ROM) vector.
 
-    Note: full Freedom-metal hello_world barriers on cluster-local CLINT MSIP
-    (0xC800_0000), which SEP-IN AXI cannot reach. Prefer a sync-free image
-    (e.g. assets/min_pass.ecc.hex) for the U3 contract.
+    Note: full Freedom-metal applications can barrier on cluster-local CLINT
+    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The U3 contract uses the
+    sync-free hello_world C test built by the run_dv c_compile stage.
     """
     await seq.csr_write(
         "CPU_BOOT_RESET_TIMEOUT_FORCE",
@@ -218,12 +237,20 @@ async def check_cpu_firmware_boot_contract(
     reset_vector = (
         CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
     )
+    cocotb.log.info(
+        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x "
+        "expected_magic=0x%08x",
+        image_path,
+        "scratch" if boot_from_scratch else "rom",
+        reset_vector,
+        CPU_FW_SUCCESS_MAGIC,
+    )
 
     # Clear CSR mailbox (SEP can reach CPU_CTRL). Scratch/D$ PASS is observed
     # via tb_cpu_fw_mailbox (SEP cannot AXI to 0xC006_xxxx).
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
 
-    # Capture fetch baselines BEFORE release: I$ fill of min_pass often completes
+    # Capture fetch baselines BEFORE release: the I$ fill can complete
     # during the post-release settle window, so a post-release baseline would
     # make "scratch_reads > baseline" spuriously fail after PASS.
     baseline_rom_reads = int(dut.tb_cpu_rom_read_count.value)
@@ -243,7 +270,7 @@ async def check_cpu_firmware_boot_contract(
         await _pulse_core_reset(seq, reset_vector)
 
     last_csr = 0
-    # min_pass is short; poll TB sideband + CSR mailbox.
+    # The boot image is short; poll TB sideband + CSR mailbox.
     for _ in range(2000):
         await ClockCycles(dut.clk_smc_i, 100)
         last_csr = await seq.csr_read(
@@ -266,11 +293,13 @@ async def check_cpu_firmware_boot_contract(
             scratch_writes = int(dut.tb_cpu_scratch_write_count.value)
             if boot_from_scratch:
                 assert scratch_reads > baseline_scratch_reads, (
-                    "CPU PASS without scratch fetch evidence"
+                    "CPU PASS without scratch fetch evidence: "
+                    f"baseline={baseline_scratch_reads} observed={scratch_reads}"
                 )
             else:
                 assert rom_reads > baseline_rom_reads, (
-                    "CPU PASS without ROM fetch evidence"
+                    "CPU PASS without ROM fetch evidence: "
+                    f"baseline={baseline_rom_reads} observed={rom_reads}"
                 )
             return {
                 "boot_checked": True,
@@ -297,7 +326,8 @@ async def check_cpu_firmware_boot_contract(
     isolate = int(dut.tb_cpu_cluster_isolate.value)
     raise AssertionError(
         "CPU firmware boot did not reach PASS magic: "
-        f"last_csr=0x{last_csr:08x} tb_mbox=0x{fw_mbox:08x} "
+        f"expected=0x{CPU_FW_SUCCESS_MAGIC:08x} last_csr=0x{last_csr:08x} "
+        f"tb_mbox=0x{fw_mbox:08x} "
         f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
         f"scratch_writes={scratch_writes} dcache_writes={dc_writes} "
         f"wb_pc0=0x{wb_pc0:x} isolate={isolate} image={image_path}"

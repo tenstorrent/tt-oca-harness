@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SMU Configuration Package
-//
-//-----------------------------------------------------------------------------
 
 package smu_pkg;
 
@@ -18,8 +15,11 @@ package smu_pkg;
     localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE = 56'h0000_0000; // Alias to start of SMC address space
 
     typedef struct packed {
-        // Number of external interrupts routed to the four-core SMC CPU.
-        // Must be <= smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
+        // SMC CPU configuration (use smc_pkg::SMC_4CORE or smc_pkg::SMC_1CORE)
+        int unsigned SMC_CPU_CONFIG;
+
+        // Number of external interrupts routed to the SMC CPU
+        // Must be <= NUM_EXT_INTERRUPTS for the selected SMC_CPU_CONFIG
         int unsigned NUM_INT_TO_SMC;
 
         // JTAG feature enables
@@ -58,6 +58,7 @@ package smu_pkg;
     } smu_cfg_t;
 
     localparam smu_cfg_t DefaultCfg = '{
+        SMC_CPU_CONFIG:           32'd2, // smc_pkg::SMC_4CORE
         NUM_INT_TO_SMC:           32'd256, // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
         JTAG_BSR_ENABLE:          1'b1,
         JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
@@ -84,6 +85,7 @@ package smu_pkg;
     };
 
     localparam smu_cfg_t NoSepCfg = '{
+        SMC_CPU_CONFIG:           32'd2, // smc_pkg::SMC_4CORE
         NUM_INT_TO_SMC:           32'd256, // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
         JTAG_BSR_ENABLE:          1'b1,
         JTAG_EXTEST_TRAIN_ENABLE: 1'b1,

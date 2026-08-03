@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SHA-256 Token Hash (OpenTitan prim_sha2 feeder)
 //
 //
@@ -18,7 +17,8 @@
 //
 // The produced digest is the standard SHA-256 of the token byte stream (no
 // endianness swap), with H0 placed in the most-significant bits of digest_o.
-//-----------------------------------------------------------------------------
+
+`include "prim_assert.sv"
 
 module sha256_token_hash
     import prim_sha2_pkg::*;
@@ -26,7 +26,7 @@ module sha256_token_hash
     input  logic             clk_i,
     input  logic             rst_ni,
 
-    // input scan_en / test_en ?
+    input  logic             test_en_i,            // DFT test-enable: freeze the retained digest
 
     input  logic             start_i,              // start a hash of token_i
     input  logic [7:0][31:0] token_i,              // 256-bit token, MSW = token_i[7]
@@ -62,6 +62,11 @@ module sha256_token_hash
     logic [255:0] sha_digest_formatted;
     logic              digest_vld_sticky_n0_scan;
     logic [255:0]      sha_digest_sticky_n0_scan;
+    logic              digest_latch_en_pre;
+    logic              digest_latch_en;
+    logic              vld_latch_en_pre;
+    logic              vld_latch_en;
+    logic              vld_latch_d;
 
     // Feed the token most-significant word first so that token_i[7] lands in
     // message-schedule word w[0], which is the most-significant word of the token.
@@ -104,7 +109,7 @@ module sha256_token_hash
             StWait: begin
                 // Start the hash process to pad and hash the block. Wait for the hash to complete.
                 hash_process = 1'b1;
-                if (hash_done) begin 
+                if (hash_done) begin
                     state_d = StIdle;
                 end
             end
@@ -125,7 +130,7 @@ module sha256_token_hash
 
     prim_sha2_32 #(
         .MultimodeEn(0)
-    ) u_prim_sha2_32_n0_scan (
+    ) u_prim_sha2_32 (
         .clk_i            (clk_i),
         .rst_ni           (rst_ni),
         .wipe_secret_i    (1'b0),
@@ -158,30 +163,60 @@ module sha256_token_hash
     // The prim_sha2 engine pulses hash_done_o one cycle before it writes the
     // final digest_o, so the updated digest_o is only visible the following cycle.
     always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin 
-            hash_done_q <= 1'b0; 
+        if (!rst_ni) begin
+            hash_done_q <= 1'b0;
         end else begin
             hash_done_q <= hash_done;
         end
     end
 
-    // When hash_done_q is asserted (digest_o now valid), latch the value of
-    // digest_o so it persists across cold reset.
+    // Ungated latch controls. The digest is captured when hash_done_q marks digest_o valid.
+    // The sticky valid opens on either event, with start_i taking priority so that launching a
+    // new hash clears the valid bit rather than setting it, which stops the token match being
+    // evaluated while a digest is still being computed.
+    always_comb begin
+        digest_latch_en_pre = hash_done_q;
+        vld_latch_en_pre    = start_i || hash_done_q;
+        vld_latch_d         = ~start_i;
+    end
+
+    // test_en_i holds both latches closed for the whole of scan test. The latches are off the
+    // scan chain, but their enables and the engine feeding them are not, so without this a
+    // shifted pattern could write through and forge or clobber a token digest.
+    //
+    // The gate is an instantiated AND cell rather than inferred logic so synthesis cannot
+    // restructure test_en_i out of the final stage. test_en_i is then a controlling input and
+    // the enable is a hazard-free constant zero throughout test, which matters because these
+    // are level-sensitive.
+    prim_and2 #(
+        .Width(1)
+    ) u_digest_latch_en_d0nt_touch (
+        .in0_i(digest_latch_en_pre),
+        .in1_i(~test_en_i),
+        .out_o(digest_latch_en)
+    );
+
+    prim_and2 #(
+        .Width(1)
+    ) u_vld_latch_en_d0nt_touch (
+        .in0_i(vld_latch_en_pre),
+        .in1_i(~test_en_i),
+        .out_o(vld_latch_en)
+    );
+
+    // Retain the digest so it persists across cold reset.
     always_latch begin
-        if (hash_done_q) begin
+        if (digest_latch_en) begin
             sha_digest_sticky_n0_scan <= sha_digest_formatted;
         end else begin
             sha_digest_sticky_n0_scan <= sha_digest_sticky_n0_scan;
         end
     end
 
-    // Sticky valid for the retained digest. Set on hash_done_q, cleared on start_i (a new token is being hashed).
-    // Don't continuously check the token match while the digest is being computed. 
+    // Sticky valid for the retained digest.
     always_latch begin
-        if (start_i) begin
-            digest_vld_sticky_n0_scan <= 1'b0;
-        end else if (hash_done_q) begin
-            digest_vld_sticky_n0_scan <= 1'b1;
+        if (vld_latch_en) begin
+            digest_vld_sticky_n0_scan <= vld_latch_d;
         end else begin
             digest_vld_sticky_n0_scan <= digest_vld_sticky_n0_scan;
         end
@@ -189,5 +224,9 @@ module sha256_token_hash
 
     assign sha_digest_sticky_o = sha_digest_sticky_n0_scan;
     assign digest_vld_sticky_o = digest_vld_sticky_n0_scan;
+
+    `OCAH_OT_ASSERT(StickyDigestFrozenInTest_A,
+        test_en_i |=> $stable(sha_digest_sticky_n0_scan) && $stable(digest_vld_sticky_n0_scan),
+        clk_i, !rst_ni)
 
 endmodule : sha256_token_hash

@@ -36,18 +36,13 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 | Bits | Field | Access | Reset | Description
 | 31:21 | `rsvd_31_21` | R | 0x0 a| Reserved
 | 20:17 | `last_dword` | RW | 0x0 a| Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.
-| 16:9 | `dest_valid` | RW | 0x0 a| Which crypto block may consume this key. Firmware enforced.
-bit 0: HMAC-SHA2 engine
-bit 1: KMAC-SHA3 engine
-bit 2: AES engine
-bit 3: OTBN engine
-bit 4: Adams Bridge ML-DSA seed
-bit 5: Adams Bridge ML-KEM seed D
-bit 6: Adams Bridge ML-KEM seed Z
-bit 7: Adams Bridge ML-KEM message
-| 8:7 | `rsvd_8_7` | R | 0x0 a| Reserved
+| 16:7 | `rsvd_16_7` | R | 0x0 a| Reserved
 | 6:4 | `extend` | RW | 0x0 a| Zero-indexed number of additional slots for wide keys. Firmware enforced.
-| 3:2 | `rsvd_3_2` | R | 0x0 a| Reserved
+| 3 | `rsvd_3` | R | 0x0 a| Reserved
+| 2 | `erase` | RW | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+words (through the KPV scrambler) and the slot CTRL register is cleared.
+Hardware self-clears this bit when the erase completes. Not blocked by
+lock_write or lock_use.
 | 1 | `lock_use` | RW | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
 | 0 | `lock_write` | RW | 0x0 a| Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.
 |===

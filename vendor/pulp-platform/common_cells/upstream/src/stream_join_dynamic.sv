@@ -40,6 +40,6 @@ module stream_join_dynamic #(
   end
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
-  `ASSERT_INIT(n_inp_0, N_INP >= 1, "N_INP must be at least 1!")
+  `OCAH_PULP_ASSERT_INIT(n_inp_0, N_INP >= 1, "N_INP must be at least 1!")
 `endif
 endmodule

@@ -17,16 +17,29 @@ from __future__ import annotations
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # --- P0 density / phase1 ---
     "smu_smc_smoke_test": [
-        ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "rst_primary_smc_clk_no == 1"),
-        ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "rst_cold_stable_ref_clk_no == 1"),
-        ("CHK-AXI-SMOKE-DECERR", "AXI_SMOKE_DECERR", "unfiltered SMN VERSION_LO DECERR"),
-        ("CHK-AXI-REMAP", "AXI_GLOBAL_BASE", "GLOBAL_BASE/SIZE reset defaults"),
+        ("CHK-CLK-PRIMARY", "CHK-CLK-PRIMARY", "SMC/DTP advance + clk_smu freeze contrast"),
+        ("CHK-CLK-REF", "CHK-CLK-REF", "ref-domain reset-sync samples on clk_ref_i"),
+        ("CHK-COLD-RESET", "CHK-COLD-RESET", "rst_cold_stable assert/release"),
+        ("CHK-PRIMARY-RESET", "CHK-PRIMARY-RESET", "rst_primary smc/ref hold/release"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
     "smu_dtp_jtag_smoke_test": [
-        ("CHK-JTAG-IDCODE", "JTAG_IDCODE_OK", "PTAP IDCODE matches"),
+        ("CHK-PTAP-BYPASS", "CHK-PTAP-BYPASS", "BYPASS TDI/TDO one-bit latency"),
+        ("CHK-PTAP-STATE", "CHK-PTAP-STATE", "Select/Capture/Shift/Update-DR visited"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<S3<PASS"),
     ],
     "smu_no_sep_configuration_test": [
-        ("CHK-NO-SEP", "NO_SEP_CFG", "SEP apertures tied off under SEP=0"),
+        ("CHK-SEP0-LC", "CHK-SEP0-LC", "lc_state_o==0xf0 stable >=16 cycles"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
+    ],
+    "smu_ext_boot_seq_gate_test": [
+        ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
+        ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded sample waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<S3<S4<PASS"),
     ],
     "smu_dft_dtp_boot_stall_test": [
         ("CHK-STALL-STICKY", "STALL_COLD_STICKY", "stall survives cold"),
@@ -63,7 +76,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-FEAT-FAB-DENY", "FEAT_FAB_DENY", "security deny contrast"),
     ],
     "smc_reset_ctrl_test": [
-        ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "primary reset released"),
+        ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
     "smc_mailbox_int_test": [
@@ -79,7 +92,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-WDT-UNLOCK", "WDT_UNLOCK_OK", "WDT unlock SUCCESS"),
     ],
     "smc_security_demote_pm_test": [
-        ("CHK-FEAT-FAB-DENY", "FEAT_FAB_DENY", "security demote / LC force contrast"),
+        ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
     "smc_cpu_traffic_ext_axi_test": [
         ("CHK-AXI-ID-WIDTH", "AXI_ID_WIDTH_OK", "CPU/ext AXI traffic completes"),
@@ -88,16 +101,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-AXI-ID-WIDTH", "AXI_ID_WIDTH_OK", "ID width conversion completes"),
     ],
     "smu_axi_crossbar_error_handling_test": [
-        ("CHK-AXI-SMOKE-DECERR", "AXI_SMOKE_DECERR", "crossbar DECERR path"),
+        ("CHK-EXT-IN-DECERR", "CHK-EXT-IN-DECERR", "unmatched ext_in read/write DECERR"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI error waits"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
     ],
     "smu_axi_external_port_connectivity_test": [
-        ("CHK-AXI-ID-WIDTH", "AXI_ID_WIDTH_OK", "external port connectivity"),
+        ("CHK-SMN-IN", "CHK-SMN-IN", "inbound write/read BRESP/RRESP + ID match"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
     ],
     "smu_smc_global_base_remap_test": [
         ("CHK-AXI-REMAP", "AXI_GLOBAL_BASE", "GLOBAL_BASE remap observed"),
     ],
     "smu_axi_atomic_operation_test": [
-        ("CHK-AXI-ATOP", "AXI_ATOP_REJECT", "ATOP rejected"),
+        ("CHK-AXI-NON-ATOP", "AXI_NON_ATOP_OK", "non-ATOP SMN path completes"),
     ],
     # --- P1 phase2 deepeners ---
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [

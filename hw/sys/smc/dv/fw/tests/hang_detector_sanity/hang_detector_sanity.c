@@ -9,7 +9,7 @@
 // AXI hang detector system-level sanity test.
 //
 // Configures each of the three SMC hang detectors (sys_axi, sep_axi,
-// data_accel) through their cpu_ctrl CSRs and uses CTRL.irq_test to force the
+// data_accel) through their smc_base_config CSRs and uses CTRL.irq_test to force the
 // detector's irq high without needing a real bus stall. A cocotb sequence
 // observes the OR'd fault output (smc_base.axi_hang_irq_o) after each phase to
 // confirm every detector propagates independently and that the three irqs are

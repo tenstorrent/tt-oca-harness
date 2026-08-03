@@ -229,10 +229,7 @@ module sep_cpu_ctrl_reg (
         logic REFERENCE_COUNTER;
         logic TIMEOUT_INTERRUPT;
         logic PKA_CTRL;
-        logic SPACC_CTRL;
-        logic TIMEOUT_COUNT_TROOT;
         logic TIMEOUT_COUNT_DMA;
-        logic TIMEOUT_COUNT_SPACC;
         logic TIMEOUT_COUNT_SYS_IN;
         logic TIMEOUT_COUNT_MAILBOX_INBOUND;
         logic TIMEOUT_COUNT_MAILBOX_OUTBOUND;
@@ -258,6 +255,7 @@ module sep_cpu_ctrl_reg (
         logic SEP_NMI_VEC_LOCK;
         logic EXT_TRNG_SRC_SEL;
         logic EXT_TRNG_SRC_SEL_LOCK;
+        logic KM_WIPE_CTRL;
         logic SEP_VERSION_ID;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -274,23 +272,20 @@ module sep_cpu_ctrl_reg (
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.CLOCK_GATE_CTRL = cpuif_req_masked & (cpuif_addr == 13'h8);
-        decoded_reg_strb.REFERENCE_COUNTER = cpuif_req_masked & (cpuif_addr == 13'h10) & !cpuif_req_is_wr;
+        decoded_reg_strb.REFERENCE_COUNTER = cpuif_req_masked & (cpuif_addr == 13'h10);
         decoded_reg_strb.TIMEOUT_INTERRUPT = cpuif_req_masked & (cpuif_addr == 13'h18) & !cpuif_req_is_wr;
         decoded_reg_strb.PKA_CTRL = cpuif_req_masked & (cpuif_addr == 13'h20);
-        decoded_reg_strb.SPACC_CTRL = cpuif_req_masked & (cpuif_addr == 13'h30);
-        decoded_reg_strb.TIMEOUT_COUNT_TROOT = cpuif_req_masked & (cpuif_addr == 13'h40);
-        decoded_reg_strb.TIMEOUT_COUNT_DMA = cpuif_req_masked & (cpuif_addr == 13'h48);
-        decoded_reg_strb.TIMEOUT_COUNT_SPACC = cpuif_req_masked & (cpuif_addr == 13'h50);
-        decoded_reg_strb.TIMEOUT_COUNT_SYS_IN = cpuif_req_masked & (cpuif_addr == 13'h58);
-        decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_INBOUND = cpuif_req_masked & (cpuif_addr == 13'h60);
-        decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_OUTBOUND = cpuif_req_masked & (cpuif_addr == 13'h68);
-        decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_WRITE = cpuif_req_masked & (cpuif_addr == 13'h70);
-        decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_READ = cpuif_req_masked & (cpuif_addr == 13'h78);
-        decoded_reg_strb.TIMEOUT_COUNT_FILTER_OUT = cpuif_req_masked & (cpuif_addr == 13'h80);
-        decoded_reg_strb.TIMEOUT_COUNT_ALIAS_REMAP = cpuif_req_masked & (cpuif_addr == 13'h88);
-        decoded_reg_strb.TIMEOUT_ENABLE = cpuif_req_masked & (cpuif_addr == 13'h90);
-        decoded_reg_strb.TIMEOUT_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h98) & cpuif_req_is_wr;
-        decoded_reg_strb.TIMEOUT_MODE = cpuif_req_masked & (cpuif_addr == 13'ha0) & cpuif_req_is_wr;
+        decoded_reg_strb.TIMEOUT_COUNT_DMA = cpuif_req_masked & (cpuif_addr == 13'h28);
+        decoded_reg_strb.TIMEOUT_COUNT_SYS_IN = cpuif_req_masked & (cpuif_addr == 13'h30);
+        decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_INBOUND = cpuif_req_masked & (cpuif_addr == 13'h38);
+        decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_OUTBOUND = cpuif_req_masked & (cpuif_addr == 13'h40);
+        decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_WRITE = cpuif_req_masked & (cpuif_addr == 13'h48);
+        decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_READ = cpuif_req_masked & (cpuif_addr == 13'h50);
+        decoded_reg_strb.TIMEOUT_COUNT_FILTER_OUT = cpuif_req_masked & (cpuif_addr == 13'h58);
+        decoded_reg_strb.TIMEOUT_COUNT_ALIAS_REMAP = cpuif_req_masked & (cpuif_addr == 13'h60);
+        decoded_reg_strb.TIMEOUT_ENABLE = cpuif_req_masked & (cpuif_addr == 13'h68);
+        decoded_reg_strb.TIMEOUT_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h70) & cpuif_req_is_wr;
+        decoded_reg_strb.TIMEOUT_MODE = cpuif_req_masked & (cpuif_addr == 13'h78) & cpuif_req_is_wr;
         decoded_reg_strb.SEP_TEST_CTRL = cpuif_req_masked & (cpuif_addr == 13'hb0) & !cpuif_req_is_wr;
         decoded_reg_strb.SEP_GLOBAL_BASE_ADDR = cpuif_req_masked & (cpuif_addr == 13'hc0);
         decoded_reg_strb.SEP_LOCAL_BASE_ADDR = cpuif_req_masked & (cpuif_addr == 13'hc8);
@@ -306,6 +301,7 @@ module sep_cpu_ctrl_reg (
         decoded_reg_strb.SEP_NMI_VEC_LOCK = cpuif_req_masked & (cpuif_addr == 13'h188);
         decoded_reg_strb.EXT_TRNG_SRC_SEL = cpuif_req_masked & (cpuif_addr == 13'h190);
         decoded_reg_strb.EXT_TRNG_SRC_SEL_LOCK = cpuif_req_masked & (cpuif_addr == 13'h198);
+        decoded_reg_strb.KM_WIPE_CTRL = cpuif_req_masked & (cpuif_addr == 13'h1a0);
         decoded_reg_strb.SEP_VERSION_ID = cpuif_req_masked & (cpuif_addr == 13'h1000) & !cpuif_req_is_wr;
         decoded_err = '0;
     end
@@ -325,56 +321,14 @@ module sep_cpu_ctrl_reg (
             struct {
                 logic next;
                 logic load_next;
-            } spacc_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
             } pka_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } dma_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } mailbox_cg_en;
-            struct {
-                logic next;
-                logic load_next;
-            } fabric_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } filter_in_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } sram_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } zeroer_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } alias_remap_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } filter_out_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } ot_hmac_cg_enable;
-            struct {
-                logic next;
-                logic load_next;
-            } entropy_fifo_cg_enable;
-            struct {
-                logic [5:0] next;
-                logic load_next;
-            } cg_hysteresis;
         } CLOCK_GATE_CTRL;
+        struct {
+            struct {
+                logic [63:0] next;
+                logic load_next;
+            } rc;
+        } REFERENCE_COUNTER;
         struct {
             struct {
                 logic next;
@@ -393,201 +347,67 @@ module sep_cpu_ctrl_reg (
             struct {
                 logic next;
                 logic load_next;
-            } spacc_dpa_disable;
-            struct {
-                logic next;
-                logic load_next;
-            } spacc_dpa_rand;
-            struct {
-                logic next;
-                logic load_next;
-            } spacc_dpa_rand_vld;
-        } SPACC_CTRL;
-        struct {
-            struct {
-                logic [47:0] next;
-                logic load_next;
-            } data;
-        } TIMEOUT_COUNT_TROOT;
-        struct {
-            struct {
-                logic [47:0] next;
-                logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_DMA;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
-        } TIMEOUT_COUNT_SPACC;
-        struct {
-            struct {
-                logic [47:0] next;
-                logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_SYS_IN;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_MAILBOX_INBOUND;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_MAILBOX_OUTBOUND;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_ENTROPY_WRITE;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_ENTROPY_READ;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_FILTER_OUT;
         struct {
             struct {
-                logic [47:0] next;
+                logic next;
                 logic load_next;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_ALIAS_REMAP;
         struct {
             struct {
                 logic next;
                 logic load_next;
-            } troot_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } sys_in_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } spacc_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } dma_data_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } alias_remap_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } filter_out_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } entropy_read_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } entropy_write_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } inbound_mailbox_timeout_en;
-            struct {
-                logic next;
-                logic load_next;
-            } outbound_mailbox_timeout_en;
+            } reserved;
         } TIMEOUT_ENABLE;
         struct {
             struct {
                 logic next;
                 logic load_next;
-            } troot_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } sys_in_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } spacc_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } dma_data_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } alias_remap_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } filter_out_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } entropy_read_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } entropy_write_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } inbound_mailbox_timeout_clear;
-            struct {
-                logic next;
-                logic load_next;
-            } outbound_mailbox_timeout_clear;
+            } reserved;
         } TIMEOUT_CLEAR;
         struct {
             struct {
-                logic [1:0] next;
+                logic next;
                 logic load_next;
-            } troot_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } sys_in_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } spacc_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } dma_data_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } alias_remap_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } filter_out_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } entropy_read_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } entropy_write_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } inbound_mailbox_timeout_mode;
-            struct {
-                logic [1:0] next;
-                logic load_next;
-            } outbound_mailbox_timeout_mode;
+            } reserved;
         } TIMEOUT_MODE;
         struct {
             struct {
@@ -649,7 +469,7 @@ module sep_cpu_ctrl_reg (
         } SEP_NMI_VEC_LOCK;
         struct {
             struct {
-                logic [1:0] next;
+                logic [2:0] next;
                 logic load_next;
             } sel;
         } EXT_TRNG_SRC_SEL;
@@ -659,6 +479,12 @@ module sep_cpu_ctrl_reg (
                 logic load_next;
             } lock;
         } EXT_TRNG_SRC_SEL_LOCK;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } wipe_state;
+        } KM_WIPE_CTRL;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -666,44 +492,13 @@ module sep_cpu_ctrl_reg (
         struct {
             struct {
                 logic value;
-            } spacc_cg_enable;
-            struct {
-                logic value;
             } pka_cg_enable;
-            struct {
-                logic value;
-            } dma_cg_enable;
-            struct {
-                logic value;
-            } mailbox_cg_en;
-            struct {
-                logic value;
-            } fabric_cg_enable;
-            struct {
-                logic value;
-            } filter_in_cg_enable;
-            struct {
-                logic value;
-            } sram_cg_enable;
-            struct {
-                logic value;
-            } zeroer_cg_enable;
-            struct {
-                logic value;
-            } alias_remap_cg_enable;
-            struct {
-                logic value;
-            } filter_out_cg_enable;
-            struct {
-                logic value;
-            } ot_hmac_cg_enable;
-            struct {
-                logic value;
-            } entropy_fifo_cg_enable;
-            struct {
-                logic [5:0] value;
-            } cg_hysteresis;
         } CLOCK_GATE_CTRL;
+        struct {
+            struct {
+                logic [63:0] value;
+            } rc;
+        } REFERENCE_COUNTER;
         struct {
             struct {
                 logic value;
@@ -718,159 +513,57 @@ module sep_cpu_ctrl_reg (
         struct {
             struct {
                 logic value;
-            } spacc_dpa_disable;
-            struct {
-                logic value;
-            } spacc_dpa_rand;
-            struct {
-                logic value;
-            } spacc_dpa_rand_vld;
-        } SPACC_CTRL;
-        struct {
-            struct {
-                logic [47:0] value;
-            } data;
-        } TIMEOUT_COUNT_TROOT;
-        struct {
-            struct {
-                logic [47:0] value;
-            } data;
+            } reserved;
         } TIMEOUT_COUNT_DMA;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
-        } TIMEOUT_COUNT_SPACC;
-        struct {
-            struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_SYS_IN;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_MAILBOX_INBOUND;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_MAILBOX_OUTBOUND;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_ENTROPY_WRITE;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_ENTROPY_READ;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_FILTER_OUT;
         struct {
             struct {
-                logic [47:0] value;
-            } data;
+                logic value;
+            } reserved;
         } TIMEOUT_COUNT_ALIAS_REMAP;
         struct {
             struct {
                 logic value;
-            } troot_timeout_en;
-            struct {
-                logic value;
-            } sys_in_timeout_en;
-            struct {
-                logic value;
-            } spacc_timeout_en;
-            struct {
-                logic value;
-            } dma_data_timeout_en;
-            struct {
-                logic value;
-            } alias_remap_timeout_en;
-            struct {
-                logic value;
-            } filter_out_timeout_en;
-            struct {
-                logic value;
-            } entropy_read_timeout_en;
-            struct {
-                logic value;
-            } entropy_write_timeout_en;
-            struct {
-                logic value;
-            } inbound_mailbox_timeout_en;
-            struct {
-                logic value;
-            } outbound_mailbox_timeout_en;
+            } reserved;
         } TIMEOUT_ENABLE;
         struct {
             struct {
                 logic value;
-            } troot_timeout_clear;
-            struct {
-                logic value;
-            } sys_in_timeout_clear;
-            struct {
-                logic value;
-            } spacc_timeout_clear;
-            struct {
-                logic value;
-            } dma_data_timeout_clear;
-            struct {
-                logic value;
-            } alias_remap_timeout_clear;
-            struct {
-                logic value;
-            } filter_out_timeout_clear;
-            struct {
-                logic value;
-            } entropy_read_timeout_clear;
-            struct {
-                logic value;
-            } entropy_write_timeout_clear;
-            struct {
-                logic value;
-            } inbound_mailbox_timeout_clear;
-            struct {
-                logic value;
-            } outbound_mailbox_timeout_clear;
+            } reserved;
         } TIMEOUT_CLEAR;
         struct {
             struct {
-                logic [1:0] value;
-            } troot_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } sys_in_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } spacc_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } dma_data_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } alias_remap_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } filter_out_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } entropy_read_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } entropy_write_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } inbound_mailbox_timeout_mode;
-            struct {
-                logic [1:0] value;
-            } outbound_mailbox_timeout_mode;
+                logic value;
+            } reserved;
         } TIMEOUT_MODE;
         struct {
             struct {
@@ -922,7 +615,7 @@ module sep_cpu_ctrl_reg (
         } SEP_NMI_VEC_LOCK;
         struct {
             struct {
-                logic [1:0] value;
+                logic [2:0] value;
             } sel;
         } EXT_TRNG_SRC_SEL;
         struct {
@@ -930,32 +623,14 @@ module sep_cpu_ctrl_reg (
                 logic value;
             } lock;
         } EXT_TRNG_SRC_SEL_LOCK;
+        struct {
+            struct {
+                logic value;
+            } wipe_state;
+        } KM_WIPE_CTRL;
     } field_storage_t;
     field_storage_t field_storage;
 
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.spacc_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.spacc_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.spacc_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value <= 1'h1;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.spacc_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.spacc_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.spacc_cg_enable.value = field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value;
     // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.pka_cg_enable
     always_comb begin
         automatic logic [0:0] next_c;
@@ -963,7 +638,7 @@ module sep_cpu_ctrl_reg (
         next_c = field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value;
         load_next_c = '0;
         if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            next_c = (field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
         field_combo.CLOCK_GATE_CTRL.pka_cg_enable.next = next_c;
@@ -971,7 +646,7 @@ module sep_cpu_ctrl_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value <= 1'h1;
+            field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value <= 1'h0;
         end else begin
             if(field_combo.CLOCK_GATE_CTRL.pka_cg_enable.load_next) begin
                 field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.pka_cg_enable.next;
@@ -979,259 +654,33 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.CLOCK_GATE_CTRL.pka_cg_enable.value = field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.dma_cg_enable
+    // Field: sep_cpu_ctrl.REFERENCE_COUNTER.rc
     always_comb begin
-        automatic logic [0:0] next_c;
+        automatic logic [63:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value;
+        next_c = field_storage.REFERENCE_COUNTER.rc.value;
         load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value & ~decoded_wr_biten[2:2]) | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
+        if(decoded_reg_strb.REFERENCE_COUNTER && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.REFERENCE_COUNTER.rc.value & ~decoded_wr_biten[63:0]) | (decoded_wr_data[63:0] & decoded_wr_biten[63:0]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.REFERENCE_COUNTER.rc.next;
             load_next_c = '1;
         end
-        field_combo.CLOCK_GATE_CTRL.dma_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.dma_cg_enable.load_next = load_next_c;
+        field_combo.REFERENCE_COUNTER.rc.next = next_c;
+        field_combo.REFERENCE_COUNTER.rc.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value <= 1'h0;
+            field_storage.REFERENCE_COUNTER.rc.value <= 64'h0;
         end else begin
-            if(field_combo.CLOCK_GATE_CTRL.dma_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.dma_cg_enable.next;
+            if(field_combo.REFERENCE_COUNTER.rc.load_next) begin
+                field_storage.REFERENCE_COUNTER.rc.value <= field_combo.REFERENCE_COUNTER.rc.next;
             end
         end
     end
-    assign hwif_out.CLOCK_GATE_CTRL.dma_cg_enable.value = field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.mailbox_cg_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value & ~decoded_wr_biten[3:3]) | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.mailbox_cg_en.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.mailbox_cg_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.mailbox_cg_en.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value <= field_combo.CLOCK_GATE_CTRL.mailbox_cg_en.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.mailbox_cg_en.value = field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.fabric_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.fabric_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.fabric_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.fabric_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.fabric_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.fabric_cg_enable.value = field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.filter_in_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value & ~decoded_wr_biten[6:6]) | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.filter_in_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.filter_in_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.filter_in_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.filter_in_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.filter_in_cg_enable.value = field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.sram_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value & ~decoded_wr_biten[7:7]) | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.sram_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.sram_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value <= 1'h1;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.sram_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.sram_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.sram_cg_enable.value = field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.zeroer_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.zeroer_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.zeroer_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.zeroer_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.zeroer_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.zeroer_cg_enable.value = field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.alias_remap_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value & ~decoded_wr_biten[9:9]) | (decoded_wr_data[9:9] & decoded_wr_biten[9:9]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.alias_remap_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.alias_remap_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.alias_remap_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.alias_remap_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.alias_remap_cg_enable.value = field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.filter_out_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value & ~decoded_wr_biten[10:10]) | (decoded_wr_data[10:10] & decoded_wr_biten[10:10]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.filter_out_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.filter_out_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.filter_out_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.filter_out_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.filter_out_cg_enable.value = field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.ot_hmac_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value & ~decoded_wr_biten[11:11]) | (decoded_wr_data[11:11] & decoded_wr_biten[11:11]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.ot_hmac_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.ot_hmac_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.ot_hmac_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.ot_hmac_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value = field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.entropy_fifo_cg_enable
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value & ~decoded_wr_biten[12:12]) | (decoded_wr_data[12:12] & decoded_wr_biten[12:12]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value <= 1'h0;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value <= field_combo.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value = field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value;
-    // Field: sep_cpu_ctrl.CLOCK_GATE_CTRL.cg_hysteresis
-    always_comb begin
-        automatic logic [5:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CLOCK_GATE_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value & ~decoded_wr_biten[21:16]) | (decoded_wr_data[21:16] & decoded_wr_biten[21:16]);
-            load_next_c = '1;
-        end
-        field_combo.CLOCK_GATE_CTRL.cg_hysteresis.next = next_c;
-        field_combo.CLOCK_GATE_CTRL.cg_hysteresis.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value <= 6'h1f;
-        end else begin
-            if(field_combo.CLOCK_GATE_CTRL.cg_hysteresis.load_next) begin
-                field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value <= field_combo.CLOCK_GATE_CTRL.cg_hysteresis.next;
-            end
-        end
-    end
-    assign hwif_out.CLOCK_GATE_CTRL.cg_hysteresis.value = field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value;
+    assign hwif_out.REFERENCE_COUNTER.rc.value = field_storage.REFERENCE_COUNTER.rc.value;
+    assign hwif_out.REFERENCE_COUNTER.rc.wr_swacc = decoded_reg_strb.REFERENCE_COUNTER && decoded_req_is_wr;
     // Field: sep_cpu_ctrl.PKA_CTRL.pka_dpa_disable
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1247,7 +696,7 @@ module sep_cpu_ctrl_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.PKA_CTRL.pka_dpa_disable.value <= 1'h1;
+            field_storage.PKA_CTRL.pka_dpa_disable.value <= 1'h0;
         end else begin
             if(field_combo.PKA_CTRL.pka_dpa_disable.load_next) begin
                 field_storage.PKA_CTRL.pka_dpa_disable.value <= field_combo.PKA_CTRL.pka_dpa_disable.next;
@@ -1262,7 +711,7 @@ module sep_cpu_ctrl_reg (
         next_c = field_storage.PKA_CTRL.pka_noise_src.value;
         load_next_c = '0;
         if(decoded_reg_strb.PKA_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.PKA_CTRL.pka_noise_src.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            next_c = (field_storage.PKA_CTRL.pka_noise_src.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
             load_next_c = '1;
         end
         field_combo.PKA_CTRL.pka_noise_src.next = next_c;
@@ -1285,7 +734,7 @@ module sep_cpu_ctrl_reg (
         next_c = field_storage.PKA_CTRL.pka_noise_src_valid.value;
         load_next_c = '0;
         if(decoded_reg_strb.PKA_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.PKA_CTRL.pka_noise_src_valid.value & ~decoded_wr_biten[16:16]) | (decoded_wr_data[16:16] & decoded_wr_biten[16:16]);
+            next_c = (field_storage.PKA_CTRL.pka_noise_src_valid.value & ~decoded_wr_biten[2:2]) | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
             load_next_c = '1;
         end
         field_combo.PKA_CTRL.pka_noise_src_valid.next = next_c;
@@ -1301,1025 +750,262 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.PKA_CTRL.pka_noise_src_valid.value = field_storage.PKA_CTRL.pka_noise_src_valid.value;
-    // Field: sep_cpu_ctrl.SPACC_CTRL.spacc_dpa_disable
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_DMA.reserved
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.SPACC_CTRL.spacc_dpa_disable.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.SPACC_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.SPACC_CTRL.spacc_dpa_disable.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end
-        field_combo.SPACC_CTRL.spacc_dpa_disable.next = next_c;
-        field_combo.SPACC_CTRL.spacc_dpa_disable.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.SPACC_CTRL.spacc_dpa_disable.value <= 1'h1;
-        end else begin
-            if(field_combo.SPACC_CTRL.spacc_dpa_disable.load_next) begin
-                field_storage.SPACC_CTRL.spacc_dpa_disable.value <= field_combo.SPACC_CTRL.spacc_dpa_disable.next;
-            end
-        end
-    end
-    assign hwif_out.SPACC_CTRL.spacc_dpa_disable.value = field_storage.SPACC_CTRL.spacc_dpa_disable.value;
-    // Field: sep_cpu_ctrl.SPACC_CTRL.spacc_dpa_rand
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.SPACC_CTRL.spacc_dpa_rand.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.SPACC_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.SPACC_CTRL.spacc_dpa_rand.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
-            load_next_c = '1;
-        end
-        field_combo.SPACC_CTRL.spacc_dpa_rand.next = next_c;
-        field_combo.SPACC_CTRL.spacc_dpa_rand.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.SPACC_CTRL.spacc_dpa_rand.value <= 1'h0;
-        end else begin
-            if(field_combo.SPACC_CTRL.spacc_dpa_rand.load_next) begin
-                field_storage.SPACC_CTRL.spacc_dpa_rand.value <= field_combo.SPACC_CTRL.spacc_dpa_rand.next;
-            end
-        end
-    end
-    assign hwif_out.SPACC_CTRL.spacc_dpa_rand.value = field_storage.SPACC_CTRL.spacc_dpa_rand.value;
-    // Field: sep_cpu_ctrl.SPACC_CTRL.spacc_dpa_rand_vld
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.SPACC_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value & ~decoded_wr_biten[16:16]) | (decoded_wr_data[16:16] & decoded_wr_biten[16:16]);
-            load_next_c = '1;
-        end
-        field_combo.SPACC_CTRL.spacc_dpa_rand_vld.next = next_c;
-        field_combo.SPACC_CTRL.spacc_dpa_rand_vld.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value <= 1'h0;
-        end else begin
-            if(field_combo.SPACC_CTRL.spacc_dpa_rand_vld.load_next) begin
-                field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value <= field_combo.SPACC_CTRL.spacc_dpa_rand_vld.next;
-            end
-        end
-    end
-    assign hwif_out.SPACC_CTRL.spacc_dpa_rand_vld.value = field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_TROOT.data
-    always_comb begin
-        automatic logic [47:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_TROOT.data.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_COUNT_TROOT && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_TROOT.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_COUNT_TROOT.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_TROOT.data.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_TROOT.data.value <= 48'h0;
-        end else begin
-            if(field_combo.TIMEOUT_COUNT_TROOT.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_TROOT.data.value <= field_combo.TIMEOUT_COUNT_TROOT.data.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_COUNT_TROOT.data.value = field_storage.TIMEOUT_COUNT_TROOT.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_DMA.data
-    always_comb begin
-        automatic logic [47:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_DMA.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_DMA.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_DMA && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_DMA.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_DMA.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_DMA.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_DMA.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_DMA.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_DMA.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_DMA.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_DMA.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_DMA.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_DMA.data.value <= field_combo.TIMEOUT_COUNT_DMA.data.next;
+            if(field_combo.TIMEOUT_COUNT_DMA.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_DMA.reserved.value <= field_combo.TIMEOUT_COUNT_DMA.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_DMA.data.value = field_storage.TIMEOUT_COUNT_DMA.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_SPACC.data
+    assign hwif_out.TIMEOUT_COUNT_DMA.reserved.value = field_storage.TIMEOUT_COUNT_DMA.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_SPACC.data.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_COUNT_SPACC && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_SPACC.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_COUNT_SPACC.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_SPACC.data.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_SPACC.data.value <= 48'h0;
-        end else begin
-            if(field_combo.TIMEOUT_COUNT_SPACC.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_SPACC.data.value <= field_combo.TIMEOUT_COUNT_SPACC.data.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_COUNT_SPACC.data.value = field_storage.TIMEOUT_COUNT_SPACC.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN.data
-    always_comb begin
-        automatic logic [47:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_SYS_IN.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_SYS_IN && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_SYS_IN.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_SYS_IN.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_SYS_IN.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_SYS_IN.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_SYS_IN.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_SYS_IN.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_SYS_IN.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_SYS_IN.data.value <= field_combo.TIMEOUT_COUNT_SYS_IN.data.next;
+            if(field_combo.TIMEOUT_COUNT_SYS_IN.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value <= field_combo.TIMEOUT_COUNT_SYS_IN.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_SYS_IN.data.value = field_storage.TIMEOUT_COUNT_SYS_IN.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND.data
+    assign hwif_out.TIMEOUT_COUNT_SYS_IN.reserved.value = field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_INBOUND && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value <= field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.data.next;
+            if(field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value <= field_combo.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data
+    assign hwif_out.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_OUTBOUND && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value <= field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.next;
+            if(field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value <= field_combo.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE.data
+    assign hwif_out.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_WRITE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value <= field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.data.next;
+            if(field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value <= field_combo.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_ENTROPY_WRITE.data.value = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ.data
+    assign hwif_out.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_READ && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_ENTROPY_READ.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_ENTROPY_READ.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_ENTROPY_READ.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_ENTROPY_READ.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_ENTROPY_READ.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value <= field_combo.TIMEOUT_COUNT_ENTROPY_READ.data.next;
+            if(field_combo.TIMEOUT_COUNT_ENTROPY_READ.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value <= field_combo.TIMEOUT_COUNT_ENTROPY_READ.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_ENTROPY_READ.data.value = field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT.data
+    assign hwif_out.TIMEOUT_COUNT_ENTROPY_READ.reserved.value = field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_FILTER_OUT && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_FILTER_OUT.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_FILTER_OUT.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_FILTER_OUT.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_FILTER_OUT.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_FILTER_OUT.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value <= field_combo.TIMEOUT_COUNT_FILTER_OUT.data.next;
+            if(field_combo.TIMEOUT_COUNT_FILTER_OUT.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value <= field_combo.TIMEOUT_COUNT_FILTER_OUT.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_FILTER_OUT.data.value = field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP.data
+    assign hwif_out.TIMEOUT_COUNT_FILTER_OUT.reserved.value = field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP.reserved
     always_comb begin
-        automatic logic [47:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value;
+        next_c = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_COUNT_ALIAS_REMAP && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value & ~decoded_wr_biten[47:0]) | (decoded_wr_data[47:0] & decoded_wr_biten[47:0]);
+            next_c = (field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_COUNT_ALIAS_REMAP.data.next = next_c;
-        field_combo.TIMEOUT_COUNT_ALIAS_REMAP.data.load_next = load_next_c;
+        field_combo.TIMEOUT_COUNT_ALIAS_REMAP.reserved.next = next_c;
+        field_combo.TIMEOUT_COUNT_ALIAS_REMAP.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value <= 48'h0;
+            field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_COUNT_ALIAS_REMAP.data.load_next) begin
-                field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value <= field_combo.TIMEOUT_COUNT_ALIAS_REMAP.data.next;
+            if(field_combo.TIMEOUT_COUNT_ALIAS_REMAP.reserved.load_next) begin
+                field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value <= field_combo.TIMEOUT_COUNT_ALIAS_REMAP.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_COUNT_ALIAS_REMAP.data.value = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.troot_timeout_en
+    assign hwif_out.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.reserved
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.troot_timeout_en.value;
+        next_c = field_storage.TIMEOUT_ENABLE.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.troot_timeout_en.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            next_c = (field_storage.TIMEOUT_ENABLE.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_ENABLE.troot_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.troot_timeout_en.load_next = load_next_c;
+        field_combo.TIMEOUT_ENABLE.reserved.next = next_c;
+        field_combo.TIMEOUT_ENABLE.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.troot_timeout_en.value <= 1'h0;
+            field_storage.TIMEOUT_ENABLE.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_ENABLE.troot_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.troot_timeout_en.value <= field_combo.TIMEOUT_ENABLE.troot_timeout_en.next;
+            if(field_combo.TIMEOUT_ENABLE.reserved.load_next) begin
+                field_storage.TIMEOUT_ENABLE.reserved.value <= field_combo.TIMEOUT_ENABLE.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_ENABLE.troot_timeout_en.value = field_storage.TIMEOUT_ENABLE.troot_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.sys_in_timeout_en
+    assign hwif_out.TIMEOUT_ENABLE.reserved.value = field_storage.TIMEOUT_ENABLE.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.reserved
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.sys_in_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.sys_in_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.sys_in_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value <= field_combo.TIMEOUT_ENABLE.sys_in_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.sys_in_timeout_en.value = field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.spacc_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value & ~decoded_wr_biten[2:2]) | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.spacc_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.spacc_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.spacc_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value <= field_combo.TIMEOUT_ENABLE.spacc_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.spacc_timeout_en.value = field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.dma_data_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value & ~decoded_wr_biten[3:3]) | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.dma_data_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.dma_data_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.dma_data_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value <= field_combo.TIMEOUT_ENABLE.dma_data_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.dma_data_timeout_en.value = field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.alias_remap_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.alias_remap_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.alias_remap_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.alias_remap_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value <= field_combo.TIMEOUT_ENABLE.alias_remap_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.alias_remap_timeout_en.value = field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.filter_out_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value & ~decoded_wr_biten[5:5]) | (decoded_wr_data[5:5] & decoded_wr_biten[5:5]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.filter_out_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.filter_out_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.filter_out_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value <= field_combo.TIMEOUT_ENABLE.filter_out_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.filter_out_timeout_en.value = field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.entropy_read_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value & ~decoded_wr_biten[6:6]) | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.entropy_read_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.entropy_read_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.entropy_read_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value <= field_combo.TIMEOUT_ENABLE.entropy_read_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.entropy_read_timeout_en.value = field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.entropy_write_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value & ~decoded_wr_biten[7:7]) | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.entropy_write_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.entropy_write_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.entropy_write_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value <= field_combo.TIMEOUT_ENABLE.entropy_write_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.entropy_write_timeout_en.value = field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.inbound_mailbox_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value <= field_combo.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value = field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_ENABLE.outbound_mailbox_timeout_en
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_ENABLE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value & ~decoded_wr_biten[9:9]) | (decoded_wr_data[9:9] & decoded_wr_biten[9:9]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.next = next_c;
-        field_combo.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.load_next) begin
-                field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value <= field_combo.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value = field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.troot_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.troot_timeout_clear.value;
+        next_c = field_storage.TIMEOUT_CLEAR.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.troot_timeout_clear.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            next_c = (field_storage.TIMEOUT_CLEAR.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end else begin // singlepulse clears back to 0
             next_c = '0;
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_CLEAR.troot_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.troot_timeout_clear.load_next = load_next_c;
+        field_combo.TIMEOUT_CLEAR.reserved.next = next_c;
+        field_combo.TIMEOUT_CLEAR.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.troot_timeout_clear.value <= 1'h0;
+            field_storage.TIMEOUT_CLEAR.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_CLEAR.troot_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.troot_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.troot_timeout_clear.next;
+            if(field_combo.TIMEOUT_CLEAR.reserved.load_next) begin
+                field_storage.TIMEOUT_CLEAR.reserved.value <= field_combo.TIMEOUT_CLEAR.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_CLEAR.troot_timeout_clear.value = field_storage.TIMEOUT_CLEAR.troot_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.sys_in_timeout_clear
+    assign hwif_out.TIMEOUT_CLEAR.reserved.value = field_storage.TIMEOUT_CLEAR.reserved.value;
+    // Field: sep_cpu_ctrl.TIMEOUT_MODE.reserved
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.sys_in_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.sys_in_timeout_clear.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.sys_in_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.sys_in_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.sys_in_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.sys_in_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.sys_in_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.sys_in_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.sys_in_timeout_clear.value = field_storage.TIMEOUT_CLEAR.sys_in_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.spacc_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.spacc_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.spacc_timeout_clear.value & ~decoded_wr_biten[2:2]) | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.spacc_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.spacc_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.spacc_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.spacc_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.spacc_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.spacc_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.spacc_timeout_clear.value = field_storage.TIMEOUT_CLEAR.spacc_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.dma_data_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.dma_data_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.dma_data_timeout_clear.value & ~decoded_wr_biten[3:3]) | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.dma_data_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.dma_data_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.dma_data_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.dma_data_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.dma_data_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.dma_data_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.dma_data_timeout_clear.value = field_storage.TIMEOUT_CLEAR.dma_data_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.alias_remap_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.alias_remap_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.alias_remap_timeout_clear.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.alias_remap_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.alias_remap_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.alias_remap_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.alias_remap_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.alias_remap_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.alias_remap_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.alias_remap_timeout_clear.value = field_storage.TIMEOUT_CLEAR.alias_remap_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.filter_out_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.filter_out_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.filter_out_timeout_clear.value & ~decoded_wr_biten[5:5]) | (decoded_wr_data[5:5] & decoded_wr_biten[5:5]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.filter_out_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.filter_out_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.filter_out_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.filter_out_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.filter_out_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.filter_out_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.filter_out_timeout_clear.value = field_storage.TIMEOUT_CLEAR.filter_out_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.entropy_read_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.entropy_read_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.entropy_read_timeout_clear.value & ~decoded_wr_biten[6:6]) | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.entropy_read_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.entropy_read_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.entropy_read_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.entropy_read_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.entropy_read_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.entropy_read_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.entropy_read_timeout_clear.value = field_storage.TIMEOUT_CLEAR.entropy_read_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.entropy_write_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.entropy_write_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.entropy_write_timeout_clear.value & ~decoded_wr_biten[7:7]) | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.entropy_write_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.entropy_write_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.entropy_write_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.entropy_write_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.entropy_write_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.entropy_write_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.entropy_write_timeout_clear.value = field_storage.TIMEOUT_CLEAR.entropy_write_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value = field_storage.TIMEOUT_CLEAR.inbound_mailbox_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_CLEAR && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value & ~decoded_wr_biten[9:9]) | (decoded_wr_data[9:9] & decoded_wr_biten[9:9]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.next = next_c;
-        field_combo.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value <= 1'h0;
-        end else begin
-            if(field_combo.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.load_next) begin
-                field_storage.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value <= field_combo.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value = field_storage.TIMEOUT_CLEAR.outbound_mailbox_timeout_clear.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.troot_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.troot_timeout_mode.value;
+        next_c = field_storage.TIMEOUT_MODE.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.troot_timeout_mode.value & ~decoded_wr_biten[1:0]) | (decoded_wr_data[1:0] & decoded_wr_biten[1:0]);
+            next_c = (field_storage.TIMEOUT_MODE.reserved.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.TIMEOUT_MODE.troot_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.troot_timeout_mode.load_next = load_next_c;
+        field_combo.TIMEOUT_MODE.reserved.next = next_c;
+        field_combo.TIMEOUT_MODE.reserved.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.troot_timeout_mode.value <= 2'h0;
+            field_storage.TIMEOUT_MODE.reserved.value <= 1'h0;
         end else begin
-            if(field_combo.TIMEOUT_MODE.troot_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.troot_timeout_mode.value <= field_combo.TIMEOUT_MODE.troot_timeout_mode.next;
+            if(field_combo.TIMEOUT_MODE.reserved.load_next) begin
+                field_storage.TIMEOUT_MODE.reserved.value <= field_combo.TIMEOUT_MODE.reserved.next;
             end
         end
     end
-    assign hwif_out.TIMEOUT_MODE.troot_timeout_mode.value = field_storage.TIMEOUT_MODE.troot_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.sys_in_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.sys_in_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.sys_in_timeout_mode.value & ~decoded_wr_biten[3:2]) | (decoded_wr_data[3:2] & decoded_wr_biten[3:2]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.sys_in_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.sys_in_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.sys_in_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.sys_in_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.sys_in_timeout_mode.value <= field_combo.TIMEOUT_MODE.sys_in_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.sys_in_timeout_mode.value = field_storage.TIMEOUT_MODE.sys_in_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.spacc_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.spacc_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.spacc_timeout_mode.value & ~decoded_wr_biten[5:4]) | (decoded_wr_data[5:4] & decoded_wr_biten[5:4]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.spacc_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.spacc_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.spacc_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.spacc_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.spacc_timeout_mode.value <= field_combo.TIMEOUT_MODE.spacc_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.spacc_timeout_mode.value = field_storage.TIMEOUT_MODE.spacc_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.dma_data_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.dma_data_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.dma_data_timeout_mode.value & ~decoded_wr_biten[7:6]) | (decoded_wr_data[7:6] & decoded_wr_biten[7:6]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.dma_data_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.dma_data_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.dma_data_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.dma_data_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.dma_data_timeout_mode.value <= field_combo.TIMEOUT_MODE.dma_data_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.dma_data_timeout_mode.value = field_storage.TIMEOUT_MODE.dma_data_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.alias_remap_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.alias_remap_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.alias_remap_timeout_mode.value & ~decoded_wr_biten[9:8]) | (decoded_wr_data[9:8] & decoded_wr_biten[9:8]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.alias_remap_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.alias_remap_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.alias_remap_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.alias_remap_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.alias_remap_timeout_mode.value <= field_combo.TIMEOUT_MODE.alias_remap_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.alias_remap_timeout_mode.value = field_storage.TIMEOUT_MODE.alias_remap_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.filter_out_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.filter_out_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.filter_out_timeout_mode.value & ~decoded_wr_biten[11:10]) | (decoded_wr_data[11:10] & decoded_wr_biten[11:10]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.filter_out_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.filter_out_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.filter_out_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.filter_out_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.filter_out_timeout_mode.value <= field_combo.TIMEOUT_MODE.filter_out_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.filter_out_timeout_mode.value = field_storage.TIMEOUT_MODE.filter_out_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.entropy_read_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.entropy_read_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.entropy_read_timeout_mode.value & ~decoded_wr_biten[13:12]) | (decoded_wr_data[13:12] & decoded_wr_biten[13:12]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.entropy_read_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.entropy_read_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.entropy_read_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.entropy_read_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.entropy_read_timeout_mode.value <= field_combo.TIMEOUT_MODE.entropy_read_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.entropy_read_timeout_mode.value = field_storage.TIMEOUT_MODE.entropy_read_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.entropy_write_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.entropy_write_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.entropy_write_timeout_mode.value & ~decoded_wr_biten[15:14]) | (decoded_wr_data[15:14] & decoded_wr_biten[15:14]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.entropy_write_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.entropy_write_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.entropy_write_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.entropy_write_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.entropy_write_timeout_mode.value <= field_combo.TIMEOUT_MODE.entropy_write_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.entropy_write_timeout_mode.value = field_storage.TIMEOUT_MODE.entropy_write_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.inbound_mailbox_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value & ~decoded_wr_biten[17:16]) | (decoded_wr_data[17:16] & decoded_wr_biten[17:16]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.inbound_mailbox_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.inbound_mailbox_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.inbound_mailbox_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value <= field_combo.TIMEOUT_MODE.inbound_mailbox_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value = field_storage.TIMEOUT_MODE.inbound_mailbox_timeout_mode.value;
-    // Field: sep_cpu_ctrl.TIMEOUT_MODE.outbound_mailbox_timeout_mode
-    always_comb begin
-        automatic logic [1:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.TIMEOUT_MODE && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value & ~decoded_wr_biten[19:18]) | (decoded_wr_data[19:18] & decoded_wr_biten[19:18]);
-            load_next_c = '1;
-        end
-        field_combo.TIMEOUT_MODE.outbound_mailbox_timeout_mode.next = next_c;
-        field_combo.TIMEOUT_MODE.outbound_mailbox_timeout_mode.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value <= 2'h0;
-        end else begin
-            if(field_combo.TIMEOUT_MODE.outbound_mailbox_timeout_mode.load_next) begin
-                field_storage.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value <= field_combo.TIMEOUT_MODE.outbound_mailbox_timeout_mode.next;
-            end
-        end
-    end
-    assign hwif_out.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value = field_storage.TIMEOUT_MODE.outbound_mailbox_timeout_mode.value;
+    assign hwif_out.TIMEOUT_MODE.reserved.value = field_storage.TIMEOUT_MODE.reserved.value;
     // Field: sep_cpu_ctrl.SEP_GLOBAL_BASE_ADDR.addr
     always_comb begin
         automatic logic [55:0] next_c;
@@ -2358,7 +1044,7 @@ module sep_cpu_ctrl_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.SEP_LOCAL_BASE_ADDR.addr.value <= 56'hc0000000;
+            field_storage.SEP_LOCAL_BASE_ADDR.addr.value <= 56'hd0000000;
         end else begin
             if(field_combo.SEP_LOCAL_BASE_ADDR.addr.load_next) begin
                 field_storage.SEP_LOCAL_BASE_ADDR.addr.value <= field_combo.SEP_LOCAL_BASE_ADDR.addr.next;
@@ -2553,12 +1239,12 @@ module sep_cpu_ctrl_reg (
     assign hwif_out.SEP_NMI_VEC_LOCK.lock.value = field_storage.SEP_NMI_VEC_LOCK.lock.value;
     // Field: sep_cpu_ctrl.EXT_TRNG_SRC_SEL.sel
     always_comb begin
-        automatic logic [1:0] next_c;
+        automatic logic [2:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.EXT_TRNG_SRC_SEL.sel.value;
         load_next_c = '0;
         if(decoded_reg_strb.EXT_TRNG_SRC_SEL && decoded_req_is_wr && !(field_storage.EXT_TRNG_SRC_SEL_LOCK.lock.value)) begin // SW write
-            next_c = (field_storage.EXT_TRNG_SRC_SEL.sel.value & ~decoded_wr_biten[1:0]) | (decoded_wr_data[1:0] & decoded_wr_biten[1:0]);
+            next_c = (field_storage.EXT_TRNG_SRC_SEL.sel.value & ~decoded_wr_biten[2:0]) | (decoded_wr_data[2:0] & decoded_wr_biten[2:0]);
             load_next_c = '1;
         end
         field_combo.EXT_TRNG_SRC_SEL.sel.next = next_c;
@@ -2566,7 +1252,7 @@ module sep_cpu_ctrl_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.EXT_TRNG_SRC_SEL.sel.value <= 2'h3;
+            field_storage.EXT_TRNG_SRC_SEL.sel.value <= 3'h7;
         end else begin
             if(field_combo.EXT_TRNG_SRC_SEL.sel.load_next) begin
                 field_storage.EXT_TRNG_SRC_SEL.sel.value <= field_combo.EXT_TRNG_SRC_SEL.sel.next;
@@ -2597,6 +1283,29 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.EXT_TRNG_SRC_SEL_LOCK.lock.value = field_storage.EXT_TRNG_SRC_SEL_LOCK.lock.value;
+    // Field: sep_cpu_ctrl.KM_WIPE_CTRL.wipe_state
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.KM_WIPE_CTRL.wipe_state.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.KM_WIPE_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.KM_WIPE_CTRL.wipe_state.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.KM_WIPE_CTRL.wipe_state.next = next_c;
+        field_combo.KM_WIPE_CTRL.wipe_state.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.KM_WIPE_CTRL.wipe_state.value <= 1'h0;
+        end else begin
+            if(field_combo.KM_WIPE_CTRL.wipe_state.load_next) begin
+                field_storage.KM_WIPE_CTRL.wipe_state.value <= field_combo.KM_WIPE_CTRL.wipe_state.next;
+            end
+        end
+    end
+    assign hwif_out.KM_WIPE_CTRL.wipe_state.value = field_storage.KM_WIPE_CTRL.wipe_state.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -2619,90 +1328,48 @@ module sep_cpu_ctrl_reg (
         automatic logic [63:0] readback_data_var;
         readback_data_var = '0;
         if(rd_mux_addr == 13'h8) begin
-            readback_data_var[0] = field_storage.CLOCK_GATE_CTRL.spacc_cg_enable.value;
-            readback_data_var[1] = field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value;
-            readback_data_var[2] = field_storage.CLOCK_GATE_CTRL.dma_cg_enable.value;
-            readback_data_var[3] = field_storage.CLOCK_GATE_CTRL.mailbox_cg_en.value;
-            readback_data_var[4] = field_storage.CLOCK_GATE_CTRL.fabric_cg_enable.value;
-            readback_data_var[6] = field_storage.CLOCK_GATE_CTRL.filter_in_cg_enable.value;
-            readback_data_var[7] = field_storage.CLOCK_GATE_CTRL.sram_cg_enable.value;
-            readback_data_var[8] = field_storage.CLOCK_GATE_CTRL.zeroer_cg_enable.value;
-            readback_data_var[9] = field_storage.CLOCK_GATE_CTRL.alias_remap_cg_enable.value;
-            readback_data_var[10] = field_storage.CLOCK_GATE_CTRL.filter_out_cg_enable.value;
-            readback_data_var[11] = field_storage.CLOCK_GATE_CTRL.ot_hmac_cg_enable.value;
-            readback_data_var[12] = field_storage.CLOCK_GATE_CTRL.entropy_fifo_cg_enable.value;
-            readback_data_var[21:16] = field_storage.CLOCK_GATE_CTRL.cg_hysteresis.value;
+            readback_data_var[0] = field_storage.CLOCK_GATE_CTRL.pka_cg_enable.value;
         end
         if(rd_mux_addr == 13'h10) begin
-            readback_data_var[63:0] = hwif_in.REFERENCE_COUNTER.rc.next;
+            readback_data_var[63:0] = field_storage.REFERENCE_COUNTER.rc.value;
         end
         if(rd_mux_addr == 13'h18) begin
-            readback_data_var[0] = hwif_in.TIMEOUT_INTERRUPT.troot_timeout_int.next;
-            readback_data_var[1] = hwif_in.TIMEOUT_INTERRUPT.sys_in_timeout_int.next;
-            readback_data_var[2] = hwif_in.TIMEOUT_INTERRUPT.spacc_timeout_int.next;
-            readback_data_var[3] = hwif_in.TIMEOUT_INTERRUPT.dma_data_timeout_int.next;
-            readback_data_var[4] = hwif_in.TIMEOUT_INTERRUPT.alias_remap_timeout_int.next;
-            readback_data_var[5] = hwif_in.TIMEOUT_INTERRUPT.filter_out_timeout_int.next;
-            readback_data_var[6] = hwif_in.TIMEOUT_INTERRUPT.entropy_read_timeout_int.next;
-            readback_data_var[7] = hwif_in.TIMEOUT_INTERRUPT.entropy_write_timeout_int.next;
-            readback_data_var[8] = hwif_in.TIMEOUT_INTERRUPT.inbound_mailbox_timeout_int.next;
-            readback_data_var[9] = hwif_in.TIMEOUT_INTERRUPT.outbound_mailbox_timeout_int.next;
+            readback_data_var[0] = hwif_in.TIMEOUT_INTERRUPT.reserved.next;
         end
         if(rd_mux_addr == 13'h20) begin
             readback_data_var[0] = field_storage.PKA_CTRL.pka_dpa_disable.value;
-            readback_data_var[8] = field_storage.PKA_CTRL.pka_noise_src.value;
-            readback_data_var[16] = field_storage.PKA_CTRL.pka_noise_src_valid.value;
+            readback_data_var[1] = field_storage.PKA_CTRL.pka_noise_src.value;
+            readback_data_var[2] = field_storage.PKA_CTRL.pka_noise_src_valid.value;
+        end
+        if(rd_mux_addr == 13'h28) begin
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_DMA.reserved.value;
         end
         if(rd_mux_addr == 13'h30) begin
-            readback_data_var[0] = field_storage.SPACC_CTRL.spacc_dpa_disable.value;
-            readback_data_var[8] = field_storage.SPACC_CTRL.spacc_dpa_rand.value;
-            readback_data_var[16] = field_storage.SPACC_CTRL.spacc_dpa_rand_vld.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_SYS_IN.reserved.value;
+        end
+        if(rd_mux_addr == 13'h38) begin
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.reserved.value;
         end
         if(rd_mux_addr == 13'h40) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_TROOT.data.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.reserved.value;
         end
         if(rd_mux_addr == 13'h48) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_DMA.data.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.reserved.value;
         end
         if(rd_mux_addr == 13'h50) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_SPACC.data.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_ENTROPY_READ.reserved.value;
         end
         if(rd_mux_addr == 13'h58) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_SYS_IN.data.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_FILTER_OUT.reserved.value;
         end
         if(rd_mux_addr == 13'h60) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_MAILBOX_INBOUND.data.value;
+            readback_data_var[0] = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.reserved.value;
         end
         if(rd_mux_addr == 13'h68) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_MAILBOX_OUTBOUND.data.value;
-        end
-        if(rd_mux_addr == 13'h70) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_ENTROPY_WRITE.data.value;
-        end
-        if(rd_mux_addr == 13'h78) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_ENTROPY_READ.data.value;
-        end
-        if(rd_mux_addr == 13'h80) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_FILTER_OUT.data.value;
-        end
-        if(rd_mux_addr == 13'h88) begin
-            readback_data_var[47:0] = field_storage.TIMEOUT_COUNT_ALIAS_REMAP.data.value;
-        end
-        if(rd_mux_addr == 13'h90) begin
-            readback_data_var[0] = field_storage.TIMEOUT_ENABLE.troot_timeout_en.value;
-            readback_data_var[1] = field_storage.TIMEOUT_ENABLE.sys_in_timeout_en.value;
-            readback_data_var[2] = field_storage.TIMEOUT_ENABLE.spacc_timeout_en.value;
-            readback_data_var[3] = field_storage.TIMEOUT_ENABLE.dma_data_timeout_en.value;
-            readback_data_var[4] = field_storage.TIMEOUT_ENABLE.alias_remap_timeout_en.value;
-            readback_data_var[5] = field_storage.TIMEOUT_ENABLE.filter_out_timeout_en.value;
-            readback_data_var[6] = field_storage.TIMEOUT_ENABLE.entropy_read_timeout_en.value;
-            readback_data_var[7] = field_storage.TIMEOUT_ENABLE.entropy_write_timeout_en.value;
-            readback_data_var[8] = field_storage.TIMEOUT_ENABLE.inbound_mailbox_timeout_en.value;
-            readback_data_var[9] = field_storage.TIMEOUT_ENABLE.outbound_mailbox_timeout_en.value;
+            readback_data_var[0] = field_storage.TIMEOUT_ENABLE.reserved.value;
         end
         if(rd_mux_addr == 13'hb0) begin
-            readback_data_var[25] = hwif_in.SEP_TEST_CTRL.sep_standalone.next;
-            readback_data_var[26] = hwif_in.SEP_TEST_CTRL.fast_spacc_en.next;
+            readback_data_var[26] = hwif_in.SEP_TEST_CTRL.sep_standalone.next;
             readback_data_var[27] = hwif_in.SEP_TEST_CTRL.fast_pka_en.next;
             readback_data_var[28] = hwif_in.SEP_TEST_CTRL.fast_sram_en.next;
             readback_data_var[29] = hwif_in.SEP_TEST_CTRL.fast_dccm_en.next;
@@ -2749,10 +1416,13 @@ module sep_cpu_ctrl_reg (
             readback_data_var[0] = field_storage.SEP_NMI_VEC_LOCK.lock.value;
         end
         if(rd_mux_addr == 13'h190) begin
-            readback_data_var[1:0] = field_storage.EXT_TRNG_SRC_SEL.sel.value;
+            readback_data_var[2:0] = field_storage.EXT_TRNG_SRC_SEL.sel.value;
         end
         if(rd_mux_addr == 13'h198) begin
             readback_data_var[0] = field_storage.EXT_TRNG_SRC_SEL_LOCK.lock.value;
+        end
+        if(rd_mux_addr == 13'h1a0) begin
+            readback_data_var[0] = field_storage.KM_WIPE_CTRL.wipe_state.value;
         end
         if(rd_mux_addr == 13'h1000) begin
             readback_data_var[31:0] = 32'hdeadbeef;

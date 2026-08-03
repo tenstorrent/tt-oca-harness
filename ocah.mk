@@ -4,7 +4,9 @@
 ifndef ocah_mk
 ocah_mk := 1
 
-OCAH_ROOT ?= $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+ifndef OCAH_ROOT
+OCAH_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+endif
 UV ?= uv
 
 OCAH_PHONY ?=
@@ -20,7 +22,8 @@ uv-sync:
 OCAH_PHONY += uv-sync
 
 OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
-OCAH_NONFREE_COMMIT ?= main
+# Pin the optional nonfree clone to a known-good commit (override to float).
+OCAH_NONFREE_COMMIT ?= adddbda
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
@@ -52,6 +55,16 @@ include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
+
+## Generate the filelist for the OCAH repository.
+## Optional overrides: EXTRA_TARGETS (bender -t flags), FLIST_OUT (output path).
+.PHONY: generate_filelist
+generate_filelist:
+	@echo "Generating HW filelist for the OCAH repository"
+	bender script flist-plus $(EXTRA_TARGETS) > $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)
+	@echo "Generated $(if $(FLIST_OUT),$(FLIST_OUT),$(OCAH_ROOT)/hw_filelist.f)"
+
+OCAH_PHONY += generate_filelist
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"

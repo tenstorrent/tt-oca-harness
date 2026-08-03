@@ -21,26 +21,7 @@ module i3ccore_stub
 
     // I3C Core parameters
     parameter int unsigned DatAw = i3c_pkg::DatAw,
-    parameter int unsigned DctAw = i3c_pkg::DctAw,
-
-    parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH,
-    parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH,
-
-    // HCI FIFO depth parameters (active when CONTROLLER_SUPPORT=1)
-    parameter int unsigned HciRespFifoDepth = I3CCSR_pkg::resp_fifo_size,
-    parameter int unsigned HciCmdFifoDepth = I3CCSR_pkg::cmd_fifo_size,
-    parameter int unsigned HciRxFifoDepth = I3CCSR_pkg::rx_fifo_size,
-    parameter int unsigned HciTxFifoDepth = I3CCSR_pkg::tx_fifo_size,
-    parameter int unsigned HciIbiFifoDepth = I3CCSR_pkg::ibi_fifo_size,
-    // TTI FIFO depth parameters (active when TARGET_SUPPORT=1)
-    parameter int unsigned TtiRxDescFifoDepth = I3CCSR_pkg::tti_rx_desc_fifo_size,
-    parameter int unsigned TtiTxDescFifoDepth = I3CCSR_pkg::tti_tx_desc_fifo_size,
-    parameter int unsigned TtiRxFifoDepth = I3CCSR_pkg::tti_rx_fifo_size,
-    parameter int unsigned TtiTxFifoDepth = I3CCSR_pkg::tti_tx_fifo_size,
-    parameter int unsigned TtiIbiFifoDepth = I3CCSR_pkg::tti_ibi_fifo_size,
-
-    localparam int unsigned SelectWidth = (NUM_I3C > 32'd1) ? $clog2(NUM_I3C) : 32'd1,
-    localparam type select_t = logic [SelectWidth-1:0]
+    parameter int unsigned DctAw = i3c_pkg::DctAw
 ) (
     input  wire logic clk_i,
     input  wire logic rst_ni,

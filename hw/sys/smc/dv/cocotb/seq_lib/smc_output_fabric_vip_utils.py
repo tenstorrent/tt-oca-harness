@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -11,13 +14,28 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 
-INBOUND0_FILTER_CONFIG = 0xC001_5000
-INBOUND0_START = 0xC001_5008
-INBOUND0_END = 0xC001_5010
-OUTBOUND0_FILTER_CONFIG = 0xC001_6000
-OUTBOUND0_START = 0xC001_6008
-OUTBOUND0_END = 0xC001_6010
+# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
 
+from smc_reg import (  # noqa: E402
+    SMC_INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR,
+    SMC_INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
+    SMC_INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
+    SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
+)
+
+INBOUND0_FILTER_CONFIG = SMC_INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
+INBOUND0_START = SMC_INBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
+INBOUND0_END = SMC_INBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
+OUTBOUND0_FILTER_CONFIG = SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
+OUTBOUND0_START = SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
+OUTBOUND0_END = SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
+
+# SYS_OUT fabric window (TB axi_sim_mem base; not an SMC CSR address).
 OUTPUT_FABRIC_ADDR = 0x0200_0000
 OUTPUT_FABRIC_ALT_ADDR = 0x0200_0008
 OUTPUT_FABRIC_DATA = 0x1122_3344_5566_7788
@@ -88,6 +106,7 @@ async def jtag_axi_write(
     data: int,
     *,
     allow_error: bool = False,
+    expect_error: bool = False,
     expected_resp: int | None = None,
     update_golden: bool = False,
     memory_region: str | None = None,
@@ -97,7 +116,8 @@ async def jtag_axi_write(
     item.addr = addr
     item.length = 8
     item.wdata = data
-    item.allow_error = allow_error
+    item.allow_error = allow_error or expect_error
+    item.expect_error = expect_error
     item.expected_resp = expected_resp
     item.update_golden = update_golden
     item.memory_region = memory_region
@@ -113,6 +133,7 @@ async def jtag_axi_read(
     *,
     expected: int | None = None,
     allow_error: bool = False,
+    expect_error: bool = False,
     expected_resp: int | None = None,
     check_golden: bool = False,
     memory_region: str | None = None,
@@ -122,7 +143,8 @@ async def jtag_axi_read(
     item.addr = addr
     item.length = 8
     item.expected = expected
-    item.allow_error = allow_error
+    item.allow_error = allow_error or expect_error
+    item.expect_error = expect_error
     item.expected_resp = expected_resp
     item.check_golden = check_golden
     item.memory_region = memory_region

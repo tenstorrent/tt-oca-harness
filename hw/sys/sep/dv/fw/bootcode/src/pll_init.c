@@ -6,7 +6,7 @@
 // Platform-specific notes:
 // - SMC base is read dynamically from sep_cpu_ctrl (via sep_smc_interface.h)
 // - Fuse sense check uses SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS (sep_cpu_ctrl local reg)
-// - OCH does not distinguish Quasar/Keraunos chiplet types; uses a single
+// - OCH does not distinguish between chiplet types; uses a single
 //   PLL lock + mux path (to be refined when chiplet ID is available)
 
 #include "pll_init.h"

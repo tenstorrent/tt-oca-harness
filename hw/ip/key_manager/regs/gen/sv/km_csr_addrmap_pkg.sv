@@ -3,7 +3,7 @@
 package km_csr_addrmap_pkg;
 
 localparam longint unsigned KM_CSR_BASE_ADDR = 64'h0;
-localparam longint unsigned KM_CSR_SIZE = 64'h308;
+localparam longint unsigned KM_CSR_SIZE = 64'h30C;
 
 localparam longint unsigned KM_CSR_VERSION_BASE_ADDR = 64'h0;
 localparam longint unsigned KM_CSR_CTRL_BASE_ADDR = 64'h4;
@@ -100,6 +100,7 @@ localparam longint unsigned KM_CSR_OTP_CLASS_KEY_CPL_6_BASE_ADDR = 64'h2F8;
 localparam longint unsigned KM_CSR_OTP_CLASS_KEY_CPL_7_BASE_ADDR = 64'h2FC;
 localparam longint unsigned KM_CSR_OTP_READ_LOCK_BASE_ADDR = 64'h300;
 localparam longint unsigned KM_CSR_OTP_CHANGE_STATUS_BASE_ADDR = 64'h304;
+localparam longint unsigned KM_CSR_OTP_READ_LOCK_COLD_BASE_ADDR = 64'h308;
 
 
 endpackage;

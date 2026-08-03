@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_rom_interface.sv
@@ -23,30 +19,31 @@
  *
  * @param ROM_ADDR_WIDTH    Word-address width for the ROM (default KM_ROM_MEM_ADDR_WIDTH).
  */
+
 module km_rom_interface import km_intf_pkg::*; #(
     parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH
 ) (
     // Clock and Reset
-    input  wire logic   clk_i,
-    input  wire logic   rst_ni,
+    input  logic   clk_i,
+    input  logic   rst_ni,
 
     // PicoRV32 native memory interface (input from CPU)
-    input  wire logic   mem_valid_i,     // Memory request valid
+    input  logic   mem_valid_i,     // Memory request valid
     output logic        mem_ready_o,     // Memory ready (data available)
-    input  wire logic [31:0] mem_addr_i,      // Byte address
-    input  wire logic [31:0] mem_wdata_i,     // Write data (unused, ROM is read-only)
-    input  wire logic [3:0] mem_wstrb_i,     // Write strobe (unused, ROM is read-only)
-    input  wire logic [3:0] mem_rstrb_i,     // Read strobe (byte lanes consumed by CPU)
+    input  logic [31:0] mem_addr_i,      // Byte address
+    input  logic [31:0] mem_wdata_i,     // Write data (unused, ROM is read-only)
+    input  logic [3:0] mem_wstrb_i,     // Write strobe (unused, ROM is read-only)
+    input  logic [3:0] mem_rstrb_i,     // Read strobe (byte lanes consumed by CPU)
     output logic [31:0] mem_rdata_o,     // Read data
 
     // PicoRV32 look-ahead interface (for prefetching)
-    input  wire logic   mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid)
-    input  wire logic [31:0] mem_la_addr_i,   // Look-ahead address
-    input  wire logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
+    input  logic   mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid)
+    input  logic [31:0] mem_la_addr_i,   // Look-ahead address
+    input  logic [3:0] mem_la_rstrb_i,  // Look-ahead read strobe
 
     // ROM memory interface (exposed at subsystem boundary)
     output km_rom_mem_req_t rom_mem_req_o,
-    input  wire km_rom_mem_rsp_t rom_mem_rsp_i,
+    input  km_rom_mem_rsp_t rom_mem_rsp_i,
 
     // Parity error output (to KMCSR)
     output logic        parity_error_o,    // Parity error detected (pulse)
@@ -198,20 +195,19 @@ module km_rom_interface import km_intf_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////
 
     // ROM request only asserted for look-ahead reads or regular reads
-    `ASSERT(RomReqOnlyForRead_A,
+    `OCAH_OT_ASSERT(RomReqOnlyForRead_A,
         rom_mem_req_o.req |-> (mem_la_read_i || (mem_valid_i && !(|mem_wstrb_i))),
         clk_i, !rst_ni)
 
     // ROM is read-only - writes should be ignored (respond immediately)
-    `ASSERT(RomReadOnly_A,
+    `OCAH_OT_ASSERT(RomReadOnly_A,
         mem_valid_i && |mem_wstrb_i |-> mem_ready_o,
         clk_i, !rst_ni)
 
     // mem_ready only asserts when mem_valid is also asserted
-    `ASSERT(MemReadyOnlyWhenValid_A,
+    `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A,
         mem_ready_o |-> mem_valid_i,
         clk_i, !rst_ni)
 
 endmodule : km_rom_interface
 
-`default_nettype wire

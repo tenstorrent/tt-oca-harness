@@ -54,13 +54,13 @@ static void configure_spi_mux_ot(void) {
 }
 
 static void init_spi_controller(void) {
-    spi_controller__CONTROL_t ctrl;
+    spi_controller__CTRL_t ctrl;
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
-    spi_controller__CONFIGOPTS_t cfg;
+    spi_controller__CFG_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -68,7 +68,7 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
@@ -111,7 +111,7 @@ int main(void) {
     printf("SPI controller enabled: CLKDIV=%d\n", SPI_CLKDIV);
     printf("Flash address: 0x%06x, Read length: %u bytes\n\n", FLASH_READ_ADDR, READ_LEN_BYTES);
 
-    spi_controller__COMMAND_t cmd;
+    spi_controller__CMD_t cmd;
 
     /* ----------------------------------------------------------------
      * Segment 1: TX READ command + 24-bit address (4 bytes total)
@@ -131,7 +131,7 @@ int main(void) {
     uint32_t tx_word = (FLASH_CMD_READ & 0xFF) | (((FLASH_READ_ADDR >> 16) & 0xFF) << 8) |
                        (((FLASH_READ_ADDR >> 8) & 0xFF) << 16) |
                        (((FLASH_READ_ADDR >> 0) & 0xFF) << 24);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), tx_word);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, tx_word);
     printf("  TXDATA=0x%08x (cmd=0x%02x, addr=0x%06x)\n", tx_word, FLASH_CMD_READ, FLASH_READ_ADDR);
 
     cmd.w = 0;
@@ -139,7 +139,7 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low for data phase */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 2; /* TX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=TX, SPEED=Std, LEN=3(4B), CSAAT=1\n");
 
     /* ----------------------------------------------------------------
@@ -156,7 +156,7 @@ int main(void) {
     cmd.f.CSAAT = 0;                /* release CS# after */
     cmd.f.SPEED = 0;                /* Standard SPI */
     cmd.f.DIRECTION = 1;            /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=RX, SPEED=Std, LEN=%u(%uB), CSAAT=0\n", READ_LEN_BYTES - 1, READ_LEN_BYTES);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
@@ -178,7 +178,7 @@ int main(void) {
     for (i = 0; i < num_words; i++) {
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.RXEMPTY) {
-            rx_words[i] = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+            rx_words[i] = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
             printf("  [%u] 0x%08x  (bytes: %02x %02x %02x %02x)\n", i, rx_words[i],
                    (rx_words[i] >> 0) & 0xFF, (rx_words[i] >> 8) & 0xFF, (rx_words[i] >> 16) & 0xFF,
                    (rx_words[i] >> 24) & 0xFF);

@@ -29,7 +29,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (status.f.SHA3_IDLE) {
+        if (status.f.sha3_idle) {
             return 0;
         }
     }
@@ -51,18 +51,18 @@ int main(void) {
     }
 
     kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
-    printf("  CFG_REGWEN.en=%u\n", regwen.f.EN);
-    if (regwen.f.EN != 1) {
+    printf("  CFG_REGWEN.en=%u\n", regwen.f.en);
+    if (regwen.f.en != 1) {
         printf("  FAIL: CFG_SHADOWED is not writable at idle\n");
         pass = 0;
     }
 
     printf("\nStep 1: Valid matching shadowed write\n");
     kmac__CFG_SHADOWED_t valid = {.w = 0};
-    valid.f.KMAC_EN = 0;
-    valid.f.MODE = 0x0;
-    valid.f.KSTRENGTH = 0x2;
-    valid.f.ENTROPY_MODE = 0x1;
+    valid.f.kmac_en = 0;
+    valid.f.mode = 0x0;
+    valid.f.kstrength = 0x2;
+    valid.f.entropy_mode = 0x1;
     write_cfg_shadowed_twice(valid.w);
 
     uint32_t committed = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
@@ -74,12 +74,12 @@ int main(void) {
 
     printf("\nStep 2: Mismatched shadowed write should be rejected\n");
     kmac__CFG_SHADOWED_t first = valid;
-    first.f.MODE = 0x1;
-    first.f.KSTRENGTH = 0x2;
+    first.f.mode = 0x1;
+    first.f.kstrength = 0x2;
 
     kmac__CFG_SHADOWED_t second = valid;
-    second.f.MODE = 0x2;
-    second.f.KSTRENGTH = 0x0;
+    second.f.mode = 0x2;
+    second.f.kstrength = 0x0;
 
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, first.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, second.w);
