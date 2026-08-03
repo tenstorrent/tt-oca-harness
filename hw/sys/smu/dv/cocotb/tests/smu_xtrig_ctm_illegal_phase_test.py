@@ -45,7 +45,9 @@ class smu_xtrig_ctm_illegal_phase_test(smu_base_test):
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, 8)
 
-        dtp_dst_req = dut.u_dut.dtp_xtrig_ctm_dst_req
+        # Real SMU RTL: bare u_dut == smu; wrapper u_dut.u_smu == smu.
+        smu = dut.u_dut.u_smu if hasattr(dut.u_dut, "u_smu") else dut.u_dut
+        dtp_dst_req = smu.dtp_xtrig_ctm_dst_req
 
         async def _settle() -> None:
             await RisingEdge(dut.clk_smu_i)

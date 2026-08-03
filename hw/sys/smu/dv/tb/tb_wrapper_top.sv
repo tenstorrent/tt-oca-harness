@@ -60,7 +60,105 @@ module smu_wrapper_uvm_top (
     output logic        sep_rungate_at_release_valid_o,
     output logic        sep_mpc_reset_run_at_release_o,
     output logic        sep_mpc_xz_at_release_o,
-    output logic [15:0] sep_cla_at_release_o
+    output logic [15:0] sep_cla_at_release_o,
+
+    // ------------------------------------------------------------------
+    // Bare-compatible agent surface (legal product pins / TB observe only).
+    // Enables porting --dut smu green tests onto smu_wrapper without Force.
+    // ------------------------------------------------------------------
+    // Primary JTAG TAP (cocotb OcahJtagTap). TB auto-TLR runs until handoff.
+    input  wire logic jtag_tck,
+    input  wire logic jtag_tms,
+    input  wire logic jtag_trst,
+    input  wire logic jtag_tdi,
+    output logic      jtag_tdo,
+    output logic      jtag_tdo_oen,
+
+    // Reset / aperture observables (bare name aliases)
+    output logic        rst_cold_stable_ref_clk_no,
+    output logic        rst_primary_ref_clk_no,
+    output logic        rst_primary_smc_clk_no,
+    output logic        rst_primary_periph_clk_no,
+    output logic [55:0] sep_global_base_o,
+    output logic [55:0] sep_region_size_o,
+    output logic [55:0] smc_global_base_o,
+    output logic [31:0] smc_region_size_o,
+
+    // DTP DEBUG_CONTROL / IC_RESET observes (hierarchical, no Force)
+    output logic        jtag_boot_stall_ovrd,
+    output logic        jtag_boot_stall,
+    output logic        jtag_ic_reset_ext_ovrd,
+    output logic        jtag_ic_reset_ext_ctrl_n,
+    output logic        jtag_ic_reset_smc_ovrd,
+    output logic        jtag_ic_reset_smc_ctrl_n,
+
+    // Cross-trigger / clock-stop (SMU-level 8-bit product pins)
+    input  wire logic [7:0] xtrig_ctm_dst_req,
+    output logic [7:0]      xtrig_ctm_dst_ack,
+    output logic [7:0]      xtrig_ctm_src_req,
+    input  wire logic [7:0] xtrig_ctm_src_ack,
+    input  wire logic [7:0] xtrig_clk_stop_req,
+    output logic            dtp_stop_clks_o,
+    output logic            dtp_cla_clock_stop_en,
+
+    // Lifecycle / straps / GPIO boot-stall pad drive
+    output logic [7:0]      lc_state_o,
+    output logic            lc_sigint_err_o,
+    output logic [1:0]      lcc_demote_state_1_o,
+    output logic [1:0]      lcc_demote_state_2_o,
+    input  wire logic [63:0] captured_straps_i,
+    input  wire logic        gpio_boot_stall_drive_i,
+
+    output logic [31:0] jtag_ptap_state,
+    output logic [31:0] jtag_ptap_inst_decoded,
+
+    // Flat external SMN AXI subordinate (cocotbext-axi -> smu_axi_in)
+    input  wire logic [7:0]   s_axi_awid,
+    input  wire logic [55:0]  s_axi_awaddr,
+    input  wire logic [7:0]   s_axi_awlen,
+    input  wire logic [2:0]   s_axi_awsize,
+    input  wire logic [1:0]   s_axi_awburst,
+    input  wire logic         s_axi_awlock,
+    input  wire logic [3:0]   s_axi_awcache,
+    input  wire logic [2:0]   s_axi_awprot,
+    input  wire logic [3:0]   s_axi_awqos,
+    input  wire logic [3:0]   s_axi_awregion,
+    input  wire logic [11:0]  s_axi_awuser,
+    input  wire logic         s_axi_awvalid,
+    output logic              s_axi_awready,
+    input  wire logic [63:0]  s_axi_wdata,
+    input  wire logic [7:0]   s_axi_wstrb,
+    input  wire logic         s_axi_wlast,
+    input  wire logic [11:0]  s_axi_wuser,
+    input  wire logic         s_axi_wvalid,
+    output logic              s_axi_wready,
+    output logic [7:0]        s_axi_bid,
+    output logic [1:0]        s_axi_bresp,
+    output logic [11:0]       s_axi_buser,
+    output logic              s_axi_bvalid,
+    input  wire logic         s_axi_bready,
+    input  wire logic [7:0]   s_axi_arid,
+    input  wire logic [55:0]  s_axi_araddr,
+    input  wire logic [7:0]   s_axi_arlen,
+    input  wire logic [2:0]   s_axi_arsize,
+    input  wire logic [1:0]   s_axi_arburst,
+    input  wire logic         s_axi_arlock,
+    input  wire logic [3:0]   s_axi_arcache,
+    input  wire logic [2:0]   s_axi_arprot,
+    input  wire logic [3:0]   s_axi_arqos,
+    input  wire logic [3:0]   s_axi_arregion,
+    input  wire logic [11:0]  s_axi_aruser,
+    input  wire logic         s_axi_arvalid,
+    output logic              s_axi_arready,
+    output logic [7:0]        s_axi_rid,
+    output logic [63:0]       s_axi_rdata,
+    output logic [1:0]        s_axi_rresp,
+    output logic              s_axi_rlast,
+    output logic [11:0]       s_axi_ruser,
+    output logic              s_axi_rvalid,
+    input  wire logic         s_axi_rready,
+
+    output logic [31:0] smu_axi_in_awvalid_count
 );
 
 `ifdef SMU_NO_SEP
@@ -82,43 +180,107 @@ module smu_wrapper_uvm_top (
     // TB glue: clocks / JTAG / AXI / GPIO / CPU mem / observability
     // ------------------------------------------------------------------
 
-    logic tb_jtag_tck;
+    // JTAG: auto-TLR handoff then cocotb owns pins (firmware smoke needs TLR
+    // before agent tests drive OcahJtagTap — no Force).
+    logic tb_jtag_auto_tck;
+    logic tb_jtag_handoff;
     prim_jtag_pkg::jtag_tap_ctrl_t jtag_ptap_client_tap_ctrl;
     logic jtag_ptap_tdi;
     logic jtag_ptap_tdo;
     logic jtag_ptap_tdo_oen;
 
-    // Walk PTAP into Test-Logic-Reset with TMS=1 TCK pulses. Verilator
-    // two-state and VCS X-init both leave the DTP IC_RESET TDR in a state that
-    // can assert SMC cold/fuse overrides (rst_primary never releases → no
-    // fuse_sense_done → CPU never fetches). Pulse at time zero, then again
-    // after TRST (rst_cold_ni) rises so TDR defaults reload with a real
-    // TRST→TCK sequence.
     initial begin
-        tb_jtag_tck = 1'b0;
+        tb_jtag_handoff  = 1'b0;
+        tb_jtag_auto_tck = 1'b0;
         for (int unsigned i = 0; i < 8; i++) begin
-            #5ns tb_jtag_tck = 1'b1;
-            #5ns tb_jtag_tck = 1'b0;
+            #5ns tb_jtag_auto_tck = 1'b1;
+            #5ns tb_jtag_auto_tck = 1'b0;
         end
         wait (rst_cold_ni === 1'b0);
         wait (rst_cold_ni === 1'b1);
         for (int unsigned i = 0; i < 16; i++) begin
-            #5ns tb_jtag_tck = 1'b1;
-            #5ns tb_jtag_tck = 1'b0;
+            #5ns tb_jtag_auto_tck = 1'b1;
+            #5ns tb_jtag_auto_tck = 1'b0;
         end
+        tb_jtag_handoff = 1'b1;
     end
 
     assign jtag_ptap_client_tap_ctrl = '{
-        tms: 1'b1,
-        trst_n: rst_cold_ni,
-        tck: tb_jtag_tck
+        tms:    tb_jtag_handoff ? jtag_tms  : 1'b1,
+        trst_n: tb_jtag_handoff ? jtag_trst : rst_cold_ni,
+        tck:    tb_jtag_handoff ? jtag_tck  : tb_jtag_auto_tck
     };
-    assign jtag_ptap_tdi = 1'b0;
+    assign jtag_ptap_tdi = tb_jtag_handoff ? jtag_tdi : 1'b0;
+    assign jtag_tdo      = jtag_ptap_tdo;
+    assign jtag_tdo_oen  = jtag_ptap_tdo_oen;
 
     smu_axi_xbar_pkg::axi_56_64_req_t  smu_axi_in_req;
     smu_axi_xbar_pkg::axi_56_64_resp_t smu_axi_in_resp;
     smu_axi_xbar_pkg::axi_out_req_t     smu_axi_out_req;
     smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
+
+    // Inbound SMN: flatten cocotbext-axi s_axi_* into product struct (bare parity).
+    assign smu_axi_in_req.aw.id     = s_axi_awid;
+    assign smu_axi_in_req.aw.addr   = s_axi_awaddr;
+    assign smu_axi_in_req.aw.len    = s_axi_awlen;
+    assign smu_axi_in_req.aw.size   = s_axi_awsize;
+    assign smu_axi_in_req.aw.burst  = s_axi_awburst;
+    assign smu_axi_in_req.aw.lock   = s_axi_awlock;
+    assign smu_axi_in_req.aw.cache  = s_axi_awcache;
+    assign smu_axi_in_req.aw.prot   = s_axi_awprot;
+    assign smu_axi_in_req.aw.qos    = s_axi_awqos;
+    assign smu_axi_in_req.aw.region = s_axi_awregion;
+    assign smu_axi_in_req.aw.user   = s_axi_awuser;
+    assign smu_axi_in_req.aw.atop   = '0;
+    assign smu_axi_in_req.aw_valid  = s_axi_awvalid;
+    assign s_axi_awready            = smu_axi_in_resp.aw_ready;
+
+    assign smu_axi_in_req.w.data    = s_axi_wdata;
+    assign smu_axi_in_req.w.strb    = s_axi_wstrb;
+    assign smu_axi_in_req.w.last    = s_axi_wlast;
+    assign smu_axi_in_req.w.user    = s_axi_wuser;
+    assign smu_axi_in_req.w_valid   = s_axi_wvalid;
+    assign s_axi_wready             = smu_axi_in_resp.w_ready;
+
+    assign s_axi_bid                = smu_axi_in_resp.b.id;
+    assign s_axi_bresp              = smu_axi_in_resp.b.resp;
+    assign s_axi_buser              = smu_axi_in_resp.b.user;
+    assign s_axi_bvalid             = smu_axi_in_resp.b_valid;
+    assign smu_axi_in_req.b_ready   = s_axi_bready;
+
+    assign smu_axi_in_req.ar.id     = s_axi_arid;
+    assign smu_axi_in_req.ar.addr   = s_axi_araddr;
+    assign smu_axi_in_req.ar.len    = s_axi_arlen;
+    assign smu_axi_in_req.ar.size   = s_axi_arsize;
+    assign smu_axi_in_req.ar.burst  = s_axi_arburst;
+    assign smu_axi_in_req.ar.lock   = s_axi_arlock;
+    assign smu_axi_in_req.ar.cache  = s_axi_arcache;
+    assign smu_axi_in_req.ar.prot   = s_axi_arprot;
+    assign smu_axi_in_req.ar.qos    = s_axi_arqos;
+    assign smu_axi_in_req.ar.region = s_axi_arregion;
+    assign smu_axi_in_req.ar.user   = s_axi_aruser;
+    assign smu_axi_in_req.ar_valid  = s_axi_arvalid;
+    assign s_axi_arready            = smu_axi_in_resp.ar_ready;
+
+    assign s_axi_rid                = smu_axi_in_resp.r.id;
+    assign s_axi_rdata              = smu_axi_in_resp.r.data;
+    assign s_axi_rresp              = smu_axi_in_resp.r.resp;
+    assign s_axi_rlast              = smu_axi_in_resp.r.last;
+    assign s_axi_ruser              = smu_axi_in_resp.r.user;
+    assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
+    assign smu_axi_in_req.r_ready   = s_axi_rready;
+
+    always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            smu_axi_in_awvalid_count <= '0;
+        end else if (s_axi_awvalid && s_axi_awready) begin
+            smu_axi_in_awvalid_count <= smu_axi_in_awvalid_count + 32'd1;
+        end
+    end
+
+    // BSR scan loopback (bare parity) for EXTEST tests.
+    prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl;
+    logic bsr_out;
 
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
     chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
@@ -164,7 +326,6 @@ module smu_wrapper_uvm_top (
     assign i3c_dct_src = '0;
 
     assign sep_straps = '0;
-    assign smu_axi_in_req = '0;
 
     // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
     assign dut_present_o = 1'b1;
@@ -174,6 +335,9 @@ module smu_wrapper_uvm_top (
     assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
     assign sep_reset_n_o = sep_reset_n;
     assign ext_mailbox_interrupts_o = ext_mailbox_interrupts;
+    // Bare name aliases (ported agent tests)
+    assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
+    assign rst_primary_smc_clk_no     = rst_primary_smc_clk_n;
 
     assign smc_scratch_0_o =
         u_dut.u_smu.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[0];
@@ -472,6 +636,12 @@ module smu_wrapper_uvm_top (
         .scratch0_inject_fire_o ()
     );
 
+
+    // Typed JTAG/IC_RESET observes (packed to bare-compatible bits below)
+    jtag_tap_pkg::tap_state_e                     jtag_ptap_state_e;
+    jtag_inst_reg_pkg::jtag_instruction_decoded_e jtag_ptap_inst_e;
+    jtag_tap_pkg::jtag_ic_reset_default_t         jtag_ic_reset_ext;
+
     // ------------------------------------------------------------------
     // DUT: hw/top/smu_wrapper (logical ports)
     // ------------------------------------------------------------------
@@ -491,9 +661,9 @@ module smu_wrapper_uvm_top (
         .jtag_ptap_client_tdo_o      (jtag_ptap_tdo),
         .jtag_ptap_client_tdo_oen_o  (jtag_ptap_tdo_oen),
 
-        .jtag_bsr_host_scan_ctrl_o (),
-        .jtag_bsr_host_scan_in_i   (1'b0),
-        .jtag_bsr_host_scan_out_o  (),
+        .jtag_bsr_host_scan_ctrl_o (bsr_ctrl),
+        .jtag_bsr_host_scan_in_i   (bsr_out),
+        .jtag_bsr_host_scan_out_o  (bsr_out),
 
         .jtag_stap_io_host_tap_ctrl_o (),
         .jtag_stap_io_host_tdi_i      (1'b0),
@@ -521,16 +691,16 @@ module smu_wrapper_uvm_top (
         .jtag_dft_host_scan_in_i   (1'b0),
         .jtag_dft_host_scan_out_o  (),
 
-        .dtp_stop_clks_o (),
-        .jtag_ptap_state_o (),
-        .jtag_ptap_inst_decoded_o (),
-        .jtag_ic_reset_ext_o (),
+        .dtp_stop_clks_o (dtp_stop_clks_o),
+        .jtag_ptap_state_o (jtag_ptap_state_e),
+        .jtag_ptap_inst_decoded_o (jtag_ptap_inst_e),
+        .jtag_ic_reset_ext_o (jtag_ic_reset_ext),
 
-        .xtrig_ctm_src_req_o (),
-        .xtrig_ctm_src_ack_i ('0),
-        .xtrig_ctm_dst_req_i ('0),
-        .xtrig_ctm_dst_ack_o (),
-        .xtrig_clk_stop_req_i ('0),
+        .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
+        .xtrig_ctm_src_ack_i (xtrig_ctm_src_ack),
+        .xtrig_ctm_dst_req_i (xtrig_ctm_dst_req),
+        .xtrig_ctm_dst_ack_o (xtrig_ctm_dst_ack),
+        .xtrig_clk_stop_req_i (xtrig_clk_stop_req),
 
         .xtrig_ctp_req_out_dout_o (),
         .xtrig_ctp_req_out_dout_en_o (),
@@ -549,7 +719,7 @@ module smu_wrapper_uvm_top (
         .xtrig_ctp_ack_out_din_i ('0),
         .xtrig_ctp_ack_out_din_en_o (),
 
-        .rst_primary_ref_clk_no (),
+        .rst_primary_ref_clk_no (rst_primary_ref_clk_no),
         .rst_primary_smc_clk_no (rst_primary_smc_clk_n),
 
         .smu_axi_in_req_i  (smu_axi_in_req),
@@ -575,10 +745,10 @@ module smu_wrapper_uvm_top (
         .wdt_first_timeout_o (),
         .wdt_second_timeout_o (),
 
-        .smc_global_base_o (),
-        .smc_region_size_o (),
-        .sep_global_base_o (),
-        .sep_region_size_o (),
+        .smc_global_base_o (smc_global_base_o),
+        .smc_region_size_o (smc_region_size_o),
+        .sep_global_base_o (sep_global_base_o),
+        .sep_region_size_o (sep_region_size_o),
 
         .ext_interrupts_i ('0),
         .fuse_sense_done_o,
@@ -586,8 +756,8 @@ module smu_wrapper_uvm_top (
         .skip_mem_repair_o (),
         .ext_boot_seq_done_i (1'b1),
         .temp_interrupt_i (1'b0),
-        .lc_state_o (),
-        .lc_sigint_err_o (),
+        .lc_state_o (lc_state_o),
+        .lc_sigint_err_o (lc_sigint_err_o),
         .ras_bank_chip_o (),
         .ras_bank_instance_o (),
         .ndmreset_request_i ('0),
@@ -623,7 +793,7 @@ module smu_wrapper_uvm_top (
 
         .test_en_i (1'b0),
         .scan_rst_ni (1'b1),
-        .captured_straps_i ('0),
+        .captured_straps_i (captured_straps_i),
 
         // Without an external BISR/MBIST agent the boot sequencer waits forever
         // if these stay low (CPU never fetches ROM).
@@ -639,10 +809,10 @@ module smu_wrapper_uvm_top (
         .sep_reset_n_o (sep_reset_n),
         .sep_cpu_trace_o (sep_cpu_trace),
         .sep_extintsrc_req_i ('0),
-        .lcc_demote_state_1_o (),
-        .lcc_demote_state_2_o (),
+        .lcc_demote_state_1_o (lcc_demote_state_1_o),
+        .lcc_demote_state_2_o (lcc_demote_state_2_o),
         .sep_fuse_sense_done_o,
-        .clk_sep_wdt_i,
+        .clk_sep_wdt_i (clk_smu_i),
         .sep_straps_i (sep_straps),
 
         .i3c_dat_mem_src_i (i3c_dat_src),
@@ -656,5 +826,26 @@ module smu_wrapper_uvm_top (
         .sep_efuse_debug_bus_o (),
         .smc_efuse_debug_bus_o ()
     );
+
+
+    // ------------------------------------------------------------------
+    // Hierarchical observes into u_dut.u_smu (legal TB XMR, no Force)
+    // ------------------------------------------------------------------
+    assign jtag_ptap_state        = 32'(jtag_ptap_state_e);
+    assign jtag_ptap_inst_decoded = 32'(jtag_ptap_inst_e);
+    assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
+    assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
+    assign jtag_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
+    assign jtag_boot_stall      = u_dut.u_smu.boot_stall_jtag_val;
+    assign dtp_cla_clock_stop_en = u_dut.u_smu.dtp_cla_clock_stop_en;
+    assign jtag_ic_reset_smc_ovrd   =
+        u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
+    assign jtag_ic_reset_smc_ctrl_n =
+        u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+    assign rst_primary_periph_clk_no =
+        u_dut.u_smu.u_smc.rst_primary_periph_clk_no;
+
+    // GPIO boot-stall pad bit[60] — drive-1 or Z (no Force)
+    assign gpio_pad_io[60] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
 
 endmodule : smu_wrapper_uvm_top

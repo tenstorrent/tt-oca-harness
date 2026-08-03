@@ -144,7 +144,7 @@ GB) to `SEP_SMC_REGION_ALIAS_BASE=0x0000_0000`.
 **Mailbox challenge-response**: SMC writes a token to an outbound mailbox; SEP
 reads it from its inbound mailbox, verifies, and writes the complement back; SMC
 pops the response. This is the primary real SMC↔SEP interoperability path (see
-`SMU_TB_ARCH.md` and `SMU_CSR.md`).
+`SMU_CSR.md`).
 
 ## Interfaces
 
@@ -291,8 +291,7 @@ The working reference plans in `dv/smu/tb/doc/` (`smu_all_testplan.md`,
 organizes them into SMU-level SMC/SEP/DTP, SMC/SEP and SMC/DTP interoperability,
 and AXI-fabric connectivity streams, plus the SMC dual/Master-BFM reference set
 and the OCAC-aligned compliance mapping. Coverage intent is in `SMU_FCOV.md`;
-register/address detail is in `SMU_CSR.md`; the testbench architecture is in
-`SMU_TB_ARCH.md`.
+register/address detail is in `SMU_CSR.md`.
 
 ## Revision History
 

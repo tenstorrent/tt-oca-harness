@@ -110,6 +110,33 @@ class smu_base_test(uvm_test):
 
         self.logger.info("Step 3: release cold reset and wait for resolved outputs")
         dut.rst_cold_ni.value = 1
+        # Idle bare-compatible agent pins after TB auto-TLR handoff (no Force).
+        for _name, _val in (
+            ("jtag_tck", 0),
+            ("jtag_tms", 0),
+            ("jtag_trst", 1),
+            ("jtag_tdi", 0),
+            ("gpio_boot_stall_drive_i", 0),
+        ):
+            if hasattr(dut, _name):
+                getattr(dut, _name).value = _val
+        if hasattr(dut, "xtrig_ctm_dst_req"):
+            dut.xtrig_ctm_dst_req.value = 0
+        if hasattr(dut, "xtrig_ctm_src_ack"):
+            dut.xtrig_ctm_src_ack.value = 0
+        if hasattr(dut, "xtrig_clk_stop_req"):
+            dut.xtrig_clk_stop_req.value = 0
+        if hasattr(dut, "captured_straps_i"):
+            dut.captured_straps_i.value = 0
+        if hasattr(dut, "s_axi_awvalid"):
+            for _n in (
+                "s_axi_awvalid",
+                "s_axi_wvalid",
+                "s_axi_bready",
+                "s_axi_arvalid",
+                "s_axi_rready",
+            ):
+                getattr(dut, _n).value = 0
         # Extra settle so the TB JTAG TCK reload (after TRST rise) can clear
         # IC_RESET TDR overrides before observers sample fuse/primary reset.
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_cycles + 40)

@@ -134,3 +134,311 @@ tests = [
   "smu_wrapper_elaboration_sep_rtl_test",
   "smu_sep_smoke_test",
 ]
+
+
+[[tests]]
+name = "smu_dft_dtp_boot_stall_test"
+module = "smu_dft_dtp_boot_stall_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_id_width_conversion_test"
+module = "smu_axi_id_width_conversion_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_crossbar_error_handling_test"
+module = "smu_axi_crossbar_error_handling_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_jtag_reset_override_test"
+module = "smu_jtag_reset_override_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smc_reset_ctrl_test"
+module = "smc_reset_ctrl_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_clock_stop_coordination_test"
+module = "smu_clock_stop_coordination_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_xtrig_ctm_remap_test"
+module = "smu_xtrig_ctm_remap_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dft_gpio_boot_stall_test"
+module = "smu_dft_gpio_boot_stall_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_external_port_connectivity_test"
+module = "smu_axi_external_port_connectivity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_atomic_operation_test"
+module = "smu_axi_atomic_operation_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag_smoke_test"
+module = "smu_dtp_jtag_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smc_security_demote_pm_test"
+module = "smc_security_demote_pm_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_boot_stall_jtag_cold_reset_matrix_test"
+module = "smu_boot_stall_jtag_cold_reset_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_smc_multi_domain_test"
+module = "smu_ic_reset_smc_multi_domain_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_dual_domain_illegal_test"
+module = "smu_ic_reset_dual_domain_illegal_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_boot_stall_vs_ic_reset_priority_test"
+module = "smu_boot_stall_vs_ic_reset_priority_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_xtrig_ctm_illegal_phase_test"
+module = "smu_xtrig_ctm_illegal_phase_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_ss_domain_matrix_test"
+module = "smu_ic_reset_ss_domain_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_bsr_extest_loopback_test"
+module = "smu_dtp_bsr_extest_loopback_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["ported", "no_sep", "agent"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Bare SEP=0 green ported onto wrapper TB agent surface (no Force).
+# Requires tb_wrapper_top bare-compatible JTAG/AXI-in/CTM ports.
+[[groups]]
+name = "sep0_ported"
+tests = [
+  "smu_dft_dtp_boot_stall_test",
+  "smu_axi_id_width_conversion_test",
+  "smu_axi_crossbar_error_handling_test",
+  "smu_jtag_reset_override_test",
+  "smc_reset_ctrl_test",
+  "smu_clock_stop_coordination_test",
+  "smu_xtrig_ctm_remap_test",
+  "smu_dft_gpio_boot_stall_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_axi_atomic_operation_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_no_sep_configuration_test",
+  "smc_security_demote_pm_test",
+  "smu_boot_stall_jtag_cold_reset_matrix_test",
+  "smu_ic_reset_smc_multi_domain_test",
+  "smu_ic_reset_dual_domain_illegal_test",
+  "smu_boot_stall_vs_ic_reset_priority_test",
+  "smu_xtrig_ctm_illegal_phase_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_dtp_bsr_extest_loopback_test"
+]

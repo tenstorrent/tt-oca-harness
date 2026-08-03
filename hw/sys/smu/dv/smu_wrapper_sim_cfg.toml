@@ -129,6 +129,9 @@ test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
   "dv/vip/cocotb",
+  # Bare agent catalog is NOT on the global path: that shadows wrapper
+  # env/seq_lib and breaks smoke. sep0_ported shims insert bare paths
+  # only while loading the real RTL agent test module.
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

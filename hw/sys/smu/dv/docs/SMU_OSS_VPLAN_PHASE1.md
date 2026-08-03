@@ -151,7 +151,7 @@ SEP-OTP AXI-Lite error slave (`DECERR`), programmable SMC global-base remap.
 
 ## 6. Environment bring-up (SEP=0 first)
 
-Order matches `docs/SMU_TB_ARCH.md`, constrained to no-SEP:
+Order for SEP=0 bring-up:
 
 1. **Filelist + `tb_top.sv`** — elaborate `smu_uvm_top` with `SEP=0`
 2. **Clocks/resets + SMC scratch/pass observation**

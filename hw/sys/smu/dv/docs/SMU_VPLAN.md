@@ -610,7 +610,6 @@ Notes (honest caveats, not vacuous PASS):
 | `SMU_CSR.md` | CSR / address map reference | Active |
 | `SMU_FCOV.md` | Functional coverage intent | Active **v1.4** (P1–P4 bins) |
 | `SMU_FEATURE_LIST.md` | Skill-1 FEATURE/CHK/EVIDENCE map | Draft **v0.4**; designer approval **pending** |
-| `SMU_TB_ARCH.md` | TB architecture | Active |
 | **§13 (this file)** | Result-reporting policy (scenario + checks) | Active |
 | `../testlists/all.toml` | Runnable groups (`smoke`…`sep0_p4_all`) | Active |
 | `../testlists/{smc,dtp,fabric}.toml` | Enrolled test entries | Active (**62** unique) |

@@ -15,16 +15,67 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_axi_helpers import wait_signal_high
-from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
 from smu_base_test import smu_base_test
 
 from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
+
+def _make_ptap(dut, period_ns: float, *, regs: tuple[str, ...] = ("DEBUG_CONTROL",)) -> OcahJtagTap:
+    """Build OcahJtagTap against real TB JTAG pins (no Force / no fake DUT)."""
+    device = OcahJtagDevice(
+        name="smu_ptap",
+        idcode=0x0000_0001,
+        ir_width=6,
+        idle_delay=2,
+        add_bypass=True,
+    )
+    device.add_reg("IDCODE", 32, 0x01)
+    if "DEBUG_CONTROL" in regs:
+        device.add_reg("DEBUG_CONTROL", 5, 0x18, write=True)
+    if "IC_RESET" in regs:
+        # SMU SEP=0: 69 ports * 2 + hold = 139
+        device.add_reg("IC_RESET", 139, 0x0D, write=True)
+    if "EXTEST" in regs:
+        device.add_reg("EXTEST", 8, 0x04, write=True)
+    jtag = OcahJtagTap(
+        dut,
+        name="smu_ptap",
+        tck_period_ns=period_ns,
+        ir_width=6,
+        tap_type="ptap",
+        signal_map={
+            "tck": "jtag_tck",
+            "tms": "jtag_tms",
+            "tdi": "jtag_tdi",
+            "tdo": "jtag_tdo",
+            "trst": "jtag_trst",
+            "tdo_oen": "jtag_tdo_oen",
+        },
+    )
+    jtag.add_device(device)
+    jtag.init_signals()
+    return jtag
+
+def _pack_debug_control(
+    *,
+    boot_stall: int = 0,
+    boot_stall_ovrd: int = 0,
+    cla_clock_stop_en: int = 0,
+    jtag_clock_stop: int = 0,
+) -> int:
+    # DTP DEBUG_CONTROL TDR bit layout (real DTP TDR).
+    return (
+        ((boot_stall & 0x1) << 0)
+        | ((boot_stall_ovrd & 0x1) << 1)
+        | ((cla_clock_stop_en & 0x1) << 2)
+        | ((jtag_clock_stop & 0x1) << 3)
+    )
 
 @pyuvm.test()
 class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
@@ -34,7 +85,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         dut = cocotb.top
         sb = self.env.scoreboard
 
-        jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
+        jtag = _make_ptap(dut, self.cfg.jtag_period_ns, regs=("DEBUG_CONTROL",))
         await self.cfg.reset_done.wait()
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
@@ -48,7 +99,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         # --- Assert stall; cold reset with TRST high (DEBUG sticky) ---
         await jtag.write(
             "DEBUG_CONTROL",
-            pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
+            _pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
         )
         await ClockCycles(dut.clk_smu_i, 8)
         sb.expect_eq("stall ovrd before cold", int(dut.jtag_boot_stall_ovrd.value), 1, evidence="STALL_TRST_CLEAR")
@@ -111,7 +162,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         # --- Sticky re-assert: must NOT re-gate fuse_reset ---
         await jtag.write(
             "DEBUG_CONTROL",
-            pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
+            _pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
         )
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq("re-assert ovrd", int(dut.jtag_boot_stall_ovrd.value), 1)

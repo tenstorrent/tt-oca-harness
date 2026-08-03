@@ -1,2 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
 `verilator_config
+// Wrapper cocotb/Verilator public-signal scope (observe XMRs only).
+// Mirrors smu_public_scope.vlt plus the production smu_wrapper shell so
+// tests can probe real RTL at dut.u_dut.u_smu.* (no Force / no fake DUT).
+
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"
+public_flat_rw -module "smu_wrapper" -var "*"
+public_flat_rw -module "smu" -var "*"
+public_flat_rw -module "dtp" -var "*"
+public_flat_rw -module "jtag_ptap" -var "*"
+public_flat_rw -module "smc" -var "*"
+public_flat_rw -module "smc_peripherals" -var "*"
+public_flat_rw -module "smc_efuse_wrapper" -var "*"
+public_flat_rw -module "efuse_interface_controller" -var "*"
+public_flat_rw -module "smc_cpu_wrapper" -var "*"
+public_flat_rw -module "smc_4core_cpu" -var "*"
+public_flat_rw -module "smc_1core_cpu" -var "*"

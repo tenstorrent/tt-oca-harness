@@ -12,15 +12,66 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
 from smu_base_test import smu_base_test
 
 from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
+
+def _make_ptap(dut, period_ns: float, *, regs: tuple[str, ...] = ("DEBUG_CONTROL",)) -> OcahJtagTap:
+    """Build OcahJtagTap against real TB JTAG pins (no Force / no fake DUT)."""
+    device = OcahJtagDevice(
+        name="smu_ptap",
+        idcode=0x0000_0001,
+        ir_width=6,
+        idle_delay=2,
+        add_bypass=True,
+    )
+    device.add_reg("IDCODE", 32, 0x01)
+    if "DEBUG_CONTROL" in regs:
+        device.add_reg("DEBUG_CONTROL", 5, 0x18, write=True)
+    if "IC_RESET" in regs:
+        # SMU SEP=0: 69 ports * 2 + hold = 139
+        device.add_reg("IC_RESET", 139, 0x0D, write=True)
+    if "EXTEST" in regs:
+        device.add_reg("EXTEST", 8, 0x04, write=True)
+    jtag = OcahJtagTap(
+        dut,
+        name="smu_ptap",
+        tck_period_ns=period_ns,
+        ir_width=6,
+        tap_type="ptap",
+        signal_map={
+            "tck": "jtag_tck",
+            "tms": "jtag_tms",
+            "tdi": "jtag_tdi",
+            "tdo": "jtag_tdo",
+            "trst": "jtag_trst",
+            "tdo_oen": "jtag_tdo_oen",
+        },
+    )
+    jtag.add_device(device)
+    jtag.init_signals()
+    return jtag
+
+def _pack_debug_control(
+    *,
+    boot_stall: int = 0,
+    boot_stall_ovrd: int = 0,
+    cla_clock_stop_en: int = 0,
+    jtag_clock_stop: int = 0,
+) -> int:
+    # DTP DEBUG_CONTROL TDR bit layout (real DTP TDR).
+    return (
+        ((boot_stall & 0x1) << 0)
+        | ((boot_stall_ovrd & 0x1) << 1)
+        | ((cla_clock_stop_en & 0x1) << 2)
+        | ((jtag_clock_stop & 0x1) << 3)
+    )
 
 @pyuvm.test()
 class smu_clock_stop_coordination_test(smu_base_test):
@@ -29,8 +80,10 @@ class smu_clock_stop_coordination_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
+        # Real SMU RTL: bare u_dut == smu; wrapper u_dut.u_smu == smu.
+        smu = dut.u_dut.u_smu if hasattr(dut.u_dut, "u_smu") else dut.u_dut
 
-        jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
+        jtag = _make_ptap(dut, self.cfg.jtag_period_ns, regs=("DEBUG_CONTROL",))
         await self.cfg.reset_done.wait()
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
@@ -43,7 +96,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
         # CLA enable bit alone must appear on hierarchical observe.
         # CLA fb path (dtp_xtrig_clk_stop_req[0]) stays 0 without real CLA halt —
         # that is observe of the product glue, not Force inject.
-        val_cla = pack_debug_control(cla_clock_stop_en=1)
+        val_cla = _pack_debug_control(cla_clock_stop_en=1)
         await jtag.write("DEBUG_CONTROL", val_cla)
         await ClockCycles(dut.clk_smu_i, 8)
         sb.expect_eq(
@@ -51,7 +104,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
         )
         sb.expect_eq(
             "CLA fb bit[0] idle without halt",
-            int(dut.u_dut.dtp_xtrig_clk_stop_req.value) & 0x1,
+            int(smu.dtp_xtrig_clk_stop_req.value) & 0x1,
             0,
             evidence="CLA_CLK_STOP_LOOP",
         )
@@ -59,7 +112,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
         sb.expect_eq("DEBUG_CONTROL CLA readback", int(rb) & 0xF, val_cla & 0xF)
 
         # JTAG clock-stop drives stop_clks_o through CTN.
-        val_stop = pack_debug_control(jtag_clock_stop=1, cla_clock_stop_en=1)
+        val_stop = _pack_debug_control(jtag_clock_stop=1, cla_clock_stop_en=1)
         await jtag.write("DEBUG_CONTROL", val_stop)
         await ClockCycles(dut.clk_smu_i, 16)
         sb.expect_eq("jtag_clock_stop -> dtp_stop_clks_o", int(dut.dtp_stop_clks_o.value), 1)
@@ -67,13 +120,13 @@ class smu_clock_stop_coordination_test(smu_base_test):
         sb.expect_eq("DEBUG_CONTROL stop readback", int(rb2) & 0xF, val_stop & 0xF)
 
         # Clear JTAG stop; CLA enable may remain.
-        val_clr = pack_debug_control(cla_clock_stop_en=1, jtag_clock_stop=0)
+        val_clr = _pack_debug_control(cla_clock_stop_en=1, jtag_clock_stop=0)
         await jtag.write("DEBUG_CONTROL", val_clr)
         await ClockCycles(dut.clk_smu_i, 16)
         sb.expect_eq("dtp_stop_clks cleared", int(dut.dtp_stop_clks_o.value), 0)
 
         # Remap: TB xtrig_clk_stop_req[7:0] -> DTP[8:1]
-        dtp_clk_stop = dut.u_dut.dtp_xtrig_clk_stop_req
+        dtp_clk_stop = smu.dtp_xtrig_clk_stop_req
         for bit in range(8):
             pat = 1 << bit
             dut.xtrig_clk_stop_req.value = pat
