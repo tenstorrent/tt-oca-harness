@@ -8,7 +8,7 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define TOTAL_GPIOS 64          // BP_GPIO array only has 64 GPIOs (indices 0-63)
+#define TOTAL_GPIOS 61          // BP_GPIO array only has 61 GPIOs (indices 0-60)
 #define GPIO_SKIP_COOL_RESET 64 // GPIO_64 is cool_reset_in, will reset chip if toggled
 #define PAD2SOC_MASK 0x80000000
 

@@ -45,8 +45,8 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     bool ok = true;
     enable_gpio_hw_override(27); /* I3C0 SCL */
     enable_gpio_hw_override(28); /* I3C0 SDA */
-    enable_gpio_hw_override(66); /* I3C1 SCL (unbonded) */
-    enable_gpio_hw_override(67); /* I3C1 SDA (unbonded) */
+    enable_gpio_hw_override(63); /* I3C1 SCL (unbonded) */
+    enable_gpio_hw_override(64); /* I3C1 SDA (unbonded) */
     enable_gpio_hw_override(29); /* I3C2 SCL */
     enable_gpio_hw_override(30); /* I3C2 SDA */
     enable_gpio_hw_override(31); /* I3C3 SCL */
