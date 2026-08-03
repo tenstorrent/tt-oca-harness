@@ -8,9 +8,21 @@
 #include "smc_security.h"
 #include "smc_defines.h"
 
+/* Read the raw 8-bit differentially encoded LC_STATE register value. */
+static uint8_t smc_security_read_lc_state_raw(void) {
+    return (uint8_t)(read_reg(SMC_LC_STATE_REG_ADDR) & SMC_LC_STATE_RAW_MASK);
+}
+
 /* Get the current lifecycle (LC) state from hardware */
 uint8_t smc_security_get_lc_state(void) {
-    return (uint8_t)(read_reg(SMC_LC_STATE_REG_ADDR) & SMC_LC_STATE_MASK);
+    uint8_t raw = smc_security_read_lc_state_raw();
+
+    /* Fail closed: treat differential-encoding integrity errors as INVALID. */
+    if (!SMC_LC_STATE_DIFF_IS_VALID(raw)) {
+        return SMC_LC_STATE_INVALID;
+    }
+
+    return (uint8_t)(raw & SMC_LC_STATE_MASK);
 }
 
 /**
@@ -40,8 +52,14 @@ uint8_t smc_security_is_rma_sop_mode(void) {
 
 /**
  * Check if device security is in invalid state
+ * Includes differential-encoding integrity failures ({~lc, lc} mismatch).
  */
 uint8_t smc_security_is_invalid_mode(void) {
-    uint8_t lc_state = smc_security_get_lc_state();
-    return SMC_LC_STATE_IS_INVALID(lc_state) ? 1 : 0;
+    uint8_t raw = smc_security_read_lc_state_raw();
+
+    if (!SMC_LC_STATE_DIFF_IS_VALID(raw)) {
+        return 1;
+    }
+
+    return SMC_LC_STATE_IS_INVALID(raw & SMC_LC_STATE_MASK) ? 1 : 0;
 }

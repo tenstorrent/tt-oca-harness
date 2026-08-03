@@ -7,7 +7,7 @@ exercises the two OpenTitan crypto engines over the real CPU->fabric path on bar
 ``sep``:
 
   * HMAC (SHA-256 mode): hashes empty / "abc" / "Hello OTBN." and compares each
-    HW digest against an independent software SHA-256 (fw/drivers/sha256.c), plus
+    HW digest against an independent software SHA-256 (fw/tests/common/sha256.c), plus
     no done-timeout and HMAC ERR_CODE == 0.
   * KMAC (KMAC128/cSHAKE): masked hash of "test" with a zero key using SOFTWARE
     entropy (no EDN, cannot hang) -- checks done, ERR_CODE == 0, and the unmasked

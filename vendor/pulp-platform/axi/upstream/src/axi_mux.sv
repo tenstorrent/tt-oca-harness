@@ -137,14 +137,14 @@ module axi_mux #(
     );
 // Validate parameters.
 // pragma translate_off
-    `ASSERT_INIT(CorrectIdWidthSlvAw, $bits(slv_reqs_i[0].aw.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthSlvB, $bits(slv_resps_o[0].b.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthSlvAr, $bits(slv_reqs_i[0].ar.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthSlvR, $bits(slv_resps_o[0].r.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthMstAw, $bits(mst_req_o.aw.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthMstB, $bits(mst_resp_i.b.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthMstAr, $bits(mst_req_o.ar.id) == SlvAxiIDWidth)
-    `ASSERT_INIT(CorrectIdWidthMstR, $bits(mst_resp_i.r.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthSlvAw, $bits(slv_reqs_i[0].aw.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthSlvB, $bits(slv_resps_o[0].b.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthSlvAr, $bits(slv_reqs_i[0].ar.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthSlvR, $bits(slv_resps_o[0].r.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthMstAw, $bits(mst_req_o.aw.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthMstB, $bits(mst_resp_i.b.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthMstAr, $bits(mst_req_o.ar.id) == SlvAxiIDWidth)
+    `OCAH_PULP_ASSERT_INIT(CorrectIdWidthMstR, $bits(mst_resp_i.r.id) == SlvAxiIDWidth)
 // pragma translate_on
 
   // other non degenerate cases

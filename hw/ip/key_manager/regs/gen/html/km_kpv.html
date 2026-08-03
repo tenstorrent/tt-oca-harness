@@ -29,10 +29,10 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:21</td><td>rsvd_31_21</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>20:17</td><td>last_dword</td><td>RW</td><td>0x0</td><td>Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.</td></tr>
-<tr><td>16:9</td><td>dest_valid</td><td>RW</td><td>0x0</td><td>Which crypto block may consume this key. Firmware enforced.<br>bit 0: HMAC-SHA2 engine<br>bit 1: KMAC-SHA3 engine<br>bit 2: AES engine<br>bit 3: OTBN engine<br>bit 4: Adams Bridge ML-DSA seed<br>bit 5: Adams Bridge ML-KEM seed D<br>bit 6: Adams Bridge ML-KEM seed Z<br>bit 7: Adams Bridge ML-KEM message</td></tr>
-<tr><td>8:7</td><td>rsvd_8_7</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>16:7</td><td>rsvd_16_7</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>6:4</td><td>extend</td><td>RW</td><td>0x0</td><td>Zero-indexed number of additional slots for wide keys. Firmware enforced.</td></tr>
-<tr><td>3:2</td><td>rsvd_3_2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>rsvd_3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>erase</td><td>RW</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler) and the slot CTRL register is cleared.<br>Hardware self-clears this bit when the erase completes. Not blocked by<br>lock_write or lock_use.</td></tr>
 <tr><td>1</td><td>lock_use</td><td>RW</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.</td></tr>
 <tr><td>0</td><td>lock_write</td><td>RW</td><td>0x0</td><td>Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.</td></tr>
 </table>

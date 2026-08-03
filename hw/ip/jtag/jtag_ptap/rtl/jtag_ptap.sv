@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // JTAG Primary TAP
-//
-//-----------------------------------------------------------------------------
-
 
 module jtag_ptap
     import prim_jtag_pkg::*;
@@ -234,8 +230,8 @@ module jtag_ptap
     // Any-slice enable drives TAP-level IC_RESET instruction decode and CAPS reporting.
     localparam bit IC_RESET_ENABLE = IC_RESET_SMC_ENABLE | IC_RESET_SEP_ENABLE | IC_RESET_EXT_ENABLE;
 
-    // Enable-polarity feat_ctrl: any required enable low asserts security_disable
-    // (matches DTP_VPLAN / smu_dtp_feat_ctrl_gate_matrix_test golden).
+    // feat_ctrl_i is enable-polarity (1 = feature enabled): a bridge is disabled
+    // whenever any one of its required enables is deasserted.
     assign smc_jtag2axi_security_disable = !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug;
     assign smc_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug ||
                                                !feat_ctrl_i.ap_debug;
@@ -657,7 +653,7 @@ module jtag_ptap
     //--------------------------------------------------------------------------
     if (IC_RESET_SMC_ENABLE) begin : gen_ic_reset_smc_pack
         ic_reset_smc_t smc_width_probe;
-        `ASSERT_STATIC_LINT_ERROR(IcResetSmcOvrdValWidthMatch_A,
+        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetSmcOvrdValWidthMatch_A,
                                   $bits(smc_width_probe.ovrd) == $bits(smc_width_probe.val))
 
         ic_reset_smc_t smc_w;
@@ -670,7 +666,7 @@ module jtag_ptap
 
     if (IC_RESET_SEP_ENABLE) begin : gen_ic_reset_sep_pack
         ic_reset_sep_t sep_width_probe;
-        `ASSERT_STATIC_LINT_ERROR(IcResetSepOvrdValWidthMatch_A,
+        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetSepOvrdValWidthMatch_A,
                                   $bits(sep_width_probe.ovrd) == $bits(sep_width_probe.val))
 
         ic_reset_sep_t sep_w;
@@ -683,7 +679,7 @@ module jtag_ptap
 
     if (IC_RESET_EXT_ENABLE) begin : gen_ic_reset_ext_pack
         ic_reset_ext_t ext_width_probe;
-        `ASSERT_STATIC_LINT_ERROR(IcResetExtOvrdValWidthMatch_A,
+        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetExtOvrdValWidthMatch_A,
                                   $bits(ext_width_probe.ovrd) == $bits(ext_width_probe.val))
 
         ic_reset_ext_t ext_w;

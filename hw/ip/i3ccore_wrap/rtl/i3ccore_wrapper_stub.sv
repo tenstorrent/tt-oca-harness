@@ -90,7 +90,12 @@ module i3ccore_wrapper #(
     input  wire logic [NUM_I3C-1:0]   dat_mem_src_i,
     output logic      [NUM_I3C-1:0]   dat_mem_sink_o,
     input  wire logic [NUM_I3C-1:0]   dct_mem_src_i,
-    output logic      [NUM_I3C-1:0]   dct_mem_sink_o
+    output logic      [NUM_I3C-1:0]   dct_mem_sink_o,
+    // I3C RLT (reverse-lookup table) memory interface (dual-port, NUM_I3C instances)
+    // rlt_mem_src_t:  {a_rdata[DatAw-1:0], b_rdata[DatAw-1:0]}
+    // rlt_mem_sink_t: {a_{req,write,addr[6:0],wdata[DatAw-1:0],wmask[DatAw-1:0]}, b_{...}}
+    input  wire logic [NUM_I3C-1:0]   rlt_mem_src_i,
+    output logic      [NUM_I3C-1:0]   rlt_mem_sink_o
 );
 
   assign awready_o                    = '0;
@@ -113,5 +118,6 @@ module i3ccore_wrapper #(
   assign escalated_reset_o            = '0;
   assign dat_mem_sink_o               = '0;
   assign dct_mem_sink_o               = '0;
+  assign rlt_mem_sink_o               = '0;
 
 endmodule

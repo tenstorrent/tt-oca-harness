@@ -65,7 +65,7 @@ module cdc_fifo_2phase #(
 
   // Check the invariants.
   `ifndef COMMON_CELLS_ASSERTS_OFF
-  `ASSERT_INIT(log_depth_0, LOG_DEPTH > 0)
+  `OCAH_PULP_ASSERT_INIT(log_depth_0, LOG_DEPTH > 0)
   `endif
 
   localparam int PtrWidth = LOG_DEPTH+1;

@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent
-//
+
 // Wrapper to adapt sep_system_peripherals_xbar (struct-based) to sep_pkg AXI req/resp types
 
-
 module sep_system_peripherals_xbar_wrapper
-  import sep_system_peripherals_xbar_pkg::*;
 
     `include "axi/assign.svh"
 (
@@ -37,18 +34,18 @@ module sep_system_peripherals_xbar_wrapper
     // =========================================================================
 
     // Initiator ports (inputs to xbar) - 5-bit ID (MaxInputIdW), 56-bit addr
-    axi64_req_t       sep_local_from_remap_req;
-    axi64_resp_t      sep_local_from_remap_resp;
-    axi64_req_t       smn_inbound_req;
-    axi64_resp_t      smn_inbound_resp;
+    sep_system_peripherals_xbar_pkg::axi64_req_t       sep_local_from_remap_req;
+    sep_system_peripherals_xbar_pkg::axi64_resp_t      sep_local_from_remap_resp;
+    sep_system_peripherals_xbar_pkg::axi64_req_t       smn_inbound_req;
+    sep_system_peripherals_xbar_pkg::axi64_resp_t      smn_inbound_resp;
 
     // Target ports (outputs from xbar) - 6-bit ID (XbarOutputIdW), 56-bit addr
-    axi_out_req_t        smn_inbound_from_xbar_axi_req;
-    axi_out_resp_t       smn_inbound_from_xbar_axi_resp;
-    axi_lite64_req_t     mailbox_req;
-    axi_lite64_resp_t    mailbox_resp;
-    axi_lite64_req_t     system_csr_req;
-    axi_lite64_resp_t    system_csr_resp;
+    sep_system_peripherals_xbar_pkg::axi_out_req_t        smn_inbound_from_xbar_axi_req;
+    sep_system_peripherals_xbar_pkg::axi_out_resp_t       smn_inbound_from_xbar_axi_resp;
+    sep_system_peripherals_xbar_pkg::axi_lite64_req_t     mailbox_req;
+    sep_system_peripherals_xbar_pkg::axi_lite64_resp_t    mailbox_resp;
+    sep_system_peripherals_xbar_pkg::axi_lite64_req_t     system_csr_req;
+    sep_system_peripherals_xbar_pkg::axi_lite64_resp_t    system_csr_resp;
 
     // =========================================================================
     // Input port assignments (sep_pkg -> xbar_pkg)
@@ -107,6 +104,7 @@ module sep_system_peripherals_xbar_wrapper
     // Verify sep_pkg types match sep_system_peripherals_xbar_pkg types
     // =========================================================================
 
+`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
     // Input ports
     initial begin : g_input_type_assertions
         // sep_local_from_remap (3-bit ID input, xbar uses 5-bit - zero-extension is OK)
@@ -166,5 +164,6 @@ module sep_system_peripherals_xbar_wrapper
         assert ($bits(smn_inbound_from_xbar_axi_resp_i.r.user)  == $bits(smn_inbound_from_xbar_axi_resp.r.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR R USER width mismatch");
         assert ($bits(smn_inbound_from_xbar_axi_resp_i.b.user)  == $bits(smn_inbound_from_xbar_axi_resp.b.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR B USER width mismatch");
     end
+`endif  // SYNTHESIS
 
 endmodule : sep_system_peripherals_xbar_wrapper

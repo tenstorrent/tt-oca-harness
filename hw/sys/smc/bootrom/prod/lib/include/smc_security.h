@@ -20,10 +20,23 @@
 #define SMC_LC_STATE_TEST_DEV 0x0          /* 4'b0000 - Test/Development mode */
 #define SMC_LC_STATE_PROD 0x1              /* 4'b0001 - Production mode */
 #define SMC_LC_STATE_PROD_END 0x8          /* 4'b1000 - Production end mode */
+#define SMC_LC_STATE_INVALID 0xF           /* 4'b1111 - Invalid / encoding error */
 #define SMC_LC_STATE_RMA_SOP_MASK 0xE      /* 4'b001X - RMA SoP mask (bits 3:1) */
 #define SMC_LC_STATE_RMA_SOP_VALUE 0x2     /* 4'b0010/0011 - RMA SoP pattern */
 #define SMC_LC_STATE_RMA_CHIPLET_MASK 0xC  /* 4'b01XX - RMA Chiplet mask (bits 3:2) */
 #define SMC_LC_STATE_RMA_CHIPLET_VALUE 0x4 /* 4'b0100-0111 - RMA Chiplet pattern */
+
+/*
+ * SEP sends LC_STATE differentially encoded as an 8-bit value:
+ *   {~lc_state[3:0], lc_state[3:0]}
+ * SMC latches the full byte in CHIP_CONFIG.LC_STATE; the low nibble is the
+ * decoded lifecycle value when the high nibble equals its bitwise complement.
+ */
+#define SMC_LC_STATE_RAW_MASK 0xFF
+#define SMC_LC_STATE_NIBBLE_MASK 0xF
+#define SMC_LC_STATE_DIFF_IS_VALID(raw) \
+    (((((uint8_t)(raw)) >> 4) & SMC_LC_STATE_NIBBLE_MASK) == \
+     ((uint8_t)(~(uint8_t)(raw)) & SMC_LC_STATE_NIBBLE_MASK))
 
 /* Lifecycle state check helper macros */
 #define SMC_LC_STATE_IS_TEST_DEV(lc_state) ((lc_state) == SMC_LC_STATE_TEST_DEV)
@@ -52,7 +65,8 @@
 
 /**
  * Get the current lifecycle (LC) state from hardware
- * @return 4-bit LC state value
+ * @return 4-bit LC state value, or SMC_LC_STATE_INVALID if the differentially
+ *         encoded register value fails integrity (high nibble != ~low nibble)
  */
 uint8_t smc_security_get_lc_state(void);
 

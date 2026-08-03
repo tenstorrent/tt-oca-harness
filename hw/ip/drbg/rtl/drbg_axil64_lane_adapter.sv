@@ -305,24 +305,24 @@ module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
         endcase
     end
 
-    `ASSERT_INIT(Axil64ReqWidthValid_A, axil64_req_width == $bits(drbg_axil64_req_t))
-    `ASSERT_INIT(Axil64RspWidthValid_A, axil64_rsp_width == $bits(drbg_axil64_resp_t))
-    `ASSERT_INIT(Axil32ReqWidthValid_A, axil32_req_width == $bits(drbg_axil32_req_t))
-    `ASSERT_INIT(Axil32RspWidthValid_A, axil32_rsp_width == $bits(drbg_axil32_resp_t))
-    `ASSERT(UnsupportedBlocksForwarding_A,
+    `OCAH_OT_ASSERT_INIT(Axil64ReqWidthValid_A, axil64_req_width == $bits(drbg_axil64_req_t))
+    `OCAH_OT_ASSERT_INIT(Axil64RspWidthValid_A, axil64_rsp_width == $bits(drbg_axil64_resp_t))
+    `OCAH_OT_ASSERT_INIT(Axil32ReqWidthValid_A, axil32_req_width == $bits(drbg_axil32_req_t))
+    `OCAH_OT_ASSERT_INIT(Axil32RspWidthValid_A, axil32_rsp_width == $bits(drbg_axil32_resp_t))
+    `OCAH_OT_ASSERT(UnsupportedBlocksForwarding_A,
         unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))
-    `ASSERT(ReadForwardingSinglePulse_A,
+    `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A,
         forwarded_read_pulse_o |-> state_q == StReadReq)
-    `ASSERT(WriteForwardingSinglePulse_A,
+    `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A,
         forwarded_write_pulse_o |-> state_q == StWriteReq)
-    `ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
-    `ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
-    `ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)
-    `ASSERT_KNOWN(Axil64BRespKnown_A, axil64_rsp_o.b.resp)
-    `ASSERT_KNOWN(Axil64ArReadyKnown_A, axil64_rsp_o.ar_ready)
-    `ASSERT_KNOWN(Axil64RValidKnown_A, axil64_rsp_o.r_valid)
-    `ASSERT_KNOWN(Axil64RRespKnown_A, axil64_rsp_o.r.resp)
-    `ASSERT_KNOWN(Axil64RDataKnown_A, axil64_rsp_o.r.data)
+    `OCAH_OT_ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
+    `OCAH_OT_ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
+    `OCAH_OT_ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)
+    `OCAH_OT_ASSERT_KNOWN(Axil64BRespKnown_A, axil64_rsp_o.b.resp)
+    `OCAH_OT_ASSERT_KNOWN(Axil64ArReadyKnown_A, axil64_rsp_o.ar_ready)
+    `OCAH_OT_ASSERT_KNOWN(Axil64RValidKnown_A, axil64_rsp_o.r_valid)
+    `OCAH_OT_ASSERT_KNOWN(Axil64RRespKnown_A, axil64_rsp_o.r.resp)
+    `OCAH_OT_ASSERT_KNOWN(Axil64RDataKnown_A, axil64_rsp_o.r.data)
 
 endmodule : drbg_axil64_lane_adapter
 

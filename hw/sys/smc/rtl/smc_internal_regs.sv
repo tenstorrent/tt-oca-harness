@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SMC Internal Registers Module
-//
-//-----------------------------------------------------------------------------
 
 module smc_internal_regs
 	#(
@@ -149,6 +146,10 @@ module smc_internal_regs
 
 	assign cg_ctrl_hysteresis_o = cg_ctrl_hysteresis;
 
+	// Outstanding-transaction bound for axi_cg_snoop
+	// per-master-port axi_lite_mux that gates transactions to them is sized by XbarCfg.MaxSlvTrans
+	localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
+
 	// DFD config from the DFT/DFD CSR block
 	logic [dfd_cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
 	smc_pkg::dfd_enable_t                   dfd_enables;
@@ -163,7 +164,7 @@ module smc_internal_regs
 	logic mailbox_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) mailbox_cg (
@@ -230,7 +231,7 @@ module smc_internal_regs
 	logic outbound_filter_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) outbound_filter_reg_cg (
@@ -400,7 +401,7 @@ module smc_internal_regs
 	logic inbound_filter_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) inbound_filter_reg_cg (
@@ -555,7 +556,7 @@ module smc_internal_regs
 	logic mR_local_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) mmode_remap_cg (
@@ -654,7 +655,7 @@ module smc_internal_regs
 	logic xR_local_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) xvisor_remap_cg (
@@ -753,7 +754,7 @@ module smc_internal_regs
 	logic aR_local_clk;
 
 	axi_cg_snoop #(
-		.OutstandingTx(1), // 1 read and 1 write for AXI-Lite
+		.OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
 		.DenyDelay(1),
 		.HystWidth(smc_pkg::CG_HYSTERESIS_W)
 	) alias_remap_cg (

@@ -38,7 +38,7 @@ module stream_mux #(
   assign oup_valid_o  = inp_valid_i[inp_sel_i];
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
-  `ASSERT_INIT(n_inp_0, N_INP >= 1, "The number of inputs must be at least 1!")
+  `OCAH_PULP_ASSERT_INIT(n_inp_0, N_INP >= 1, "The number of inputs must be at least 1!")
 `endif
 
 endmodule

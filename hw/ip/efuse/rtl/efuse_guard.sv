@@ -164,9 +164,9 @@ module efuse_guard
 
   // MSB OF THE EFUSE_FIELD MAP ADDR WIDTH MUST BE 0
   // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_addr_checks
-  //   `ASSERT_INIT(AddrWidthCheckStart_A,
+  //   `OCAH_OT_ASSERT_INIT(AddrWidthCheckStart_A,
   //               (efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0))
-  //   `ASSERT_INIT(AddrWidthCheckEnd_A,
+  //   `OCAH_OT_ASSERT_INIT(AddrWidthCheckEnd_A,
   //               (efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0))
   // end
 

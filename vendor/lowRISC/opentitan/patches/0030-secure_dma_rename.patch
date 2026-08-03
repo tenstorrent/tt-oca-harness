@@ -112,11 +112,11 @@ index e4d5abd..056fae0 100644
        hw2reg.error_code.src_addr_error.de = 1'b1;
        hw2reg.error_code.dst_addr_error.de = 1'b1;
 @@ -1552,7 +1561,7 @@ module dma
-   `ASSERT_KNOWN(SysValidKnownO_A, sys_o.vld_vec)
+   `OCAH_OT_ASSERT_KNOWN(SysValidKnownO_A, sys_o.vld_vec)
  
    // Alert assertions for reg_we onehot check
--  `ASSERT_PRIM_REG_WE_ONEHOT_ERROR_TRIGGER_ALERT(RegWeOnehotCheck_A, u_dma_reg, alert_tx_o[0])
-+  `ASSERT_PRIM_REG_WE_ONEHOT_ERROR_TRIGGER_ALERT(RegWeOnehotCheck_A, u_secure_dma_reg, alert_tx_o[0])
+-  `OCAH_OT_ASSERT_PRIM_REG_WE_ONEHOT_ERROR_TRIGGER_ALERT(RegWeOnehotCheck_A, u_dma_reg, alert_tx_o[0])
++  `OCAH_OT_ASSERT_PRIM_REG_WE_ONEHOT_ERROR_TRIGGER_ALERT(RegWeOnehotCheck_A, u_secure_dma_reg, alert_tx_o[0])
  
    // Handshake interrupt enable register must be expanded if there are more than 32 handshake
    // trigger wires

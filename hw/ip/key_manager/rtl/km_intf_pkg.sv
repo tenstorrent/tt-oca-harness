@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_intf_pkg.sv
@@ -18,6 +14,7 @@
  *          - SEP OTP data interface struct.
  *          - Full address map constants for internal and external peripherals.
  */
+
 package km_intf_pkg;
 
     `include "axi/typedef.svh"
@@ -196,7 +193,7 @@ package km_intf_pkg;
      * `tuser` is the per-beat sideband carried on drbg_pkg::drbg_axis_req_t
      * (FIPS provenance for post-CSRNG DRBG output). KM does not consume
      * `tuser` but must mirror the producer struct layout so the port
-     * connection at sep_crypto.u_key_manager.drbg_axis_req_i is not a
+     * connection at sep_crypto.u_key_manager_s3c_scan.drbg_axis_req_i is not a
      * width-mismatched (and thus bit-shifted) bind.
      */
     typedef struct packed {
@@ -238,4 +235,3 @@ package km_intf_pkg;
 
 endpackage : km_intf_pkg
 
-`default_nettype wire

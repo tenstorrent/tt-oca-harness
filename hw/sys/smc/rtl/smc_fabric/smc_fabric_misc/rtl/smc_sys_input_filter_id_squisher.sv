@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // System Input Filter + ID Squisher for System Management Controller
-//
-//-----------------------------------------------------------------------------
-
 
 module smc_sys_input_filter_id_squisher
 #(
@@ -32,7 +28,8 @@ module smc_sys_input_filter_id_squisher
     input  filter_ctrl_reg_pkg::filter_ctrl__out_t      filter_ctrl_i   [NumFilters],
     output filter_ctrl_reg_pkg::filter_ctrl__in_t       filter_status_o [NumFilters],
 
-    output axi_filter_pkg::filter_debug_t                filter_debug_o
+    output logic [$clog2(NumFilters)-1:0]               write_filter_hit_debug_o,
+    output logic [$clog2(NumFilters)-1:0]               read_filter_hit_debug_o
 );
 
     smc_pkg::smc_sys_in_56_64_6_12_axi_req_t    axi_filtered_req;
@@ -92,7 +89,8 @@ module smc_sys_input_filter_id_squisher
         .axi_filtered_out_req_o(axi_filtered_req),
         .axi_filtered_out_resp_i(axi_filtered_resp),
 
-        .filter_debug_o(filter_debug_o)
+        .write_filter_hit_debug_o(write_filter_hit_debug_o),
+        .read_filter_hit_debug_o(read_filter_hit_debug_o)
     );
 
     //--------------//

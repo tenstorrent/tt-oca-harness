@@ -261,20 +261,20 @@ module uart_wrap
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckNumUarts_A, NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MAX_NUM_UARTS)
+    `OCAH_OT_ASSERT_INIT(paramCheckNumUarts_A, NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MAX_NUM_UARTS)
 
-    `ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
-    `ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)
-    `ASSERT_KNOWN(UartEnKnownO_A, uart_en_o)
-    `ASSERT_KNOWN(UartTxKnownO_A, uart_tx_o)
-    `ASSERT_KNOWN(UartRtsKnownO_A,  uart_rts_no)
-    `ASSERT_KNOWN(UartDtrKnownO_A,  uart_dtr_no)
-    `ASSERT_KNOWN(UartOut1KnownO_A, uart_out1_no)
-    `ASSERT_KNOWN(UartOut2KnownO_A, uart_out2_no)
-    `ASSERT_KNOWN(UartRdyKnownO_A, uart_rxrdy_o)
-    `ASSERT_KNOWN(UartTdyKnownO_A, uart_txrdy_o)
-    `ASSERT_KNOWN(UartErrKnownO_A, uart_err_o)
-    `ASSERT_KNOWN(UartIrqKnownO_A,      uart_irq_o)
-    `ASSERT_KNOWN(LogEngineIrqKnownO_A, log_engine_irq_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)
+    `OCAH_OT_ASSERT_KNOWN(UartEnKnownO_A, uart_en_o)
+    `OCAH_OT_ASSERT_KNOWN(UartTxKnownO_A, uart_tx_o)
+    `OCAH_OT_ASSERT_KNOWN(UartRtsKnownO_A,  uart_rts_no)
+    `OCAH_OT_ASSERT_KNOWN(UartDtrKnownO_A,  uart_dtr_no)
+    `OCAH_OT_ASSERT_KNOWN(UartOut1KnownO_A, uart_out1_no)
+    `OCAH_OT_ASSERT_KNOWN(UartOut2KnownO_A, uart_out2_no)
+    `OCAH_OT_ASSERT_KNOWN(UartRdyKnownO_A, uart_rxrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(UartTdyKnownO_A, uart_txrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(UartErrKnownO_A, uart_err_o)
+    `OCAH_OT_ASSERT_KNOWN(UartIrqKnownO_A,      uart_irq_o)
+    `OCAH_OT_ASSERT_KNOWN(LogEngineIrqKnownO_A, log_engine_irq_o)
 
 endmodule

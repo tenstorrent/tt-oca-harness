@@ -1,52 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//------------------------------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-//
+
 // SEP Reset Controller
 //
 // Provides software-controllable reset for KM and crypto accelerators.
 // Each bit in the SW_RESET register drives a prim_rst_sync synchronizer
 // whose output is able to be overridden by JTAG overrides.
 //
-// Register map defined in hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
+// Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
 //   Bit 1: otbn_sw_rst     - write 1 to release OTBN from reset (0=hold)
 //   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
 //   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
 //   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
-//------------------------------------------------------------------------------
-
-`default_nettype none
 
 `include "prim_assert.sv"
 
 module sep_reset_ctrl
-    import sep_pkg::*;
-    import sep_reset_ctrl_reg_pkg::*;
     (
-        input  wire logic   clk_i,
+        input  logic   clk_i,
 
         // Aggregated WDT Resets from SMC and SEP
-        input  wire logic   wdt_rst_ni,
+        input  logic   wdt_rst_ni,
 
         // JTAG SEP Reset Control
-        input wire sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
+        input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 
         // Intermediate reset signal (before JTAG override) for efuse sensing being done
-        input  wire logic   sep_intermediate_reset_ni,
+        input  logic   sep_intermediate_reset_ni,
         // Reset signal (after JTAG override) for efuse sensing being done
         output logic        sep_reset_no,
 
         // AXI4 slave (full AXI from top-level SEP local xbar). An internal
         // axi_to_axi_lite converter feeds the AXI-Lite reg block
-        input  wire sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,
+        input  sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,
         output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_reset_ctrl_axi_resp_o,
 
         // DFT
-        input  wire logic   test_en_i,
-        input  wire logic   scan_rst_ni,
+        input  logic   test_en_i,
+        input  logic   scan_rst_ni,
 
         // sep_reset_n AND wdt_rst_ni
         output logic        sep_cpu_reset_no,
@@ -92,14 +85,14 @@ module sep_reset_ctrl
     // =========================================================================
     // Generated register block
     // =========================================================================
-    sep_reset_ctrl__out_t hwif_out;
+    sep_reset_ctrl_reg_pkg::sep_reset_ctrl__out_t hwif_out;
 
     sep_reset_ctrl_reg u_reg (
         .clk            (clk_i),
         .arst_n         (sep_reset_n),
         .s_axil_awready (axil_resp.aw_ready),
         .s_axil_awvalid (axil_req.aw_valid),
-        .s_axil_awaddr  (axil_req.aw.addr[SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_awaddr  (axil_req.aw.addr[sep_reset_ctrl_reg_pkg::SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
         .s_axil_awprot  (axil_req.aw.prot),
         .s_axil_wready  (axil_resp.w_ready),
         .s_axil_wvalid  (axil_req.w_valid),
@@ -110,7 +103,7 @@ module sep_reset_ctrl
         .s_axil_bresp   (axil_resp.b.resp),
         .s_axil_arready (axil_resp.ar_ready),
         .s_axil_arvalid (axil_req.ar_valid),
-        .s_axil_araddr  (axil_req.ar.addr[SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_araddr  (axil_req.ar.addr[sep_reset_ctrl_reg_pkg::SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
         .s_axil_arprot  (axil_req.ar.prot),
         .s_axil_rready  (axil_req.r_ready),
         .s_axil_rvalid  (axil_resp.r_valid),
@@ -152,4 +145,3 @@ module sep_reset_ctrl
 
 endmodule : sep_reset_ctrl
 
-`default_nettype wire

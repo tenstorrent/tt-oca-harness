@@ -39,9 +39,7 @@ class SmcAxilDriver(uvm_driver):
         dut = self.dut
         signals = {
             "dtp_csr_active":    dut.tb_axil_dtp_csr_active,
-            "pll_active":        dut.tb_axil_pll_active,
-            "pvt_active":        dut.tb_axil_pvt_active,
-            "extension_active":  dut.tb_axil_extension_active,
+            "external_active":   dut.tb_axil_external_active,
             "efuse_bank_active": dut.tb_axil_efuse_bank_active,
             "any_master_active": dut.tb_axil_any_master_active,
         }

@@ -60,8 +60,8 @@ int main(void) {
            "gate).\n\n");
 
     int pass = 1;
-    spi_controller__CONTROL_t ctrl;
-    spi_controller__CONFIGOPTS_t cfg;
+    spi_controller__CTRL_t ctrl;
+    spi_controller__CFG_t cfg;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
@@ -73,11 +73,11 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     cfg.w = 0;
     cfg.f.CLKDIV = 9;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
     /* ------------------------------------------------------------------ */
@@ -103,7 +103,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Full-word write (SW → byte-enable = 4'b1111, valid) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 32-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -170,7 +170,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("\nStep 6: ACCESSINVAL W1C does not affect other ERROR_STATUS bits\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
+    dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); /* trigger UNDERFLOW */
     (void)dummy;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  UNDERFLOW triggered: ERROR_STATUS=0x%08x, UNDERFLOW=%u\n", err_status.w,

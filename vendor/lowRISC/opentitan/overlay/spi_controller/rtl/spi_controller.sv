@@ -461,16 +461,16 @@ module spi_controller
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckNumCs_A, NUM_CS > 0)
+    `OCAH_OT_ASSERT_INIT(paramCheckNumCs_A, NUM_CS > 0)
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(SckKnownO_A,    sck_o)
-    `ASSERT_KNOWN(SckEnKnownO_A,  sck_en_o)
-    `ASSERT_KNOWN(CsKnownO_A,     cs_no)
-    `ASSERT_KNOWN(CsEnKnownO_A,   cs_en_o)
-    `ASSERT_KNOWN(IoKnownO_A,     io_o)
-    `ASSERT_KNOWN(IoEnKnownO_A,   io_en_o)
-    `ASSERT_KNOWN(LsioTriggerKnown_A, lsio_trigger_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(SckKnownO_A,    sck_o)
+    `OCAH_OT_ASSERT_KNOWN(SckEnKnownO_A,  sck_en_o)
+    `OCAH_OT_ASSERT_KNOWN(CsKnownO_A,     cs_no)
+    `OCAH_OT_ASSERT_KNOWN(CsEnKnownO_A,   cs_en_o)
+    `OCAH_OT_ASSERT_KNOWN(IoKnownO_A,     io_o)
+    `OCAH_OT_ASSERT_KNOWN(IoEnKnownO_A,   io_en_o)
+    `OCAH_OT_ASSERT_KNOWN(LsioTriggerKnown_A, lsio_trigger_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
 
 endmodule

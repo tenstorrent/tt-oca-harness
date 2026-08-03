@@ -66,9 +66,9 @@ module axi_cg_snoop #(
     // Parameter Validation
     ////////////////////////////////////////////////////////////////////////////////
 
-    `ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
-    `ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
-    `ASSERT_INIT(ValidHystWidth_A, HystWidth >= 1 && HystWidth <= 32)
+    `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
+    `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
+    `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HystWidth >= 1 && HystWidth <= 32)
 
     ////////////////////////////////////////////////////////////////////////////////
     // Internal Signals
@@ -184,18 +184,18 @@ module axi_cg_snoop #(
     // Sub-modules handle their own input validation
 
     // Validate clock gating interface (new signals not validated by sub-modules)
-    `ASSERT_KNOWN(KickKnown_A, kick_i, clk_i, !rst_ni)
-    `ASSERT_KNOWN(TestClkEnKnown_A, test_clk_en_i, clk_i, !rst_ni)
-    `ASSERT_KNOWN(HysteresisKnown_A, hysteresis_i, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(KickKnown_A, kick_i, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(TestClkEnKnown_A, test_clk_en_i, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(HysteresisKnown_A, hysteresis_i, clk_i, !rst_ni)
 
     // Validate that hysteresis value is within reasonable bounds
-    `ASSERT(HysteresisBounds_A, hysteresis_i <= {HystWidth{1'b1}}, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(HysteresisBounds_A, hysteresis_i <= {HystWidth{1'b1}}, clk_i, !rst_ni)
 
     // Validate output signals consistency
-    `ASSERT_KNOWN(ClkActiveKnown_A, clk_active_o, clk_i, !rst_ni)
-    `ASSERT_KNOWN(BusActiveKnown_A, bus_active_o, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(ClkActiveKnown_A, clk_active_o, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT_KNOWN(BusActiveKnown_A, bus_active_o, clk_i, !rst_ni)
 
     // Functional relationship checks
-    `ASSERT(ActivityConsistency_A, bus_active_o == bus_active_internal, clk_i, !rst_ni)
+    `OCAH_OT_ASSERT(ActivityConsistency_A, bus_active_o == bus_active_internal, clk_i, !rst_ni)
 
 endmodule

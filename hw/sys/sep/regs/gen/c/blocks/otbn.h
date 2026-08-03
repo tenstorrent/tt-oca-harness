@@ -17,7 +17,7 @@ extern "C" {
 #define OTBN__INTR_STATE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DONE :1;
+        uint32_t done :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -30,7 +30,7 @@ typedef union {
 #define OTBN__INTR_ENABLE__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DONE :1;
+        uint32_t done :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -43,7 +43,7 @@ typedef union {
 #define OTBN__INTR_TEST__DONE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DONE :1;
+        uint32_t done :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -60,8 +60,8 @@ typedef union {
 #define OTBN__ALERT_TEST__RECOV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t FATAL :1;
-        uint32_t RECOV :1;
+        uint32_t fatal :1;
+        uint32_t recov :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -74,7 +74,7 @@ typedef union {
 #define OTBN__CMD__CMD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t CMD :8;
+        uint32_t cmd :8;
         uint32_t :24;
     } f;
     uint32_t w;
@@ -87,7 +87,7 @@ typedef union {
 #define OTBN__CTRL__SOFTWARE_ERRS_FATAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SOFTWARE_ERRS_FATAL :1;
+        uint32_t software_errs_fatal :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -100,7 +100,7 @@ typedef union {
 #define OTBN__STATUS__STATUS_reset 0x4
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t STATUS :8;
+        uint32_t status :8;
         uint32_t :24;
     } f;
     uint32_t w;
@@ -173,23 +173,23 @@ typedef union {
 #define OTBN__ERR_BITS__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t BAD_DATA_ADDR :1;
-        uint32_t BAD_INSN_ADDR :1;
-        uint32_t CALL_STACK :1;
-        uint32_t ILLEGAL_INSN :1;
-        uint32_t LOOP :1;
-        uint32_t KEY_INVALID :1;
-        uint32_t RND_REP_CHK_FAIL :1;
-        uint32_t RND_FIPS_CHK_FAIL :1;
+        uint32_t bad_data_addr :1;
+        uint32_t bad_insn_addr :1;
+        uint32_t call_stack :1;
+        uint32_t illegal_insn :1;
+        uint32_t loop :1;
+        uint32_t key_invalid :1;
+        uint32_t rnd_rep_chk_fail :1;
+        uint32_t rnd_fips_chk_fail :1;
         uint32_t :8;
-        uint32_t IMEM_INTG_VIOLATION :1;
-        uint32_t DMEM_INTG_VIOLATION :1;
-        uint32_t REG_INTG_VIOLATION :1;
-        uint32_t BUS_INTG_VIOLATION :1;
-        uint32_t BAD_INTERNAL_STATE :1;
-        uint32_t ILLEGAL_BUS_ACCESS :1;
-        uint32_t LIFECYCLE_ESCALATION :1;
-        uint32_t FATAL_SOFTWARE :1;
+        uint32_t imem_intg_violation :1;
+        uint32_t dmem_intg_violation :1;
+        uint32_t reg_intg_violation :1;
+        uint32_t bus_intg_violation :1;
+        uint32_t bad_internal_state :1;
+        uint32_t illegal_bus_access :1;
+        uint32_t lifecycle_escalation :1;
+        uint32_t fatal_software :1;
         uint32_t :8;
     } f;
     uint32_t w;
@@ -230,14 +230,14 @@ typedef union {
 #define OTBN__FATAL_ALERT_CAUSE__FATAL_SOFTWARE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t IMEM_INTG_VIOLATION :1;
-        uint32_t DMEM_INTG_VIOLATION :1;
-        uint32_t REG_INTG_VIOLATION :1;
-        uint32_t BUS_INTG_VIOLATION :1;
-        uint32_t BAD_INTERNAL_STATE :1;
-        uint32_t ILLEGAL_BUS_ACCESS :1;
-        uint32_t LIFECYCLE_ESCALATION :1;
-        uint32_t FATAL_SOFTWARE :1;
+        uint32_t imem_intg_violation :1;
+        uint32_t dmem_intg_violation :1;
+        uint32_t reg_intg_violation :1;
+        uint32_t bus_intg_violation :1;
+        uint32_t bad_internal_state :1;
+        uint32_t illegal_bus_access :1;
+        uint32_t lifecycle_escalation :1;
+        uint32_t fatal_software :1;
         uint32_t :24;
     } f;
     uint32_t w;
@@ -250,7 +250,7 @@ typedef union {
 #define OTBN__INSN_CNT__INSN_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t INSN_CNT :32;
+        uint32_t insn_cnt :32;
     } f;
     uint32_t w;
 } otbn__INSN_CNT_t;
@@ -262,19 +262,19 @@ typedef union {
 #define OTBN__LOAD_CHECKSUM__CHECKSUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t CHECKSUM :32;
+        uint32_t checksum :32;
     } f;
     uint32_t w;
 } otbn__LOAD_CHECKSUM_t;
 
 // mem - otbn::IMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1];
+    uint32_t mem[4096];
 } otbn__IMEM_t;
 
 // mem - otbn::DMEM
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1];
+    uint32_t mem[4096];
 } otbn__DMEM_t;
 
 // addrmap - otbn
@@ -291,8 +291,8 @@ typedef struct __attribute__ ((__packed__)) {
     otbn__INSN_CNT_t INSN_CNT;
     otbn__LOAD_CHECKSUM_t LOAD_CHECKSUM;
     uint8_t RESERVED_2c_3fff[0x3fd4];
-    otbn__IMEM_t IMEM[4096];
-    otbn__DMEM_t DMEM[4096];
+    otbn__IMEM_t IMEM;
+    otbn__DMEM_t DMEM;
 } otbn_t;
 
 

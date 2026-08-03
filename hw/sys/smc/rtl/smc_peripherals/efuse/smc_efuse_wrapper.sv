@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SMC eFuse Wrapper
 //
 //-----------------------------------------------------------------------------
@@ -197,6 +196,8 @@ module smc_efuse_wrapper
         .EFUSE_FIELDS                (smc_efuse_pkg::NUM_EFUSE_FIELDS),
 
         .HAS_LC_STATE                (1'b0), // SMC does not have LC state
+        .CLASS1_SHADOW_RANGES        (smc_efuse_pkg::Class1ShadowRanges),
+        .SECRET_SHADOW_RANGES        ('0),   // SMC has no shadow registers that should be blocked in secure_tm
         .LC_STATE_WIDTH              (smc_pkg::LC_STATE_WIDTH),
         .LC_STATE_BIT_POSITION       (0),
 

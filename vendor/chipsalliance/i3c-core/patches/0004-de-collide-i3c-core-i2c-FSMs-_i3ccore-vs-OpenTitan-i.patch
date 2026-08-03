@@ -1,0 +1,81 @@
+From 76649eb0858e882dc8abf97dbd18a09c69dd7905 Mon Sep 17 00:00:00 2001
+From: Kai Qin <kqin@tenstorrent.com>
+Date: Thu, 11 Jun 2026 12:20:07 -0400
+Subject: [PATCH] de-collide i3c-core i2c FSMs (_i3ccore) vs OpenTitan i2c
+
+---
+ src/ctrl/controller_active.sv      | 2 +-
+ src/ctrl/controller_standby_i2c.sv | 2 +-
+ src/ctrl/flow_active.sv            | 2 +-
+ src/ctrl/i2c_controller_fsm.sv     | 2 +-
+ src/ctrl/i2c_target_fsm.sv         | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/ctrl/controller_active.sv b/src/ctrl/controller_active.sv
+index e36675d3..b212f26a 100644
+--- a/src/ctrl/controller_active.sv
++++ b/src/ctrl/controller_active.sv
+@@ -274,7 +274,7 @@ module controller_active
+   logic unused_event_stretch_timeout_o;
+   logic unused_event_sda_unstable_o;
+ 
+-  i2c_controller_fsm i2c_fsm (
++  i2c_controller_fsm_i3ccore i2c_fsm (
+       .clk_i (clk_i),
+       .rst_ni(rst_ni),
+       .scl_i (ctrl_bus_i[0].scl.value),
+diff --git a/src/ctrl/controller_standby_i2c.sv b/src/ctrl/controller_standby_i2c.sv
+index 08610097..15150bec 100644
+--- a/src/ctrl/controller_standby_i2c.sv
++++ b/src/ctrl/controller_standby_i2c.sv
+@@ -162,7 +162,7 @@ module controller_standby_i2c
+   logic unused_event_unexp_stop_o;
+   logic unused_event_host_timeout_o;
+ 
+-  i2c_target_fsm #(
++  i2c_target_fsm_i3ccore #(
+       .AcqFifoDepth(AcqFifoDepth)
+   ) xi2c_target_fsm (
+       // Clock, reset
+diff --git a/src/ctrl/flow_active.sv b/src/ctrl/flow_active.sv
+index df3c162a..4a4c3960 100644
+--- a/src/ctrl/flow_active.sv
++++ b/src/ctrl/flow_active.sv
+@@ -2,7 +2,7 @@
+ 
+ // Description: Decodes Command Descriptor and forwards byte to be sent on the
+ // I3C / I2C bus to the
+-// i3c_controller_fsm and i2c_controller_fsm
++// i3c_controller_fsm and i2c_controller_fsm_i3ccore
+ // TODO: Add support for data byte ordering modes (HC_CONTROL.DATA_BYTE_ORDER_MODE)
+ 
+ module flow_active
+diff --git a/src/ctrl/i2c_controller_fsm.sv b/src/ctrl/i2c_controller_fsm.sv
+index 6db9b717..87eda1f6 100644
+--- a/src/ctrl/i2c_controller_fsm.sv
++++ b/src/ctrl/i2c_controller_fsm.sv
+@@ -6,7 +6,7 @@
+ 
+ `include "i3c_sva.svh"
+ 
+-module i2c_controller_fsm
++module i2c_controller_fsm_i3ccore
+   import controller_pkg::*;
+ #(
+     parameter int FifoDepth = 64,
+diff --git a/src/ctrl/i2c_target_fsm.sv b/src/ctrl/i2c_target_fsm.sv
+index 3874fc2b..6c84cf3e 100644
+--- a/src/ctrl/i2c_target_fsm.sv
++++ b/src/ctrl/i2c_target_fsm.sv
+@@ -4,7 +4,7 @@
+ //
+ // Description: I2C finite state machine
+ 
+-module i2c_target_fsm
++module i2c_target_fsm_i3ccore
+   import controller_pkg::*;
+ #(
+     parameter int AcqFifoDepth = 64,
+-- 
+2.26.2
+

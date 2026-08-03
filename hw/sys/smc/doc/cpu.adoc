@@ -103,8 +103,8 @@ ensuring SRAM arrays are functional before the CPU cluster begins execution.
 **Status Reporting:**
 
 Repair completion and success are reported through DFT Control Status registers
-(`DFX_CTRL_STATUS_SOC` at `0xC000F800` and `DFX_CTRL_STATUS_SEP_SMC` at
-`0xC000F80C`). The `mem_repair_done` bit indicates completion, while
+(`DFX_CTRL_STATUS_SOC` at `0xC000D800` and `DFX_CTRL_STATUS_SEP_SMC` at
+`0xC000D80C`). The `mem_repair_done` bit indicates completion, while
 `mem_repair_success` indicates successful repair. The SMC ROM firmware monitors
 these bits during initialization to verify repair completion before proceeding
 with boot operations.

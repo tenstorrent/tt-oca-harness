@@ -49,6 +49,6 @@ module prim_diff_encode_multi #(
         assign data_o = {diff_n_buf, diff_p_buf};
     end
 
-    `ASSERT_INIT(WidthPositive_A, Width > 0)
+    `OCAH_OT_ASSERT_INIT(WidthPositive_A, Width > 0)
 
 endmodule : prim_diff_encode_multi

@@ -82,9 +82,9 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CONTROL_t ctrl;
-    spi_controller__CONFIGOPTS_t cfg;
-    spi_controller__COMMAND_t cmd;
+    spi_controller__CTRL_t ctrl;
+    spi_controller__CFG_t cfg;
+    spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
 
     configure_spi_mux_ot();
@@ -94,7 +94,7 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
     /* ------------------------------------------------------------------ */
@@ -108,8 +108,8 @@ int main(void) {
     cfg.f.CSNIDLE = 0;
     cfg.f.CSNLEAD = 0;
     cfg.f.CSNTRAIL = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     if (!check_timing("Min values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 0, 0, 0))
         pass = 0;
 
@@ -122,8 +122,8 @@ int main(void) {
     cfg.f.CSNIDLE = 15;
     cfg.f.CSNLEAD = 15;
     cfg.f.CSNTRAIL = 15;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     if (!check_timing("Max values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 15, 15, 15))
         pass = 0;
 
@@ -136,8 +136,8 @@ int main(void) {
     cfg.f.CSNIDLE = 5;
     cfg.f.CSNLEAD = 10;
     cfg.f.CSNTRAIL = 3;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     if (!check_timing("Mixed values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 5, 10, 3))
         pass = 0;
 
@@ -152,8 +152,8 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
     if (!check_timing("Restored values", cfg.f.CSNIDLE, cfg.f.CSNLEAD, cfg.f.CSNTRAIL, 2, 2, 2))
         pass = 0;
 
@@ -164,13 +164,13 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
     cmd.w = 0;
     cmd.f.LEN = 0; /* 1 byte */
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;     /* Standard */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;

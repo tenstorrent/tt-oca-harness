@@ -567,7 +567,7 @@ module axi_demux_simple #(
     w_underflow: assert property( @(posedge clk_i)
         ((w_open == '0) && (w_cnt_up ^ w_cnt_down) |-> !w_cnt_down)) else
         $fatal(1, "W counter underflowed!");
-    `ASSUME(NoAtopAllowed, !AtopSupport && slv_req_i.aw_valid |-> slv_req_i.aw.atop == '0)
+    `OCAH_PULP_ASSUME(NoAtopAllowed, !AtopSupport && slv_req_i.aw_valid |-> slv_req_i.aw.atop == '0)
 `endif
 `endif
 // pragma translate_on

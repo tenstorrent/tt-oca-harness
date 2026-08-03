@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // I3C Core Wrapper Package
-//
-//-----------------------------------------------------------------------------
 
 package i3ccore_wrap_pkg;
 
@@ -30,7 +27,7 @@ package i3ccore_wrap_pkg;
   /////////////////////////////////
 
   localparam int unsigned MAX_NUM_I3CS = 6;
-  localparam int unsigned I3C_INSTANCE_SPACING = 32'h500;  // Address spacing between I3C instances
-  localparam int unsigned I3C_REG_ADDR_WIDTH = 11;  // Register address width per instance
+  localparam int unsigned I3C_INSTANCE_SPACING = 32'h1000;  // Address spacing between I3C instances (I3CCSR rounds up to 0x1000)
+  localparam int unsigned I3C_REG_ADDR_WIDTH = 12;  // Register address width per instance (0x1000)
 
 endpackage

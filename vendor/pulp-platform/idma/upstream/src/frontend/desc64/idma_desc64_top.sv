@@ -468,8 +468,8 @@ assign irq_o            = do_irq_out && master_req_o.b_ready && master_rsp_i.b_v
 // and empty in lockstep. Capacity is tested at the idma_req fifo, the
 // other two ready signals are ignored.
 // pragma translate_off
-`ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
-`ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
+`OCAH_PULP_ASSERT_IF(NoIrqDropped, do_irq_ready, do_irq_valid)
+`OCAH_PULP_ASSERT_IF(NoAddrDropped, feedback_addr_ready, feedback_addr_valid)
 // pragma translate_on
 
 endmodule

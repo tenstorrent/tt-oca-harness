@@ -47,10 +47,6 @@
 #define MBOX0_IRQS_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
 #define MBOX0_IRQEN_ADDR OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
 
-/* Clock-gate control: bit 3 enables the mailbox clock */
-#define CLOCK_GATE_CTRL_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
-#define MAILBOX_CG_MASK SEP_CPU_CTRL__CLOCK_GATE_CTRL__MAILBOX_CG_EN_bm
-
 /* IRQS/IRQEN: 3 status bits (write-threshold / read-threshold / error).
  * Enable + clear all three. */
 #define MBOX_IRQ_ALL 0x7u
@@ -81,13 +77,6 @@ __attribute__((interrupt("machine"))) void mailbox_isr(void) {
     WRITE_REG(MBOX0_IRQS_ADDR, MBOX_IRQ_ALL);
 }
 
-static void enable_mailbox_clock(void) {
-    uint32_t cg = READ_REG(CLOCK_GATE_CTRL_ADDR);
-    cg |= MAILBOX_CG_MASK;
-    WRITE_REG(CLOCK_GATE_CTRL_ADDR, cg);
-    __asm__ volatile("fence" ::: "memory");
-}
-
 int main(void) {
     int errors = 0;
     sep_outbound_filter_init();
@@ -99,7 +88,8 @@ int main(void) {
 
     /* Step 1: Enable the mailbox clock (registers are otherwise inaccessible). */
     printf("[STEP 1] Enabling mailbox clock gate...\n");
-    enable_mailbox_clock();
+    /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder (issue #3950);
+     * the mailbox clock is always on, so no ungate step is required. */
 
     /* Step 2: Register the ISR on all candidate PIC sources and configure them. */
     printf("[STEP 2] Registering mailbox ISR on candidate PIC sources...\n");

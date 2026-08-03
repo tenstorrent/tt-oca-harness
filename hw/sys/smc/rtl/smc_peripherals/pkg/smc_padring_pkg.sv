@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//----------------------------------------------------------
 // SMC Padring Package
-//
-//----------------------------------------------------------
 
 package smc_padring_pkg;
 
@@ -13,12 +10,9 @@ package smc_padring_pkg;
 	localparam bit IS_OUTPUT = 1'b0;
 
 	localparam bit [smc_pkg::NUM_GPIO_WRAPS-1:0] DefaultDirectionMap = {
-		IS_OUTPUT,         // 67
-		IS_OUTPUT,         // 66
-		IS_OUTPUT,         // 65
-		IS_INPUT,          // 64
-		IS_INPUT,          // 63
-		IS_INPUT,          // 62
+		IS_OUTPUT,         // 64
+		IS_OUTPUT,         // 63
+		IS_OUTPUT,         // 62
 		IS_INPUT,          // 61
 		IS_INPUT,          // 60
 		IS_INPUT,          // 59

@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // AXI Filter Wrap
-//
-//-----------------------------------------------------------------------------
-
 
 module axi_filter_wrap #(
 	parameter int unsigned 	NumFilters                = 16,
@@ -28,6 +24,7 @@ module axi_filter_wrap #(
 	parameter int unsigned 	AxiDataWidth              = 64,
 
 	parameter int unsigned 	MaxTrans                  = 4,
+	parameter int unsigned 	AxiLookBits               = (AxiIdWidth > 3) ? 3 : AxiIdWidth,
 	parameter int unsigned 	ErrSlvMaxTrans            = 32,
 	parameter bit          	FlopReqEn                 = 1'b0,
 	parameter bit          	FlopRespEn                = 1'b0,
@@ -64,7 +61,8 @@ module axi_filter_wrap #(
 	output filter_axi_req_t                         axi_filtered_out_req_o,
 	input  filter_axi_resp_t                        axi_filtered_out_resp_i,
 
-	output axi_filter_pkg::filter_debug_t           filter_debug_o
+	output logic [$clog2(NumFilters)-1:0]           write_filter_hit_debug_o,
+	output logic [$clog2(NumFilters)-1:0]           read_filter_hit_debug_o
 );
 
 	//////////////////////////
@@ -74,11 +72,11 @@ module axi_filter_wrap #(
 	typedef struct {
 		logic [AxiAddrWidth-1:0]    start_addr;
 		logic [AxiAddrWidth-1:0]    end_addr;
-		logic                       read_en;
-		logic                       write_en;
+		logic                       read_allowed;
+		logic                       write_allowed;
 		logic [SrcIdWidth-1:0]      src_id;
 		logic [GroupIdWidth-1:0]    group_id;
-		logic                       addr_mode;    // addr_mode is the enable for this filter entry
+		logic                       entry_enabled;
 		logic                       allow_ns;
 		logic                       allow_burst;
 		logic                       locked;
@@ -125,9 +123,9 @@ module axi_filter_wrap #(
 
 			filters[f].start_addr[AxiAddrWidth-1:0]           = filter_ctrl_i[f].START_ADDR.start_addr.value;
 			filters[f].end_addr[AxiAddrWidth-1:0]             = filter_ctrl_i[f].END_ADDR.end_addr.value;
-			filters[f].read_en                                = filter_ctrl_i[f].FILTER_CONFIG.read_en.value;
-			filters[f].write_en                               = filter_ctrl_i[f].FILTER_CONFIG.write_en.value;
-			filters[f].addr_mode                              = filter_ctrl_i[f].FILTER_CONFIG.addr_mode.value;
+			filters[f].read_allowed                           = filter_ctrl_i[f].FILTER_CONFIG.read_allowed.value;
+			filters[f].write_allowed                          = filter_ctrl_i[f].FILTER_CONFIG.write_allowed.value;
+			filters[f].entry_enabled                          = filter_ctrl_i[f].FILTER_CONFIG.entry_enabled.value;
 			filters[f].allow_ns                               = filter_ctrl_i[f].FILTER_CONFIG.allow_ns.value;
 			filters[f].src_id                                 = filter_ctrl_i[f].FILTER_CONFIG.src_id.value;
 			filters[f].group_id                               = filter_ctrl_i[f].FILTER_CONFIG.group_id.value;
@@ -148,10 +146,10 @@ module axi_filter_wrap #(
 			.GroupIdWidth        (GroupIdWidth),
 			.DataBusWidthLog2    (DbusWidthLog2)
 		) write_traffic_filter (
-			.cfg_allow_traffic_type_i (filters[f].write_en),
+			.cfg_allow_traffic_type_i (filters[f].write_allowed),
 			.cfg_start_addr_i         (filters[f].start_addr),
 			.cfg_end_addr_i           (filters[f].end_addr),
-			.cfg_addr_mode_i          (filters[f].addr_mode),
+			.cfg_entry_enabled_i      (filters[f].entry_enabled),
 			.cfg_src_id_i             (filters[f].src_id),
 			.cfg_group_id_i           (filters[f].group_id),
 			.cfg_allow_ns_i           (filters[f].allow_ns),
@@ -175,10 +173,10 @@ module axi_filter_wrap #(
 			.GroupIdWidth        (GroupIdWidth),
 			.DataBusWidthLog2    (DbusWidthLog2)
 		) read_traffic_filter (
-			.cfg_allow_traffic_type_i (filters[f].read_en),
+			.cfg_allow_traffic_type_i (filters[f].read_allowed),
 			.cfg_start_addr_i         (filters[f].start_addr),
 			.cfg_end_addr_i           (filters[f].end_addr),
-			.cfg_addr_mode_i          (filters[f].addr_mode),
+			.cfg_entry_enabled_i      (filters[f].entry_enabled),
 			.cfg_src_id_i             (filters[f].src_id),
 			.cfg_group_id_i           (filters[f].group_id),
 			.cfg_allow_ns_i           (filters[f].allow_ns),
@@ -223,10 +221,11 @@ module axi_filter_wrap #(
 
 	generate
 		if (DebugOutput == 1) begin
-			assign filter_debug_o.write_filter_hit_debug = write_filter_hit_idx;
-			assign filter_debug_o.read_filter_hit_debug  = read_filter_hit_idx;
+			assign write_filter_hit_debug_o = write_filter_hit_idx;
+			assign read_filter_hit_debug_o  = read_filter_hit_idx;
 		end else begin
-			assign filter_debug_o                        = '0;
+			assign write_filter_hit_debug_o = '0;
+			assign read_filter_hit_debug_o  = '0;
 		end
 	endgenerate
 
@@ -249,7 +248,7 @@ module axi_filter_wrap #(
 		.axi_resp_t  (filter_axi_resp_t),
 		.NoMstPorts  (2),
 		.MaxTrans    (MaxTrans),
-		.AxiLookBits (AxiIdWidth > 3 ?  3 : AxiIdWidth),
+		.AxiLookBits (AxiLookBits),
 		.UniqueIds   (1'b0),
 		.SpillAw     (FlopReqEn),
 		.SpillW      (FlopReqEn),

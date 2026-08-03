@@ -251,7 +251,7 @@ module entropy_source_reg (
         logic RING_OSC_CTRL;
         logic DECORRELATOR_CTRL;
         logic DECORRELATOR_MASK;
-        logic STARTUP_CTRL;
+        logic MAIN_SM_STATUS;
         logic GENERATOR_0_HEALTH_STATUS;
         logic GENERATOR_1_HEALTH_STATUS;
         logic GENERATOR_2_HEALTH_STATUS;
@@ -285,6 +285,16 @@ module entropy_source_reg (
         logic MARKOV_LO_TOTAL_FAILS;
         logic ALERT_SUMMARY_FAIL_COUNTS;
         logic ALERT_FAIL_COUNTS;
+        logic FIPS_LOCK;
+        logic ALERT_THRESHOLD;
+        logic MIN_ENTROPY_H;
+        logic RECOMMENDED_THRESHOLDS;
+        logic BIW_OBS_CTRL;
+        logic BIW_OBS_STATUS;
+        logic BIW_OBS_RDATA;
+        logic NOISE_OBS_CTRL;
+        logic NOISE_OBS_STATUS;
+        logic NOISE_OBS_RDATA;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -337,7 +347,7 @@ module entropy_source_reg (
         decoded_reg_strb.RING_OSC_CTRL = cpuif_req_masked & (cpuif_addr == 9'h98);
         decoded_reg_strb.DECORRELATOR_CTRL = cpuif_req_masked & (cpuif_addr == 9'ha0);
         decoded_reg_strb.DECORRELATOR_MASK = cpuif_req_masked & (cpuif_addr == 9'ha4);
-        decoded_reg_strb.STARTUP_CTRL = cpuif_req_masked & (cpuif_addr == 9'hb0);
+        decoded_reg_strb.MAIN_SM_STATUS = cpuif_req_masked & (cpuif_addr == 9'hb4);
         decoded_reg_strb.GENERATOR_0_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc0);
         decoded_reg_strb.GENERATOR_1_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc4);
         decoded_reg_strb.GENERATOR_2_HEALTH_STATUS = cpuif_req_masked & (cpuif_addr == 9'hc8);
@@ -371,6 +381,18 @@ module entropy_source_reg (
         decoded_reg_strb.MARKOV_LO_TOTAL_FAILS = cpuif_req_masked & (cpuif_addr == 9'h148) & !cpuif_req_is_wr;
         decoded_reg_strb.ALERT_SUMMARY_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 9'h14c) & !cpuif_req_is_wr;
         decoded_reg_strb.ALERT_FAIL_COUNTS = cpuif_req_masked & (cpuif_addr == 9'h150) & !cpuif_req_is_wr;
+        decoded_reg_strb.FIPS_LOCK = cpuif_req_masked & (cpuif_addr == 9'h154);
+        decoded_reg_strb.ALERT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 9'h158);
+        decoded_reg_strb.MIN_ENTROPY_H = cpuif_req_masked & (cpuif_addr == 9'h15c);
+        decoded_reg_strb.RECOMMENDED_THRESHOLDS = cpuif_req_masked & (cpuif_addr == 9'h160) & !cpuif_req_is_wr;
+        decoded_reg_strb.BIW_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 9'h164);
+        decoded_reg_strb.BIW_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 9'h168) & !cpuif_req_is_wr;
+        decoded_reg_strb.BIW_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 9'h16c) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h16c) & !cpuif_req_is_wr;
+        decoded_reg_strb.NOISE_OBS_CTRL = cpuif_req_masked & (cpuif_addr == 9'h170);
+        decoded_reg_strb.NOISE_OBS_STATUS = cpuif_req_masked & (cpuif_addr == 9'h174) & !cpuif_req_is_wr;
+        decoded_reg_strb.NOISE_OBS_RDATA = cpuif_req_masked & (cpuif_addr == 9'h178) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 9'h178) & !cpuif_req_is_wr;
         decoded_err = '0;
         decoded_req_is_external = is_external;
     end
@@ -407,6 +429,10 @@ module entropy_source_reg (
                 logic next;
                 logic load_next;
             } RESET;
+            struct {
+                logic next;
+                logic load_next;
+            } MODULE_ENABLE;
             struct {
                 logic next;
                 logic load_next;
@@ -451,6 +477,22 @@ module entropy_source_reg (
                 logic next;
                 logic load_next;
             } FIFO_UNDERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic next;
+                logic load_next;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic next;
+                logic load_next;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } NOISE_OBS_OVERFLOW;
         } INTR_STATUS;
         struct {
             struct {
@@ -469,6 +511,22 @@ module entropy_source_reg (
                 logic next;
                 logic load_next;
             } FIFO_UNDERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic next;
+                logic load_next;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic next;
+                logic load_next;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } NOISE_OBS_OVERFLOW;
         } INTR_ENABLE;
         struct {
             struct {
@@ -487,6 +545,22 @@ module entropy_source_reg (
                 logic next;
                 logic load_next;
             } FIFO_UNDERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic next;
+                logic load_next;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic next;
+                logic load_next;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic next;
+                logic load_next;
+            } NOISE_OBS_OVERFLOW;
         } INTR_TEST;
         struct {
             struct {
@@ -604,10 +678,14 @@ module entropy_source_reg (
         } DECORRELATOR_MASK;
         struct {
             struct {
-                logic [15:0] next;
+                logic next;
                 logic load_next;
-            } DELAY_CYCLES;
-        } STARTUP_CTRL;
+            } ALERT;
+            struct {
+                logic next;
+                logic load_next;
+            } ERR;
+        } MAIN_SM_STATUS;
         struct {
             struct {
                 logic [7:0] next;
@@ -758,6 +836,44 @@ module entropy_source_reg (
                 logic load_next;
             } WATERMARK_NUM;
         } HT_WATERMARK_NUM;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } LOCK;
+        } FIPS_LOCK;
+        struct {
+            struct {
+                logic [15:0] next;
+                logic load_next;
+            } THRESHOLD;
+        } ALERT_THRESHOLD;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } H;
+        } MIN_ENTROPY_H;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } RAW_ENABLE;
+        } BIW_OBS_CTRL;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } RAW_ENABLE;
+            struct {
+                logic next;
+                logic load_next;
+            } FLUSH;
+            struct {
+                logic [3:0] next;
+                logic load_next;
+            } LANE_SEL;
+        } NOISE_OBS_CTRL;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -766,6 +882,9 @@ module entropy_source_reg (
             struct {
                 logic value;
             } RESET;
+            struct {
+                logic value;
+            } MODULE_ENABLE;
             struct {
                 logic value;
             } AUTOTUNE_ENABLE;
@@ -800,6 +919,18 @@ module entropy_source_reg (
             struct {
                 logic value;
             } FIFO_UNDERFLOW;
+            struct {
+                logic value;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic value;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic value;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic value;
+            } NOISE_OBS_OVERFLOW;
         } INTR_STATUS;
         struct {
             struct {
@@ -814,6 +945,18 @@ module entropy_source_reg (
             struct {
                 logic value;
             } FIFO_UNDERFLOW;
+            struct {
+                logic value;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic value;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic value;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic value;
+            } NOISE_OBS_OVERFLOW;
         } INTR_ENABLE;
         struct {
             struct {
@@ -828,6 +971,18 @@ module entropy_source_reg (
             struct {
                 logic value;
             } FIFO_UNDERFLOW;
+            struct {
+                logic value;
+            } PERSISTENT_FAILURE;
+            struct {
+                logic value;
+            } AUTOTUNE_FAIL;
+            struct {
+                logic value;
+            } BIW_OBS_OVERFLOW;
+            struct {
+                logic value;
+            } NOISE_OBS_OVERFLOW;
         } INTR_TEST;
         struct {
             struct {
@@ -924,9 +1079,12 @@ module entropy_source_reg (
         } DECORRELATOR_MASK;
         struct {
             struct {
-                logic [15:0] value;
-            } DELAY_CYCLES;
-        } STARTUP_CTRL;
+                logic value;
+            } ALERT;
+            struct {
+                logic value;
+            } ERR;
+        } MAIN_SM_STATUS;
         struct {
             struct {
                 logic [7:0] value;
@@ -1052,6 +1210,37 @@ module entropy_source_reg (
                 logic [3:0] value;
             } WATERMARK_NUM;
         } HT_WATERMARK_NUM;
+        struct {
+            struct {
+                logic value;
+            } LOCK;
+        } FIPS_LOCK;
+        struct {
+            struct {
+                logic [15:0] value;
+            } THRESHOLD;
+        } ALERT_THRESHOLD;
+        struct {
+            struct {
+                logic [7:0] value;
+            } H;
+        } MIN_ENTROPY_H;
+        struct {
+            struct {
+                logic value;
+            } RAW_ENABLE;
+        } BIW_OBS_CTRL;
+        struct {
+            struct {
+                logic value;
+            } RAW_ENABLE;
+            struct {
+                logic value;
+            } FLUSH;
+            struct {
+                logic [3:0] value;
+            } LANE_SEL;
+        } NOISE_OBS_CTRL;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -1078,13 +1267,36 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.CTRL.RESET.value = field_storage.CTRL.RESET.value;
+    // Field: entropy_source.CTRL.MODULE_ENABLE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.CTRL.MODULE_ENABLE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.CTRL && decoded_req_is_wr && !(hwif_in.CTRL.MODULE_ENABLE.swwel)) begin // SW write
+            next_c = (field_storage.CTRL.MODULE_ENABLE.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo.CTRL.MODULE_ENABLE.next = next_c;
+        field_combo.CTRL.MODULE_ENABLE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.CTRL.MODULE_ENABLE.value <= 1'h1;
+        end else begin
+            if(field_combo.CTRL.MODULE_ENABLE.load_next) begin
+                field_storage.CTRL.MODULE_ENABLE.value <= field_combo.CTRL.MODULE_ENABLE.next;
+            end
+        end
+    end
+    assign hwif_out.CTRL.MODULE_ENABLE.value = field_storage.CTRL.MODULE_ENABLE.value;
     // Field: entropy_source.CTRL.AUTOTUNE_ENABLE
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.CTRL.AUTOTUNE_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.CTRL && decoded_req_is_wr && !(hwif_in.CTRL.AUTOTUNE_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.CTRL.AUTOTUNE_ENABLE.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
             load_next_c = '1;
         end
@@ -1107,7 +1319,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
         load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.CTRL && decoded_req_is_wr && !(hwif_in.CTRL.BYPASS_ENTROPY_COMPRESSOR.swwel)) begin // SW write
             next_c = (field_storage.CTRL.BYPASS_ENTROPY_COMPRESSOR.value & ~decoded_wr_biten[8:8]) | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
             load_next_c = '1;
         end
@@ -1130,7 +1342,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.CTRL.DOWNSAMPLE_RATE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.CTRL && decoded_req_is_wr && !(hwif_in.CTRL.DOWNSAMPLE_RATE.swwel)) begin // SW write
             next_c = (field_storage.CTRL.DOWNSAMPLE_RATE.value & ~decoded_wr_biten[25:16]) | (decoded_wr_data[25:16] & decoded_wr_biten[25:16]);
             load_next_c = '1;
         end
@@ -1153,7 +1365,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.CTRL.SHA256_WHITENING_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.CTRL && decoded_req_is_wr && !(hwif_in.CTRL.SHA256_WHITENING_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.CTRL.SHA256_WHITENING_ENABLE.value & ~decoded_wr_biten[28:28]) | (decoded_wr_data[28:28] & decoded_wr_biten[28:28]);
             load_next_c = '1;
         end
@@ -1316,11 +1528,115 @@ module entropy_source_reg (
             end
         end
     end
+    // Field: entropy_source.INTR_STATUS.PERSISTENT_FAILURE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_STATUS.PERSISTENT_FAILURE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.INTR_STATUS.PERSISTENT_FAILURE.value & ~(decoded_wr_data[16:16] & decoded_wr_biten[16:16]);
+            load_next_c = '1;
+        end else if(hwif_in.INTR_STATUS.PERSISTENT_FAILURE.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.INTR_STATUS.PERSISTENT_FAILURE.next = next_c;
+        field_combo.INTR_STATUS.PERSISTENT_FAILURE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_STATUS.PERSISTENT_FAILURE.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_STATUS.PERSISTENT_FAILURE.load_next) begin
+                field_storage.INTR_STATUS.PERSISTENT_FAILURE.value <= field_combo.INTR_STATUS.PERSISTENT_FAILURE.next;
+            end
+        end
+    end
+    // Field: entropy_source.INTR_STATUS.AUTOTUNE_FAIL
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_STATUS.AUTOTUNE_FAIL.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.INTR_STATUS.AUTOTUNE_FAIL.value & ~(decoded_wr_data[20:20] & decoded_wr_biten[20:20]);
+            load_next_c = '1;
+        end else if(hwif_in.INTR_STATUS.AUTOTUNE_FAIL.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.INTR_STATUS.AUTOTUNE_FAIL.next = next_c;
+        field_combo.INTR_STATUS.AUTOTUNE_FAIL.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_STATUS.AUTOTUNE_FAIL.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_STATUS.AUTOTUNE_FAIL.load_next) begin
+                field_storage.INTR_STATUS.AUTOTUNE_FAIL.value <= field_combo.INTR_STATUS.AUTOTUNE_FAIL.next;
+            end
+        end
+    end
+    // Field: entropy_source.INTR_STATUS.BIW_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value & ~(decoded_wr_data[24:24] & decoded_wr_biten[24:24]);
+            load_next_c = '1;
+        end else if(hwif_in.INTR_STATUS.BIW_OBS_OVERFLOW.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.INTR_STATUS.BIW_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_STATUS.BIW_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_STATUS.BIW_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value <= field_combo.INTR_STATUS.BIW_OBS_OVERFLOW.next;
+            end
+        end
+    end
+    // Field: entropy_source.INTR_STATUS.NOISE_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value & ~(decoded_wr_data[28:28] & decoded_wr_biten[28:28]);
+            load_next_c = '1;
+        end else if(hwif_in.INTR_STATUS.NOISE_OBS_OVERFLOW.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.INTR_STATUS.NOISE_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_STATUS.NOISE_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_STATUS.NOISE_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value <= field_combo.INTR_STATUS.NOISE_OBS_OVERFLOW.next;
+            end
+        end
+    end
     assign hwif_out.INTR_STATUS.intr =
         |field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value
         || |field_storage.INTR_STATUS.FIFO_ERROR.value
         || |field_storage.INTR_STATUS.FIFO_OVERFLOW.value
-        || |field_storage.INTR_STATUS.FIFO_UNDERFLOW.value;
+        || |field_storage.INTR_STATUS.FIFO_UNDERFLOW.value
+        || |field_storage.INTR_STATUS.PERSISTENT_FAILURE.value
+        || |field_storage.INTR_STATUS.AUTOTUNE_FAIL.value
+        || |field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value
+        || |field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
     // Field: entropy_source.INTR_ENABLE.HEALTH_TEST_FAILED
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1413,6 +1729,98 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.INTR_ENABLE.FIFO_UNDERFLOW.value = field_storage.INTR_ENABLE.FIFO_UNDERFLOW.value;
+    // Field: entropy_source.INTR_ENABLE.PERSISTENT_FAILURE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_ENABLE && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value & ~decoded_wr_biten[16:16]) | (decoded_wr_data[16:16] & decoded_wr_biten[16:16]);
+            load_next_c = '1;
+        end
+        field_combo.INTR_ENABLE.PERSISTENT_FAILURE.next = next_c;
+        field_combo.INTR_ENABLE.PERSISTENT_FAILURE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_ENABLE.PERSISTENT_FAILURE.load_next) begin
+                field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value <= field_combo.INTR_ENABLE.PERSISTENT_FAILURE.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_ENABLE.PERSISTENT_FAILURE.value = field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value;
+    // Field: entropy_source.INTR_ENABLE.AUTOTUNE_FAIL
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_ENABLE && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value & ~decoded_wr_biten[20:20]) | (decoded_wr_data[20:20] & decoded_wr_biten[20:20]);
+            load_next_c = '1;
+        end
+        field_combo.INTR_ENABLE.AUTOTUNE_FAIL.next = next_c;
+        field_combo.INTR_ENABLE.AUTOTUNE_FAIL.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_ENABLE.AUTOTUNE_FAIL.load_next) begin
+                field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value <= field_combo.INTR_ENABLE.AUTOTUNE_FAIL.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_ENABLE.AUTOTUNE_FAIL.value = field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value;
+    // Field: entropy_source.INTR_ENABLE.BIW_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_ENABLE && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value & ~decoded_wr_biten[24:24]) | (decoded_wr_data[24:24] & decoded_wr_biten[24:24]);
+            load_next_c = '1;
+        end
+        field_combo.INTR_ENABLE.BIW_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_ENABLE.BIW_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_ENABLE.BIW_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value <= field_combo.INTR_ENABLE.BIW_OBS_OVERFLOW.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_ENABLE.BIW_OBS_OVERFLOW.value = field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value;
+    // Field: entropy_source.INTR_ENABLE.NOISE_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_ENABLE && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value & ~decoded_wr_biten[28:28]) | (decoded_wr_data[28:28] & decoded_wr_biten[28:28]);
+            load_next_c = '1;
+        end
+        field_combo.INTR_ENABLE.NOISE_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_ENABLE.NOISE_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_ENABLE.NOISE_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value <= field_combo.INTR_ENABLE.NOISE_OBS_OVERFLOW.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_ENABLE.NOISE_OBS_OVERFLOW.value = field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value;
     // Field: entropy_source.INTR_TEST.HEALTH_TEST_FAILED
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1517,6 +1925,110 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.INTR_TEST.FIFO_UNDERFLOW.value = field_storage.INTR_TEST.FIFO_UNDERFLOW.value;
+    // Field: entropy_source.INTR_TEST.PERSISTENT_FAILURE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_TEST.PERSISTENT_FAILURE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_TEST && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_TEST.PERSISTENT_FAILURE.value & ~decoded_wr_biten[16:16]) | (decoded_wr_data[16:16] & decoded_wr_biten[16:16]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.INTR_TEST.PERSISTENT_FAILURE.next = next_c;
+        field_combo.INTR_TEST.PERSISTENT_FAILURE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_TEST.PERSISTENT_FAILURE.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_TEST.PERSISTENT_FAILURE.load_next) begin
+                field_storage.INTR_TEST.PERSISTENT_FAILURE.value <= field_combo.INTR_TEST.PERSISTENT_FAILURE.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_TEST.PERSISTENT_FAILURE.value = field_storage.INTR_TEST.PERSISTENT_FAILURE.value;
+    // Field: entropy_source.INTR_TEST.AUTOTUNE_FAIL
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_TEST.AUTOTUNE_FAIL.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_TEST && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_TEST.AUTOTUNE_FAIL.value & ~decoded_wr_biten[20:20]) | (decoded_wr_data[20:20] & decoded_wr_biten[20:20]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.INTR_TEST.AUTOTUNE_FAIL.next = next_c;
+        field_combo.INTR_TEST.AUTOTUNE_FAIL.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_TEST.AUTOTUNE_FAIL.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_TEST.AUTOTUNE_FAIL.load_next) begin
+                field_storage.INTR_TEST.AUTOTUNE_FAIL.value <= field_combo.INTR_TEST.AUTOTUNE_FAIL.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_TEST.AUTOTUNE_FAIL.value = field_storage.INTR_TEST.AUTOTUNE_FAIL.value;
+    // Field: entropy_source.INTR_TEST.BIW_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_TEST.BIW_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_TEST && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_TEST.BIW_OBS_OVERFLOW.value & ~decoded_wr_biten[24:24]) | (decoded_wr_data[24:24] & decoded_wr_biten[24:24]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.INTR_TEST.BIW_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_TEST.BIW_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_TEST.BIW_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_TEST.BIW_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_TEST.BIW_OBS_OVERFLOW.value <= field_combo.INTR_TEST.BIW_OBS_OVERFLOW.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_TEST.BIW_OBS_OVERFLOW.value = field_storage.INTR_TEST.BIW_OBS_OVERFLOW.value;
+    // Field: entropy_source.INTR_TEST.NOISE_OBS_OVERFLOW
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.INTR_TEST.NOISE_OBS_OVERFLOW.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.INTR_TEST && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.INTR_TEST.NOISE_OBS_OVERFLOW.value & ~decoded_wr_biten[28:28]) | (decoded_wr_data[28:28] & decoded_wr_biten[28:28]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.INTR_TEST.NOISE_OBS_OVERFLOW.next = next_c;
+        field_combo.INTR_TEST.NOISE_OBS_OVERFLOW.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.INTR_TEST.NOISE_OBS_OVERFLOW.value <= 1'h0;
+        end else begin
+            if(field_combo.INTR_TEST.NOISE_OBS_OVERFLOW.load_next) begin
+                field_storage.INTR_TEST.NOISE_OBS_OVERFLOW.value <= field_combo.INTR_TEST.NOISE_OBS_OVERFLOW.next;
+            end
+        end
+    end
+    assign hwif_out.INTR_TEST.NOISE_OBS_OVERFLOW.value = field_storage.INTR_TEST.NOISE_OBS_OVERFLOW.value;
     // Field: entropy_source.FIFO_CTRL.ENABLE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1546,7 +2058,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.FIFO_CTRL.ENTROPY_CHURN_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.FIFO_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.FIFO_CTRL && decoded_req_is_wr && !(hwif_in.FIFO_CTRL.ENTROPY_CHURN_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.FIFO_CTRL.ENTROPY_CHURN_ENABLE.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
             load_next_c = '1;
         end
@@ -1573,7 +2085,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.HEALTH_TEST_CTRL.ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.HEALTH_TEST_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.HEALTH_TEST_CTRL && decoded_req_is_wr && !(hwif_in.HEALTH_TEST_CTRL.ENABLE.swwel)) begin // SW write
             next_c = (field_storage.HEALTH_TEST_CTRL.ENABLE.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
             load_next_c = '1;
         end
@@ -1596,7 +2108,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.HEALTH_TEST_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.HEALTH_TEST_CTRL && decoded_req_is_wr && !(hwif_in.HEALTH_TEST_CTRL.REPETITION_LIMIT.swwel)) begin // SW write
             next_c = (field_storage.HEALTH_TEST_CTRL.REPETITION_LIMIT.value & ~decoded_wr_biten[15:8]) | (decoded_wr_data[15:8] & decoded_wr_biten[15:8]);
             load_next_c = '1;
         end
@@ -1619,7 +2131,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.HEALTH_TEST_WINDOW_SIZE.SIZE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.HEALTH_TEST_WINDOW_SIZE && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.HEALTH_TEST_WINDOW_SIZE && decoded_req_is_wr && !(hwif_in.HEALTH_TEST_WINDOW_SIZE.SIZE.swwel)) begin // SW write
             next_c = (field_storage.HEALTH_TEST_WINDOW_SIZE.SIZE.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
             load_next_c = '1;
         end
@@ -1642,7 +2154,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS && decoded_req_is_wr && !(hwif_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.swwel)) begin // SW write
             next_c = (field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
             load_next_c = '1;
         end
@@ -1665,7 +2177,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value;
         load_next_c = '0;
-        if(decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.MARKOV_TEST_PROB_THRESHOLDS && decoded_req_is_wr && !(hwif_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.swwel)) begin // SW write
             next_c = (field_storage.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
             load_next_c = '1;
         end
@@ -1713,7 +2225,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.APT_PROPORTION_1BIT.LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_1BIT && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.APT_PROPORTION_1BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_1BIT.LIMIT.swwel)) begin // SW write
             next_c = (field_storage.APT_PROPORTION_1BIT.LIMIT.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
             load_next_c = '1;
         end
@@ -1736,7 +2248,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.APT_PROPORTION_2BIT.LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_2BIT && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.APT_PROPORTION_2BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_2BIT.LIMIT.swwel)) begin // SW write
             next_c = (field_storage.APT_PROPORTION_2BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
             load_next_c = '1;
         end
@@ -1759,7 +2271,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.APT_PROPORTION_3BIT.LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_3BIT && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.APT_PROPORTION_3BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_3BIT.LIMIT.swwel)) begin // SW write
             next_c = (field_storage.APT_PROPORTION_3BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
             load_next_c = '1;
         end
@@ -1782,7 +2294,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.APT_PROPORTION_4BIT.LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_4BIT && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.APT_PROPORTION_4BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_4BIT.LIMIT.swwel)) begin // SW write
             next_c = (field_storage.APT_PROPORTION_4BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
             load_next_c = '1;
         end
@@ -1805,7 +2317,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.APT_PROPORTION_LO.LIMIT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_LO && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.APT_PROPORTION_LO && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_LO.LIMIT.swwel)) begin // SW write
             next_c = (field_storage.APT_PROPORTION_LO.LIMIT.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
             load_next_c = '1;
         end
@@ -1828,7 +2340,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.RING_OSC_ENABLE.ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.RING_OSC_ENABLE && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.RING_OSC_ENABLE && decoded_req_is_wr && !(hwif_in.RING_OSC_ENABLE.ENABLE.swwel)) begin // SW write
             next_c = (field_storage.RING_OSC_ENABLE.ENABLE.value & ~decoded_wr_biten[11:0]) | (decoded_wr_data[11:0] & decoded_wr_biten[11:0]);
             load_next_c = '1;
         end
@@ -1851,7 +2363,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.RING_OSC_ENABLE.SAMPLE_CLK_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.RING_OSC_ENABLE && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.RING_OSC_ENABLE && decoded_req_is_wr && !(hwif_in.RING_OSC_ENABLE.SAMPLE_CLK_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.RING_OSC_ENABLE.SAMPLE_CLK_ENABLE.value & ~decoded_wr_biten[23:12]) | (decoded_wr_data[23:12] & decoded_wr_biten[23:12]);
             load_next_c = '1;
         end
@@ -1874,7 +2386,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.RING_OSC_TUNE.DETUNE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.RING_OSC_TUNE && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.RING_OSC_TUNE && decoded_req_is_wr && !(hwif_in.RING_OSC_TUNE.DETUNE.swwel)) begin // SW write
             next_c = (field_storage.RING_OSC_TUNE.DETUNE.value & ~decoded_wr_biten[11:0]) | (decoded_wr_data[11:0] & decoded_wr_biten[11:0]);
             load_next_c = '1;
         end
@@ -1897,7 +2409,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.RING_OSC_TUNE && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.RING_OSC_TUNE && decoded_req_is_wr && !(hwif_in.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.swwel)) begin // SW write
             next_c = (field_storage.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value & ~decoded_wr_biten[23:12]) | (decoded_wr_data[23:12] & decoded_wr_biten[23:12]);
             load_next_c = '1;
         end
@@ -1920,7 +2432,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.RING_OSC_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.RING_OSC_CTRL && decoded_req_is_wr && !(hwif_in.RING_OSC_CTRL.SAMPLE_CLK_SELECT.swwel)) begin // SW write
             next_c = (field_storage.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value & ~decoded_wr_biten[11:0]) | (decoded_wr_data[11:0] & decoded_wr_biten[11:0]);
             load_next_c = '1;
         end
@@ -1943,7 +2455,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.DECORRELATOR_CTRL.BYPASS.value;
         load_next_c = '0;
-        if(decoded_reg_strb.DECORRELATOR_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.DECORRELATOR_CTRL && decoded_req_is_wr && !(hwif_in.DECORRELATOR_CTRL.BYPASS.swwel)) begin // SW write
             next_c = (field_storage.DECORRELATOR_CTRL.BYPASS.value & ~decoded_wr_biten[11:0]) | (decoded_wr_data[11:0] & decoded_wr_biten[11:0]);
             load_next_c = '1;
         end
@@ -1966,7 +2478,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
         load_next_c = '0;
-        if(decoded_reg_strb.DECORRELATOR_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.DECORRELATOR_CTRL && decoded_req_is_wr && !(hwif_in.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.swwel)) begin // SW write
             next_c = (field_storage.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value & ~decoded_wr_biten[31:12]) | (decoded_wr_data[31:12] & decoded_wr_biten[31:12]);
             load_next_c = '1;
         end
@@ -1989,7 +2501,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
         load_next_c = '0;
-        if(decoded_reg_strb.DECORRELATOR_MASK && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.DECORRELATOR_MASK && decoded_req_is_wr && !(hwif_in.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.swwel)) begin // SW write
             next_c = (field_storage.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
             load_next_c = '1;
         end
@@ -2006,29 +2518,56 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value = field_storage.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
-    // Field: entropy_source.STARTUP_CTRL.DELAY_CYCLES
+    // Field: entropy_source.MAIN_SM_STATUS.ALERT
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.STARTUP_CTRL.DELAY_CYCLES.value;
+        next_c = field_storage.MAIN_SM_STATUS.ALERT.value;
         load_next_c = '0;
-        if(decoded_reg_strb.STARTUP_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.STARTUP_CTRL.DELAY_CYCLES.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+        if(decoded_reg_strb.MAIN_SM_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.MAIN_SM_STATUS.ALERT.value & ~(decoded_wr_data[10:10] & decoded_wr_biten[10:10]);
+            load_next_c = '1;
+        end else if(hwif_in.MAIN_SM_STATUS.ALERT.next) begin // stickybit
+            next_c = '1;
             load_next_c = '1;
         end
-        field_combo.STARTUP_CTRL.DELAY_CYCLES.next = next_c;
-        field_combo.STARTUP_CTRL.DELAY_CYCLES.load_next = load_next_c;
+        field_combo.MAIN_SM_STATUS.ALERT.next = next_c;
+        field_combo.MAIN_SM_STATUS.ALERT.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.STARTUP_CTRL.DELAY_CYCLES.value <= 16'h0;
+            field_storage.MAIN_SM_STATUS.ALERT.value <= 1'h0;
         end else begin
-            if(field_combo.STARTUP_CTRL.DELAY_CYCLES.load_next) begin
-                field_storage.STARTUP_CTRL.DELAY_CYCLES.value <= field_combo.STARTUP_CTRL.DELAY_CYCLES.next;
+            if(field_combo.MAIN_SM_STATUS.ALERT.load_next) begin
+                field_storage.MAIN_SM_STATUS.ALERT.value <= field_combo.MAIN_SM_STATUS.ALERT.next;
             end
         end
     end
-    assign hwif_out.STARTUP_CTRL.DELAY_CYCLES.value = field_storage.STARTUP_CTRL.DELAY_CYCLES.value;
+    // Field: entropy_source.MAIN_SM_STATUS.ERR
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.MAIN_SM_STATUS.ERR.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.MAIN_SM_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.MAIN_SM_STATUS.ERR.value & ~(decoded_wr_data[11:11] & decoded_wr_biten[11:11]);
+            load_next_c = '1;
+        end else if(hwif_in.MAIN_SM_STATUS.ERR.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.MAIN_SM_STATUS.ERR.next = next_c;
+        field_combo.MAIN_SM_STATUS.ERR.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.MAIN_SM_STATUS.ERR.value <= 1'h0;
+        end else begin
+            if(field_combo.MAIN_SM_STATUS.ERR.load_next) begin
+                field_storage.MAIN_SM_STATUS.ERR.value <= field_combo.MAIN_SM_STATUS.ERR.next;
+            end
+        end
+    end
     // Field: entropy_source.GENERATOR_0_HEALTH_STATUS.STATUS
     always_comb begin
         automatic logic [7:0] next_c;
@@ -2335,7 +2874,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_0_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_0_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_0_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_0_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_0_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2358,7 +2897,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_1_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_1_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_1_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_1_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_1_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2381,7 +2920,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_2_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_2_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_2_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_2_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_2_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2404,7 +2943,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_3_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_3_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_3_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_3_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_3_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2427,7 +2966,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_4_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_4_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_4_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_4_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_4_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2450,7 +2989,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_5_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_5_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_5_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_5_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_5_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2473,7 +3012,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_6_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_6_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_6_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_6_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_6_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2496,7 +3035,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_7_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_7_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_7_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_7_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_7_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2519,7 +3058,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_8_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_8_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_8_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_8_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_8_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2542,7 +3081,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_9_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_9_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2565,7 +3104,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_10_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_10_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2588,7 +3127,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.GENERATOR_11_SAMPLE_CLK_CONFIG && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.GENERATOR_11_SAMPLE_CLK_CONFIG && decoded_req_is_wr && !(hwif_in.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel)) begin // SW write
             next_c = (field_storage.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.value & ~decoded_wr_biten[4:0]) | (decoded_wr_data[4:0] & decoded_wr_biten[4:0]);
             load_next_c = '1;
         end
@@ -2631,6 +3170,178 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.HT_WATERMARK_NUM.WATERMARK_NUM.value = field_storage.HT_WATERMARK_NUM.WATERMARK_NUM.value;
+    // Field: entropy_source.FIPS_LOCK.LOCK
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.FIPS_LOCK.LOCK.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.FIPS_LOCK && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.FIPS_LOCK.LOCK.value | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.FIPS_LOCK.LOCK.next = next_c;
+        field_combo.FIPS_LOCK.LOCK.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.FIPS_LOCK.LOCK.value <= 1'h0;
+        end else begin
+            if(field_combo.FIPS_LOCK.LOCK.load_next) begin
+                field_storage.FIPS_LOCK.LOCK.value <= field_combo.FIPS_LOCK.LOCK.next;
+            end
+        end
+    end
+    assign hwif_out.FIPS_LOCK.LOCK.value = field_storage.FIPS_LOCK.LOCK.value;
+    // Field: entropy_source.ALERT_THRESHOLD.THRESHOLD
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.ALERT_THRESHOLD.THRESHOLD.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.ALERT_THRESHOLD && decoded_req_is_wr && !(hwif_in.ALERT_THRESHOLD.THRESHOLD.swwel)) begin // SW write
+            next_c = (field_storage.ALERT_THRESHOLD.THRESHOLD.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            load_next_c = '1;
+        end
+        field_combo.ALERT_THRESHOLD.THRESHOLD.next = next_c;
+        field_combo.ALERT_THRESHOLD.THRESHOLD.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.ALERT_THRESHOLD.THRESHOLD.value <= 16'h4;
+        end else begin
+            if(field_combo.ALERT_THRESHOLD.THRESHOLD.load_next) begin
+                field_storage.ALERT_THRESHOLD.THRESHOLD.value <= field_combo.ALERT_THRESHOLD.THRESHOLD.next;
+            end
+        end
+    end
+    assign hwif_out.ALERT_THRESHOLD.THRESHOLD.value = field_storage.ALERT_THRESHOLD.THRESHOLD.value;
+    // Field: entropy_source.MIN_ENTROPY_H.H
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.MIN_ENTROPY_H.H.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.MIN_ENTROPY_H && decoded_req_is_wr && !(hwif_in.MIN_ENTROPY_H.H.swwel)) begin // SW write
+            next_c = (field_storage.MIN_ENTROPY_H.H.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end
+        field_combo.MIN_ENTROPY_H.H.next = next_c;
+        field_combo.MIN_ENTROPY_H.H.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.MIN_ENTROPY_H.H.value <= 8'hc;
+        end else begin
+            if(field_combo.MIN_ENTROPY_H.H.load_next) begin
+                field_storage.MIN_ENTROPY_H.H.value <= field_combo.MIN_ENTROPY_H.H.next;
+            end
+        end
+    end
+    assign hwif_out.MIN_ENTROPY_H.H.value = field_storage.MIN_ENTROPY_H.H.value;
+    // Field: entropy_source.BIW_OBS_CTRL.RAW_ENABLE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.BIW_OBS_CTRL.RAW_ENABLE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.BIW_OBS_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.BIW_OBS_CTRL.RAW_ENABLE.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.BIW_OBS_CTRL.RAW_ENABLE.next = next_c;
+        field_combo.BIW_OBS_CTRL.RAW_ENABLE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.BIW_OBS_CTRL.RAW_ENABLE.value <= 1'h0;
+        end else begin
+            if(field_combo.BIW_OBS_CTRL.RAW_ENABLE.load_next) begin
+                field_storage.BIW_OBS_CTRL.RAW_ENABLE.value <= field_combo.BIW_OBS_CTRL.RAW_ENABLE.next;
+            end
+        end
+    end
+    assign hwif_out.BIW_OBS_CTRL.RAW_ENABLE.value = field_storage.BIW_OBS_CTRL.RAW_ENABLE.value;
+    // External register: entropy_source.BIW_OBS_RDATA
+
+    assign hwif_out.BIW_OBS_RDATA.req = !decoded_req_is_wr ? decoded_reg_strb.BIW_OBS_RDATA : '0;
+    assign hwif_out.BIW_OBS_RDATA.req_is_wr = decoded_req_is_wr;
+    // Field: entropy_source.NOISE_OBS_CTRL.RAW_ENABLE
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.NOISE_OBS_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.NOISE_OBS_CTRL.RAW_ENABLE.next = next_c;
+        field_combo.NOISE_OBS_CTRL.RAW_ENABLE.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value <= 1'h0;
+        end else begin
+            if(field_combo.NOISE_OBS_CTRL.RAW_ENABLE.load_next) begin
+                field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value <= field_combo.NOISE_OBS_CTRL.RAW_ENABLE.next;
+            end
+        end
+    end
+    assign hwif_out.NOISE_OBS_CTRL.RAW_ENABLE.value = field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value;
+    // Field: entropy_source.NOISE_OBS_CTRL.FLUSH
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.NOISE_OBS_CTRL.FLUSH.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.NOISE_OBS_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.NOISE_OBS_CTRL.FLUSH.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.NOISE_OBS_CTRL.FLUSH.next = next_c;
+        field_combo.NOISE_OBS_CTRL.FLUSH.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.NOISE_OBS_CTRL.FLUSH.value <= 1'h0;
+        end else begin
+            if(field_combo.NOISE_OBS_CTRL.FLUSH.load_next) begin
+                field_storage.NOISE_OBS_CTRL.FLUSH.value <= field_combo.NOISE_OBS_CTRL.FLUSH.next;
+            end
+        end
+    end
+    assign hwif_out.NOISE_OBS_CTRL.FLUSH.value = field_storage.NOISE_OBS_CTRL.FLUSH.value;
+    // Field: entropy_source.NOISE_OBS_CTRL.LANE_SEL
+    always_comb begin
+        automatic logic [3:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.NOISE_OBS_CTRL.LANE_SEL.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.NOISE_OBS_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.NOISE_OBS_CTRL.LANE_SEL.value & ~decoded_wr_biten[7:4]) | (decoded_wr_data[7:4] & decoded_wr_biten[7:4]);
+            load_next_c = '1;
+        end
+        field_combo.NOISE_OBS_CTRL.LANE_SEL.next = next_c;
+        field_combo.NOISE_OBS_CTRL.LANE_SEL.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.NOISE_OBS_CTRL.LANE_SEL.value <= 4'h0;
+        end else begin
+            if(field_combo.NOISE_OBS_CTRL.LANE_SEL.load_next) begin
+                field_storage.NOISE_OBS_CTRL.LANE_SEL.value <= field_combo.NOISE_OBS_CTRL.LANE_SEL.next;
+            end
+        end
+    end
+    assign hwif_out.NOISE_OBS_CTRL.LANE_SEL.value = field_storage.NOISE_OBS_CTRL.LANE_SEL.value;
+    // External register: entropy_source.NOISE_OBS_RDATA
+
+    assign hwif_out.NOISE_OBS_RDATA.req = !decoded_req_is_wr ? decoded_reg_strb.NOISE_OBS_RDATA : '0;
+    assign hwif_out.NOISE_OBS_RDATA.req_is_wr = decoded_req_is_wr;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -2653,6 +3364,8 @@ module entropy_source_reg (
         automatic logic rd_ack;
         rd_ack = '0;
         rd_ack |= hwif_in.FIFO_RDATA.rd_ack;
+        rd_ack |= hwif_in.BIW_OBS_RDATA.rd_ack;
+        rd_ack |= hwif_in.NOISE_OBS_RDATA.rd_ack;
         readback_external_rd_ack_c = rd_ack;
     end
 
@@ -2685,6 +3398,7 @@ module entropy_source_reg (
         end
         if(rd_mux_addr == 9'h4) begin
             readback_data_var[0] = field_storage.CTRL.RESET.value;
+            readback_data_var[1] = field_storage.CTRL.MODULE_ENABLE.value;
             readback_data_var[4] = field_storage.CTRL.AUTOTUNE_ENABLE.value;
             readback_data_var[8] = field_storage.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
             readback_data_var[25:16] = field_storage.CTRL.DOWNSAMPLE_RATE.value;
@@ -2702,12 +3416,20 @@ module entropy_source_reg (
             readback_data_var[4] = field_storage.INTR_STATUS.FIFO_ERROR.value;
             readback_data_var[8] = field_storage.INTR_STATUS.FIFO_OVERFLOW.value;
             readback_data_var[12] = field_storage.INTR_STATUS.FIFO_UNDERFLOW.value;
+            readback_data_var[16] = field_storage.INTR_STATUS.PERSISTENT_FAILURE.value;
+            readback_data_var[20] = field_storage.INTR_STATUS.AUTOTUNE_FAIL.value;
+            readback_data_var[24] = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value;
+            readback_data_var[28] = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
         end
         if(rd_mux_addr == 9'h14) begin
             readback_data_var[0] = field_storage.INTR_ENABLE.HEALTH_TEST_FAILED.value;
             readback_data_var[4] = field_storage.INTR_ENABLE.FIFO_ERROR.value;
             readback_data_var[8] = field_storage.INTR_ENABLE.FIFO_OVERFLOW.value;
             readback_data_var[12] = field_storage.INTR_ENABLE.FIFO_UNDERFLOW.value;
+            readback_data_var[16] = field_storage.INTR_ENABLE.PERSISTENT_FAILURE.value;
+            readback_data_var[20] = field_storage.INTR_ENABLE.AUTOTUNE_FAIL.value;
+            readback_data_var[24] = field_storage.INTR_ENABLE.BIW_OBS_OVERFLOW.value;
+            readback_data_var[28] = field_storage.INTR_ENABLE.NOISE_OBS_OVERFLOW.value;
         end
         if(rd_mux_addr == 9'h1c) begin
             readback_data_var[0] = hwif_in.SHA256_STATUS.BUSY.next;
@@ -2810,8 +3532,13 @@ module entropy_source_reg (
         if(rd_mux_addr == 9'ha4) begin
             readback_data_var[7:0] = field_storage.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
         end
-        if(rd_mux_addr == 9'hb0) begin
-            readback_data_var[15:0] = field_storage.STARTUP_CTRL.DELAY_CYCLES.value;
+        if(rd_mux_addr == 9'hb4) begin
+            readback_data_var[8:0] = hwif_in.MAIN_SM_STATUS.STATE.next;
+            readback_data_var[9] = hwif_in.MAIN_SM_STATUS.IDLE.next;
+            readback_data_var[10] = field_storage.MAIN_SM_STATUS.ALERT.value;
+            readback_data_var[11] = field_storage.MAIN_SM_STATUS.ERR.value;
+            readback_data_var[12] = hwif_in.MAIN_SM_STATUS.BOOT_PHASE_DONE.next;
+            readback_data_var[13] = hwif_in.MAIN_SM_STATUS.ALERT_CNTR_CLR_OK.next;
         end
         if(rd_mux_addr == 9'hc0) begin
             readback_data_var[7:0] = field_storage.GENERATOR_0_HEALTH_STATUS.STATUS.value;
@@ -2915,6 +3642,42 @@ module entropy_source_reg (
             readback_data_var[11:8] = hwif_in.ALERT_FAIL_COUNTS.MARKOV_LO_FAIL_COUNT.next;
             readback_data_var[15:12] = hwif_in.ALERT_FAIL_COUNTS.MARKOV_HI_FAIL_COUNT.next;
             readback_data_var[19:16] = hwif_in.ALERT_FAIL_COUNTS.REPCNT_FAIL_COUNT.next;
+        end
+        if(rd_mux_addr == 9'h154) begin
+            readback_data_var[0] = field_storage.FIPS_LOCK.LOCK.value;
+        end
+        if(rd_mux_addr == 9'h158) begin
+            readback_data_var[15:0] = field_storage.ALERT_THRESHOLD.THRESHOLD.value;
+        end
+        if(rd_mux_addr == 9'h15c) begin
+            readback_data_var[7:0] = field_storage.MIN_ENTROPY_H.H.value;
+        end
+        if(rd_mux_addr == 9'h160) begin
+            readback_data_var[15:0] = hwif_in.RECOMMENDED_THRESHOLDS.RCT_LIMIT.next;
+            readback_data_var[31:16] = hwif_in.RECOMMENDED_THRESHOLDS.APT_LIMIT.next;
+        end
+        if(rd_mux_addr == 9'h164) begin
+            readback_data_var[0] = field_storage.BIW_OBS_CTRL.RAW_ENABLE.value;
+        end
+        if(rd_mux_addr == 9'h168) begin
+            readback_data_var[6:0] = hwif_in.BIW_OBS_STATUS.LEVEL.next;
+            readback_data_var[12:8] = hwif_in.BIW_OBS_STATUS.WPTR.next;
+            readback_data_var[20:16] = hwif_in.BIW_OBS_STATUS.RPTR.next;
+        end
+        if(rd_mux_addr == 9'h16c) begin
+            readback_data_var = hwif_in.BIW_OBS_RDATA.rd_data;
+        end
+        if(rd_mux_addr == 9'h170) begin
+            readback_data_var[0] = field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value;
+            readback_data_var[7:4] = field_storage.NOISE_OBS_CTRL.LANE_SEL.value;
+        end
+        if(rd_mux_addr == 9'h174) begin
+            readback_data_var[6:0] = hwif_in.NOISE_OBS_STATUS.LEVEL.next;
+            readback_data_var[12:8] = hwif_in.NOISE_OBS_STATUS.WPTR.next;
+            readback_data_var[20:16] = hwif_in.NOISE_OBS_STATUS.RPTR.next;
+        end
+        if(rd_mux_addr == 9'h178) begin
+            readback_data_var = hwif_in.NOISE_OBS_RDATA.rd_data;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;

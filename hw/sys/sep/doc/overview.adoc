@@ -43,7 +43,8 @@ KMAC-SHA3
 Controller
 ** Entropy source, DRBG, Entropy Distribution
 ** Key Manager (KM)
-** PCR Vault (TPM attestation)
+*** Key and Policy Vault (KPV)
+*** Crypto engine key sideload interfaces
 
 The cryptographic, peripheral IO and systems IO subsystems reside in
 their own respective hierarchies. These subsystems are connected with

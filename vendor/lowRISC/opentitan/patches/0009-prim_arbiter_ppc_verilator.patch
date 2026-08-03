@@ -10,11 +10,11 @@
    input clk_i,
    input rst_ni,
 @@ -180,9 +180,11 @@
-   `ASSERT(GntImpliesReq_A, gnt_o[k] |-> req_i[k])
+   `OCAH_OT_ASSERT(GntImpliesReq_A, gnt_o[k] |-> req_i[k])
  
    // if request and ready are constantly held at 1, we should eventually get a grant
 +`ifndef VERILATOR
-   `ASSERT(NoStarvation_A,
+   `OCAH_OT_ASSERT(NoStarvation_A,
        ReqsAreStable && ReadyIsStable && ready_i && req_i[k] |->
        strong(##[0:$] gnt_o[k]))
 +`endif

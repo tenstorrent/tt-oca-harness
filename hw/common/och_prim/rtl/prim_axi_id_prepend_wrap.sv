@@ -24,7 +24,7 @@ module prim_axi_id_prepend_wrap #(
     input axi_out_resp_t axi_out_resp_i
 );
 
-  `include "tt_assert.svh"
+  `include "ocah_assert.svh"
 
   localparam int unsigned IdBuffWidth = AxiOutIdWidth - AxiInIdWidth;
 
@@ -75,6 +75,6 @@ module prim_axi_id_prepend_wrap #(
   assign axi_in_resp_o.r.user    = axi_out_resp_i.r.user;
   assign axi_in_resp_o.r.last    = axi_out_resp_i.r.last;
 
-  `TT_ASSERT_INIT(OutputIDWidthLessThanInputIDWidth, (AxiOutIdWidth >= AxiInIdWidth))
+  `OCAH_ASSERT_INIT(OutputIDWidthLessThanInputIDWidth, (AxiOutIdWidth >= AxiInIdWidth))
 
 endmodule

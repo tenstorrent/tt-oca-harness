@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Ripple Divider
-//
-// Description:
-// Asynchronous ripple frequency divider using cascaded toggle flip-flops.
-// Each stage divides the frequency by 2, creating a chain of division factors.
-//
-// The divider uses gdffqb flip-flops configured as toggle flip-flops (D connected
-// to QB). The first stage is clocked by the input clock, and each subsequent
-// stage is clocked by the Q output of the previous stage.
-//
-// Output array provides all division factors simultaneously:
-//   div_o[0] = clk_i (divide by 1)
-//   div_o[1] = clk_i/2 (divide by 2)
-//   div_o[2] = clk_i/4 (divide by 4)
-//   ...
-//   div_o[N] = clk_i/2^N (divide by 2^N)
-//
-// NOTE: This is an asynchronous design that intentionally violates synchronous
-// design rules. It is used for frequency division of clock and ring oscillator
-//  signals where timing constraints are not critical.
-//------------------------------------------------------------------------------
+/**
+ * @file entropy_ripple_divider.sv
+ * @brief Asynchronous ripple frequency divider with cascaded toggle flip-flops.
+ *
+ * @details This module implements an asynchronous ripple frequency divider
+ *          using cascaded toggle flip-flops. Each stage divides the frequency
+ *          by 2, creating a chain of division factors. The divider uses gdffqb
+ *          flip-flops configured as toggle flip-flops (D connected to QB).
+ *          The first stage is clocked by the input clock, and each subsequent
+ *          stage is clocked by the Q output of the previous stage. The output
+ *          array provides all division factors simultaneously: div_o[0]=clk_i
+ *          (divide by 1), div_o[1]=clk_i/2, div_o[2]=clk_i/4, ...,
+ *          div_o[N]=clk_i/2^N. NOTE: This is an asynchronous design that
+ *          intentionally violates synchronous design rules; it is used for
+ *          frequency division where timing constraints are not critical.
+ *
+ * @param NUM_STAGES  Number of divide-by-2 stages. Default: 7
+ */
 
 module entropy_ripple_divider #(
     parameter int unsigned NUM_STAGES = 7  // Number of divide-by-2 stages
@@ -40,7 +36,7 @@ module entropy_ripple_divider #(
     // Each stage is a toggle flip-flop (D=QB) that divides by 2
     generate
         for (genvar i = 0; i < NUM_STAGES; i++) begin : g_div_stage
-            if (i == 0) begin : gen_first_stage
+            if (i == 0) begin : g_first_stage
                 // First stage: clocked by input clock
                 gdffqb u_div_ff (
                     .d_i   (div_qb[i]),     // Toggle: D = QB
@@ -49,7 +45,7 @@ module entropy_ripple_divider #(
                     .q_o   (div_q[i]),      // Q output
                     .qb_o  (div_qb[i])      // QB output (inverted)
                 );
-            end else begin : gen_ripple_stage
+            end else begin : g_ripple_stage
                 // Subsequent stages: clocked by previous stage's Q output
                 gdffqb u_div_ff (
                     .d_i   (div_qb[i]),     // Toggle: D = QB

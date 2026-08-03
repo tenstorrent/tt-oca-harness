@@ -39,15 +39,15 @@ package filter_ctrl_reg_pkg;
 
     typedef struct {
         logic value;
-    } filter_ctrl__FILTER_CONFIG__read_en__out_t;
+    } filter_ctrl__FILTER_CONFIG__read_allowed__out_t;
 
     typedef struct {
         logic value;
-    } filter_ctrl__FILTER_CONFIG__write_en__out_t;
+    } filter_ctrl__FILTER_CONFIG__write_allowed__out_t;
 
     typedef struct {
         logic value;
-    } filter_ctrl__FILTER_CONFIG__addr_mode__out_t;
+    } filter_ctrl__FILTER_CONFIG__entry_enabled__out_t;
 
     typedef struct {
         logic value;
@@ -70,9 +70,9 @@ package filter_ctrl_reg_pkg;
     } filter_ctrl__FILTER_CONFIG__locked__out_t;
 
     typedef struct {
-        filter_ctrl__FILTER_CONFIG__read_en__out_t read_en;
-        filter_ctrl__FILTER_CONFIG__write_en__out_t write_en;
-        filter_ctrl__FILTER_CONFIG__addr_mode__out_t addr_mode;
+        filter_ctrl__FILTER_CONFIG__read_allowed__out_t read_allowed;
+        filter_ctrl__FILTER_CONFIG__write_allowed__out_t write_allowed;
+        filter_ctrl__FILTER_CONFIG__entry_enabled__out_t entry_enabled;
         filter_ctrl__FILTER_CONFIG__allow_ns__out_t allow_ns;
         filter_ctrl__FILTER_CONFIG__src_id__out_t src_id;
         filter_ctrl__FILTER_CONFIG__group_id__out_t group_id;

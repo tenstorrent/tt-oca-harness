@@ -19,7 +19,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (s.f.SHA3_IDLE) return 0;
+        if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for idle\n");
     return -1;
@@ -47,51 +47,51 @@ static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
     if (wait_for_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 1;
-    cfg.f.MODE = 0x3; // cSHAKE = value 3 per hjson (sha3_mode_e::CShake = 2'b11); KMAC requires
+    cfg.f.kmac_en = 1;
+    cfg.f.mode = 0x3; // cSHAKE = value 3 per hjson (sha3_mode_e::CShake = 2'b11); KMAC requires
                       // cSHAKE for PREFIX
-    cfg.f.KSTRENGTH = 0x0;
-    cfg.f.ENTROPY_MODE = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.kstrength = 0x0;
+    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     setup_entropy();
 
-    cfg.f.ENTROPY_READY = 1;
+    cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     kmac__KEY_LEN_t kl = {.w = 0};
-    kl.f.LEN = 0;
+    kl.f.len = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), prefix[i]);
+    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), prefix[i]);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29;
+    cmd.f.cmd = 29;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x74736574);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x00020001);
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001);
 
-    cmd.f.CMD = 46;
+    cmd.f.cmd = 46;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t s0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(i * 4));
-        uint32_t s1 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0x100 + (i * 4)));
+        uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
+        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
         digest_out[i] = s0 ^ s1;
     }
 
-    cmd.f.CMD = 22;
+    cmd.f.cmd = 22;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
@@ -106,10 +106,10 @@ static int test_prefix(void) {
                                            0xDEADBEEF, 0xCAFEBABE, 0x01020304, 0x05060708,
                                            0x090A0B0C, 0x0D0E0F10, 0x11121314};
 
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), test_vals[i]);
+    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), test_vals[i]);
 
     for (int i = 0; i < 11; i++) {
-        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i));
+        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
         if (val != test_vals[i]) {
             printf("FAIL: PREFIX_%d readback 0x%08x, expected 0x%08x\n", i, val, test_vals[i]);
             errors++;
@@ -118,11 +118,11 @@ static int test_prefix(void) {
     printf("PREFIX write/readback: %s\n", errors == 0 ? "PASS" : "FAIL");
 
     printf("=== Step 2: Clear PREFIX to zeros ===\n");
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i), 0);
+    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 
     int clear_ok = 1;
     for (int i = 0; i < 11; i++) {
-        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_0_BASE_ADDR(i));
+        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
         if (val != 0) {
             clear_ok = 0;
             errors++;

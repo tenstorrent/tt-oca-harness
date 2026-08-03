@@ -74,9 +74,9 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CONTROL_t ctrl;
-    spi_controller__CONFIGOPTS_t cfg;
-    spi_controller__COMMAND_t cmd;
+    spi_controller__CTRL_t ctrl;
+    spi_controller__CFG_t cfg;
+    spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
     volatile int delay;
@@ -88,7 +88,7 @@ int main(void) {
     ctrl.w = 0u;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Configure: CLKDIV=9 (~5MHz from 100MHz), SPI Mode 0, standard CS timing */
     cfg.w = 0;
@@ -98,7 +98,7 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
@@ -112,14 +112,14 @@ int main(void) {
     }
 
     /* Load TX FIFO: dual fast-read command pattern */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x3B000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x3B000000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;       /* 4 bytes (LEN+1 bytes total) */
     cmd.f.CSAAT = 1;     /* keep CS# low for next segment */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -151,7 +151,7 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 0; /* Dummy */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -182,7 +182,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     wait_for_idle(TIMEOUT_LIMIT);
 
@@ -201,9 +201,9 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* SW_RST to drain RX FIFO */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
     for (delay = 0; delay < 200; delay++) {
     }
 
@@ -218,13 +218,13 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 1;     /* Dual */
     cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Dual speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     for (delay = 0; delay < 200; delay++) {
     }
@@ -238,9 +238,9 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* SW_RST to recover */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
     for (delay = 0; delay < 200; delay++) {
     }
 
@@ -255,13 +255,13 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xABCD1234);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xABCD1234);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;     /* Standard */
     cmd.f.DIRECTION = 3; /* Bidirectional — valid at Standard speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;

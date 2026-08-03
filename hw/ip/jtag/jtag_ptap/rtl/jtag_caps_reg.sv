@@ -60,12 +60,12 @@ module jtag_caps_reg
     // Parameter Validation
     //--------------------------------------------------------------------------
     // Compile-time assertions to verify parameters fit in their allocated bit fields
-    `ASSERT_STATIC_LINT_ERROR(NumXtrigCtpFits_A,   NUM_XTRIG_CTP    <= 63)
-    `ASSERT_STATIC_LINT_ERROR(NumXtrigIntCtFits_A, NUM_XTRIG_INT_CT <= 63)
-    `ASSERT_STATIC_LINT_ERROR(NumSmcIcResetFits_A, NUM_SMC_IC_RESET <= 255)
-    `ASSERT_STATIC_LINT_ERROR(NumSepIcResetFits_A, NUM_SEP_IC_RESET <= 255)
-    `ASSERT_STATIC_LINT_ERROR(NumExtIcResetFits_A, NUM_EXT_IC_RESET <= 255)
-    `ASSERT_STATIC_LINT_ERROR(NumExtraStapsFits_A, NUM_EXTRA_STAPS  <= 15)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumXtrigCtpFits_A,   NUM_XTRIG_CTP    <= 63)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumXtrigIntCtFits_A, NUM_XTRIG_INT_CT <= 63)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumSmcIcResetFits_A, NUM_SMC_IC_RESET <= 255)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumSepIcResetFits_A, NUM_SEP_IC_RESET <= 255)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumExtIcResetFits_A, NUM_EXT_IC_RESET <= 255)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumExtraStapsFits_A, NUM_EXTRA_STAPS  <= 15)
 
     //--------------------------------------------------------------------------
     // JTAG Capabilities Value Construction

@@ -214,8 +214,8 @@ where needed).
 |DTP CSR |0xC000_F000 (size 0x0800) |`axil_dtp_csr_req_o/resp_i`
 |TB `u_dtp_csr_err_slv` (DECERR+`0xBADCAB1E`) |Yes
 
-|Peripheral extension |0xC040_0000 (size 0x400000)
-|`axil_extension_req_o/resp_i` |integration err_slv (DECERR+0) |Yes
+|External window |0xC040_0000 (size 0x400000)
+|`smc_external_req_o/resp_i` |integration err_slv (DECERR+0) |Yes
 |=======================================================================
 
 ____________________________________________________________________

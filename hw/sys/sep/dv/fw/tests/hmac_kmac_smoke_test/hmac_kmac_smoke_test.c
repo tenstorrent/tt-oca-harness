@@ -6,7 +6,7 @@
 //
 // HMAC (SHA-256 mode, 0x1091_1000): hash three messages -- empty, "abc",
 // "Hello OTBN." -- and compare each HW digest against an INDEPENDENT software
-// SHA-256 (fw/drivers/sha256.c) computed over the same bytes. Also requires no
+// SHA-256 (fw/tests/common/sha256.c) computed over the same bytes. Also requires no
 // done-timeout and HMAC ERR_CODE == 0. (OCAH hard-codes the three NIST vectors;
 // computing them in firmware is an equivalent, self-contained golden.)
 //

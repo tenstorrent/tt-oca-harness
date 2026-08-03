@@ -1,29 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_crc_engine.sv
  * @brief Shared byte-per-cycle CRC engine for Key Manager PicoRV32 PCPI CRC instructions.
  */
+
 module km_crc_engine (
-    input wire logic        clk_i,
-    input wire logic        rst_ni,
-    input wire logic        start_i,
-    input wire logic [1:0]  mode_i,
-    input wire logic [31:0] state_i,
-    input wire logic [31:0] data_i,
+    input logic        clk_i,
+    input logic        rst_ni,
+    input logic        start_i,
+    input logic [1:0]  mode_i,
+    input logic [31:0] state_i,
+    input logic [31:0] data_i,
     output logic            busy_o,
     output logic            done_o,
     output logic [31:0]     result_o
 );
 
     `include "prim_assert.sv"
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     localparam logic [1:0] CRC_MODE_32C_WORD = 2'b00;
     localparam logic [1:0] CRC_MODE_32C_BYTE = 2'b01;
@@ -138,23 +135,22 @@ module km_crc_engine (
         end
     end
 
-    `ASSERT(LegalModeOnStart_A, start_i |-> mode_legal(mode_i), clk_i, !rst_ni)
-    `ASSERT(StartWordToDone_A,
+    `OCAH_ASSERT(LegalModeOnStart_A, start_i |-> mode_legal(mode_i), clk_i, !rst_ni)
+    `OCAH_ASSERT(StartWordToDone_A,
         start_i && !busy_o && mode_i == CRC_MODE_32C_WORD |=> busy_o ##1 busy_o ##1 busy_o ##1 busy_o ##1 done_o,
         clk_i, !rst_ni)
-    `ASSERT(StartByteToDone_A,
+    `OCAH_ASSERT(StartByteToDone_A,
         start_i && !busy_o && (mode_i == CRC_MODE_32C_BYTE || mode_i == CRC_MODE_8_ROHC) |=> busy_o ##1 done_o,
         clk_i, !rst_ni)
-    `ASSERT(NoRestartWhileBusy_A, busy_o |-> !start_i, clk_i, !rst_ni)
-    `ASSERT(Crc8ZeroExtended_A,
+    `OCAH_ASSERT(NoRestartWhileBusy_A, busy_o |-> !start_i, clk_i, !rst_ni)
+    `OCAH_ASSERT(Crc8ZeroExtended_A,
         done_o && mode_q == CRC_MODE_8_ROHC |-> result_o[31:8] == '0,
         clk_i, !rst_ni)
 
-    `TT_ASSERT_PULSE(DonePulse_A, done_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(BusyKnown_A, busy_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(DoneKnown_A, done_o, clk_i, !rst_ni)
-    `TT_ASSERT_KNOWN(ResultKnown_A, result_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_PULSE(DonePulse_A, done_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(BusyKnown_A, busy_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(DoneKnown_A, done_o, clk_i, !rst_ni)
+    `OCAH_ASSERT_KNOWN(ResultKnown_A, result_o, clk_i, !rst_ni)
 
 endmodule : km_crc_engine
 
-`default_nettype wire

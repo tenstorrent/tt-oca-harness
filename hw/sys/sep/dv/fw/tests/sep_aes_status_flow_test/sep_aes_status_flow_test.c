@@ -78,23 +78,23 @@ static int wait_for_output_lost(int want_lost) {
 
 static void write_data_in(const uint32_t in[4]) {
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_0_BASE_ADDR(i), in[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(i), in[i]);
     }
 }
 
 static void read_data_out_word(int idx, uint32_t *out_word) {
-    *out_word = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_0_BASE_ADDR(idx));
+    *out_word = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(idx));
 }
 
 static void read_data_out(uint32_t out[4]) {
     for (int i = 0; i < 4; i++) {
-        out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_0_BASE_ADDR(i));
+        out[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(i));
     }
 }
 
 static void read_iv(uint32_t iv_out[4]) {
     for (int i = 0; i < 4; i++) {
-        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i));
+        iv_out[i] = READ_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i));
     }
 }
 
@@ -176,21 +176,21 @@ static int configure_aes_ecb_enc_auto(void) {
     if (wait_for_idle(1) != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
     }
     for (int i = 4; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_idle(1) != 0) return -1;
 
     /* Always write IV for completeness (ECB ignores). */
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), zero_iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), zero_iv[i]);
     }
 
     return 0;
@@ -210,20 +210,20 @@ static int configure_aes_ecb_enc_manual(void) {
     if (wait_for_idle(1) != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
     }
     for (int i = 4; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
 
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     if (wait_for_idle(1) != 0) return -1;
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), zero_iv[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), zero_iv[i]);
     }
 
     return 0;
@@ -375,7 +375,7 @@ static int test_trigger_clear_ops(void) {
 
     static const uint32_t iv_set[4] = {0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c};
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_0_BASE_ADDR(i), iv_set[i]);
+        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), iv_set[i]);
     }
     uint32_t iv_rd[4];
     read_iv(iv_rd);

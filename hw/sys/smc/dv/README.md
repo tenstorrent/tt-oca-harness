@@ -66,7 +66,7 @@ hw/sys/smc/dv/
 ## Run
 
 ```bash
-module load verilator/5.046 gcc/13.2.1   # C++20 for cocotb -fcoroutines
+module load verilator/5.050 gcc/13.2.1   # C++20 for cocotb -fcoroutines; 5.050 fixes bad C++ init of nested unpacked structs seen with 5.046
 PY=tools/dv/run_dv.py
 python3 $PY --dut smc_wrapper --items smoke --tool verilator
 python3 $PY --dut smc_wrapper --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim

@@ -240,15 +240,15 @@ module telemetry_receiver_wrap
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(
+    `OCAH_OT_ASSERT_INIT(
         paramCheckNumTelemetryReceivers_A,
         NUM_TELEMETRY_RECEIVERS > 0 && NUM_TELEMETRY_RECEIVERS <= telemetry_receiver_wrap_pkg::MAX_NUM_TELEMETRY_RECEIVERS
     )
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
-    `ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
-    `ASSERT_KNOWN(TelemetryReceiverIrqKnownO_A, telemetry_receiver_irq_o)
-    `ASSERT_KNOWN(TelemetryReceiverDebugKnownO_A, telemetry_receiver_debug_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)
+    `OCAH_OT_ASSERT_KNOWN(AfvalidKnownO_A, afvalid_o)
+    `OCAH_OT_ASSERT_KNOWN(TelemetryReceiverIrqKnownO_A, telemetry_receiver_irq_o)
+    `OCAH_OT_ASSERT_KNOWN(TelemetryReceiverDebugKnownO_A, telemetry_receiver_debug_o)
 
 endmodule

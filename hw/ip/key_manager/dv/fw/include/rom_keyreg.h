@@ -8,8 +8,8 @@
  *
  * Maps monotonically-increasing 8-bit key handles (1-255) to KPV base
  * slots.  Provides allocation (generate), lookup (get_handle / get_slot /
- * get_crc), and destruction (destroy) with a reverse slot-to-handle map
- * for fast slot-based queries.
+ * get_crc / get_dest_valid), and destruction (destroy) with a reverse
+ * slot-to-handle map for fast slot-based queries.
  *
  * Handle 0 is reserved as the null handle and is never assigned.
  */
@@ -26,9 +26,10 @@
 
 /** @brief Metadata for a single key handle. */
 typedef struct {
-    uint8_t base_slot; /**< KPV base slot for this key */
-    uint8_t valid;     /**< 1 if the handle is live, 0 if destroyed */
-    uint32_t crc32;    /**< CRC-32 recorded at generation time */
+    uint8_t base_slot;             /**< KPV base slot for this key */
+    uint8_t valid;                 /**< 1 if the handle is live, 0 if destroyed */
+    rom_km_dest_bits_t dest_valid; /**< Permitted crypto-engine destination bitmask */
+    uint32_t crc32;                /**< CRC-32 recorded at generation time */
 } rom_km_keyreg_entry_t;
 
 /** @brief Key handle registry (index 0 is unused / null handle). */
@@ -85,6 +86,17 @@ int rom_keyreg_get_slot(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *slo
  */
 int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc);
 
+/**
+ * @brief Look up the permitted crypto-engine destinations for a handle.
+ *
+ * @param reg Registry to query.
+ * @param handle Handle to look up (1-255).
+ * @param dest_valid Receives permitted destination bitmask.
+ * @return 0 on success, -1 if the handle is invalid or destroyed.
+ */
+int rom_keyreg_get_dest_valid(const rom_km_keyreg_t *reg, uint8_t handle,
+                              rom_km_dest_bits_t *dest_valid);
+
 /*===========================================================================
  * Allocation / Destruction
  *===========================================================================*/
@@ -92,17 +104,19 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
 /**
  * @brief Allocate a new handle for a freshly generated key.
  *
- * Assigns the next monotonic handle, records the base slot and CRC,
- * and updates the reverse slot-to-handle map for all occupied slots
- * (base_slot .. base_slot + num_slots - 1).
+ * Assigns the next monotonic handle, records the base slot, CRC, and
+ * permitted destination mask, and updates the reverse slot-to-handle map
+ * for all occupied slots (base_slot .. base_slot + num_slots - 1).
  *
  * @param reg Registry to update.
  * @param base_slot KPV base slot for the key.
  * @param num_slots Number of consecutive KPV slots used.
  * @param crc CRC-32 computed over the key material.
+ * @param dest_valid Permitted crypto-engine destination bitmask.
  * @return Positive handle value (1-255) on success, -1 if handles exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc);
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc,
+                        rom_km_dest_bits_t dest_valid);
 
 /**
  * @brief Destroy (invalidate) an existing handle.

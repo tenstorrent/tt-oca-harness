@@ -71,7 +71,7 @@ module prim_fair_rr_arb #(
   output idx_t                o_index
 );
 
-  `include "tt_assert.svh"
+  `include "ocah_assert.svh"
 
 
   // just pass through in this corner case
@@ -124,9 +124,9 @@ module prim_fair_rr_arb #(
           end
         end
 
-        `TT_ASSERT_IF(LockImplicationA, o_request && (!i_grant && !i_flush) |=> o_index == $past(o_index), LockIn, i_clk, (!i_reset_n || i_flush))
+        `OCAH_ASSERT_IF(LockImplicationA, o_request && (!i_grant && !i_flush) |=> o_index == $past(o_index), LockIn, i_clk, (!i_reset_n || i_flush))
         wire [NumIn-1:0] req_for_assertion_only = req_q & i_request;
-        `TT_ASSERT_IF(NoDeassertReqWhenLockedA, lock_d |=> req_for_assertion_only == req_q, LockIn, i_clk, (!i_reset_n || i_flush))
+        `OCAH_ASSERT_IF(NoDeassertReqWhenLockedA, lock_d |=> req_for_assertion_only == req_q, LockIn, i_clk, (!i_reset_n || i_flush))
 
         always_ff @(posedge i_clk) begin : p_req_regs
           if (!i_reset_n) begin
@@ -250,12 +250,12 @@ module prim_fair_rr_arb #(
       end
     end
 
-    `TT_ASSERT(One_hot_grant_A, $onehot0(o_grant), i_clk, (!i_reset_n || i_flush))
-    `TT_ASSERT(Grant_implies_grant_A, |o_grant |-> i_grant, i_clk, (!i_reset_n || i_flush))
-    `TT_ASSERT(Request_grant_chain_A, o_request |-> i_grant |-> |o_grant, i_clk, (!i_reset_n || i_flush))
-    `TT_ASSERT(Index_matches_grant_A, o_request |->  i_grant |-> o_grant[o_index], i_clk, (!i_reset_n || i_flush))
-    `TT_ASSERT(Req_in_implies_req_out_A, |i_request |-> o_request, i_clk, (!i_reset_n || i_flush))
-    `TT_ASSERT(Req_out_impl, o_request |-> |i_request, i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(One_hot_grant_A, $onehot0(o_grant), i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Grant_implies_grant_A, |o_grant |-> i_grant, i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Request_grant_chain_A, o_request |-> i_grant |-> |o_grant, i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Index_matches_grant_A, o_request |->  i_grant |-> o_grant[o_index], i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Req_in_implies_req_out_A, |i_request |-> o_request, i_clk, (!i_reset_n || i_flush))
+    `OCAH_ASSERT(Req_out_impl, o_request |-> |i_request, i_clk, (!i_reset_n || i_flush))
   end
 
 

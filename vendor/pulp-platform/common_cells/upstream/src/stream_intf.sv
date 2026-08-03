@@ -43,7 +43,7 @@ interface STREAM_DV #(
 
   // Make sure that the handshake and payload is stable
   `ifndef COMMON_CELLS_ASSERTS_OFF
-  `TT_PULP_ASSERT(data_unstable, (valid && !ready |=> $stable(data)), clk_i, 1'b0)
-  `TT_PULP_ASSERT(valid_unstable, (valid && !ready |=> valid), clk_i, 1'b0)
+  `OCAH_PULP_ASSERT(data_unstable, (valid && !ready |=> $stable(data)), clk_i, 1'b0)
+  `OCAH_PULP_ASSERT(valid_unstable, (valid && !ready |=> valid), clk_i, 1'b0)
   `endif
 endinterface

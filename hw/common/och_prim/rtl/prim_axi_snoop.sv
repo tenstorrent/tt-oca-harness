@@ -125,15 +125,15 @@ module prim_axi_snoop #(
     ////////////////////////////////////////////////////////////////////////////////
 
     // Parameter Validation
-    `ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
+    `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
 
     // Check for request counter underflow
-    `ASSERT_NEVER(ReqCountUnderflow_A,
+    `OCAH_OT_ASSERT_NEVER(ReqCountUnderflow_A,
                   ~|req_count_q && ($countones({complete_ar, complete_aw}) >
                                    $countones({accept_ar, accept_aw})))
 
     // Check for request counter overflow
-    `ASSERT_NEVER(ReqCountOverflow_A,
+    `OCAH_OT_ASSERT_NEVER(ReqCountOverflow_A,
                   &req_count_q && ($countones({complete_ar, complete_aw}) <
                                   $countones({accept_ar, accept_aw})))
 
