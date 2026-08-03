@@ -20,4 +20,3 @@ include::periphs.adoc[leveloffset=0]
 include::dv_vplan.adoc[leveloffset=0]
 include::scan_protection.adoc[leveloffset=0]
 
-endif::backend-pdf[]
