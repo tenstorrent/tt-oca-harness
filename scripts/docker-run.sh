@@ -223,10 +223,28 @@ use_bwrap() {
 }
 
 # bwrap_run WORKDIR CMD... : run CMD in the extracted rootfs, with host paths 1:1.
+#
+# The sandbox root is a tmpfs with the image's top-level directories bound
+# read-only underneath it, rather than the rootfs bound directly over /. That
+# matters because binding the workspace at its host-absolute path requires bwrap
+# to create the mount point: with the rootfs as root it would mkdir that path
+# chain *inside the shared rootfs*, which only its owner can do (CI runners hit
+# "Can't mkdir parents ...: Permission denied") and which pollutes the image with
+# one directory tree per workspace path. Against a tmpfs root the mount points
+# are free, so any account and any checkout path work and the rootfs stays
+# read-only and pristine.
 bwrap_run() {
     local workdir="$1"; shift
     [[ "${1:-}" == "-it" ]] && shift   # no TTY plumbing needed; bwrap inherits it
-    local binds=(--bind "$TOOLCHAIN_ROOTFS" / --dev /dev --proc /proc --tmpfs /run)
+    local binds=(--tmpfs /)
+    local entry name
+    for entry in "$TOOLCHAIN_ROOTFS"/*; do
+        name="${entry##*/}"
+        # /dev, /proc and /run are provided fresh below; /tmp is shared from the host.
+        case "$name" in dev|proc|sys|run|tmp) continue ;; esac
+        [[ -d "$entry" ]] && binds+=(--ro-bind "$entry" "/$name")
+    done
+    binds+=(--dev /dev --proc /proc --tmpfs /run)
     # /tmp is shared (not --tmpfs) so build temporaries and any caller-provided
     # scratch paths stay visible to the host, matching the container's -v mounts.
     binds+=(--bind /tmp /tmp)
