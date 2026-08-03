@@ -30,10 +30,7 @@
           <div class="navbar-dropdown">
             <!-- One entry per book. Add a line here whenever a new book's
                  antora.yml/nav.adoc scaffolding lands -- these are plain
-                 static links, deliberately not auto-generated from Antora's
-                 component list, since that would require relying on
-                 Handlebars helpers (resolvePage/relativize) we haven't
-                 verified against the real UI bundle -- see tracking doc.
+                 static links
 
                  All four books now build as ONE Antora site
                  (antora-playbook.yml), so ../.. already
@@ -50,6 +47,18 @@
             <!-- Add a line here as each book's PDF becomes real.-->
             <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
             <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
           </div>
         </div>
 		<div class="navbar-item tt-link">
@@ -79,34 +88,10 @@
     <a class="nav-link" href="revision.html">Revision History</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="about-ocah.html">About OCAH</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="about-ocah.html#motivation">Motivation</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="about-ocah.html#oca-standard-compliance">OCA Standard Compliance</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="about-ocah.html#use-cases">Use Cases</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="1">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="getting-started.html">Getting Started</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="getting-started.html#dependencies">Dependencies</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="getting-started.html#tools">Tools</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="getting-started.html#methodology">Methodology</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>

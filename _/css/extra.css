@@ -1,14 +1,15 @@
 /* Hide placeholder navbar items (upstream demo content only: any leftover
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
-.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu),
-.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu) {
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
     display: none !important;
 }
 
-/* Guides / Downloads dropdowns -- keep visible, style to match navbar */
+/* Guides / Downloads / Datasheets dropdowns -- keep visible, style to match navbar */
 .navbar-end .navbar-item.guides-menu,
-.navbar-end .navbar-item.downloads-menu {
+.navbar-end .navbar-item.downloads-menu,
+.navbar-end .navbar-item.datasheets-menu {
     display: flex !important;
     align-items: center;
 }
@@ -25,17 +26,7 @@
 }
 
 /* Explicit show/hide behavior for the dropdown, rather than relying on the
-   underlying bundle's own hover CSS -- these dropdowns (Guides, Downloads)
-   were hidden by our own earlier blanket rule from day one, so this is the
-   first time they've actually needed to work, and the bundle's built-in
-   hover trigger was never actually verified. Self-contained fix: */
-/* Safety net: if the underlying bundle sets overflow:hidden anywhere in
-   this chain (common for the mobile burger-menu collapse animation), it
-   would silently clip the dropdown the moment it extends below the navbar,
-   even though display:block is correctly applied -- which matches exactly
-   what's being seen (CSS confirmed loaded and hover registering, but
-   nothing visible). Force it back open here rather than hunting for the
-   exact ancestor. */
+   underlying bundle's own hover CSS */
 .header,
 .navbar,
 .navbar-menu,
@@ -83,10 +74,10 @@
 }
 
 /* ========================================
-   OCA ECOSYSTEM VISUAL ALIGNMENT (WP1 M2)
-   Palette and font names sourced from openchipletatlas.org page inspection,
-   2026-07-14. Menu structure is left unchanged; this block only touches
-   color, background, and typography.
+   OCA ECOSYSTEM VISUAL ALIGNMENT
+   Palette and font names sourced from openchipletatlas.org page inspection.
+   Menu structure is left unchanged; this block only touches color,
+   background, and typography.
    ======================================== */
 :root {
     --oca-green: #103525;
@@ -97,8 +88,7 @@
     --oca-text: #484848;
     /* Roboto is already loaded by the antora-ui-default bundle itself, so
        list it first -- closer visual match than a generic system stack,
-       and costs nothing extra to use. Swap for real Tenstorrent fonts once
-       supplied -- see tracking doc To-Do. */
+       and costs nothing extra to use. */
     --oca-font-display: "Roboto", Georgia, "Iowan Old Style", serif;
     --oca-font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
     --oca-font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -126,11 +116,7 @@
 }
 
 /* Navbar title text, positioned in-flow right after the OCA logo (not
-   centered) -- avoids the earlier centered-overlay approach, which
-   overlapped the Guides/Downloads menus at narrower widths since it was
-   absolutely positioned independent of surrounding content width.
-   Real HTML content now (see header-content.hbs), not a CSS pseudo-element,
-   so it participates properly in the navbar's normal layout flow. */
+   centered). */
 .navbar-brand .oca-title-text {
     font-family: var(--oca-font-display);
     font-size: 1.1rem;
@@ -147,7 +133,7 @@
     }
 }
 
-/* Sidebar -> OCA dark green, white text (2026-07-15 restyle) */
+/* Sidebar -> OCA dark green, white text */
 .nav-container {
     background-color: var(--oca-green) !important;
 }
@@ -169,10 +155,7 @@
 }
 
 /* Component/version switcher panel (".nav-panel-explore") -- shows when
-   toggled from the context bar below the page nav tree. Kept CREAM against
-   the new dark-green sidebar so it reads as a distinct, clickable control
-   rather than blending in -- this was the specific problem flagged
-   2026-07-15 (messy, easy-to-miss pop-up). */
+   toggled from the context bar below the page nav tree. */
 .nav-panel-explore {
     background-color: var(--oca-cream) !important;
     border: 2px solid var(--oca-green);
@@ -186,8 +169,8 @@
 }
 
 /* Version "pill" buttons inside the switcher -- fixed-width font + orange
-   accent, matching Tenstorrent's own button convention (reference:
-   tenstorrent.com "Developers" button), replacing the default dark-grey. */
+   accent, matching Tenstorrent's own button convention, replacing the
+   default dark-grey. */
 .nav-panel-explore .versions .version a,
 .nav-panel-explore .version.is-current a {
     font-family: var(--oca-font-mono);
@@ -203,12 +186,7 @@
     background-color: var(--oca-gold) !important;
 }
 
-/* The collapsed bottom-left toggle that shows/hides .nav-panel-explore.
-   NOTE: exact class name not yet confirmed against the real build -- this
-   selector is antora-ui-default's documented name (".context-bar" /
-   ".context-toggle"). If this doesn't visually hit after rebuilding, open
-   dev tools, click the element, and confirm the real class name so this
-   rule can be corrected. */
+/* The collapsed bottom-left toggle that shows/hides .nav-panel-explore. */
 .context-bar,
 .context-toggle {
     background-color: var(--oca-cream) !important;
@@ -270,9 +248,9 @@
 }
 
 /* ========================================
-   FOOTER RESTYLE (2026-07-16), matching OCA reference screenshot.
+   FOOTER RESTYLE
    Requires the accompanying doc/ui-supplemental/partials/footer-content.hbs
-   override -- CSS alone cannot add the Tenstorrent link/icon.
+   override.
    ======================================== */
 .footer {
     background-color: var(--oca-green) !important;
@@ -299,7 +277,7 @@
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather
-   than removed outright -- see tracking doc. */
+   than removed outright. */
 .footer .oca-footer-fineprint {
     color: var(--oca-cream) !important;
     opacity: 0.6;
@@ -308,7 +286,7 @@
 }
 
 /* ========================================
-   VERIFICATION DASHBOARD .
+   VERIFICATION DASHBOARD
    ======================================== */
 .dashboard-table {
     border-collapse: collapse;
@@ -372,4 +350,52 @@
     display: inline-block;
     border-radius: 3px;
     margin-right: 2px;
+}
+
+/* ========================================
+   MOBILE NAVBAR
+   ======================================== */
+/* Hamburger icon contrast against the cream navbar -- the bundle's default
+   burger-icon color doesn't suit our palette. */
+.navbar-burger span {
+    background-color: var(--oca-text) !important;
+}
+
+/* .navbar-menu has its own background-color, separate from .navbar's, so
+   the cream rule above doesn't reach it on its own. */
+.navbar-menu {
+    background-color: var(--oca-cream) !important;
+}
+
+/* Give the Tenstorrent icon a visual separator and center it in the mobile
+   menu, rather than a full-width list row. */
+@media (max-width: 1023px) {
+    .navbar-end .navbar-item.tt-link {
+        justify-content: center;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding-top: 12px;
+        margin-top: 4px;
+    }
+}
+
+/* ========================================
+   REGISTER MAP TABLES
+   PeakRDL-generated HTML partials (.ocah-reg-html wrapper) ship their own
+   embedded <style> block with a hardcoded blue header and grey background.
+   Overridden here rather than in the generator, since that's separately
+   owned tooling output.
+   ======================================== */
+.ocah-reg-html table {
+    background: var(--oca-cream) !important;
+    font-size: 0.85rem;
+}
+
+.ocah-reg-html th,
+.ocah-reg-html td {
+    font-size: 0.85rem;
+}
+
+.ocah-reg-html th {
+    background: var(--oca-green) !important;
+    color: #ffffff !important;
 }
