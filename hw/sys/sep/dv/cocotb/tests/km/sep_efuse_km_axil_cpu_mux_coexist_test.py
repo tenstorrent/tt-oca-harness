@@ -42,7 +42,7 @@ from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "km_efuse_coexist")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "km_efuse_coexist")
 _ITCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "km_efuse_coexist.dtcm.hex")
 _KM_ROM_HEX = os.path.join(_DV_ROOT, "cocotb", "tests", "km_rom_coexist.parhex")
