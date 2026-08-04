@@ -271,3 +271,18 @@ deterministic replay.
 All BFM randomness (entropy words and backpressure decisions) uses Python's
 `random.Random` with an explicit, caller-supplied seed.  The same seed always
 produces the same sequence on any machine, simulator, and OS.
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_entropy_vip import <Class>`, never from the subfolders.
+`interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.

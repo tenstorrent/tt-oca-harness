@@ -99,12 +99,13 @@ python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
 Both flows share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
 with `+define+DTP_UVM_TB` (set by the `dtp_uvm` config) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
-mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment),
-`uvm/seq_lib/dtp_seq_lib_pkg.sv` (JTAG base sequence + scenarios), and
-`uvm/tests/dtp_tests.sv` (non-reusable tests, `include`d by tb_top). The
-pin-level JTAG interface is the shared
-`hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv`; DTP-local
-resets/observables ride `tb/dtp_tb_if.sv`. The UVM library comes from the
+mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
+shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),
+`uvm/seq_lib/dtp_seq_lib_pkg.sv` (JTAG base sequence + scenarios, issuing
+`ocah_jtag_item`s on the agent sequencer), and `uvm/tests/dtp_tests.sv`
+(non-reusable tests, `include`d by tb_top). The pin-level JTAG interface and
+agent are the shared `hw/common/dv/vip/ocah_jtag_vip/` `interface/` and
+`uvm/` collateral; DTP-local resets/observables ride `tb/dtp_tb_if.sv`. The UVM library comes from the
 simulator (`-ntb_opts uvm`). `dtp_sanity_test` carries the full VPLAN 0.1
 semantics: deterministic 32-edge TAP FSM closure with an IEEE 1149.1
 reference model, BYPASS 1-TCK TDI-to-TDO latency, and clean scan-path

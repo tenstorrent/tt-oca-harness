@@ -27,9 +27,13 @@ vip/ocah_<proto>_vip/
 
 Shared VIP imports use the top-level `ocah_<proto>_vip` packages under `vip/`;
 the root `__init__.py` re-exports the cocotb public API, so consumers never
-import from the subfolders directly. New protocol VIPs should provide master,
-slave, item, monitor, checker, and commercial-simulator coverage hook files
-when the protocol shape supports them. For example:
+import from the subfolders directly. `ocah_jtag_vip` is the reference
+implementation for the SV-UVM side: its README carries the "Template
+Contract" (frozen item/event API, env-level reuse and commercial-VIP
+override, monitor-disable knob, nested vendor interface) that every OCAH
+SV-UVM VIP follows. New protocol VIPs should provide master, slave, item,
+monitor, checker, and commercial-simulator coverage hook files when the
+protocol shape supports them. For example:
 
 ```python
 from ocah_axi_vip import OcahAxiLiteMaster

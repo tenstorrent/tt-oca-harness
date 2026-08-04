@@ -279,17 +279,28 @@ under `uvm/`:
 . `hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv` — shared
   pin-level IEEE 1149.1 interface (JTAG pins only; reused by any DUT)
 . `tb/dtp_tb_if.sv` — DTP-local resets and one-hot TAP-state observable
-. `uvm/seq_lib/dtp_seq_lib_pkg.sv` — `dtp_jtag_base_seq` (pin-level driving
-  tasks + IEEE 1149.1 reference model + checkers) and scenario sequences
-  (`dtp_sanity_seq`); partially reusable
-. `uvm/env/dtp_env_pkg.sv` — `dtp_uvm_env` (owns the vifs; agents/scoreboards
-  attach here later); fully reusable
+. `hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv` — shared SV-UVM
+  JTAG VIP (item/cfg/driver/monitor/sequencer/agent/env + encoding-agnostic
+  IEEE 1149.1 TAP model); the driver owns the pin-level TCK bit-bang, the
+  passive monitor publishes per-TCK `STEP` and async `TRST` events, and
+  `ocah_jtag_env` is the commercial-overridable unit DUT envs instantiate
+. `uvm/seq_lib/dtp_seq_lib_pkg.sv` — `dtp_jtag_base_seq` issues
+  `ocah_jtag_item`s (TAP reset, IR/DR scans, raw TMS walks) on the agent's
+  sequencer and keeps the DTP-local reset sequencing, scan-path checks, and
+  the BYPASS latency check; scenario sequences (`dtp_sanity_seq`) extend it;
+  partially reusable
+. `uvm/env/dtp_env_pkg.sv` — `dtp_uvm_env` builds the JTAG agent and
+  `dtp_tap_fsm_checker` (a monitor-event subscriber holding the IEEE 1149.1
+  reference model: per-cycle legality always on, state/edge closure asserted
+  by closure-obligated scenarios); fully reusable
 . `uvm/tests/dtp_tests.sv` — non-reusable thin test classes
   (`dtp_uvm_base_test`, `dtp_uvm_sanity_test`), `include`d by `tb_top.sv`
-  under `ifdef DTP_UVM_TB` (+UVM_TESTNAME selects the class)
+  under `ifdef DTP_UVM_TB` (+UVM_TESTNAME selects the class); the sanity
+  test starts its sequence on the agent sequencer and then invokes
+  `check_fsm_closure()`
 
 Compile order is explicit and load-bearing: interfaces first, then
-`dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
+`ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
 Logical item names stay framework-neutral and match the VPLAN scenarios
 (testlist `name = "dtp_sanity_test"`, `module = "dtp_uvm_sanity_test"`), so
@@ -336,4 +347,5 @@ included public DTP testlists.
 |1.3 |2026-06-22 |DV Team |Added debug TDR architecture coverage: flattened DEBUG_CONTROL/IC_RESET observables, clock-stop stimulus, writable-TDR preserve reads, shared quality helpers, and `debug_tdr`/`all` run examples
 |1.4 |2026-06-23 |DV Team |Documented PR #3190 hierarchical sequence architecture: generic base sequence, focused JTAG/debug-TDR/JTAG2AXI base sequences, command-library composition for random/stress tests, and `+_test+`/`+_test_seq+` naming boundaries
 |1.5 |2026-08-04 |DV Team |Added the SystemVerilog UVM smoke layer: `dtp_uvm` runner alias on the `native-uvm` profile (VCS), single shared `tb_top.sv` module with `DTP_UVM_TB` ifdef harness, shared `ocah_jtag_if` VIP interface, `uvm/{env,seq_lib,tests}` package structure mirroring the cocotb layout, VPLAN 0.1 sanity checkers, and framework-neutral item naming
+|1.6 |2026-08-04 |DV Team |Migrated the SV-UVM layer onto the shared `ocah_jtag_vip` SV-UVM agent: pin-level driving moved into the VIP driver, sequences issue `ocah_jtag_item`s on the agent sequencer, and per-cycle FSM legality/closure moved into the `dtp_tap_fsm_checker` monitor-event subscriber
 |===

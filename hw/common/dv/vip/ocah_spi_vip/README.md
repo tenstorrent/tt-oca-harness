@@ -278,3 +278,18 @@ works for both flash types.
 | Dual-SPI (1-1-2 read)                | not implemented | MOSI returns at read-data phase; out of scope |
 | SPI Mode 1/2/3 (CPOL/CPHA variants) | not implemented | Only Mode 0 (CPOL=0 CPHA=0) |
 | cocotbext-spi delegation             | README migration plan | Pending package availability in project env |
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_spi_vip import <Class>`, never from the subfolders.
+`interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.

@@ -116,3 +116,21 @@ and `resp=-1`.
 
 See `MANUAL.md` in this folder for construction rules, item/result semantics,
 PSLVERR handling, monitor/checker usage, coverage hooks, and migration guidance.
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_apb_vip import <Class>`, never from the subfolders.
+`cov/` holds this package's framework-neutral commercial-simulator
+functional-coverage model (`cov/ocah_apb_cov.sv` — plain covergroup/bind SV
+with no UVM phasing, so the cocotb commercial-sim flow compiles it and the
+UVM flow binds the same file). `interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.

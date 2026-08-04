@@ -21,7 +21,8 @@ paths = ["{run_dir}", "hw/sys/dtp/dv/build/uvm"]
 # `include`s uvm/tests/dtp_tests.sv. Compile order is load-bearing and explicit — the generated
 # filelist emits `sources` in listed order AFTER the bender filelist (DUT packages visible),
 # then `top_file` last:
-#   ocah_jtag_if (shared VIP) -> dtp_tb_if -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+#   ocah_jtag_if (shared VIP) -> dtp_tb_if -> ocah_jtag_uvm_pkg (shared VIP agent)
+#   -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
 top_module = "dtp_uvm_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_compile.f"
@@ -39,6 +40,7 @@ common_bender_targets = [
 bender_targets = ["dtp", "simulation"]
 incdirs = [
   "hw/sys/dtp/dv/tb",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
@@ -51,6 +53,7 @@ stubs = [
 sources = [
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
 ]

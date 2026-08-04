@@ -48,7 +48,9 @@ endclass : dtp_uvm_base_test
 
 // ---------------------------------------------------------------------
 // dtp_uvm_sanity_test — VPLAN 0.1 (`--items dtp_sanity_test`): runs
-// dtp_sanity_seq sequencer-less against the pin-level interfaces.
+// dtp_sanity_seq on the shared ocah_jtag_vip agent's sequencer, then
+// asserts full FSM state/edge closure via the env checker (this scenario's
+// closure obligation — the per-cycle legality check is always on).
 // ---------------------------------------------------------------------
 class dtp_uvm_sanity_test extends dtp_uvm_base_test;
     `uvm_component_utils(dtp_uvm_sanity_test)
@@ -61,9 +63,9 @@ class dtp_uvm_sanity_test extends dtp_uvm_base_test;
         dtp_sanity_seq seq;
         phase.raise_objection(this, "dtp_uvm_sanity_test running");
         seq = dtp_sanity_seq::type_id::create("seq");
-        seq.jtag_vif = m_env.jtag_vif;
-        seq.tb_vif   = m_env.tb_vif;
-        seq.start(null);
+        seq.tb_vif = m_env.tb_vif;
+        seq.start(m_env.m_jtag_env.m_sequencer);
+        m_env.m_fsm_checker.check_fsm_closure();
         phase.drop_objection(this, "dtp_uvm_sanity_test done");
     endtask
 
