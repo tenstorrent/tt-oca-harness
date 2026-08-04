@@ -1,0 +1,207 @@
+hw/ip/key_manager/dv/tb/Makefile
+  s_d605cb93395a31::t_782786355b6d7c 1-345
+  s_d605cb93395a31::t_b0f7b70cdd7d24 346
+.gitignore
+  s_d605cb93395a31::t_98330c2112b12f 68-74
+  s_d605cb93395a31::t_754f8382dbf5ac 75
+  s_d605cb93395a31::t_f499b2e0648e9b 9-10,12-13
+  s_d605cb93395a31::t_90955cd8b661ee 76-83,85-88
+  s_d605cb93395a31::t_442582cd5df054 84
+hw/ip/key_manager/dv/tb/test_firmware.py
+  s_d605cb93395a31::t_32b27d44213570 34
+  s_d605cb93395a31::t_d530a3a898a6a1 31-33
+  s_d605cb93395a31::t_9e633392e8d529 35-37
+hw/sys/sep/dv/fw/bootcode/Makefile
+  s_d605cb93395a31::t_927a65454ad821 128-137
+hw/sys/sep/dv/fw/fw.mk
+  s_d605cb93395a31::t_2666b4e68140d4 23-27
+hw/common/dv/fw/compile.mk
+  s_d605cb93395a31::t_6cbc493133b46b 7-12
+  s_d605cb93395a31::t_f24635a5fa237c 256
+  s_d605cb93395a31::t_578fd993f10ade 275-276,286-293
+  s_d605cb93395a31::t_2dd2741ebdf3d4 78-80
+  s_d605cb93395a31::t_3fe4c0e5279713 212
+hw/sys/sep/dv/fw/include/sep_outbound_filter.h
+  s_d605cb93395a31::t_2535a40e6868b4 66-80
+  s_d605cb93395a31::t_0879a169ca8298 99-100
+  s_d605cb93395a31::t_3537b561f3a1be 65
+Bender.yml
+  s_d605cb93395a31::t_5b0b032476d351 365
+  s_d605cb93395a31::t_5a5cfdd3c793be 932-933
+  s_d605cb93395a31::t_dfc775649a9fe0 312
+  s_d605cb93395a31::t_cbd44ca3ab33f1 498
+  s_d605cb93395a31::t_3b532f0844a289 906
+  s_d605cb93395a31::t_a0d985d9a03d3c 947
+  s_d605cb93395a31::t_1a9866189fee91 570
+  s_d605cb93395a31::t_0bdbe7207f86cd 474
+hw/ip/key_manager/dv/tb/bender-targets.mk
+  s_d605cb93395a31::t_c1f905f360858a 25-27
+  s_d605cb93395a31::t_2392fbf9e4ba8f 1-5,24,36-39
+  s_d605cb93395a31::t_f765fb14467988 30
+  s_d605cb93395a31::t_48d094b0c6fd38 6-14
+  s_d605cb93395a31::t_e3da15d73c8eea 15-17,21-23
+  s_d605cb93395a31::t_527b0b46dd5217 28-29
+  s_d605cb93395a31::t_ed582ceb6fc51f 31-35
+  s_d605cb93395a31::t_7438ad5358cd75 40-42
+.gitlab-ci.yml
+  s_d605cb93395a31::t_ab23f8c4f088e7 21-23,30
+  s_d605cb93395a31::t_220bd7902a1e14 45-48,54-58
+hw/common/dv/vip/jtag_vip/jtag_intf.sv
+  s_d605cb93395a31::t_aad07b41a24ba9 1-339
+hw/ip/axi_window_remap/rtl/axi_address_adjuster.sv
+  s_d605cb93395a31::t_cb575421b6c58c 1-52
+hw/ip/axi_window_remap/rtl/axi_window_remap.sv
+  s_d605cb93395a31::t_328b7daf664752 1-91
+hw/ip/dfd/rtl/misc/dfd_mem_gen.sv
+  s_d605cb93395a31::t_c9ed636f315e69 1-7701
+hw/ip/dfd/rtl/pkg/mem_gen_pkg.svh
+  s_d605cb93395a31::t_dcaab66f1e822c 1-734
+hw/ip/key_manager/dv/tb/README.md
+  s_d605cb93395a31::t_c61293a62992f4 1-697
+hw/ip/key_manager/dv/tb/tb_key_manager.sv
+  s_d605cb93395a31::t_be6a889aaaa4df 1-1091
+hw/sys/sep/dv/fw/tests/common/sep_interop_protocol.h
+  s_d605cb93395a31::t_3e442303b79bed 1-99
+hw/sys/sep/dv/fw/tests/common/sep_mbox_irq_protocol.h
+  s_d605cb93395a31::t_830f88c20f4e80 1-173
+hw/sys/sep/dv/fw/tests/common/sep_smc_bringup.h
+  s_d605cb93395a31::t_ed9ba0349c689e 1-100
+hw/sys/sep/dv/fw/tests/common/smc_sep_xbar_protocol.h
+  s_d605cb93395a31::t_03b2415a6f134d 1-113
+hw/sys/sep/dv/fw/tests/common/smu_cla_sep_cpu_debug_protocol.h
+  s_d605cb93395a31::t_5c2a518016a1ab 1-83
+hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h
+  s_d605cb93395a31::t_ee0f17c9fb65d2 1-232
+hw/sys/sep/dv/fw/tests/common/smu_smc_stall_protocol.h
+  s_d605cb93395a31::t_9117b156dc6890 1-106
+hw/sys/sep/dv/fw/tests/sep_smc_interop/Makefile
+  s_d605cb93395a31::t_aa533cd29fa68e 1-11
+hw/sys/sep/dv/fw/tests/sep_smc_interop/sep_smc_interop.c
+  s_d605cb93395a31::t_a2ea8801a66cb4 1-184
+hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq/Makefile
+  s_d605cb93395a31::t_bd55dfba911104 1-11
+hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq/sep_smc_mbox_irq.c
+  s_d605cb93395a31::t_feb7735e7eb089 1-151
+hw/sys/sep/dv/fw/tests/sep_smc_xbar/Makefile
+  s_d605cb93395a31::t_c06c085f89dc91 1-13
+hw/sys/sep/dv/fw/tests/sep_smc_xbar/sep_smc_xbar.c
+  s_d605cb93395a31::t_738a3eb161313c 1-185
+hw/sys/sep/dv/fw/tests/sep_smu_aes/Makefile
+  s_d605cb93395a31::t_ec63a6accc64c6 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_aes/sep_smu_aes.c
+  s_d605cb93395a31::t_ac59a4689414b7 1-74
+hw/sys/sep/dv/fw/tests/sep_smu_bidirect/Makefile
+  s_d605cb93395a31::t_b133fad8e9ff23 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_bidirect/sep_smu_bidirect.c
+  s_d605cb93395a31::t_4c274d3f2f3e0a 1-185
+hw/sys/sep/dv/fw/tests/sep_smu_boot_health/Makefile
+  s_d605cb93395a31::t_d7f19b70dd2206 1-9
+hw/sys/sep/dv/fw/tests/sep_smu_boot_health/sep_smu_boot_health.c
+  s_d605cb93395a31::t_091828cd2b3454 1-54
+hw/sys/sep/dv/fw/tests/sep_smu_dma/Makefile
+  s_d605cb93395a31::t_78de195bbe0fbf 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_dma/sep_smu_dma.c
+  s_d605cb93395a31::t_b3c8a5b75abe6b 1-63
+hw/sys/sep/dv/fw/tests/sep_smu_efuse/Makefile
+  s_d605cb93395a31::t_a8b387eb68da4b 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_efuse/sep_smu_efuse.c
+  s_d605cb93395a31::t_8ee9dc36a0d4a9 1-57
+hw/sys/sep/dv/fw/tests/sep_smu_ext_axi/Makefile
+  s_d605cb93395a31::t_8161fb7c0b20e3 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_ext_axi/sep_smu_ext_axi.c
+  s_d605cb93395a31::t_54dfe1cb6d44ed 1-204
+hw/sys/sep/dv/fw/tests/sep_smu_modules/Makefile
+  s_d605cb93395a31::t_8c1d60fe6742bd 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_modules/sep_smu_modules.c
+  s_d605cb93395a31::t_4a116704586e4f 1-458
+hw/sys/sep/dv/fw/tests/sep_smu_otbn/Makefile
+  s_d605cb93395a31::t_4058fab5777a55 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_otbn/sep_smu_otbn.c
+  s_d605cb93395a31::t_a08b89a13e509c 1-52
+hw/sys/sep/dv/fw/tests/sep_smu_remap/Makefile
+  s_d605cb93395a31::t_1fcb4231364229 1-15
+hw/sys/sep/dv/fw/tests/sep_smu_remap/sep_smu_remap.c
+  s_d605cb93395a31::t_38ca4af3f94123 1-69
+hw/sys/sep/dv/fw/tests/sep_smu_sanity/Makefile
+  s_d605cb93395a31::t_e71a93f36a8e02 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_sanity/sep_smu_sanity.c
+  s_d605cb93395a31::t_e02297297c2c70 1-503
+hw/sys/sep/dv/fw/tests/sep_smu_spi/Makefile
+  s_d605cb93395a31::t_e3ae1b22408a02 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_spi/sep_smu_spi.c
+  s_d605cb93395a31::t_e537dcb3819a98 1-211
+hw/sys/sep/dv/fw/tests/sep_smu_spi_mux/Makefile
+  s_d605cb93395a31::t_42912b18e169b5 1-15
+hw/sys/sep/dv/fw/tests/sep_smu_spi_mux/sep_smu_spi_mux.c
+  s_d605cb93395a31::t_18e3a0a612bbd4 1-61
+hw/sys/sep/dv/fw/tests/sep_smu_wdt/Makefile
+  s_d605cb93395a31::t_724cb7782b43df 1-13
+hw/sys/sep/dv/fw/tests/sep_smu_wdt/sep_smu_wdt.c
+  s_d605cb93395a31::t_0216be6173ad3c 1-55
+hw/sys/sep/dv/fw/tests/smu_cla_sep_cpu_debug/Makefile
+  s_d605cb93395a31::t_45c06a1847990c 1-13
+hw/sys/sep/dv/fw/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.c
+  s_d605cb93395a31::t_6b2d03f8bfb362 1-86
+hw/sys/sep/dv/fw/tests/smu_smc_stall_sep/Makefile
+  s_d605cb93395a31::t_4b58f08d17dac0 1-13
+hw/sys/sep/dv/fw/tests/smu_smc_stall_sep/smu_smc_stall_sep.c
+  s_d605cb93395a31::t_8d0a3084efe281 1-98
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.c
+  s_d605cb93395a31::t_49e4d188019f2d 1-420
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.core
+  s_d605cb93395a31::t_7c488073591a70 1-21
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.h
+  s_d605cb93395a31::t_3f5b8486560b87 1-162
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi_pkg.sv
+  s_d605cb93395a31::t_a8dfb766aeee51 1-83
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/.gitignore
+  s_d605cb93395a31::t_5eda69b68ed770 1-2
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/Makefile
+  s_d605cb93395a31::t_173f29741cd8ec 1-20
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/README.md
+  s_d605cb93395a31::t_a1c7a873bce1c8 1-57
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes.c
+  s_d605cb93395a31::t_0e5fe40ad3b572 1-1004
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes.h
+  s_d605cb93395a31::t_698127bb5bfec9 1-238
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_example.c
+  s_d605cb93395a31::t_a3980daea17383 1-346
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_example.h
+  s_d605cb93395a31::t_d008564205edb2 1-70
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_model.core
+  s_d605cb93395a31::t_6b2bf9bcf30d62 1-26
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_model_sim_opts.hjson
+  s_d605cb93395a31::t_5869e2344c5929 1-21
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_modes.c
+  s_d605cb93395a31::t_d0cb1958facd5e 1-281
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_modes.core
+  s_d605cb93395a31::t_3cee4f1022e135 1-23
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/aes_modes.h
+  s_d605cb93395a31::t_562877626194d4 1-178
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/crypto.c
+  s_d605cb93395a31::t_5587942f0317e2 1-164
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/crypto.h
+  s_d605cb93395a31::t_dd87b6cd653762 1-54
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/model/ghash_masked.py
+  s_d605cb93395a31::t_5bcad8b94008b5 1-120
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/dv/tracer/rtl/otbn_trace_if.sv
+  s_d605cb93395a31::t_2db033e4168404 1-522
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/dv/tracer/rtl/otbn_tracer.sv
+  s_d605cb93395a31::t_2c9c6c2cb8bb11 1-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "08926862948c9c84af40e4553dc3de954e0f1d9c",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
