@@ -18,13 +18,16 @@ stages:
 variables:
   OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
 
-# Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), and manual web triggers.
+# Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), manual web
+# triggers, and scheduled pipelines (the weekly EDA checks in the nonfree child
+# select themselves via the SCHEDULE_TYPE variable set on each schedule).
 .ci_rules: &ci_rules
   rules:
     - if: $CI_PIPELINE_SOURCE == 'push'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
     - if: $CI_PIPELINE_SOURCE == 'web'
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
 
 init:
   stage: init
@@ -39,8 +42,17 @@ nonfree:
   stage: nonfree
   needs: [ init ]
   <<: *ci_rules
+  variables:
+    # Child jobs see CI_PIPELINE_SOURCE == 'parent_pipeline'; hand them the
+    # parent's source so their rules can distinguish web/schedule/push runs.
+    PARENT_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE
   trigger:
     include:
       - artifact: nonfree/ci.yml
         job: init
     strategy: depend
+    forward:
+      # Forward schedule/web-form pipeline variables (SCHEDULE_TYPE and the
+      # weekly *_TOP_MODULE knobs) into the child pipeline; yaml_variables
+      # stays at its default (true) and covers PARENT_PIPELINE_SOURCE above.
+      pipeline_variables: true

@@ -20,7 +20,11 @@ FW_REG_SYS := sep
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
 # drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
-FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers
+# bootcode/include holds the committed SEP top register header (och_sep_top_reg.h,
+# upstream meta/registers/c/) plus rom_*/boot_* headers that the sep_smc_* and
+# sep_smu_* tests include directly.
+FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers \
+                    -I$(FW_DIR)/bootcode/include
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # Test sources predate strict prototypes / native register headers; keep these
 # relaxations so they compile unchanged.

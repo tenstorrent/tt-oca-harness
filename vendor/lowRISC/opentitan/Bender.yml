@@ -14,7 +14,7 @@ export_include_dirs:
   - upstream/hw/ip/prim/rtl
 
 sources:
-  - target: any(dtp, sep, smc, opentitan_smu, smu)
+  - target: any(dtp, sep, smc, opentitan_smu, smu, key_manager)
     files:
       - upstream/hw/ip/prim/rtl/prim_util_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_count_pkg.sv
@@ -27,7 +27,7 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_flop.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
 
-  - target: any(sep, smc, opentitan_smu, smu)
+  - target: any(sep, smc, opentitan_smu, smu, key_manager)
     files:
       - upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
@@ -36,6 +36,19 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_alert_sender.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
+
+  # Leaf primitives shared with the standalone Key Manager testbench. Listed here
+  # rather than in the big any(opentitan_smu, sep, smu) list below because that
+  # list also carries hw/sys/sep RTL (sep_pkg.sv), which a key_manager-only build
+  # must not pull in. The target set is otherwise identical to that list, so
+  # sep/smu/opentitan_smu builds get these files exactly as before.
+  - target: any(opentitan_smu, sep, smu, key_manager)
+    files:
+      # prim_cipher_pkg supplies the PRINCE/PRESENT S-boxes prim_lfsr uses, so it
+      # has to be compiled ahead of it.
+      - upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_lfsr.sv
+      - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
 
   - target: any(sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
@@ -65,7 +78,6 @@ sources:
       # Primitive packages.
       - upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
-      - upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
@@ -128,7 +140,6 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_gf_mult.sv
       - upstream/hw/ip/prim/rtl/prim_intr_hw.sv
       - upstream/hw/ip/prim/rtl/prim_keccak.sv
-      - upstream/hw/ip/prim/rtl/prim_lfsr.sv
       - upstream/hw/ip/prim/rtl/prim_lc_sync.sv
       - upstream/hw/ip/prim/rtl/prim_mubi4_sync.sv
       - upstream/hw/ip/prim/rtl/prim_mubi4_sender.sv
@@ -145,7 +156,6 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_reg_cdc.sv
       - upstream/hw/ip/prim/rtl/prim_reg_cdc_arb.sv
       - upstream/hw/ip/prim/rtl/prim_reg_we_check.sv
-      - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
       - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv
       - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
       - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_dec.sv

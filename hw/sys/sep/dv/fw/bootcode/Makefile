@@ -125,8 +125,16 @@ DTCM_ELF_SECTIONS := --only-section=.rodata --only-section=.rodata.* --only-sect
 	--only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
-.PHONY: all clean bl1_test ensure-pack-deps
-all: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) $(SMC_MEM_HEX)
+.PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images
+all: toolchain-images pack-images
+
+# Split by tool dependency so callers can run each half in the right environment:
+# toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
+# container), while pack-images is pure Python and needs cryptography +
+# ruamel.yaml, which the container image does not carry. See
+# nonfree/hw/sys/sep/dv/tb/scripts/build_sep_fw_tests.sh.
+toolchain-images: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
+pack-images: $(SMC_MEM_HEX)
 
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"

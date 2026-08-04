@@ -4,6 +4,12 @@
 ifndef ocah_fw_common_mk
 ocah_fw_common_mk := 1
 
+# A multi-command recipe (link, then objdump/nm/size/objcopy) that fails partway
+# through must not leave the .elf behind: make would treat it as up to date on the
+# next run and silently skip the remaining steps, so the .hex images would never be
+# produced and the build would appear to pass.
+.DELETE_ON_ERROR:
+
 # Shared DV firmware build engine. A subsystem fw.mk sets the FW_* inputs below,
 # includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
@@ -69,6 +75,9 @@ CC      := $(OCAH_FW_TOOL_PREFIX)gcc
 AR      := $(OCAH_FW_TOOL_PREFIX)gcc-ar
 RANLIB  := $(OCAH_FW_TOOL_PREFIX)gcc-ranlib
 OBJCOPY := $(OCAH_FW_TOOL_PREFIX)objcopy
+# Disassembly uses -d (code sections) rather than -D (every section): the RISC-V
+# disassembler aborts on some non-code byte patterns, e.g. the sha3 round
+# constants in sep_smu_sanity's .data. -s still hexdumps the data sections.
 OBJDUMP := $(OCAH_FW_TOOL_PREFIX)objdump
 NM      := $(OCAH_FW_TOOL_PREFIX)nm
 SIZE    := $(OCAH_FW_TOOL_PREFIX)size
@@ -200,7 +209,7 @@ FW_TEST_ARCHIVE_LINK_FOR_$(1) := $$(FW_TEST_ARCHIVE_LINK_$$(FW_TEST_MODE_FOR_$(1
 # regardless of which one it lives in.
 $(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).elf: $$(FW_TEST_OBJS_$(1)) $$(FW_ARCHIVE) $$(FW_TEST_EXTRA_ARCHIVES) $$(FW_TEST_LINK_SCRIPT_FOR_$(1)) | $(FW_TEST_BUILD_DIR)/$(1)/.dir ocah-fw-check-toolchain
 	$$(CC) $$(FW_TEST_LDFLAGS_FOR_$(1)) -L"$(FW_DIR)/link" -L"$(FW_DIR)/link/modes" -Wl,-Map="$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).map" -T "$$(FW_TEST_LINK_SCRIPT_FOR_$(1))" $$(FW_TEST_OBJS_$(1)) $$(FW_TEST_ARCHIVE_LINK_FOR_$(1)) -o "$$@"
-	$$(OBJDUMP) -DCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"
+	$$(OBJDUMP) -dCSsx "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).dis"
 	$$(NM) -B -n "$$@" > "$(FW_TEST_BUILD_DIR)/$(1)/$(1).$$(FW_TEST_MODE_FOR_$(1)).sym"
 	$$(SIZE) "$$@"
 	$$(if $$(strip $$(FW_TEST_POSTPROCESS_PRIMARY_SUFFIX)),,$$(call FW_TEST_POSTPROCESS,$$@,$(1),$$(FW_TEST_MODE_FOR_$(1))))
@@ -244,7 +253,7 @@ ifneq ($(strip $(FW_ENTRY_SRCS)),)
 $(FW_ELF): $(FW_ENTRY_OBJS) $(FW_ARCHIVE) $(FW_LINKER_SCRIPT)
 	$(CC) $(FW_LDFLAGS) -T "$(FW_LINKER_SCRIPT)" $(FW_ENTRY_OBJS) $(FW_ARCHIVE) -o "$@"
 	$(OBJCOPY) -O verilog --verilog-data-width 8 "$@" "$(FW_BUILD_DIR)/$(FW_NAME).hex"
-	$(OBJDUMP) -DCSsx "$@" > "$(FW_BUILD_DIR)/$(FW_NAME).dis"
+	$(OBJDUMP) -dCSsx "$@" > "$(FW_BUILD_DIR)/$(FW_NAME).dis"
 	$(SIZE) "$@"
 
 .PHONY: ocah-fw-elf
@@ -263,6 +272,8 @@ clean:
 	@rm -rf "$(FW_BUILD_DIR)"
 
 # Verify the cross compiler resolves; emit an actionable error otherwise.
+# A bare gcc on PATH is not enough: hosts often carry a distro riscv64-unknown-elf-gcc
+# built without picolibc, which only fails ~100 objects later with a spec-file error.
 .PHONY: ocah-fw-check-toolchain
 ocah-fw-check-toolchain:
 	@command -v "$(CC)" >/dev/null 2>&1 || { \
@@ -272,6 +283,14 @@ ocah-fw-check-toolchain:
 		echo "  ./scripts/docker-run.sh run make dv-fw-libs TARGET=<subsystem>"; \
 		exit 1; \
 	}
+	@specs=$$("$(CC)" --print-file-name=$(FW_PICOLIBC_SPECS) 2>/dev/null); \
+	if [ "$$specs" = "$(FW_PICOLIBC_SPECS)" ] || [ ! -f "$$specs" ]; then \
+		echo "error: '$(CC)' cannot find $(FW_PICOLIBC_SPECS); this toolchain has no picolibc."; \
+		echo "point RISCV_TOOLCHAIN at a picolibc-enabled toolchain, or run via the"; \
+		echo "toolchain container, which carries one:"; \
+		echo "  ./scripts/docker-run.sh run make dv-fw-libs TARGET=<subsystem>"; \
+		exit 1; \
+	fi
 
 FW_TEST_DEPFILES := $(foreach t,$(FW_TEST_NAMES),$(FW_TEST_OBJS_$(t):.o=.d))
 
