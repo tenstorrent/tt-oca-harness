@@ -188,6 +188,14 @@ The simulator registry also defines Jasper (`jg`) and VC Formal (`vcf`) as
 formal backends. A DUT still needs a formal configuration before either can be
 selected.
 
+The shared `native-uvm` profile (SystemVerilog UVM, `framework = "uvm"`) is a
+maintainer flow that currently allows VCS only; the UVM library comes from the
+simulator via `-ntb_opts uvm`, tests are selected with
+`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
+policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
+behind a real-run sign-off gate; Questa is unsupported. The first user is the
+DTP SV-UVM smoke flow, `--dut dtp_uvm`.
+
 === Tests, groups, and tags
 
 `--items` accepts test names and group names from the resolved test catalog.
@@ -318,7 +326,11 @@ clean
 The actual stage set is supplied by the selected profile and DUT. A logical
 stage's configured `kind` chooses its backend implementation. For example, the
 shared cocotb profile maps `flist` to `bender_filelist`, `hdl_compile` to
-`cocotb_build`, and `sim` to `cocotb_sim`.
+`cocotb_build`, and `sim` to `cocotb_sim`. The `native-uvm` profile is the
+first shipped user of the direct VCS kinds: `flist` to `bender_filelist`,
+`hdl_compile` to `vcs_analyze` (vlogan), `elaborate` to `vcs_elaborate`
+(reusable `simv`), and `sim` to `vcs_sim` (one `simv` invocation per
+test/seed).
 
 Without explicit `--stage`, simulation selects the available stages from:
 
@@ -361,6 +373,12 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 ====
 
 === Coverage stages
+
+`--cov` requires the flow to declare coverage stages: on a flow whose stage
+graph has no `cov_merge`/`cov_report` (for example `native-uvm`, whose
+instrumentation wiring is a documented follow-up), the runner rejects `--cov`
+before any stage executes instead of failing after a full compile and
+simulation with a missing coverage artifact.
 
 On the implicit path, `--cov` instruments simulation and appends `cov_merge`
 and `cov_report` when the flow provides them:
