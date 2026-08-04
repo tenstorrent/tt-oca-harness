@@ -1,0 +1,28 @@
+hw/sys/smc/dv/fw/tests/gpio_p0_int_test/gpio_p0_int_test.c
+  s_d605cb93395a31::t_3c78dacd7778d4 140,143
+  s_d605cb93395a31::t_3a087344f93e15 11-12
+hw/sys/smc/dv/fw/tests/xtrigger_gpio_override/xtrigger_gpio_override.c
+  s_d605cb93395a31::t_d85f257e596e77 19-21
+hw/sys/smc/dv/fw/tests/gpio_p0_mux_test/gpio_p0_mux_test.c
+  s_d605cb93395a31::t_717b13390b6530 11
+hw/sys/smc/dv/fw/common/occp/occp_interfaces.c
+  s_d605cb93395a31::t_09bb76593998e3 48-49
+hw/sys/smc/dv/fw/tests/gpio_sanity_sequence.h
+  s_d605cb93395a31::t_1af451f57c8ca1 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ba8be7f1cbb4e9934934bb61df33a1f83feb04e7",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
