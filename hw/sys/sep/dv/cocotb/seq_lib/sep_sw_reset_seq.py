@@ -17,10 +17,12 @@ Bit map (hw/sep/sep_reset_ctrl.sv: SW_RESET_N fields):
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-SEP_RESET_CTRL_SW_RESET_N = 0x1080_3000
+SEP_RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 
 SW_RESET_N_BIT = {
     "km": 0,

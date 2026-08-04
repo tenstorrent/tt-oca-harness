@@ -17,6 +17,8 @@ readable field reads back verbatim).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -27,9 +29,9 @@ WORD_BITS = 32
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # Software-visible shadow-register block base (LC_STATE reads at base+0x08).
-SHADOW_BASE = 0x1093_0000
+SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
-SEP_CPU_CTRL_BASE = 0x10A3_0000
+SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 
 # LC_STATE lives in shadow word 2 (efuse_pkg::SHADOW_IDX_LC_STATE); the OTP word

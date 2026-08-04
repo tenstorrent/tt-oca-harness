@@ -30,10 +30,10 @@ the outbound port -- fixed).
 
 from __future__ import annotations
 
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
-OUTBOUND_BASE = 0x10A0_0000      # SEP/CPU aperture (CPU-LSU reachable, no filter)
+OUTBOUND_BASE = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")      # SEP/CPU aperture (CPU-LSU reachable, no filter)
 WRITE_DATA = 0x00                # 64-bit; pushes the TX FIFO (one access = one entry)
 READ_DATA = 0x08                 # 64-bit; pops the RX FIFO (empty on bare-sep)
 STATUS = 0x10                    # empty[0] full[1] wlvl_above[2] rlvl_above[3] (RO)

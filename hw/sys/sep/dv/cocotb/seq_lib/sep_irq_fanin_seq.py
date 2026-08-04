@@ -25,10 +25,12 @@ HMAC/KMAC INTR bit0 = <ip>_done (OpenTitan INTR layout).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE, IrqSrc
 
-HMAC_BASE = 0x1091_1000
-KMAC_BASE = 0x1091_3000
+HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
+KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (

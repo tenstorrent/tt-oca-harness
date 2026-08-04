@@ -22,11 +22,13 @@ is always clocked (no CLOCK_GATE_CTRL ungate needed).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-WDT_BASE = 0x1080_1000
+WDT_BASE = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
 WKUP_CTRL = WDT_BASE + 0x04
 WKUP_THOLD_HI = WDT_BASE + 0x08
 WKUP_THOLD_LO = WDT_BASE + 0x0C

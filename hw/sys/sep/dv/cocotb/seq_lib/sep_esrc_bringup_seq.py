@@ -38,6 +38,15 @@ from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_ENTROPY = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
+# The ESRC / CSRNG / EDN addresses below stay LITERAL, unlike every other block in
+# this env, because the generated top-level export does not cover them: there is no
+# ENTROPY_SRC / CSRNG / EDN symbol at all in hw/sys/sep/regs/gen/py/sep_reg.py (the
+# entropy_source IP header carries offsets only, with no absolute base to pair them
+# with). So sym() cannot be used here. This is the one register-map gap in the SEP DV
+# env, and it is in the block that has already drifted twice (CTRL.MODULE_ENABLE and
+# the DRBG ingress offset) -- worth closing in the register flow by exporting these
+# apertures, after which these constants should become sym() lookups like the rest.
+#
 # entropy_source (flat 32-bit map @ 0x1091_6000)
 ESRC_CTRL = 0x1091_6004
 ESRC_FIFO_CTRL = 0x1091_6020

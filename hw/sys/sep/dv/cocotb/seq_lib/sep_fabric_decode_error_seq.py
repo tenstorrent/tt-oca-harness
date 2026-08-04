@@ -38,6 +38,10 @@ from sep_reg_meta import SEP_CPU_CTRL
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 
+# The addresses below stay LITERAL by definition and must NOT be converted to sym()
+# lookups: having no decode target is the whole point of the test, so no generated
+# symbol can ever name them.
+#
 # Unmapped LOCAL addresses (high nibble 0x10xx => SEP-local space, not routed out
 # to SMN/SMC alias) that the SEP local xbar decodes to its error slave:
 #   * 0x10FF_0000 -- OCAH INVALID_TARGET_ADDR (reserved invalid target).

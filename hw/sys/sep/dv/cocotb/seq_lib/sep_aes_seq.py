@@ -16,6 +16,8 @@ AES register map (base 0x1091_0000; hw/ip/aes/rtl/aes_reg_pkg.sv offsets):
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 import cocotb
@@ -23,7 +25,7 @@ from cocotb.triggers import ClockCycles
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-AES_BASE = 0x1091_0000
+AES_BASE = sym("AES_REG_MAP_BASE_ADDR")
 AES_KEY_SHARE0_0 = AES_BASE + 0x04
 AES_KEY_SHARE1_0 = AES_BASE + 0x24
 AES_IV_0 = AES_BASE + 0x44

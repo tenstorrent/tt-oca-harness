@@ -22,6 +22,9 @@ from dataclasses import dataclass
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
+# CSRNG/EDN stay literal: the generated top-level export has no symbol for either
+# aperture (see the note in sep_esrc_bringup_seq.py). Convert once the register flow
+# exports them.
 CSRNG_BASE = 0x1091_5000
 EDN_BASE = 0x1091_5800
 

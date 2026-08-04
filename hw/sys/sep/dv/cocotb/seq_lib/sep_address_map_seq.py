@@ -56,9 +56,9 @@ from __future__ import annotations
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, SEP_RESET_CTRL
+from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, SEP_RESET_CTRL, sym
 
-BASE = 0x10A3_0000
+BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
 # Register names read and value-checked against their generated reset value.
 # Never written.

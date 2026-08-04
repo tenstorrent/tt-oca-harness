@@ -20,6 +20,8 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -27,7 +29,7 @@ from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
-KM_MBOX_BASE = 0x1092_0000
+KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
 KM_MBOX_WRITE_DATA = 0x000
 KM_MBOX_WRITE_SEPARATOR = 0x004
 KM_MBOX_READ_DATA = 0x008

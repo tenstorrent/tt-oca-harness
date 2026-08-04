@@ -194,6 +194,28 @@ class CHeaderRegBlock:
         return total
 
 
+def sym(name: str) -> int:
+    """Absolute address of a symbol in the generated top-level SEP register map.
+
+    For call sites that want a block base or a single register address by its
+    generated name, e.g. ``sym("AES_REG_MAP_BASE_ADDR")``. Raises rather than
+    returning a wrong value if the register flow renames or drops the symbol, so a
+    map change surfaces as an import-time error instead of a silently stale
+    constant (AGENTS.md §7).
+
+    NOT every hex literal in the DV is an address -- SHA round constants, KAT key
+    vectors and CSR bitmasks must stay literal. Only use this where the value is
+    genuinely an address in the SEP memory map.
+    """
+    try:
+        return int(getattr(sep_reg, name))
+    except AttributeError as exc:
+        raise KeyError(
+            f"{name} not found in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); regenerate it or check the symbol name"
+        ) from exc
+
+
 def ip_c_header(ip: str) -> Path:
     """Path to hw/ip/<ip>/regs/gen/c/<ip>.h (the generated C register header)."""
     return _HW_ROOT / "ip" / ip / "regs" / "gen" / "c" / f"{ip}.h"

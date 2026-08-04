@@ -16,6 +16,8 @@ was exercised rather than passing vacuously.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from pyuvm import uvm_sequence
@@ -23,7 +25,7 @@ from pyuvm import uvm_sequence
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
 # EFUSE control MMR aperture (SEP-local shadow base + 0x400).
-_EFUSE_PROGRAM_CTRL = 0x1093_0000 + 0x400 + 0x4
+_EFUSE_PROGRAM_CTRL = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x4
 
 # EFUSE_PROGRAM_CTRL field encoding.
 _EFUSE_DATA_BIT = 1 << 16          # program the addressed bit to 1 (W1S)

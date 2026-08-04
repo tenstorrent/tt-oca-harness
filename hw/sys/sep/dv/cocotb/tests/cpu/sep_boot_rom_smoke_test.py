@@ -7,6 +7,8 @@ retired-instruction trace advances through the expected ROM addresses.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import RisingEdge
 
@@ -14,7 +16,7 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 
-_BOOT_ROM_BASE = 0x1004_0000
+_BOOT_ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 _LOOP_PC = _BOOT_ROM_BASE + 12
 _MAX_CYCLES = 50_000
 

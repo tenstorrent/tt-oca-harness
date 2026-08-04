@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
-SEP_SRAM_BASE = 0x1000_0000
+SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 
 
 class sep_sram_smoke_seq(uvm_sequence):

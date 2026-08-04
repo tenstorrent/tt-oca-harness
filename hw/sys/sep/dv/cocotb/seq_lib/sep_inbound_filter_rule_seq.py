@@ -21,6 +21,8 @@ ar/awuser[3:0]=0 still matches; allow_ns=1 matches the master's NONSECURE prot.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -37,9 +39,9 @@ FILTER_END_ADDR = 0x10
 # system_csr region the smn_inbound xbar reaches post-filter. Staged with a distinctive
 # value by the CPU-LSU first, so the external read value-check proves the path reached
 # the real CSR (not a dummy OKAY). Blocked addr = a different CSR outside the window.
-TARGET_ADDR = 0x10A3_0178
+TARGET_ADDR = sym("SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR")
 TARGET_VALUE = 0xC0DE_F00D
-BLOCKED_ADDR = 0x10A3_0008
+BLOCKED_ADDR = sym("SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR")
 RESP_OKAY = 0
 RESP_DECERR = 3
 

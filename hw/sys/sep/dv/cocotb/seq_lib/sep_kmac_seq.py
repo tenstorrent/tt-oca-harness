@@ -17,6 +17,8 @@ encodings reused from fw/sep/tests/kmac_test + the OCAH seq):
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 import cocotb
@@ -29,7 +31,7 @@ from env.sep_axi_agent import SepAxiOp
 # the golden by construction.
 from env.sep_kmac_golden import encode_string, right_encode
 
-KMAC_BASE = 0x1091_3000
+KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 KMAC_INTR_STATE = KMAC_BASE + 0x000
 KMAC_CFG_SHADOWED = KMAC_BASE + 0x014
 KMAC_CMD = KMAC_BASE + 0x018

@@ -22,13 +22,15 @@ WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import random
 
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # och_sep_top_reg: SEP_SRAM_MEM_BASE_ADDR / SEP_SRAM_MEM_SIZE (256 KiB).
-SEP_SRAM_BASE = 0x1000_0000
+SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = 0x0004_0000
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 

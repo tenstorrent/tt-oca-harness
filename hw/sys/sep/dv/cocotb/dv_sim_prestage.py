@@ -36,19 +36,29 @@ to catch drift.
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 # dv root = .../dv (this file is at .../dv/cocotb/dv_sim_prestage.py).
 _DV_ROOT = Path(__file__).resolve().parents[1]
-# FIXME(SEP-DV): the default preload hex was not ported; see sep_base_test.py.
 _DEFAULT_EFUSE_PRELOAD = _DV_ROOT / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 
 
 def _load_sep_efuse_image():
     """Import SepEfuseImage by file path. The `env` package __init__ pulls in
     cocotb/pyuvm (sim-only), so a plain package import would fail in the pre-sim
-    runlib process; sep_efuse_image.py is pure-stdlib, so load it directly."""
-    path = _DV_ROOT / "cocotb" / "env" / "sep_efuse_image.py"
+    runlib process; sep_efuse_image.py imports nothing beyond the stdlib and its
+    own env siblings, so load it directly.
+
+    The env directory has to go on sys.path first: the sim gets it from
+    `[cocotb] python_paths` in sep_sim_cfg.toml, but this hook runs in run_dv.py's
+    interpreter, where a bare sibling import (`from sep_reg_meta import sym`) would
+    otherwise raise ModuleNotFoundError.
+    """
+    env_dir = _DV_ROOT / "cocotb" / "env"
+    if str(env_dir) not in sys.path:
+        sys.path.insert(0, str(env_dir))
+    path = env_dir / "sep_efuse_image.py"
     spec = importlib.util.spec_from_file_location("sep_efuse_image", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

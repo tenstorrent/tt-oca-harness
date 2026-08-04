@@ -18,6 +18,8 @@ write-only and read back zero.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 import cocotb
@@ -25,7 +27,7 @@ from cocotb.triggers import ClockCycles
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-HMAC_BASE = 0x1091_1000
+HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
 HMAC_INTR_STATE = HMAC_BASE + 0x000
 HMAC_CFG = HMAC_BASE + 0x010
 HMAC_CMD = HMAC_BASE + 0x014

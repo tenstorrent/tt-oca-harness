@@ -18,6 +18,8 @@ test reproduce the SVA intent on the observed lc_state sequence.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 # -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
@@ -38,7 +40,7 @@ _LC_NAME = {
 }
 
 # -- LCC register map (single source of truth; imported by the LCC sequences) -
-SEP_LCC_BASE = 0x1091_8000
+SEP_LCC_BASE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
 LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0    # 64-bit RO, hw-driven from lc_state; [0]=sep_debug
 LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8     # demote [0:0], lock [1:1]
 LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
