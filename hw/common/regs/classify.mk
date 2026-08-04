@@ -9,6 +9,14 @@
 # address/mask defines only.
 OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
 
+# The Python header has its own list because the reason above is a peakrdl
+# c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
+# cannot express and keeps the ctypes classes for the rest, so a block that has to
+# turn bitfields off in C can still have them in Python. The cocotb tests need
+# those classes (they build register values through <REG>_reg_u), so the default
+# is on and this list stays empty until some block proves otherwise.
+OCAH_REG_NO_BITFIELDS_PY ?=
+
 # A top is composite when its resolved RDL sits next to a regs/blocks/ dir: each
 # sub-block is generated on its own, the top keeps only its address view. Reading
 # the resolved RDL means an overlay variant reusing a canonical top inherits this.
@@ -28,6 +36,50 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
+
+# UVM RAL models are opt-in: only a DV environment that drives registers through
+# a uvm_reg_block needs one (today just the SEP TB), and every extra block is
+# another peakrdl invocation on a full regen.
+#
+# Composite sub-blocks are named (they are not blocks in their own right); leaves
+# are listed by block id, because a name is not unique -- efuse_shim_ctrl is both
+# the open DV placeholder and the Samsung shim that shadows it, and only the
+# latter gets a RAL.
+OCAH_REG_RAL_SUB_BLOCKS ?= \
+  aes hmac kmac otbn aon_timer secure_dma spi_controller \
+  sep_efuse_map efuse_mmr \
+  sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
+OCAH_REG_RAL_LEAF_BLOCKS ?= \
+  hw/common/axi/axi_alias_remap/regs/alias_remap \
+  hw/common/axi/axi_filter/regs/filter_ctrl \
+  hw/common/axi/output_remap \
+  hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
+  hw/ip/efuse/regs/efuse_interface_ctrl \
+  hw/ip/entropy_source \
+  vendor/lowRISC/opentitan/overlay/regs/csrng \
+  vendor/lowRISC/opentitan/overlay/regs/edn
+# Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
+OCAH_REG_RAL_SUB_BLOCKS += $(OCAH_REG_RAL_SUB_BLOCKS_EXTRA)
+OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
+
+# JSON register models are opt-in for the same reason as RAL: only a testbench
+# that walks the register space generically needs one (the SMC/SMU cocotb
+# register_test). Listed by block id, like the RAL leaves.
+OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
+OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
+
+ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
+ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
+
+# The model name drives both the emitted file (<model>_ral_pkg.sv) and its include
+# guard; the rename drives the top instance, and so the generated class prefix.
+# They are separate because the two reasons to override are unrelated: a wrapper
+# RDL whose model is known by a shorter name than its top addrmap (axil_mailbox),
+# versus a vendor block that must stay distinguishable from the open block it
+# shadows (the Samsung eFuse shim, whose addrmap is deliberately named
+# efuse_shim_ctrl so the canonical top instantiates it unchanged).
+OCAH_REG_RAL_MODEL_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox_sep_wrap ?= axil_mailbox
 
 # Local sub-blocks of a composite top: the regs/blocks/<sub>/ basenames (a pure
 # glob, no addrmap scan). C keeps placeholders; docs drop them; SV also drops
@@ -64,6 +116,7 @@ define ocah_reg_classify_vars
 OCAH_REG_SEARCH_$(call ocah_reg_key,$(1)) := $(call ocah_reg_incdirs_resolve,$(1))
 OCAH_REG_SVMODE_$(call ocah_reg_key,$(1)) := $(if $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_NO_RTL_BLOCKS)),skip,regblock)
 OCAH_REG_BITFIELDS_$(call ocah_reg_key,$(1)) := $(if $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_NO_BITFIELDS)),none,ltoh)
+OCAH_REG_BITFIELDS_PY_$(call ocah_reg_key,$(1)) := $(if $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_NO_BITFIELDS_PY)),none,ltoh)
 OCAH_REG_HTML_$(call ocah_reg_key,$(1)) := $(or $(OCAH_REG_HTML_OUTPUT_OVERRIDE_$(call ocah_reg_key,$(1))),$(OCAH_REG_GEN_$(call ocah_reg_key,$(1)))/html/$(call ocah_reg_name,$(1)).html)
 endef
 $(foreach block,$(OCAH_REG_BLOCKS),$(eval $(call ocah_reg_classify_vars,$(block))))

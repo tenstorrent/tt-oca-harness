@@ -2261,7 +2261,7 @@ SECURE_DMA_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_STATE_reg_t),
     ]
 
@@ -2291,7 +2291,7 @@ SECURE_DMA_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_ENABLE_reg_t),
     ]
 
@@ -2321,7 +2321,7 @@ SECURE_DMA_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_TEST_reg_t),
     ]
 
@@ -2349,7 +2349,7 @@ SECURE_DMA_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ALERT_TEST_reg_t),
     ]
 
@@ -2490,7 +2490,7 @@ SECURE_DMA_ADDR_SPACE_ID_REG_DEFAULT = 0x00000077
 
 class SECURE_DMA_ADDR_SPACE_ID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ADDR_SPACE_ID_reg_t),
     ]
 
@@ -2574,7 +2574,7 @@ SECURE_DMA_RANGE_VALID_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_RANGE_VALID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_RANGE_VALID_reg_t),
     ]
 
@@ -2602,7 +2602,7 @@ SECURE_DMA_RANGE_REGWEN_REG_DEFAULT = 0x00000006
 
 class SECURE_DMA_RANGE_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_RANGE_REGWEN_reg_t),
     ]
 
@@ -2630,7 +2630,7 @@ SECURE_DMA_CFG_REGWEN_REG_DEFAULT = 0x00000006
 
 class SECURE_DMA_CFG_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CFG_REGWEN_reg_t),
     ]
 
@@ -2714,7 +2714,7 @@ SECURE_DMA_TRANSFER_WIDTH_REG_DEFAULT = 0x00000002
 
 class SECURE_DMA_TRANSFER_WIDTH_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_TRANSFER_WIDTH_reg_t),
     ]
 
@@ -2779,7 +2779,7 @@ SECURE_DMA_SRC_CONFIG_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_SRC_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_SRC_CONFIG_reg_t),
     ]
 
@@ -2808,7 +2808,7 @@ SECURE_DMA_DST_CONFIG_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_DST_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_DST_CONFIG_reg_t),
     ]
 
@@ -2841,7 +2841,7 @@ SECURE_DMA_STATUS_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_STATUS_reg_t),
     ]
 
@@ -2876,7 +2876,7 @@ SECURE_DMA_ERROR_CODE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_ERROR_CODE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ERROR_CODE_reg_t),
     ]
 
@@ -2932,7 +2932,7 @@ SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT = 0x000007FF
 
 class SECURE_DMA_HANDSHAKE_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_HANDSHAKE_INTR_ENABLE_reg_t),
     ]
 
@@ -2960,7 +2960,7 @@ SECURE_DMA_CLEAR_INTR_SRC_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_CLEAR_INTR_SRC_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CLEAR_INTR_SRC_reg_t),
     ]
 
@@ -2988,7 +2988,7 @@ SECURE_DMA_CLEAR_INTR_BUS_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_CLEAR_INTR_BUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CLEAR_INTR_BUS_reg_t),
     ]
 
@@ -3072,7 +3072,7 @@ AON_TIMER_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_ALERT_TEST_reg_t),
     ]
 
@@ -3101,7 +3101,7 @@ AON_TIMER_WKUP_CTRL_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_WKUP_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AON_TIMER_WKUP_CTRL_reg_t),
     ]
 
@@ -3241,7 +3241,7 @@ AON_TIMER_WDOG_REGWEN_REG_DEFAULT = 0x00000001
 
 class AON_TIMER_WDOG_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_WDOG_REGWEN_reg_t),
     ]
 
@@ -3270,7 +3270,7 @@ AON_TIMER_WDOG_CTRL_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_WDOG_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_WDOG_CTRL_reg_t),
     ]
 
@@ -3383,7 +3383,7 @@ AON_TIMER_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_INTR_STATE_reg_t),
     ]
 
@@ -3412,7 +3412,7 @@ AON_TIMER_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_INTR_TEST_reg_t),
     ]
 
@@ -3440,7 +3440,7 @@ AON_TIMER_WKUP_CAUSE_REG_DEFAULT = 0x00000000
 
 class AON_TIMER_WKUP_CAUSE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AON_TIMER_WKUP_CAUSE_reg_t),
     ]
 
@@ -3468,7 +3468,7 @@ SEP_SCRATCH_SCRATCH_REG_DEFAULT = 0x0000000000000000
 
 class SEP_SCRATCH_SCRATCH_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_SCRATCH_SCRATCH_reg_t),
     ]
 
@@ -3500,7 +3500,7 @@ SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000001E
 
 class SEP_RESET_CTRL_SW_RESET_N_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_RESET_CTRL_SW_RESET_N_reg_t),
     ]
 
@@ -3528,7 +3528,7 @@ OTBN_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class OTBN_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_INTR_STATE_reg_t),
     ]
 
@@ -3556,7 +3556,7 @@ OTBN_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class OTBN_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_INTR_ENABLE_reg_t),
     ]
 
@@ -3584,7 +3584,7 @@ OTBN_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class OTBN_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_INTR_TEST_reg_t),
     ]
 
@@ -3613,7 +3613,7 @@ OTBN_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class OTBN_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_ALERT_TEST_reg_t),
     ]
 
@@ -3641,7 +3641,7 @@ OTBN_CMD_REG_DEFAULT = 0x00000000
 
 class OTBN_CMD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_CMD_reg_t),
     ]
 
@@ -3669,7 +3669,7 @@ OTBN_CTRL_REG_DEFAULT = 0x00000000
 
 class OTBN_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_CTRL_reg_t),
     ]
 
@@ -3697,7 +3697,7 @@ OTBN_STATUS_REG_DEFAULT = 0x00000004
 
 class OTBN_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_STATUS_reg_t),
     ]
 
@@ -3776,7 +3776,7 @@ OTBN_FATAL_ALERT_CAUSE_REG_DEFAULT = 0x00000000
 
 class OTBN_FATAL_ALERT_CAUSE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', OTBN_FATAL_ALERT_CAUSE_reg_t),
     ]
 
@@ -4005,7 +4005,7 @@ AES_CTRL_SHADOWED_REG_DEFAULT = 0x00000000
 
 class AES_CTRL_SHADOWED_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AES_CTRL_SHADOWED_reg_t),
     ]
 
@@ -4034,7 +4034,7 @@ AES_CTRL_AUX_SHADOWED_REG_DEFAULT = 0x00000000
 
 class AES_CTRL_AUX_SHADOWED_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AES_CTRL_AUX_SHADOWED_reg_t),
     ]
 
@@ -4062,7 +4062,7 @@ AES_CTRL_AUX_REGWEN_REG_DEFAULT = 0x00000001
 
 class AES_CTRL_AUX_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AES_CTRL_AUX_REGWEN_reg_t),
     ]
 
@@ -4093,7 +4093,7 @@ AES_TRIGGER_REG_DEFAULT = 0x00000000
 
 class AES_TRIGGER_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AES_TRIGGER_reg_t),
     ]
 
@@ -4127,7 +4127,7 @@ AES_STATUS_REG_DEFAULT = 0x00000000
 
 class AES_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AES_STATUS_reg_t),
     ]
 
@@ -4156,7 +4156,7 @@ AES_CTRL_GCM_SHADOWED_REG_DEFAULT = 0x00000000
 
 class AES_CTRL_GCM_SHADOWED_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AES_CTRL_GCM_SHADOWED_reg_t),
     ]
 
@@ -4186,7 +4186,7 @@ HMAC_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class HMAC_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', HMAC_INTR_STATE_reg_t),
     ]
 
@@ -4216,7 +4216,7 @@ HMAC_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class HMAC_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', HMAC_INTR_ENABLE_reg_t),
     ]
 
@@ -4246,7 +4246,7 @@ HMAC_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class HMAC_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', HMAC_INTR_TEST_reg_t),
     ]
 
@@ -4274,7 +4274,7 @@ HMAC_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class HMAC_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', HMAC_ALERT_TEST_reg_t),
     ]
 
@@ -4308,7 +4308,7 @@ HMAC_CFG_REG_DEFAULT = 0x00004100
 
 class HMAC_CFG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', HMAC_CFG_reg_t),
     ]
 
@@ -4339,7 +4339,7 @@ HMAC_CMD_REG_DEFAULT = 0x00000000
 
 class HMAC_CMD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', HMAC_CMD_reg_t),
     ]
 
@@ -4371,7 +4371,7 @@ HMAC_STATUS_REG_DEFAULT = 0x00000003
 
 class HMAC_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', HMAC_STATUS_reg_t),
     ]
 
@@ -4569,7 +4569,7 @@ KMAC_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class KMAC_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_INTR_STATE_reg_t),
     ]
 
@@ -4599,7 +4599,7 @@ KMAC_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class KMAC_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_INTR_ENABLE_reg_t),
     ]
 
@@ -4629,7 +4629,7 @@ KMAC_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class KMAC_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_INTR_TEST_reg_t),
     ]
 
@@ -4658,7 +4658,7 @@ KMAC_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class KMAC_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_ALERT_TEST_reg_t),
     ]
 
@@ -4686,7 +4686,7 @@ KMAC_CFG_REGWEN_REG_DEFAULT = 0x00000001
 
 class KMAC_CFG_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_CFG_REGWEN_reg_t),
     ]
 
@@ -4762,7 +4762,7 @@ KMAC_CMD_REG_DEFAULT = 0x00000000
 
 class KMAC_CMD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', KMAC_CMD_reg_t),
     ]
 
@@ -4857,7 +4857,7 @@ KMAC_ENTROPY_REFRESH_HASH_CNT_REG_DEFAULT = 0x00000000
 
 class KMAC_ENTROPY_REFRESH_HASH_CNT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', KMAC_ENTROPY_REFRESH_HASH_CNT_reg_t),
     ]
 
@@ -4885,7 +4885,7 @@ KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_REG_DEFAULT = 0x00000000
 
 class KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_reg_t),
     ]
 
@@ -4997,7 +4997,7 @@ KMAC_KEY_LEN_REG_DEFAULT = 0x00000000
 
 class KMAC_KEY_LEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', KMAC_KEY_LEN_reg_t),
     ]
 
@@ -5984,7 +5984,7 @@ EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
 
 class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t),
     ]
 
@@ -6285,7 +6285,7 @@ EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT = 0x00000000
 
 class EFUSE_MMR_TOKEN_MATCH_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EFUSE_MMR_TOKEN_MATCH_reg_t),
     ]
 
@@ -6400,7 +6400,7 @@ AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_STATUS_reg_t),
     ]
 
@@ -6429,7 +6429,7 @@ AXIL_MAILBOX_ERROR_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_ERROR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_ERROR_reg_t),
     ]
 
@@ -6457,7 +6457,7 @@ AXIL_MAILBOX_WIRQT_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_WIRQT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_WIRQT_reg_t),
     ]
 
@@ -6485,7 +6485,7 @@ AXIL_MAILBOX_RIRQT_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_RIRQT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_RIRQT_reg_t),
     ]
 
@@ -6515,7 +6515,7 @@ AXIL_MAILBOX_IRQS_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQS_reg_t),
     ]
 
@@ -6545,7 +6545,7 @@ AXIL_MAILBOX_IRQEN_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQEN_reg_t),
     ]
 
@@ -6575,7 +6575,7 @@ AXIL_MAILBOX_IRQP_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQP_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQP_reg_t),
     ]
 
@@ -6604,7 +6604,7 @@ AXIL_MAILBOX_CTRL_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_CTRL_reg_t),
     ]
 
@@ -6847,7 +6847,7 @@ SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_CLOCK_GATE_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_CLOCK_GATE_CTRL_reg_t),
     ]
 
@@ -6903,7 +6903,7 @@ SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_TIMEOUT_INTERRUPT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_TIMEOUT_INTERRUPT_reg_t),
     ]
 
@@ -6933,7 +6933,7 @@ SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_PKA_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_PKA_CTRL_reg_t),
     ]
 
@@ -6961,7 +6961,7 @@ SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_TIMEOUT_COUNT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_TIMEOUT_COUNT_reg_t),
     ]
 
@@ -6989,7 +6989,7 @@ SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_TIMEOUT_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_TIMEOUT_ENABLE_reg_t),
     ]
 
@@ -7017,7 +7017,7 @@ SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_TIMEOUT_CLEAR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_TIMEOUT_CLEAR_reg_t),
     ]
 
@@ -7045,7 +7045,7 @@ SEP_CPU_CTRL_TIMEOUT_MODE_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_TIMEOUT_MODE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_TIMEOUT_MODE_reg_t),
     ]
 
@@ -7163,7 +7163,7 @@ SEP_CPU_CTRL_SEP_REGION_SIZE_REG_DEFAULT = 0x0000000001000000
 
 class SEP_CPU_CTRL_SEP_REGION_SIZE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_REGION_SIZE_reg_t),
     ]
 
@@ -7219,7 +7219,7 @@ SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT = 0x0000000040000000
 
 class SEP_CPU_CTRL_SMU_REGION_SIZE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SMU_REGION_SIZE_reg_t),
     ]
 
@@ -7247,7 +7247,7 @@ SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_reg_t),
     ]
 
@@ -7275,7 +7275,7 @@ SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_t),
     ]
 
@@ -7304,7 +7304,7 @@ SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT = 0x00000000
 
 class SEP_CPU_CTRL_SEP_STRAPS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SEP_CPU_CTRL_SEP_STRAPS_reg_t),
     ]
 
@@ -7333,7 +7333,7 @@ SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT = 0x00000000
 
 class SEP_CPU_CTRL_RAS_BANK_INFO_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SEP_CPU_CTRL_RAS_BANK_INFO_reg_t),
     ]
 
@@ -7361,7 +7361,7 @@ SEP_CPU_CTRL_SEP_SW_DEBUG_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_SEP_SW_DEBUG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_SW_DEBUG_reg_t),
     ]
 
@@ -7390,7 +7390,7 @@ SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT = 0x00000000C0000100
 
 class SEP_CPU_CTRL_SEP_NMI_VEC_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_NMI_VEC_reg_t),
     ]
 
@@ -7418,7 +7418,7 @@ SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_reg_t),
     ]
 
@@ -7446,7 +7446,7 @@ SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT = 0x0000000000000007
 
 class SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_reg_t),
     ]
 
@@ -7474,7 +7474,7 @@ SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_reg_t),
     ]
 
@@ -7502,7 +7502,7 @@ SEP_CPU_CTRL_KM_WIPE_CTRL_REG_DEFAULT = 0x0000000000000000
 
 class SEP_CPU_CTRL_KM_WIPE_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_KM_WIPE_CTRL_reg_t),
     ]
 
@@ -7530,7 +7530,7 @@ SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT = 0x00000000DEADBEEF
 
 class SEP_CPU_CTRL_SEP_VERSION_ID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint32),
+        ('val', c_uint64),
         ('f', SEP_CPU_CTRL_SEP_VERSION_ID_reg_t),
     ]
 
@@ -7560,7 +7560,7 @@ SPI_CONTROLLER_INTR_STATUS_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_STATUS_reg_t),
     ]
 
@@ -7590,7 +7590,7 @@ SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_ENABLE_reg_t),
     ]
 
@@ -7620,7 +7620,7 @@ SPI_CONTROLLER_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_TEST_reg_t),
     ]
 
@@ -7789,7 +7789,7 @@ SPI_CONTROLLER_CMD_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_CMD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_CMD_reg_t),
     ]
 
@@ -8069,7 +8069,7 @@ EL2_PIC_MEIPL_REG_DEFAULT = 0x00000000
 
 class EL2_PIC_MEIPL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EL2_PIC_MEIPL_reg_t),
     ]
 
@@ -8125,7 +8125,7 @@ EL2_PIC_MEIE_REG_DEFAULT = 0x00000000
 
 class EL2_PIC_MEIE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EL2_PIC_MEIE_reg_t),
     ]
 
@@ -8153,7 +8153,7 @@ EL2_PIC_MPICCFG_REG_DEFAULT = 0x00000000
 
 class EL2_PIC_MPICCFG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EL2_PIC_MPICCFG_reg_t),
     ]
 
@@ -8182,7 +8182,7 @@ EL2_PIC_MEIGWCTRL_REG_DEFAULT = 0x00000000
 
 class EL2_PIC_MEIGWCTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EL2_PIC_MEIGWCTRL_reg_t),
     ]
 
@@ -8210,7 +8210,7 @@ EL2_PIC_MEIGWCLR_REG_DEFAULT = 0x00000000
 
 class EL2_PIC_MEIGWCLR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EL2_PIC_MEIGWCLR_reg_t),
     ]
 

@@ -16,6 +16,12 @@ nonfree/
 **/regs/gen/adoc/**/*.md
 **/regs/gen/adoc/*.md
 
+# The JSON register model is the whole address space serialised (~10 MB per top),
+# and the only thing that reads it -- the cocotb register_test -- regenerates it
+# during cgen. Tracking it would put a full copy in every commit that touches an
+# RDL. nonfree ignores its own copy for the same reason.
+**/regs/gen/json/**
+
 # Generated register HTML docs: track the compact single-file fragments used by
 # Antora, but keep the old PeakRDL mini-site layout (`index.html` + `content/`)
 # ignored/removed.

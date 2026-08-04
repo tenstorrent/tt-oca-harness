@@ -120,11 +120,15 @@ def render_registers(regs: dict, bitfields_enabled: bool) -> tuple[str, set[str]
 
         struct_fields = build_struct_fields(reg.fields)
         total_bits = sum(width for _, width in struct_fields)
+        # The bitfield storage unit only has to hold the fields, but `val` is the
+        # whole register: a 32-bit register whose fields stop at bit 7 still has to
+        # read and write four bytes, so the two widths are computed separately.
         ctype = base_ctype_for_width(total_bits)
-        if ctype is None:
+        val_ctype = base_ctype_for_width(reg.regwidth)
+        if ctype is None or val_ctype is None:
             continue
 
-        used_ctypes.update({"Structure", "Union", ctype, "c_uint32"})
+        used_ctypes.update({"Structure", "Union", ctype, val_ctype, "c_uint32"})
 
         lines += [
             f"class {reg_name}_reg_t(Structure):",
@@ -136,7 +140,7 @@ def render_registers(regs: dict, bitfields_enabled: bool) -> tuple[str, set[str]
             "",
             f"class {reg_name}_reg_u(Union):",
             "    _fields_ = [",
-            f"        ('val', {ctype}),",
+            f"        ('val', {val_ctype}),",
             f"        ('f', {reg_name}_reg_t),",
             "    ]",
             "",
