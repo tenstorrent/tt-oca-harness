@@ -8,8 +8,8 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-#define TOTAL_GPIOS 68
-#define GPIO_SKIP_COOL_RESET 64 // GPIO_64 is cool_reset_in, will reset chip if toggled
+#define TOTAL_GPIOS 65
+#define GPIO_SKIP_COOL_RESET 61 // GPIO_61 is cool_reset_in, will reset chip if toggled
 #define PAD2SOC_MASK 0x80000000
 
 void test_interrupt_type_high_level(uint32_t gpio_num) {
@@ -137,10 +137,10 @@ int main(void) {
     // Initialize peripherals
     // peripherals_out_of_reset();  // Function is not available
 
-    // Test all GPIOs (0-67), skipping GPIO 64 (cool_reset_in)
+    // Test all GPIOs (0-64), skipping GPIO 61 (cool_reset_in)
     for (uint32_t gpio_num = 0; gpio_num < TOTAL_GPIOS; gpio_num++) {
         if (gpio_num == GPIO_SKIP_COOL_RESET) {
-            // Skip GPIO 64 as it is cool_reset_in and will reset chip if toggled
+            // Skip GPIO 61 as it is cool_reset_in and will reset chip if toggled
             continue;
         }
 

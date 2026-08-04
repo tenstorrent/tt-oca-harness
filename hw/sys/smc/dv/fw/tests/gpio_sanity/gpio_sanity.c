@@ -11,7 +11,7 @@
 #define BLOCKED_REQUEST 0xbadcab1e
 #define PAD2SOC_MASK 0x80000000
 
-#define TOTAL_GPIOS 68
+#define TOTAL_GPIOS 65
 
 void test_rw_core2pad(void) {
 
@@ -25,7 +25,7 @@ void test_rw_core2pad(void) {
         gpio_intf.w = read_data_control;
 
         if (gpio_num ==
-            64) { // this gpio is being used for cool_reset, use 0 as data to avoid resetting itself
+            61) { // this gpio is being used for cool_reset, use 0 as data to avoid resetting itself
             gpio_intf.f.core2pad = 0;
             gpio_intf.f.interface_enable = 0;
         } else {

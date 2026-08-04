@@ -16,8 +16,9 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-// Test GPIOs for xtrigger override (4 GPIOs per xtrigger interface)
-#define NUM_GPIOS 64
+// 15 override channels x 4 = 60 bonded GPIOs (indices 0-59) after the
+// GPIO shrink 64->61 moved one xtrigger channel to a dedicated pad.
+#define NUM_GPIOS 60
 
 /**
  * Enable hardware override on a specific GPIO
