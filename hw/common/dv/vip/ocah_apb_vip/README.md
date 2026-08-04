@@ -19,11 +19,11 @@ AXI4-Lite register interfaces without restructuring driver code.
 ```
 ocah_apb_vip/
   __init__.py          — exports public APB VIP symbols
-  ocah_apb_master.py   — OcahApbMaster
-  ocah_apb_slave.py    — OcahApbSlave / OcahApbRam
-  ocah_apb_item.py     — OcahApbItem transaction record
-  ocah_apb_monitor.py  — OcahApbMonitor passive sampler
-  ocah_apb_checker.py  — OcahApbChecker item checker
+  cocotb/ocah_apb_master.py   — OcahApbMaster
+  cocotb/ocah_apb_slave.py    — OcahApbSlave / OcahApbRam
+  cocotb/ocah_apb_item.py     — OcahApbItem transaction record
+  cocotb/ocah_apb_monitor.py  — OcahApbMonitor passive sampler
+  cocotb/ocah_apb_checker.py  — OcahApbChecker item checker
   ocah_apb_cov.sv      — commercial-simulator functional coverage hook
 ```
 

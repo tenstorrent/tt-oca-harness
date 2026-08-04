@@ -97,9 +97,9 @@ through this package.
 ocah_i3c_vip/
   __init__.py            — package exports: OcahI3cBus, OcahI3cTarget,
                            OcahI3cMonitor
-  ocah_i3c_bus.py        — OcahI3cBus  (controller mode)
-  ocah_i3c_target.py     — OcahI3cTarget  (target mode)
-  ocah_i3c_monitor.py    — OcahI3cMonitor  (passive monitor)
+  cocotb/ocah_i3c_bus.py        — OcahI3cBus  (controller mode)
+  cocotb/ocah_i3c_target.py     — OcahI3cTarget  (target mode)
+  cocotb/ocah_i3c_monitor.py    — OcahI3cMonitor  (passive monitor)
   examples/
     example_priv_rw.py   — annotated API usage snippets
 ```

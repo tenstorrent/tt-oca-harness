@@ -66,9 +66,9 @@ silicon-specific commands.
 ```
 ocah_spi_vip/
   __init__.py                    — exports all public symbols
-  ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI)
-  ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP xSPI pin set)
-  ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer)
+  cocotb/ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI)
+  cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP xSPI pin set)
+  cocotb/ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer)
   examples/
     example_jedec_id.py          — annotated JEDEC-ID read snippet
   README.md                      — this file

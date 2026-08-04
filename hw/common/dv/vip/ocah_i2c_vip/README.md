@@ -46,10 +46,10 @@ migration-plan pattern.
 ocah_i2c_vip/
   __init__.py              — exports OcahI2cMaster, OcahI2cDevice,
                              OcahI2cMemory, OcahI2cMonitor
-  ocah_i2c_master.py       — OcahI2cMaster (active master driver)
-  ocah_i2c_device.py       — OcahI2cDevice (custom callback device emulator)
-  ocah_i2c_memory.py       — OcahI2cMemory (EEPROM-style memory device)
-  ocah_i2c_monitor.py      — OcahI2cMonitor (passive bus observation)
+  cocotb/ocah_i2c_master.py       — OcahI2cMaster (active master driver)
+  cocotb/ocah_i2c_device.py       — OcahI2cDevice (custom callback device emulator)
+  cocotb/ocah_i2c_memory.py       — OcahI2cMemory (EEPROM-style memory device)
+  cocotb/ocah_i2c_monitor.py      — OcahI2cMonitor (passive bus observation)
   examples/
     example_i2c_eeprom.py  — annotated usage snippets
 ```

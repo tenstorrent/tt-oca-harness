@@ -23,12 +23,12 @@ package metadata for version 0.4.0 reports license `MIT`.
 ```text
 ocah_jtag_vip/
   __init__.py            - public exports
-  ocah_jtag_tap.py       - active TAP driver
-  ocah_jtag_device.py    - device/register map
-  ocah_jtag_item.py      - scan/state item dataclasses
-  ocah_jtag_monitor.py   - passive item-producing monitor
-  ocah_jtag_checker.py   - item-level checker
-  ocah_jtag_state.py     - TAP state enum and TMS path helpers
+  cocotb/ocah_jtag_tap.py       - active TAP driver
+  cocotb/ocah_jtag_device.py    - device/register map
+  cocotb/ocah_jtag_item.py      - scan/state item dataclasses
+  cocotb/ocah_jtag_monitor.py   - passive item-producing monitor
+  cocotb/ocah_jtag_checker.py   - item-level checker
+  cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
   examples/
     example_idcode.py    - PTAP/STAP/CPU TAP usage examples
 ```

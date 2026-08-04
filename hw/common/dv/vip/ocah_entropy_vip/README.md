@@ -36,8 +36,8 @@ Key properties:
 ```
 ocah_entropy_vip/
   __init__.py                    — public exports
-  ocah_entropy_source.py         — OcahEntropySource driver
-  ocah_entropy_monitor.py        — OcahEntropyMonitor passive observer
+  cocotb/ocah_entropy_source.py         — OcahEntropySource driver
+  cocotb/ocah_entropy_monitor.py        — OcahEntropyMonitor passive observer
   examples/
     example_deterministic_entropy.py — annotated usage snippets
   README.md                      — this file

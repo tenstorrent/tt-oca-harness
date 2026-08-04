@@ -46,8 +46,8 @@ message.  No other import-time side-effects occur.  This mirrors the
 ```
 ocah_uart_vip/
   __init__.py                  — exports OcahUartConsole, OcahUartMonitor
-  ocah_uart_console.py         — OcahUartConsole (active host)
-  ocah_uart_monitor.py         — OcahUartMonitor (passive tap)
+  cocotb/ocah_uart_console.py         — OcahUartConsole (active host)
+  cocotb/ocah_uart_monitor.py         — OcahUartMonitor (passive tap)
   examples/
     example_loopback.py        — annotated usage snippets
 ```

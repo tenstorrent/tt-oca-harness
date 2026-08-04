@@ -71,13 +71,13 @@ as part of GH #3288.
 ```
 ocah_axi_vip/
   __init__.py                  — exports all public symbols
-  ocah_axi_master.py             — OcahAxiMaster (AXI4 full bus)
-  ocah_axi_lite_master.py        — OcahAxiLiteMaster (AXI4-Lite)
-  ocah_axi_slave.py              — OcahAxiSlave / OcahAxiRam (AXI4 responder)
-  ocah_axi_lite_slave.py         — OcahAxiLiteSlave / OcahAxiLiteRam
-  ocah_axi_item.py               — transaction item dataclasses
-  ocah_axi_monitor.py            — OcahAxiMonitor, OcahAxiLiteMonitor
-  ocah_axi_checker.py            — OcahAxiChecker
+  cocotb/ocah_axi_master.py             — OcahAxiMaster (AXI4 full bus)
+  cocotb/ocah_axi_lite_master.py        — OcahAxiLiteMaster (AXI4-Lite)
+  cocotb/ocah_axi_slave.py              — OcahAxiSlave / OcahAxiRam (AXI4 responder)
+  cocotb/ocah_axi_lite_slave.py         — OcahAxiLiteSlave / OcahAxiLiteRam
+  cocotb/ocah_axi_item.py               — transaction item dataclasses
+  cocotb/ocah_axi_monitor.py            — OcahAxiMonitor, OcahAxiLiteMonitor
+  cocotb/ocah_axi_checker.py            — OcahAxiChecker
   ocah_axi_cov.sv                — commercial-simulator functional coverage
   examples/
     example_register_access.py — annotated usage snippets

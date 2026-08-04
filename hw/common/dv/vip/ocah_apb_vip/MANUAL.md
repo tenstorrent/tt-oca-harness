@@ -43,11 +43,11 @@ response enums in new OCAH tests. Add missing behavior to this wrapper instead.
 
 | File | Purpose |
 |---|---|
-| `ocah_apb_master.py` | APB master agent |
-| `ocah_apb_slave.py` | APB memory-backed slave/RAM responder |
-| `ocah_apb_item.py` | Generic APB transaction item |
-| `ocah_apb_monitor.py` | Passive item-producing monitor |
-| `ocah_apb_checker.py` | Item-level protocol checker |
+| `cocotb/ocah_apb_master.py` | APB master agent |
+| `cocotb/ocah_apb_slave.py` | APB memory-backed slave/RAM responder |
+| `cocotb/ocah_apb_item.py` | Generic APB transaction item |
+| `cocotb/ocah_apb_monitor.py` | Passive item-producing monitor |
+| `cocotb/ocah_apb_checker.py` | Item-level protocol checker |
 | `ocah_apb_cov.sv` | Commercial-simulator functional coverage hook |
 
 ## Construction
