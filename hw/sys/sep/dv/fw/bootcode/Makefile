@@ -121,8 +121,12 @@ LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(C
 
 ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.metadata --only-section=.metadata.* \
 	--only-section=.rodata --only-section=.rodata.* --only-section=.srodata --only-section=.srodata.*
-DTCM_ELF_SECTIONS := --only-section=.rodata --only-section=.rodata.* --only-section=.srodata --only-section=.srodata.* \
-	--only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
+# .rodata/.srodata are deliberately NOT here: link/rom.ld keeps read-only data in
+# the ROM image (VMA just past .text, e.g. 0x1004_4348) and ROM_ELF_SECTIONS above
+# already carries it. Claiming it for the DTCM image too made objcopy subtract
+# DCCM_BASE from a ROM address, wrapping negative (@FFFFFFFF5000_4348) and failing
+# the load with "$readmem file address beyond bounds of array".
+DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
 .PHONY: all clean bl1_test ensure-pack-deps
@@ -165,8 +169,19 @@ $(VMEM): $(ELF) $(ELF_TO_VMEM)
 $(ITCM_HEX): $(ELF)
 	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(ROM_ELF_SECTIONS) --change-addresses "-$(ROM_BASE)" "$@"
 
+# DCCM preload image. `objcopy -O verilog` emits by LOAD address, and .data's LMA is
+# in ROM (`AT> rom` in link/rom.ld) even though its VMA is DCCM -- so rebasing by
+# DCCM_BASE subtracted a DCCM base from a ROM address and wrapped negative
+# (@FFFFFFFF5000_4EA8), which fails the load with "$readmem file address beyond
+# bounds of array". Rebase by __data_load_start (= LOADADDR(.data), the symbol
+# link/rom.ld exports for exactly this) so the emitted addresses are DCCM-relative
+# offsets. .bss is NOLOAD and contributes no bytes; vector.S still performs the real
+# ROM->DCCM copy at boot, so this image only pre-stages identical content.
 $(DTCM_HEX): $(ELF)
-	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(DTCM_ELF_SECTIONS) --change-addresses "-$(DCCM_BASE)" "$@"
+	set -e; \
+	data_lma=$$($(GCC_PREFIX)-nm "$(ELF)" | awk '$$3 == "__data_load_start" { print "0x"$$1 }'); \
+	[ -n "$$data_lma" ] || { echo "error: __data_load_start not found in $(ELF)" >&2; exit 1; }; \
+	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(DTCM_ELF_SECTIONS) --change-addresses "-$$data_lma" "$@"
 
 # --- manifest+BL1 SMC image ---
 # Build the BL1 payload (bl1_pass_test) from source. Phony so the recursive make
