@@ -5,6 +5,10 @@ Builds the SEP env, brings up clocks/reset with the CPU held off, and runs a
 field-aware register sweep of sep_cpu_ctrl over the CPU LSU bus: reset-value
 read-checks across the map, plus write->readback of the pure-RW registers. The
 scoreboard checks the AXI response on every access and the value on every read.
+
+Every expected value (offset, reset, implemented-field mask) is derived from the
+generated SystemRDL export via env/sep_reg_meta.py — see sep_address_map_seq for
+the derivation and for the documented CLOCK_GATE_CTRL scope delta.
 """
 
 from __future__ import annotations
@@ -31,4 +35,8 @@ class sep_address_map_test(sep_base_test):
         self.logger.info(
             "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore",
             seq.base_addr_rw_checks,
+        )
+        self.logger.info(
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore",
+            seq.write_readback_checks,
         )

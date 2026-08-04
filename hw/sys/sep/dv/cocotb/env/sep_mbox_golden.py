@@ -30,6 +30,8 @@ the outbound port -- fixed).
 
 from __future__ import annotations
 
+from sep_reg_meta import SEP_CPU_CTRL
+
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
 OUTBOUND_BASE = 0x10A0_0000      # SEP/CPU aperture (CPU-LSU reachable, no filter)
 WRITE_DATA = 0x00                # 64-bit; pushes the TX FIFO (one access = one entry)
@@ -56,9 +58,13 @@ IRQ_EIRQ = 1 << 2
 ERR_READ = 1 << 0
 ERR_WRITE = 1 << 1
 
-# CLOCK_GATE_CTRL mailbox ungate (bit 2).
-CLOCK_GATE_CTRL = 0x10A3_0008
-CLOCK_GATE_MAILBOX = 1 << 2
+# CLOCK_GATE_CTRL, from the generated SystemRDL export (AGENTS.md §7). There is no
+# dedicated mailbox gate bit in this repository's sep_cpu_ctrl.rdl -- CLOCK_GATE_CTRL
+# is a placeholder with one implemented bit (pka_cg_enable[0:0]) -- so the mailbox is
+# unconditionally clocked and the "ungate" is a CSR write-path exercise, not a gate
+# release. Use the implemented mask so the value cannot claim a field that is not there.
+CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
+CLOCK_GATE_MAILBOX = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 MAILBOX_DEPTH = 8                # sep_pkg::MAILBOX_DEPTH
 # Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv).

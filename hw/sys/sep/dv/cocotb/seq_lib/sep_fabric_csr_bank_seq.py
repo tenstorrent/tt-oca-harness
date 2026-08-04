@@ -33,11 +33,17 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from sep_reg_meta import SEP_CPU_CTRL
 
-# --- fabric clock ungate (same value sep_address_map_seq uses) ----------------
-CLOCK_GATE_CTRL = 0x10A3_0008
-CLOCK_GATE_RESET = 0x001F_0021
-CLOCK_GATE_UNGATE = 0x001F_04A7     # | dma[1] mailbox[2] alias_remap[7] entropy_fifo[10]
+# --- fabric clock ungate ------------------------------------------------------
+# Derived from the generated SystemRDL export, never hardcoded (AGENTS.md §7).
+# sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
+# bit (pka_cg_enable[0:0], reset 0); the per-block gates an earlier revision
+# assumed (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) do not exist, so
+# every bank below is unconditionally clocked and there is nothing to ungate.
+# Writing the full implemented mask keeps this step's CSR write-path coverage.
+CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
+CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
 ALIAS_BASE = 0x10A1_0000
