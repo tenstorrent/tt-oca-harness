@@ -54,11 +54,9 @@ int main(void) {
 
     // --- OpenTitan SPI host init ---------------------------------------------
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
-    // controller + output. Release the SPI mux CS first: the sep_wrapper mux resets
-    // SPI_MUX_CTRL.cs_force_high=1 (holds CS deasserted), so the flash access would
-    // see no CS toggle; clearing it routes to the real mux CSR (a no-op on bare sep,
-    // where the extension aperture is tied off).
-    sep_spi_mux_release_cs();
+    // controller + output. No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is
+    // retired in this repository (the wrapper's SPI is a struct boundary), so nothing
+    // holds CS deasserted and the 0x2000_0000 extension aperture decode-errors.
     spi_wr(SPI_CTRL_REG,
            (RX_WATERMARK << SPI_CTRL_RX_WM_SHIFT) | SPI_CTRL_OUTPUT_EN | SPI_CTRL_SPIEN);
     spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);

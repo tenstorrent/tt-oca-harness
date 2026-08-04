@@ -32,7 +32,9 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
         await flash.start()
         try:
             await self.bring_up_no_cpu()
-            await self.spi_mux_release_cs()
+            # No CS-release step: the wrapper's SPI is a struct boundary and
+            # tb_top drives the pads straight off it, so the retired
+            # och_sep_spi_mux_ctrl_ot cs_force_high bit no longer exists.
             seq = sep_spi_flash_jedec_seq("spi_flash_jedec_seq")
             await self.start_seq(seq)
             transactions = flash.get_transactions()

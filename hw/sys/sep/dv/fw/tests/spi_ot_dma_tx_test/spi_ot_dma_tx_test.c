@@ -118,9 +118,9 @@ static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
 }
 
 static void spi_init(void) {
-    // Release the SPI mux CS: the sep_wrapper mux resets cs_force_high=1 (holds CS
-    // deasserted); clear it so the flash CS can toggle (no-op/tied-off on bare sep).
-    sep_spi_mux_release_cs();
+    // No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is retired in this
+    // repository (the wrapper's SPI is a struct boundary), so nothing holds CS
+    // deasserted and the 0x2000_0000 extension aperture decode-errors.
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
     spi_wr(SPI_CTRL_REG, (TX_WATERMARK << SPI_CTRL_TX_WM_SHIFT) | (1u << SPI_CTRL_RX_WM_SHIFT) |
                              SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
