@@ -25,13 +25,13 @@ The VIP follows the OCAH cocotb VIP taxonomy:
 
 | File | Purpose |
 |---|---|
-| `ocah_axi_master.py` | AXI4 full master agent |
-| `ocah_axi_lite_master.py` | AXI4-Lite master agent |
-| `ocah_axi_slave.py` | AXI4 memory-backed slave/RAM responder |
-| `ocah_axi_lite_slave.py` | AXI4-Lite memory-backed slave/RAM responder |
-| `ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items |
-| `ocah_axi_monitor.py` | Passive item-producing monitors |
-| `ocah_axi_checker.py` | Item-level protocol checker |
+| `cocotb/ocah_axi_master.py` | AXI4 full master agent |
+| `cocotb/ocah_axi_lite_master.py` | AXI4-Lite master agent |
+| `cocotb/ocah_axi_slave.py` | AXI4 memory-backed slave/RAM responder |
+| `cocotb/ocah_axi_lite_slave.py` | AXI4-Lite memory-backed slave/RAM responder |
+| `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items |
+| `cocotb/ocah_axi_monitor.py` | Passive item-producing monitors |
+| `cocotb/ocah_axi_checker.py` | Item-level protocol checker |
 | `ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
 ## Import Pattern

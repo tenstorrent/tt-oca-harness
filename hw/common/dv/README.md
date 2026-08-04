@@ -13,10 +13,27 @@ Use Python 3.11, 3.12, or 3.13 for this package. Python 3.14 is not part of
 the current support contract because the selected cocotb release rejects Python
 versions newer than 3.13.
 
-Shared VIP imports use the top-level `ocah_<proto>_vip` packages under `vip/`.
-New protocol VIPs should provide master, slave, item, monitor, checker, and
-commercial-simulator coverage hook files when the protocol shape supports them.
-For example:
+Each VIP package is hierarchical:
+
+```text
+vip/ocah_<proto>_vip/
+  __init__.py      # thin shim re-exporting the stable public API from cocotb/
+  README.md
+  interface/       # SV interfaces shared by the cocotb and UVM flows (where present)
+  cocotb/          # all cocotb (Python) VIP code, incl. examples/
+  uvm/             # SV-UVM agent collateral (added as it lands)
+  cov/             # framework-neutral SV coverage models (where present)
+```
+
+Shared VIP imports use the top-level `ocah_<proto>_vip` packages under `vip/`;
+the root `__init__.py` re-exports the cocotb public API, so consumers never
+import from the subfolders directly. `ocah_jtag_vip` is the reference
+implementation for the SV-UVM side: its README carries the "Template
+Contract" (frozen item/event API, env-level reuse and commercial-VIP
+override, monitor-disable knob, nested vendor interface) that every OCAH
+SV-UVM VIP follows. New protocol VIPs should provide master, slave, item,
+monitor, checker, and commercial-simulator coverage hook files when the
+protocol shape supports them. For example:
 
 ```python
 from ocah_axi_vip import OcahAxiLiteMaster
