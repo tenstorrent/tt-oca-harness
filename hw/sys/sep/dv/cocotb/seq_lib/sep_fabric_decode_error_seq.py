@@ -35,7 +35,6 @@ from sep_reg_meta import SEP_CPU_CTRL
 # with a deterministic reset value and no read side effects -- the same anchor the
 # smoke/address-map tests use. Address and expected value are derived from the
 # generated SystemRDL export, never hardcoded (AGENTS.md §7).
-SEP_CPU_CTRL_BASE = 0x10A3_0000
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 
