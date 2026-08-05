@@ -68,8 +68,11 @@ notes:
 - SMC CPU JTAG uses `ocah_jtag_vip` for bus/device bind; active-high
   `tb_cpu_jtag_reset` stays DUT-local (not mapped to bus `trst`) because
   `cocotbext-jtag` assumes IEEE active-low TRST.
-- `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` remains a
-  DUT-local observability test (probe sampling, no bus BFM).
+- `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` drives real
+  `s_axi_*` traffic into the SMC SEP_IN AXI port through the DUT-local
+  `SmcSysAxiDriver`, which binds the shared `ocah_axi_vip.OcahAxiMaster`.
+  The local layer owns SMC/PyUVM sequencing and policy; the AXI protocol engine
+  remains shared.
 - `ocah_axi_vip.OcahAxiMonitor`, `OcahAxiLiteMonitor`, and
   `ocah_apb_vip.OcahApbMonitor` are OCAH-owned passive samplers that emit plain
   item dataclasses. The released master/responder BFMs remain cocotbext-backed.
