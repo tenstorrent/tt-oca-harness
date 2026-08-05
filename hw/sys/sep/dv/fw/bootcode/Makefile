@@ -34,15 +34,16 @@ GCC_PREFIX ?= riscv64-unknown-elf
 # SEP DV root (bootcode is 2 dirs deep under it: <dv>/fw/bootcode).
 DV_ROOT := $(abspath $(CURDIR)/../..)
 
-# Flat SEP register header (sep_reg.h), emitted by the open register flow next
-# to the RDL it comes from (`make ocah-regen-regs-chdr`). It used to be a copy
-# vendored into include/; reading the generated one instead is what keeps the
-# header from drifting away from the RDL the RTL is built from.
-#
-# When the nonfree tree is present its variant goes first, for the usual reason:
-# both emit sep_reg.h, and only the nonfree one resolves the vendor shims.
-REG_INCLUDE_DIRS := $(if $(NONFREE_ROOT),-I$(NONFREE_ROOT)/hw/sys/sep/regs/gen/c) \
-	-I$(abspath $(DV_ROOT)/../regs/gen/c)
+OCAH_ROOT := $(abspath $(DV_ROOT)/../../../..)
+
+# Generated SEP register headers (sep.h umbrella, sep_addr.h, per-block headers),
+# emitted by the open register flow next to the RDL they come from
+# (`make ocah-regen-regs`). They used to be copies vendored into include/;
+# reading the generated ones instead is what keeps them from drifting away from
+# the RDL the RTL is built from. This build drives itself rather than going
+# through compile.mk, so it borrows that engine's include set verbatim.
+include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
+REG_INCLUDE_DIRS := $(call ocah_fw_nonfree_reg_includes,sep) $(call ocah_fw_reg_includes,sep)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
@@ -113,7 +114,12 @@ OBJS += $(NONFREE_BOOTCODE_OBJS)
 # rv32im (no C) + no relax, matching the internal ROM build. zifencei is spelled
 # out because binutils >= 2.38 rejects fence.i (rom_handoff.c) without it.
 CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
+# The ROM itself is freestanding and links -nostdlib, but the generated register
+# headers close their packing checks with static_assert, i.e. <assert.h>. That is
+# not a freestanding header, and in the toolchain container it only resolves
+# through the picolibc spec file - hence the specs on the compile line only.
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
+	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \

@@ -90,7 +90,7 @@
 #define XBAR_FUSE_SENSE_DONE_MASK  0x1u
 
 /* ---- CHK-SETUP readback goldens (every programmed aperture/filter is read back & compared) ---- */
-/* SEP aperture + filter register bases/offsets are pulled from och_sep_top_reg.h in the fw. */
+/* SEP aperture + filter register bases/offsets are pulled from sep.h in the fw. */
 #define XBAR_SEP_REGION_SIZE_GOLDEN 0x20000000u             /* SEP_REGION_SIZE (32b) */
 #define XBAR_SEP_OUTBOUND_START     0x0000000040000000ULL   /* SEP outbound egress filter */
 #define XBAR_SEP_OUTBOUND_END       0x00000000800000FFULL

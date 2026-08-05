@@ -30,16 +30,16 @@
 #include "bl0_state.h"
 
 // Generated register map for OCH SEP.
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_smc_interface.h"
 
 // SEP EXT SRAM: staging area for manifest and payload.
-#define SRAM_BASE ((uint32_t)SEP_SRAM_MEM_BASE_ADDR) // 0x10100000
-#define SRAM_SIZE ((uint32_t)SEP_SRAM_MEM_SIZE)      // 0x00040000 (256 KiB)
+#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10100000
+#define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
 
 // SPI XIP region size (for payload location check).
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_SIZE)
 #endif
 
 // ---------------------------------------------------------------------------
@@ -356,7 +356,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             if (sel_ids) {
                 // Only wait if we actually need to read SMC fuse map.
                 for (int i = 0; i < 1000000; ++i) {
-                    uint32_t fss = mmio_read32(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR);
+                    uint32_t fss = mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR);
                     if (fss & 0x1u) break; // smc_fuse_sense_done
                 }
             }

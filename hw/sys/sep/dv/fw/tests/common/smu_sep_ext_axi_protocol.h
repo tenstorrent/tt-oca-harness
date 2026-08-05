@@ -208,7 +208,7 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
 #define EXTAXI_FILTER_STRIDE        0x20u
 
 /* Compile-time binding to the generated offsets (only when the generated header is in scope --
- * i.e. in the firmware translation units that include och_sep_top_reg.h; skipped for the cocotb
+ * i.e. in the firmware translation units that include sep.h; skipped for the cocotb
  * text parse). Uses the SEP inbound filter block as the canonical source; the SMC block and the
  * outbound blocks share the same filter_ctrl_reg layout. */
 #if defined(INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET)

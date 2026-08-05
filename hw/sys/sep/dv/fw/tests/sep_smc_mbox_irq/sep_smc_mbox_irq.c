@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_smc_bringup.h"        /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "sep_mbox_irq_protocol.h"
 
@@ -34,7 +34,7 @@ __attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_fail_loop(void)
 
 /* SEP inbound filters over the whole mailbox channel region (must cover every inbound port so the
  * SMC's pops/W1C/readbacks reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE  INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR  /* 0x10A21000 */
+#define SEP_INBOUND_FILTER0_BASE  OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)  /* 0x10A21000 */
 #define SEP_INBOUND_FILTER_STRIDE 0x20u
 #define SEP_FILTER_CONFIG_OFFSET  0x00u
 #define SEP_FILTER_START_OFFSET   0x08u
@@ -62,7 +62,7 @@ static void program_sep_setup(void)
     /* Aperture first (32-bit write only) so any SMC access arriving mid-setup is routable.
      * (No mailbox clock-gate write is needed: sep_system_csr's mailbox_cg_en is a functional
      * no-op -- assigned but unused in RTL -- so the mailbox runs on the raw clk_i regardless.) */
-    WRITE_REG(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR, SMU015_SEP_REGION_SIZE);
+    WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, SMU015_SEP_REGION_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 
     /* Inbound filter 0 (secure) and 1 (non-secure) over the mailbox region. START/END before

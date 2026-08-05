@@ -105,8 +105,8 @@ static volatile uint32_t g_bss_zero;
 // Kept as documentation of the previous approach.
 // #define ROM_FAIL_ON_SPI_INIT_ERROR 0
 
-// SEP scratch register addresses (from och_sep_top_reg.h).
-#include "sep_reg.h"
+// SEP scratch register addresses (from sep.h).
+#include "sep.h"
 
 // Placeholder addresses until DFT status window is finalized.
 #ifndef ROM_DFT_STATUS_ADDR
@@ -224,7 +224,7 @@ static void rom_smc_coordination_probe(void) {
 
 // Write boot status to SEP cold_scratch[0] for debugger/DV visibility.
 static inline void rom_write_cold_scratch_status(uint32_t value) {
-    mmio_write32(SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR, value);
+    mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), value);
 }
 
 static void rom_iccm_clear(void) {
@@ -586,9 +586,9 @@ void rom_main(void) {
     // Read the SBOOT_DIS efuse shadow register.
     // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
     {
-        SEP_EFUSE_MAP_SBOOT_DIS_reg_u sboot_dis_reg;
-        sboot_dis_reg.val = mmio_read32(SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR);
-        bool sboot_dis = sboot_dis_reg.f.disable_secure_boot;
+        uint32_t sboot_dis_reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+        bool sboot_dis = (sboot_dis_reg
+                          & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
         get_bl0_state()->sboot_dis = sboot_dis;
         simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);
         report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);

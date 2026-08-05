@@ -12,7 +12,7 @@
     .globl _start
     .type  _start, @function
 
-#include "sep_reg.h"
+#include "sep_addr.h"
 
 /* SEP STDOUT mailbox (same as dv/sep/tb/tb_uvm/sv/sep_wrap_uvm_top.sv monitor) */
 .equ SEP_STDOUT_MBX, 0x80000000
@@ -20,7 +20,7 @@
 .equ SEP_FW_PASS,    0xCAFEBABE
 .equ SEP_FW_FAIL,    0xDEADBEEF
 .equ SEP_STAT_TAG,   0x53544154      /* 'STAT' (legacy, kept for reference) */
-.equ SEP_COLD_SCRATCH_1, SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR
+.equ SEP_COLD_SCRATCH_1, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
  * (Actual stack pointer uses __stack_top from the linker script.) */
@@ -43,13 +43,13 @@
  * warm_scratch[0] survives warm reset (wdt_rst_ni only resets CPU).
  * cold_scratch[0] is cleared on any reset.
  */
-.equ SEP_WARM_SCRATCH_0, SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR
-.equ SEP_COLD_SCRATCH_0, SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR
+.equ SEP_WARM_SCRATCH_0, OCH_SEP_TOP_SEP_SCRATCH_WARM_SCRATCH_BASE_ADDR(0)
+.equ SEP_COLD_SCRATCH_0, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 
 /* SRAM address range for warm handler jump validation.
  * BL1 executes from SRAM after handoff, so warm reset handler lives there. */
-.equ WARM_HANDLER_RANGE_BASE,  SEP_SRAM_MEM_BASE_ADDR
-.equ WARM_HANDLER_RANGE_END,   SEP_BOOT_ROM_MEM_BASE_ADDR
+.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 
 _start:
     /* Multi-hart safety: only hart0 proceeds (others park). */
@@ -129,26 +129,26 @@ cold_boot:
      * Without this, mailbox writes (PASS/FAIL signal, status, printf) are
      * silently dropped and the UVM testbench never sees fw_done.
      *
-     * Filter 0 registers (OUTBOUND_FILTER_CTRL_0 from och_sep_top_reg.h):
+     * Filter 0 registers (OUTBOUND_FILTER_CTRL_0 from sep_addr.h):
      *   START_ADDR (64-bit) = 0x0000_0000_8000_0000
      *   END_ADDR   (64-bit) = 0x0000_0000_8000_0003
      *   CONFIG     (64-bit) = 0x0000_0001_0100_0013
      *          (read_en | write_en | addr_mode | allow_burst)
      * CONFIG must be written LAST so address range is set before enable.
      */
-    li      t0, OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
     li      t1, 0x80000000
     sw      t1, 0(t0)           /* start_addr[31:0] */
     sw      zero, 4(t0)         /* start_addr[63:32] = 0 */
 
-    li      t0, OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
     li      t1, 0x80000003
     sw      t1, 0(t0)           /* end_addr[31:0] */
     sw      zero, 4(t0)         /* end_addr[63:32] = 0 */
 
     fence   w, w                /* ensure START/END committed before CONFIG */
 
-    li      t0, OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
     li      t1, 0x01000013
     sw      t1, 0(t0)           /* config[31:0] */
     li      t1, 0x00000001

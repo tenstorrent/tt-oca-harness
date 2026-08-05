@@ -14,7 +14,7 @@
  * belongs to SEP_SMU_002; the SEP->SMC alias datapath belongs to SEP_SMU_003.
  *
  * Topology -- the SEP CPU is the PRODUCER, the SMC CPU is the CONSUMER, across the eight
- * axi_lite_mailbox channels (och_sep_top_reg.h AXIL_MAILBOX_*). For channel ch=0..7:
+ * axi_lite_mailbox channels (sep.h AXIL_MAILBOX_*). For channel ch=0..7:
  *   SEP-local  OUTBOUND_MAILBOX_ch @ 0x10A00000 + 0x1000*ch  (the SEP pushes the token here)
  *   SMC-facing INBOUND_MAILBOX_ch  @ 0x10A00800 + 0x1000*ch  (the SMC pops / W1C-clears here)
  * A WRITE_DATA push at the SEP-local (outbound) port makes the SMC-facing (inbound) port's RX
@@ -40,12 +40,12 @@
 
 /* Mailbox port bases + per-channel stride + per-port register offsets.
  *
- * The SEP fw includes och_sep_top_reg.h BEFORE this header, so it sources these DIRECTLY from the
+ * The SEP fw includes sep.h BEFORE this header, so it sources these DIRECTLY from the
  * generated AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
- * och_sep_top_reg.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
+ * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
  * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
  * literal mirror below. This is not a silent duplication: the cocotb checker parses
- * och_sep_top_reg.h INDEPENDENTLY (see the leaf test), so any drift between these SMC literals and
+ * sep.h INDEPENDENTLY (see the leaf test), so any drift between these SMC literals and
  * the generated addresses makes the SMC's transactions land at an address the checker does not
  * expect -> the test FAILS. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */

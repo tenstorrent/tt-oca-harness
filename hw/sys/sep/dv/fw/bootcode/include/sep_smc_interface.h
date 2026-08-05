@@ -14,7 +14,7 @@
 
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
-#include "sep_reg.h"
+#include "sep.h"
 
 // ---------------------------------------------------------------------------
 // SMC base address (fixed in crossbar configuration)

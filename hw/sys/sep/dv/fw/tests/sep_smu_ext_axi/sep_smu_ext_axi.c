@@ -2,7 +2,7 @@
 #include <stddef.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_outbound_filter.h"      /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
 #include "sep_smc_bringup.h"          /* common: sep_smc_open_window / _bringup_from_sram (SEP_SMU_003) */
 #include "smu_sep_ext_axi_protocol.h"
@@ -50,14 +50,14 @@
  */
 
 /* SEP aperture CSRs (readable). GLOBAL_BASE is 64-bit; REGION_SIZE is 32-bit. */
-#define SEP_GLOBAL_BASE_REG  SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_ADDR   /* 0x10A300C0 */
-#define SEP_REGION_SIZE_REG  SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR        /* 0x10A300D0 */
+#define SEP_GLOBAL_BASE_REG  OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR   /* 0x10A300C0 */
+#define SEP_REGION_SIZE_REG  OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR        /* 0x10A300D0 */
 
 /* SEP-local cold scratch barrier registers (8-byte stride). */
-#define COLD4  SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR   /* 0x10802020 SEP_READY (SEP -> ext_in) */
-#define COLD5  SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR   /* 0x10802028 SEP_GO    (ext_in -> SEP) */
-#define COLD6  SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR   /* 0x10802030 SMU016_SEP_PASS (LOCAL) */
-#define COLD7  SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR   /* 0x10802038 ROUTE_DONE_SEP (ext_in -> SEP) */
+#define COLD4  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)   /* 0x10802020 SEP_READY (SEP -> ext_in) */
+#define COLD5  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)   /* 0x10802028 SEP_GO    (ext_in -> SEP) */
+#define COLD6  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)   /* 0x10802030 SMU016_SEP_PASS (LOCAL) */
+#define COLD7  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)   /* 0x10802038 ROUTE_DONE_SEP (ext_in -> SEP) */
 
 /* SEP inbound filter: cover the cold scratch region (cold0..cold7) so ext_in can reach
  * the barrier + route-data registers. Secure (rule0) + NS (rule1).
@@ -68,7 +68,7 @@
  * EXTAXI_SEP_COLD*_GLOBAL values). Programming 0x048020xx would both miss the intended local
  * (remaps to 0x008020xx) and, once region_size covers it, still target the wrong register --
  * so the window is programmed at the 0x148020xx globals. */
-#define SEP_INB_BASE   INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR      /* 0x10A21000 */
+#define SEP_INB_BASE   OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)      /* 0x10A21000 */
 #define SEP_INB_START  ((uint64_t)EXTAXI_SEP_COLD0_GLOBAL)           /* 0x14802000 GLOBAL */
 #define SEP_INB_END    ((uint64_t)EXTAXI_SEP_COLD7_GLOBAL + 7ULL)    /* 0x1480203F GLOBAL */
 

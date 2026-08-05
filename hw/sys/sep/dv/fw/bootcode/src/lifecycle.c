@@ -16,7 +16,7 @@
 #include "manifest.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_smc_interface.h"
 
 // SMC CPU CTRL reset control register offset (holds SMC cores in reset).
@@ -28,12 +28,12 @@
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
-    SEP_EFUSE_MAP_LC_STATE_reg_u reg;
-    reg.val = mmio_read32(SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
+    uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     // OCAH efuse field is 8-bit (diff encoded by RTL).
     // Extract low 4 bits = raw LC state.
     // The low nibble carries the decoded lifecycle state.
-    return reg.f.lc_state & 0xFu;
+    return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm)
+            >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) & 0xFu;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,25 +103,25 @@ int lc_state_to_manifest_bit(uint32_t lc_state) {
 uint32_t lc_read_feat_ctrl(uint32_t *hi) {
     // FEAT_CTRL is a 64-bit read-only register.
     // Read low 32 bits, then high 32 bits.
-    uint32_t lo = mmio_read32(SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR);
+    uint32_t lo = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     if (hi) {
-        *hi = mmio_read32(SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR + 4u);
+        *hi = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
     }
     return lo;
 }
 
 void lc_write_demotion(bool demote, bool lock) {
     uint32_t val = 0;
-    if (demote) val |= SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK;
-    if (lock) val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
-    mmio_write32(SEP_LIFECYCLE_CTRL_DEMOTE_1_REG_ADDR, val);
+    if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
+    if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
+    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
 }
 
 void lc_write_demotion_2(bool demote, bool lock) {
     uint32_t val = 0;
-    if (demote) val |= SEP_LIFECYCLE_CTRL_DEMOTE_DEMOTE_MASK;
-    if (lock) val |= SEP_LIFECYCLE_CTRL_DEMOTE_LOCK_MASK;
-    mmio_write32(SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR, val);
+    if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
+    if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
+    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
 }
 
 // ---------------------------------------------------------------------------

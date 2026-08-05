@@ -9,18 +9,18 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_outbound_filter.h"
 
 static volatile int g_otbn_status;
 
 static int run_otbn_programming_sequence(void)
 {
-    WRITE_REG(OTBN_INTR_ENABLE_REG_ADDR, 0x1u);
-    WRITE_REG(OTBN_INTR_STATE_REG_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OTBN_ERR_BITS_REG_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OTBN_INSN_CNT_REG_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OTBN_LOAD_CHECKSUM_REG_ADDR, 0x0u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x1u);
+    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x0u);
 
     return g_otbn_status;
 }

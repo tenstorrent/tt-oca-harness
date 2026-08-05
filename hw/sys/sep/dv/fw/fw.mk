@@ -21,8 +21,8 @@ FW_REG_SYS := sep
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
 # drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
 # bootcode/include holds the rom_*/boot_* headers that the sep_smc_* and
-# sep_smu_* tests include directly. The SEP register header (sep_reg.h) is not
-# here: compile.mk already puts the generated regs/gen/c dirs on the path.
+# sep_smu_* tests include directly. The register headers are not here:
+# compile.mk already puts the generated regs/gen/c dirs on the path.
 FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers \
                     -I$(FW_DIR)/bootcode/include
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c

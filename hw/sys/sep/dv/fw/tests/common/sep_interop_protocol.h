@@ -9,7 +9,7 @@
  * parser can read it -- no expressions the parser cannot evaluate.
  *
  * Topology -- the SMC CPU and the real SEP CPU exchange 32-bit words over the two ports of
- * the SEP AXI-lite mailbox pair (och_sep_top_reg.h AXIL_MAILBOX_*):
+ * the SEP AXI-lite mailbox pair (sep.h AXIL_MAILBOX_*):
  *   port 0  OUTBOUND_MAILBOX_0 @ 0x10A00000  <- SEP-local port  (the SEP drives this side)
  *   port 1  INBOUND_MAILBOX_0  @ 0x10A00800  <- SMC-facing port (the SMC drives this side)
  * The mailbox cross-connects the two FIFOs: a WRITE_DATA push at one port is drained by the
@@ -39,7 +39,7 @@
                                             * value; NOT 0xFFFFFFFF, which collides with an
                                             * uninitialised scratch read)                 */
 
-/* Mailbox port bases (och_sep_top_reg.h AXIL_MAILBOX_{OUTBOUND,INBOUND}_MAILBOX_0). */
+/* Mailbox port bases (sep.h AXIL_MAILBOX_{OUTBOUND,INBOUND}_MAILBOX_0). */
 #define SEP_LOCAL_MBOX_BASE    0x10A00000  /* OUTBOUND_MAILBOX_0 : SEP-local port          */
 #define SMC_INBOUND_MBOX_BASE  0x10A00800  /* INBOUND_MAILBOX_0  : SMC-facing port         */
 

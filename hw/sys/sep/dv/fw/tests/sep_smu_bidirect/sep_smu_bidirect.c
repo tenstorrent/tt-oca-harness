@@ -2,14 +2,14 @@
 #include <stddef.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "test_completion.h"
 
 #define XBAR_FILTER_START_ADDR       0x0000000040000000ULL
 #define XBAR_FILTER_END_ADDR         0x00000000800000FFULL
-#define SEP_INBOUND_SHARED_START_ADDR  ((uint64_t)SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR)
+#define SEP_INBOUND_SHARED_START_ADDR  ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
 #define SEP_INBOUND_SHARED_END_ADDR \
-    ((uint64_t)SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR + 7ULL)
+    ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
 #define XBAR_FILTER_CONFIG           0x0000000101000013ULL
 #define SMC_TO_SEP_FILTER_CONFIG     0x0000000101030013ULL
 #define SMC_TO_SEP_NS_FILTER_CONFIG  0x0000000101030113ULL
@@ -32,7 +32,7 @@
 #define SMC_XBAR_SCRATCH_STRIDE          0x8u
 #define SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR 0x400390E0u
 
-#define SEP_SHARED_ADDR                  SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR
+#define SEP_SHARED_ADDR                  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define SMC_TO_SEP_PATTERN               0xC001CAFEu
 #define SMC_TO_SEP_DONE_PATTERN          0xD0E0F00Du
 #define SEP_READY_PATTERN                0x51EAD001u
@@ -53,13 +53,13 @@ static volatile int g_xbar_status;
 static inline void program_sep_smu_aperture(void)
 {
     /* 32-bit write (matches global_alias_remap_sanity). See interop fw. */
-    WRITE_REG(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR, (uint32_t)SEP_APERTURE_SIZE);
+    WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)SEP_APERTURE_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
 static inline void open_sep_outbound_xbar_window(void)
 {
-    uintptr_t base = (uintptr_t)OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+    uintptr_t base = (uintptr_t)OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, XBAR_FILTER_START_ADDR);
     WRITE_REG64(base + FILTER_END_OFFSET, XBAR_FILTER_END_ADDR);
@@ -69,7 +69,7 @@ static inline void open_sep_outbound_xbar_window(void)
 
 static inline void open_sep_inbound_sram_window(void)
 {
-    uintptr_t base = (uintptr_t)INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+    uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, SEP_INBOUND_SHARED_START_ADDR);
     WRITE_REG64(base + FILTER_END_OFFSET, SEP_INBOUND_SHARED_END_ADDR);

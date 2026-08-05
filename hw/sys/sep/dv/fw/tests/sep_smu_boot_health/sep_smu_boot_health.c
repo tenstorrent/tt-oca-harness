@@ -14,9 +14,9 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"      /* WRITE_REG / READ_REG */
-#include "sep_reg.h"     /* SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR */
+#include "sep.h"     /* OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) */
 
-#define BH_COLD_SCRATCH7  SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR   /* 0x10802038 (SEP-local) */
+#define BH_COLD_SCRATCH7  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)   /* 0x10802038 (SEP-local) */
 #define BH_ALIVE          0x001A11E0u   /* first liveness marker */
 #define BH_PASS           0x001600D1u   /* boot-health PASS marker */
 #define BH_FAIL           0x001FA11Eu   /* read-back mismatch marker */

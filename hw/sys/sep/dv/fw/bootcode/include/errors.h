@@ -41,11 +41,11 @@
 #include <stdint.h>
 
 #include "rom_mmio.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "rom_virt_console.h"
 #include "status_ring.h"
 
-#define STATUS_OUT(code) mmio_write32(SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR, (code))
+#define STATUS_OUT(code) mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
 
 #define LOG(msg, val) simputshex32(msg " ", (uint32_t)(val))
 

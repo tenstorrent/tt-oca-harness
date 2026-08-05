@@ -40,7 +40,7 @@
 #include <string.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
@@ -99,11 +99,11 @@ static int hmac_wait_done_or_idle(void)
 {
     int t = HMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        HMAC_INTR_STATE_reg_u intr = {.val = READ_REG(HMAC_INTR_STATE_REG_ADDR)};
-        HMAC_STATUS_reg_u sts      = {.val = READ_REG(HMAC_STATUS_REG_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts      = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
-            HMAC_INTR_STATE_reg_u clear = {.f.hmac_done = 1};
-            WRITE_REG(HMAC_INTR_STATE_REG_ADDR, clear.val);
+            hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
+            WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
             return 0;
         }
     }
@@ -113,28 +113,28 @@ static int hmac_wait_done_or_idle(void)
 
 static int hmac_sha256_abc(uint8_t digest[32])
 {
-    HMAC_INTR_ENABLE_reg_u intr_en = {.f.hmac_done = 1};
-    WRITE_REG(HMAC_INTR_ENABLE_REG_ADDR, intr_en.val);
+    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
-    HMAC_CFG_reg_u cfg = {.val = 0};
+    hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en     = 0;
     cfg.f.sha_en      = 1;
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
     cfg.f.digest_size = 1;          /* SHA2-256 */
-    WRITE_REG(HMAC_CFG_REG_ADDR, cfg.val);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    HMAC_CMD_reg_u cmd = {.f.hash_start = 1};
-    WRITE_REG(HMAC_CMD_REG_ADDR, cmd.val);
+    hmac__CMD_t cmd = {.f.hash_start = 1};
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Feed "abc" — 3 bytes via byte stores so MSG_LENGTH bookkeeping is exact. */
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)HMAC_MSG_FIFO_MEM_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const char *msg = "abc";
     for (int i = 0; i < 3; i++) {
         int spins = 0;
-        HMAC_STATUS_reg_u s;
+        hmac__STATUS_t s;
         do {
-            s.val = READ_REG(HMAC_STATUS_REG_ADDR);
+            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
             if (++spins > 10000) {
                 printf("    [HMAC] FIFO full timeout\n");
                 return -1;
@@ -143,30 +143,30 @@ static int hmac_sha256_abc(uint8_t digest[32])
         *fifo8 = (uint8_t)msg[i];
     }
 
-    cmd.val = 0;
+    cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(HMAC_CMD_REG_ADDR, cmd.val);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     if (hmac_wait_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(HMAC_DIGEST_0__REG_ADDR + (i * 4));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 
     /* Cleanup */
-    cfg.val = READ_REG(HMAC_CFG_REG_ADDR);
+    cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
     cfg.f.sha_en = 0;
-    WRITE_REG(HMAC_CFG_REG_ADDR, cfg.val);
-    WRITE_REG(HMAC_WIPE_SECRET_REG_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(HMAC_INTR_ENABLE_REG_ADDR, 0);
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
     return 0;
 }
 
 static int stage_hmac(void)
 {
     printf("\n[Stage 2] HMAC SHA-256 KAT (\"abc\")\n");
-    printf("    HMAC base=0x%08x\n", HMAC_REG_MAP_BASE_ADDR);
+    printf("    HMAC base=0x%08x\n", OCH_SEP_TOP_HMAC_BASE_ADDR);
 
     /* NIST FIPS 180-4 KAT for SHA-256("abc"). */
     static const char *expected_hex =
@@ -212,7 +212,7 @@ static int kmac_wait_idle(void)
 {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        KMAC_STATUS_reg_u s = {.val = READ_REG(KMAC_STATUS_REG_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("    [KMAC] Timeout waiting for idle\n");
@@ -223,9 +223,9 @@ static int kmac_wait_done(void)
 {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(KMAC_INTR_STATE_REG_ADDR);
+        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1u) {
-            WRITE_REG(KMAC_INTR_STATE_REG_ADDR, 0x1u);
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1u);
             return 0;
         }
     }
@@ -238,7 +238,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8])
     if (kmac_wait_idle() != 0) return -1;
 
     /* SHA3-256, SW entropy_mode (no EDN dependency). */
-    KMAC_CFG_SHADOWED_reg_u cfg = {.val = 0};
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en         = 0;
     cfg.f.mode            = 0x0;   /* SHA3 */
     cfg.f.kstrength       = 0x2;   /* L256 → SHA3-256 */
@@ -246,42 +246,42 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8])
     cfg.f.msg_endianness  = 0;
     cfg.f.state_endianness = 0;
     cfg.f.entropy_ready   = 0;
-    WRITE_REG(KMAC_CFG_SHADOWED_REG_ADDR, cfg.val);
-    WRITE_REG(KMAC_CFG_SHADOWED_REG_ADDR, cfg.val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     /* SW-entropy handshake: set entropy_ready, then write 6 seed words. */
     cfg.f.entropy_ready = 1;
-    WRITE_REG(KMAC_CFG_SHADOWED_REG_ADDR, cfg.val);
-    WRITE_REG(KMAC_CFG_SHADOWED_REG_ADDR, cfg.val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     for (int i = 0; i < 6; i++) {
-        WRITE_REG(KMAC_ENTROPY_SEED_REG_ADDR, 0xDEADBEEFu + i);
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + i);
     }
 
-    KMAC_CMD_reg_u cmd = {.val = 0};
+    kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = KMAC_CMD_START;
-    WRITE_REG(KMAC_CMD_REG_ADDR, cmd.val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Write "abc" — must use byte stores to the SAME word-aligned base
      * (kmac_sha3_256_test fix v2): non-word-aligned byte stores get dropped
      * by the 64→32 AXI DW converter, so use fifo8[0] for all three bytes. */
     {
         volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(KMAC_MSG_FIFO_MEM_BASE_ADDR);
+            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';
     }
 
     cmd.f.cmd = KMAC_CMD_PROCESS;
-    WRITE_REG(KMAC_CMD_REG_ADDR, cmd.val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (kmac_wait_done() != 0) return -1;
 
     /* Read both shares and XOR to get digest (masking compensation). */
     uint32_t share0[8], share1[8];
     for (int i = 0; i < 8; i++) {
-        share0[i] = READ_REG(KMAC_STATE_MEM_BASE_ADDR + (i * 4));
-        share1[i] = READ_REG(KMAC_STATE_MEM_BASE_ADDR + 0x100 + (i * 4));
+        share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
+        share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
     }
 
     /* state_endianness=0 → little-endian; convert to BE for KAT compare. */
@@ -290,14 +290,14 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8])
     }
 
     cmd.f.cmd = KMAC_CMD_DONE;
-    WRITE_REG(KMAC_CMD_REG_ADDR, cmd.val);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     return 0;
 }
 
 static int stage_kmac(void)
 {
     printf("\n[Stage 3] KMAC SHA3-256 KAT (\"abc\", SW entropy)\n");
-    printf("    KMAC base=0x%08x\n", KMAC_REG_MAP_BASE_ADDR);
+    printf("    KMAC base=0x%08x\n", OCH_SEP_TOP_KMAC_BASE_ADDR);
 
     uint32_t digest_be[8];
     if (kmac_sha3_256_abc(digest_be) != 0) {
@@ -335,9 +335,9 @@ static int stage_kmac(void)
  *   space across the SEP fabric (SEP_AXI_EXTENSION @ 0x2000_0000).
  * ------------------------------------------------------------------------ */
 
-#define SPI_MUX_CTRL_ADDR     SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_ADDR
-#define SPI_CTRL_ADDR         SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_ADDR
-#define SPI_CLK_DIV_CTRL_ADDR SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_ADDR
+#define SPI_MUX_CTRL_ADDR     OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
+#define SPI_CTRL_ADDR         OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
+#define SPI_CLK_DIV_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
 
 static int spi_check_field(const char *name, uint32_t got, uint32_t exp)
 {
@@ -360,15 +360,15 @@ static int stage_spi_regs(void)
 
     /* (a) SPI mux ctrl: select Cadence, force CS high. */
     {
-        OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_reg_u w = {
-            .val = OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_DEFAULT
+        och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t w = {
+            .w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset
         };
         w.f.spi_sel       = 0;   /* Cadence */
         w.f.cs_force_high = 1;
-        WRITE_REG(SPI_MUX_CTRL_ADDR, w.val);
+        WRITE_REG(SPI_MUX_CTRL_ADDR, w.w);
 
-        OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_reg_u r = {
-            .val = READ_REG(SPI_MUX_CTRL_ADDR)
+        och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t r = {
+            .w = READ_REG(SPI_MUX_CTRL_ADDR)
         };
         if (spi_check_field("spi_sel=0",       r.f.spi_sel,       0) != 0) errors++;
         if (spi_check_field("cs_force_high=1", r.f.cs_force_high, 1) != 0) errors++;
@@ -376,25 +376,25 @@ static int stage_spi_regs(void)
         /* Toggle to OT to confirm RW field is live. */
         w.f.spi_sel       = 1;
         w.f.cs_force_high = 0;
-        WRITE_REG(SPI_MUX_CTRL_ADDR, w.val);
-        r.val = READ_REG(SPI_MUX_CTRL_ADDR);
+        WRITE_REG(SPI_MUX_CTRL_ADDR, w.w);
+        r.w = READ_REG(SPI_MUX_CTRL_ADDR);
         if (spi_check_field("spi_sel=1",       r.f.spi_sel,       1) != 0) errors++;
         if (spi_check_field("cs_force_high=0", r.f.cs_force_high, 0) != 0) errors++;
     }
 
     /* (b) SPI clock divider: write custom value, read back. */
     {
-        OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_reg_u w = {
-            .val = OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_REG_DEFAULT
+        och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t w = {
+            .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset
         };
         w.f.clock_divider_value = 32;     /* 800/32 = 25 MHz */
         w.f.clock_div_set       = 1;
         w.f.clock_dutycycle     = 128;
         w.f.clock_div_enable    = 1;
-        WRITE_REG(SPI_CLK_DIV_CTRL_ADDR, w.val);
+        WRITE_REG(SPI_CLK_DIV_CTRL_ADDR, w.w);
 
-        OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_reg_u r = {
-            .val = READ_REG(SPI_CLK_DIV_CTRL_ADDR)
+        och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t r = {
+            .w = READ_REG(SPI_CLK_DIV_CTRL_ADDR)
         };
         if (spi_check_field("clk_div_value", r.f.clock_divider_value, 32)  != 0) errors++;
         if (spi_check_field("clk_dutycycle", r.f.clock_dutycycle,     128) != 0) errors++;
@@ -403,8 +403,8 @@ static int stage_spi_regs(void)
 
     /* (c) SPI control: reset all sub-blocks, then deassert and enable. */
     {
-        OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_reg_u w = {
-            .val = OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_REG_DEFAULT
+        och_sep_cdns_spi_ctrl__SPI_CTRL_t w = {
+            .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CTRL_reset
         };
         w.f.spi_enable                  = 0;
         w.f.spi_reset_n_n0_scan         = 0;
@@ -414,10 +414,10 @@ static int stage_spi_regs(void)
         w.f.spi_axi_reset_n_n0_scan     = 0;
         w.f.spi_reg_reset_n_n0_scan     = 0;
         w.f.spi_xspi_reg_reset_n_n0_scan = 0;
-        WRITE_REG(SPI_CTRL_ADDR, w.val);
+        WRITE_REG(SPI_CTRL_ADDR, w.w);
 
-        OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_reg_u r = {
-            .val = READ_REG(SPI_CTRL_ADDR)
+        och_sep_cdns_spi_ctrl__SPI_CTRL_t r = {
+            .w = READ_REG(SPI_CTRL_ADDR)
         };
         if (spi_check_field("spi_enable=0",     r.f.spi_enable,                  0) != 0) errors++;
         if (spi_check_field("spi_reset_n=0",    r.f.spi_reset_n_n0_scan,         0) != 0) errors++;
@@ -431,9 +431,9 @@ static int stage_spi_regs(void)
         w.f.spi_axi_reset_n_n0_scan     = 1;
         w.f.spi_reg_reset_n_n0_scan     = 1;
         w.f.spi_xspi_reg_reset_n_n0_scan = 1;
-        WRITE_REG(SPI_CTRL_ADDR, w.val);
+        WRITE_REG(SPI_CTRL_ADDR, w.w);
 
-        r.val = READ_REG(SPI_CTRL_ADDR);
+        r.w = READ_REG(SPI_CTRL_ADDR);
         if (spi_check_field("spi_enable=1",  r.f.spi_enable,          1) != 0) errors++;
         if (spi_check_field("spi_reset_n=1", r.f.spi_reset_n_n0_scan, 1) != 0) errors++;
     }

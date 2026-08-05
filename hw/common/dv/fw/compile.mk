@@ -86,19 +86,9 @@ SIZE    := $(OCAH_FW_TOOL_PREFIX)size
 # per-subsystem toolchain.mk files do not repeat it.
 FW_PICOLIBC_SPECS ?= picolibc.specs
 
-# Register -I flags for a sys subsystem (umbrella + generated headers + shim/ip
-# trees). A sys sets FW_REG_SYS; leaf IP subsystems leave it unset.
-ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
-  -I$(OCAH_ROOT)/hw/common/dv/fw \
-  -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c -I$(OCAH_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/sys/$(1)/dv/models/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/gen/c))
+# A sys sets FW_REG_SYS to pull in its register headers; leaf IP subsystems
+# leave it unset.
+include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
 FW_INCLUDES += $(if $(strip $(FW_REG_SYS)),$(call ocah_fw_reg_includes,$(FW_REG_SYS)))
 
 # Derived build variables.

@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "sep_reg.h"
+#include "sep.h"
 #include "sep_outbound_filter.h"
 
 #define AP_REGION0_OFFSET   0x00ABC00000ull
@@ -20,17 +20,17 @@
 
 static int program_output_remap(void)
 {
-    OUTPUT_REMAP_REGION_REGION_ATTRS_reg_u ap;
-    OUTPUT_REMAP_REGION_REGION_ATTRS_reg_u stee;
+    output_remap__output_remap_region__REGION_ATTRS_t ap;
+    output_remap__output_remap_region__REGION_ATTRS_t stee;
 
     /* Write-only programming; cocotb observes remap_table after pass_loop. */
-    ap.val = 0;
+    ap.w = 0;
     ap.f.offset = AP_REGION0_OFFSET;
-    WRITE_REG64(AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR, ap.val);
+    WRITE_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), ap.w);
 
-    stee.val = 0;
+    stee.w = 0;
     stee.f.offset = STEE_REGION0_OFFSET;
-    WRITE_REG64(STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_ADDR, stee.val);
+    WRITE_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), stee.w);
 
     return 0;
 }
