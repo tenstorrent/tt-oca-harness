@@ -24,7 +24,7 @@ from typing import Union
 from systemrdl import RDLCompiler, RDLCompileError
 from systemrdl import node
 
-SCRIPT_VERSION = "r2025-11-20"
+SCRIPT_VERSION = "r2026-08-04"
 
 
 class JsonExporter:
@@ -163,6 +163,9 @@ class JsonExporter:
         out["addr_offset"] = (
             obj.raw_address_offset if self.compact_arrays else obj.address_offset
         )
+        # Declared extent of one array element, which can exceed what the children
+        # occupy when the RDL pads a map out to a fixed aperture.
+        out["size"] = obj.size
         if self.compact_arrays and obj.is_array:
             out["array_size"] = self.array_total(obj)
             out["array_increment"] = obj.array_stride
