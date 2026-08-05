@@ -20,7 +20,6 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # expects the block itself to answer a bad access with an error.
 ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
 ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
-ocah_reg_chdr_opts = $(if $(filter $(1),$(OCAH_REG_CHDR_TOTAL_STRUCT_BLOCKS)),--add_total_struct)
 # Non-empty when the block's register RTL is sourced outside regblock.
 ocah_reg_sv_skipped  = $(filter skip,$(OCAH_REG_SVMODE_$(call ocah_reg_key,$(1))))
 # Composite sub-blocks by output class.
@@ -45,12 +44,6 @@ ocah_reg_ral_dir = $(call ocah_reg_gen,$(1))/ral
 ocah_reg_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1)).h
 ocah_reg_svpkg_output = $(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_addrmap_pkg.sv
 ocah_reg_svh_output = $(call ocah_reg_gen,$(1))/svh/$(call ocah_reg_name,$(1))_reg.svh
-# Flat C header, the C sibling of the svh above (same constant names). Distinct
-# from the peakrdl c-header output next to it: that one is <name>.h and uses the
-# peakrdl naming, this one is <name>_reg.h. Opt-in, because only firmware
-# written against the flat names needs it.
-ocah_reg_chdr_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_reg.h
-ocah_reg_chdr_target = $(if $(call ocah_reg_has_chdr,$(1)),$(call ocah_reg_chdr_output,$(1)))
 ocah_reg_raw_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_addr.h
 ocah_reg_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_reg.py
 ocah_reg_json_output = $(call ocah_reg_gen,$(1))/json/$(call ocah_reg_name,$(1)).json
@@ -91,7 +84,6 @@ ocah_reg_file_clean_outputs = \
   $(call ocah_reg_c_output,$(1)) \
   $(call ocah_reg_raw_c_output,$(1)) \
   $(call ocah_reg_py_output,$(1)) \
-  $(call ocah_reg_chdr_output,$(1)) \
   $(call ocah_reg_ral_output,$(1)) \
   $(call ocah_reg_json_output,$(1)) \
   $(call ocah_reg_md_output,$(1)) \
@@ -109,7 +101,6 @@ OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
 OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output)
 OCAH_REGEN_REG_SVH     := $(call ocah_reg_collect,ocah_reg_svh_output)
 OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
-OCAH_REGEN_REG_CHDR   := $(call ocah_reg_collect,ocah_reg_chdr_target)
 OCAH_REGEN_REG_RAL    := $(call ocah_reg_collect,ocah_reg_ral_target)
 OCAH_REGEN_REG_JSON   := $(call ocah_reg_collect,ocah_reg_json_target)
 OCAH_REGEN_REG_ADOC   := $(call ocah_reg_collect,ocah_reg_adoc_target)
@@ -122,6 +113,5 @@ OCAH_REGEN_ALL := \
   $(OCAH_REGEN_REG_ADDRPKG) \
   $(OCAH_REGEN_REG_SVH) \
   $(OCAH_REGEN_REG_PY) \
-  $(OCAH_REGEN_REG_CHDR) \
   $(OCAH_REGEN_REG_RAL) \
   $(OCAH_REGEN_REG_JSON)
