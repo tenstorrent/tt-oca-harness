@@ -42,13 +42,15 @@ protocol BFMs behind a stable API:
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiRam`) | JTAG2AXI bridge drives it; memory model responds. |
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMaster`/future responder) | Standard AXI-Lite. |
-| AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`OcahAxiLiteMaster`) | Cross-trigger CSR; wired, exercised in a later phase. |
-| iJTAG (IEEE 1687 SIB networks) | OCAH-local model (later) | No suitable public VIP identified. |
-| CTP (custom OCH wire-OR / P2P) | OCAH-local BFM (later) | Custom cross-trigger protocol. |
-| CTM (custom OCH matrix) | OCAH-local model/BFM (later) | Custom cross-trigger routing. |
+| AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
+| Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
+| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
+| STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
+| CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCH routing policy; promote only after parameterization and independent reuse. |
 
 The cocotb runner adds both `hw/common/dv` and `dv/vip/cocotb` to
 `PYTHONPATH` so tests can import the unified wrappers and their local backends.
+The ownership and promotion checklist is in `hw/common/dv/README.md`.
 
 ## Running
 
@@ -135,8 +137,8 @@ PASS/FAIL is classified by the global parser registry in
 This DTP public bring-up now includes the 19-test Smoke and Basic JTAG group:
 TAP FSM, IDCODE, BYPASS variants, undefined-instruction fallback, RUNBIST,
 BSR-oriented instructions, TMP CLAMP_HOLD/RELEASE, TRST/POR/TLR reset behavior,
-and AC EXTEST train/pulse smoke checks. The remaining JTAG2AXI, iJTAG, 3DCR, and
-cross-trigger scenarios from the working reference (`dv/dtp/doc/DTP_VPLAN.md`,
-72 logical tests) are tracked as a 147-test scenario-expanded roadmap in
-[`docs/DTP_VPLAN.md`](docs/DTP_VPLAN.md); each maps to a UVM sequence in
-`seq_lib/`.
+and AC EXTEST train/pulse smoke checks. JTAG2AXI, iJTAG/3DCR, and cross-trigger
+scenarios are also implemented and enrolled in the native TOML catalog, with
+their current DUT-local model limitations documented above and in
+[`docs/DTP_VPLAN.adoc`](docs/DTP_VPLAN.adoc). Their presence does not make the
+topology-specific models shared VIPs.
