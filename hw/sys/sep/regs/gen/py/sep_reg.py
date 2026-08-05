@@ -237,6 +237,8 @@ OTBN_DMEM_MEM_BASE_ADDR = 0x10908000
 OTBN_DMEM_MEM_SIZE = 0x00004000
 AES_REG_MAP_BASE_ADDR = 0x10910000
 AES_REG_MAP_SIZE = 0x0000008C
+AES_ALERT_TEST_REG_OFFSET = 0x00000000
+AES_ALERT_TEST_REG_ADDR = 0x10910000
 AES_KEY_SHARE0_0__REG_OFFSET = 0x00000004
 AES_KEY_SHARE0_0__REG_ADDR = 0x10910004
 AES_KEY_SHARE0_1__REG_OFFSET = 0x00000008
@@ -3839,6 +3841,35 @@ class OTBN_LOAD_CHECKSUM_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(OTBN_LOAD_CHECKSUM_reg_u, self).__init__(*args, **kwargs)
         self.val = OTBN_LOAD_CHECKSUM_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+AES_ALERT_TEST_REG_DEFAULT = 0x00000000
+class AES_ALERT_TEST_reg_t(Structure):
+    _fields_ = [
+        ('recov_ctrl_update_err', c_uint8, 1),
+        ('fatal_fault', c_uint8, 1),
+    ]
+
+AES_ALERT_TEST_REG_DEFAULT = 0x00000000
+
+class AES_ALERT_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', AES_ALERT_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(AES_ALERT_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = AES_ALERT_TEST_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

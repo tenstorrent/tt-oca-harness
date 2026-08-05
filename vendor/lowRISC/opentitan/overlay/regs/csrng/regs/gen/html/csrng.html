@@ -8,9 +8,9 @@
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#INTERRUPT_STATE">INTERRUPT_STATE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#INTERRUPT_ENABLE">INTERRUPT_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#INTERRUPT_TEST">INTERRUPT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
 <tr><td>0xC</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#REGWEN">REGWEN</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x14</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>-</td></tr>
@@ -34,7 +34,7 @@
 <tr><td>0x5C</td><td><a href="#MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
 <h2>Register Details:</h2>
-<h3 id="INTERRUPT_STATE">INTERRUPT_STATE</h3>
+<h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -43,7 +43,7 @@
 <tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>-</td><td>Asserted when a request for entropy has been made.</td></tr>
 <tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>-</td><td>Asserted when a command request is completed.</td></tr>
 </table>
-<h3 id="INTERRUPT_ENABLE">INTERRUPT_ENABLE</h3>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -52,7 +52,7 @@
 <tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>-</td><td>Enable interrupt when cs_entropy_req is set.</td></tr>
 <tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>-</td><td>Enable interrupt when cs_cmd_req_done is set.</td></tr>
 </table>
-<h3 id="INTERRUPT_TEST">INTERRUPT_TEST</h3>
+<h3 id="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

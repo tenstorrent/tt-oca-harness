@@ -304,6 +304,7 @@ localparam longint unsigned OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR = 64'h1090001C;
 localparam longint unsigned OCH_SEP_TOP_OTBN_FATAL_ALERT_CAUSE_BASE_ADDR = 64'h10900020;
 localparam longint unsigned OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR = 64'h10900024;
 localparam longint unsigned OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR = 64'h10900028;
+localparam longint unsigned OCH_SEP_TOP_AES_ALERT_TEST_BASE_ADDR = 64'h10910000;
 function automatic longint unsigned OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(input int unsigned KEY_SHARE0_idx);
     return 64'h10910004 + (KEY_SHARE0_idx * 64'h4);
 endfunction

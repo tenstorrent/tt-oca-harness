@@ -10,19 +10,19 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - csrng::INTERRUPT_STATE
-#define CSRNG__INTERRUPT_STATE__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__INTERRUPT_STATE__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__INTERRUPT_STATE__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__INTERRUPT_STATE__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__INTERRUPT_STATE__CS_ENTROPY_REQ_bp 1
-#define CSRNG__INTERRUPT_STATE__CS_ENTROPY_REQ_bw 1
-#define CSRNG__INTERRUPT_STATE__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__INTERRUPT_STATE__CS_HW_INST_EXC_bp 2
-#define CSRNG__INTERRUPT_STATE__CS_HW_INST_EXC_bw 1
-#define CSRNG__INTERRUPT_STATE__CS_FATAL_ERR_bm 0x8
-#define CSRNG__INTERRUPT_STATE__CS_FATAL_ERR_bp 3
-#define CSRNG__INTERRUPT_STATE__CS_FATAL_ERR_bw 1
+// reg - csrng::INTR_STATE
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_STATE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_STATE__CS_FATAL_ERR_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -32,21 +32,21 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__INTERRUPT_STATE_t;
+} csrng__INTR_STATE_t;
 
-// reg - csrng::INTERRUPT_ENABLE
-#define CSRNG__INTERRUPT_ENABLE__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__INTERRUPT_ENABLE__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__INTERRUPT_ENABLE__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__INTERRUPT_ENABLE__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__INTERRUPT_ENABLE__CS_ENTROPY_REQ_bp 1
-#define CSRNG__INTERRUPT_ENABLE__CS_ENTROPY_REQ_bw 1
-#define CSRNG__INTERRUPT_ENABLE__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__INTERRUPT_ENABLE__CS_HW_INST_EXC_bp 2
-#define CSRNG__INTERRUPT_ENABLE__CS_HW_INST_EXC_bw 1
-#define CSRNG__INTERRUPT_ENABLE__CS_FATAL_ERR_bm 0x8
-#define CSRNG__INTERRUPT_ENABLE__CS_FATAL_ERR_bp 3
-#define CSRNG__INTERRUPT_ENABLE__CS_FATAL_ERR_bw 1
+// reg - csrng::INTR_ENABLE
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -56,21 +56,21 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__INTERRUPT_ENABLE_t;
+} csrng__INTR_ENABLE_t;
 
-// reg - csrng::INTERRUPT_TEST
-#define CSRNG__INTERRUPT_TEST__CS_CMD_REQ_DONE_bm 0x1
-#define CSRNG__INTERRUPT_TEST__CS_CMD_REQ_DONE_bp 0
-#define CSRNG__INTERRUPT_TEST__CS_CMD_REQ_DONE_bw 1
-#define CSRNG__INTERRUPT_TEST__CS_ENTROPY_REQ_bm 0x2
-#define CSRNG__INTERRUPT_TEST__CS_ENTROPY_REQ_bp 1
-#define CSRNG__INTERRUPT_TEST__CS_ENTROPY_REQ_bw 1
-#define CSRNG__INTERRUPT_TEST__CS_HW_INST_EXC_bm 0x4
-#define CSRNG__INTERRUPT_TEST__CS_HW_INST_EXC_bp 2
-#define CSRNG__INTERRUPT_TEST__CS_HW_INST_EXC_bw 1
-#define CSRNG__INTERRUPT_TEST__CS_FATAL_ERR_bm 0x8
-#define CSRNG__INTERRUPT_TEST__CS_FATAL_ERR_bp 3
-#define CSRNG__INTERRUPT_TEST__CS_FATAL_ERR_bw 1
+// reg - csrng::INTR_TEST
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bm 0x1
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bp 0
+#define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bw 1
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bm 0x2
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bp 1
+#define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bw 1
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bm 0x4
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bp 2
+#define CSRNG__INTR_TEST__CS_HW_INST_EXC_bw 1
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bm 0x8
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bp 3
+#define CSRNG__INTR_TEST__CS_FATAL_ERR_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CS_CMD_REQ_DONE :1;
@@ -80,7 +80,7 @@ typedef union {
         uint32_t :28;
     } f;
     uint32_t w;
-} csrng__INTERRUPT_TEST_t;
+} csrng__INTR_TEST_t;
 
 // reg - csrng::ALERT_TEST
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bm 0x1
@@ -521,9 +521,9 @@ typedef union {
 
 // addrmap - csrng
 typedef struct __attribute__ ((__packed__)) {
-    csrng__INTERRUPT_STATE_t INTERRUPT_STATE;
-    csrng__INTERRUPT_ENABLE_t INTERRUPT_ENABLE;
-    csrng__INTERRUPT_TEST_t INTERRUPT_TEST;
+    csrng__INTR_STATE_t INTR_STATE;
+    csrng__INTR_ENABLE_t INTR_ENABLE;
+    csrng__INTR_TEST_t INTR_TEST;
     csrng__ALERT_TEST_t ALERT_TEST;
     csrng__REGWEN_t REGWEN;
     csrng__CTRL_t CTRL;

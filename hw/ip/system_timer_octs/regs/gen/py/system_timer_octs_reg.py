@@ -33,7 +33,7 @@ SYSTEM_TIMER_OCTS_TIMER_START_REG_DEFAULT = 0x00000000
 
 class SYSTEM_TIMER_OCTS_TIMER_START_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SYSTEM_TIMER_OCTS_TIMER_START_reg_t),
     ]
 
@@ -93,7 +93,7 @@ SYSTEM_TIMER_OCTS_STATUS_REG_DEFAULT = 0x00000000
 
 class SYSTEM_TIMER_OCTS_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SYSTEM_TIMER_OCTS_STATUS_reg_t),
     ]
 
@@ -261,7 +261,7 @@ SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_REG_DEFAULT = 0x00000000
 
 class SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_reg_t),
     ]
 
