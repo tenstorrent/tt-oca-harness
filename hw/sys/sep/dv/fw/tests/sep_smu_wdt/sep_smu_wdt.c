@@ -14,8 +14,7 @@
 
 static volatile int g_wdt_status;
 
-static int run_wdt_programming_sequence(void)
-{
+static int run_wdt_programming_sequence(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0u);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0u);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x200u);
@@ -28,24 +27,19 @@ static int run_wdt_programming_sequence(void)
     return g_wdt_status;
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_wdt_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_wdt_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_wdt_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_wdt_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
     if (run_wdt_programming_sequence() == 0) {
         smu_sep_wdt_pass_loop();

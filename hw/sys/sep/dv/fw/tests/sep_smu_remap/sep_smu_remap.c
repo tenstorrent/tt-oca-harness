@@ -15,11 +15,10 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 
-#define AP_REGION0_OFFSET   0x00ABC00000ull
+#define AP_REGION0_OFFSET 0x00ABC00000ull
 #define STEE_REGION0_OFFSET 0x0055000000ull
 
-static int program_output_remap(void)
-{
+static int program_output_remap(void) {
     output_remap__output_remap_region__REGION_ATTRS_t ap;
     output_remap__output_remap_region__REGION_ATTRS_t stee;
 
@@ -35,9 +34,7 @@ static int program_output_remap(void)
     return 0;
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_remap_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_remap_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
         __asm__ volatile("nop");
@@ -45,9 +42,7 @@ void smu_sep_remap_pass_loop(void)
 }
 
 /* Distinct body from pass_loop so ICF cannot fold the symbols together. */
-__attribute__((used, noinline, noreturn))
-void smu_sep_remap_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_remap_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
         __asm__ volatile("nop");
@@ -57,8 +52,7 @@ void smu_sep_remap_fail_loop(void)
 
 static void (*const keep_fail)(void) = smu_sep_remap_fail_loop;
 
-int main(void)
-{
+int main(void) {
     (void)keep_fail;
     sep_outbound_filter_init();
     if (program_output_remap() == 0) {

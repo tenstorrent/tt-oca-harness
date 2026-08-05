@@ -2,7 +2,7 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "sep_smc_bringup.h"        /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
+#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "sep_mbox_irq_protocol.h"
 
 /*
@@ -22,28 +22,30 @@
  * the cold-scratch6 verdict; there is NO STDOUT / test_pass magic here.
  */
 
-__attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_pass_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_pass_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
-__attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_fail_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_fail_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
 /* SEP inbound filters over the whole mailbox channel region (must cover every inbound port so the
  * SMC's pops/W1C/readbacks reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE  OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)  /* 0x10A21000 */
+#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
 #define SEP_INBOUND_FILTER_STRIDE 0x20u
-#define SEP_FILTER_CONFIG_OFFSET  0x00u
-#define SEP_FILTER_START_OFFSET   0x08u
-#define SEP_FILTER_END_OFFSET     0x10u
+#define SEP_FILTER_CONFIG_OFFSET 0x00u
+#define SEP_FILTER_START_OFFSET 0x08u
+#define SEP_FILTER_END_OFFSET 0x10u
 
 /* SEP-local OUTBOUND mailbox WRITE_DATA for channel ch. */
-static inline uint32_t sep_mbox_wdata(uint32_t ch)
-{
-    return (uint32_t)(SMU015_MBOX_OUTBOUND_BASE + SMU015_MBOX_CH_STRIDE * ch + MBOX_WRITE_DATA_OFFSET);
+static inline uint32_t sep_mbox_wdata(uint32_t ch) {
+    return (uint32_t)(SMU015_MBOX_OUTBOUND_BASE + SMU015_MBOX_CH_STRIDE * ch +
+                      MBOX_WRITE_DATA_OFFSET);
 }
 
 /*
@@ -51,14 +53,12 @@ static inline uint32_t sep_mbox_wdata(uint32_t ch)
  * whose upper half lands off-map faults, so program every 64-bit filter field with explicit
  * 32-bit CSR writes (mirrors SEP_SMU_002).
  */
-static inline void wr_filter_field32(uint32_t addr, uint64_t val)
-{
+static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
     WRITE_REG(addr + 0x4u, (uint32_t)(val >> 32));
 }
 
-static void program_sep_setup(void)
-{
+static void program_sep_setup(void) {
     /* Aperture first (32-bit write only) so any SMC access arriving mid-setup is routable.
      * (No mailbox clock-gate write is needed: sep_system_csr's mailbox_cg_en is a functional
      * no-op -- assigned but unused in RTL -- so the mailbox runs on the raw clk_i regardless.) */
@@ -67,21 +67,22 @@ static void program_sep_setup(void)
 
     /* Inbound filter 0 (secure) and 1 (non-secure) over the mailbox region. START/END before
      * CONFIG so each filter enables atomically over its final range. */
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_START_OFFSET,  SMU015_MBOX_FILTER_START);
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_END_OFFSET,    SMU015_MBOX_FILTER_END);
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_START_OFFSET, SMU015_MBOX_FILTER_START);
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_END_OFFSET, SMU015_MBOX_FILTER_END);
     wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_CONFIG_OFFSET, SMU015_MBOX_FILTER_CFG);
 
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_START_OFFSET,
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE +
+                          SEP_FILTER_START_OFFSET,
                       SMU015_MBOX_FILTER_START);
     wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_END_OFFSET,
                       SMU015_MBOX_FILTER_END);
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_CONFIG_OFFSET,
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE +
+                          SEP_FILTER_CONFIG_OFFSET,
                       SMU015_MBOX_FILTER_CFG_NS);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-static int run_mbox_irq_sequence(void)
-{
+static int run_mbox_irq_sequence(void) {
     /* a. Aperture + inbound mailbox filters (32-bit CSR writes). */
     program_sep_setup();
 
@@ -89,8 +90,7 @@ static int run_mbox_irq_sequence(void)
      *    SMC exactly like SEP_SMU_002/004: wait the EXACT SRAM cookie, then re-vector + release
      *    the four SMC cores. On preload timeout, publish a fail marker and stop. */
     sep_smc_open_window();
-    if (sep_smc_bringup_from_sram((uint32_t)SMU015_SMC_ENTRY,
-                                  SMU015_SMC_IMAGE_FIRST_WORD,
+    if (sep_smc_bringup_from_sram((uint32_t)SMU015_SMC_ENTRY, SMU015_SMC_IMAGE_FIRST_WORD,
                                   SMU015_POLL_LIMIT) != 0) {
         return -1;
     }
@@ -108,7 +108,8 @@ static int run_mbox_irq_sequence(void)
 
     /* e. Wait for the SMC to arm all eight inbound IRQs (scratch3 == ARMED). Only then can a push
      *    assert the packed IRQ (the inbound output is IRQEN-gated). */
-    if (sep_smc_scratch_wait(SMU015_SMC_SCRATCH3_ALIAS, SMU015_PROGRESS_ARMED, SMU015_POLL_LIMIT) != 0) {
+    if (sep_smc_scratch_wait(SMU015_SMC_SCRATCH3_ALIAS, SMU015_PROGRESS_ARMED, SMU015_POLL_LIMIT) !=
+        0) {
         return -3;
     }
 
@@ -134,8 +135,7 @@ static int run_mbox_irq_sequence(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int rc = run_mbox_irq_sequence();
     if (rc == 0) {
         /* SEP completion AFTER the SMC verdict: write SEP_PASS to cold scratch6 and park. */

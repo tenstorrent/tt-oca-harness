@@ -32,8 +32,8 @@ uint32_t lc_read_state(void) {
     // OCAH efuse field is 8-bit (diff encoded by RTL).
     // Extract low 4 bits = raw LC state.
     // The low nibble carries the decoded lifecycle state.
-    return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm)
-            >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) & 0xFu;
+    return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
+           0xFu;
 }
 
 // ---------------------------------------------------------------------------

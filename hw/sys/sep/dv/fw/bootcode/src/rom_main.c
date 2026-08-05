@@ -587,8 +587,7 @@ void rom_main(void) {
     // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
     {
         uint32_t sboot_dis_reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-        bool sboot_dis = (sboot_dis_reg
-                          & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+        bool sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
         get_bl0_state()->sboot_dis = sboot_dis;
         simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);
         report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);

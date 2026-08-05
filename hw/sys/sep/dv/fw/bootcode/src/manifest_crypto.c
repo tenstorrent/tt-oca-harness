@@ -328,7 +328,8 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     // Check manifest security_version against BL1_VERSION fuse.
     // If the manifest flags indicate version update is requested,
     // we still validate (update happens after successful boot in BL1).
-    err = check_security_version(m->security_version, OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR);
+    err = check_security_version(m->security_version,
+                                 OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR);
     if (err) return err;
 
     // ── (c) Signature verification (includes (b) key revocation) ──

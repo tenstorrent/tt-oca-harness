@@ -22,18 +22,14 @@
 #define SPI_ERR_WAIT_IDLE_RX 5
 #define SPI_ERR_STATUS 6
 
-static void configure_spi_mux_ot(void)
-{
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t spi_mux = {
-        .w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset
-    };
-    spi_mux.f.spi_sel = 1;       /* Route to OpenTitan SPI controller */
+static void configure_spi_mux_ot(void) {
+    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t spi_mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
+    spi_mux.f.spi_sel = 1; /* Route to OpenTitan SPI controller */
     spi_mux.f.cs_force_high = 0;
     WRITE_REG(OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
 }
 
-static void spi_controller_init(void)
-{
+static void spi_controller_init(void) {
     spi_controller__CTRL_t ctrl = {.w = SPI_CONTROLLER__CTRL_reset};
     spi_controller__CFG_t cfg = {.w = 0};
 
@@ -53,8 +49,7 @@ static void spi_controller_init(void)
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 }
 
-static int wait_ready(void)
-{
+static int wait_ready(void) {
     spi_controller__STATUS_t status;
     int t = SPI_TIMEOUT;
     while (t-- > 0) {
@@ -64,8 +59,7 @@ static int wait_ready(void)
     return -1;
 }
 
-static int wait_idle(void)
-{
+static int wait_idle(void) {
     spi_controller__STATUS_t status;
     int t = SPI_TIMEOUT;
     while (t-- > 0) {
@@ -81,8 +75,7 @@ static int wait_idle(void)
  */
 typedef __typeof__(((spi_controller_t *)0)->ERROR_STATUS) spi_error_status_t;
 
-static int run_spi_txrx_sequence(void)
-{
+static int run_spi_txrx_sequence(void) {
     spi_controller__CMD_t cmd = {.w = 0};
     spi_error_status_t err = {.w = 0};
 
@@ -93,10 +86,10 @@ static int run_spi_txrx_sequence(void)
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_CMD;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000u);
     cmd.w = 0;
-    cmd.f.LEN = 0;          /* one byte */
+    cmd.f.LEN = 0; /* one byte */
     cmd.f.CSAAT = 0;
-    cmd.f.SPEED = 0;        /* standard */
-    cmd.f.DIRECTION = 2;    /* TX */
+    cmd.f.SPEED = 0;     /* standard */
+    cmd.f.DIRECTION = 2; /* TX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_CMD;
 
@@ -104,19 +97,19 @@ static int run_spi_txrx_sequence(void)
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_ADDR;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x03001000u);
     cmd.w = 0;
-    cmd.f.LEN = 3;          /* four bytes */
-    cmd.f.CSAAT = 1;        /* hold CS */
+    cmd.f.LEN = 3;   /* four bytes */
+    cmd.f.CSAAT = 1; /* hold CS */
     cmd.f.SPEED = 0;
-    cmd.f.DIRECTION = 2;    /* TX */
+    cmd.f.DIRECTION = 2; /* TX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
     /* Step 3: RX 4 bytes and release CS. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_RX;
     cmd.w = 0;
-    cmd.f.LEN = 3;          /* four bytes */
-    cmd.f.CSAAT = 0;        /* release CS */
+    cmd.f.LEN = 3;   /* four bytes */
+    cmd.f.CSAAT = 0; /* release CS */
     cmd.f.SPEED = 0;
-    cmd.f.DIRECTION = 1;    /* RX */
+    cmd.f.DIRECTION = 1; /* RX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_RX;
 
@@ -131,72 +124,55 @@ static int run_spi_txrx_sequence(void)
  * Exported labels for cocotb PC-based pass/fail classification.
  * Do not rename without updating smu_sep_spi_test.py symbol lookup.
  */
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_wait_ready_cmd_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_wait_ready_cmd_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_wait_idle_cmd_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_wait_idle_cmd_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_wait_ready_addr_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_wait_ready_addr_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_wait_ready_rx_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_wait_ready_rx_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_wait_idle_rx_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_wait_idle_rx_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_spi_fail_error_status_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_error_status_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     /*
      * Keep outbound filter init aligned with other SMU SEP tests. This test
      * does not rely on STDOUT for completion; cocotb keys off SEP PC symbols.

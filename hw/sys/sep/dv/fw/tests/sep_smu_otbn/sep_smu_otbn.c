@@ -14,8 +14,7 @@
 
 static volatile int g_otbn_status;
 
-static int run_otbn_programming_sequence(void)
-{
+static int run_otbn_programming_sequence(void) {
     WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x1u);
     WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR, 0xFFFFFFFFu);
@@ -25,24 +24,19 @@ static int run_otbn_programming_sequence(void)
     return g_otbn_status;
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_otbn_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_otbn_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_otbn_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_otbn_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
     if (run_otbn_programming_sequence() == 0) {
         smu_sep_otbn_pass_loop();

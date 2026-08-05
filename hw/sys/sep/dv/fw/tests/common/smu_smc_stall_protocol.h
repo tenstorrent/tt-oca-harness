@@ -10,11 +10,10 @@
  *
  * Channels (SMC CPU_CTRL scratch array, 8-byte stride, base 0xC0039080):
  *   scratch0 : SMC status/progress markers (SMC -> observers)
- *   scratch1 : common CLA arm token (written by the SMC fw in this test to satisfy the SV liveness monitor)
- *   scratch2 : SMC -> SEP command channel
- *   scratch3 : SEP -> SMC response channel
- * SEP reaches the SMC scratch through the SEP->SMC alias (subtract 0x4000_0000 then
- * SMC local rebase to 0xC000_0000): SEP 0x40039090 -> SMC scratch2, 0x40039098 -> scratch3.
+ *   scratch1 : common CLA arm token (written by the SMC fw in this test to satisfy the SV liveness
+ * monitor) scratch2 : SMC -> SEP command channel scratch3 : SEP -> SMC response channel SEP reaches
+ * the SMC scratch through the SEP->SMC alias (subtract 0x4000_0000 then SMC local rebase to
+ * 0xC000_0000): SEP 0x40039090 -> SMC scratch2, 0x40039098 -> scratch3.
  */
 #ifndef SMU_SMC_STALL_PROTOCOL_H
 #define SMU_SMC_STALL_PROTOCOL_H
@@ -35,57 +34,58 @@
  * (0xC0039000 -> 0x40039000, 0xC0060000 -> 0x40060000). SMU_STALL_SMC_ENTRY is the
  * SMC-internal reset-vector value; SMU_STALL_SMC_IMAGE_FIRST_WORD is the first image word
  * (both cocotb-drift-checked against the built image). */
-#define SMU_STALL_SMC_SRAM_BASE_ALIAS  0x40060000              /* SEP-view of SMC SRAM base */
-#define SMU_STALL_SMC_IMAGE_FIRST_WORD 0x41014081              /* exact preload cookie (SRAM[0]) */
-#define SMU_STALL_S0_FAIL              0x00460FA1              /* SEP->scratch3: preload never landed */
-#define SMU_STALL_SMC_ENTRY            0x00000000C00601B6ULL   /* RESET_VECTOR value: naked entry */
-#define SMU_STALL_RESET_VECTOR_ALIAS   0x40039000              /* SEP-view of SMC RESET_VECTOR_0 */
-#define SMU_STALL_RESET_CTRL_ALIAS     0x40039020              /* SEP-view of SMC RESET_CTRL */
-#define SMU_STALL_RESET_CTRL_PULSE     0x00000000000001FFULL   /* default 0x10F | core0-3 reset_pulse_start */
+#define SMU_STALL_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
+#define SMU_STALL_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]) */
+#define SMU_STALL_S0_FAIL 0x00460FA1              /* SEP->scratch3: preload never landed */
+#define SMU_STALL_SMC_ENTRY 0x00000000C00601B6ULL /* RESET_VECTOR value: naked entry */
+#define SMU_STALL_RESET_VECTOR_ALIAS 0x40039000   /* SEP-view of SMC RESET_VECTOR_0 */
+#define SMU_STALL_RESET_CTRL_ALIAS 0x40039020     /* SEP-view of SMC RESET_CTRL */
+#define SMU_STALL_RESET_CTRL_PULSE \
+    0x00000000000001FFULL /* default 0x10F | core0-3 reset_pulse_start */
 
 /* scratch indices */
 #define SMU_STALL_SCRATCH_STATUS 0
-#define SMU_STALL_SCRATCH_ARM    1
-#define SMU_STALL_SCRATCH_CMD    2
-#define SMU_STALL_SCRATCH_RSP    3
+#define SMU_STALL_SCRATCH_ARM 1
+#define SMU_STALL_SCRATCH_CMD 2
+#define SMU_STALL_SCRATCH_RSP 3
 
 /* SEP-side alias addresses for the SMC status/command/response scratch registers */
 #define SMU_STALL_STATUS_ALIAS_ADDR 0x40039080
-#define SMU_STALL_CMD_ALIAS_ADDR    0x40039090
-#define SMU_STALL_RSP_ALIAS_ADDR    0x40039098
+#define SMU_STALL_CMD_ALIAS_ADDR 0x40039090
+#define SMU_STALL_RSP_ALIAS_ADDR 0x40039098
 
 /* scratch0 : SMC status/progress markers */
 #define SMU_STALL_INIT_RELEASE_OK 0x0040A000
-#define SMU_STALL_HALT_OK         0x0040A001
-#define SMU_STALL_HELD_OK         0x0040A002
-#define SMU_STALL_RELEASE_OK      0x0040A003
-#define SMU_STALL_TEST_PASS       0xACAFACA1
-#define SMU_STALL_TEST_FAIL       0xFFFFFFFF
+#define SMU_STALL_HALT_OK 0x0040A001
+#define SMU_STALL_HELD_OK 0x0040A002
+#define SMU_STALL_RELEASE_OK 0x0040A003
+#define SMU_STALL_TEST_PASS 0xACAFACA1
+#define SMU_STALL_TEST_FAIL 0xFFFFFFFF
 
 /* scratch2 : SMC -> SEP command channel (PROBE must stay distinct from GO) */
-#define SMU_STALL_PROBE           0x0040B000
-#define SMU_STALL_GO              0x0040B001
-#define SMU_STALL_RELEASE_GATE    0x0040B002
-#define SMU_STALL_ACK             0x0040B003
+#define SMU_STALL_PROBE 0x0040B000
+#define SMU_STALL_GO 0x0040B001
+#define SMU_STALL_RELEASE_GATE 0x0040B002
+#define SMU_STALL_ACK 0x0040B003
 
 /* scratch3 : SEP -> SMC response channel */
-#define SMU_STALL_READY           0x00470001
-#define SMU_STALL_GO_SEEN         0x00470002
-#define SMU_STALL_POLL_ARMED      0x00470003
-#define SMU_STALL_COMPLETION      0x0045A55A
-#define SMU_STALL_PASS            0x0045CAFE
+#define SMU_STALL_READY 0x00470001
+#define SMU_STALL_GO_SEEN 0x00470002
+#define SMU_STALL_POLL_ARMED 0x00470003
+#define SMU_STALL_COMPLETION 0x0045A55A
+#define SMU_STALL_PASS 0x0045CAFE
 
 /* Held-window policy (single source). The SMC does a deterministic fixed hold of
  * SMU_STALL_HELD_HOLD_ITERS firmware loop iterations between HALT_OK and HELD_OK;
  * the cocotb checker requires the measured HALT_OK->HELD_OK span to be >=
  * SMU_STALL_HELD_MIN_CYCLES clk_smu and samples scratch3 at both endpoints and
  * every SMU_STALL_HELD_SAMPLE_STRIDE clk_smu, all == POLL_ARMED. */
-#define SMU_STALL_HELD_HOLD_ITERS    8000
-#define SMU_STALL_HELD_MIN_CYCLES    1024
+#define SMU_STALL_HELD_HOLD_ITERS 8000
+#define SMU_STALL_HELD_MIN_CYCLES 1024
 #define SMU_STALL_HELD_SAMPLE_STRIDE 128
 
 /* Firmware poll/settle bounds (loop iterations) */
-#define SMU_STALL_FW_POLL_LIMIT   4000000
+#define SMU_STALL_FW_POLL_LIMIT 4000000
 #define SMU_STALL_HALT_SETTLE_ITERS 2000
 
 /* CLA node0 EAP CSR values (verbatim literals matching smu_sep_cla_node0_eap_value):
@@ -96,11 +96,11 @@
  *             RUNNING core. NOTE: action [3] i_cpu_halt_req does NOT halt a live
  *             core (sim-proven: core kept retiring, o_cpu_halt_status stayed 0),
  *             so 004 halts via action [0] and resumes via the release actions [1]/[4]. */
-#define SMU_STALL_CLA_CDFDCSR_EXPECT     0x8000000000000000ULL
-#define SMU_STALL_CLA_CTRLSTATUS_EXPECT  0x60
-#define SMU_STALL_CLA_EAP0_RELEASE       0x341FBFC000ULL
-#define SMU_STALL_CLA_EAP1_RELEASE       0x144FBFC000ULL
-#define SMU_STALL_CLA_EAP0_HALT          0x100FBFC000ULL
-#define SMU_STALL_CLA_EAP1_HALT          0x0
+#define SMU_STALL_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
+#define SMU_STALL_CLA_CTRLSTATUS_EXPECT 0x60
+#define SMU_STALL_CLA_EAP0_RELEASE 0x341FBFC000ULL
+#define SMU_STALL_CLA_EAP1_RELEASE 0x144FBFC000ULL
+#define SMU_STALL_CLA_EAP0_HALT 0x100FBFC000ULL
+#define SMU_STALL_CLA_EAP1_HALT 0x0
 
 #endif /* SMU_SMC_STALL_PROTOCOL_H */

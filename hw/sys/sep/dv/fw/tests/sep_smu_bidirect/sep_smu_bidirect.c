@@ -5,19 +5,19 @@
 #include "sep.h"
 #include "test_completion.h"
 
-#define XBAR_FILTER_START_ADDR       0x0000000040000000ULL
-#define XBAR_FILTER_END_ADDR         0x00000000800000FFULL
-#define SEP_INBOUND_SHARED_START_ADDR  ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define XBAR_FILTER_START_ADDR 0x0000000040000000ULL
+#define XBAR_FILTER_END_ADDR 0x00000000800000FFULL
+#define SEP_INBOUND_SHARED_START_ADDR ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
 #define SEP_INBOUND_SHARED_END_ADDR \
     ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
-#define XBAR_FILTER_CONFIG           0x0000000101000013ULL
-#define SMC_TO_SEP_FILTER_CONFIG     0x0000000101030013ULL
-#define SMC_TO_SEP_NS_FILTER_CONFIG  0x0000000101030113ULL
+#define XBAR_FILTER_CONFIG 0x0000000101000013ULL
+#define SMC_TO_SEP_FILTER_CONFIG 0x0000000101030013ULL
+#define SMC_TO_SEP_NS_FILTER_CONFIG 0x0000000101030113ULL
 
-#define FILTER_CONFIG_OFFSET   0x0u
-#define FILTER_START_OFFSET    0x8u
-#define FILTER_END_OFFSET      0x10u
-#define FILTER_STRIDE          0x20u
+#define FILTER_CONFIG_OFFSET 0x0u
+#define FILTER_START_OFFSET 0x8u
+#define FILTER_END_OFFSET 0x10u
+#define FILTER_STRIDE 0x20u
 
 /*
  * SEP->SMC address translation for the sep_ext_to_smc dedicated port (see
@@ -28,16 +28,16 @@
  * scratch_rw_check readback to mismatch and dropped SEP into
  * `smu_bidirect_fail_loop`.
  */
-#define SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR  0x400390C0u
-#define SMC_XBAR_SCRATCH_STRIDE          0x8u
+#define SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR 0x400390C0u
+#define SMC_XBAR_SCRATCH_STRIDE 0x8u
 #define SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR 0x400390E0u
 
-#define SEP_SHARED_ADDR                  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
-#define SMC_TO_SEP_PATTERN               0xC001CAFEu
-#define SMC_TO_SEP_DONE_PATTERN          0xD0E0F00Du
-#define SEP_READY_PATTERN                0x51EAD001u
-#define SEP_TO_SMC_ACK_PATTERN           0x5E9ACCE5u
-#define SMC_TO_SEP_TIMEOUT_ITERS         1000000u
+#define SEP_SHARED_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define SMC_TO_SEP_PATTERN 0xC001CAFEu
+#define SMC_TO_SEP_DONE_PATTERN 0xD0E0F00Du
+#define SEP_READY_PATTERN 0x51EAD001u
+#define SEP_TO_SMC_ACK_PATTERN 0x5E9ACCE5u
+#define SMC_TO_SEP_TIMEOUT_ITERS 1000000u
 
 /*
  * SMU xbar SEP aperture must cover 0x10802000 (cold scratch) for SMC->SEP
@@ -46,19 +46,17 @@
  * space without overlapping the default SMC aperture at [0x40000000,
  * 0x41000000).
  */
-#define SEP_APERTURE_SIZE                0x20000000ULL
+#define SEP_APERTURE_SIZE 0x20000000ULL
 
 static volatile int g_xbar_status;
 
-static inline void program_sep_smu_aperture(void)
-{
+static inline void program_sep_smu_aperture(void) {
     /* 32-bit write (matches global_alias_remap_sanity). See interop fw. */
     WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)SEP_APERTURE_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-static inline void open_sep_outbound_xbar_window(void)
-{
+static inline void open_sep_outbound_xbar_window(void) {
     uintptr_t base = (uintptr_t)OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, XBAR_FILTER_START_ADDR);
@@ -67,8 +65,7 @@ static inline void open_sep_outbound_xbar_window(void)
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-static inline void open_sep_inbound_sram_window(void)
-{
+static inline void open_sep_inbound_sram_window(void) {
     uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, SEP_INBOUND_SHARED_START_ADDR);
@@ -82,10 +79,9 @@ static inline void open_sep_inbound_sram_window(void)
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-static int smc_scratch_rw_check(uint32_t index, uint32_t pattern)
-{
-    uintptr_t addr = (uintptr_t)(SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR +
-                                 (index * SMC_XBAR_SCRATCH_STRIDE));
+static int smc_scratch_rw_check(uint32_t index, uint32_t pattern) {
+    uintptr_t addr =
+        (uintptr_t)(SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR + (index * SMC_XBAR_SCRATCH_STRIDE));
     WRITE_REG(addr, pattern);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 
@@ -97,8 +93,7 @@ static int smc_scratch_rw_check(uint32_t index, uint32_t pattern)
     return 0;
 }
 
-static int wait_for_smc_to_sep_pattern(uint32_t expected)
-{
+static int wait_for_smc_to_sep_pattern(uint32_t expected) {
     volatile uint32_t *shared = (volatile uint32_t *)(uintptr_t)SEP_SHARED_ADDR;
 
     for (uint32_t i = 0; i < SMC_TO_SEP_TIMEOUT_ITERS; ++i) {
@@ -111,8 +106,7 @@ static int wait_for_smc_to_sep_pattern(uint32_t expected)
     return -1;
 }
 
-static int run_smu_bidirect_sequence(void)
-{
+static int run_smu_bidirect_sequence(void) {
     static const uint32_t patterns[] = {
         0x13579BDFu,
         0x2468ACE0u,
@@ -157,22 +151,19 @@ static int run_smu_bidirect_sequence(void)
     return 0;
 }
 
-__attribute__((noinline, used)) void smu_bidirect_pass_loop(void)
-{
+__attribute__((noinline, used)) void smu_bidirect_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((noinline, used)) void smu_bidirect_fail_loop(void)
-{
+__attribute__((noinline, used)) void smu_bidirect_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     g_xbar_status = run_smu_bidirect_sequence();
 
     if (g_xbar_status == 0) {

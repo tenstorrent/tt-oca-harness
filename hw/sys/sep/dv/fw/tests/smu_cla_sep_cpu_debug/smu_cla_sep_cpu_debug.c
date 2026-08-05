@@ -4,7 +4,7 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "test_completion.h"
-#include "sep_smc_bringup.h"   /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
+#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "smu_cla_sep_cpu_debug_protocol.h"
 
 /*
@@ -22,22 +22,22 @@
  *                    workloads; the cocotb scoreboard classifies the VeeR handshake.
  */
 
-__attribute__((noinline, used)) void smu_cla_sep_cpu_debug_pass_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void smu_cla_sep_cpu_debug_pass_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
-__attribute__((noinline, used)) void smu_cla_sep_cpu_debug_fail_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void smu_cla_sep_cpu_debug_fail_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
-static int run_cla_debug_consumer(void)
-{
+static int run_cla_debug_consumer(void) {
     /* Force-free frontdoor boot of the SMC over the SEP->SMC port (common helper). */
     sep_smc_open_window();
-    if (sep_smc_bringup_from_sram((uint32_t)CLADBG_SMC_ENTRY,
-                                  CLADBG_SMC_IMAGE_FIRST_WORD,
+    if (sep_smc_bringup_from_sram((uint32_t)CLADBG_SMC_ENTRY, CLADBG_SMC_IMAGE_FIRST_WORD,
                                   CLADBG_FW_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(CLADBG_RSP_ALIAS_ADDR, CLADBG_S0_FAIL);
         return -1;
@@ -74,8 +74,7 @@ static int run_cla_debug_consumer(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int rc = run_cla_debug_consumer();
     if (rc == 0) {
         smu_cla_sep_cpu_debug_pass_loop();

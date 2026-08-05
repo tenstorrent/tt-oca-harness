@@ -3,7 +3,7 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "sep_smc_bringup.h"   /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
+#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "smc_sep_xbar_protocol.h"
 
 /*
@@ -28,29 +28,27 @@
  */
 
 /* SEP inbound filter range (SMC->SEP writes to the cold scratch at SEP-local 0x10802000). */
-#define SEP_INBOUND_SHARED_START  ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
-#define SEP_INBOUND_SHARED_END    ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
+#define SEP_INBOUND_SHARED_START ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define SEP_INBOUND_SHARED_END ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
 /* allow_burst (bit24) CLEARED -> 8-byte granularity so the 64-byte window keeps its EXACT END
  * 0x1080203F (with allow_burst=1 axi_filter_wrap.sv:105-108 rounds a same-4KB-page window's END up
  * to 0x10802FFF). Single-beat SMC->SEP cmd/done still pass (allow_burst only gates bursts). */
-#define SMC_TO_SEP_FILTER_CONFIG     0x0000000100030013ULL
-#define SMC_TO_SEP_NS_FILTER_CONFIG  0x0000000100030113ULL
+#define SMC_TO_SEP_FILTER_CONFIG 0x0000000100030013ULL
+#define SMC_TO_SEP_NS_FILTER_CONFIG 0x0000000100030113ULL
 /* Local filter-register offsets (prefixed to avoid clashing with sep_outbound_filter.h). */
-#define XBAR_FILT_CFG_OFF      0x0u
-#define XBAR_FILT_START_OFF    0x8u
-#define XBAR_FILT_END_OFF      0x10u
-#define XBAR_FILT_STRIDE       0x20u
+#define XBAR_FILT_CFG_OFF 0x0u
+#define XBAR_FILT_START_OFF 0x8u
+#define XBAR_FILT_END_OFF 0x10u
+#define XBAR_FILT_STRIDE 0x20u
 
 static volatile int g_xbar_status;
 
-static inline void program_sep_smu_aperture(void)
-{
+static inline void program_sep_smu_aperture(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)XBAR_SEP_APERTURE_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-static inline void open_sep_inbound_sram_window(void)
-{
+static inline void open_sep_inbound_sram_window(void) {
     uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + XBAR_FILT_START_OFF, SEP_INBOUND_SHARED_START);
@@ -68,8 +66,7 @@ static inline void open_sep_inbound_sram_window(void)
  * SEP-local register the SEP bootcode polls in pll_init.c). This is the SEP FW reading the SMC
  * fuse-done CSR BEFORE its first CPU_CTRL write, so the SEP never drives the SMC before SMC fuse
  * sense completes. Bounded; -1 on timeout. */
-static int wait_smc_fuse_sense_done(void)
-{
+static int wait_smc_fuse_sense_done(void) {
     for (uint32_t i = 0; i < XBAR_FW_POLL_LIMIT; ++i) {
         if (READ_REG(XBAR_SMC_FUSE_STATUS_ADDR) & XBAR_FUSE_SENSE_DONE_MASK) {
             return 0;
@@ -79,8 +76,7 @@ static int wait_smc_fuse_sense_done(void)
 }
 
 /* Bounded read-only wait for the SMC image cookie in SRAM (preloaded post-fuse). No CPU_CTRL AW. */
-static int wait_smc_sram_cookie(void)
-{
+static int wait_smc_sram_cookie(void) {
     for (uint32_t i = 0; i < XBAR_FW_POLL_LIMIT; ++i) {
         if (READ_REG(XBAR_SMC_SRAM_BASE_ALIAS) == XBAR_SMC_IMAGE_FIRST_WORD) {
             return 0;
@@ -89,8 +85,7 @@ static int wait_smc_sram_cookie(void)
     return -1;
 }
 
-static int run_smc_sep_xbar_sequence(void)
-{
+static int run_smc_sep_xbar_sequence(void) {
     /* Inbound setup FIRST so the later SMC->SEP CMD/DONE writes to 0x10802000 are routable. */
     program_sep_smu_aperture();
     open_sep_inbound_sram_window();
@@ -113,7 +108,7 @@ static int run_smc_sep_xbar_sequence(void)
         return -13;
     }
     if (wait_smc_sram_cookie() != 0) {
-        sep_smc_scratch_write(XBAR_SCRATCH12_SEP, XBAR_S0_FAIL);  /* preload never landed */
+        sep_smc_scratch_write(XBAR_SCRATCH12_SEP, XBAR_S0_FAIL); /* preload never landed */
         return -11;
     }
 
@@ -157,22 +152,19 @@ static int run_smc_sep_xbar_sequence(void)
     return 0;
 }
 
-__attribute__((noinline, used)) void smc_sep_xbar_pass_loop(void)
-{
+__attribute__((noinline, used)) void smc_sep_xbar_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((noinline, used)) void smc_sep_xbar_fail_loop(void)
-{
+__attribute__((noinline, used)) void smc_sep_xbar_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     g_xbar_status = run_smc_sep_xbar_sequence();
 
     if (g_xbar_status == 0) {

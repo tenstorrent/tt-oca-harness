@@ -3,8 +3,8 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "sep_outbound_filter.h"      /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
-#include "sep_smc_bringup.h"          /* common: sep_smc_open_window / _bringup_from_sram (SEP_SMU_003) */
+#include "sep_outbound_filter.h" /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
+#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram (SEP_SMU_003) */
 #include "smu_sep_ext_axi_protocol.h"
 
 /*
@@ -50,14 +50,21 @@
  */
 
 /* SEP aperture CSRs (readable). GLOBAL_BASE is 64-bit; REGION_SIZE is 32-bit. */
-#define SEP_GLOBAL_BASE_REG  OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR   /* 0x10A300C0 */
-#define SEP_REGION_SIZE_REG  OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR        /* 0x10A300D0 */
+#define SEP_GLOBAL_BASE_REG \
+    OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR                    /* 0x10A300C0 \
+                                                                                */
+#define SEP_REGION_SIZE_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR /* 0x10A300D0 */
 
 /* SEP-local cold scratch barrier registers (8-byte stride). */
-#define COLD4  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)   /* 0x10802020 SEP_READY (SEP -> ext_in) */
-#define COLD5  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)   /* 0x10802028 SEP_GO    (ext_in -> SEP) */
-#define COLD6  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)   /* 0x10802030 SMU016_SEP_PASS (LOCAL) */
-#define COLD7  OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)   /* 0x10802038 ROUTE_DONE_SEP (ext_in -> SEP) */
+#define COLD4 \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4) /* 0x10802020 SEP_READY (SEP -> ext_in) */
+#define COLD5 \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5) /* 0x10802028 SEP_GO    (ext_in -> SEP) */
+#define COLD6 \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6) /* 0x10802030 SMU016_SEP_PASS (LOCAL) */
+#define COLD7 \
+    OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR( \
+        7) /* 0x10802038 ROUTE_DONE_SEP (ext_in -> SEP) */
 
 /* SEP inbound filter: cover the cold scratch region (cold0..cold7) so ext_in can reach
  * the barrier + route-data registers. Secure (rule0) + NS (rule1).
@@ -68,15 +75,14 @@
  * EXTAXI_SEP_COLD*_GLOBAL values). Programming 0x048020xx would both miss the intended local
  * (remaps to 0x008020xx) and, once region_size covers it, still target the wrong register --
  * so the window is programmed at the 0x148020xx globals. */
-#define SEP_INB_BASE   OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)      /* 0x10A21000 */
-#define SEP_INB_START  ((uint64_t)EXTAXI_SEP_COLD0_GLOBAL)           /* 0x14802000 GLOBAL */
-#define SEP_INB_END    ((uint64_t)EXTAXI_SEP_COLD7_GLOBAL + 7ULL)    /* 0x1480203F GLOBAL */
+#define SEP_INB_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
+#define SEP_INB_START ((uint64_t)EXTAXI_SEP_COLD0_GLOBAL)         /* 0x14802000 GLOBAL */
+#define SEP_INB_END ((uint64_t)EXTAXI_SEP_COLD7_GLOBAL + 7ULL)    /* 0x1480203F GLOBAL */
 
 static volatile int g_status;
 
 /* Program the SEP aperture and read it back. Returns 0 on match, -1 on mismatch. */
-static int program_sep_aperture(void)
-{
+static int program_sep_aperture(void) {
     WRITE_REG64(SEP_GLOBAL_BASE_REG, (uint64_t)EXTAXI_SEP_GLOBAL_BASE);
     WRITE_REG(SEP_REGION_SIZE_REG, (uint32_t)EXTAXI_SEP_REGION_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
@@ -90,24 +96,22 @@ static int program_sep_aperture(void)
 }
 
 /* Open the SEP inbound filter over the cold scratch region (secure + NS rules). */
-static void open_sep_inbound_window(void)
-{
+static void open_sep_inbound_window(void) {
     uintptr_t base = (uintptr_t)SEP_INB_BASE;
 
     WRITE_REG64(base + EXTAXI_FILTER_START_OFF, SEP_INB_START);
-    WRITE_REG64(base + EXTAXI_FILTER_END_OFF,   SEP_INB_END);
-    WRITE_REG64(base + EXTAXI_FILTER_CFG_OFF,   EXTAXI_FILTER_CFG_SECURE);
+    WRITE_REG64(base + EXTAXI_FILTER_END_OFF, SEP_INB_END);
+    WRITE_REG64(base + EXTAXI_FILTER_CFG_OFF, EXTAXI_FILTER_CFG_SECURE);
 
     base += EXTAXI_FILTER_STRIDE;
     WRITE_REG64(base + EXTAXI_FILTER_START_OFF, SEP_INB_START);
-    WRITE_REG64(base + EXTAXI_FILTER_END_OFF,   SEP_INB_END);
-    WRITE_REG64(base + EXTAXI_FILTER_CFG_OFF,   EXTAXI_FILTER_CFG_NS);
+    WRITE_REG64(base + EXTAXI_FILTER_END_OFF, SEP_INB_END);
+    WRITE_REG64(base + EXTAXI_FILTER_CFG_OFF, EXTAXI_FILTER_CFG_NS);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
 /* Bounded poll of a local register for an exact value. Returns 0 on match, -1 on timeout. */
-static int wait_reg_eq(uintptr_t addr, uint32_t expected)
-{
+static int wait_reg_eq(uintptr_t addr, uint32_t expected) {
     for (uint32_t i = 0; i < EXTAXI_FW_POLL_LIMIT; ++i) {
         if (READ_REG(addr) == expected) {
             return 0;
@@ -116,8 +120,7 @@ static int wait_reg_eq(uintptr_t addr, uint32_t expected)
     return -1;
 }
 
-static int run_sep_ext_axi_sequence(void)
-{
+static int run_sep_ext_axi_sequence(void) {
     /* S1 (SEP is the PRIMARY, runs FIRST): release the four SMC cores over the SEP->SMC alias,
      * exactly as SEP_SMU_003's SEP fw. Open the outbound egress window over the SEP->SMC region
      * (0x40000000..0x800000FF), then sep_smc_bringup_from_sram() waits (bounded, same poll-limit
@@ -128,7 +131,7 @@ static int run_sep_ext_axi_sequence(void)
     sep_smc_open_window();
     if (sep_smc_bringup_from_sram((uint32_t)EXTAXI_SMC_ENTRY, EXTAXI_SMC_IMAGE_FIRST_WORD,
                                   EXTAXI_FW_POLL_LIMIT) != 0) {
-        return -4;   /* SMC image cookie never landed within poll_limit -> SEP fail loop */
+        return -4; /* SMC image cookie never landed within poll_limit -> SEP fail loop */
     }
 
     /* S2 (setup): aperture program + readback (real fault check). */
@@ -144,9 +147,9 @@ static int run_sep_ext_axi_sequence(void)
 
     /* Clear the SEP-owned poll targets so the DV sees clean 0 -> token transitions.
      * Do NOT touch cold scratch0 (ext_in route data). */
-    WRITE_REG(COLD5, 0u);   /* SEP_GO poll target */
-    WRITE_REG(COLD6, 0u);   /* SMU016_SEP_PASS */
-    WRITE_REG(COLD7, 0u);   /* ROUTE_DONE_SEP poll target */
+    WRITE_REG(COLD5, 0u); /* SEP_GO poll target */
+    WRITE_REG(COLD6, 0u); /* SMU016_SEP_PASS */
+    WRITE_REG(COLD7, 0u); /* ROUTE_DONE_SEP poll target */
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 
     /* S3 (barrier): publish SEP_READY at cold scratch4, then poll SEP_GO at cold scratch5. */
@@ -171,22 +174,19 @@ static int run_sep_ext_axi_sequence(void)
     return 0;
 }
 
-__attribute__((noinline, used)) void smu_sep_ext_axi_sep_pass_loop(void)
-{
+__attribute__((noinline, used)) void smu_sep_ext_axi_sep_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((noinline, used)) void smu_sep_ext_axi_sep_fail_loop(void)
-{
+__attribute__((noinline, used)) void smu_sep_ext_axi_sep_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     g_status = run_sep_ext_axi_sequence();
 
     if (g_status == 0) {

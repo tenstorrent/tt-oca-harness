@@ -21,8 +21,8 @@
 static void wait_for_smc_fuse_sense(void) {
     // Poll SMC_FUSE_SENSE_STATUS until smc_fuse_sense_done=1.
     // This is the fuse-sense completion wait used by the boot flow.
-    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) & FUSE_SENSE_DONE_MASK) ==
-           0u) {
+    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
+            FUSE_SENSE_DONE_MASK) == 0u) {
         // spin
     }
 }
@@ -44,9 +44,9 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
     // smu_pll_sysclk: 11-bit field indicating configured sysclk PLL frequency in MHz.
     // If 0 (fuses blank), fall back to REF_CLK.
     uint32_t spi_ctrl = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
-    uint16_t pll_freq_mhz = (uint16_t)(
-        (spi_ctrl & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm)
-        >> SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp);
+    uint16_t pll_freq_mhz =
+        (uint16_t)((spi_ctrl & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>
+                   SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp);
     if (pll_freq_mhz == 0u) {
         report_status(STATUS_TYPE_WARN, SEP_MSG_PLL_FUSES_BLANK);
         simputs("PLL_FUSES_BLANK\n");

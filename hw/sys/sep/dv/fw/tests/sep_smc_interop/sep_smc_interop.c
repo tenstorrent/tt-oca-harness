@@ -2,7 +2,7 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "sep_smc_bringup.h"       /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
+#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "sep_interop_protocol.h"
 
 /*
@@ -20,14 +20,16 @@
  * there is NO STDOUT / test_pass magic here.
  */
 
-__attribute__((noinline, used)) void sep_smc_interop_pass_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void sep_smc_interop_pass_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
-__attribute__((noinline, used)) void sep_smc_interop_fail_loop(void)
-{
-    while (1) { __asm__ volatile("wfi"); }
+__attribute__((noinline, used)) void sep_smc_interop_fail_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
 
 /* SEP SMU aperture: size 0x20000000 so [0, 0x20000000) covers the mailbox (0x10A00000) and
@@ -36,40 +38,38 @@ __attribute__((noinline, used)) void sep_smc_interop_fail_loop(void)
 
 /* SEP inbound filters over the mailbox window (must cover BOTH ports so the SMC pushes at
  * the SMC-facing port 0x10A00800 reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE  OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)  /* 0x10A21000 */
+#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
 #define SEP_INBOUND_FILTER_STRIDE 0x20u
-#define SEP_FILTER_CONFIG_OFFSET  0x00u
-#define SEP_FILTER_START_OFFSET   0x08u
-#define SEP_FILTER_END_OFFSET     0x10u
-#define SEP_MBOX_INBOUND_START    0x0000000010A00000ULL
-#define SEP_MBOX_INBOUND_END      0x0000000010A0084FULL
+#define SEP_FILTER_CONFIG_OFFSET 0x00u
+#define SEP_FILTER_START_OFFSET 0x08u
+#define SEP_FILTER_END_OFFSET 0x10u
+#define SEP_MBOX_INBOUND_START 0x0000000010A00000ULL
+#define SEP_MBOX_INBOUND_END 0x0000000010A0084FULL
 /* allow_burst=0 on these sub-4KB inbound filters so the byte-granular END (0x10A0084F) stores
  * EXACTLY -- allow_burst=1 rounds a same-page window up to 0x..FFF (the SEP_SMU_003 lesson). */
-#define SEP_MBOX_INBOUND_CFG      0x0000000100030013ULL   /* read/write/enable/src_id=3          */
-#define SEP_MBOX_INBOUND_CFG_NS   0x0000000100030113ULL   /* + allow_ns (non-secure)             */
+#define SEP_MBOX_INBOUND_CFG 0x0000000100030013ULL    /* read/write/enable/src_id=3          */
+#define SEP_MBOX_INBOUND_CFG_NS 0x0000000100030113ULL /* + allow_ns (non-secure)             */
 
 /* SEP-local mailbox port (OUTBOUND_MAILBOX_0) absolute register addresses. */
-#define SEP_LOCAL_MBOX_WDATA  (SEP_LOCAL_MBOX_BASE + MBOX_WRITE_DATA_OFFSET)  /* 0x10A00000 */
-#define SEP_LOCAL_MBOX_RDATA  (SEP_LOCAL_MBOX_BASE + MBOX_READ_DATA_OFFSET)   /* 0x10A00008 */
-#define SEP_LOCAL_MBOX_STATUS (SEP_LOCAL_MBOX_BASE + MBOX_STATUS_OFFSET)      /* 0x10A00010 */
-#define SEP_LOCAL_MBOX_RIRQT  (SEP_LOCAL_MBOX_BASE + MBOX_RIRQT_OFFSET)       /* 0x10A00028 */
-#define SEP_LOCAL_MBOX_IRQS   (SEP_LOCAL_MBOX_BASE + MBOX_IRQS_OFFSET)        /* 0x10A00030 */
-#define SEP_LOCAL_MBOX_IRQEN  (SEP_LOCAL_MBOX_BASE + MBOX_IRQEN_OFFSET)       /* 0x10A00038 */
-#define SEP_LOCAL_MBOX_IRQP   (SEP_LOCAL_MBOX_BASE + MBOX_IRQP_OFFSET)        /* 0x10A00040 */
+#define SEP_LOCAL_MBOX_WDATA (SEP_LOCAL_MBOX_BASE + MBOX_WRITE_DATA_OFFSET) /* 0x10A00000 */
+#define SEP_LOCAL_MBOX_RDATA (SEP_LOCAL_MBOX_BASE + MBOX_READ_DATA_OFFSET)  /* 0x10A00008 */
+#define SEP_LOCAL_MBOX_STATUS (SEP_LOCAL_MBOX_BASE + MBOX_STATUS_OFFSET)    /* 0x10A00010 */
+#define SEP_LOCAL_MBOX_RIRQT (SEP_LOCAL_MBOX_BASE + MBOX_RIRQT_OFFSET)      /* 0x10A00028 */
+#define SEP_LOCAL_MBOX_IRQS (SEP_LOCAL_MBOX_BASE + MBOX_IRQS_OFFSET)        /* 0x10A00030 */
+#define SEP_LOCAL_MBOX_IRQEN (SEP_LOCAL_MBOX_BASE + MBOX_IRQEN_OFFSET)      /* 0x10A00038 */
+#define SEP_LOCAL_MBOX_IRQP (SEP_LOCAL_MBOX_BASE + MBOX_IRQP_OFFSET)        /* 0x10A00040 */
 
 /*
  * Write a 64-bit filter field as two 32-bit stores. The SEP CPU is RV32; a WRITE_REG64 to a
  * CSR whose upper half lands off-map faults (that is what wedged the previous 002 firmware),
  * so program every 64-bit filter/aperture field with explicit 32-bit CSR writes.
  */
-static inline void wr_filter_field32(uint32_t addr, uint64_t val)
-{
+static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
     WRITE_REG(addr + 0x4u, (uint32_t)(val >> 32));
 }
 
-static void program_sep_setup(void)
-{
+static void program_sep_setup(void) {
     /* Aperture first (32-bit write only) so any SMC push arriving mid-setup is routable.
      * (No mailbox clock-gate write is needed: sep_system_csr's mailbox_cg_en is a functional
      * no-op -- assigned but unused in RTL -- so the mailbox runs on the raw clk_i regardless.) */
@@ -78,22 +78,23 @@ static void program_sep_setup(void)
 
     /* Inbound filter 0 (secure) and 1 (non-secure) over the mailbox window. START/END before
      * CONFIG so each filter enables atomically over its final range. */
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_START_OFFSET,  SEP_MBOX_INBOUND_START);
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_END_OFFSET,    SEP_MBOX_INBOUND_END);
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_START_OFFSET, SEP_MBOX_INBOUND_START);
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_END_OFFSET, SEP_MBOX_INBOUND_END);
     wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_FILTER_CONFIG_OFFSET, SEP_MBOX_INBOUND_CFG);
 
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_START_OFFSET,
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE +
+                          SEP_FILTER_START_OFFSET,
                       SEP_MBOX_INBOUND_START);
     wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_END_OFFSET,
                       SEP_MBOX_INBOUND_END);
-    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE + SEP_FILTER_CONFIG_OFFSET,
+    wr_filter_field32(SEP_INBOUND_FILTER0_BASE + SEP_INBOUND_FILTER_STRIDE +
+                          SEP_FILTER_CONFIG_OFFSET,
                       SEP_MBOX_INBOUND_CFG_NS);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
 /* Bounded wait for the SEP-local mailbox RX FIFO to become non-empty. 0 = data, -1 = timeout. */
-static int wait_mbox_not_empty(void)
-{
+static int wait_mbox_not_empty(void) {
     for (uint32_t i = 0; i < SEP_INTEROP_POLL_LIMIT; ++i) {
         if ((READ_REG(SEP_LOCAL_MBOX_STATUS) & MBOX_STATUS_EMPTY_MASK) == 0u) {
             return 0;
@@ -102,8 +103,7 @@ static int wait_mbox_not_empty(void)
     return -1;
 }
 
-static int run_interop_sequence(void)
-{
+static int run_interop_sequence(void) {
     /* a. Aperture + inbound mailbox filters (32-bit CSR writes). */
     program_sep_setup();
 
@@ -114,8 +114,7 @@ static int run_interop_sequence(void)
      *    fail marker and stop -- never proceed on an absent/bad preload. */
     sep_smc_open_window();
 
-    if (sep_smc_bringup_from_sram((uint32_t)SEP_INTEROP_SMC_ENTRY,
-                                  SEP_INTEROP_SMC_IMAGE_FIRST_WORD,
+    if (sep_smc_bringup_from_sram((uint32_t)SEP_INTEROP_SMC_ENTRY, SEP_INTEROP_SMC_IMAGE_FIRST_WORD,
                                   SEP_INTEROP_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_INTEROP_SMC_SCRATCH12_ALIAS, SEP_INTEROP_TEST_FAIL);
         return -1;
@@ -136,19 +135,19 @@ static int run_interop_sequence(void)
     WRITE_REG(SEP_LOCAL_MBOX_RIRQT, 0u);
     WRITE_REG(SEP_LOCAL_MBOX_IRQEN, MBOX_IRQ_READ_MASK);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
-    if (READ_REG(SEP_LOCAL_MBOX_RIRQT) != 0u)                             return -2;
-    if (READ_REG(SEP_LOCAL_MBOX_IRQEN) != MBOX_IRQ_READ_MASK)             return -2;
+    if (READ_REG(SEP_LOCAL_MBOX_RIRQT) != 0u) return -2;
+    if (READ_REG(SEP_LOCAL_MBOX_IRQEN) != MBOX_IRQ_READ_MASK) return -2;
     if ((READ_REG(SEP_LOCAL_MBOX_STATUS) & MBOX_STATUS_EMPTY_MASK) == 0u) return -2; /* RX empty */
-    if (READ_REG(SEP_LOCAL_MBOX_IRQS) != 0u)                             return -2;
-    if (READ_REG(SEP_LOCAL_MBOX_IRQP) != 0u)                             return -2;
+    if (READ_REG(SEP_LOCAL_MBOX_IRQS) != 0u) return -2;
+    if (READ_REG(SEP_LOCAL_MBOX_IRQP) != 0u) return -2;
 
     /* Publish READY into SMC scratch12; the SMC waits on this before sending the token. */
     sep_smc_scratch_write(SEP_INTEROP_SMC_SCRATCH12_ALIAS, SEP_INTEROP_READY);
 
     /* d. Wait for the SMC token, pop it, verify, W1C the read IRQ, confirm status/pending clear. */
-    if (wait_mbox_not_empty() != 0)                          return -3;
+    if (wait_mbox_not_empty() != 0) return -3;
     if (READ_REG(SEP_LOCAL_MBOX_RDATA) != SEP_INTEROP_TOKEN) return -3;
-    WRITE_REG(SEP_LOCAL_MBOX_IRQS, MBOX_IRQ_ALL);   /* W1C ALL: read + sticky write-threshold bit */
+    WRITE_REG(SEP_LOCAL_MBOX_IRQS, MBOX_IRQ_ALL); /* W1C ALL: read + sticky write-threshold bit */
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     if (READ_REG(SEP_LOCAL_MBOX_IRQS) != 0u) return -3;
     if (READ_REG(SEP_LOCAL_MBOX_IRQP) != 0u) return -3;
@@ -158,9 +157,9 @@ static int run_interop_sequence(void)
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 
     /* f. Wait for ACK, pop it, verify, W1C, confirm clear. */
-    if (wait_mbox_not_empty() != 0)                        return -4;
+    if (wait_mbox_not_empty() != 0) return -4;
     if (READ_REG(SEP_LOCAL_MBOX_RDATA) != SEP_INTEROP_ACK) return -4;
-    WRITE_REG(SEP_LOCAL_MBOX_IRQS, MBOX_IRQ_ALL);   /* W1C ALL: read + sticky write-threshold bit */
+    WRITE_REG(SEP_LOCAL_MBOX_IRQS, MBOX_IRQ_ALL); /* W1C ALL: read + sticky write-threshold bit */
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     if (READ_REG(SEP_LOCAL_MBOX_IRQS) != 0u) return -4;
     if (READ_REG(SEP_LOCAL_MBOX_IRQP) != 0u) return -4;
@@ -172,8 +171,7 @@ static int run_interop_sequence(void)
     return 0;
 }
 
-int main(void)
-{
+int main(void) {
     int rc = run_interop_sequence();
     if (rc == 0) {
         sep_smc_interop_pass_loop();

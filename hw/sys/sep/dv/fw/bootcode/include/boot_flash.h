@@ -19,9 +19,9 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "manifest.h"        /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
-#include "sep.h" /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
-#include "harden.h"          /* fault-injection value launder (harden_u32)  */
+#include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
+#include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "harden.h"   /* fault-injection value launder (harden_u32)  */
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"

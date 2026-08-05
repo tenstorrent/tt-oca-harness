@@ -29,17 +29,17 @@
 //==============================================================================
 // SEP->SMC alias map (SEP-view 0x4000_0000 region -> SMC-local 0xC000_0000)
 //==============================================================================
-#define SEP_SMC_REGION_START       0x0000000040000000ULL /* SEP-view base of SMC region */
-#define SEP_SMC_REGION_END         0x00000000800000FFULL /* covers SMC region + TB mailbox */
-#define SEP_SMC_RESET_VECTOR_ALIAS 0x40039000u  /* SMC CPU_CTRL RESET_VECTOR_0 (+0/8/10/18) */
-#define SEP_SMC_RESET_CTRL_ALIAS   0x40039020u  /* SMC CPU_CTRL RESET_CTRL */
-#define SEP_SMC_SCRATCH0_ALIAS     0x40039080u  /* SMC CPU_CTRL SCRATCH_0 (8-byte stride) */
-#define SEP_SMC_SRAM_BASE_ALIAS    0x40060000u  /* SMC SRAM base */
+#define SEP_SMC_REGION_START 0x0000000040000000ULL /* SEP-view base of SMC region */
+#define SEP_SMC_REGION_END 0x00000000800000FFULL   /* covers SMC region + TB mailbox */
+#define SEP_SMC_RESET_VECTOR_ALIAS 0x40039000u     /* SMC CPU_CTRL RESET_VECTOR_0 (+0/8/10/18) */
+#define SEP_SMC_RESET_CTRL_ALIAS 0x40039020u       /* SMC CPU_CTRL RESET_CTRL */
+#define SEP_SMC_SCRATCH0_ALIAS 0x40039080u         /* SMC CPU_CTRL SCRATCH_0 (8-byte stride) */
+#define SEP_SMC_SRAM_BASE_ALIAS 0x40060000u        /* SMC SRAM base */
 /* RESET_CTRL pulse: default 0x10F | core0..3 reset_pulse_start[7:4] -> re-fetch all cores. */
-#define SEP_SMC_RESET_CTRL_PULSE   0x00000000000001FFULL
+#define SEP_SMC_RESET_CTRL_PULSE 0x00000000000001FFULL
 
 /* SEP-view alias of an SMC CPU_CTRL scratch index (0..15). */
-#define SEP_SMC_SCRATCH_ALIAS(n)   (SEP_SMC_SCRATCH0_ALIAS + ((uint32_t)(n) * 8u))
+#define SEP_SMC_SCRATCH_ALIAS(n) (SEP_SMC_SCRATCH0_ALIAS + ((uint32_t)(n)*8u))
 
 //==============================================================================
 // Bring-up
@@ -56,11 +56,13 @@ static inline void sep_smc_open_window(void) {
  * cores to `entry` and pulse their reset -- releasing them to run the image. Returns 0 on
  * success, -1 if the cookie never appeared within poll_limit (caller should signal + stop,
  * never proceed on an absent preload). Requires sep_smc_open_window() first. */
-static inline int sep_smc_bringup_from_sram(uint32_t entry, uint32_t cookie,
-                                            uint32_t poll_limit) {
+static inline int sep_smc_bringup_from_sram(uint32_t entry, uint32_t cookie, uint32_t poll_limit) {
     int ready = 0;
     for (uint32_t i = 0; i < poll_limit; ++i) {
-        if (READ_REG(SEP_SMC_SRAM_BASE_ALIAS) == cookie) { ready = 1; break; }
+        if (READ_REG(SEP_SMC_SRAM_BASE_ALIAS) == cookie) {
+            ready = 1;
+            break;
+        }
     }
     if (!ready) {
         return -1;

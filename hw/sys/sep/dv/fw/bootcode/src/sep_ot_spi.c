@@ -123,8 +123,7 @@ static int ot_spi_wait_ready(void);
 /* Program mux + controller registers from a parameter set and wait for ready. */
 static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     /* Select the OpenTitan controller on the SPI mux, release CS force-high. */
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {
-        .w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
+    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
     mux.f.spi_sel = 1u; /* 0 = Cadence, 1 = OpenTitan */
     mux.f.cs_force_high = 0u;
     mmio_write32(OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, mux.w);
@@ -257,7 +256,8 @@ typedef struct {
 } ot_spi_dst_region_t;
 
 static const ot_spi_dst_region_t ot_spi_dst_regions[] = {
-    {(uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE, OT_DMA_ASID_OT_INTERNAL},
+    {(uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE,
+     OT_DMA_ASID_OT_INTERNAL},
 };
 #define OT_SPI_DST_REGION_COUNT (sizeof(ot_spi_dst_regions) / sizeof(ot_spi_dst_regions[0]))
 
@@ -480,10 +480,12 @@ static void ot_dma_teardown(void) {
  * SoC-bus destination. */
 static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst) {
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, region->base);
-    mmio_write32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, region->base + region->size - 1u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR,
+                 region->base + region->size - 1u);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
 
-    mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+                 OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
@@ -561,7 +563,8 @@ static uint32_t ot_dma_stream(uint32_t flash_off, uint32_t dst, uint32_t dma_len
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
         uint32_t st = mmio_read32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (st & OT_DMA_STATUS_ERROR) {
-            simputshex32("OT_SPI: dma error code=", mmio_read32(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+            simputshex32("OT_SPI: dma error code=",
+                         mmio_read32(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
             rc = SEP_MSG_SPI_OT_TRANSPORT_ERROR;
             goto cleanup;
         }

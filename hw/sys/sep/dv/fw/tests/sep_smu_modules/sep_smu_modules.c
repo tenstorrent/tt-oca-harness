@@ -27,16 +27,12 @@
 
 static volatile uint32_t g_sink;
 
-static inline uint32_t bswap32(uint32_t x)
-{
-    return ((x & 0x000000FFu) << 24) |
-           ((x & 0x0000FF00u) << 8)  |
-           ((x & 0x00FF0000u) >> 8)  |
+static inline uint32_t bswap32(uint32_t x) {
+    return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
            ((x & 0xFF000000u) >> 24);
 }
 
-static void to_hex(const uint8_t *in, int n, char *out)
-{
+static void to_hex(const uint8_t *in, int n, char *out) {
     static const char *hex = "0123456789abcdef";
     for (int i = 0; i < n; i++) {
         out[2 * i + 0] = hex[(in[i] >> 4) & 0xF];
@@ -45,14 +41,12 @@ static void to_hex(const uint8_t *in, int n, char *out)
     out[2 * n] = '\0';
 }
 
-static int rw_check32(uint32_t addr, uint32_t val)
-{
+static int rw_check32(uint32_t addr, uint32_t val) {
     WRITE_REG(addr, val);
     return (READ_REG(addr) == val) ? 0 : -1;
 }
 
-static int stage_clock_reset(void)
-{
+static int stage_clock_reset(void) {
     g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR);
     g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
     g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_VERSION_ID_BASE_ADDR);
@@ -64,33 +58,45 @@ static int stage_clock_reset(void)
     return 0;
 }
 
-static int stage_fabric(void)
-{
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(0), 0xC0000000u) != 0) {
+static int stage_fabric(void) {
+    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(0),
+                   0xC0000000u) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(0), 0xCFFFFFFFu) != 0) {
+    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(0),
+                   0xCFFFFFFFu) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000003u) != 0) {
+    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
+                   0x00000003u) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) != 0) return -1;
+    if (rw_check32(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
+                   0x00000001u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
+                   0x00000001u) != 0)
+        return -1;
 
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
+    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
+        return -1;
 
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
+    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
+        return -1;
     return 0;
 }
 
-static int stage_sram_bootrom(void)
-{
-    volatile uint32_t *sram = (volatile uint32_t *)(uintptr_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
+static int stage_sram_bootrom(void) {
+    volatile uint32_t *sram =
+        (volatile uint32_t *)(uintptr_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
     uint32_t pat = 0x1234ABCDu;
     *sram = pat;
     __asm__ volatile("fence" ::: "memory");
@@ -99,19 +105,23 @@ static int stage_sram_bootrom(void)
     return 0;
 }
 
-static int stage_dma_regs(void)
-{
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu) != 0) return -1;
+static int stage_dma_regs(void) {
+    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu) != 0)
+        return -1;
     if (rw_check32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0) return -1;
+    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) !=
+        0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+                   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
+        return -1;
     if (rw_check32(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -1;
     return 0;
 }
 
-static int stage_wdt_regs(void)
-{
+static int stage_wdt_regs(void) {
     if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0u) != 0) return -1;
     if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x200u) != 0) return -1;
     if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x400u) != 0) return -1;
@@ -120,18 +130,11 @@ static int stage_wdt_regs(void)
     return 0;
 }
 
-static int stage_aes_smoke(void)
-{
-    static const uint32_t key[4] = {
-        0x16157e2bu, 0xa6d2ae28u, 0x8815f7abu, 0x3c4fcf09u
-    };
+static int stage_aes_smoke(void) {
+    static const uint32_t key[4] = {0x16157e2bu, 0xa6d2ae28u, 0x8815f7abu, 0x3c4fcf09u};
     static const uint32_t iv[4] = {0, 0, 0, 0};
-    static const uint32_t pt[4] = {
-        0xe2bec16bu, 0x969f402eu, 0x117e3de9u, 0x2a179373u
-    };
-    static const uint32_t ct_exp[4] = {
-        0xb47bd73au, 0x60367a0du, 0xf3ca9ea8u, 0x97ef6624u
-    };
+    static const uint32_t pt[4] = {0xe2bec16bu, 0x969f402eu, 0x117e3de9u, 0x2a179373u};
+    static const uint32_t ct_exp[4] = {0xb47bd73au, 0x60367a0du, 0xf3ca9ea8u, 0x97ef6624u};
     uint32_t out[4];
 
     if (sep_aes_sw_reset_release() != 0) return -1;
@@ -147,8 +150,7 @@ static int stage_aes_smoke(void)
     return 0;
 }
 
-static int hmac_wait_done_or_idle(void)
-{
+static int hmac_wait_done_or_idle(void) {
     int t = HMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
@@ -162,8 +164,7 @@ static int hmac_wait_done_or_idle(void)
     return -1;
 }
 
-static int hmac_sha256_abc(uint8_t digest[32])
-{
+static int hmac_sha256_abc(uint8_t digest[32]) {
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
@@ -208,8 +209,7 @@ static int hmac_sha256_abc(uint8_t digest[32])
     return 0;
 }
 
-static int stage_hmac(void)
-{
+static int stage_hmac(void) {
     static const char *expected_hex =
         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
     uint8_t digest[32];
@@ -219,17 +219,14 @@ static int stage_hmac(void)
     return (strcmp(got, expected_hex) == 0) ? 0 : -1;
 }
 
-#define KMAC_CMD_START   29
+#define KMAC_CMD_START 29
 #define KMAC_CMD_PROCESS 46
-#define KMAC_CMD_DONE    22
+#define KMAC_CMD_DONE 22
 
-static const uint32_t sha3_256_abc_ref[8] = {
-    0x3a985da7u, 0x4fe225b2u, 0x045c172du, 0x6bd390bdu,
-    0x855f086eu, 0x3e9d525bu, 0x46bfe245u, 0x11431532u
-};
+static const uint32_t sha3_256_abc_ref[8] = {0x3a985da7u, 0x4fe225b2u, 0x045c172du, 0x6bd390bdu,
+                                             0x855f086eu, 0x3e9d525bu, 0x46bfe245u, 0x11431532u};
 
-static int kmac_wait_idle(void)
-{
+static int kmac_wait_idle(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
@@ -238,8 +235,7 @@ static int kmac_wait_idle(void)
     return -1;
 }
 
-static int kmac_wait_done(void)
-{
+static int kmac_wait_done(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
@@ -251,8 +247,7 @@ static int kmac_wait_done(void)
     return -1;
 }
 
-static int kmac_sha3_256_abc(uint32_t digest_be[8])
-{
+static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     if (kmac_wait_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
@@ -276,7 +271,8 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8])
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     {
-        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 =
+            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';
@@ -298,8 +294,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8])
     return 0;
 }
 
-static int stage_kmac(void)
-{
+static int stage_kmac(void) {
     uint32_t digest_be[8];
     if (kmac_sha3_256_abc(digest_be) != 0) return -1;
     for (int i = 0; i < 8; i++) {
@@ -308,17 +303,19 @@ static int stage_kmac(void)
     return 0;
 }
 
-static int stage_efuse(void)
-{
-    if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR, 0x0000ABCDu) != 0) return -1;
+static int stage_efuse(void) {
+    if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
+        return -1;
+    if (rw_check32(OCH_SEP_TOP_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR, 0x0000ABCDu) != 0)
+        return -1;
     g_sink ^= READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }
 
-#define SPI_MUX_CTRL_ADDR     OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
-#define SPI_CTRL_ADDR         OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
-#define SPI_CLK_DIV_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
+#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
+#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
+#define SPI_CLK_DIV_CTRL_ADDR \
+    OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
 /*
  * SPI_PROBE_MODE:
  *   0: write-only (regression-safe, avoids known readback side effects)
@@ -330,14 +327,10 @@ static int stage_efuse(void)
 #define SPI_PROBE_MODE 0
 #endif
 
-static int stage_spi_regs(void)
-{
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {
-        .w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset
-    };
+static int stage_spi_regs(void) {
+    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
     och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t clkdiv = {
-        .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset
-    };
+        .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset};
 
     mux.f.spi_sel = 0;
     mux.f.cs_force_high = 1;
@@ -363,95 +356,75 @@ static int stage_spi_regs(void)
     return 0;
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_dma_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_dma_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_wdt_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_wdt_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_aes_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_aes_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_hmac_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_hmac_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_kmac_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_kmac_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_efuse_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_efuse_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_modules_fail_spi_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_spi_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
-    const uint32_t stage_mask =
-        (1u << 2) | /* AES  */
-        (1u << 3) | /* HMAC */
-        (1u << 4) | /* KMAC */
-        (1u << 6);  /* SPI */
+int main(void) {
+    const uint32_t stage_mask = (1u << 2) | /* AES  */
+                                (1u << 3) | /* HMAC */
+                                (1u << 4) | /* KMAC */
+                                (1u << 6);  /* SPI */
 
     sep_outbound_filter_init();
 
-    if ((stage_mask & (1u << 0)) && stage_dma_regs()  != 0) smu_sep_modules_fail_dma_loop();
-    if ((stage_mask & (1u << 1)) && stage_wdt_regs()  != 0) smu_sep_modules_fail_wdt_loop();
+    if ((stage_mask & (1u << 0)) && stage_dma_regs() != 0) smu_sep_modules_fail_dma_loop();
+    if ((stage_mask & (1u << 1)) && stage_wdt_regs() != 0) smu_sep_modules_fail_wdt_loop();
     if ((stage_mask & (1u << 2)) && stage_aes_smoke() != 0) smu_sep_modules_fail_aes_loop();
-    if ((stage_mask & (1u << 3)) && stage_hmac()      != 0) smu_sep_modules_fail_hmac_loop();
-    if ((stage_mask & (1u << 4)) && stage_kmac()      != 0) smu_sep_modules_fail_kmac_loop();
-    if ((stage_mask & (1u << 5)) && stage_efuse()     != 0) smu_sep_modules_fail_efuse_loop();
-    if ((stage_mask & (1u << 6)) && stage_spi_regs()  != 0) smu_sep_modules_fail_spi_loop();
+    if ((stage_mask & (1u << 3)) && stage_hmac() != 0) smu_sep_modules_fail_hmac_loop();
+    if ((stage_mask & (1u << 4)) && stage_kmac() != 0) smu_sep_modules_fail_kmac_loop();
+    if ((stage_mask & (1u << 5)) && stage_efuse() != 0) smu_sep_modules_fail_efuse_loop();
+    if ((stage_mask & (1u << 6)) && stage_spi_regs() != 0) smu_sep_modules_fail_spi_loop();
 
     smu_sep_modules_pass_loop();
     smu_sep_modules_fail_loop();

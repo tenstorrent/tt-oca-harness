@@ -13,22 +13,15 @@
 #include "sep_aes_init.h"
 #include "aes_test_util.h"
 
-static const uint32_t k_key[4] = {
-    0x16157e2bu, 0xa6d2ae28u, 0x8815f7abu, 0x3c4fcf09u
-};
+static const uint32_t k_key[4] = {0x16157e2bu, 0xa6d2ae28u, 0x8815f7abu, 0x3c4fcf09u};
 
 static const uint32_t k_iv[4] = {0, 0, 0, 0};
 
-static const uint32_t k_plaintext[4] = {
-    0xe2bec16bu, 0x969f402eu, 0x117e3de9u, 0x2a179373u
-};
+static const uint32_t k_plaintext[4] = {0xe2bec16bu, 0x969f402eu, 0x117e3de9u, 0x2a179373u};
 
-static const uint32_t k_ciphertext[4] = {
-    0xb47bd73au, 0x60367a0du, 0xf3ca9ea8u, 0x97ef6624u
-};
+static const uint32_t k_ciphertext[4] = {0xb47bd73au, 0x60367a0du, 0xf3ca9ea8u, 0x97ef6624u};
 
-static int run_aes_ecb_kat(void)
-{
+static int run_aes_ecb_kat(void) {
     uint32_t out[4];
 
     if (sep_aes_sw_reset_release() != 0) return -1;
@@ -47,24 +40,19 @@ static int run_aes_ecb_kat(void)
     return 0;
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_aes_pass_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_aes_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-__attribute__((used, noinline, noreturn))
-void smu_sep_aes_fail_loop(void)
-{
+__attribute__((used, noinline, noreturn)) void smu_sep_aes_fail_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
     }
 }
 
-int main(void)
-{
+int main(void) {
     sep_outbound_filter_init();
     if (run_aes_ecb_kat() == 0) {
         smu_sep_aes_pass_loop();

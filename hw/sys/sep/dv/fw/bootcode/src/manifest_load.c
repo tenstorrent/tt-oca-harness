@@ -356,7 +356,8 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             if (sel_ids) {
                 // Only wait if we actually need to read SMC fuse map.
                 for (int i = 0; i < 1000000; ++i) {
-                    uint32_t fss = mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR);
+                    uint32_t fss =
+                        mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR);
                     if (fss & 0x1u) break; // smc_fuse_sense_done
                 }
             }
