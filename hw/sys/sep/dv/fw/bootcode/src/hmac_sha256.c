@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 #include "rom_mmio.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 // Hardware timeout: generous limit for SHA-256 block processing.
 // Each 64-byte block takes ~80 cycles; 1M iterations covers any realistic message.

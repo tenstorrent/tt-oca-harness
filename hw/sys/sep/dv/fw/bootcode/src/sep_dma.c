@@ -13,7 +13,7 @@
 #include "rom_mmio.h"
 
 // Generated absolute register map for OCH SEP.
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 #include "sep_dma.h"
 #include "rom_virt_console.h"

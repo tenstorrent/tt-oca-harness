@@ -20,7 +20,7 @@
 
 #include "boot_straps.h"
 #include "manifest.h"        /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
-#include "och_sep_top_reg.h" /* SEP_SRAM_MEM_BASE_ADDR / SEP_SRAM_MEM_SIZE   */
+#include "sep_reg.h" /* SEP_SRAM_MEM_BASE_ADDR / SEP_SRAM_MEM_SIZE   */
 #include "harden.h"          /* fault-injection value launder (harden_u32)  */
 
 #if BOOT_SPI_CONTROLLER_OT

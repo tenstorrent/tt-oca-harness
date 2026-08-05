@@ -21,7 +21,7 @@
 #include "errors.h" /* status codes + simputs/simputshex32 helpers */
 #include "rom_mmio.h"
 #include "harden.h" /* fault-injection value launder (harden_u32)  */
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 #include "sep_ot_spi.h"
 #include "sep_ot_flash_opcodes.h"

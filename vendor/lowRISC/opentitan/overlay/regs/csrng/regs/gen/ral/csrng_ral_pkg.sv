@@ -3,15 +3,15 @@
 `ifndef CSRNG_RAL_PKG_SV
 `define CSRNG_RAL_PKG_SV
     
-    // reg - csrng.INTERRUPT_STATE
-    class csrng__INTERRUPT_STATE extends uvm_reg;
-        `uvm_object_utils(csrng__INTERRUPT_STATE)
+    // reg - csrng.INTR_STATE
+    class csrng__INTR_STATE extends uvm_reg;
+        `uvm_object_utils(csrng__INTR_STATE)
         rand uvm_reg_field CS_CMD_REQ_DONE;
         rand uvm_reg_field CS_ENTROPY_REQ;
         rand uvm_reg_field CS_HW_INST_EXC;
         rand uvm_reg_field CS_FATAL_ERR;
 
-        function new(string name = "csrng__INTERRUPT_STATE");
+        function new(string name = "csrng__INTR_STATE");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -25,17 +25,17 @@
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
             this.CS_FATAL_ERR.configure(this, 1, 3, "W1C", 1, 'h0, 0, 1, 0);
         endfunction : build
-    endclass : csrng__INTERRUPT_STATE
+    endclass : csrng__INTR_STATE
 
-    // reg - csrng.INTERRUPT_ENABLE
-    class csrng__INTERRUPT_ENABLE extends uvm_reg;
-        `uvm_object_utils(csrng__INTERRUPT_ENABLE)
+    // reg - csrng.INTR_ENABLE
+    class csrng__INTR_ENABLE extends uvm_reg;
+        `uvm_object_utils(csrng__INTR_ENABLE)
         rand uvm_reg_field CS_CMD_REQ_DONE;
         rand uvm_reg_field CS_ENTROPY_REQ;
         rand uvm_reg_field CS_HW_INST_EXC;
         rand uvm_reg_field CS_FATAL_ERR;
 
-        function new(string name = "csrng__INTERRUPT_ENABLE");
+        function new(string name = "csrng__INTR_ENABLE");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -49,17 +49,17 @@
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
             this.CS_FATAL_ERR.configure(this, 1, 3, "W1C", 1, 'h0, 0, 1, 0);
         endfunction : build
-    endclass : csrng__INTERRUPT_ENABLE
+    endclass : csrng__INTR_ENABLE
 
-    // reg - csrng.INTERRUPT_TEST
-    class csrng__INTERRUPT_TEST extends uvm_reg;
-        `uvm_object_utils(csrng__INTERRUPT_TEST)
+    // reg - csrng.INTR_TEST
+    class csrng__INTR_TEST extends uvm_reg;
+        `uvm_object_utils(csrng__INTR_TEST)
         rand uvm_reg_field CS_CMD_REQ_DONE;
         rand uvm_reg_field CS_ENTROPY_REQ;
         rand uvm_reg_field CS_HW_INST_EXC;
         rand uvm_reg_field CS_FATAL_ERR;
 
-        function new(string name = "csrng__INTERRUPT_TEST");
+        function new(string name = "csrng__INTR_TEST");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -73,7 +73,7 @@
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
             this.CS_FATAL_ERR.configure(this, 1, 3, "WO", 1, 'h0, 0, 1, 0);
         endfunction : build
-    endclass : csrng__INTERRUPT_TEST
+    endclass : csrng__INTR_TEST
 
     // reg - csrng.ALERT_TEST
     class csrng__ALERT_TEST extends uvm_reg;
@@ -522,9 +522,9 @@
     // addrmap - csrng
     class csrng extends uvm_reg_block;
         `uvm_object_utils(csrng)
-        rand csrng__INTERRUPT_STATE INTERRUPT_STATE;
-        rand csrng__INTERRUPT_ENABLE INTERRUPT_ENABLE;
-        rand csrng__INTERRUPT_TEST INTERRUPT_TEST;
+        rand csrng__INTR_STATE INTR_STATE;
+        rand csrng__INTR_ENABLE INTR_ENABLE;
+        rand csrng__INTR_TEST INTR_TEST;
         rand csrng__ALERT_TEST ALERT_TEST;
         rand csrng__REGWEN REGWEN;
         rand csrng__CTRL CTRL;
@@ -553,21 +553,21 @@
 
         virtual function void build();
             this.default_map = create_map("reg_map", 0, 4, UVM_NO_ENDIAN);
-            this.INTERRUPT_STATE = csrng__INTERRUPT_STATE::type_id::create("INTERRUPT_STATE");
-            this.INTERRUPT_STATE.configure(this);
+            this.INTR_STATE = csrng__INTR_STATE::type_id::create("INTR_STATE");
+            this.INTR_STATE.configure(this);
 
-            this.INTERRUPT_STATE.build();
-            this.default_map.add_reg(this.INTERRUPT_STATE, 'h0);
-            this.INTERRUPT_ENABLE = csrng__INTERRUPT_ENABLE::type_id::create("INTERRUPT_ENABLE");
-            this.INTERRUPT_ENABLE.configure(this);
+            this.INTR_STATE.build();
+            this.default_map.add_reg(this.INTR_STATE, 'h0);
+            this.INTR_ENABLE = csrng__INTR_ENABLE::type_id::create("INTR_ENABLE");
+            this.INTR_ENABLE.configure(this);
 
-            this.INTERRUPT_ENABLE.build();
-            this.default_map.add_reg(this.INTERRUPT_ENABLE, 'h4);
-            this.INTERRUPT_TEST = csrng__INTERRUPT_TEST::type_id::create("INTERRUPT_TEST");
-            this.INTERRUPT_TEST.configure(this);
+            this.INTR_ENABLE.build();
+            this.default_map.add_reg(this.INTR_ENABLE, 'h4);
+            this.INTR_TEST = csrng__INTR_TEST::type_id::create("INTR_TEST");
+            this.INTR_TEST.configure(this);
 
-            this.INTERRUPT_TEST.build();
-            this.default_map.add_reg(this.INTERRUPT_TEST, 'h8);
+            this.INTR_TEST.build();
+            this.default_map.add_reg(this.INTR_TEST, 'h8);
             this.ALERT_TEST = csrng__ALERT_TEST::type_id::create("ALERT_TEST");
             this.ALERT_TEST.configure(this);
 

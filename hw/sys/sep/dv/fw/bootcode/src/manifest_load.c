@@ -30,7 +30,7 @@
 #include "bl0_state.h"
 
 // Generated register map for OCH SEP.
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_smc_interface.h"
 
 // SEP EXT SRAM: staging area for manifest and payload.

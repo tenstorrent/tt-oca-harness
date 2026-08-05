@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_outbound_filter.h"
 
 #define SPI_MUX_CTRL_ADDR \

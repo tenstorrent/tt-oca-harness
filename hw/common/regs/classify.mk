@@ -56,6 +56,7 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/entropy_source \
+  hw/ip/key_manager/regs/km_mailbox_sep \
   vendor/lowRISC/opentitan/overlay/regs/csrng \
   vendor/lowRISC/opentitan/overlay/regs/edn
 # Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
@@ -68,7 +69,15 @@ OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
 OCAH_REG_JSON_BLOCKS ?= hw/sys/smc
 OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
+# Flat C headers are opt-in too: every top already gets the peakrdl c-header and
+# raw-header, and this third one only earns its keep where firmware is written
+# against the flat names the SV/Python headers use. Today that is SEP bootcode
+# and its fw tests (och_sep_top_reg.h).
+OCAH_REG_CHDR_BLOCKS ?= hw/sys/sep
+OCAH_REG_CHDR_BLOCKS += $(OCAH_REG_CHDR_BLOCKS_EXTRA)
+
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_has_chdr = $(filter $(1),$(OCAH_REG_CHDR_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
 ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 

@@ -16,7 +16,7 @@
 #include "manifest.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_smc_interface.h"
 
 // SMC CPU CTRL reset control register offset (holds SMC cores in reset).

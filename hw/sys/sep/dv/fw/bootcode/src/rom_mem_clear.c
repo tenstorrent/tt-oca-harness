@@ -20,7 +20,7 @@
 #include "rom_mmio.h"
 
 // Generated register map (provides SEP_SRAM_MEM_BASE_ADDR/SIZE).
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 #define SRAM_BASE ((uint32_t)SEP_SRAM_MEM_BASE_ADDR)
 #define SRAM_SIZE ((uint32_t)SEP_SRAM_MEM_SIZE)

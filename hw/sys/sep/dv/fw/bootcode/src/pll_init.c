@@ -13,7 +13,7 @@
 #include "rom_mmio.h"
 #include "errors.h"
 #include "sep_smc_interface.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 // Fuse sense done is bit 0 of SMC_FUSE_SENSE_STATUS (SEP-local register).
 #define FUSE_SENSE_DONE_MASK 0x1u

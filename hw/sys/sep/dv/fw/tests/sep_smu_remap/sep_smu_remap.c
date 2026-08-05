@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_outbound_filter.h"
 
 #define AP_REGION0_OFFSET   0x00ABC00000ull

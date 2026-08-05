@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_outbound_filter.h"
 #include "sep_aes_init.h"
 #include "aes_test_util.h"

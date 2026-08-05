@@ -20,6 +20,7 @@ ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1
 ocah_reg_run_adoc     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_html     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" 2>&1 | tee "$(4)"
+ocah_reg_run_chdr     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlchdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
 ocah_reg_run_py       = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlpyhdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" --bitfields $(4) 2>&1 | tee "$(5)"
 # UVM RAL, straight from the stock peakrdl-uvm exporter. The flags are not
@@ -65,9 +66,18 @@ $(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP)
 	@echo "Regenerating flattened SV header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)'
 
-$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1))
+$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1)) $(call ocah_reg_chdr_target,$(1))
 	@mkdir -p "$(call ocah_reg_build,$(1))"
 	@touch "$$@"
+endef
+
+# Flat C header for a whole top (composite or leaf), opt-in list only. Shares
+# the emitter's view with the svh rule above, so it hangs off the same RDL.
+define ocah_reg_chdr_rule
+$(call ocah_reg_chdr_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlchdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
+	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating flattened C header for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_chdr,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_chdr_output,$(1)),$(call ocah_reg_build,$(1))/chdr.log)'
 endef
 
 # Plain-leaf register RTL: one regblock run on the block's own RDL.
@@ -171,3 +181,5 @@ $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)
 # JSON applies to a top of either shape, so it loops over all blocks, not the
 # composite/leaf split.
 $(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_json_rule,$(block))))
+# Flat C header: same whole-top scope as JSON.
+$(foreach block,$(filter $(OCAH_REG_CHDR_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_chdr_rule,$(block))))

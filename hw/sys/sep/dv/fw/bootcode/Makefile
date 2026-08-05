@@ -31,11 +31,18 @@ SHELL := /bin/bash
 
 GCC_PREFIX ?= riscv64-unknown-elf
 
-# SEP DV root (bootcode is 2 dirs deep under it: <dv>/fw/bootcode). Everything
-# this build needs lives at or below <dv> so the OSS DV tree is self-contained
-# (no reach above the DV tree). The SEP top register header (och_sep_top_reg.h) is
-# vendored into include/, so no external meta/registers/c include is needed.
+# SEP DV root (bootcode is 2 dirs deep under it: <dv>/fw/bootcode).
 DV_ROOT := $(abspath $(CURDIR)/../..)
+
+# Flat SEP register header (sep_reg.h), emitted by the open register flow next
+# to the RDL it comes from (`make ocah-regen-regs-chdr`). It used to be a copy
+# vendored into include/; reading the generated one instead is what keeps the
+# header from drifting away from the RDL the RTL is built from.
+#
+# When the nonfree tree is present its variant goes first, for the usual reason:
+# both emit sep_reg.h, and only the nonfree one resolves the vendor shims.
+REG_INCLUDE_DIRS := $(if $(NONFREE_ROOT),-I$(NONFREE_ROOT)/hw/sys/sep/regs/gen/c) \
+	-I$(abspath $(DV_ROOT)/../regs/gen/c)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
@@ -107,14 +114,14 @@ OBJS += $(NONFREE_BOOTCODE_OBJS)
 # out because binutils >= 2.38 rejects fence.i (rom_handoff.c) without it.
 CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
-	-I$(INCLUDE_DIR) -I$(BUILD_DIR) \
+	-I$(INCLUDE_DIR) -I$(BUILD_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
-ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) \
+ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
 	$(CC_ABI)
 LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(CC_ABI)

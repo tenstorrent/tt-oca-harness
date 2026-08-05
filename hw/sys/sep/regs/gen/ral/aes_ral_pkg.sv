@@ -3,6 +3,24 @@
 `ifndef AES_RAL_PKG_SV
 `define AES_RAL_PKG_SV
     
+    // reg - aes.ALERT_TEST
+    class aes__ALERT_TEST extends uvm_reg;
+        `uvm_object_utils(aes__ALERT_TEST)
+        rand uvm_reg_field recov_ctrl_update_err;
+        rand uvm_reg_field fatal_fault;
+
+        function new(string name = "aes__ALERT_TEST");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.recov_ctrl_update_err = uvm_reg_field::type_id::create("recov_ctrl_update_err");
+            this.recov_ctrl_update_err.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
+            this.fatal_fault = uvm_reg_field::type_id::create("fatal_fault");
+            this.fatal_fault.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aes__ALERT_TEST
+
     // reg - aes.KEY_SHARE0[]
     class aes__KEY_SHARE0 extends uvm_reg;
         `uvm_object_utils(aes__KEY_SHARE0)
@@ -219,6 +237,7 @@
     // addrmap - aes
     class aes extends uvm_reg_block;
         `uvm_object_utils(aes)
+        rand aes__ALERT_TEST ALERT_TEST;
         rand aes__KEY_SHARE0 KEY_SHARE0[8];
         rand aes__KEY_SHARE1 KEY_SHARE1[8];
         rand aes__IV IV[4];
@@ -237,6 +256,11 @@
 
         virtual function void build();
             this.default_map = create_map("reg_map", 0, 4, UVM_NO_ENDIAN);
+            this.ALERT_TEST = aes__ALERT_TEST::type_id::create("ALERT_TEST");
+            this.ALERT_TEST.configure(this);
+
+            this.ALERT_TEST.build();
+            this.default_map.add_reg(this.ALERT_TEST, 'h0);
             foreach(this.KEY_SHARE0[i0]) begin
                 this.KEY_SHARE0[i0] = aes__KEY_SHARE0::type_id::create($sformatf("KEY_SHARE0[%0d]", i0));
                 this.KEY_SHARE0[i0].configure(this);

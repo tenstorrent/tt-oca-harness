@@ -5,6 +5,20 @@ addrmap aes {
     reg {
         field {
             sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } recov_ctrl_update_err[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } fatal_fault[1:1] = 0x0;
+    } external ALERT_TEST @ 0x0;
+    reg {
+        field {
+            sw = w;
             onwrite = woclr;
             desc = "Initial Key Registers Share 0.
 

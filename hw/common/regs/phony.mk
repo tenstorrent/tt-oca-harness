@@ -41,6 +41,11 @@ ocah-regen-regs-svh: $(OCAH_REGEN_REG_SVH)
 .PHONY: ocah-regen-regs-py
 ocah-regen-regs-py: $(OCAH_REGEN_REG_PY)
 
+## Regenerate flattened C register headers for the OCAH register blocks that opt in.
+## @param TARGET=sep Optional register block basename to regenerate
+.PHONY: ocah-regen-regs-chdr
+ocah-regen-regs-chdr: $(OCAH_REGEN_REG_CHDR)
+
 ## Regenerate JSON register models for the OCAH register blocks that opt in.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-json
@@ -88,6 +93,7 @@ OCAH_PHONY += \
   ocah-regen-regs-addrpkg \
   ocah-regen-regs-svh \
   ocah-regen-regs-py \
+  ocah-regen-regs-chdr \
   ocah-regen-regs-ral \
   ocah-regen-regs-json \
   ocah-regen-regs-adoc \

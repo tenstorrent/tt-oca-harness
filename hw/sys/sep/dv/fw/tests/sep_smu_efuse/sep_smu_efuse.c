@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_outbound_filter.h"
 
 static int rw_check32(uint32_t addr, uint32_t value)

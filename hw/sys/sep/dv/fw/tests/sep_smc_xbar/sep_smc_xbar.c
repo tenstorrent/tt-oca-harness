@@ -2,7 +2,7 @@
 #include <stddef.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_smc_bringup.h"   /* common: sep_smc_open_window / _bringup_from_sram / _scratch_* */
 #include "smc_sep_xbar_protocol.h"
 

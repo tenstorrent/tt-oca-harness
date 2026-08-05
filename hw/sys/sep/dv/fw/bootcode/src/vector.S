@@ -12,7 +12,7 @@
     .globl _start
     .type  _start, @function
 
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 /* SEP STDOUT mailbox (same as dv/sep/tb/tb_uvm/sv/sep_wrap_uvm_top.sv monitor) */
 .equ SEP_STDOUT_MBX, 0x80000000

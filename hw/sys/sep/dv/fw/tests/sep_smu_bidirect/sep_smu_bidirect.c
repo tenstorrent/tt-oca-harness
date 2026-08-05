@@ -2,7 +2,7 @@
 #include <stddef.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "test_completion.h"
 
 #define XBAR_FILTER_START_ADDR       0x0000000040000000ULL

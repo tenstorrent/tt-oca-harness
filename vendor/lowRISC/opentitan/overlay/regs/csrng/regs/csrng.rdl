@@ -23,7 +23,7 @@ addrmap csrng {
             onwrite = woclr;
             desc = "Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.";
         } CS_FATAL_ERR[3:3];
-    } INTERRUPT_STATE @ 0x0;
+    } INTR_STATE @ 0x0;
     reg {
         field {
             sw = rw;
@@ -45,7 +45,7 @@ addrmap csrng {
             onwrite = woclr;
             desc = "Enable interrupt when cs_fatal_err is set.";
         } CS_FATAL_ERR[3:3];
-    } INTERRUPT_ENABLE @ 0x4;
+    } INTR_ENABLE @ 0x4;
     reg {
         field {
             sw = w;
@@ -63,7 +63,7 @@ addrmap csrng {
             sw = w;
             desc = "Write 1 to force cs_fatal_err to 1.";
         } CS_FATAL_ERR[3:3];
-    } INTERRUPT_TEST @ 0x8;
+    } INTR_TEST @ 0x8;
     reg {
         field {
             sw = w;

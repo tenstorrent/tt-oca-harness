@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #include "rom_mmio.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "errors.h"
 
 // AES operation modes.

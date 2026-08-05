@@ -106,7 +106,7 @@ static volatile uint32_t g_bss_zero;
 // #define ROM_FAIL_ON_SPI_INIT_ERROR 0
 
 // SEP scratch register addresses (from och_sep_top_reg.h).
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 
 // Placeholder addresses until DFT status window is finalized.
 #ifndef ROM_DFT_STATUS_ADDR

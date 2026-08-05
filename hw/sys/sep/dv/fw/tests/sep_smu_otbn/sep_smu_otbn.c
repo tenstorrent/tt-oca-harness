@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #include "och_sep_common.h"
-#include "och_sep_top_reg.h"
+#include "sep_reg.h"
 #include "sep_outbound_filter.h"
 
 static volatile int g_otbn_status;
