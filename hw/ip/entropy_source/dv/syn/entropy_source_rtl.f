@@ -16,7 +16,7 @@
 // Note: All paths are relative to the syn/ directory
 //------------------------------------------------------------------------------
 // Register package and register block (must come first)
-// These are auto-generated from SystemRDL via generate_register_files.sh
+// These are auto-generated from SystemRDL by `make -f ocah.mk ocah-regen-regs`.
 ../regs/gen/sv/entropy_source_reg_pkg.sv
 ../regs/gen/sv/entropy_source_reg.sv
 

@@ -34,19 +34,17 @@ cd tb_vcs
 make test
 ```
 
-### Integration with generate_all.py
+### Register generation
 
-CTM is included in the `tools/generate_all.py` script. When using `generate_all.py`,
-CTM is generated with `num-ct-src` and `num-ct-dst` set to `num_ctp + num_int_ct`
-(default: 16 + 9 = 25 ports).
+CTM's register collateral comes from the tree-wide flow, which reads the
+committed `regs/cross_trigger_matrix.rdl` and writes `regs/gen/`:
 
 ```bash
-# Generate all IPs including CTM with 25 ports
-python3 tools/generate_all.py -i axi4-lite
-
-# Generate with custom CTM port count
-python3 tools/generate_all.py -i axi4-lite --num-ctp 8 --num-int-ct 4
+make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
 ```
+
+Changing the port count means regenerating the RDL first, with the script
+documented below; the flow above does not take port-count arguments.
 
 ## Generation Script
 

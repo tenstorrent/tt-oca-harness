@@ -76,6 +76,13 @@ OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 OCAH_REG_CHDR_BLOCKS ?= hw/sys/sep
 OCAH_REG_CHDR_BLOCKS += $(OCAH_REG_CHDR_BLOCKS_EXTRA)
 
+# The flat header names its constants per register type, so which type a given
+# instance has is recoverable only from the total struct. Opt-in, because it is
+# one line per instance (~2000 for an SMC-sized top) and only a consumer that
+# walks instances generically needs it.
+OCAH_REG_CHDR_TOTAL_STRUCT_BLOCKS ?=
+OCAH_REG_CHDR_TOTAL_STRUCT_BLOCKS += $(OCAH_REG_CHDR_TOTAL_STRUCT_BLOCKS_EXTRA)
+
 # Blocks whose regblock RTL answers a bad address or a write to a read-only
 # register with an error response, rather than silently accepting it. Listed by
 # name; the overlay appends its own (the TRNG wrapper, whose DV env checks it).

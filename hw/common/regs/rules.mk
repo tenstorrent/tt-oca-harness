@@ -20,7 +20,7 @@ ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1
 ocah_reg_run_adoc     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_html     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" 2>&1 | tee "$(4)"
-ocah_reg_run_chdr     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlchdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" 2>&1 | tee "$(4)"
+ocah_reg_run_chdr     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlchdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) $(call ocah_reg_chdr_opts,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
 ocah_reg_run_py       = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlpyhdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" --bitfields $(4) 2>&1 | tee "$(5)"
 # UVM RAL, straight from the stock peakrdl-uvm exporter. The flags are not

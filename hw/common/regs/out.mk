@@ -20,6 +20,7 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # expects the block itself to answer a bad access with an error.
 ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
 ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
+ocah_reg_chdr_opts = $(if $(filter $(1),$(OCAH_REG_CHDR_TOTAL_STRUCT_BLOCKS)),--add_total_struct)
 # Non-empty when the block's register RTL is sourced outside regblock.
 ocah_reg_sv_skipped  = $(filter skip,$(OCAH_REG_SVMODE_$(call ocah_reg_key,$(1))))
 # Composite sub-blocks by output class.

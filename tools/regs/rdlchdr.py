@@ -43,6 +43,7 @@ class CHeaderListener(FieldCollector):
         super().__init__(root, args.addrmap, args.shorten_names)
         self.addr_width = int(args.addr_width)
         self.input_file = args.input_rdl_file
+        self.add_total_struct = args.add_total_struct
         self.guard = None
 
         self.header_text = ""
@@ -192,6 +193,15 @@ class CHeaderListener(FieldCollector):
                 f"}} {reg_name}_reg_u;\n\n"
             )
 
+        if self.add_total_struct:
+            rows = []
+            for inst, reginst in self.reg_inst_count.items():
+                dims = "".join(f"[{d}]" for d in reginst.dims) if reginst.dims else ""
+                rows.append(f"    {reginst.type_name}_reg_u {inst.lower()}{dims};\n")
+            self.struct_text += "typedef struct {\n"
+            self.struct_text += "".join(rows)
+            self.struct_text += f"}} {self.target_addr_map}_regmap_t;\n\n"
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -207,6 +217,10 @@ def main():
     parser.add_argument("-s", "--shorten_names", action="store_true",
                         help="use shorter constant names")
     parser.add_argument("--addr_width", default=32, help="width of address bus")
+    parser.add_argument("--add_total_struct", action="store_true",
+                        help="append a struct naming every register instance and its "
+                        "union type, the only place the header records which type an "
+                        "instance has (constants elsewhere are named per type)")
     args = parser.parse_args()
 
     rdlc = RDLCompiler()
