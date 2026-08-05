@@ -14,6 +14,12 @@ ocah_reg_c_bitfields = $(OCAH_REG_BITFIELDS_$(call ocah_reg_key,$(1)))
 ocah_reg_py_bitfields = $(OCAH_REG_BITFIELDS_PY_$(call ocah_reg_key,$(1)))
 ocah_reg_html_output = $(OCAH_REG_HTML_$(call ocah_reg_key,$(1)))
 ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_REG_CPU_IF_NAME_$(call ocah_reg_name,$(1))),$(OCAH_REG_CPU_IF))
+# Decode-error responses (--err-if-bad-addr / --err-if-bad-rw). Off by default
+# because a block behind a decoder that already filters its window has nothing
+# to report, and the checks cost a comparator per register. On where the DV env
+# expects the block itself to answer a bad access with an error.
+ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
+ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
 # Non-empty when the block's register RTL is sourced outside regblock.
 ocah_reg_sv_skipped  = $(filter skip,$(OCAH_REG_SVMODE_$(call ocah_reg_key,$(1))))
 # Composite sub-blocks by output class.
