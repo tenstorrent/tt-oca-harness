@@ -1,0 +1,29 @@
+hw/sys/smc/dv/models/regs/gen/py/pll_wrap_reg.py
+  s_d605cb93395a31::t_c54e643eb67aa5 1-36
+hw/sys/smc/dv/models/regs/gen/py/pvt_wrap_reg.py
+  s_d605cb93395a31::t_1ccd5234446721 1-36
+hw/sys/smc/dv/models/regs/gen/svh/pll_wrap_reg.svh
+  s_d605cb93395a31::t_15350e0b395172 1-66
+vendor/pulp-platform/idma/overlay/rdl/gen/py/dma_ctrl_reg.py
+  s_d605cb93395a31::t_1b5845dffd01bf 1-582
+vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_addrmap_pkg.sv
+  s_d605cb93395a31::t_34302f02e7b39c 1-71
+vendor/pulp-platform/idma/overlay/rdl/gen/svh/dma_ctrl_reg.svh
+  s_d605cb93395a31::t_f4df62dac3d235 1-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1a2872ff5d56ba153cc48f4275ff822c892fc138",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
