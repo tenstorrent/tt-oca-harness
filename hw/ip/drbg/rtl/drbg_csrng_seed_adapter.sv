@@ -109,26 +109,26 @@ module drbg_csrng_seed_adapter import drbg_pkg::*; #(
     // Assertions
     // =========================================================================
 
-    `ASSERT_INIT(SeedFifoDepthValid_A, SEED_FIFO_DEPTH > 0)
-    `ASSERT(EsAckRequiresSeed_A, entropy_src_hw_if_rsp_o.es_ack |-> seed_queue_valid_o)
-    `ASSERT(SeedFipsPolicy_A,
+    `OCAH_OT_ASSERT_INIT(SeedFifoDepthValid_A, SEED_FIFO_DEPTH > 0)
+    `OCAH_OT_ASSERT(EsAckRequiresSeed_A, entropy_src_hw_if_rsp_o.es_ack |-> seed_queue_valid_o)
+    `OCAH_OT_ASSERT(SeedFipsPolicy_A,
         seed_queue_valid_o |-> entropy_src_hw_if_rsp_o.es_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
-    `ASSERT(SeedPushRequiresPackedSeed_A, seed_push_o |-> packer_rvalid)
-    `ASSERT(SeedAckRequiresRequest_A, entropy_src_hw_if_rsp_o.es_ack |-> entropy_src_hw_if_req_i.es_req)
-    `ASSERT(SeedQueueStableWhenWaiting_A,
+    `OCAH_OT_ASSERT(SeedPushRequiresPackedSeed_A, seed_push_o |-> packer_rvalid)
+    `OCAH_OT_ASSERT(SeedAckRequiresRequest_A, entropy_src_hw_if_rsp_o.es_ack |-> entropy_src_hw_if_req_i.es_req)
+    `OCAH_OT_ASSERT(SeedQueueStableWhenWaiting_A,
         seed_queue_valid_o && !entropy_src_hw_if_req_i.es_req |=> $stable(seed_queue_bits_o))
 
-    `ASSERT_KNOWN(CsrngWordReadyKnown_A, csrng_word_ready_o)
-    `ASSERT_KNOWN(EsAckKnown_A, entropy_src_hw_if_rsp_o.es_ack)
-    `ASSERT_KNOWN_IF(EsBitsKnown_A, entropy_src_hw_if_rsp_o.es_bits, seed_queue_valid_o)
-    `ASSERT_KNOWN_IF(EsFipsKnown_A, entropy_src_hw_if_rsp_o.es_fips, seed_queue_valid_o)
-    `ASSERT_KNOWN(SeedQueueValidKnown_A, seed_queue_valid_o)
-    `ASSERT_KNOWN_IF(SeedQueueBitsKnown_A, seed_queue_bits_o, seed_queue_valid_o)
-    `ASSERT_KNOWN_IF(SeedQueueFipsKnown_A, seed_queue_fips_o, seed_queue_valid_o)
-    `ASSERT_KNOWN(PackerWordCountKnown_A, packer_word_count_o)
-    `ASSERT_KNOWN(SeedQueueDepthKnown_A, seed_queue_depth_o)
-    `ASSERT(SeedFifoHealthy_A, !seed_fifo_err)
-    `ASSERT(SeedFifoNotWrittenWhenFull_A, packer_rvalid && seed_fifo_full |-> !seed_push_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrngWordReadyKnown_A, csrng_word_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(EsAckKnown_A, entropy_src_hw_if_rsp_o.es_ack)
+    `OCAH_OT_ASSERT_KNOWN_IF(EsBitsKnown_A, entropy_src_hw_if_rsp_o.es_bits, seed_queue_valid_o)
+    `OCAH_OT_ASSERT_KNOWN_IF(EsFipsKnown_A, entropy_src_hw_if_rsp_o.es_fips, seed_queue_valid_o)
+    `OCAH_OT_ASSERT_KNOWN(SeedQueueValidKnown_A, seed_queue_valid_o)
+    `OCAH_OT_ASSERT_KNOWN_IF(SeedQueueBitsKnown_A, seed_queue_bits_o, seed_queue_valid_o)
+    `OCAH_OT_ASSERT_KNOWN_IF(SeedQueueFipsKnown_A, seed_queue_fips_o, seed_queue_valid_o)
+    `OCAH_OT_ASSERT_KNOWN(PackerWordCountKnown_A, packer_word_count_o)
+    `OCAH_OT_ASSERT_KNOWN(SeedQueueDepthKnown_A, seed_queue_depth_o)
+    `OCAH_OT_ASSERT(SeedFifoHealthy_A, !seed_fifo_err)
+    `OCAH_OT_ASSERT(SeedFifoNotWrittenWhenFull_A, packer_rvalid && seed_fifo_full |-> !seed_push_o)
 
 endmodule : drbg_csrng_seed_adapter
 

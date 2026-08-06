@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
 
 /**
  * @file picorv32_wrapper.sv
@@ -40,6 +37,7 @@
  * @param SRAM_ADDR_WIDTH   SRAM word-address width.
  * @param LATCHED_MEM_RDATA Set to 1 if ROM/SRAM latch read data.
  */
+
 module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     // AXI-Lite interface types (for peripherals)
     parameter type axil_req_t  = km_axil_req_t,
@@ -54,47 +52,47 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     parameter bit LATCHED_MEM_RDATA = 1'b0
 ) (
     // Clock and Reset
-    input  wire logic clk_i,
-    input  wire logic rst_ni,
-    input  wire logic rst_sync_ni,
+    input  logic clk_i,
+    input  logic rst_ni,
+    input  logic rst_sync_ni,
 
     // ROM Interface (with parity checking)
     output km_rom_mem_req_t rom_mem_req_o,
-    input  wire km_rom_mem_rsp_t rom_mem_rsp_i,
+    input  km_rom_mem_rsp_t rom_mem_rsp_i,
     output logic            rom_parity_err_o,
     output logic            rom_write_err_o,  // ROM write attempt detected (pulse)
 
     // SRAM Interface (with scrambling and parity checking)
     output km_sram_mem_req_t sram_mem_req_o,
-    input  wire km_sram_mem_rsp_t sram_mem_rsp_i,
+    input  km_sram_mem_rsp_t sram_mem_rsp_i,
     output logic             sram_parity_err_o,
 
     // Scrambler control (from KMCSR, passed through to SRAM interface)
-    input  wire logic [31:0] scrambler_key_i,
-    input  wire logic   scrambler_en_i,
+    input  logic [31:0] scrambler_key_i,
+    input  logic   scrambler_en_i,
 
     // SRAM write-lock (from KMCSR): bit[i]=1 locks region i (512 bytes each)
-    input  wire logic [31:0] sram_lock_bits_i,
+    input  logic [31:0] sram_lock_bits_i,
 
     // SRAM write-lock violation (to KMCSR): one-hot region that had attempted write while locked
     output logic [31:0] sram_write_lock_violation_region_o,
 
     // Execute-permission whitelist mode (from KMCSR): 0=ROM-only, 1=ROM+write-locked-SRAM
-    input  wire logic   sram_exec_mode_i,
+    input  logic   sram_exec_mode_i,
     // Execute-permission whitelist violation (to KMCSR): pulse on committed fetch outside whitelist
     output logic        exec_violation_o,
 
     // AXI4-Lite Master Interface (for peripherals via crossbar)
     output axil_req_t  axi_mst_req_o,
-    input  wire axil_resp_t axi_mst_resp_i,
+    input  axil_resp_t axi_mst_resp_i,
 
     // Interrupt Inputs
-    input  wire logic irq_i,                 // KMCSR aggregated interrupt (sticky error sources)
-    input  wire logic mbox_irq_i,            // Mailbox inbound data available (level-sensitive)
-    input  wire logic abr_sharedkey_irq_i,   // ML-KEM shared-key valid (level-sensitive)
+    input  logic irq_i,                 // KMCSR aggregated interrupt (sticky error sources)
+    input  logic mbox_irq_i,            // Mailbox inbound data available (level-sensitive)
+    input  logic abr_sharedkey_irq_i,   // ML-KEM shared-key valid (level-sensitive)
 
     // Runtime IRQ handler entry PC (from KMCSR; reset default 0x0000_0010)
-    input  wire logic [31:0] irq_entry_addr_i,
+    input  logic [31:0] irq_entry_addr_i,
 
     // Trap Output (for debugging)
     output logic trap_o,
@@ -671,4 +669,3 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
 
 endmodule : picorv32_wrapper
 
-`default_nettype wire

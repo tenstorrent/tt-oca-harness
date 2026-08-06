@@ -239,7 +239,7 @@ module system_timer_octs_core
 
     assign credit_gen_pulse = is_primary_i && enable && (credit_counter_q == (reg_credit_val_i - 1));
 
-    `ASSERT(CreditCounterValid_A, credit_counter_q <= reg_credit_val_i) // Credit counter should never exceed credit value
+    `OCAH_OT_ASSERT(CreditCounterValid_A, credit_counter_q <= reg_credit_val_i) // Credit counter should never exceed credit value
 
     //////////////////////////
     // SECONDARY Mode Logic //
@@ -285,7 +285,7 @@ module system_timer_octs_core
         end
     end
 
-    `ASSERT(ExpectedCountValid_A, is_primary_i || (timer_count_q - expected_count_q <= reg_credit_val_i)) // Expected count should never exceed timer count by more than credit value (SECONDARY only)
+    `OCAH_OT_ASSERT(ExpectedCountValid_A, is_primary_i || (timer_count_q - expected_count_q <= reg_credit_val_i)) // Expected count should never exceed timer count by more than credit value (SECONDARY only)
 
     ////////////////////////////
     // Pulse Generation Logic //
@@ -322,9 +322,9 @@ module system_timer_octs_core
         end
     end
 
-    `ASSERT(PulseActiveValid_A, pulse_active inside {PULSE_IDLE, PULSE_SYNC_LOAD, PULSE_CREDIT}) // Pulse active should never be anything other than idle, sync load, or credit
-    `ASSERT(PulseCounterValid_A, pulse_counter < pulse_width) // Pulse counter should never exceed pulse width
-    `ASSERT(CreditValGreaterThanPulseWidth_A, reg_credit_val_i > pulse_width) // Credit value must be greater than pulse width, otherwise pulses will be missed
+    `OCAH_OT_ASSERT(PulseActiveValid_A, pulse_active inside {PULSE_IDLE, PULSE_SYNC_LOAD, PULSE_CREDIT}) // Pulse active should never be anything other than idle, sync load, or credit
+    `OCAH_OT_ASSERT(PulseCounterValid_A, pulse_counter < pulse_width) // Pulse counter should never exceed pulse width
+    `OCAH_OT_ASSERT(CreditValGreaterThanPulseWidth_A, reg_credit_val_i > pulse_width) // Credit value must be greater than pulse width, otherwise pulses will be missed
 
     ////////////////////////
     // Output Assignments //
@@ -334,9 +334,9 @@ module system_timer_octs_core
     assign timer_sync_load_o        = is_primary_i ? pulse_active == PULSE_SYNC_LOAD  : 1'b0;
     assign timer_cnt_credit_o       = is_primary_i ? pulse_active == PULSE_CREDIT     : 1'b0;
 
-    `ASSERT(TimerCountZero_A, (~enable && ~reg_start_i && ~timer_sync_load_sync_posedge) -> (timer_count_q == 64'h0)) // Timer count should be 0 when enable is 0 and not starting
-    `ASSERT(TimerCntCreditZero_A, (~enable && ~reg_start_i) -> (~timer_cnt_credit_o)) // Timer credit should be 0 when enable is 0 and not starting
-    `ASSERT(TimerSyncLoadZero_A, (~enable && ~reg_start_i) -> (~timer_sync_load_o)) // Timer sync load should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerCountZero_A, (~enable && ~reg_start_i && ~timer_sync_load_sync_posedge) -> (timer_count_q == 64'h0)) // Timer count should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerCntCreditZero_A, (~enable && ~reg_start_i) -> (~timer_cnt_credit_o)) // Timer credit should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerSyncLoadZero_A, (~enable && ~reg_start_i) -> (~timer_sync_load_o)) // Timer sync load should be 0 when enable is 0 and not starting
 
     // Register interface outputs
     assign reg_mode_o               = is_primary_i ? 1'b0 : 1'b1;

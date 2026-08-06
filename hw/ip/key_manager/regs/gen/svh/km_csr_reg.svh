@@ -23,7 +23,7 @@
 
 
 localparam int unsigned KM_CSR_REG_MAP_BASE_ADDR                                                                  = 32'h00000000;
-localparam int unsigned KM_CSR_REG_MAP_SIZE                                                                       = 32'h00000308;
+localparam int unsigned KM_CSR_REG_MAP_SIZE                                                                       = 32'h0000030C;
 
 
 localparam int unsigned VERSION_REG_OFFSET                                                                        = 32'h00000000;
@@ -216,6 +216,8 @@ localparam int unsigned OTP_READ_LOCK_REG_OFFSET                                
 localparam int unsigned OTP_READ_LOCK_REG_ADDR                                                                    = 32'h00000300;
 localparam int unsigned OTP_CHANGE_STATUS_REG_OFFSET                                                              = 32'h00000304;
 localparam int unsigned OTP_CHANGE_STATUS_REG_ADDR                                                                = 32'h00000304;
+localparam int unsigned OTP_READ_LOCK_COLD_REG_OFFSET                                                             = 32'h00000308;
+localparam int unsigned OTP_READ_LOCK_COLD_REG_ADDR                                                               = 32'h00000308;
 
 
 //==============================================================================
@@ -254,6 +256,7 @@ localparam longint unsigned KM_CSR_DEBUG_REG_REG_DEFAULT                        
 localparam longint unsigned KM_CSR_OTP_DR_WORD_REG_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned KM_CSR_OTP_READ_LOCK_REG_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned KM_CSR_OTP_CHANGE_STATUS_REG_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_REG_DEFAULT                                             = 32'h00000000;
 
 
 
@@ -549,6 +552,27 @@ localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_SHIFT            
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFFC0;
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 6;
 
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_MASK                                             = 32'h1;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_SHIFT                                            = 0;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_MASK                                               = 32'h2;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_SHIFT                                              = 1;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_MASK                                            = 32'h4;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_SHIFT                                           = 2;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_MASK                                                = 32'h8;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_SHIFT                                               = 3;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_MASK                                                = 32'h10;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_SHIFT                                               = 4;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_MASK                                              = 32'h20;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_SHIFT                                             = 5;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_MASK                                                   = 32'hFFFFFFC0;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT                                                  = 6;
+
 
 
 
@@ -806,6 +830,18 @@ typedef struct packed {
     logic [0:0]   demotion ;
     logic [0:0]   life_cycle ;
 } km_csr_otp_change_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [25:0]   rsvd ;
+    logic [0:0]   class_key ;
+    logic [0:0]   sys_uid ;
+    logic [0:0]   sip_uid ;
+    logic [0:0]   chiplet_uid ;
+    logic [0:0]   demotion ;
+    logic [0:0]   life_cycle ;
+} km_csr_otp_read_lock_cold_reg_reg_t;
 
 
 

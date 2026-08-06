@@ -693,8 +693,8 @@ module sep_uvm_top
 
     localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
 
-`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_ram.ram.ram_core
-`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_ram.ram.ram_core
+`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
+`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
 
     // Non-zero valid power-up patterns (both tools: Verilator 0-init and VCS X are
     // both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).
@@ -1022,7 +1022,7 @@ module sep_uvm_top
     // smoke asserts this matches esrc_noise_o[0] -> proves the force took (not
     // vacuous).
     assign esrc_noise_active_o =
-        `SEP_CORE.sep_crypto.u_entropy_source.egen.g_ecmplx[0].gen_inst.dcor.noise_i;
+        `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
     // exact node the SR flop samples -- matching the OCAH UVM noise injection
@@ -1034,7 +1034,7 @@ module sep_uvm_top
     // re-force re-captures the current driven bit so noise_i tracks it.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
-    force `SEP_CORE.sep_crypto.u_entropy_source.egen.g_ecmplx[i].gen_inst.dcor.noise_i = esrc_noise_d[i]
+    force `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
     // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
     // not a flop assignment, so always_ff semantics do not apply.
     // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
@@ -1051,8 +1051,8 @@ module sep_uvm_top
 `undef ESRC_NOISE_FORCE
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
-    assign esrc_ro_enable_o     = `SEP_CORE.sep_crypto.u_entropy_source.egen.jitter_ro_enable_i;
-    assign esrc_decor_bytes_o   = `SEP_CORE.sep_crypto.u_entropy_source.egen.entropy_stream_uncompressed_o;
+    assign esrc_ro_enable_o     = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.jitter_ro_enable_i;
+    assign esrc_decor_bytes_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.entropy_stream_uncompressed_o;
     // Raw 29-bit decorrelator shift register per lane. ff_stage resets ONLY on the
     // hardware rst_ni (CTRL.RESET zeroes the SAMPLE, not the SR), and decor_bytes_o
     // lags the true SR reset by a full divider period -- so the golden cannot derive
@@ -1061,29 +1061,29 @@ module sep_uvm_top
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed XMR.
 `define ESRC_DECOR_SR(i) \
     assign esrc_decor_sr_o[29*(i) +: 29] = \
-        `SEP_CORE.sep_crypto.u_entropy_source.egen.g_ecmplx[i].gen_inst.dcor.ff_stage
+        `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[i].u_generator.u_decorrelator.ff_stage
     `ESRC_DECOR_SR(0);  `ESRC_DECOR_SR(1);  `ESRC_DECOR_SR(2);
     `ESRC_DECOR_SR(3);  `ESRC_DECOR_SR(4);  `ESRC_DECOR_SR(5);
     `ESRC_DECOR_SR(6);  `ESRC_DECOR_SR(7);  `ESRC_DECOR_SR(8);
     `ESRC_DECOR_SR(9);  `ESRC_DECOR_SR(10); `ESRC_DECOR_SR(11);
 `undef ESRC_DECOR_SR
-    assign esrc_decor_valid_o   = `SEP_CORE.sep_crypto.u_entropy_source.entropy_stream_valid;
+    assign esrc_decor_valid_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_valid;
     // SHA-whitener input handshake: a BIW word is hashed only when the whitener is
     // in its input phase (sha_fifo_valid && sha_fifo_ready). During its SHA compute
     // + 8-word output phase it accepts nothing and the unconnected entropy_ready_o
     // means upstream decor samples are DROPPED -- so the chain golden must be fed a
     // sample ONLY on this strobe, else its SHA 16:1 blocks misframe after block 0.
-    assign esrc_whiten_push_o   = `SEP_CORE.sep_crypto.u_entropy_source.u_sha256_whitener.sha_fifo_valid
-                                & `SEP_CORE.sep_crypto.u_entropy_source.u_sha256_whitener.sha_fifo_ready;
-    assign esrc_compress_vld_o  = `SEP_CORE.sep_crypto.u_entropy_source.entropy_stream_vld_o;
-    assign esrc_compress_data_o = `SEP_CORE.sep_crypto.u_entropy_source.entropy_stream_data_o;
-    assign drbg_seed_valid_o    = `SEP_CORE.sep_crypto.u_drbg.u_csrng_seed_adapter.seed_queue_valid_o;
-    assign drbg_es_ack_o        = `SEP_CORE.sep_crypto.u_drbg.u_csrng.entropy_src_hw_if_i.es_ack;
-    assign drbg_es_bits_o       = `SEP_CORE.sep_crypto.u_drbg.u_csrng.entropy_src_hw_if_i.es_bits;
-    assign drbg_genbits_vld_o   = `SEP_CORE.sep_crypto.u_drbg.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
-    assign drbg_genbits_data_o  = `SEP_CORE.sep_crypto.u_drbg.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
-    assign drbg_genbits_fips_o  = `SEP_CORE.sep_crypto.u_drbg.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
-    assign drbg_gen_last_o      = `SEP_CORE.sep_crypto.u_drbg.u_csrng.u_csrng_core.gen_last_q;
+    assign esrc_whiten_push_o   = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_sha256_whitener.sha_fifo_valid
+                                & `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_sha256_whitener.sha_fifo_ready;
+    assign esrc_compress_vld_o  = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_vld_o;
+    assign esrc_compress_data_o = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.entropy_stream_data_o;
+    assign drbg_seed_valid_o    = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
+    assign drbg_es_ack_o        = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_ack;
+    assign drbg_es_bits_o       = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_bits;
+    assign drbg_genbits_vld_o   = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
+    assign drbg_genbits_data_o  = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
+    assign drbg_genbits_fips_o  = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
+    assign drbg_gen_last_o      = `SEP_CORE.sep_crypto.u_drbg_s3c_scan.u_csrng.u_csrng_core.gen_last_q;
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM
     // consumed a genbits word.

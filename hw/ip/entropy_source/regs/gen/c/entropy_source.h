@@ -38,6 +38,10 @@ typedef union {
 #define ENTROPY_SOURCE__CTRL__RESET_bp 0
 #define ENTROPY_SOURCE__CTRL__RESET_bw 1
 #define ENTROPY_SOURCE__CTRL__RESET_reset 0x0
+#define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm 0x2
+#define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bp 1
+#define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bw 1
+#define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_reset 0x1
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bm 0x10
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bp 4
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bw 1
@@ -57,7 +61,8 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t RESET :1;
-        uint32_t :3;
+        uint32_t MODULE_ENABLE :1;
+        uint32_t :2;
         uint32_t AUTOTUNE_ENABLE :1;
         uint32_t :3;
         uint32_t BYPASS_ENTROPY_COMPRESSOR :1;
@@ -118,6 +123,22 @@ typedef union {
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_STATUS__FIFO_UNDERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bm 0x10000
+#define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bp 16
+#define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_bw 1
+#define ENTROPY_SOURCE__INTR_STATUS__PERSISTENT_FAILURE_reset 0x0
+#define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bm 0x100000
+#define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bp 20
+#define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_bw 1
+#define ENTROPY_SOURCE__INTR_STATUS__AUTOTUNE_FAIL_reset 0x0
+#define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bm 0x1000000
+#define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bp 24
+#define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_STATUS__BIW_OBS_OVERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bm 0x10000000
+#define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bp 28
+#define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_STATUS__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HEALTH_TEST_FAILED :1;
@@ -127,7 +148,15 @@ typedef union {
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
         uint32_t FIFO_UNDERFLOW :1;
-        uint32_t :19;
+        uint32_t :3;
+        uint32_t PERSISTENT_FAILURE :1;
+        uint32_t :3;
+        uint32_t AUTOTUNE_FAIL :1;
+        uint32_t :3;
+        uint32_t BIW_OBS_OVERFLOW :1;
+        uint32_t :3;
+        uint32_t NOISE_OBS_OVERFLOW :1;
+        uint32_t :3;
     } f;
     uint32_t w;
 } entropy_source__INTR_STATUS_t;
@@ -149,6 +178,22 @@ typedef union {
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_ENABLE__FIFO_UNDERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bm 0x10000
+#define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bp 16
+#define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_bw 1
+#define ENTROPY_SOURCE__INTR_ENABLE__PERSISTENT_FAILURE_reset 0x0
+#define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bm 0x100000
+#define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bp 20
+#define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_bw 1
+#define ENTROPY_SOURCE__INTR_ENABLE__AUTOTUNE_FAIL_reset 0x0
+#define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bm 0x1000000
+#define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bp 24
+#define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_ENABLE__BIW_OBS_OVERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bm 0x10000000
+#define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bp 28
+#define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_ENABLE__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HEALTH_TEST_FAILED :1;
@@ -158,7 +203,15 @@ typedef union {
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
         uint32_t FIFO_UNDERFLOW :1;
-        uint32_t :19;
+        uint32_t :3;
+        uint32_t PERSISTENT_FAILURE :1;
+        uint32_t :3;
+        uint32_t AUTOTUNE_FAIL :1;
+        uint32_t :3;
+        uint32_t BIW_OBS_OVERFLOW :1;
+        uint32_t :3;
+        uint32_t NOISE_OBS_OVERFLOW :1;
+        uint32_t :3;
     } f;
     uint32_t w;
 } entropy_source__INTR_ENABLE_t;
@@ -180,6 +233,22 @@ typedef union {
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_bp 12
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_bw 1
 #define ENTROPY_SOURCE__INTR_TEST__FIFO_UNDERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bm 0x10000
+#define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bp 16
+#define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_bw 1
+#define ENTROPY_SOURCE__INTR_TEST__PERSISTENT_FAILURE_reset 0x0
+#define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bm 0x100000
+#define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bp 20
+#define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_bw 1
+#define ENTROPY_SOURCE__INTR_TEST__AUTOTUNE_FAIL_reset 0x0
+#define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bm 0x1000000
+#define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bp 24
+#define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_TEST__BIW_OBS_OVERFLOW_reset 0x0
+#define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bm 0x10000000
+#define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bp 28
+#define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_bw 1
+#define ENTROPY_SOURCE__INTR_TEST__NOISE_OBS_OVERFLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t HEALTH_TEST_FAILED :1;
@@ -189,7 +258,15 @@ typedef union {
         uint32_t FIFO_OVERFLOW :1;
         uint32_t :3;
         uint32_t FIFO_UNDERFLOW :1;
-        uint32_t :19;
+        uint32_t :3;
+        uint32_t PERSISTENT_FAILURE :1;
+        uint32_t :3;
+        uint32_t AUTOTUNE_FAIL :1;
+        uint32_t :3;
+        uint32_t BIW_OBS_OVERFLOW :1;
+        uint32_t :3;
+        uint32_t NOISE_OBS_OVERFLOW :1;
+        uint32_t :3;
     } f;
     uint32_t w;
 } entropy_source__INTR_TEST_t;
@@ -647,18 +724,43 @@ typedef union {
     uint32_t w;
 } entropy_source__DECORRELATOR_MASK_t;
 
-// reg - entropy_source::STARTUP_CTRL
-#define ENTROPY_SOURCE__STARTUP_CTRL__DELAY_CYCLES_bm 0xffff
-#define ENTROPY_SOURCE__STARTUP_CTRL__DELAY_CYCLES_bp 0
-#define ENTROPY_SOURCE__STARTUP_CTRL__DELAY_CYCLES_bw 16
-#define ENTROPY_SOURCE__STARTUP_CTRL__DELAY_CYCLES_reset 0x0
+// reg - entropy_source::MAIN_SM_STATUS
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bm 0x1ff
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bp 0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_bw 9
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__STATE_reset 0x0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bm 0x200
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bp 9
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_bw 1
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__IDLE_reset 0x0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm 0x400
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bp 10
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bw 1
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_reset 0x0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm 0x800
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bp 11
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bw 1
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_reset 0x0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bm 0x1000
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bp 12
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bw 1
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_reset 0x0
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bm 0x2000
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bp 13
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_bw 1
+#define ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_CNTR_CLR_OK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DELAY_CYCLES :16;
-        uint32_t :16;
+        uint32_t STATE :9;
+        uint32_t IDLE :1;
+        uint32_t ALERT :1;
+        uint32_t ERR :1;
+        uint32_t BOOT_PHASE_DONE :1;
+        uint32_t ALERT_CNTR_CLR_OK :1;
+        uint32_t :18;
     } f;
     uint32_t w;
-} entropy_source__STARTUP_CTRL_t;
+} entropy_source__MAIN_SM_STATUS_t;
 
 // reg - entropy_source::GENERATOR_0_HEALTH_STATUS
 #define ENTROPY_SOURCE__GENERATOR_0_HEALTH_STATUS__STATUS_bm 0xff
@@ -1104,6 +1206,173 @@ typedef union {
     uint32_t w;
 } entropy_source__ALERT_FAIL_COUNTS_t;
 
+// reg - entropy_source::FIPS_LOCK
+#define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm 0x1
+#define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bp 0
+#define ENTROPY_SOURCE__FIPS_LOCK__LOCK_bw 1
+#define ENTROPY_SOURCE__FIPS_LOCK__LOCK_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t LOCK :1;
+        uint32_t :31;
+    } f;
+    uint32_t w;
+} entropy_source__FIPS_LOCK_t;
+
+// reg - entropy_source::ALERT_THRESHOLD
+#define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bm 0xffff
+#define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bp 0
+#define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_bw 16
+#define ENTROPY_SOURCE__ALERT_THRESHOLD__THRESHOLD_reset 0x4
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t THRESHOLD :16;
+        uint32_t :16;
+    } f;
+    uint32_t w;
+} entropy_source__ALERT_THRESHOLD_t;
+
+// reg - entropy_source::MIN_ENTROPY_H
+#define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bm 0xff
+#define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bp 0
+#define ENTROPY_SOURCE__MIN_ENTROPY_H__H_bw 8
+#define ENTROPY_SOURCE__MIN_ENTROPY_H__H_reset 0xc
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t H :8;
+        uint32_t :24;
+    } f;
+    uint32_t w;
+} entropy_source__MIN_ENTROPY_H_t;
+
+// reg - entropy_source::RECOMMENDED_THRESHOLDS
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bm 0xffff
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bp 0
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_bw 16
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__RCT_LIMIT_reset 0x0
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bm 0xffff0000
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bp 16
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_bw 16
+#define ENTROPY_SOURCE__RECOMMENDED_THRESHOLDS__APT_LIMIT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t RCT_LIMIT :16;
+        uint32_t APT_LIMIT :16;
+    } f;
+    uint32_t w;
+} entropy_source__RECOMMENDED_THRESHOLDS_t;
+
+// reg - entropy_source::BIW_OBS_CTRL
+#define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bm 0x1
+#define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bp 0
+#define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_bw 1
+#define ENTROPY_SOURCE__BIW_OBS_CTRL__RAW_ENABLE_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t RAW_ENABLE :1;
+        uint32_t :31;
+    } f;
+    uint32_t w;
+} entropy_source__BIW_OBS_CTRL_t;
+
+// reg - entropy_source::BIW_OBS_STATUS
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bm 0x7f
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bp 0
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bw 7
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_reset 0x0
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bm 0x1f00
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bp 8
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bw 5
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_reset 0x0
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bm 0x1f0000
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bp 16
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bw 5
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t LEVEL :7;
+        uint32_t :1;
+        uint32_t WPTR :5;
+        uint32_t :3;
+        uint32_t RPTR :5;
+        uint32_t :11;
+    } f;
+    uint32_t w;
+} entropy_source__BIW_OBS_STATUS_t;
+
+// reg - entropy_source::BIW_OBS_RDATA
+#define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bm 0xffffffff
+#define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bp 0
+#define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_bw 32
+#define ENTROPY_SOURCE__BIW_OBS_RDATA__RDATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t RDATA :32;
+    } f;
+    uint32_t w;
+} entropy_source__BIW_OBS_RDATA_t;
+
+// reg - entropy_source::NOISE_OBS_CTRL
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bm 0x1
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bp 0
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_bw 1
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__RAW_ENABLE_reset 0x0
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bm 0x2
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bp 1
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_bw 1
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__FLUSH_reset 0x0
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bm 0xf0
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bp 4
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_bw 4
+#define ENTROPY_SOURCE__NOISE_OBS_CTRL__LANE_SEL_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t RAW_ENABLE :1;
+        uint32_t FLUSH :1;
+        uint32_t :2;
+        uint32_t LANE_SEL :4;
+        uint32_t :24;
+    } f;
+    uint32_t w;
+} entropy_source__NOISE_OBS_CTRL_t;
+
+// reg - entropy_source::NOISE_OBS_STATUS
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bm 0x7f
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bp 0
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bw 7
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_reset 0x0
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bm 0x1f00
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bp 8
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bw 5
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_reset 0x0
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bm 0x1f0000
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bp 16
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bw 5
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t LEVEL :7;
+        uint32_t :1;
+        uint32_t WPTR :5;
+        uint32_t :3;
+        uint32_t RPTR :5;
+        uint32_t :11;
+    } f;
+    uint32_t w;
+} entropy_source__NOISE_OBS_STATUS_t;
+
+// reg - entropy_source::NOISE_OBS_RDATA
+#define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bm 0xffffffff
+#define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bp 0
+#define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_bw 32
+#define ENTROPY_SOURCE__NOISE_OBS_RDATA__RDATA_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t RDATA :32;
+    } f;
+    uint32_t w;
+} entropy_source__NOISE_OBS_RDATA_t;
+
 // addrmap - entropy_source
 typedef struct __attribute__ ((__packed__)) {
     entropy_source__COMPONENT_ID_t COMPONENT_ID;
@@ -1145,9 +1414,9 @@ typedef struct __attribute__ ((__packed__)) {
     uint8_t RESERVED_9c_9f[0x4];
     entropy_source__DECORRELATOR_CTRL_t DECORRELATOR_CTRL;
     entropy_source__DECORRELATOR_MASK_t DECORRELATOR_MASK;
-    uint8_t RESERVED_a8_af[0x8];
-    entropy_source__STARTUP_CTRL_t STARTUP_CTRL;
-    uint8_t RESERVED_b4_bf[0xc];
+    uint8_t RESERVED_a8_b3[0xc];
+    entropy_source__MAIN_SM_STATUS_t MAIN_SM_STATUS;
+    uint8_t RESERVED_b8_bf[0x8];
     entropy_source__GENERATOR_0_HEALTH_STATUS_t GENERATOR_0_HEALTH_STATUS;
     entropy_source__GENERATOR_1_HEALTH_STATUS_t GENERATOR_1_HEALTH_STATUS;
     entropy_source__GENERATOR_2_HEALTH_STATUS_t GENERATOR_2_HEALTH_STATUS;
@@ -1182,10 +1451,20 @@ typedef struct __attribute__ ((__packed__)) {
     entropy_source__MARKOV_LO_TOTAL_FAILS_t MARKOV_LO_TOTAL_FAILS;
     entropy_source__ALERT_SUMMARY_FAIL_COUNTS_t ALERT_SUMMARY_FAIL_COUNTS;
     entropy_source__ALERT_FAIL_COUNTS_t ALERT_FAIL_COUNTS;
+    entropy_source__FIPS_LOCK_t FIPS_LOCK;
+    entropy_source__ALERT_THRESHOLD_t ALERT_THRESHOLD;
+    entropy_source__MIN_ENTROPY_H_t MIN_ENTROPY_H;
+    entropy_source__RECOMMENDED_THRESHOLDS_t RECOMMENDED_THRESHOLDS;
+    entropy_source__BIW_OBS_CTRL_t BIW_OBS_CTRL;
+    entropy_source__BIW_OBS_STATUS_t BIW_OBS_STATUS;
+    entropy_source__BIW_OBS_RDATA_t BIW_OBS_RDATA;
+    entropy_source__NOISE_OBS_CTRL_t NOISE_OBS_CTRL;
+    entropy_source__NOISE_OBS_STATUS_t NOISE_OBS_STATUS;
+    entropy_source__NOISE_OBS_RDATA_t NOISE_OBS_RDATA;
 } entropy_source_t;
 
 
-static_assert(sizeof(entropy_source_t) == 0x154, "Packing error");
+static_assert(sizeof(entropy_source_t) == 0x17c, "Packing error");
 
 #ifdef __cplusplus
 }

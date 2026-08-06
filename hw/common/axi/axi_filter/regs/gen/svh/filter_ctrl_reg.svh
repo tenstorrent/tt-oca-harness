@@ -48,14 +48,14 @@ localparam longint unsigned FILTER_CTRL_END_ADDR_REG_DEFAULT                    
 // Bit Fields for Address Map: filter_ctrl
 //==============================================================================
 
-localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_READ_EN_MASK                                                = 64'h1;
-localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_READ_EN_SHIFT                                               = 0;
+localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK                                           = 64'h1;
+localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_SHIFT                                          = 0;
 
-localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_WRITE_EN_MASK                                               = 64'h2;
-localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_WRITE_EN_SHIFT                                              = 1;
+localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_MASK                                          = 64'h2;
+localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_WRITE_ALLOWED_SHIFT                                         = 1;
 
-localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_ADDR_MODE_MASK                                              = 64'h10;
-localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_ADDR_MODE_SHIFT                                             = 4;
+localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK                                          = 64'h10;
+localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_SHIFT                                         = 4;
 
 localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_ALLOW_NS_MASK                                               = 64'h100;
 localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_ALLOW_NS_SHIFT                                              = 8;
@@ -96,10 +96,10 @@ typedef struct packed {
     logic [2:0]   rsvd_2 ;
     logic [0:0]   allow_ns ;
     logic [2:0]   rsvd_1 ;
-    logic [0:0]   addr_mode ;
+    logic [0:0]   entry_enabled ;
     logic [1:0]   rsvd_0 ;
-    logic [0:0]   write_en ;
-    logic [0:0]   read_en ;
+    logic [0:0]   write_allowed ;
+    logic [0:0]   read_allowed ;
 } filter_ctrl_filter_config_reg_t;
 
 

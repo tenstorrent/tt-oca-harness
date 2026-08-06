@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP Cryptographic Subsystem
-//
-//-----------------------------------------------------------------------------
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_crypto #(
     parameter bit LATCHED_MEM_RDATA = 1'b1,
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2,
+    parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
     // During synthesis, to be replaced with the actual token digest embedded in the netlist
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
@@ -39,6 +36,12 @@ module sep_crypto #(
     // External TRNG AXI-Stream inputs (from sep_ip_integration)
     input  sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
     output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+
+    // Native EDN client of the SEP entropy-pool FIFO (sep_entropy_fifo) that
+    // refills the pool. Served by u_axis_edn_pool_s3c_scan from the muxed pool AXI-Stream
+    // leg, so the pool draws from either the internal DRBG or the external TRNG.
+    input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,
+    output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,
 
     // Efuse Interface to SHIM CSR
 	output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
@@ -98,6 +101,8 @@ module sep_crypto #(
 
     // External TRNG source selection (from sep_cpu_ctrl via sep_system_csr)
     input  logic [EXT_TRNG_NUM_AXIS-1:0]       ext_trng_src_sel_i,
+    // Key Manager emergency wipe control (from sep_cpu_ctrl via sep_system_csr)
+    input  logic                               km_wipe_state_i,
     //=========================================================================
     // Crypto Subsystem Interrupts (exposed to SEP PIC)
     //=========================================================================
@@ -125,11 +130,20 @@ module sep_crypto #(
     // OTBN interrupt
     output logic                               intr_otbn_done_o,
 
+    // Adams Bridge (PQC) interrupts. Held low when the engine is compiled out.
+    output logic                               intr_abr_error_o,
+    output logic                               intr_abr_notif_o,
+
     // OTBN external SRAM interfaces
     output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t      sep_crypto_pka_imem_sram_req_o,
     input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t      sep_crypto_pka_imem_sram_rsp_i,
     output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t      sep_crypto_pka_dmem_sram_req_o,
     input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t      sep_crypto_pka_dmem_sram_rsp_i,
+
+    // Adams Bridge (PQC) external SRAM interface -- behavioral/tech macros live in
+    // sep_ip_integration (tech-macro home). Packed struct req/rsp (OTBN pattern).
+    output sep_crypto_pkg::abr_mem_req_t                       abr_mem_req_o,
+    input  sep_crypto_pkg::abr_mem_rsp_t                       abr_mem_rsp_i,
 
     // Aggregated crypto alert (OR of all OpenTitan alert channels)
     output logic                               crypto_alert_o,
@@ -188,6 +202,12 @@ module sep_crypto #(
     edn_pkg::edn_req_t [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_req;
     edn_pkg::edn_rsp_t [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_rsp;
 
+    // Native EDN wires for the entropy pool — fed from mux2 via drbg_axis_edn_adapter (N=1).
+    // Packed [0:0] arrays so the adapter's NUM_ENDPOINTS-wide ports bind cleanly; index [0]
+    // connects to the scalar entropy_pool_edn_req_i/rsp_o pool interface.
+    edn_pkg::edn_req_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_req;
+    edn_pkg::edn_rsp_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_rsp;
+
     sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_reqs;
     sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_resps;
 
@@ -195,12 +215,13 @@ module sep_crypto #(
     // External TRNG / DRBG Entropy Source Muxing
     //=========================================================================
     //
-    // Two 2:1 muxes controlled by ext_trng_src_sel_i (from sep_cpu_ctrl):
+    // Three 2:1 muxes controlled by ext_trng_src_sel_i (from sep_cpu_ctrl):
     //   sel=1 (default): external TRNG stream selected
-    //   sel=0:           internal DRBG output selected (post-CSRNG on both legs)
+    //   sel=0:           internal DRBG output selected (post-CSRNG on every leg)
     //
     // Mux 0: ext_trng[0] vs DRBG edn_axis_o[0]  -> Key Manager
     // Mux 1: ext_trng[1] vs DRBG edn_axis_o[1]  -> drbg_axis_edn_adapter -> AES/KMAC/OTBN
+    // Mux 2: ext_trng[2] vs DRBG edn_axis_o[2]  -> drbg_axis_edn_adapter -> entropy pool
 
     // Internal DRBG-side AXI-Stream (one per mux)
     drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
@@ -217,6 +238,7 @@ module sep_crypto #(
     logic otbn_write, otbn_read, hmac_write, hmac_read, aes_write, aes_read, kmac_write, kmac_read, fuse_write, fuse_read, lifecycle_write, lifecycle_read, km_write, km_read;
     logic csrng_write, csrng_read, edn_write, edn_read;
     logic entropy_src_write, entropy_src_read, trng_write, trng_read;
+    logic abr_write, abr_read;  // Adams Bridge PQC
     logic [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL-1:0] aw_select, ar_select;
 
     always_comb begin
@@ -275,8 +297,15 @@ module sep_crypto #(
         trng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::trng_rule.start_addr) &
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::trng_rule.end_addr);
 
+        abr_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::abr_rule.start_addr) &
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::abr_rule.end_addr);
+        abr_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::abr_rule.start_addr) &
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
+
         // Port mapping follows sep_crypto_axi_port_e
-        if (trng_write) begin
+        if (abr_write) begin
+            aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
+        end else if (trng_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
         end else if (entropy_src_write) begin
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
@@ -302,7 +331,9 @@ module sep_crypto #(
             aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
         end
 
-        if (trng_read) begin
+        if (abr_read) begin
+            ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
+        end else if (trng_read) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
         end else if (entropy_src_read) begin
             ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
@@ -379,6 +410,59 @@ module sep_crypto #(
     );
 
 
+    //////////////////////////
+    // SW Reset AXI Isolate //
+    //////////////////////////
+
+    // Isolated AXI ports and sequenced resets for the accelerator wrappers
+    sep_pkg::sep_32_64_6_12_axi_req_t  hmac_axi_isolated_req,  otbn_axi_isolated_req,
+                                       aes_axi_isolated_req,   kmac_axi_isolated_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t hmac_axi_isolated_resp, otbn_axi_isolated_resp,
+                                       aes_axi_isolated_resp,  kmac_axi_isolated_resp;
+    logic hmac_gated_rst_n, otbn_gated_rst_n, aes_gated_rst_n, kmac_gated_rst_n;
+
+    sep_crypto_axi_isolate #(
+        .ADDR_WIDTH  (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+        .DATA_WIDTH  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+        .ID_WIDTH    (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+        .USER_WIDTH  (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
+        .NUM_PENDING (4),
+        .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t)
+    ) u_sep_crypto_axi_isolate (
+        .clk_i              (clk_i),
+        .rst_ni             (rst_ni),
+
+        .hmac_sw_rst_req_ni (hmac_sw_rst_ni),
+        .hmac_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiHmac]),
+        .hmac_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiHmac]),
+        .hmac_mst_req_o     (hmac_axi_isolated_req),
+        .hmac_mst_resp_i    (hmac_axi_isolated_resp),
+        .hmac_gated_rst_no  (hmac_gated_rst_n),
+
+        .otbn_sw_rst_req_ni (otbn_sw_rst_ni),
+        .otbn_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn]),
+        .otbn_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiOtbn]),
+        .otbn_mst_req_o     (otbn_axi_isolated_req),
+        .otbn_mst_resp_i    (otbn_axi_isolated_resp),
+        .otbn_gated_rst_no  (otbn_gated_rst_n),
+
+        .aes_sw_rst_req_ni  (aes_sw_rst_ni),
+        .aes_slv_req_i      (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAes]),
+        .aes_slv_resp_o     (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAes]),
+        .aes_mst_req_o      (aes_axi_isolated_req),
+        .aes_mst_resp_i     (aes_axi_isolated_resp),
+        .aes_gated_rst_no   (aes_gated_rst_n),
+
+        .kmac_sw_rst_req_ni (kmac_sw_rst_ni),
+        .kmac_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKmac]),
+        .kmac_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKmac]),
+        .kmac_mst_req_o     (kmac_axi_isolated_req),
+        .kmac_mst_resp_i    (kmac_axi_isolated_resp),
+        .kmac_gated_rst_no  (kmac_gated_rst_n)
+    );
+
+
     //////////////////
     // HMAC Wrapper //
     //////////////////
@@ -387,11 +471,11 @@ module sep_crypto #(
     sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req;
     sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp;
 
-    hmac_wrapper hmac_wrapper (
+    hmac_wrapper hmac_wrapper_s3c_scan (
         .clk_i,
-        .rst_ni                  (hmac_sw_rst_ni),
-        .hmac_axi_req_i          (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiHmac]),
-        .hmac_axi_resp_o         (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiHmac]),
+        .rst_ni                  (hmac_gated_rst_n),
+        .hmac_axi_req_i          (hmac_axi_isolated_req),
+        .hmac_axi_resp_o         (hmac_axi_isolated_resp),
         .hmac_key_axil_req_i     (hmac_key_axil_req),
         .hmac_key_axil_resp_o    (hmac_key_axil_resp),
         .intr_hmac_done_o        (intr_hmac_done_o),
@@ -411,11 +495,11 @@ module sep_crypto #(
     sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req;
     sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp;
 
-    sep_crypto_otbn_wrapper sep_crypto_otbn_wrapper (
+    sep_crypto_otbn_wrapper sep_crypto_otbn_wrapper_s3c_scan (
         .clk_i,
-        .rst_ni                       (otbn_sw_rst_ni),
-        .otbn_axi_req_i               (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn]),
-        .otbn_axi_resp_o              (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiOtbn]),
+        .rst_ni                       (otbn_gated_rst_n),
+        .otbn_axi_req_i               (otbn_axi_isolated_req),
+        .otbn_axi_resp_o              (otbn_axi_isolated_resp),
         .otbn_key_axil_req_i          (otbn_key_axil_req),
         .otbn_key_axil_resp_o         (otbn_key_axil_resp),
         .edn_rnd_req_o                (crypto_edn_req[2]),
@@ -440,11 +524,11 @@ module sep_crypto #(
     sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req;
     sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp;
 
-    aes_wrapper aes_wrapper (
+    aes_wrapper aes_wrapper_s3c_scan (
         .clk_i,
-        .rst_ni              (aes_sw_rst_ni),
-        .aes_axi_req_i       (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAes]),
-        .aes_axi_resp_o      (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAes]),
+        .rst_ni              (aes_gated_rst_n),
+        .aes_axi_req_i       (aes_axi_isolated_req),
+        .aes_axi_resp_o      (aes_axi_isolated_resp),
         .aes_key_axil_req_i  (aes_key_axil_req),
         .aes_key_axil_resp_o (aes_key_axil_resp),
         .edn_req_o           (crypto_edn_req[0]),
@@ -463,11 +547,11 @@ module sep_crypto #(
     sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req;
     sep_pkg::sep_32_32_axil_resp_t kmac_key_axil_resp;
 
-    kmac_wrapper kmac_wrapper (
+    kmac_wrapper kmac_wrapper_s3c_scan (
         .clk_i,
-        .rst_ni                  (kmac_sw_rst_ni),
-        .kmac_axi_req_i          (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKmac]),
-        .kmac_axi_resp_o         (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKmac]),
+        .rst_ni                  (kmac_gated_rst_n),
+        .kmac_axi_req_i          (kmac_axi_isolated_req),
+        .kmac_axi_resp_o         (kmac_axi_isolated_resp),
         .kmac_key_axil_req_i     (kmac_key_axil_req),
         .kmac_key_axil_resp_o    (kmac_key_axil_resp),
         .edn_req_o               (crypto_edn_req[1]),
@@ -489,22 +573,109 @@ module sep_crypto #(
     km_intf_pkg::km_axil_req_t  abr_key_axil_req;
     km_intf_pkg::km_axil_resp_t abr_key_axil_resp;
 
-    // TODO: replace this error-slave placeholder with the Adams Bridge wrapper
-    // once the ABR IP is integrated at the SEP level. Until then the KM's ABR
-    // master is terminated so any access returns DECERR instead of stalling the
-    // bus; the KM shared-key IRQ input is held low at the instance below.
-    prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
+    // ML-KEM shared-key IRQ (driven by the wrapper; consumed by the Key Manager).
+    logic abr_mlkem_sharedkey_irq;
+
+    // ABR error/notif drive SEP PIC slots 34/35 (see the aggregation in sep.sv). busy_o
+    // has no consumer at this level -- abr_top's BUSY is also readable over the ABR CSR
+    // aperture -- so it is sunk rather than exported. Declared outside the SEP_ABR_EN
+    // guard so both branches can drive them.
+    logic abr_error_intr, abr_notif_intr, abr_busy;
+    logic unused_abr_busy;
+
+    // The Adams Bridge crypto engine wrapper now owns the abr_wrapper_key_reg CSR
+    // block, the KV shim, the ABR memory adapter, and the shared-key IRQ (matching
+    // the aes/otbn wrapper convention). Presence is gated by SEP_ABR_EN -- OCAH's own
+    // switch -- rather than by CALIPTRA, which is the VENDOR's define for exposing
+    // abr_top's Caliptra Key-Vault ports. Bender defines the two together (see the
+    // Adams Bridge source group in Bender.yml); the check below rejects a build that
+    // enables ABR without the vendor define. When compiled out, the KM's ABR key bus
+    // and the ABR control/status aperture are both terminated with DECERR
+    // err-slaves, the ABR memory request struct is tied off, and the shared-key
+    // IRQ and error/notif interrupts are held low.
+`ifdef SEP_ABR_EN
+`ifndef CALIPTRA
+    if (1) begin : g_sep_abr_en_requires_caliptra
+        $error({"SEP_ABR_EN is set but CALIPTRA is not: the vendored abr_top would be ",
+                "compiled without its Key-Vault ports and sep_abr_kv_shim cannot bind. ",
+                "Define both (see the Adams Bridge source group in Bender.yml)."});
+    end
+`endif
+
+    // Same package parameters feed the ABR SRAM instances in sep_ip_integration;
+    // abr_top and its memories must be configured identically.
+    sep_crypto_abr_wrapper #(
+        .MASKING_EN   (sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN),
+        .SRAM_LATENCY (sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY)
+    ) u_sep_crypto_abr_wrapper_s3c_scan (
+        .clk_i,
+        .rst_ni                (sep_reset_ni),
+        // Control/status path: ABR AXI aperture off the sep_crypto demux
+        .abr_axi_req_i         (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
+        .abr_axi_resp_o        (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
+        .abr_key_axil_req_i    (abr_key_axil_req),
+        .abr_key_axil_resp_o   (abr_key_axil_resp),
+        // AB internal SRAMs (tech macros in sep_ip_integration; threaded up)
+        .abr_mem_req_o         (abr_mem_req_o),
+        .abr_mem_rsp_i         (abr_mem_rsp_i),
+        .scan_mode_i           (test_en_i),     // DFT scan/test-enable (matches sep_cpu)
+        .mlkem_sharedkey_irq_o (abr_mlkem_sharedkey_irq),
+        .error_intr_o          (abr_error_intr),
+        .notif_intr_o          (abr_notif_intr),
+        .busy_o                (abr_busy)
+    );
+
+    assign intr_abr_error_o = abr_error_intr;
+    assign intr_abr_notif_o = abr_notif_intr;
+    assign unused_abr_busy  = abr_busy;
+`else
+    // Adams Bridge engine compiled out.
+    // (1) Terminate the ABR control/status AXI aperture with DECERR.
+    axi_err_slv #(
+        .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
+        .Resp       (axi_pkg::RESP_DECERR),
+        .ATOPs      (1'b0),
+        .MaxTrans   (1)
+    ) u_abr_axi_err_slv (
+        .clk_i,
+        .rst_ni,
+        .test_i     (test_en_i),
+        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr])
+    );
+
+    // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block
+    //     now lives inside the CALIPTRA-only wrapper, so there is no OKAY
+    //     responder here; use an AXI4-Lite err-slave (mirrors u_abr_axi_err_slv).
+    prim_axil_err_slv #(
         .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
+        .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
         .axil_req_t     (km_intf_pkg::km_axil_req_t),
-        .axil_resp_t    (km_intf_pkg::km_axil_resp_t),
-        .RESP           (axi_pkg::RESP_DECERR)
+        .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
     ) u_abr_key_err_slv (
-        .clk_i       (clk_i),
+        .clk_i,
         .rst_ni      (sep_reset_ni),
         .axil_req_i  (abr_key_axil_req),
         .axil_resp_o (abr_key_axil_resp)
     );
+
+    // (3) No ABR memory requester; hold the request struct quiescent.
+    assign abr_mem_req_o = '0;
+
+    // (4) No shared-key IRQ source.
+    assign abr_mlkem_sharedkey_irq = 1'b0;
+
+    // (5) No engine, so no error/notif interrupts and no busy status.
+    assign intr_abr_error_o = 1'b0;
+    assign intr_abr_notif_o = 1'b0;
+    assign abr_error_intr   = 1'b0;
+    assign abr_notif_intr   = 1'b0;
+    assign abr_busy         = 1'b0;
+    assign unused_abr_busy  = abr_busy;
+`endif  // SEP_ABR_EN
 
 
     ////////////////////
@@ -837,7 +1008,7 @@ module sep_crypto #(
     logic [31:0] entropy_stream_data;
     logic        entropy_stream_vld;
 
-    entropy_source u_entropy_source (
+    entropy_source u_entropy_source_s3c_scan (
         .clk_i,
         .rst_ni              (sep_reset_ni),
 
@@ -934,36 +1105,27 @@ module sep_crypto #(
     // DRBG Instance
     //=========================================================================
 
-    // Post-CSRNG drives both muxes now; the pre-CSRNG bypass (entropy_axis_o) is
-    // unused at this integration level. Sink it with tready=0 + an unused probe.
-    // drbg_int_axis_req/rsp are packed arrays, matching u_drbg.edn_axis_o/i shape,
-    // so we bind them directly below (mux leg [i] = DRBG EDN endpoint [i]).
-    drbg_pkg::drbg_axis_req_t drbg_unused_entropy_axis_req;
-    logic                     unused_drbg_entropy_axis;
-
+    // drbg_int_axis_req/rsp are packed arrays, matching u_drbg_s3c_scan.edn_axis_o/i
+    // shape, so we bind them directly below (mux leg [i] = DRBG EDN endpoint [i]).
     drbg #(
         .EDN_ENDPOINT_COUNT        (sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT),
-        .EDN_NATIVE_ENDPOINT_COUNT (sep_crypto_pkg::SEP_CRYPTO_DRBG_NATIVE_CLIENT_COUNT)
-    ) u_drbg (
+        .EDN_NATIVE_ENDPOINT_COUNT (0)
+    ) u_drbg_s3c_scan (
         .clk_i,
         .rst_ni              (sep_reset_ni),
 
         .entropy_stream_data_i (entropy_stream_data),
         .entropy_stream_vld_i  (entropy_stream_vld),
 
-        // Pre-CSRNG bypass stream is not consumed at this level; backpressure it.
-        .entropy_axis_o        (drbg_unused_entropy_axis_req),
-        .entropy_axis_i        (drbg_pkg::drbg_axis_rsp_t'{tready: 1'b0}),
-
-        // EDN AXI-Stream endpoints: [0]=Key Manager (mux0), [1]=crypto adapter (mux1)
+        // EDN AXI-Stream endpoints, one per ext-TRNG mux leg:
+        //   [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy pool (mux2)
         .edn_axis_o            (drbg_int_axis_req),
         .edn_axis_i            (drbg_int_axis_rsp),
 
-        // Native EDN req/rsp interface unused in SEP (SEP_CRYPTO_DRBG_NATIVE_CLIENT_COUNT=0):
-        // the port is a width-1 placeholder and the consuming logic is gen'd out. Tie off the
-        // input to avoid a floating net and leave the output open.
-        .edn_native_req_i      ('0),
-        .edn_native_rsp_o      (),
+        // No native EDN endpoints: every DRBG output is an AXI-Stream leg so it can
+        // be muxed against the external TRNG. Tie off the width-1 port proxy.
+        .edn_native_req_i      (edn_pkg::EDN_REQ_DEFAULT),
+        .edn_native_rsp_o      (/* unconnected */),
 
         // AXI-Lite CSR buses
         .csrng_axil_req_i      (csrng_axil_req),
@@ -990,13 +1152,9 @@ module sep_crypto #(
         .intr_edn_fatal_err_o   (intr_edn_fatal_err_o)
     );
 
-    // Sink the unused pre-CSRNG bypass stream so static analysis doesn't flag it.
-    assign unused_drbg_entropy_axis = drbg_unused_entropy_axis_req.tvalid
-                                    | (|drbg_unused_entropy_axis_req.tdata)
-                                    | (|drbg_unused_entropy_axis_req.tstrb);
-
     // One DRBG EDN endpoint per mux leg. Direct packed-array bind of
-    // u_drbg.edn_axis_o/i to drbg_int_axis_req/rsp assumes this invariant.
+    // u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp assumes this
+    // invariant.
     // Elaboration-time check (evaluated by synth and simulators).
     if (EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : g_drbg_endpoint_mux_width_check
         $error("sep_crypto: EXT_TRNG_NUM_AXIS must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT; one DRBG EDN endpoint per mux leg.");
@@ -1008,6 +1166,7 @@ module sep_crypto #(
     //
     // Mux 0: feeds Key Manager       — selects between DRBG edn_axis_o[0] and ext_trng[0]
     // Mux 1: feeds crypto blocks     — selects between DRBG edn_axis_o[1] and ext_trng[1]
+    // Mux 2: feeds entropy pool      — selects between DRBG edn_axis_o[2] and ext_trng[2]
     //
     // Back-pressure policy for non-selected source:
     //   - DRBG side: tready=0 (hold in FIFO, don't drop)
@@ -1043,13 +1202,35 @@ module sep_crypto #(
 
     drbg_axis_edn_adapter #(
         .NUM_ENDPOINTS (sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
-    ) u_axis_edn_crypto (
+    ) u_axis_edn_crypto_s3c_scan (
         .clk_i      (clk_i),
         .rst_ni     (sep_reset_ni),
         .axis_req_i (entropy_muxed_req[1]),
         .axis_rsp_o (entropy_muxed_rsp[1]),
         .edn_req_i  (crypto_edn_req),
         .edn_rsp_o  (crypto_edn_rsp)
+    );
+
+    //=========================================================================
+    // Mux 2 -> native EDN for the entropy pool (32b FIFO + edn_ack_sm)
+    //=========================================================================
+    //
+    // Reuses drbg_axis_edn_adapter with NUM_ENDPOINTS=1: converts the muxed
+    // AXI-Stream (internal DRBG edn_axis_o[2] or external TRNG[2]) back into a
+    // single native EDN req/rsp, presented to sep_entropy_fifo unchanged. The
+    // adapter forwards tuser -> edn_fips, so the pool boundary sees the FIPS bit.
+    assign pool_edn_req[0]         = entropy_pool_edn_req_i;
+    assign entropy_pool_edn_rsp_o  = pool_edn_rsp[0];
+
+    drbg_axis_edn_adapter #(
+        .NUM_ENDPOINTS (sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
+    ) u_axis_edn_pool_s3c_scan (
+        .clk_i      (clk_i),
+        .rst_ni     (sep_reset_ni),
+        .axis_req_i (entropy_muxed_req[2]),
+        .axis_rsp_o (entropy_muxed_rsp[2]),
+        .edn_req_i  (pool_edn_req),
+        .edn_rsp_o  (pool_edn_rsp)
     );
 
     //=========================================================================
@@ -1060,7 +1241,7 @@ module sep_crypto #(
     //   - Mailbox slave port    <- demux port [7] via AXI4-64 to AXI-Lite-32 conversion
     //   - Crypto key bus master <- OTBN/AES/KMAC wrapper key ports
     //   - ROM/SRAM interfaces   <- exposed at sep_crypto top level (hard macros)
-    //   - DRBG AXI-Stream       <- muxed from u_drbg edn_axis_o[0] or ext_trng[0]
+    //   - DRBG AXI-Stream       <- muxed from u_drbg_s3c_scan edn_axis_o[0] or ext_trng[0]
 
     key_manager #(
         .ROM_SIZE_BYTES       (16384),
@@ -1068,7 +1249,7 @@ module sep_crypto #(
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
         .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
-    ) u_key_manager (
+    ) u_key_manager_s3c_scan (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.
         .cold_rst_ni         (sep_reset_ni),
@@ -1098,7 +1279,7 @@ module sep_crypto #(
         .hmac_resp_i         (hmac_key_axil_resp),
         .abr_req_o           (abr_key_axil_req),
         .abr_resp_i          (abr_key_axil_resp),
-        .abr_mlkem_sharedkey_irq_i  (1'b0),
+        .abr_mlkem_sharedkey_irq_i  (abr_mlkem_sharedkey_irq),
 
         // Efuse AXI-Lite master bus -> sep_efuse_wrapper mux
         .efuse_req_o         (km_efuse_axil_req),
@@ -1117,8 +1298,8 @@ module sep_crypto #(
         // OTP data — assembled from efuse shadow registers and lifecycle ctrl
         .otp_data_i          (km_otp_data),
 
-        // Wipe state — not yet integrated (source TBD: lifecycle ctrl or AGP)
-        .wipe_state_i        (1'b0),
+        // Wipe state — rising edge zeroes the KPV and sets the KM WIPE_STATE IRQ
+        .wipe_state_i        (km_wipe_state_i),
 
         // Test/DFT
         .test_en_i           (test_en_i),
@@ -1135,11 +1316,13 @@ module sep_crypto #(
     // all live inside these structs, any width change shows up in the total
     // $bits of the req/resp.
     // =========================================================================
+`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
     initial begin : g_km_efuse_axil_type_assertions
         assert ($bits(km_intf_pkg::km_axil_req_t)  == $bits(sep_efuse_pkg::efuse_axil_req_t))
             else $fatal(1, "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t");
         assert ($bits(km_intf_pkg::km_axil_resp_t) == $bits(sep_efuse_pkg::efuse_axil_resp_t))
             else $fatal(1, "KM_EFUSE_AXIL resp width mismatch: km_axil_resp_t != efuse_axil_resp_t");
     end
+`endif  // SYNTHESIS
 
 endmodule

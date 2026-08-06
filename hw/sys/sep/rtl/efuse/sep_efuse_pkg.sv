@@ -335,7 +335,8 @@ package sep_efuse_pkg;
   localparam int unsigned NumFuseWordWidth = 32;
 
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256
-  localparam int unsigned NumFuseBytes = NumFuseWords * 4; // 1024
+  localparam int unsigned NumFuseWordBytes = NumFuseWordWidth / 8;
+  localparam int unsigned NumFuseBytes = NumFuseWords * NumFuseWordBytes; // 1024
 
   localparam int unsigned NumFuseBitsWidth = $clog2(NumEfuseBits);
   localparam int unsigned NumFuseByteWidth = $clog2(NumFuseBytes);
@@ -376,6 +377,62 @@ package sep_efuse_pkg;
     sep_efuse_map_regmap_t f;
     logic [NumFuseWords-1:0][NumFuseWordWidth-1:0] values;
   } efuse_map_t;
+
+  // Class 1 storage is selected by field identity; all locations and widths
+  // are derived directly from the generated RDL metadata.
+  localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR),
+          $bits(sep_efuse_map_locks_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR),
+          $bits(sep_efuse_map_lc_state_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR),
+          $bits(sep_efuse_map_lc_disable_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR),
+          $bits(sep_efuse_map_lc_disable_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR),
+          $bits(sep_efuse_map_rma_sip_token_digest_reg_t),
+          NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR),
+          $bits(sep_efuse_map_rma_chiplet_token_digest_reg_t),
+          NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR),
+          $bits(sep_efuse_map_class_key_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR),
+          $bits(sep_efuse_map_chiplet_uid_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR),
+          $bits(sep_efuse_map_sip_uid_reg_t), NumFuseWordWidth),
+      efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR),
+          $bits(sep_efuse_map_sys_uid_reg_t), NumFuseWordWidth)
+  };
+
+  // Class 1a device secrets. These are disconnected from the shadow register
+  // hardware output while secure_tm is asserted so no real secret reaches a
+  // scannable consumer. Register reads keep their normal access controls.
+  localparam efuse_pkg::shadow_word_range_map_t SecretShadowRanges = '{
+      0: efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR),
+          $bits(sep_efuse_map_chiplet_uid_reg_t), NumFuseWordWidth),
+      1: efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR),
+          $bits(sep_efuse_map_sip_uid_reg_t), NumFuseWordWidth),
+      2: efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR),
+          $bits(sep_efuse_map_sys_uid_reg_t), NumFuseWordWidth),
+      3: efuse_pkg::make_shadow_word_range(
+          efuse_offset(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR),
+          $bits(sep_efuse_map_class_key_reg_t), NumFuseWordWidth),
+      default: '0
+  };
 
 
 // lock field

@@ -188,7 +188,7 @@ module cdc_2phase_clearable #(
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
 
-  `TT_PULP_ASSERT(no_valid_i_during_clear_i, src_clear_i |-> !src_valid_i, src_clk_i, !src_rst_ni)
+  `OCAH_PULP_ASSERT(no_valid_i_during_clear_i, src_clear_i |-> !src_valid_i, src_clk_i, !src_rst_ni)
 
 `endif
 
@@ -257,7 +257,7 @@ module cdc_2phase_src_clearable #(
 
 // Assertions
 `ifndef COMMON_CELLS_ASSERTS_OFF
-  `ASSUME(no_clear_and_request, clear_i |-> ~valid_i, clk_i, !rst_ni,
+  `OCAH_PULP_ASSUME(no_clear_and_request, clear_i |-> ~valid_i, clk_i, !rst_ni,
           "No request allowed while clear_i is asserted.")
 `endif
 

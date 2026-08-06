@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// DTP (Debug & Test Ports) open-source cocotb testbench top.
+// DTP (Debug & Test Ports) open-source testbench top, shared between the
+// cocotb (PyUVM) and SystemVerilog UVM flows. ONE module, two shapes:
 //
-// Exposes the DTP DUT's primary JTAG TAP at pin level so the cocotb BFM can
+//   * default (cocotb, `--dut dtp`): the module exposes the full pin-level
+//     port list below and cocotb drives/samples the toplevel ports.
+//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp_uvm`): the port list is replaced by
+//     internal TB signals, and the harness block at the end of the module
+//     adds the clock, ocah_jtag_if/dtp_tb_if instances, quiescent tie-offs,
+//     and run_test(). Test classes are compiled via `include "dtp_tests.sv".
+//
+// Exposes the DTP DUT's primary JTAG TAP at pin level so the TB BFM can
 // drive it, plus system clock/reset. The JTAG TAP FSM lives *inside* `dtp`
 // (jtag_tap_ctrlr in jtag_intf_unit), so the client port is the decoded
 // {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG pins.
@@ -21,6 +29,7 @@ module dtp_uvm_top
     import jtag_inst_reg_pkg::*;
     import dtp_pkg::*;
     import sep_efuse_pkg::*;
+`ifndef DTP_UVM_TB
 (
     // System clock and reset (driven by cocotb)
     input  wire logic clk_i,
@@ -202,6 +211,126 @@ module dtp_uvm_top
     input  wire logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din,
     output logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din_en
 );
+`else
+;
+    // ------------------------------------------------------------------
+    // SV-UVM shape: the cocotb port list above becomes internal TB signals,
+    // driven by the harness block at the end of this module. Keep this list
+    // in lockstep with the port list — same names, same widths.
+    // ------------------------------------------------------------------
+    // System clock and reset (harness-generated clock, test-sequenced resets)
+    logic clk_i;
+    logic rst_n_i;
+    logic pwr_on_rst_ni;
+
+    // Primary JTAG TAP pins (driven/sampled via ocah_jtag_if)
+    logic jtag_tck;
+    logic jtag_tms;
+    logic jtag_trst;
+    logic jtag_tdi;
+    logic jtag_tdo;
+    logic jtag_tdo_oen;
+
+    // TAP state observation (exported via dtp_tb_if)
+    tap_state_e                jtag_ptap_state;
+    jtag_instruction_decoded_e jtag_ptap_inst_decoded;
+
+    // Flattened scan-control observables (unused by the UVM smoke)
+    logic jtag_bsr_select, jtag_bsr_shift_en, jtag_bsr_capture_en, jtag_bsr_update_en;
+    logic jtag_ijtag_select, jtag_ijtag_shift_en, jtag_ijtag_capture_en, jtag_ijtag_update_en;
+    logic jtag_dft_secure_select, jtag_dft_secure_shift_en;
+    logic jtag_dft_secure_capture_en, jtag_dft_secure_update_en;
+    logic jtag_dft_select, jtag_dft_shift_en, jtag_dft_capture_en, jtag_dft_update_en;
+    logic jtag_dfd_select, jtag_dfd_shift_en, jtag_dfd_capture_en, jtag_dfd_update_en;
+    logic jtag_stap_host_select, jtag_stap_host_shift_en;
+    logic jtag_stap_host_capture_en, jtag_stap_host_update_en;
+    logic jtag_stap_io_tms, jtag_stap_io_tck, jtag_stap_io_trst_n, jtag_stap_io_tdo_oen;
+    logic jtag_stap_smc_tms, jtag_stap_smc_tck, jtag_stap_smc_trst_n, jtag_stap_smc_tdo_oen;
+    logic jtag_stap_sep_tms, jtag_stap_sep_tck, jtag_stap_sep_trst_n, jtag_stap_sep_tdo_oen;
+    logic jtag_stap_extra0_tms, jtag_stap_extra0_tck;
+    logic jtag_stap_extra0_trst_n, jtag_stap_extra0_tdo_oen;
+
+    // DEBUG_CONTROL / IC_RESET observables and CLA clock-stop stimulus
+    logic [DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req;
+    logic stop_clks;
+    logic cla_clock_stop_en;
+    logic jtag_boot_stall_ovrd, jtag_boot_stall;
+    logic jtag_ic_reset_smc_ovrd, jtag_ic_reset_smc_ctrl_n;
+    logic jtag_ic_reset_sep_ovrd, jtag_ic_reset_sep_ctrl_n;
+    logic jtag_ic_reset_ext_ovrd, jtag_ic_reset_ext_ctrl_n;
+
+    // Lifecycle feature-control stimulus
+    logic feat_ctrl_sip_debug, feat_ctrl_soc_debug, feat_ctrl_ap_debug;
+    logic feat_ctrl_sep_debug, feat_ctrl_fuse_test;
+
+    // Request-valid pulse counters
+    logic [31:0] smc_axi_awvalid_count, smc_axi_wvalid_count, smc_axi_arvalid_count;
+    logic [31:0] smc_otp_axil_awvalid_count, smc_otp_axil_wvalid_count;
+    logic [31:0] smc_otp_axil_arvalid_count;
+    logic [31:0] sep_otp_axil_awvalid_count, sep_otp_axil_wvalid_count;
+    logic [31:0] sep_otp_axil_arvalid_count;
+
+    // SMC OTP AXI-Lite manager (flattened)
+    logic [31:0] smc_otp_axil_awaddr;
+    logic [2:0]  smc_otp_axil_awprot;
+    logic        smc_otp_axil_awvalid, smc_otp_axil_awready;
+    logic [31:0] smc_otp_axil_wdata;
+    logic [3:0]  smc_otp_axil_wstrb;
+    logic        smc_otp_axil_wvalid, smc_otp_axil_wready;
+    logic [1:0]  smc_otp_axil_bresp;
+    logic        smc_otp_axil_bvalid, smc_otp_axil_bready;
+    logic [31:0] smc_otp_axil_araddr;
+    logic [2:0]  smc_otp_axil_arprot;
+    logic        smc_otp_axil_arvalid, smc_otp_axil_arready;
+    logic [31:0] smc_otp_axil_rdata;
+    logic [1:0]  smc_otp_axil_rresp;
+    logic        smc_otp_axil_rvalid, smc_otp_axil_rready;
+
+    // SEP OTP AXI-Lite manager (flattened)
+    logic [31:0] sep_otp_axil_awaddr;
+    logic [2:0]  sep_otp_axil_awprot;
+    logic        sep_otp_axil_awvalid, sep_otp_axil_awready;
+    logic [31:0] sep_otp_axil_wdata;
+    logic [3:0]  sep_otp_axil_wstrb;
+    logic        sep_otp_axil_wvalid, sep_otp_axil_wready;
+    logic [1:0]  sep_otp_axil_bresp;
+    logic        sep_otp_axil_bvalid, sep_otp_axil_bready;
+    logic [31:0] sep_otp_axil_araddr;
+    logic [2:0]  sep_otp_axil_arprot;
+    logic        sep_otp_axil_arvalid, sep_otp_axil_arready;
+    logic [31:0] sep_otp_axil_rdata;
+    logic [1:0]  sep_otp_axil_rresp;
+    logic        sep_otp_axil_rvalid, sep_otp_axil_rready;
+
+    // XTRIG AXI-Lite subordinate (flattened)
+    logic [31:0] xtrig_axil_awaddr;
+    logic [2:0]  xtrig_axil_awprot;
+    logic        xtrig_axil_awvalid, xtrig_axil_awready;
+    logic [31:0] xtrig_axil_wdata;
+    logic [3:0]  xtrig_axil_wstrb;
+    logic        xtrig_axil_wvalid, xtrig_axil_wready;
+    logic [1:0]  xtrig_axil_bresp;
+    logic        xtrig_axil_bvalid, xtrig_axil_bready;
+    logic [31:0] xtrig_axil_araddr;
+    logic [2:0]  xtrig_axil_arprot;
+    logic        xtrig_axil_arvalid, xtrig_axil_arready;
+    logic [31:0] xtrig_axil_rdata;
+    logic [1:0]  xtrig_axil_rresp;
+    logic        xtrig_axil_rvalid, xtrig_axil_rready;
+    logic [31:0] xtrig_axil_awvalid_count, xtrig_axil_wvalid_count, xtrig_axil_arvalid_count;
+
+    // XTRIG CTM and CTP GPIO stimulus/observables
+    logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req, xtrig_ctm_src_ack;
+    logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req, xtrig_ctm_dst_ack;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_dout, xtrig_ctp_req_out_dout_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_din, xtrig_ctp_req_out_din_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_dout, xtrig_ctp_req_in_dout_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_din, xtrig_ctp_req_in_din_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_dout, xtrig_ctp_ack_in_dout_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_din, xtrig_ctp_ack_in_din_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_dout, xtrig_ctp_ack_out_dout_en;
+    logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din, xtrig_ctp_ack_out_din_en;
+`endif
 
     // ------------------------------------------------------------------
     // Primary JTAG client: pack raw pins into the decoded tap-control struct
@@ -663,5 +792,92 @@ module dtp_uvm_top
         .xtrig_ctp_ack_out_din_i          (xtrig_ctp_ack_out_din),
         .xtrig_ctp_ack_out_din_en_o       (xtrig_ctp_ack_out_din_en)
     );
+
+`ifdef DTP_UVM_TB
+    // ------------------------------------------------------------------
+    // SV-UVM harness (`--dut dtp_uvm`): clock, interface instances,
+    // quiescent tie-offs, config_db publication, and run_test(). Compiled
+    // only when the native-uvm flow defines DTP_UVM_TB; the cocotb flow
+    // sees only the ported module above.
+    // ------------------------------------------------------------------
+    import uvm_pkg::*;
+
+    // 100 MHz system clock; TCK is bit-banged by the sequence via the vif.
+    initial clk_i = 1'b0;
+    always #5ns clk_i = ~clk_i;
+
+    ocah_jtag_if u_jtag_if ();
+    dtp_tb_if    u_tb_if ();
+
+    // Primary JTAG TAP: TB drives tck/tms/trst_n/tdi, DUT drives tdo/tdo_oen.
+    assign jtag_tck  = u_jtag_if.tck;
+    assign jtag_tms  = u_jtag_if.tms;
+    assign jtag_trst = u_jtag_if.trst_n;
+    assign jtag_tdi  = u_jtag_if.tdi;
+    assign u_jtag_if.tdo     = jtag_tdo;
+    assign u_jtag_if.tdo_oen = jtag_tdo_oen;
+
+    // DTP-local resets (test-sequenced) and TAP-state observable.
+    assign rst_n_i           = u_tb_if.sys_rst_n;
+    assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
+    assign u_tb_if.tap_state = jtag_ptap_state;
+
+    // Feature-control fuses and clock-stop requests: quiescent/locked.
+    assign xtrig_clk_stop_req  = '0;
+    assign feat_ctrl_sip_debug = 1'b0;
+    assign feat_ctrl_soc_debug = 1'b0;
+    assign feat_ctrl_ap_debug  = 1'b0;
+    assign feat_ctrl_sep_debug = 1'b0;
+    assign feat_ctrl_fuse_test = 1'b0;
+
+    // OTP AXI-Lite responders: idle-ready, never responding (no OTP traffic
+    // is generated by the UVM smoke).
+    assign smc_otp_axil_awready = 1'b1;
+    assign smc_otp_axil_wready  = 1'b1;
+    assign smc_otp_axil_bresp   = 2'b00;
+    assign smc_otp_axil_bvalid  = 1'b0;
+    assign smc_otp_axil_arready = 1'b1;
+    assign smc_otp_axil_rdata   = 32'h0;
+    assign smc_otp_axil_rresp   = 2'b00;
+    assign smc_otp_axil_rvalid  = 1'b0;
+    assign sep_otp_axil_awready = 1'b1;
+    assign sep_otp_axil_wready  = 1'b1;
+    assign sep_otp_axil_bresp   = 2'b00;
+    assign sep_otp_axil_bvalid  = 1'b0;
+    assign sep_otp_axil_arready = 1'b1;
+    assign sep_otp_axil_rdata   = 32'h0;
+    assign sep_otp_axil_rresp   = 2'b00;
+    assign sep_otp_axil_rvalid  = 1'b0;
+
+    // XTRIG AXI-Lite subordinate: no CSR traffic.
+    assign xtrig_axil_awaddr  = 32'h0;
+    assign xtrig_axil_awprot  = 3'b000;
+    assign xtrig_axil_awvalid = 1'b0;
+    assign xtrig_axil_wdata   = 32'h0;
+    assign xtrig_axil_wstrb   = 4'h0;
+    assign xtrig_axil_wvalid  = 1'b0;
+    assign xtrig_axil_bready  = 1'b0;
+    assign xtrig_axil_araddr  = 32'h0;
+    assign xtrig_axil_arprot  = 3'b000;
+    assign xtrig_axil_arvalid = 1'b0;
+    assign xtrig_axil_rready  = 1'b0;
+
+    // Cross-trigger CTM/CTP stimulus inputs: quiescent.
+    assign xtrig_ctm_src_ack     = '0;
+    assign xtrig_ctm_dst_req     = '0;
+    assign xtrig_ctp_req_out_din = '0;
+    assign xtrig_ctp_req_in_din  = '0;
+    assign xtrig_ctp_ack_in_din  = '0;
+    assign xtrig_ctp_ack_out_din = '0;
+
+    // Non-reusable test classes compile as part of this top (module scope).
+    `include "dtp_tests.sv"
+
+    initial begin
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+        uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+        run_test();
+    end
+`endif
 
 endmodule : dtp_uvm_top

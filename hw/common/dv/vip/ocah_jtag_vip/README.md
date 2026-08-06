@@ -23,15 +23,94 @@ package metadata for version 0.4.0 reports license `MIT`.
 ```text
 ocah_jtag_vip/
   __init__.py            - public exports
-  ocah_jtag_tap.py       - active TAP driver
-  ocah_jtag_device.py    - device/register map
-  ocah_jtag_item.py      - scan/state item dataclasses
-  ocah_jtag_monitor.py   - passive item-producing monitor
-  ocah_jtag_checker.py   - item-level checker
-  ocah_jtag_state.py     - TAP state enum and TMS path helpers
-  examples/
+  cocotb/ocah_jtag_tap.py       - active TAP driver
+  cocotb/ocah_jtag_device.py    - device/register map
+  cocotb/ocah_jtag_item.py      - scan/state item dataclasses
+  cocotb/ocah_jtag_monitor.py   - passive item-producing monitor
+  cocotb/ocah_jtag_checker.py   - item-level checker
+  cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
+  cocotb/examples/
     example_idcode.py    - PTAP/STAP/CPU TAP usage examples
+  interface/
+    ocah_jtag_if.sv      - shared pin-level IEEE 1149.1 interface (JTAG pins only)
+  uvm/
+    ocah_jtag_uvm_pkg.sv - SV-UVM agent package (see below)
 ```
+
+## SV-UVM Agent (`uvm/`)
+
+`ocah_jtag_uvm_pkg` provides a reusable SV-UVM agent over `ocah_jtag_if`:
+
+| Component | Role |
+|---|---|
+| `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
+| `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles |
+| `ocah_jtag_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
+| `ocah_jtag_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
+| `ocah_jtag_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
+| `ocah_jtag_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
+| `ocah_jtag_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
+
+The package also ships an encoding-agnostic IEEE 1149.1 TAP model
+(`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`; state values match the
+conventional 0..15 numbering, i.e. the bit index of one-hot RTL encodings)
+for DUT-side checkers. Protocol-legality checking, scoreboarding, and
+coverage live in subscribers, not in the monitor; IR/DR scan-level
+reconstruction is a documented follow-up once a scoreboard consumer exists.
+First user: the DTP SV-UVM flow (`--dut dtp_uvm`), whose
+`dtp_tap_fsm_checker` pairs monitor steps with the DUT's decoded TAP state.
+Like all SV-UVM collateral, compile sign-off is gated on a Linux VCS run.
+
+## Template Contract (per-protocol VIPs and commercial plug-ins)
+
+This VIP is the TEMPLATE for OCAH SV-UVM VIPs. DUT environments instantiate
+`ocah_<proto>_env` — the VIP-level environment is the reuse AND override
+unit, matching the delivery granularity of commercial VIPs (e.g. Synopsys
+`svt_axi_system_env` is an env, not an agent). Its frozen surface is:
+
+| Surface | Role |
+|---|---|
+| `m_sequencer` | scenario handle: DUT sequences issue `ocah_<proto>_item`s here |
+| `event_ap` | `ocah_<proto>_event` observation stream (silent when `cfg.en_monitor=0`) |
+| `cfg` | `ocah_<proto>_cfg`, incl. opaque `vendor_cfg` extension hook |
+
+Everything above that surface (DUT sequences, tests, checkers, testlists)
+depends only on the item and event types, never on driver/monitor internals.
+
+**Using a commercial VIP is a user-implemented integration** — the template
+does not hide that work, it gives it exactly one home per protocol:
+
+1. **Inherit the env (and agent if needed).** Subclass `ocah_<proto>_env`;
+   build the vendor system env (e.g. `svt_axi_system_env` +
+   `svt_axi_system_configuration` via `cfg.vendor_cfg`) instead of the OCAH
+   agent path. Select it with a single factory override:
+   `ocah_jtag_env::type_id::set_type_override(<vendor>_jtag_env::get_type())`.
+2. **Implement the API wrapper.** The vendor env owns all driving and
+   monitoring. The integration implements translation (WR/RD-style tasks or
+   a translator driver): convert each incoming `ocah_<proto>_item` into the
+   vendor's transactions (e.g. `svt_axi_master_transaction`), start them on
+   the vendor sequencer, and fill the item's response fields before
+   `item_done`. The OCAH driver's protocol tasks are `virtual` for
+   fine-grained reuse where helpful.
+3. **Close the OCAH monitor.** Set `cfg.en_monitor = 0`: the vendor env's
+   monitors/protocol checkers take over observation, and the OCAH agent
+   builds no monitor. Subscribers keyed to `ocah_<proto>_event` (FSM
+   checkers, scoreboards) must be re-pointed to vendor analysis streams or
+   fed by an adapter subscriber — part of the integration.
+4. **Nest the vendor interface inside `ocah_<proto>_if`.** The vendor VIP
+   brings its own SV interface; instantiate it INSIDE the OCAH interface
+   (guarded `ifdef OCAH_<PROTO>_VENDOR_IF` hook), wired from the OCAH
+   interface's boundary signals, and publish the nested instance with one
+   `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
+5. **Flow.** Vendor compile/setup args ride the existing per-DUT
+   `[build.vcs]` `analyze_args`/`compile_args`/`elab_args` and `sources`
+   keys (e.g. `-ntb_opts svt`, DesignWare incdirs); license-env gating is
+   already part of the commercial profile contract.
+
+Not yet exercised: no Synopsys VIP is integrated today, so this contract is
+architecture-verified (env-level override point, monitor-disable knob,
+vendor-cfg hook, and interface-nesting hook all exist) but not
+integration-tested against a real VC VIP installation.
 
 ## Quick Start
 

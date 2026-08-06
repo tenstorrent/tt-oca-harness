@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Stimulus sequence item. Operation kinds:
+//
+//   OCAH_JTAG_TAP_RESET — assert TRST for cfg.trst_reset_cycles TCK cycles
+//     (TMS held 1), release, leave the TAP in Test-Logic-Reset.
+//   OCAH_JTAG_IR_SCAN   — from Run-Test/Idle: load `width` IR bits from
+//     `wdata` (LSB-first), return to Run-Test/Idle. Observed TDO in `tdo`.
+//   OCAH_JTAG_DR_SCAN   — from Run-Test/Idle: shift `width` DR bits from
+//     `wdata` (LSB-first), return to Run-Test/Idle. Observed TDO in `tdo`.
+//   OCAH_JTAG_RAW_TMS   — drive tms_bits[]/tdi_bits[] one TCK cycle per
+//     element from ANY state; per-step observed TDO in tdo_bits[].
+//
+// Scan preconditions are the caller's contract: IR/DR scans assume the TAP
+// is in Run-Test/Idle (the driver navigates RTI -> scan leg -> RTI). The
+// driver fills response fields in the same object before item_done, so
+// sequences read them directly after finish_item().
+
+typedef enum {
+    OCAH_JTAG_TAP_RESET,
+    OCAH_JTAG_IR_SCAN,
+    OCAH_JTAG_DR_SCAN,
+    OCAH_JTAG_RAW_TMS
+} ocah_jtag_op_e;
+
+class ocah_jtag_item extends uvm_sequence_item;
+    `uvm_object_utils(ocah_jtag_item)
+
+    rand ocah_jtag_op_e op = OCAH_JTAG_RAW_TMS;
+    rand int unsigned  width;        // scan bit count (1..64); unused for raw/reset
+    rand bit [63:0]    wdata;        // scan write pattern, LSB-first
+
+    bit tms_bits[];                  // raw op: per-step TMS (defines step count)
+    bit tdi_bits[];                  // raw op: per-step TDI (padded with 0 if shorter)
+
+    // Responses (driver-filled).
+    bit [63:0] tdo;                  // scan ops: observed TDO, LSB-first
+    bit tdo_bits[];                  // raw op: per-step observed TDO
+
+    constraint c_width { width inside {[1:64]}; }
+
+    function new(string name = "ocah_jtag_item");
+        super.new(name);
+    endfunction
+
+    function string convert2string();
+        case (op)
+            OCAH_JTAG_TAP_RESET: return "TAP_RESET";
+            OCAH_JTAG_IR_SCAN:   return $sformatf("IR_SCAN  width=%0d wdata=0x%0h tdo=0x%0h", width, wdata, tdo);
+            OCAH_JTAG_DR_SCAN:   return $sformatf("DR_SCAN  width=%0d wdata=0x%016h tdo=0x%016h", width, wdata, tdo);
+            default:             return $sformatf("RAW_TMS  steps=%0d", tms_bits.size());
+        endcase
+    endfunction
+
+endclass : ocah_jtag_item

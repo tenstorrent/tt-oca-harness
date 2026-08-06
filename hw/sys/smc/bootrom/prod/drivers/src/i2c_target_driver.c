@@ -67,8 +67,8 @@ static inline void log_simputshex32(const char *msg, uint32_t val) {
 // send stop bit after the i2c read/write transaction
 
 static const uintptr_t kCtrlGateAddrs[I2C_CONTROLLER_COUNT] = {
-    SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_0__REG_ADDR,
-    SMC_I2C_WRAP_I2C_CTRL_I2C_CTRL_1__REG_ADDR,
+    SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_0__REG_ADDR,
+    SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_1__REG_ADDR,
 };
 
 typedef enum {

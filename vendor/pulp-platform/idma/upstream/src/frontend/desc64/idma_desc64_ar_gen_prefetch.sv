@@ -72,7 +72,7 @@ localparam int unsigned DescriptorSize = $bits(descriptor_t) / 8;
 // We need the descriptor to have a power of two size for easy multiplication
 // when calculating the next address
 // pragma translate_off
-`ASSERT_INIT(DescriptorSizeIsPowerOfTwo, (32'd1 << $clog2(DescriptorSize)) == DescriptorSize)
+`OCAH_PULP_ASSERT_INIT(DescriptorSizeIsPowerOfTwo, (32'd1 << $clog2(DescriptorSize)) == DescriptorSize)
 // pragma translate_on
 
 localparam logic [2:0]  AxiSize   = `MIN(`MIN($clog2(DataWidthBytes),

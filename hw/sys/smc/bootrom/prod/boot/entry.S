@@ -71,6 +71,27 @@ _enter:
     la t0, early_trap_vector
     csrw mtvec, t0
 
+#ifdef ROM_PADDING_SELFTEST
+    /*
+     * DV-only ROM padding protection self-test. This is never compiled into a
+     * production image. Run it immediately after mtvec is installed so the
+     * result is independent of later boot operations.
+     *
+     * Mode 1 jumps to an aligned EBREAK in the linker-defined padding range.
+     * Mode 2 executes EBREAK here to exercise the generic breakpoint path.
+     */
+#if ROM_PADDING_SELFTEST == 2
+    ebreak
+#else
+    la   t0, __rom_used_end
+    la   t1, __rom_end
+    add  t2, t0, t1
+    srli t2, t2, 1
+    andi t2, t2, -4
+    jr   t2
+#endif
+#endif
+
     /* Clear SMC/SEP coordination scratch registers for clean state. */
     jal ra, __metal_clear_coordination_scratch_regs
 

@@ -1,22 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP CPU Wrapper
 // Contains VeeR EL2 core complex (which itself contains the RV32 core, Data and Instruction TCMs, PIC and Debug Module)
 // The external interface is mostly not EL2-specific, which means the EL2 core can be replaced with another core relatively easily and transparently to other modules
-//
-//-----------------------------------------------------------------------------
 
-//`include "common_defines.vh"  // VeeR EL2 config constants (RV_LOCKSTEP_ENABLE)
-// - above is brought in through bender already, no need to include it
-
-module sep_cpu
-  import sep_pkg::*;
-  import el2_pkg::*;
-#(
-`include "el2_param.vh"
-) (
+module sep_cpu (
     input logic clk_i,
     input logic rst_ni,
     input logic dbg_rstb_i,  // EL2 debugger reset
@@ -58,7 +47,6 @@ module sep_cpu
     output logic        dmi_active,
 
     // These values should be tied to constants in the top level or sourced from a CSR
-    input logic [31:1] rst_vec,  // PC to jump to @ reset
     input logic [31:1] nmi_vec,  // PC to jump to @ NMI
     input logic [31:1] jtag_id,
 
@@ -68,7 +56,7 @@ module sep_cpu
     input logic                       soft_int,
     input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
 
-    output sep_cpu_trace_t sep_cpu_trace,
+    output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
     // FIXME: Forward this to safety island somehow or SEP-level CSRs
     output logic iccm_ecc_single_error,
@@ -90,47 +78,52 @@ module sep_cpu
   `endif
 
     // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
-    output sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-    input  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+    output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
+    input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
     // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-    output sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
+    output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
+    input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
+    output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
+    input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
+    output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
+    input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
+    output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
+    input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
+    output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
+    input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
 
-    input  sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
+    input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
+    output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
 
-    input  logic [31:0]                 sep_local_base_addr_i,
-    input  logic [31:0]                 sep_region_size_i
+    input  logic [31:0]                 sep_local_base_addr_i
 );
 
+  import el2_pkg::el2_param_t;
+
+  // el2_param.vh (generated) declares `parameter el2_param_t pt` with no terminator
+  `include "el2_param.vh"
+  ;
+
   // IFU intermediate signals (after local alias adjustment, before demux)
-  sep_32_64_3_12_axi_req_t  ifu_axi_req;
-  sep_32_64_3_12_axi_resp_t ifu_axi_resp;
+  sep_pkg::sep_32_64_3_12_axi_req_t  ifu_axi_req;
+  sep_pkg::sep_32_64_3_12_axi_resp_t ifu_axi_resp;
 
   // Intermediate signals before local alias adjustment (raw from EL2)
-  sep_32_64_3_12_axi_req_t  lsu_axi_req_raw;
-  sep_32_64_3_12_axi_resp_t lsu_axi_resp_raw;
-  sep_32_64_3_12_axi_req_t  ifu_axi_req_raw;
-  sep_32_64_3_12_axi_resp_t ifu_axi_resp_raw;
-  sep_32_64_3_12_axi_req_t  dbg_axi_req_raw;
-  sep_32_64_3_12_axi_resp_t dbg_axi_resp_raw;
+  sep_pkg::sep_32_64_3_12_axi_req_t  lsu_axi_req_raw;
+  sep_pkg::sep_32_64_3_12_axi_resp_t lsu_axi_resp_raw;
+  sep_pkg::sep_32_64_3_12_axi_req_t  ifu_axi_req_raw;
+  sep_pkg::sep_32_64_3_12_axi_resp_t ifu_axi_resp_raw;
+  sep_pkg::sep_32_64_3_12_axi_req_t  dbg_axi_req_raw;
+  sep_pkg::sep_32_64_3_12_axi_resp_t dbg_axi_resp_raw;
 
   // LSU intermediate signals (after local alias adjustment)
-  sep_32_64_3_12_axi_req_t  lsu_axi_req;
-  sep_32_64_3_12_axi_resp_t lsu_axi_resp;
+  sep_pkg::sep_32_64_3_12_axi_req_t  lsu_axi_req;
+  sep_pkg::sep_32_64_3_12_axi_resp_t lsu_axi_resp;
 
   // SB/DBG AXI ID width conversion signals (pt.SB_BUS_TAG <-> SEP_32_64_3_12_ID_WIDTH)
   logic [pt.SB_BUS_TAG-1:0] sb_axi_awid_raw;
@@ -144,8 +137,23 @@ module sep_cpu
 
   el2_mem_if el2_mem_if ();
 
+  // Core has no internal synchronizer for mpc_reset_run_req; sync it here.
+  // dbg_rstb_i deasserts well before rst_ni, so the value is stable when sampled.
+  logic mpc_reset_run_req_sync;
+
+  prim_sync2r #(
+      .WIDTH (1)
+  ) u_mpc_reset_run_req_sync (
+      .i_clk     (clk_i),
+      .i_d       (mpc_reset_run_req),
+      .i_reset_n (dbg_rstb_i),
+      .o_q       (mpc_reset_run_req_sync)
+  );
+
   // TODO: Make it such that this is easier to replace with another CPU
-  el2_veer_wrapper el2_veer_wrapper (
+  el2_veer_wrapper #(
+    .RESET_VEC (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
+  ) el2_veer_wrapper (
     .clk       (clk_i),
     .rst_l     (rst_ni),
     .dbg_rst_l (dbg_rstb_i),
@@ -160,7 +168,7 @@ module sep_cpu
     // external MPC halt/run interface
     .mpc_debug_halt_req (mpc_debug_halt_req), // Async halt request
     .mpc_debug_run_req  (mpc_debug_run_req),  // Async run request
-    .mpc_reset_run_req  (mpc_reset_run_req),  // Run/halt after reset
+    .mpc_reset_run_req  (mpc_reset_run_req_sync),  // Run/halt after reset
     .mpc_debug_halt_ack (mpc_debug_halt_ack), // Halt ack
     .mpc_debug_run_ack  (mpc_debug_run_ack),  // Run ack
     .debug_brkpt_status (debug_brkpt_status), // debug breakpoint
@@ -185,8 +193,7 @@ module sep_cpu
     .dmi_uncore_rdata  (dmi_uncore_rdata),
     .dmi_active        (dmi_active),
 
-    // jtag_id, rst_vec and nmi_vec should be tied to constant in the top level or sourced from a CSR
-    .rst_vec (rst_vec),
+    // jtag_id and nmi_vec should be tied to constant in the top level or sourced from a CSR
     .nmi_vec (nmi_vec),
     .jtag_id (jtag_id),
     .core_id ('0),      // drives register that controls mhartid, a single core el2 can safely tie this to 0
@@ -401,8 +408,8 @@ module sep_cpu
   // If pt.SB_BUS_TAG > SEP_32_64_3_12_ID_WIDTH: truncate MSBs (should not happen in practice)
   // If pt.SB_BUS_TAG == SEP_32_64_3_12_ID_WIDTH: direct assignment
 
-  assign dbg_axi_req_raw.aw.id = SEP_32_64_3_12_ID_WIDTH'(sb_axi_awid_raw);
-  assign dbg_axi_req_raw.ar.id = SEP_32_64_3_12_ID_WIDTH'(sb_axi_arid_raw);
+  assign dbg_axi_req_raw.aw.id = sep_pkg::SEP_32_64_3_12_ID_WIDTH'(sb_axi_awid_raw);
+  assign dbg_axi_req_raw.ar.id = sep_pkg::SEP_32_64_3_12_ID_WIDTH'(sb_axi_arid_raw);
 
   // Convert AXI struct ID width to EL2 SB ID width
   assign sb_axi_bid_raw = pt.SB_BUS_TAG'(dbg_axi_resp_raw.b.id);
@@ -431,7 +438,7 @@ module sep_cpu
   assign el2_mem_if.dccm_bank_dout = sep_cpu_tcm_rsp_i.dccm_bank_dout;
   assign el2_mem_if.dccm_bank_ecc  = sep_cpu_tcm_rsp_i.dccm_bank_ecc;
 
-  // ICache (FIXME: We dont need this for now, no i-cache instance for now)
+  // ICache (Tie off - no ICache)
   assign el2_mem_if.wb_packeddout_pre          = '0;
   assign el2_mem_if.wb_dout_pre_up             = '0;
   assign el2_mem_if.ic_tag_data_raw_packed_pre = '0;
@@ -465,89 +472,89 @@ module sep_cpu
   //////////////////////////////////
 
   // LSU Bus Remap
-  axi_local_alias_remap #(
-      .axi_req_t      (sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (SEP_32_64_3_12_ADDR_WIDTH)
+  axi_window_remap #(
+      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_lsu_local_alias_remap (
       .slv_req_i          (lsu_axi_req_raw),
       .slv_resp_o         (lsu_axi_resp_raw),
       .mst_req_o          (lsu_axi_req),
       .mst_resp_i         (lsu_axi_resp),
       .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_region_size_i),
-      .target_base_i      ('0)
+      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   // IFU Bus Remap
-  axi_local_alias_remap #(
-      .axi_req_t      (sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (SEP_32_64_3_12_ADDR_WIDTH)
+  axi_window_remap #(
+      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_ifu_local_alias_remap (
       .slv_req_i          (ifu_axi_req_raw),
       .slv_resp_o         (ifu_axi_resp_raw),
       .mst_req_o          (ifu_axi_req),
       .mst_resp_i         (ifu_axi_resp),
       .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_region_size_i),
-      .target_base_i      ('0)
+      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   // DBG Bus Remap
-  axi_local_alias_remap #(
-      .axi_req_t      (sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (SEP_32_64_3_12_ADDR_WIDTH)
+  axi_window_remap #(
+      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_dbg_local_alias_remap (
       .slv_req_i          (dbg_axi_req_raw),
       .slv_resp_o         (dbg_axi_resp_raw),
       .mst_req_o          (dbg_axi_req_o),
       .mst_resp_i         (dbg_axi_resp_i),
       .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_region_size_i),
-      .target_base_i      ('0)
+      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   ///////////////////
   // IFU AXI Demux //
   ///////////////////
 
-  sep_32_64_3_12_axi_req_t  [SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_req;
-  sep_32_64_3_12_axi_resp_t [SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_resp;
-  sep_ifu_demux_port_t ifu_aw_select, ifu_ar_select;
+  sep_pkg::sep_32_64_3_12_axi_req_t  [sep_pkg::SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_req;
+  sep_pkg::sep_32_64_3_12_axi_resp_t [sep_pkg::SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_resp;
+  sep_pkg::sep_ifu_demux_port_t ifu_aw_select, ifu_ar_select;
 
   always_comb begin
     if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
-      ifu_aw_select = SEP_IFU_DEMUX_PORT_ROM;
+      ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
     end else if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
-      ifu_aw_select = SEP_IFU_DEMUX_PORT_SRAM;
+      ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
-      ifu_aw_select = SEP_IFU_DEMUX_PORT_ERR_SLV;
+      ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
     end
 
     if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
-      ifu_ar_select = SEP_IFU_DEMUX_PORT_ROM;
+      ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
     end else if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
-      ifu_ar_select = SEP_IFU_DEMUX_PORT_SRAM;
+      ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
-      ifu_ar_select = SEP_IFU_DEMUX_PORT_ERR_SLV;
+      ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
     end
   end
 
   axi_demux #(
-    .AxiIdWidth  (SEP_32_64_3_12_ID_WIDTH),
+    .AxiIdWidth  (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
     .AtopSupport (1'b0),
-    .aw_chan_t   (sep_32_64_3_12_axi_aw_chan_t),
-    .w_chan_t    (sep_32_64_3_12_axi_w_chan_t),
-    .b_chan_t    (sep_32_64_3_12_axi_b_chan_t),
-    .ar_chan_t   (sep_32_64_3_12_axi_ar_chan_t),
-    .r_chan_t    (sep_32_64_3_12_axi_r_chan_t),
-    .axi_req_t   (sep_32_64_3_12_axi_req_t),
-    .axi_resp_t  (sep_32_64_3_12_axi_resp_t),
-    .NoMstPorts  (SEP_IFU_DEMUX_NUM_PORTS),
+    .aw_chan_t   (sep_pkg::sep_32_64_3_12_axi_aw_chan_t),
+    .w_chan_t    (sep_pkg::sep_32_64_3_12_axi_w_chan_t),
+    .b_chan_t    (sep_pkg::sep_32_64_3_12_axi_b_chan_t),
+    .ar_chan_t   (sep_pkg::sep_32_64_3_12_axi_ar_chan_t),
+    .r_chan_t    (sep_pkg::sep_32_64_3_12_axi_r_chan_t),
+    .axi_req_t   (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t  (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .NoMstPorts  (sep_pkg::SEP_IFU_DEMUX_NUM_PORTS),
     .MaxTrans    (4),
-    .AxiLookBits (SEP_32_64_3_12_ID_WIDTH),
+    .AxiLookBits (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
     .UniqueIds   (1'b0),
     .SpillAw     (1'b0),
     .SpillW      (1'b0),
@@ -569,17 +576,17 @@ module sep_cpu
   );
 
   // Connect demux outputs to module ports
-  assign ifu_rom_axi_req_o                     = ifu_demux_req[SEP_IFU_DEMUX_PORT_ROM];
-  assign ifu_demux_resp[SEP_IFU_DEMUX_PORT_ROM] = ifu_rom_axi_resp_i;
+  assign ifu_rom_axi_req_o                     = ifu_demux_req[sep_pkg::SEP_IFU_DEMUX_PORT_ROM];
+  assign ifu_demux_resp[sep_pkg::SEP_IFU_DEMUX_PORT_ROM] = ifu_rom_axi_resp_i;
 
-  assign ifu_sram_axi_req_o                      = ifu_demux_req[SEP_IFU_DEMUX_PORT_SRAM];
-  assign ifu_demux_resp[SEP_IFU_DEMUX_PORT_SRAM] = ifu_sram_axi_resp_i;
+  assign ifu_sram_axi_req_o                      = ifu_demux_req[sep_pkg::SEP_IFU_DEMUX_PORT_SRAM];
+  assign ifu_demux_resp[sep_pkg::SEP_IFU_DEMUX_PORT_SRAM] = ifu_sram_axi_resp_i;
 
   // Error slave for invalid address decodes
   axi_err_slv #(
-    .AxiIdWidth (SEP_32_64_3_12_ID_WIDTH),
-    .axi_req_t  (sep_32_64_3_12_axi_req_t),
-    .axi_resp_t (sep_32_64_3_12_axi_resp_t),
+    .AxiIdWidth (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
+    .axi_req_t  (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_3_12_axi_resp_t),
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
     .MaxTrans   (4)
@@ -587,45 +594,45 @@ module sep_cpu
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),
-    .slv_req_i  (ifu_demux_req[SEP_IFU_DEMUX_PORT_ERR_SLV]),
-    .slv_resp_o (ifu_demux_resp[SEP_IFU_DEMUX_PORT_ERR_SLV])
+    .slv_req_i  (ifu_demux_req[sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV]),
+    .slv_resp_o (ifu_demux_resp[sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV])
   );
 
   ///////////////////
   // LSU AXI Demux //
   ///////////////////
 
-  sep_32_64_3_12_axi_req_t  [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;
-  sep_32_64_3_12_axi_resp_t [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_resp;
-  sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
+  sep_pkg::sep_32_64_3_12_axi_req_t  [sep_pkg::SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;
+  sep_pkg::sep_32_64_3_12_axi_resp_t [sep_pkg::SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_resp;
+  sep_pkg::sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
 
   always_comb begin
     if ((lsu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
-      lsu_aw_select = SEP_LSU_DEMUX_PORT_ROM;
+      lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
-      lsu_aw_select = SEP_LSU_DEMUX_PORT_XBAR;
+      lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;
     end
 
     if ((lsu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
-      lsu_ar_select = SEP_LSU_DEMUX_PORT_ROM;
+      lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
-      lsu_ar_select = SEP_LSU_DEMUX_PORT_XBAR;
+      lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;
     end
   end
 
   axi_demux #(
-    .AxiIdWidth  (SEP_32_64_3_12_ID_WIDTH),
+    .AxiIdWidth  (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
     .AtopSupport (1'b0),
-    .aw_chan_t   (sep_32_64_3_12_axi_aw_chan_t),
-    .w_chan_t    (sep_32_64_3_12_axi_w_chan_t),
-    .b_chan_t    (sep_32_64_3_12_axi_b_chan_t),
-    .ar_chan_t   (sep_32_64_3_12_axi_ar_chan_t),
-    .r_chan_t    (sep_32_64_3_12_axi_r_chan_t),
-    .axi_req_t   (sep_32_64_3_12_axi_req_t),
-    .axi_resp_t  (sep_32_64_3_12_axi_resp_t),
-    .NoMstPorts  (SEP_LSU_DEMUX_NUM_PORTS),
+    .aw_chan_t   (sep_pkg::sep_32_64_3_12_axi_aw_chan_t),
+    .w_chan_t    (sep_pkg::sep_32_64_3_12_axi_w_chan_t),
+    .b_chan_t    (sep_pkg::sep_32_64_3_12_axi_b_chan_t),
+    .ar_chan_t   (sep_pkg::sep_32_64_3_12_axi_ar_chan_t),
+    .r_chan_t    (sep_pkg::sep_32_64_3_12_axi_r_chan_t),
+    .axi_req_t   (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t  (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .NoMstPorts  (sep_pkg::SEP_LSU_DEMUX_NUM_PORTS),
     .MaxTrans    (4),
-    .AxiLookBits (SEP_32_64_3_12_ID_WIDTH),
+    .AxiLookBits (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
     .UniqueIds   (1'b0),
     .SpillAw     (1'b0),
     .SpillW      (1'b0),
@@ -647,10 +654,10 @@ module sep_cpu
   );
 
   // Connect demux outputs to module ports
-  assign lsu_rom_axi_req_o                      = lsu_demux_req[SEP_LSU_DEMUX_PORT_ROM];
-  assign lsu_demux_resp[SEP_LSU_DEMUX_PORT_ROM] = lsu_rom_axi_resp_i;
+  assign lsu_rom_axi_req_o                      = lsu_demux_req[sep_pkg::SEP_LSU_DEMUX_PORT_ROM];
+  assign lsu_demux_resp[sep_pkg::SEP_LSU_DEMUX_PORT_ROM] = lsu_rom_axi_resp_i;
 
-  assign lsu_xbar_axi_req_o                      = lsu_demux_req[SEP_LSU_DEMUX_PORT_XBAR];
-  assign lsu_demux_resp[SEP_LSU_DEMUX_PORT_XBAR] = lsu_xbar_axi_resp_i;
+  assign lsu_xbar_axi_req_o                      = lsu_demux_req[sep_pkg::SEP_LSU_DEMUX_PORT_XBAR];
+  assign lsu_demux_resp[sep_pkg::SEP_LSU_DEMUX_PORT_XBAR] = lsu_xbar_axi_resp_i;
 
 endmodule

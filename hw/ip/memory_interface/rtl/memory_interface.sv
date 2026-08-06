@@ -51,15 +51,15 @@ module memory_interface #(
 );
 
 	`include "axi/typedef.svh"
-	`include "tt_assert.svh"
+	`include "ocah_assert.svh"
 
 	////////////////
 	// Assertions //
 	////////////////
 
 	// AXI4 Memory Interface Parameter Validation
-	`TT_ASSERT_INIT(MemAddrWidthCheck_A, MEM_ADDR_WIDTH <= 64)
-	`TT_ASSERT_INIT(MemDataWidthCheck_A, MEM_DATA_WIDTH inside {32, 64, 128, 256, 512, 1024})
+	`OCAH_ASSERT_INIT(MemAddrWidthCheck_A, MEM_ADDR_WIDTH <= 64)
+	`OCAH_ASSERT_INIT(MemDataWidthCheck_A, MEM_DATA_WIDTH inside {32, 64, 128, 256, 512, 1024})
 	initial begin
 		assert($bits(mem_axi_req_i.aw.addr) == MEM_ADDR_WIDTH) else $error("mem_axi_req_i.aw.addr is not the correct width");
 		assert($bits(mem_axi_req_i.w.data) == MEM_DATA_WIDTH) else $error("mem_axi_req_i.w.data is not the correct width");
@@ -74,8 +74,8 @@ module memory_interface #(
 
 
 	// AXI4-Lite CSR Interface Parameter Validation
-	`TT_ASSERT_INIT(CsrAddrWidthCheck_A, CSR_ADDR_WIDTH <= 64)
-	`TT_ASSERT_INIT(CsrDataWidthCheck_A, CSR_DATA_WIDTH inside {32, 64})
+	`OCAH_ASSERT_INIT(CsrAddrWidthCheck_A, CSR_ADDR_WIDTH <= 64)
+	`OCAH_ASSERT_INIT(CsrDataWidthCheck_A, CSR_DATA_WIDTH inside {32, 64})
 	initial begin
 		assert($bits(csr_in_axil_req_i.aw.addr) == CSR_ADDR_WIDTH) else $error("csr_in_axil_req_i.aw.addr is not the correct width");
 		assert($bits(csr_in_axil_req_i.w.data) == CSR_DATA_WIDTH) else $error("csr_in_axil_req_i.w.data is not the correct width");
@@ -93,9 +93,9 @@ module memory_interface #(
 
 
 	// General Parameter Validation
-	`TT_ASSERT_INIT(NumBanksCheck_A, NUM_BANKS >= 1 && NUM_BANKS <= 16)
-	`TT_ASSERT_INIT(BaseAddrAlignCheck_A, (MEM_BASE_ADDR & ((1 << $clog2(MEM_DATA_WIDTH/8)) - 1)) == 0)
-	`TT_ASSERT_INIT(CsrBaseAddrAlignCheck_A, (CSR_BASE_ADDR & ((1 << $clog2(CSR_DATA_WIDTH/8)) - 1)) == 0)
+	`OCAH_ASSERT_INIT(NumBanksCheck_A, NUM_BANKS >= 1 && NUM_BANKS <= 16)
+	`OCAH_ASSERT_INIT(BaseAddrAlignCheck_A, (MEM_BASE_ADDR & ((1 << $clog2(MEM_DATA_WIDTH/8)) - 1)) == 0)
+	`OCAH_ASSERT_INIT(CsrBaseAddrAlignCheck_A, (CSR_BASE_ADDR & ((1 << $clog2(CSR_DATA_WIDTH/8)) - 1)) == 0)
 
 	//////////////////////////////
 	// AXI4 to Memory Interface //

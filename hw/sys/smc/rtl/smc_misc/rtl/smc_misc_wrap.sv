@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
 // SMC Miscellaneous Wrapper
 // Consolidates scratch registers and chip config
-//
-//-------------------------------------------------
 
 module smc_misc_wrap
 	#(

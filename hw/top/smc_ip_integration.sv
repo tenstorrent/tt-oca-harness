@@ -32,22 +32,13 @@ module smc_ip_integration (
     input logic clk_smc_i,
     input logic rst_primary_smc_clk_ni,
 
-    // PLL AXI-Lite CSR (from smc.sv)
-    input  smc_pkg::smc_axil_32_32_req_t  axil_pll_req_i,
-    output smc_pkg::smc_axil_32_32_resp_t axil_pll_resp_o,
+    // Adopter external window (from smc.sv). One AXI-Lite port carrying the
+    // whole smc_external map; the blocks behind it are decoded below.
+    input  smc_pkg::smc_axil_32_32_req_t  smc_external_req_i,
+    output smc_pkg::smc_axil_32_32_resp_t smc_external_resp_o,
 
-    // PVT AXI-Lite CSR (from smc.sv)
-    input  smc_pkg::smc_axil_32_32_req_t  axil_pvt_req_i,
-    output smc_pkg::smc_axil_32_32_resp_t axil_pvt_resp_o,
-
-    // GPIO shim per-pin CSR AXI-Lite (from smc.sv; terminated internally)
-    input  gpio_pkg::gpio_axil_req_t  axil_req_gpio_ctrl_i,
-    output gpio_pkg::gpio_axil_resp_t axil_resp_gpio_ctrl_o,
-
-    // Adopter peripheral extension AXI-Lite (from smc.sv; terminated
-    // internally)
-    input  smc_pkg::smc_axil_32_32_req_t  axil_extension_req_i,
-    output smc_pkg::smc_axil_32_32_resp_t axil_extension_resp_o,
+    // Test/DFT passthrough (used by the external-window demux)
+    input  logic test_en_i,
 
     // Efuse interfaces (from smc.sv)
     input  smc_pkg::smc_axil_32_32_req_t      efuse_bank_ctrl_req_i,
@@ -123,6 +114,91 @@ module smc_ip_integration (
         .hwif_out ()
     );
 
+    //=========================================================================
+    // External-window demux
+    //
+    // smc.sv presents the adopter blocks as a single AXI-Lite window; the map
+    // inside it is the adopter contract, so the decode lives here where a
+    // vendor integration replaces it wholesale. Offsets are relative to the
+    // window base and follow the smc_external mandatory map.
+    //=========================================================================
+
+    localparam int unsigned ExtGpioCtrlBase   = 'h0100;
+    localparam int unsigned ExtGpioCtrlStride = 'h0020;
+    localparam int unsigned ExtGpioCtrlNum    = 65;
+    localparam int unsigned ExtPllBase        = 'h1000;
+    localparam int unsigned ExtPvtBase        = 'h2000;
+    localparam int unsigned ExtWindowSize     = 'h4000;
+
+    // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,
+    // which answers DECERR.
+    localparam int unsigned ExtPll      = 0;
+    localparam int unsigned ExtPvt      = 1;
+    localparam int unsigned ExtGpioCtrl = 2;
+    localparam int unsigned ExtUnmapped = 3;
+    localparam int unsigned ExtNumPorts = 4;
+
+    smc_pkg::smc_axil_32_32_req_t  [ExtNumPorts-1:0] ext_req;
+    smc_pkg::smc_axil_32_32_resp_t [ExtNumPorts-1:0] ext_resp;
+    logic [$clog2(ExtNumPorts)-1:0] ext_aw_select, ext_ar_select;
+
+    function automatic logic [$clog2(ExtNumPorts)-1:0] ext_decode(
+        input logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] addr
+    );
+        automatic logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] off = addr % ExtWindowSize;
+        if (off >= ExtPvtBase)                              return ExtUnmapped;
+        else if (off >= ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtUnmapped;
+        else if (off >= ExtPllBase)                         return ExtPll;
+        else if (off >= ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtUnmapped;
+        else if (off >= ExtGpioCtrlBase)                    return ExtGpioCtrl;
+        else                                                return ExtUnmapped;
+    endfunction
+
+    always_comb begin
+        ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
+        ext_ar_select = ext_decode(smc_external_req_i.ar.addr);
+        // The PVT window sits above the PLL one; fold it in separately so the
+        // chain above stays a simple descending compare.
+        if (smc_external_req_i.aw.addr % ExtWindowSize >= ExtPvtBase &&
+            smc_external_req_i.aw.addr % ExtWindowSize <
+                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
+            ext_aw_select = ExtPvt;
+        end
+        if (smc_external_req_i.ar.addr % ExtWindowSize >= ExtPvtBase &&
+            smc_external_req_i.ar.addr % ExtWindowSize <
+                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
+            ext_ar_select = ExtPvt;
+        end
+    end
+
+    axi_lite_demux #(
+        .aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
+        .w_chan_t    (smc_pkg::smc_axil_32_32_w_chan_t),
+        .b_chan_t    (smc_pkg::smc_axil_32_32_b_chan_t),
+        .ar_chan_t   (smc_pkg::smc_axil_32_32_ar_chan_t),
+        .r_chan_t    (smc_pkg::smc_axil_32_32_r_chan_t),
+        .axi_req_t   (smc_pkg::smc_axil_32_32_req_t),
+        .axi_resp_t  (smc_pkg::smc_axil_32_32_resp_t),
+        .NoMstPorts  (ExtNumPorts),
+        .MaxTrans    (1),
+        .FallThrough (1'b0),
+        .SpillAw     (1'b1),
+        .SpillW      (1'b0),
+        .SpillB      (1'b0),
+        .SpillAr     (1'b1),
+        .SpillR      (1'b0)
+    ) u_smc_external_demux (
+        .clk_i           (clk_smc_i),
+        .rst_ni          (rst_primary_smc_clk_ni),
+        .test_i          (test_en_i),
+        .slv_req_i       (smc_external_req_i),
+        .slv_resp_o      (smc_external_resp_o),
+        .slv_aw_select_i (ext_aw_select),
+        .slv_ar_select_i (ext_ar_select),
+        .mst_reqs_o      (ext_req),
+        .mst_resps_i     (ext_resp)
+    );
+
     ///////////////
     // PLL Model //
     ///////////////
@@ -130,8 +206,8 @@ module smc_ip_integration (
     pll_wrap u_pll_wrap (
         .clk_i      (clk_smc_i),
         .rst_ni     (rst_primary_smc_clk_ni),
-        .axil_req_i (axil_pll_req_i),
-        .axil_resp_o(axil_pll_resp_o)
+        .axil_req_i (ext_req[ExtPll]),
+        .axil_resp_o(ext_resp[ExtPll])
     );
 
     ///////////////
@@ -141,8 +217,8 @@ module smc_ip_integration (
     pvt_wrap u_pvt_wrap (
         .clk_i      (clk_smc_i),
         .rst_ni     (rst_primary_smc_clk_ni),
-        .axil_req_i (axil_pvt_req_i),
-        .axil_resp_o(axil_pvt_resp_o)
+        .axil_req_i (ext_req[ExtPvt]),
+        .axil_resp_o(ext_resp[ExtPvt])
     );
 
     //////////////////////////////
@@ -175,24 +251,24 @@ module smc_ip_integration (
     end
 
     //=========================================================================
-    // GPIO shim CSR + adopter peripheral extension -- terminated with
-    // DECERR slaves.
+    // GPIO shim CSR + the unclaimed remainder of the external window --
+    // terminated with DECERR slaves.
     //=========================================================================
 
     prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH (gpio_pkg::ADDR_WIDTH),
-        .AXI_DATA_WIDTH (gpio_pkg::DATA_WIDTH),
-        .axil_req_t     (gpio_pkg::gpio_axil_req_t),
-        .axil_resp_t    (gpio_pkg::gpio_axil_resp_t),
+        .AXI_ADDR_WIDTH (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
+        .AXI_DATA_WIDTH (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+        .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+        .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
         .RESP           (axi_pkg::RESP_DECERR),
-        .RESP_WIDTH     (gpio_pkg::DATA_WIDTH),
+        .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
         .RESP_DATA      ('0),
         .MAX_TRANS      (2)
     ) u_gpio_ctrl_err_slv (
         .clk_i      (clk_smc_i),
         .rst_ni     (rst_primary_smc_clk_ni),
-        .axil_req_i (axil_req_gpio_ctrl_i),
-        .axil_resp_o(axil_resp_gpio_ctrl_o)
+        .axil_req_i (ext_req[ExtGpioCtrl]),
+        .axil_resp_o(ext_resp[ExtGpioCtrl])
     );
 
     prim_axi_lite_err_slv #(
@@ -204,11 +280,11 @@ module smc_ip_integration (
         .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
         .RESP_DATA      ('0),
         .MAX_TRANS      (2)
-    ) u_axil_extension_err_slv (
+    ) u_ext_unmapped_err_slv (
         .clk_i      (clk_smc_i),
         .rst_ni     (rst_primary_smc_clk_ni),
-        .axil_req_i (axil_extension_req_i),
-        .axil_resp_o(axil_extension_resp_o)
+        .axil_req_i (ext_req[ExtUnmapped]),
+        .axil_resp_o(ext_resp[ExtUnmapped])
     );
 
 endmodule

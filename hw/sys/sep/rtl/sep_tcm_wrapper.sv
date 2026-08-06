@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP TCM Wrapper
 // Contains ICCM and DCCM RAM instances
 // Uses struct-based interface to connect to VeeR EL2 core via sep_cpu
-//
-//-----------------------------------------------------------------------------
 
 module sep_tcm_wrapper
     import el2_pkg::*;
@@ -44,7 +41,7 @@ module sep_tcm_wrapper
       assign tcm_rsp_o.dccm_bank_ecc [i] = dccm_bank_fdout[i][38:32];
 
       case (DCCM_INDEX_DEPTH)
-        32768: begin : gen_ram
+        32768: begin : gen_dccm_ram
           ram_32768x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -59,7 +56,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        16384: begin : gen_ram
+        16384: begin : gen_dccm_ram
           ram_16384x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -74,7 +71,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        8192: begin : gen_ram
+        8192: begin : gen_dccm_ram
           ram_8192x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -89,7 +86,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        4096: begin : gen_ram
+        4096: begin : gen_dccm_ram
           ram_4096x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -104,7 +101,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        3072: begin : gen_ram
+        3072: begin : gen_dccm_ram
           ram_3072x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -119,7 +116,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        2048: begin : gen_ram
+        2048: begin : gen_dccm_ram
           ram_2048x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -134,7 +131,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        1024: begin : gen_ram
+        1024: begin : gen_dccm_ram
           ram_1024x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -149,7 +146,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        512: begin : gen_ram
+        512: begin : gen_dccm_ram
           ram_512x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -164,7 +161,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        256: begin : gen_ram
+        256: begin : gen_dccm_ram
           ram_256x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -179,7 +176,7 @@ module sep_tcm_wrapper
             .*
           );
         end
-        128: begin : gen_ram
+        128: begin : gen_dccm_ram
           ram_128x39 ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
@@ -217,7 +214,7 @@ module sep_tcm_wrapper
       assign tcm_rsp_o.iccm_bank_ecc [i] = iccm_bank_fdout[i][(32+pt.ICCM_ECC_WIDTH)-1:32];
 
       case (pt.ICCM_INDEX_BITS)
-        6: begin : gen_ram
+        6: begin : gen_iccm_ram
           ram_64x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -239,7 +236,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        7: begin : gen_ram
+        7: begin : gen_iccm_ram
           ram_128x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -261,7 +258,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        8: begin : gen_ram
+        8: begin : gen_iccm_ram
           ram_256x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -283,7 +280,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        9: begin : gen_ram
+        9: begin : gen_iccm_ram
           ram_512x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -305,7 +302,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        10: begin : gen_ram
+        10: begin : gen_iccm_ram
           ram_1024x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -327,7 +324,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        11: begin : gen_ram
+        11: begin : gen_iccm_ram
           ram_2048x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -349,7 +346,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        12: begin : gen_ram
+        12: begin : gen_iccm_ram
           ram_4096x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -371,7 +368,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        13: begin : gen_ram
+        13: begin : gen_iccm_ram
           ram_8192x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -393,7 +390,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        14: begin : gen_ram
+        14: begin : gen_iccm_ram
           ram_16384x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
@@ -415,7 +412,7 @@ module sep_tcm_wrapper
             .BC2      (1'b0)
           );
         end
-        15: begin : gen_ram
+        15: begin : gen_iccm_ram
           ram_32768x39 ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),

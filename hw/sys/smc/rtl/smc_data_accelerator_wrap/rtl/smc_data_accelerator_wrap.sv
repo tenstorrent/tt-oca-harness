@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SMC Data Accelerator Wrapper
 //
 // Wrapper module for DMA and Zeroer with address-based demux/mux
-//
-//-----------------------------------------------------------------------------
 
 module smc_data_accelerator_wrap
   #(
@@ -62,11 +59,11 @@ module smc_data_accelerator_wrap
     // Default to DMA (index 0)
     aw_select_dma_zeroer = smc_pkg::DMA;
     // Check if address matches ZEROER_CTRL region
-    if (ctrl_axi_req_i.aw.addr >= DMA_CTRL_REG_MAP_BASE_ADDR &&
-        ctrl_axi_req_i.aw.addr < DMA_CTRL_REG_MAP_BASE_ADDR + DMA_CTRL_REG_MAP_SIZE) begin
+    if (ctrl_axi_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
+        ctrl_axi_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
       aw_select_dma_zeroer = smc_pkg::DMA;  // DMA
-    end else if (ctrl_axi_req_i.aw.addr >= ZEROER_CTRL_REG_MAP_BASE_ADDR &&
-        ctrl_axi_req_i.aw.addr < ZEROER_CTRL_REG_MAP_BASE_ADDR + ZEROER_CTRL_REG_MAP_SIZE) begin
+    end else if (ctrl_axi_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
+        ctrl_axi_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
       aw_select_dma_zeroer = smc_pkg::ZEROER;  // Zeroer
     end
   end
@@ -75,11 +72,11 @@ module smc_data_accelerator_wrap
     // Default to DMA (index 0)
     ar_select_dma_zeroer = smc_pkg::DMA;
     // Check if address matches ZEROER_CTRL region
-    if (ctrl_axi_req_i.ar.addr >= DMA_CTRL_REG_MAP_BASE_ADDR &&
-        ctrl_axi_req_i.ar.addr < DMA_CTRL_REG_MAP_BASE_ADDR + DMA_CTRL_REG_MAP_SIZE) begin
+    if (ctrl_axi_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
+        ctrl_axi_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
       ar_select_dma_zeroer = smc_pkg::DMA;  // DMA
-    end else if (ctrl_axi_req_i.ar.addr >= ZEROER_CTRL_REG_MAP_BASE_ADDR &&
-        ctrl_axi_req_i.ar.addr < ZEROER_CTRL_REG_MAP_BASE_ADDR + ZEROER_CTRL_REG_MAP_SIZE) begin
+    end else if (ctrl_axi_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
+        ctrl_axi_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
       ar_select_dma_zeroer = smc_pkg::ZEROER;  // Zeroer
     end
   end
@@ -96,7 +93,8 @@ module smc_data_accelerator_wrap
     .axi_req_t                          (smc_pkg::smc_local_32_64_8_12_axi_req_t),
     .axi_resp_t                         (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
     .NoMstPorts                         (NumAccelerators),
-    .MaxTrans                           (smc_pkg::FABRIC_MAX_TRANS)
+    .MaxTrans                           (smc_pkg::FABRIC_MAX_TRANS),
+    .AxiLookBits                        (smc_pkg::FABRIC_ID_LOOKUP_BITS)
   ) u_axi_demux (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
@@ -127,6 +125,8 @@ module smc_data_accelerator_wrap
     .NUM_CTRL_STREAMS                   (1),
     .NUM_MST_INTERFACES                 (1),
     .DMA_MST_MAX_TXNS                   (smc_pkg::FABRIC_MAX_TRANS),
+    // ctrl port is a master port of u_axi_demux above: MaxTrans per ID bucket, all buckets
+    .CTRL_OUTSTANDING_TX                (smc_pkg::FABRIC_OUTSTANDING_TX),
     .F2M_FIFO_DEPTH                     (smc_pkg::F2M_FIFO_DEPTH),
     .M2B_FIFO_DEPTH                     (smc_pkg::M2B_FIFO_DEPTH),
     .EN_R_AW_COUPLING                   (1'b1),

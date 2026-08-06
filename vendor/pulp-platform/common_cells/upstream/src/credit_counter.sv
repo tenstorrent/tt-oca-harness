@@ -49,7 +49,7 @@ module credit_counter #(
   assign credit_crit_o  = (credit_q == NumCredits-1);
   assign credit_full_o  = (credit_q == NumCredits);
 
-  `ASSERT_NEVER(CreditUnderflow, credit_o == '0 && decrement)
-  `ASSERT_NEVER(CreditOverflow, credit_o == NumCredits && increment)
+  `OCAH_PULP_ASSERT_NEVER(CreditUnderflow, credit_o == '0 && decrement)
+  `OCAH_PULP_ASSERT_NEVER(CreditOverflow, credit_o == NumCredits && increment)
 
 endmodule

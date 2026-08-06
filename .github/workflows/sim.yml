@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: sim
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Superseded runs of the same ref are cancelled; sim jobs are too heavy to
+# let stale PR pushes pile up.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned Verilator release. cocotb 2.x (locked in uv.lock) requires a newer
+  # Verilator than Ubuntu's apt package, so CI builds this tag from source and
+  # caches the install prefix.
+  VERILATOR_VERSION: v5.050
+
+jobs:
+  verilator-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # One artifact and one run_dv.py invocation per DUT; extend this list
+        # as more DUT smoke groups become Verilator-clean.
+        dut: [dtp]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install bender
+        uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+
+      - name: Cache Verilator
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: ~/verilator
+          key: verilator-${{ env.VERILATOR_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build Verilator
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf bison flex g++ help2man libfl-dev make perl python3 zlib1g-dev
+          git clone --depth 1 --branch "$VERILATOR_VERSION" \
+            https://github.com/verilator/verilator.git "$RUNNER_TEMP/verilator-src"
+          cd "$RUNNER_TEMP/verilator-src"
+          autoconf
+          ./configure --prefix "$HOME/verilator"
+          make -j "$(nproc)"
+          make install
+
+      - name: Add Verilator to PATH
+        run: |
+          echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
+          # Runtime dependency of the verilator binary; not preinstalled on
+          # hosted runners and skipped when the cache hits.
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libfl2
+
+      - name: Check environment
+        run: |
+          verilator --version
+          python3 tools/dv/run_dv.py --validate-configs
+          python3 tools/dv/run_dv.py --doctor --dut ${{ matrix.dut }}
+
+      - name: Run smoke tests
+        run: |
+          python3 tools/dv/run_dv.py \
+            --dut ${{ matrix.dut }} \
+            --items smoke \
+            --tool verilator \
+            --sim-jobs 2 \
+            --run-dir build/ci/runs/${{ matrix.dut }}
+
+      # Logs and result.json for every test in the run; result.json is the
+      # schema-v1 record that tools/dv/run_dashboard.py collect consumes.
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dv-run-${{ matrix.dut }}
+          path: build/ci/runs/${{ matrix.dut }}
+          retention-days: 14
+          if-no-files-found: ignore

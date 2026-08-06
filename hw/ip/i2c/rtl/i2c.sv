@@ -149,16 +149,16 @@ module i2c
     // Assertions //
     ////////////////
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(SclKnownO_A, scl_o)
-    `ASSERT_KNOWN(SdaKnownO_A, sda_o)
-    `ASSERT_KNOWN(SmbsusKnownO_A,   smbsus_no)
-    `ASSERT_KNOWN(SmbalertKnownO_A, smbalert_no)
-    `ASSERT_KNOWN(ControllerTxReadyKnown_A, controller_tx_ready_o)
-    `ASSERT_KNOWN(ControllerRxReadyKnown_A, controller_rx_ready_o)
-    `ASSERT_KNOWN(TargetTxReadyKnown_A, target_tx_ready_o)
-    `ASSERT_KNOWN(TargetRxReadyKnown_A, target_rx_ready_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
-    `ASSERT_KNOWN(DebugKnownO_A, debug_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(SclKnownO_A, scl_o)
+    `OCAH_OT_ASSERT_KNOWN(SdaKnownO_A, sda_o)
+    `OCAH_OT_ASSERT_KNOWN(SmbsusKnownO_A,   smbsus_no)
+    `OCAH_OT_ASSERT_KNOWN(SmbalertKnownO_A, smbalert_no)
+    `OCAH_OT_ASSERT_KNOWN(ControllerTxReadyKnown_A, controller_tx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(ControllerRxReadyKnown_A, controller_rx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(TargetTxReadyKnown_A, target_tx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(TargetRxReadyKnown_A, target_rx_ready_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(DebugKnownO_A, debug_o)
 
 endmodule

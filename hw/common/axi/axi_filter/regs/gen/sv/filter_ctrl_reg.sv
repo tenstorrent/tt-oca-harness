@@ -263,15 +263,15 @@ module filter_ctrl_reg (
             struct {
                 logic next;
                 logic load_next;
-            } read_en;
+            } read_allowed;
             struct {
                 logic next;
                 logic load_next;
-            } write_en;
+            } write_allowed;
             struct {
                 logic next;
                 logic load_next;
-            } addr_mode;
+            } entry_enabled;
             struct {
                 logic next;
                 logic load_next;
@@ -312,13 +312,13 @@ module filter_ctrl_reg (
         struct {
             struct {
                 logic value;
-            } read_en;
+            } read_allowed;
             struct {
                 logic value;
-            } write_en;
+            } write_allowed;
             struct {
                 logic value;
-            } addr_mode;
+            } entry_enabled;
             struct {
                 logic value;
             } allow_ns;
@@ -348,75 +348,75 @@ module filter_ctrl_reg (
     } field_storage_t;
     field_storage_t field_storage;
 
-    // Field: filter_ctrl.FILTER_CONFIG.read_en
+    // Field: filter_ctrl.FILTER_CONFIG.read_allowed
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.FILTER_CONFIG.read_en.value;
+        next_c = field_storage.FILTER_CONFIG.read_allowed.value;
         load_next_c = '0;
         if(decoded_reg_strb.FILTER_CONFIG && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.FILTER_CONFIG.read_en.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            next_c = (field_storage.FILTER_CONFIG.read_allowed.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo.FILTER_CONFIG.read_en.next = next_c;
-        field_combo.FILTER_CONFIG.read_en.load_next = load_next_c;
+        field_combo.FILTER_CONFIG.read_allowed.next = next_c;
+        field_combo.FILTER_CONFIG.read_allowed.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.FILTER_CONFIG.read_en.value <= 1'h0;
+            field_storage.FILTER_CONFIG.read_allowed.value <= 1'h0;
         end else begin
-            if(field_combo.FILTER_CONFIG.read_en.load_next) begin
-                field_storage.FILTER_CONFIG.read_en.value <= field_combo.FILTER_CONFIG.read_en.next;
+            if(field_combo.FILTER_CONFIG.read_allowed.load_next) begin
+                field_storage.FILTER_CONFIG.read_allowed.value <= field_combo.FILTER_CONFIG.read_allowed.next;
             end
         end
     end
-    assign hwif_out.FILTER_CONFIG.read_en.value = field_storage.FILTER_CONFIG.read_en.value;
-    // Field: filter_ctrl.FILTER_CONFIG.write_en
+    assign hwif_out.FILTER_CONFIG.read_allowed.value = field_storage.FILTER_CONFIG.read_allowed.value;
+    // Field: filter_ctrl.FILTER_CONFIG.write_allowed
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.FILTER_CONFIG.write_en.value;
+        next_c = field_storage.FILTER_CONFIG.write_allowed.value;
         load_next_c = '0;
         if(decoded_reg_strb.FILTER_CONFIG && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.FILTER_CONFIG.write_en.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            next_c = (field_storage.FILTER_CONFIG.write_allowed.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
             load_next_c = '1;
         end
-        field_combo.FILTER_CONFIG.write_en.next = next_c;
-        field_combo.FILTER_CONFIG.write_en.load_next = load_next_c;
+        field_combo.FILTER_CONFIG.write_allowed.next = next_c;
+        field_combo.FILTER_CONFIG.write_allowed.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.FILTER_CONFIG.write_en.value <= 1'h0;
+            field_storage.FILTER_CONFIG.write_allowed.value <= 1'h0;
         end else begin
-            if(field_combo.FILTER_CONFIG.write_en.load_next) begin
-                field_storage.FILTER_CONFIG.write_en.value <= field_combo.FILTER_CONFIG.write_en.next;
+            if(field_combo.FILTER_CONFIG.write_allowed.load_next) begin
+                field_storage.FILTER_CONFIG.write_allowed.value <= field_combo.FILTER_CONFIG.write_allowed.next;
             end
         end
     end
-    assign hwif_out.FILTER_CONFIG.write_en.value = field_storage.FILTER_CONFIG.write_en.value;
-    // Field: filter_ctrl.FILTER_CONFIG.addr_mode
+    assign hwif_out.FILTER_CONFIG.write_allowed.value = field_storage.FILTER_CONFIG.write_allowed.value;
+    // Field: filter_ctrl.FILTER_CONFIG.entry_enabled
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.FILTER_CONFIG.addr_mode.value;
+        next_c = field_storage.FILTER_CONFIG.entry_enabled.value;
         load_next_c = '0;
         if(decoded_reg_strb.FILTER_CONFIG && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.FILTER_CONFIG.addr_mode.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
+            next_c = (field_storage.FILTER_CONFIG.entry_enabled.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
             load_next_c = '1;
         end
-        field_combo.FILTER_CONFIG.addr_mode.next = next_c;
-        field_combo.FILTER_CONFIG.addr_mode.load_next = load_next_c;
+        field_combo.FILTER_CONFIG.entry_enabled.next = next_c;
+        field_combo.FILTER_CONFIG.entry_enabled.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.FILTER_CONFIG.addr_mode.value <= 1'h0;
+            field_storage.FILTER_CONFIG.entry_enabled.value <= 1'h0;
         end else begin
-            if(field_combo.FILTER_CONFIG.addr_mode.load_next) begin
-                field_storage.FILTER_CONFIG.addr_mode.value <= field_combo.FILTER_CONFIG.addr_mode.next;
+            if(field_combo.FILTER_CONFIG.entry_enabled.load_next) begin
+                field_storage.FILTER_CONFIG.entry_enabled.value <= field_combo.FILTER_CONFIG.entry_enabled.next;
             end
         end
     end
-    assign hwif_out.FILTER_CONFIG.addr_mode.value = field_storage.FILTER_CONFIG.addr_mode.value;
+    assign hwif_out.FILTER_CONFIG.entry_enabled.value = field_storage.FILTER_CONFIG.entry_enabled.value;
     // Field: filter_ctrl.FILTER_CONFIG.allow_ns
     always_comb begin
         automatic logic [0:0] next_c;
@@ -606,9 +606,9 @@ module filter_ctrl_reg (
         automatic logic [63:0] readback_data_var;
         readback_data_var = '0;
         if(rd_mux_addr == 5'h0) begin
-            readback_data_var[0] = field_storage.FILTER_CONFIG.read_en.value;
-            readback_data_var[1] = field_storage.FILTER_CONFIG.write_en.value;
-            readback_data_var[4] = field_storage.FILTER_CONFIG.addr_mode.value;
+            readback_data_var[0] = field_storage.FILTER_CONFIG.read_allowed.value;
+            readback_data_var[1] = field_storage.FILTER_CONFIG.write_allowed.value;
+            readback_data_var[4] = field_storage.FILTER_CONFIG.entry_enabled.value;
             readback_data_var[8] = field_storage.FILTER_CONFIG.allow_ns.value;
             readback_data_var[14:12] = hwif_in.FILTER_CONFIG.data_bus_width.next;
             readback_data_var[19:16] = field_storage.FILTER_CONFIG.src_id.value;

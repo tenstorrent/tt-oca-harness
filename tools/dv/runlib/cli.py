@@ -729,7 +729,7 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
     _print_doctor_row("import ocah_axi_vip", "OK" if ok else "FAIL", detail)
     failed |= not ok
 
-    if flow is not None:
+    if flow is not None and flow.framework == "cocotb":
         dut_module = flow.name
         ok, detail = _try_import(dut_module)
         _print_doctor_row(f"import {dut_module}", "OK" if ok else "FAIL", detail)
@@ -744,6 +744,10 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             ok, detail = _try_import(env_module)
             _print_doctor_row(f"import {env_module}", "OK" if ok else "FAIL", detail)
             failed |= not ok
+    elif flow is not None:
+        _print_doctor_row(
+            "DUT-local import", "SKIP", f"framework `{flow.framework}` has no DUT Python package"
+        )
     else:
         _print_doctor_row("DUT-local import", "SKIP", "select --dut <name> to check one DUT package")
 
@@ -1059,6 +1063,13 @@ def emit_dry_run_config_summary(
 
 def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
     available = flow_stages(flow)
+    # Fail fast: on a flow with no declared coverage stages, --cov would otherwise burn a full
+    # compile+sim and only then fail when the post-sim hook finds no coverage artifact.
+    if args.cov and "cov_merge" not in available:
+        raise ConfigError(
+            f"{flow.path}: this flow declares no coverage stages (cov_merge/cov_report); "
+            "--cov is unsupported for this DUT"
+        )
     if args.stage:
         requested = ["flist" if stage == "filelist" else stage for stage in args.stage]
         if "regress" in requested and "regress" not in available and "sim" in available:

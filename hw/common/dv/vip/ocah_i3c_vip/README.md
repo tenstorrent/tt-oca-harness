@@ -97,9 +97,9 @@ through this package.
 ocah_i3c_vip/
   __init__.py            — package exports: OcahI3cBus, OcahI3cTarget,
                            OcahI3cMonitor
-  ocah_i3c_bus.py        — OcahI3cBus  (controller mode)
-  ocah_i3c_target.py     — OcahI3cTarget  (target mode)
-  ocah_i3c_monitor.py    — OcahI3cMonitor  (passive monitor)
+  cocotb/ocah_i3c_bus.py        — OcahI3cBus  (controller mode)
+  cocotb/ocah_i3c_target.py     — OcahI3cTarget  (target mode)
+  cocotb/ocah_i3c_monitor.py    — OcahI3cMonitor  (passive monitor)
   examples/
     example_priv_rw.py   — annotated API usage snippets
 ```
@@ -333,3 +333,18 @@ SPDX-License-Identifier: Apache-2.0
 
 The wrapped library `cocotbext-i3c` is copyright Antmicro
 (https://github.com/antmicro/cocotbext-i3c) and is also Apache-2.0.
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_i3c_vip import <Class>`, never from the subfolders.
+`interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.

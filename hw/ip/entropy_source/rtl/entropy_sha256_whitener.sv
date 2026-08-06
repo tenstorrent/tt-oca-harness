@@ -1,84 +1,70 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// entropy_sha256_whitener
-//
-// SHA-256 Entropy Whitener
-//
-// Whitens 32-bit entropy stream using SHA-256 cryptographic hash function.
-// Streams 16 * 32-bit words (512 bits) to prim_sha2_32, computes SHA-256 hash,
-// and outputs 256-bit digest as 8 * 32-bit words.
-//
-// Provides cryptographic conditioning to remove statistical bias per NIST SP 800-90B.
-//----------------------------------------------------------
+
+/**
+ * @file entropy_sha256_whitener.sv
+ * @brief SHA-256 entropy whitening and conditioning.
+ *
+ * @details Accepts a 32-bit entropy stream, accumulates 16 words (512 bits)
+ *          into a SHA-256 block, and outputs the 256-bit digest as 8 × 32-bit
+ *          words. Provides cryptographic conditioning per NIST SP 800-90B.
+ *          When enable_i is LOW the module passes entropy through directly
+ *          in bypass mode.
+ */
 
 module entropy_sha256_whitener (
-    input  wire logic       clk_i,
-    input  wire logic       rst_ni,
+    input       logic       clk_i,
+    input       logic       rst_ni,
 
-    // Input: 32-bit entropy stream from BIW extractor
-    input  logic            entropy_valid_i,
-    input  logic [31:0]     entropy_data_i,
-    output logic            entropy_ready_o,
+    input       logic       entropy_valid_i,
+    input       logic [31:0] entropy_data_i,
+    output      logic       entropy_ready_o,
 
-    // Output: 32-bit whitened entropy stream
-    output logic            whitened_valid_o,
-    output logic [31:0]     whitened_data_o,
-    input  logic            whitened_ready_i,
+    output      logic       whitened_valid_o,
+    output      logic [31:0] whitened_data_o,
+    input       logic       whitened_ready_i,
 
-    // Control signals
-    input  wire logic       enable_i,           // Enable SHA-256 whitening
+    input       logic       enable_i,
 
-    // Status outputs
-    output logic            busy_o,             // SHA-256 is hashing
-    output logic [3:0]      input_count_o,      // Words fed to SHA-256 (0-15)
-    output logic [2:0]      output_count_o      // Digest words remaining (0-7)
+    output      logic       busy_o,
+    output      logic [3:0] input_count_o,
+    output      logic [2:0] output_count_o
 );
 
-    //--------------------------------------------------------------------------
-    // Parameters
-    //--------------------------------------------------------------------------
+    /////////////////////
+    // Local parameters
+    /////////////////////
     localparam int unsigned SHA256_BLOCK_WORDS = 16;  // SHA-256 input: 512 bits = 16 × 32-bit words
     localparam int unsigned SHA256_DIGEST_WORDS = 8;  // SHA-256 output: 256 bits = 8 × 32-bit words
 
-    //--------------------------------------------------------------------------
-    // Bypass Mode: Direct Passthrough (when whitening disabled)
-    //--------------------------------------------------------------------------
+    /////////////
+    // Signals
+    /////////////
+
     logic bypass_mode;
     assign bypass_mode = !enable_i;
 
-    //--------------------------------------------------------------------------
-    // Counters
-    //--------------------------------------------------------------------------
     logic [3:0] input_word_count_q, input_word_count_d;
-    logic [3:0] output_word_count_q, output_word_count_d;  // 4 bits to hold 0-8
+    logic [3:0] output_word_count_q, output_word_count_d;
     logic       hashing_q, hashing_d;
-    logic       input_phase_q, input_phase_d;  // Track if we're in input phase
-
+    logic       input_phase_q, input_phase_d;
     logic       sha_hash_done_q;
 
-    //--------------------------------------------------------------------------
-    // Output Buffer (8 * 32-bit digest words)
-    //--------------------------------------------------------------------------
     logic [31:0] output_buffer_q [8];
     logic [31:0] output_buffer_d [8];
 
-    //--------------------------------------------------------------------------
-    // prim_sha2_32 Interface
-    //--------------------------------------------------------------------------
-    logic                          sha_fifo_valid;
-    prim_sha2_pkg::sha_fifo32_t    sha_fifo_data;
-    logic                          sha_fifo_ready;
-    logic                          sha_hash_start;
-    logic                          sha_hash_process;
-    logic                          sha_hash_done;
+    logic                            sha_fifo_valid;
+    prim_sha2_pkg::sha_fifo32_t      sha_fifo_data;
+    logic                            sha_fifo_ready;
+    logic                            sha_hash_start;
+    logic                            sha_hash_process;
+    logic                            sha_hash_done;
     prim_sha2_pkg::sha_word64_t [7:0] sha_digest;
 
-    //--------------------------------------------------------------------------
-    // prim_sha2_32 Instance (SHA-256 only)
-    //--------------------------------------------------------------------------
+    /////////////////
+    // Sub-instances
+    /////////////////
     prim_sha2_32 #(
         .MultimodeEn (1'b0)   // SHA-256 only
     ) u_sha2 (
@@ -105,9 +91,9 @@ module entropy_sha256_whitener (
         .idle_o             ()
     );
 
-    //--------------------------------------------------------------------------
-    // Combinational Logic
-    //--------------------------------------------------------------------------
+    /////////////////
+    // Combinational
+    /////////////////
     always_comb begin
         // Defaults
         input_word_count_d = input_word_count_q;
@@ -135,7 +121,8 @@ module entropy_sha256_whitener (
         end else if (output_word_count_q < 4'(SHA256_DIGEST_WORDS)) begin
             // Output phase: stream digest words
             whitened_valid_o = 1'b1;
-            whitened_data_o = output_buffer_q[output_word_count_q];
+            // [2:0]: 3-bit index matches the 8-entry buffer, branch is guarded by output_word_count_q < SHA256_DIGEST_WORDS (8).
+            whitened_data_o = output_buffer_q[output_word_count_q[2:0]];
             input_phase_d = 1'b0;
 
             if (whitened_ready_i) begin
@@ -181,9 +168,9 @@ module entropy_sha256_whitener (
         end
     end
 
-    //--------------------------------------------------------------------------
-    // Sequential Logic
-    //--------------------------------------------------------------------------
+    ///////////////
+    // Sequential
+    ///////////////
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             input_word_count_q <= 4'h0;
@@ -202,9 +189,9 @@ module entropy_sha256_whitener (
         end
     end
 
-    //--------------------------------------------------------------------------
-    // Status Outputs
-    //--------------------------------------------------------------------------
+    ///////////
+    // Output
+    ///////////
     assign busy_o = hashing_q;
     assign input_count_o = input_word_count_q;
     assign output_count_o = output_word_count_q;

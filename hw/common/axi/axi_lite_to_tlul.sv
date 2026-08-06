@@ -264,6 +264,6 @@ module axi_lite_to_tlul
 	// --------------------------------------------------
 	// Assertions
 	// --------------------------------------------------
-	`ASSERT_INIT(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
+	`OCAH_OT_ASSERT_INIT(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
 
 endmodule : axi_lite_to_tlul

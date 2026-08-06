@@ -41,7 +41,7 @@ static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-        if (s.f.SHA3_IDLE) return 0;
+        if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
     return -1;
@@ -67,35 +67,35 @@ static int run_sha3_hash(void) {
     if (wait_for_idle() != 0) return -1;
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.KMAC_EN = 0;
-    cfg.f.MODE = 0x0;      /* SHA3 */
-    cfg.f.KSTRENGTH = 0x2; /* L256 */
-    cfg.f.ENTROPY_MODE = 0x1;
-    cfg.f.ENTROPY_READY = 0;
+    cfg.f.kmac_en = 0;
+    cfg.f.mode = 0x0;      /* SHA3 */
+    cfg.f.kstrength = 0x2; /* L256 */
+    cfg.f.entropy_mode = 0x1;
+    cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     setup_entropy();
 
-    cfg.f.ENTROPY_READY = 1;
+    cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.CMD = 29; /* START */
+    cmd.f.cmd = 29; /* START */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR(0), 0x74736574); /* "test" */
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574); /* "test" */
 
-    cmd.f.CMD = 46; /* PROCESS */
+    cmd.f.cmd = 46; /* PROCESS */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0)) ^
-                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR(0) + 0x100);
+    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
 
-    cmd.f.CMD = 22; /* DONE */
+    cmd.f.cmd = 22; /* DONE */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return (digest0 != 0) ? 0 : -1;
@@ -135,7 +135,7 @@ static int test_sw_reset(void) {
     kmac__STATUS_t s;
     s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
     printf("  STATUS = 0x%08x (expect 0x4001: sha3_idle=1 fifo_empty=1)\n", s.w);
-    if (s.f.SHA3_IDLE && s.f.FIFO_EMPTY) {
+    if (s.f.sha3_idle && s.f.fifo_empty) {
         printf("PASS: KMAC idle and fifo_empty after reset release\n");
     } else {
         printf("FAIL: STATUS=0x%08x unexpected after reset\n", s.w);
@@ -144,8 +144,8 @@ static int test_sw_reset(void) {
 
     printf("=== Step 5: Verify CFG_REGWEN default after reset ===\n");
     kmac__CFG_REGWEN_t rw = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
-    printf("  CFG_REGWEN = %u (expect 1)\n", rw.f.EN);
-    if (rw.f.EN) {
+    printf("  CFG_REGWEN = %u (expect 1)\n", rw.f.en);
+    if (rw.f.en) {
         printf("PASS: CFG_REGWEN=1 after reset\n");
     } else {
         printf("FAIL: CFG_REGWEN=0 after reset\n");
@@ -170,7 +170,7 @@ static int test_sw_reset(void) {
         return -1;
     }
     s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
-    if (s.f.SHA3_IDLE && s.f.FIFO_EMPTY) {
+    if (s.f.sha3_idle && s.f.fifo_empty) {
         printf("PASS: KMAC idle after second reset cycle\n");
     } else {
         printf("FAIL: STATUS=0x%08x after second reset\n", s.w);

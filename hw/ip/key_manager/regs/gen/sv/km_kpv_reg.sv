@@ -300,13 +300,13 @@ module km_kpv_reg (
                 logic load_next;
             } lock_use;
             struct {
+                logic next;
+                logic load_next;
+            } erase;
+            struct {
                 logic [2:0] next;
                 logic load_next;
             } extend;
-            struct {
-                logic [7:0] next;
-                logic load_next;
-            } dest_valid;
             struct {
                 logic [3:0] next;
                 logic load_next;
@@ -340,11 +340,11 @@ module km_kpv_reg (
                 logic value;
             } lock_use;
             struct {
+                logic value;
+            } erase;
+            struct {
                 logic [2:0] value;
             } extend;
-            struct {
-                logic [7:0] value;
-            } dest_valid;
             struct {
                 logic [3:0] value;
             } last_dword;
@@ -426,6 +426,32 @@ module km_kpv_reg (
             end
         end
         assign hwif_out.CTRL[i0].lock_use.value = field_storage.CTRL[i0].lock_use.value;
+        // Field: km_kpv.CTRL[].erase
+        always_comb begin
+            automatic logic [0:0] next_c;
+            automatic logic load_next_c;
+            next_c = field_storage.CTRL[i0].erase.value;
+            load_next_c = '0;
+            if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr) begin // SW write 1 set
+                next_c = field_storage.CTRL[i0].erase.value | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
+                load_next_c = '1;
+            end else if(hwif_in.CTRL[i0].erase.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end
+            field_combo.CTRL[i0].erase.next = next_c;
+            field_combo.CTRL[i0].erase.load_next = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(~hwif_in.WARM_RST_N) begin
+                field_storage.CTRL[i0].erase.value <= 1'h0;
+            end else begin
+                if(field_combo.CTRL[i0].erase.load_next) begin
+                    field_storage.CTRL[i0].erase.value <= field_combo.CTRL[i0].erase.next;
+                end
+            end
+        end
+        assign hwif_out.CTRL[i0].erase.value = field_storage.CTRL[i0].erase.value;
         // Field: km_kpv.CTRL[].extend
         always_comb begin
             automatic logic [2:0] next_c;
@@ -442,8 +468,8 @@ module km_kpv_reg (
             field_combo.CTRL[i0].extend.next = next_c;
             field_combo.CTRL[i0].extend.load_next = load_next_c;
         end
-        always_ff @(posedge clk or negedge arst_n) begin
-            if(~arst_n) begin
+        always_ff @(posedge clk) begin
+            if(~hwif_in.WARM_RST_N) begin
                 field_storage.CTRL[i0].extend.value <= 3'h0;
             end else begin
                 if(field_combo.CTRL[i0].extend.load_next) begin
@@ -452,32 +478,6 @@ module km_kpv_reg (
             end
         end
         assign hwif_out.CTRL[i0].extend.value = field_storage.CTRL[i0].extend.value;
-        // Field: km_kpv.CTRL[].dest_valid
-        always_comb begin
-            automatic logic [7:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.CTRL[i0].dest_valid.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr && !(hwif_in.CTRL[i0].dest_valid.swwel)) begin // SW write
-                next_c = (field_storage.CTRL[i0].dest_valid.value & ~decoded_wr_biten[16:9]) | (decoded_wr_data[16:9] & decoded_wr_biten[16:9]);
-                load_next_c = '1;
-            end else begin // HW Write
-                next_c = hwif_in.CTRL[i0].dest_valid.next;
-                load_next_c = '1;
-            end
-            field_combo.CTRL[i0].dest_valid.next = next_c;
-            field_combo.CTRL[i0].dest_valid.load_next = load_next_c;
-        end
-        always_ff @(posedge clk or negedge arst_n) begin
-            if(~arst_n) begin
-                field_storage.CTRL[i0].dest_valid.value <= 8'h0;
-            end else begin
-                if(field_combo.CTRL[i0].dest_valid.load_next) begin
-                    field_storage.CTRL[i0].dest_valid.value <= field_combo.CTRL[i0].dest_valid.next;
-                end
-            end
-        end
-        assign hwif_out.CTRL[i0].dest_valid.value = field_storage.CTRL[i0].dest_valid.value;
         // Field: km_kpv.CTRL[].last_dword
         always_comb begin
             automatic logic [3:0] next_c;
@@ -494,8 +494,8 @@ module km_kpv_reg (
             field_combo.CTRL[i0].last_dword.next = next_c;
             field_combo.CTRL[i0].last_dword.load_next = load_next_c;
         end
-        always_ff @(posedge clk or negedge arst_n) begin
-            if(~arst_n) begin
+        always_ff @(posedge clk) begin
+            if(~hwif_in.WARM_RST_N) begin
                 field_storage.CTRL[i0].last_dword.value <= 4'h0;
             end else begin
                 if(field_combo.CTRL[i0].last_dword.load_next) begin
@@ -642,10 +642,10 @@ module km_kpv_reg (
             if(rd_mux_addr == 12'h800 + (12)'(i0) * 12'h4) begin
                 readback_data_var[0] = field_storage.CTRL[i0].lock_write.value;
                 readback_data_var[1] = field_storage.CTRL[i0].lock_use.value;
-                readback_data_var[3:2] = 2'h0;
+                readback_data_var[2] = field_storage.CTRL[i0].erase.value;
+                readback_data_var[3] = 1'h0;
                 readback_data_var[6:4] = field_storage.CTRL[i0].extend.value;
-                readback_data_var[8:7] = 2'h0;
-                readback_data_var[16:9] = field_storage.CTRL[i0].dest_valid.value;
+                readback_data_var[16:7] = 10'h0;
                 readback_data_var[20:17] = field_storage.CTRL[i0].last_dword.value;
                 readback_data_var[31:21] = 11'h0;
             end

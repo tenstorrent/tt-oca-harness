@@ -19,7 +19,8 @@ FW_REG_SYS := sep
 
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
-FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common
+# drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
+FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # Test sources predate strict prototypes / native register headers; keep these
 # relaxations so they compile unchanged.

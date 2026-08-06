@@ -29,7 +29,7 @@
 -            rdl_rb = RegBlock2Systemrdl(rb, self.importer).export()
 +            # Flatten the unnamed interface into the block addrmap; named
 +            # interfaces keep their own addrmap level.
-+            target = rdl_addrmap if rb.name is None else None
++            target = rdl_addrmap if not rb.name else None
 +            rdl_rb = RegBlock2Systemrdl(rb, self.importer).export(target)
  
              # Skip empty interfaces

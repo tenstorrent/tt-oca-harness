@@ -28,9 +28,29 @@ whenever a new accelerator is added to the subsystem.
 
 image::SEP_Crypto_Complex.png[SEP_Crypto_Complex,scaledwidth=90.0%]
 
-The `sep_crypto` module implements the integration layer. A single 64-bit AXI slave port from the SEP system fabric feeds an `axi_demux` that decodes the address and routes each transaction to the appropriate accelerator or internal peripheral. Each OpenTitan wrapper converts the AXI bus to TL-UL through a standard three-stage pipeline: `axi_dw_converter` (64-bit to 32-bit), `axi_to_axi_lite`, and `axi_lite_to_tlul`. The Key Manager drives a private AXI4-Lite key bus to each accelerator wrapper, which maps key words into the sideload structures expected by the OpenTitan cores.
+The `sep_crypto` module implements the integration layer. A single 64-bit AXI
+slave port from the SEP system fabric feeds an `axi_demux` that decodes the
+address and routes each transaction to the appropriate accelerator or internal
+peripheral. Each OpenTitan wrapper converts the AXI bus to TL-UL through a
+standard three-stage pipeline: `axi_dw_converter` (64-bit to 32-bit),
+`axi_to_axi_lite`, and `axi_lite_to_tlul`. The Key Manager drives a private
+AXI4-Lite key bus to each accelerator wrapper, which maps key words into the
+sideload structures expected by the OpenTitan cores.
 
-Alerts from all crypto components are collected by 11 `prim_alert_receiver` instances within `sep_crypto` and aggregated into a single `crypto_alert_o` output. Each accelerator has its own independent software-controllable reset, gated with the system reset through the SEP Reset Controller.
+Alerts from all crypto components are collected by 11 `prim_alert_receiver`
+instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
+output. Each accelerator has its own independent software-controllable reset,
+gated with the system reset through the SEP Reset Controller.
+
+The crypto complex uses whole-instance Class 2 scan boundaries so all
+sequential key, round-key, digest-working, seed, and random-distribution state
+is covered without per-register marking. The marked roots in `sep_crypto` are
+`hmac_wrapper_s3c_scan`, `sep_crypto_otbn_wrapper_s3c_scan`,
+`aes_wrapper_s3c_scan`, `kmac_wrapper_s3c_scan`,
+`u_sep_crypto_abr_wrapper_s3c_scan`, `u_entropy_source_s3c_scan`,
+`u_drbg_s3c_scan`, `u_axis_edn_crypto_s3c_scan`, and
+`u_key_manager_s3c_scan`. The integration module itself, public bus
+infrastructure, and combinational entropy muxes are not Class 2 roots.
 
 [[hmac-sha2]]
 ==== HMAC-SHA2
@@ -44,9 +64,19 @@ https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
 
-The `hmac_wrapper` receives a 64-bit AXI slave port from the crypto crossbar and narrows it to 32-bit AXI, then to AXI-Lite, and finally to TL-UL for the `tt_hmac` core. The address path subtracts the HMAC base address and masks to a 13-bit window (8 KB), accommodating both the register space and the message FIFO window at offset `0x1000`. The Key Manager provides an 8-word-per-share key through the `hmac_wrapper_key_reg` block, which maps directly to the `keymgr_key_i` sideload input. HMAC exposes a single fatal alert channel (index [0] in the `sep_crypto` aggregation), three interrupts (`done`, `fifo_empty`, `err`), and an `idle_o` status output. Unlike the other crypto wrappers, HMAC has no EDN connection.
+The `hmac_wrapper` receives a 64-bit AXI slave port from the crypto crossbar and
+narrows it to 32-bit AXI, then to AXI-Lite, and finally to TL-UL for the
+`tt_hmac` core. The address path subtracts the HMAC base address and masks to a
+13-bit window (8 KB), accommodating both the register space and the message
+FIFO window at offset `0x1000`. The Key Manager provides an 8-word-per-share
+key through the `hmac_wrapper_key_reg` block, which maps directly to the
+`keymgr_key_i` sideload input. HMAC exposes a single fatal alert channel (index
+[0] in the `sep_crypto` aggregation), three interrupts (`done`, `fifo_empty`,
+`err`), and an `idle_o` status output. Unlike the other crypto wrappers, HMAC
+has no EDN connection.
 
-For the full HMAC theory of operation and register map, refer to the https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC documentation].
+For the full HMAC theory of operation and register map, refer to the
+https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC documentation].
 
 [[otbn-pka-public-key-accelerator]]
 ==== OTBN PKA Public Key Accelerator
@@ -87,11 +117,32 @@ memory allowing firmware updates to be made in the field.
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
 
-The `sep_crypto_otbn_wrapper` is the most complex of the OpenTitan wrappers. The 64-bit AXI slave port requires a `CACHE_MODIFIABLE` bit fix before the `axi_dw_converter`, because the VeeR CPU may emit non-modifiable cache attributes for MMIO accesses that would be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and protocol bridging, TL-UL drives the standard `otbn` core configured with `Stub = 0` and `RegFile = RegFileFF`.
+The `sep_crypto_otbn_wrapper` is the most complex of the OpenTitan wrappers. The
+64-bit AXI slave port requires a `CACHE_MODIFIABLE` bit fix before the
+`axi_dw_converter`, because the VeeR CPU may emit non-modifiable cache
+attributes for MMIO accesses that would be rejected by the AXI-to-AXI-Lite
+converter. After data-width conversion and protocol bridging, TL-UL drives the
+standard `otbn` core configured with `Stub = 0` and `RegFile = RegFileFF`.
 
-OTBN's instruction and data memories are external SRAM macros; the IMEM and DMEM `prim_ram_1p_scr` ports are brought out of the wrapper to the `sep_crypto` top level. The key bus is wider than other accelerators: the `otbn_wrapper_key_reg` block maps 12 words per share to the `keymgr_pkg::otbn_key_req_t` structure. The two random-number request ports (`edn_rnd`, `edn_urnd`) are served over native-protocol EDN by the shared `drbg_axis_edn_adapter` instance `u_axis_edn_crypto` in `sep_crypto`, which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink domain into per-client EDN responses. The adapter forwards the per-beat FIPS provenance through a generic AXI-Stream `tuser` sideband so OTBN RND observes compliant entropy and does not assert `rnd_fips_chk_fail`. The OTP scramble key handshake is tied to fixed values. Life-cycle escalation and RMA request signals are tied to their inactive state. OTBN occupies alert indices [2:1] in the crypto aggregation and exports a single `intr_done_o` interrupt.
+OTBN's instruction and data memories are external SRAM macros; the IMEM and
+DMEM `prim_ram_1p_scr` ports are brought out of the wrapper to the `sep_crypto`
+top level. The key bus is wider than other accelerators: the
+`otbn_wrapper_key_reg` block maps 12 words per share to the
+`keymgr_pkg::otbn_key_req_t` structure. The two random-number request ports
+(`edn_rnd`, `edn_urnd`) are served over native-protocol EDN by the shared
+`drbg_axis_edn_adapter` instance `u_axis_edn_crypto_s3c_scan` in `sep_crypto`,
+which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
+domain into per-client EDN responses. The adapter forwards the per-beat FIPS
+provenance through a generic AXI-Stream `tuser` sideband so OTBN RND observes
+compliant entropy and does not assert `rnd_fips_chk_fail`. The OTP scramble key
+handshake is tied to fixed values. Life-cycle escalation and RMA request
+signals are tied to their inactive state. OTBN occupies alert indices [2:1] in
+the crypto aggregation and exports a single `intr_done_o` interrupt.
 
-For the full OTBN theory of operation, instruction set, and register map, refer to the https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN documentation].
+For the full OTBN theory of operation, instruction set, and register map, refer
+to the
+https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
+documentation].
 
 [[aes-cipher]]
 ==== AES Cipher
@@ -116,9 +167,21 @@ _round_ value depends on the key size used.
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
 
-The `aes_wrapper` follows the standard three-stage bus conversion (64-bit AXI → 32-bit AXI → AXI-Lite → TL-UL) without address adjustment or cache-attribute patching. The `aes_wrapper_key_reg` block provides an 8-word-per-share key mapping to the `keymgr_pkg::hw_key_req_t` sideload input. EDN requests are served by the shared `drbg_axis_edn_adapter` instance `u_axis_edn_crypto`, which converts the post-CSRNG DRBG AXI-Stream feed for the crypto sink domain into AES's native-protocol EDN response. The adapter forwards the per-beat FIPS bit from the stream's `tuser` sideband into `edn_fips`; AES itself does not consume the flag. The AES core uses `rst_ni` for both the main and shadow reset domains. Life-cycle escalation is tied to its inactive state. AES occupies alert indices [4:3] in the crypto aggregation and exports an `idle_o` status output but no interrupt.
+The `aes_wrapper` follows the standard three-stage bus conversion (64-bit AXI →
+32-bit AXI → AXI-Lite → TL-UL) without address adjustment or cache-attribute
+patching. The `aes_wrapper_key_reg` block provides an 8-word-per-share key
+mapping to the `keymgr_pkg::hw_key_req_t` sideload input. EDN requests are
+served by the shared `drbg_axis_edn_adapter` instance
+`u_axis_edn_crypto_s3c_scan`, which converts the post-CSRNG DRBG AXI-Stream feed
+for the crypto sink domain into AES's native-protocol EDN response. The adapter
+forwards the per-beat FIPS bit from the stream's `tuser` sideband into
+`edn_fips`; AES itself does not consume the flag. The AES core uses `rst_ni` for
+both the main and shadow reset domains. Life-cycle escalation is tied to its
+inactive state. AES occupies alert indices [4:3] in the crypto aggregation and
+exports an `idle_o` status output but no interrupt.
 
-For the full AES theory of operation, modes, and register map, refer to the https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES documentation].
+For the full AES theory of operation, modes, and register map, refer to the
+https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES documentation].
 
 [[kmac-sha3]]
 ==== KMAC-SHA3
@@ -132,9 +195,20 @@ https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC] design.
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
 
-The `kmac_wrapper` uses the same bus conversion pipeline as AES. The address path subtracts the KMAC base address and masks to a 12-bit window (4 KB) before the `axi_to_axi_lite` stage, aligning the internal decoder with the OpenTitan register block. The `kmac_wrapper_key_reg` block provides the same 8-word-per-share key mapping. EDN is handled identically to AES: KMAC is one of the four clients arbitrated by `u_axis_edn_crypto` (the shared `drbg_axis_edn_adapter`), served from the same post-CSRNG DRBG AXI-Stream feed. The `app_i` application interface is tied off since the SEP does not use the KMAC hardware application path. Life-cycle escalation is inactive. KMAC occupies alert indices [6:5] in the crypto aggregation and exports three interrupts: `done`, `fifo_empty`, and `err`.
+The `kmac_wrapper` uses the same bus conversion pipeline as AES. The address
+path subtracts the KMAC base address and masks to a 12-bit window (4 KB) before
+the `axi_to_axi_lite` stage, aligning the internal decoder with the OpenTitan
+register block. The `kmac_wrapper_key_reg` block provides the same
+8-word-per-share key mapping. EDN is handled identically to AES: KMAC is one of
+the four clients arbitrated by `u_axis_edn_crypto_s3c_scan` (the shared
+`drbg_axis_edn_adapter`), served from the same post-CSRNG DRBG AXI-Stream feed.
+The `app_i` application interface is tied off since the SEP does not use the
+KMAC hardware application path. Life-cycle escalation is inactive. KMAC
+occupies alert indices [6:5] in the crypto aggregation and exports three
+interrupts: `done`, `fifo_empty`, and `err`.
 
-For the full KMAC theory of operation and register map, refer to the https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC documentation].
+For the full KMAC theory of operation and register map, refer to the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC documentation].
 
 [[true-random-number-generator-trng-true-random-number-generator-trng]]
 ==== True Random Number Generator (TRNG)
@@ -184,13 +258,13 @@ directly to the cryptographic accelerators. Instead it seeds the DRBG,
 and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
 AES-CTR construction) is what fans out to the rest of the crypto
 subsystem. The DRBG exposes two AXI-Stream EDN endpoints
-(`u_drbg.edn_axis_o[1:0]`) that carry conditioned, DRBG-generated bits,
+(`u_drbg_s3c_scan.edn_axis_o[1:0]`) that carry conditioned, DRBG-generated bits,
 one per sink domain:
 
 * endpoint `[0]` feeds the Key Manager sink domain;
 * endpoint `[1]` feeds the four native-EDN crypto clients
   (AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
-  `u_axis_edn_crypto` — the `drbg_axis_edn_adapter` that converts the
+  `u_axis_edn_crypto_s3c_scan` — the `drbg_axis_edn_adapter` that converts the
   32-bit AXI-Stream feed into a small round-robin native-protocol EDN
   fan-out.
 
@@ -200,15 +274,34 @@ that FIPS-aware consumers such as OTBN RND — which latches the bit and
 raises `rnd_fips_chk_fail` on a non-FIPS ack — observe the correct
 provenance of the bits they are receiving.
 
-The noise is distributed via streaming interfaces. The stream interface is generic and compatible with AXI-Stream and TLUL-Stream. The following table describes the stream interface. Source is the generator of the signal. Sink is the consumer. The entropy streaming interface will not require address or mask signals.
+The Class 2 entropy boundary starts at
+`u_trng_wrapper_s3c_scan`, whose sequencer, 128-bit release stage, and stream
+FIFOs retain seed material. Its vendor core remains covered by its delivered
+DFT view. In `sep_crypto`, `u_entropy_source_s3c_scan` covers the entropy FIFO
+and SHA-256 whitener, `u_drbg_s3c_scan` covers CSRNG/EDN and endpoint state,
+and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
+combinational source-selection muxes are not scan assets.
+
+The noise is distributed via streaming interfaces. The stream interface is
+generic and compatible with AXI-Stream and TLUL-Stream. The following table
+describes the stream interface. Source is the generator of the signal. Sink is
+the consumer. The entropy streaming interface will not require address or mask
+signals.
 
 [cols="<20%,<20%,<20%,<40%",options="header",]
 |=======================================================================
 |Signal |Polarity |Width Range |Description
 |valid |source |1 |Active high indicates that the streaming data beat is valid.
-|ready |sink |1 |Backpressure from the receiver. Active high indicates the sink can accept new data. Low informs the transmitter that it should hold off sending more data until the sink is ready again.
-|data |source |[1,N] |Streaming payload data can be any width 1 to N bits. If the mask signal is used its width must be a multiple of bytes.
-|address |source |[0,M] |Optional. Used when multiple sink endpoints are available. M can be any integer width
+|ready |sink |1
+a|Backpressure from the receiver. Active high indicates the sink can accept new
+data. Low informs the transmitter that it should hold off sending more data
+until the sink is ready again.
+|data |source |[1,N]
+a|Streaming payload data can be any width 1 to N bits. If the mask signal is
+used its width must be a multiple of bytes.
+|address |source |[0,M]
+a|Optional. Used when multiple sink endpoints are available. M can be any
+integer width
 |mask |source | |Optional. Byte mask if only a subset of the data is consumed by the sink
 |=======================================================================
 
@@ -234,36 +327,9 @@ ifdef::backend-pdf[]
 include::../../../ip/key_manager/doc/architecture.adoc[]
 endif::backend-pdf[]
 
+ifdef::backend-html5[]
+xref:ip:key_manager/doc/firmware.adoc[Key Manager Firmware]
+endif::backend-html5[]
 ifdef::backend-pdf[]
 include::../../../ip/key_manager/doc/firmware.adoc[]
 endif::backend-pdf[]
-
-[[pcr-vault-pcrv]]
-==== PCR Vault (PCRV)
-
-The PCR Vault component provides support for Attestation.
-
-The PCR Vault exposes an AXI4-Lite register interface and provides
-extend-only storage for attestation measurements.
-
-The PCRV has the following registers:
-
-* 24 PCR registers, each 384 bits wide (corresponds to 12 words)
-* 32 control registers, each 32 bits wide
-
-[[extend-only-enforcement]]
-===== Extend-Only Enforcement
-
-The SEP host does not have a direct write path to the PCR data. In other
-words, PCR registers are read only from the perspective of SEP firmware.
-To update the PCR values, the host writes to an Extend Register which
-triggers the local FSM to perform the following operations:
-
-1.  Read the requested PCR register value and move it to the first hash
-block. Lock that portion of the first data block to ensure that firmware
-cannot overwrite the value.
-2.  Concatenate the new data for hashing. Do this by writing new data
-into hash blocks and performing hash operations until all new data is
-consumed.
-3.  Write the hash digest results back to the original PCR register
-

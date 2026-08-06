@@ -483,11 +483,11 @@ module log_engine
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckNumLogEntries, NUM_LOG_ENTRIES > 0)
+    `OCAH_OT_ASSERT_INIT(paramCheckNumLogEntries, NUM_LOG_ENTRIES > 0)
 
-    `ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
-    `ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)
-    `ASSERT_KNOWN(LogWriteAxilReqKnownO_A, log_write_axil_req_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)
+    `OCAH_OT_ASSERT_KNOWN(LogWriteAxilReqKnownO_A, log_write_axil_req_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
 
 endmodule

@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//----------------------------------------------------------
 // SMC Padring
-//
-//----------------------------------------------------------
-
 
 module smc_padring #(
 	parameter int unsigned		MAX_TRANS			= 1,
 	parameter bit [gpio_pkg::ADDR_WIDTH-1:0]	ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
-	parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR = 32'h00000000,      // Base address for all GPIO intfs
-	parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_CTRL_BASE_ADDR = GPIO_INTF_BASE_ADDR + (smc_pkg::NUM_GPIO_WRAPS * ADDRESS_MAP_SIZE_PER_GPIO) // Base address for all GPIO shims
+	parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR = 32'h00000000      // Base address for all GPIO intfs
 
 )(
 	input  logic								clk_i,
@@ -96,10 +91,6 @@ module smc_padring #(
 	input  logic								rst_cool_ni,
 	output logic								isolate_req_pin_o,
 
-	// GPIO Control Interface (to external padring for ctrl/refclk/ext access)
-	output gpio_pkg::gpio_axil_req_t            axil_req_gpio_ctrl_o,
-	input  gpio_pkg::gpio_axil_resp_t           axil_resp_gpio_ctrl_i,
-
 	// GPIO Data Signals (to external GPIO macros via gpio_shim instances)
 	output	logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       lsio_interface_select_o,
 	output	logic [smc_pkg::NUM_GPIO_WRAPS-1:0]       core2pad_o,
@@ -116,19 +107,33 @@ module smc_padring #(
 	// AXI-Lite Demux //
 	////////////////////
 
-	// Primary demux: gpio_intf vs gpio_ctrl/ext ranges
-	gpio_pkg::gpio_axil_req_t  axil_req_gpio_intf;
-	gpio_pkg::gpio_axil_resp_t axil_resp_gpio_intf;
-	gpio_pkg::gpio_axil_req_t  axil_req_gpio_ctrl;
-	gpio_pkg::gpio_axil_resp_t axil_resp_gpio_ctrl;
+	// Demux across the GPIO interfaces, plus a decode-error target at index
+	// NUM_GPIO_WRAPS for out-of-window / unmapped accesses (including the
+	// former gpio_ctrl/ext range, now unimplemented).
+	localparam int unsigned NUM_INTF_DEMUX_MST = smc_pkg::NUM_GPIO_WRAPS + 1;
+	localparam int unsigned INTF_ERR_IDX       = smc_pkg::NUM_GPIO_WRAPS;
 
-	logic primary_aw_select;  // 0=gpio_intf, 1=gpio_ctrl/ext
-	logic primary_ar_select;  // 0=gpio_intf, 1=gpio_ctrl/ext
+	gpio_pkg::gpio_axil_req_t  [NUM_INTF_DEMUX_MST-1:0] axil_reqs_to_intf;
+	gpio_pkg::gpio_axil_resp_t [NUM_INTF_DEMUX_MST-1:0] axil_resps_from_intf;
+
+	logic [$clog2(NUM_INTF_DEMUX_MST)-1:0] gpio_intf_aw_select;
+	logic [$clog2(NUM_INTF_DEMUX_MST)-1:0] gpio_intf_ar_select;
 
 	always_comb begin
-		// Primary decode: gpio_intf vs gpio_ctrl/ext ranges
-		primary_aw_select = (axil_req_i.aw.addr >= GPIO_CTRL_BASE_ADDR);
-		primary_ar_select = (axil_req_i.ar.addr >= GPIO_CTRL_BASE_ADDR);
+		// Decode gpio_intf window. Out of window accesses routed to error slave
+		if (axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR &&
+		    ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+			gpio_intf_aw_select = (axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4;
+		end else begin
+			gpio_intf_aw_select = INTF_ERR_IDX;
+		end
+
+		if (axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR &&
+		    ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+			gpio_intf_ar_select = (axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4;
+		end else begin
+			gpio_intf_ar_select = INTF_ERR_IDX;
+		end
 	end
 
 	axi_lite_demux #(
@@ -139,7 +144,7 @@ module smc_padring #(
 		.r_chan_t			(gpio_pkg::gpio_axil_r_chan_t),
 		.axi_req_t			(gpio_pkg::gpio_axil_req_t),
 		.axi_resp_t			(gpio_pkg::gpio_axil_resp_t),
-		.NoMstPorts			(2),  // gpio_intf and gpio_ctrl/ext
+		.NoMstPorts			(NUM_INTF_DEMUX_MST),  // gpio_intf + decode-error target
 		.MaxTrans			(MAX_TRANS),
 		.FallThrough		(1'b0),
 		.SpillAw			(1'b1),
@@ -147,57 +152,32 @@ module smc_padring #(
 		.SpillB				(1'b0),
 		.SpillAr			(1'b1),
 		.SpillR				(1'b0)
-	) primary_axi_lite_demux (
+	) u_gpio_intf_demux (
 		.clk_i				(clk_i),
 		.rst_ni				(rst_primary_ni),
 		.test_i				(test_en_i),
 		.slv_req_i			(axil_req_i),
 		.slv_resp_o			(axil_resp_o),
-		.slv_aw_select_i	(primary_aw_select),
-		.slv_ar_select_i	(primary_ar_select),
-		.mst_reqs_o			({axil_req_gpio_ctrl_o, axil_req_gpio_intf}),
-		.mst_resps_i		({axil_resp_gpio_ctrl_i, axil_resp_gpio_intf})
-	);
-
-	// Secondary demux for gpio_intf only
-	gpio_pkg::gpio_axil_req_t  [smc_pkg::NUM_GPIO_WRAPS-1:0] axil_reqs_to_intf;
-	gpio_pkg::gpio_axil_resp_t [smc_pkg::NUM_GPIO_WRAPS-1:0] axil_resps_from_intf;
-
-	logic [$clog2(smc_pkg::NUM_GPIO_WRAPS)-1:0] gpio_intf_aw_select;
-	logic [$clog2(smc_pkg::NUM_GPIO_WRAPS)-1:0] gpio_intf_ar_select;
-
-	always_comb begin
-		// Secondary decode for gpio_intf[71] - each is 0x10 bytes
-		gpio_intf_aw_select = (axil_req_gpio_intf.aw.addr - GPIO_INTF_BASE_ADDR) >> 4;
-		gpio_intf_ar_select = (axil_req_gpio_intf.ar.addr - GPIO_INTF_BASE_ADDR) >> 4;
-	end
-
-	axi_lite_demux #(
-		.aw_chan_t			(gpio_pkg::gpio_axil_aw_chan_t),
-		.w_chan_t			(gpio_pkg::gpio_axil_w_chan_t),
-		.b_chan_t			(gpio_pkg::gpio_axil_b_chan_t),
-		.ar_chan_t			(gpio_pkg::gpio_axil_ar_chan_t),
-		.r_chan_t			(gpio_pkg::gpio_axil_r_chan_t),
-		.axi_req_t			(gpio_pkg::gpio_axil_req_t),
-		.axi_resp_t			(gpio_pkg::gpio_axil_resp_t),
-		.NoMstPorts			(smc_pkg::NUM_GPIO_WRAPS),  // gpio_intf[71]
-		.MaxTrans			(MAX_TRANS),
-		.FallThrough		(1'b0),
-		.SpillAw			(1'b1),
-		.SpillW				(1'b0),
-		.SpillB				(1'b0),
-		.SpillAr			(1'b1),
-		.SpillR				(1'b0)
-	) secondary_axi_lite_demux (
-		.clk_i				(clk_i),
-		.rst_ni				(rst_primary_ni),
-		.test_i				(test_en_i),
-		.slv_req_i			(axil_req_gpio_intf),
-		.slv_resp_o			(axil_resp_gpio_intf),
 		.slv_aw_select_i	(gpio_intf_aw_select),
 		.slv_ar_select_i	(gpio_intf_ar_select),
 		.mst_reqs_o			(axil_reqs_to_intf),
 		.mst_resps_i		(axil_resps_from_intf)
+	);
+
+	// Decode-error slave on the demux's final target: unmapped gpio_intf-window accesses return DECERR
+	prim_axi_lite_err_slv #(
+		.AXI_ADDR_WIDTH (gpio_pkg::ADDR_WIDTH),
+		.AXI_DATA_WIDTH (gpio_pkg::DATA_WIDTH),
+		.axil_req_t     (gpio_pkg::gpio_axil_req_t),
+		.axil_resp_t    (gpio_pkg::gpio_axil_resp_t),
+		.RESP_WIDTH     (gpio_pkg::DATA_WIDTH),
+		.RESP_DATA      (32'hBADCAB1E),
+		.MAX_TRANS      (1)
+	) u_intf_demux_err_slv (
+		.clk_i          (clk_i),
+		.rst_ni         (rst_primary_ni),
+		.axil_req_i     (axil_reqs_to_intf[INTF_ERR_IDX]),
+		.axil_resp_o    (axil_resps_from_intf[INTF_ERR_IDX])
 	);
 
 	////////////////////
@@ -295,17 +275,17 @@ module smc_padring #(
 
 		// I3C[1] fully unbonded (both SCL and SDA)
 
-		lsio_interface_select_o[66] = i3c_enable_i[1];
-		lsio_core2pad_en_n[66]      = i3c_scl_oen_i[1];
-		lsio_core2pad_data[66]      = i3c_scl_i[1];
-		lsio_pad2core_en_n[66]      = smc_padring_pkg::ENABLED;
-		i3c_scl_o[1]                = lsio_pad2core_data[66];
+		lsio_interface_select_o[63] = i3c_enable_i[1];
+		lsio_core2pad_en_n[63]      = i3c_scl_oen_i[1];
+		lsio_core2pad_data[63]      = i3c_scl_i[1];
+		lsio_pad2core_en_n[63]      = smc_padring_pkg::ENABLED;
+		i3c_scl_o[1]                = lsio_pad2core_data[63];
 
-		lsio_interface_select_o[67] = i3c_enable_i[1];
-		lsio_core2pad_en_n[67]      = ~(~i3c_sda_oen_i[1] | i3c_sda_pp_i[1]);
-		lsio_core2pad_data[67]      = i3c_sda_i[1];
-		lsio_pad2core_en_n[67]      = smc_padring_pkg::ENABLED;
-		i3c_sda_o[1]                = lsio_pad2core_data[67];
+		lsio_interface_select_o[64] = i3c_enable_i[1];
+		lsio_core2pad_en_n[64]      = ~(~i3c_sda_oen_i[1] | i3c_sda_pp_i[1]);
+		lsio_core2pad_data[64]      = i3c_sda_i[1];
+		lsio_pad2core_en_n[64]      = smc_padring_pkg::ENABLED;
+		i3c_sda_o[1]                = lsio_pad2core_data[64];
 
 		// I2C
 		for (integer i = 0; i < smc_config_pkg::NUM_I2C; i = i + 1) begin : gen_i2c_connections
@@ -382,8 +362,9 @@ module smc_padring #(
 		lsio_pad2core_en_n[51]      = smc_padring_pkg::ENABLED;
 		avs_sdata_o                 = lsio_pad2core_data[51];
 
-		// CAT THERM (GPIO 52) is driven via the smc_ip_integration 2nd HW
-		// function override; primary path left at default.
+		// CAT THERM (GPIO 52) is driven in smc_ip_integration: it is the PRIMARY
+		// function, force-selected on a thermal event (force_primary) so it
+		// preempts the xtrigger 2nd-HW override. No LSIO drive from the core here.
 
 		// Isolate Request Pin
 		lsio_interface_select_o[53] = 1'b1;
@@ -399,57 +380,45 @@ module smc_padring #(
 		lsio_pad2core_en_n[54]      = spi_mem_rebar_iepad_i;
 		spi_mem_rebar_ipad_o        = lsio_pad2core_data[54];
 
-		// PLL Observation (GPIO 55) is driven via the smc_ip_integration 2nd HW
-		// function override; primary path left at default.
-
-		// Reserved
-		lsio_interface_select_o[56] = '0;
-		lsio_core2pad_en_n[56]      = smc_padring_pkg::DISABLED;
-		lsio_core2pad_data[56]      = '0;
-		lsio_pad2core_en_n[56]      = smc_padring_pkg::DISABLED;
-
-		// PVT RO observation (GPIO 57) is driven via the smc_ip_integration 2nd HW
-		// function override; primary path left at default.
-
-		// System Timer OCTS
+		// System Timer OCTS (old 58/59, now 55/56 after the 68->65 GPIO shrink)
 		// Primary: drive sync load and credit cnt signals to pad
 		// Secondary: receive sync load and credit cnt signals from pad
-		lsio_interface_select_o[58] = timer_gpio_enable_i;
-		lsio_core2pad_en_n[58]      = chiplet_is_primary_i ? smc_padring_pkg::ENABLED : smc_padring_pkg::DISABLED;
-		lsio_core2pad_data[58]      = chiplet_is_primary_i ? timer_sync_load_i : 1'b0;
-		lsio_pad2core_en_n[58]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
-		timer_sync_load_o           = lsio_pad2core_data[58];
+		lsio_interface_select_o[55] = timer_gpio_enable_i;
+		lsio_core2pad_en_n[55]      = chiplet_is_primary_i ? smc_padring_pkg::ENABLED : smc_padring_pkg::DISABLED;
+		lsio_core2pad_data[55]      = chiplet_is_primary_i ? timer_sync_load_i : 1'b0;
+		lsio_pad2core_en_n[55]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
+		timer_sync_load_o           = lsio_pad2core_data[55];
 
-		lsio_interface_select_o[59] = timer_gpio_enable_i;
-		lsio_core2pad_en_n[59]      = chiplet_is_primary_i ? smc_padring_pkg::ENABLED : smc_padring_pkg::DISABLED;
-		lsio_core2pad_data[59]      = chiplet_is_primary_i ? timer_cnt_credit_i : 1'b0;
-		lsio_pad2core_en_n[59]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
-		timer_cnt_credit_o          = lsio_pad2core_data[59];
+		lsio_interface_select_o[56] = timer_gpio_enable_i;
+		lsio_core2pad_en_n[56]      = chiplet_is_primary_i ? smc_padring_pkg::ENABLED : smc_padring_pkg::DISABLED;
+		lsio_core2pad_data[56]      = chiplet_is_primary_i ? timer_cnt_credit_i : 1'b0;
+		lsio_pad2core_en_n[56]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
+		timer_cnt_credit_o          = lsio_pad2core_data[56];
 
-		// Boot Stall
-		lsio_interface_select_o[60]   = 1'b1;
-		lsio_core2pad_en_n[60]        = smc_padring_pkg::DISABLED;
-		lsio_core2pad_data[60]        = '0;
-		lsio_pad2core_en_n[60]        = smc_padring_pkg::ENABLED;
-		boot_stall_o				  = lsio_pad2core_data[60];
+		// Boot Stall (old 60, now 57)
+		lsio_interface_select_o[57]   = 1'b1;
+		lsio_core2pad_en_n[57]        = smc_padring_pkg::DISABLED;
+		lsio_core2pad_data[57]        = '0;
+		lsio_pad2core_en_n[57]        = smc_padring_pkg::ENABLED;
+		boot_stall_o				  = lsio_pad2core_data[57];
 
-		// Reserved
+		// ROTATE_UPDATE strap pad; also the OCCP interface software GPIO (old 61, now 58)
+		lsio_interface_select_o[58] = '0;
+		lsio_core2pad_en_n[58]      = smc_padring_pkg::DISABLED;
+		lsio_core2pad_data[58]      = '0;
+		lsio_pad2core_en_n[58]      = smc_padring_pkg::DISABLED;
+
+		// Cool Reset In (Dont drive here, just set pullup) (old 64, now 61)
 		lsio_interface_select_o[61] = '0;
 		lsio_core2pad_en_n[61]      = smc_padring_pkg::DISABLED;
 		lsio_core2pad_data[61]      = '0;
 		lsio_pad2core_en_n[61]      = smc_padring_pkg::DISABLED;
 
-		// Cool Reset In (Dont drive here, just set pullup)
-		lsio_interface_select_o[64] = '0;
-		lsio_core2pad_en_n[64]      = smc_padring_pkg::DISABLED;
-		lsio_core2pad_data[64]      = '0;
-		lsio_pad2core_en_n[64]      = smc_padring_pkg::DISABLED;
-
-		// Cool Reset Out
-		lsio_interface_select_o[65] = 1'b1;
-		lsio_core2pad_en_n[65]      = rst_cool_ni;
-		lsio_core2pad_data[65]      = 1'b0;
-		lsio_pad2core_en_n[65]      = smc_padring_pkg::DISABLED;
+		// Cool Reset Out (old 65, now 62)
+		lsio_interface_select_o[62] = 1'b1;
+		lsio_core2pad_en_n[62]      = rst_cool_ni;
+		lsio_core2pad_data[62]      = 1'b0;
+		lsio_pad2core_en_n[62]      = smc_padring_pkg::DISABLED;
 
 	end
 

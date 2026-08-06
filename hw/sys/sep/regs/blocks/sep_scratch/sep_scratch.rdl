@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`ifndef SCRATCH_REG_RDL
-`define SCRATCH_REG_RDL
+`ifndef SEP_SCRATCH_REG_RDL
+`define SEP_SCRATCH_REG_RDL
 
 addrmap sep_scratch {
     reg SCRATCH {

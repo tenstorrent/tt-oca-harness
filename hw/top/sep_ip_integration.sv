@@ -33,6 +33,10 @@ module sep_ip_integration
     // along with the core.
     input logic sep_cpu_reset_n_i,
 
+    // Plain SEP reset, ungated by the WDT; resets the Adams Bridge memories so
+    // they come out of reset together with abr_top.
+    input logic sep_reset_n_i,
+
     // Test/DFT passthrough (used by the AXI extension error slave's test_i)
     input logic test_en_i,
 
@@ -54,6 +58,10 @@ module sep_ip_integration
     output sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
     input  sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
     output sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
+
+    // Adams Bridge SRAM channels (from sep.sv), packed as request/response structs
+    input  sep_crypto_pkg::abr_mem_req_t abr_mem_req_i,
+    output sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp_o,
 
     // Key Manager ROM/SRAM memory interfaces (from sep.sv)
     input  km_intf_pkg::km_rom_mem_req_t  km_rom_mem_req_i,
@@ -370,6 +378,312 @@ module sep_ip_integration
         .cfg_i    ('0),
         .cfg_rsp_o()
     );
+
+    /////////////////////////////////
+    // Adams Bridge Memory Macros  //
+    /////////////////////////////////
+    // The ABR crypto engine (abr_top) lives in sep_crypto_abr_wrapper, under
+    // sep_crypto. Its 13-channel SRAM interface is threaded here as
+    // packed req/rsp structs (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this
+    // is the home for the technology macros. Each channel gets its own
+    // sep_abr_mem_1r1w / sep_abr_mem_1r1w_be instance driven straight off the
+    // request struct, reset from sep_reset_n_i so the arrays and abr_top come out of
+    // reset together.
+    //
+    // The `ifdef SEP_ABR_EN` below is the memory-side counterpart of the guard around
+    // u_sep_crypto_abr_wrapper_s3c_scan in sep_crypto.sv: when Adams Bridge is compiled
+    // out that file terminates the ABR AXI aperture with DECERR, and this file holds the
+    // memory response quiescent so sep.sv's mandatory port stays driven. Keep the two
+    // guards symmetric.
+    //
+    // Note that SEP_ABR_EN is defined for the WHOLE compilation by the `sep` Bender target
+    // (alongside the vendor's CALIPTRA) because `bender script flist-plus` hoists every
+    // define ahead of the source list, so every flow that pulls in the `sep` target takes
+    // this branch and builds the SRAMs.
+`ifdef SEP_ABR_EN
+    // Single-sourced with the abr_top instantiation in sep_crypto_abr_wrapper
+    // (sep_crypto.sv passes the same package parameters to that wrapper).
+    localparam bit          ABR_MEM_MASKING_EN   = sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN;
+    localparam int unsigned ABR_MEM_SRAM_LATENCY = sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY;
+
+    // This file is compiled after the vendor packages, so depths can be taken from
+    // them directly; sep_crypto_pkg is compiled ahead of them and has to mirror the
+    // widths instead. The checks below pin the two together so a vendor geometry bump
+    // fails elaboration instead of silently truncating an address.
+    localparam int unsigned ABR_W1_DEPTH    = abr_params_pkg::ABR_MEM_W1_DEPTH;
+    localparam int unsigned ABR_INST0_DEPTH = abr_params_pkg::ABR_MEM_INST0_DEPTH;
+    localparam int unsigned ABR_INST1_DEPTH = abr_params_pkg::ABR_MEM_INST1_DEPTH;
+    localparam int unsigned ABR_INST2_DEPTH = abr_params_pkg::ABR_MEM_INST2_DEPTH;
+    localparam int unsigned ABR_SK_DEPTH    = abr_ctrl_pkg::SK_MEM_BANK_DEPTH;
+    localparam int unsigned ABR_SIGZ_DEPTH  = abr_ctrl_pkg::SIG_Z_MEM_DEPTH;
+    localparam int unsigned ABR_PK_DEPTH    = abr_ctrl_pkg::PK_MEM_DEPTH;
+
+    // Address width each memory actually needs. The coefficient channels
+    // (INST0/INST1/INST2, plus masked twins) share one struct type sized to the
+    // widest of them (INST2), so the narrower ones are sliced down to these widths
+    // below; every other channel's struct field is already exact.
+    localparam int unsigned ABR_W1_ADDR_W    = $clog2(ABR_W1_DEPTH);
+    localparam int unsigned ABR_INST0_ADDR_W = $clog2(ABR_INST0_DEPTH);
+    localparam int unsigned ABR_INST1_ADDR_W = $clog2(ABR_INST1_DEPTH);
+    localparam int unsigned ABR_INST2_ADDR_W = $clog2(ABR_INST2_DEPTH);
+    localparam int unsigned ABR_SK_ADDR_W    = $clog2(ABR_SK_DEPTH);
+    localparam int unsigned ABR_SIGZ_ADDR_W  = $clog2(ABR_SIGZ_DEPTH);
+    localparam int unsigned ABR_PK_ADDR_W    = $clog2(ABR_PK_DEPTH);
+
+    // Memory-side counterpart of the g_abr_mem_* checks in sep_crypto_abr_wrapper:
+    // those pin the struct against the vendor parameters, this one pins it against the
+    // depths the SRAMs are actually built with. Every channel must match exactly --
+    // including INST2, which additionally sets the shared coefficient field width,
+    // so a mismatch there means the struct can no longer carry the address at all.
+    if (ABR_W1_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W    ||
+        ABR_INST0_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST0_ADDR_W ||
+        ABR_INST1_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST1_ADDR_W ||
+        ABR_INST2_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST2_ADDR_W ||
+        ABR_SK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W    ||
+        ABR_SIGZ_ADDR_W  != sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W  ||
+        ABR_PK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W)
+    begin : g_abr_mem_depth_check
+        $error({"ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
+                "address bit would be dropped. Re-derive the mirrors in sep_crypto_pkg ",
+                "from abr_params_pkg / abr_ctrl_pkg."});
+    end
+
+    // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
+    sep_abr_mem_1r1w #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
+        .Depth       (ABR_W1_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_w1_mem (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.w1_we),
+        .waddr_i (abr_mem_req_i.w1_waddr),
+        .wdata_i (abr_mem_req_i.w1_wdata),
+        .re_i    (abr_mem_req_i.w1_re),
+        .raddr_i (abr_mem_req_i.w1_raddr),
+        .rdata_o (abr_mem_rsp_o.w1_rdata)
+    );
+
+    // Unmasked 96-bit coefficient banks. These four ride in the shared
+    // abr_mem_ch_req_t, so INST0/INST1 take the low ABR_INST*_ADDR_W address bits
+    // (the wrapper zero-extends them into the struct) while INST2, the widest,
+    // uses the whole field.
+    sep_abr_mem_1r1w #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth       (ABR_INST0_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_mem_inst0_bank0 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.mem_inst0_bank0.we),
+        .waddr_i (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
+        .wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
+        .re_i    (abr_mem_req_i.mem_inst0_bank0.re),
+        .raddr_i (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
+        .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata)
+    );
+
+    sep_abr_mem_1r1w #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth       (ABR_INST0_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_mem_inst0_bank1 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.mem_inst0_bank1.we),
+        .waddr_i (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
+        .wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
+        .re_i    (abr_mem_req_i.mem_inst0_bank1.re),
+        .raddr_i (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
+        .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata)
+    );
+
+    sep_abr_mem_1r1w #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth       (ABR_INST1_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_mem_inst1 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.mem_inst1.we),
+        .waddr_i (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
+        .wdata_i (abr_mem_req_i.mem_inst1.wdata),
+        .re_i    (abr_mem_req_i.mem_inst1.re),
+        .raddr_i (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
+        .rdata_o (abr_mem_rsp_o.mem_inst1_rdata)
+    );
+
+    sep_abr_mem_1r1w #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+        .Depth       (ABR_INST2_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_mem_inst2 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.mem_inst2.we),
+        .waddr_i (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
+        .wdata_i (abr_mem_req_i.mem_inst2.wdata),
+        .re_i    (abr_mem_req_i.mem_inst2.re),
+        .raddr_i (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
+        .rdata_o (abr_mem_rsp_o.mem_inst2_rdata)
+    );
+
+    // Masked (second DOM share) twins of the four coefficient banks. They only exist
+    // when abr_top is built with masking; otherwise their read data reads back zero.
+    if (ABR_MEM_MASKING_EN) begin : g_abr_masked_mem
+        sep_abr_mem_1r1w #(
+            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth       (ABR_INST0_DEPTH),
+            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        ) u_abr_mem_inst0_bank0_masked (
+            .clk_i   (abr_mem_req_i.clk),
+            .rst_ni  (sep_reset_n_i),
+            .we_i    (abr_mem_req_i.mem_inst0_bank0_masked.we),
+            .waddr_i (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+            .wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
+            .re_i    (abr_mem_req_i.mem_inst0_bank0_masked.re),
+            .raddr_i (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+            .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata)
+        );
+
+        sep_abr_mem_1r1w #(
+            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth       (ABR_INST0_DEPTH),
+            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        ) u_abr_mem_inst0_bank1_masked (
+            .clk_i   (abr_mem_req_i.clk),
+            .rst_ni  (sep_reset_n_i),
+            .we_i    (abr_mem_req_i.mem_inst0_bank1_masked.we),
+            .waddr_i (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+            .wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
+            .re_i    (abr_mem_req_i.mem_inst0_bank1_masked.re),
+            .raddr_i (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+            .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata)
+        );
+
+        sep_abr_mem_1r1w #(
+            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth       (ABR_INST1_DEPTH),
+            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        ) u_abr_mem_inst1_masked (
+            .clk_i   (abr_mem_req_i.clk),
+            .rst_ni  (sep_reset_n_i),
+            .we_i    (abr_mem_req_i.mem_inst1_masked.we),
+            .waddr_i (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
+            .wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
+            .re_i    (abr_mem_req_i.mem_inst1_masked.re),
+            .raddr_i (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
+            .rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata)
+        );
+
+        sep_abr_mem_1r1w #(
+            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+            .Depth       (ABR_INST2_DEPTH),
+            .ReadLatency (ABR_MEM_SRAM_LATENCY)
+        ) u_abr_mem_inst2_masked (
+            .clk_i   (abr_mem_req_i.clk),
+            .rst_ni  (sep_reset_n_i),
+            .we_i    (abr_mem_req_i.mem_inst2_masked.we),
+            .waddr_i (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
+            .wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
+            .re_i    (abr_mem_req_i.mem_inst2_masked.re),
+            .raddr_i (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
+            .rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata)
+        );
+    end else begin : g_abr_no_masked_mem
+        assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
+        assign abr_mem_rsp_o.mem_inst0_bank1_masked_rdata = '0;
+        assign abr_mem_rsp_o.mem_inst1_masked_rdata       = '0;
+        assign abr_mem_rsp_o.mem_inst2_masked_rdata       = '0;
+    end
+
+    // Secret-key memory, split into two 32-bit banks (even dwords in bank0, odd in
+    // bank1).
+    //
+    // Write range checking is off on these two. abr_ctrl decodes the MLDSA_PRIVKEY_IN
+    // memory window as `api_sk_waddr inside {[31:PRIVKEY_NUM_DWORDS-1]}` and then
+    // subtracts 32, so dword 31 -- which is a register dword, and which the matching
+    // read decode correctly excludes by starting at 32 -- underflows to bank1 address
+    // 1023, past the 596-entry array. The array discards the write and every ABR test
+    // passes, but the write-side check would fire on every private-key load until the
+    // vendor window is fixed.
+    sep_abr_mem_1r1w #(
+        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+        .Depth             (ABR_SK_DEPTH),
+        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
+        .EnWriteRangeCheck (1'b0)
+    ) u_abr_sk_mem_bank0 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.sk_bank0_we),
+        .waddr_i (abr_mem_req_i.sk_bank0_waddr),
+        .wdata_i (abr_mem_req_i.sk_bank0_wdata),
+        .re_i    (abr_mem_req_i.sk_bank0_re),
+        .raddr_i (abr_mem_req_i.sk_bank0_raddr),
+        .rdata_o (abr_mem_rsp_o.sk_bank0_rdata)
+    );
+
+    sep_abr_mem_1r1w #(
+        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+        .Depth             (ABR_SK_DEPTH),
+        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
+        .EnWriteRangeCheck (1'b0)
+    ) u_abr_sk_mem_bank1 (
+        .clk_i   (abr_mem_req_i.clk),
+        .rst_ni  (sep_reset_n_i),
+        .we_i    (abr_mem_req_i.sk_bank1_we),
+        .waddr_i (abr_mem_req_i.sk_bank1_waddr),
+        .wdata_i (abr_mem_req_i.sk_bank1_wdata),
+        .re_i    (abr_mem_req_i.sk_bank1_re),
+        .raddr_i (abr_mem_req_i.sk_bank1_raddr),
+        .rdata_o (abr_mem_rsp_o.sk_bank1_rdata)
+    );
+
+    // Signature-z and public-key memories: wide rows written a dword at a time,
+    // hence the byte-enabled variant.
+    sep_abr_mem_1r1w_be #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
+        .Depth       (ABR_SIGZ_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_sig_z_mem (
+        .clk_i     (abr_mem_req_i.clk),
+        .rst_ni    (sep_reset_n_i),
+        .we_i      (abr_mem_req_i.sig_z_we),
+        .waddr_i   (abr_mem_req_i.sig_z_waddr),
+        .wdata_i   (abr_mem_req_i.sig_z_wdata),
+        .wstrobe_i (abr_mem_req_i.sig_z_wstrobe),
+        .re_i      (abr_mem_req_i.sig_z_re),
+        .raddr_i   (abr_mem_req_i.sig_z_raddr),
+        .rdata_o   (abr_mem_rsp_o.sig_z_rdata)
+    );
+
+    sep_abr_mem_1r1w_be #(
+        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
+        .Depth       (ABR_PK_DEPTH),
+        .ReadLatency (ABR_MEM_SRAM_LATENCY)
+    ) u_abr_pk_mem (
+        .clk_i     (abr_mem_req_i.clk),
+        .rst_ni    (sep_reset_n_i),
+        .we_i      (abr_mem_req_i.pk_mem.we),
+        .waddr_i   (abr_mem_req_i.pk_mem.waddr),
+        .wdata_i   (abr_mem_req_i.pk_mem.wdata),
+        .wstrobe_i (abr_mem_req_i.pk_mem.wstrobe),
+        .re_i      (abr_mem_req_i.pk_mem.re),
+        .raddr_i   (abr_mem_req_i.pk_mem.raddr),
+        .rdata_o   (abr_mem_rsp_o.pk_rdata)
+    );
+`else
+    // Adams Bridge compiled out (see above: not reached in any flow today). Hold the
+    // response quiescent so smu.sv's mandatory port is never left floating.
+    assign abr_mem_rsp_o = '0;
+`endif  // SEP_ABR_EN
+
+    ///////////////
+    // SPI Logic //
+    ///////////////
+
+    sep_32_64_6_12_axi_req_t  cdns_xip_axi_req;
+    sep_32_64_6_12_axi_resp_t cdns_xip_axi_resp;
 
     //=========================================================================
     // External TRNG -- terminated with a DECERR slave; entropy-stream/irq/

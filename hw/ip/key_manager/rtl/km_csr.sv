@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2026 Tenstorrent Inc.
-
-`default_nettype none
-
 
 /**
  * @file km_csr.sv
@@ -17,8 +13,9 @@
  *            masking into a single CPU interrupt output.
  *          - Scrambler lock: implements write-once lock for SCRAMBLER_KEY and
  *            SCRAMBLER_CTRL registers (reads return zero when locked).
- *          - OTP data read-through: OTP register values reflect the current
- *            otp_data_i port signals directly.
+ *          - OTP data capture and read-through: OTP register values reflect
+ *            captured differential values, with UID/CLASS_KEY isolation in
+ *            secure test mode.
  *          - Soft reset: magic-code-guarded reset generation.
  *          - Virtual UART and test protocol register plumbing.
  *
@@ -38,28 +35,29 @@
  * @param axil_req_t   AXI-Lite request struct type.
  * @param axil_resp_t  AXI-Lite response struct type.
  */
+
 module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*; #(
     // AXI-Lite interface types
     parameter type axil_req_t  = km_axil_req_t,
     parameter type axil_resp_t = km_axil_resp_t
 ) (
     // Clock and Reset
-    input  wire logic clk_i,
-    input  wire logic cold_rst_ni,   // Cold reset: async-assert/sync-deassert (AASD)
-    input  wire logic warm_rst_ni,   // Warm reset: fully synchronous (from km_reset_conditioner)
+    input  logic clk_i,
+    input  logic cold_rst_ni,   // Cold reset: async-assert/sync-deassert (AASD)
+    input  logic warm_rst_ni,   // Warm reset: fully synchronous (from km_reset_conditioner)
 
     // AXI4-Lite Slave Interface (from crossbar)
-    input  wire axil_req_t axil_req_i,
+    input  axil_req_t axil_req_i,
     output axil_resp_t axil_resp_o,
 
     // IRQ Event Inputs
-    input  wire logic   rom_parity_err_i,    // ROM parity error (pulse)
-    input  wire logic   sram_parity_err_i,   // SRAM parity error (pulse)
-    input  wire logic   rom_write_err_i,     // ROM write attempt detected (pulse)
-    input  wire logic   axi_slverr_i,        // AXI SLVERR error (pulse)
-    input  wire logic   axi_decerr_i,        // AXI DECERR error (pulse)
-    input  wire logic   drbg_err_i,         // DRBG Sampler error (pulse)
-    input  wire logic   wipe_state_i,      // Wipe state event (rising edge sets IRQ)
+    input  logic   rom_parity_err_i,    // ROM parity error (pulse)
+    input  logic   sram_parity_err_i,   // SRAM parity error (pulse)
+    input  logic   rom_write_err_i,     // ROM write attempt detected (pulse)
+    input  logic   axi_slverr_i,        // AXI SLVERR error (pulse)
+    input  logic   axi_decerr_i,        // AXI DECERR error (pulse)
+    input  logic   drbg_err_i,         // DRBG Sampler error (pulse)
+    input  logic   wipe_state_i,      // Wipe state event (rising edge sets IRQ)
 
     // Scrambler Control Outputs
     output logic [31:0] scrambler_key_o,      // Scrambler key (0 when locked)
@@ -69,12 +67,12 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // SRAM write-lock (to SRAM interface): bit[i]=1 locks region i (512 bytes each). Write-1-only.
     output logic [31:0] sram_lock_bits_o,
     // SRAM write-lock violation (from SRAM interface): one-hot region that had attempted write while locked
-    input  wire logic [31:0] sram_write_lock_violation_region_i,
+    input  logic [31:0] sram_write_lock_violation_region_i,
 
     // SRAM execute-permission mode (to CPU wrapper): 0=ROM-only whitelist, 1=ROM+write-locked-SRAM whitelist
     output logic        sram_exec_mode_o,
     // Execute-permission whitelist violation (from CPU wrapper): pulse when fetch is outside whitelist
-    input  wire logic   exec_violation_i,
+    input  logic   exec_violation_i,
 
     // Aggregated IRQ Output (to CPU)
     output logic        km_irq_o,
@@ -93,8 +91,8 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     output logic [7:0]  vuart_tx_data_o,       // TX byte data
     output logic        vuart_tx_valid_o,      // TX data valid strobe (pulse)
     // RX: Testbench writes byte, firmware reads
-    input  wire logic [7:0] vuart_rx_data_i,       // RX byte from testbench
-    input  wire logic   vuart_rx_valid_i,      // RX data valid
+    input  logic [7:0] vuart_rx_data_i,       // RX byte from testbench
+    input  logic   vuart_rx_valid_i,      // RX data valid
 
     // Test Protocol Interface (for firmware-testbench communication)
     // Firmware writes these, testbench reads
@@ -105,15 +103,15 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     output logic [31:0] tb_cmd_o,              // Command from firmware
     output logic [31:0] tb_cmd_arg_o,          // Command argument
     // Testbench writes these, firmware reads
-    input  wire logic [31:0] tb_cmd_next_i,         // Testbench can write to clear command
-    input  wire logic [31:0] tb_cmd_status_i,       // Command status from testbench
-    input  wire logic [31:0] tb_cmd_result_i,      // Command result from testbench
+    input  logic [31:0] tb_cmd_next_i,         // Testbench can write to clear command
+    input  logic [31:0] tb_cmd_status_i,       // Command status from testbench
+    input  logic [31:0] tb_cmd_result_i,       // Command result from testbench
 
     // SEP OTP Data Interface
-    input  wire km_otp_data_t otp_data_i            // OTP data struct (life cycle, demotion, UID) — read-through
+    input  km_otp_data_t otp_data_i            // Differentially encoded OTP data
 );
 
-    `include "tt_assert.svh"
+    `include "ocah_assert.svh"
 
     // =========================================================================
     // Local Parameters
@@ -371,16 +369,24 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // 3. Apply read-lock masking before writing register .next values.
     // 4. Drive IRQ_STATUS.OTP_CHANGE and OTP_SIGINT from aggregated signals.
 
-    // ---- Read-lock flags from OTP_READ_LOCK register (warm-reset domain) ----
+    // ---- Effective read-lock: OR of warm-domain (OTP_READ_LOCK) and
+    //      cold-domain (OTP_READ_LOCK_COLD) bits for each OTP field.
+    //      Either register alone is sufficient to suppress CSR readback. ----
     logic otp_lock_life_cycle, otp_lock_demotion, otp_lock_chiplet;
     logic otp_lock_sip, otp_lock_sys, otp_lock_class_key;
 
-    assign otp_lock_life_cycle  = hwif_out.OTP_READ_LOCK.life_cycle.value;
-    assign otp_lock_demotion    = hwif_out.OTP_READ_LOCK.demotion.value;
-    assign otp_lock_chiplet     = hwif_out.OTP_READ_LOCK.chiplet_uid.value;
-    assign otp_lock_sip         = hwif_out.OTP_READ_LOCK.sip_uid.value;
-    assign otp_lock_sys         = hwif_out.OTP_READ_LOCK.sys_uid.value;
-    assign otp_lock_class_key   = hwif_out.OTP_READ_LOCK.class_key.value;
+    assign otp_lock_life_cycle  = hwif_out.OTP_READ_LOCK.life_cycle.value
+                                | hwif_out.OTP_READ_LOCK_COLD.life_cycle.value;
+    assign otp_lock_demotion    = hwif_out.OTP_READ_LOCK.demotion.value
+                                | hwif_out.OTP_READ_LOCK_COLD.demotion.value;
+    assign otp_lock_chiplet     = hwif_out.OTP_READ_LOCK.chiplet_uid.value
+                                | hwif_out.OTP_READ_LOCK_COLD.chiplet_uid.value;
+    assign otp_lock_sip         = hwif_out.OTP_READ_LOCK.sip_uid.value
+                                | hwif_out.OTP_READ_LOCK_COLD.sip_uid.value;
+    assign otp_lock_sys         = hwif_out.OTP_READ_LOCK.sys_uid.value
+                                | hwif_out.OTP_READ_LOCK_COLD.sys_uid.value;
+    assign otp_lock_class_key   = hwif_out.OTP_READ_LOCK.class_key.value
+                                | hwif_out.OTP_READ_LOCK_COLD.class_key.value;
 
     // ---- Registered encoded OTP captures ----
     // The raw encoded signals from otp_data_i are registered here.  All
@@ -389,36 +395,45 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // giving clean timing and a single authority for all OTP-derived state.
     //
     // otp_prev_valid suppresses a spurious change pulse on the first cycle
-    // after cold reset before any valid OTP data has been captured.
-    // Only cold reset is used here; OTP data persists across warm resets.
+    // after reset before any valid OTP data has been captured.  Lifecycle and
+    // demotion captures persist across warm resets.  The secret captures are
+    // additionally cleared by warm reset (which also carries the soft reset)
+    // and reload from otp_data_i on the first cycle after release.
     logic         otp_prev_valid;
     logic [7:0]   lc_enc_r;
     logic [1:0]   dem1_enc_r, dem2_enc_r;
-    logic [511:0] chiplet_enc_r, sip_enc_r, sys_enc_r, class_key_enc_r;
+    logic [511:0] chiplet_enc_r, sip_enc_r, sys_enc_r;
+    logic [511:0] class_key_enc_r;
 
     always_ff @(posedge clk_i or negedge cold_rst_ni) begin
         if (!cold_rst_ni) begin
-            otp_prev_valid <= 1'b0;
-            lc_enc_r       <= '0;
-            dem1_enc_r     <= '0;
-            dem2_enc_r     <= '0;
-            chiplet_enc_r  <= '0;
-            sip_enc_r      <= '0;
-            sys_enc_r      <= '0;
-            class_key_enc_r<= '0;
+            otp_prev_valid  <= 1'b0;
+            lc_enc_r        <= '0;
+            dem1_enc_r      <= '0;
+            dem2_enc_r      <= '0;
+            chiplet_enc_r   <= '0;
+            sip_enc_r       <= '0;
+            sys_enc_r       <= '0;
+            class_key_enc_r <= '0;
+        end else if (!warm_rst_ni) begin
+            otp_prev_valid  <= 1'b0;
+            chiplet_enc_r   <= '0;
+            sip_enc_r       <= '0;
+            sys_enc_r       <= '0;
+            class_key_enc_r <= '0;
         end else begin
-            otp_prev_valid <= 1'b1;
-            lc_enc_r       <= otp_data_i.life_cycle;
-            dem1_enc_r     <= otp_data_i.demotion_state_1;
-            dem2_enc_r     <= otp_data_i.demotion_state_2;
-            chiplet_enc_r  <= otp_data_i.chiplet_uid;
-            sip_enc_r      <= otp_data_i.sip_uid;
-            sys_enc_r      <= otp_data_i.sys_uid;
-            class_key_enc_r<= otp_data_i.class_key;
+            otp_prev_valid  <= 1'b1;
+            lc_enc_r        <= otp_data_i.life_cycle;
+            dem1_enc_r      <= otp_data_i.demotion_state_1;
+            dem2_enc_r      <= otp_data_i.demotion_state_2;
+            chiplet_enc_r   <= otp_data_i.chiplet_uid;
+            sip_enc_r       <= otp_data_i.sip_uid;
+            sys_enc_r       <= otp_data_i.sys_uid;
+            class_key_enc_r <= otp_data_i.class_key;
         end
     end
 
-    // ---- Dual-rail decoders (operate on registered encoded captures) ----
+    // ---- Dual-rail decoders (operate on the registered captures) ----
     // Decoders for LC (Width=4) and demotion (Width=1) fields.
     // Decoders for 256-bit fields (Width=256): chiplet_uid, sip_uid, sys_uid, class_key.
 
@@ -505,10 +520,14 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign lc_change_pulse        = otp_prev_valid && (otp_data_i.life_cycle       != lc_enc_r);
     assign dem_change_pulse       = otp_prev_valid && ((otp_data_i.demotion_state_1 != dem1_enc_r) ||
                                                        (otp_data_i.demotion_state_2 != dem2_enc_r));
-    assign chiplet_change_pulse   = otp_prev_valid && (otp_data_i.chiplet_uid      != chiplet_enc_r);
-    assign sip_change_pulse       = otp_prev_valid && (otp_data_i.sip_uid          != sip_enc_r);
-    assign sys_change_pulse       = otp_prev_valid && (otp_data_i.sys_uid          != sys_enc_r);
-    assign class_key_change_pulse = otp_prev_valid && (otp_data_i.class_key        != class_key_enc_r);
+    assign chiplet_change_pulse   = otp_prev_valid &&
+                                    (otp_data_i.chiplet_uid != chiplet_enc_r);
+    assign sip_change_pulse       = otp_prev_valid &&
+                                    (otp_data_i.sip_uid != sip_enc_r);
+    assign sys_change_pulse       = otp_prev_valid &&
+                                    (otp_data_i.sys_uid != sys_enc_r);
+    assign class_key_change_pulse = otp_prev_valid &&
+                                    (otp_data_i.class_key != class_key_enc_r);
 
     assign otp_change_any = lc_change_pulse | dem_change_pulse | chiplet_change_pulse |
                             sip_change_pulse | sys_change_pulse | class_key_change_pulse;
@@ -542,9 +561,8 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign hwif_in.OTP_DEMOTION_STATE.demote_2_value.next = otp_lock_demotion   ? '0 : dem2_enc_r;
 
     // ---- Dual-rail word register read-through (with lock masking) ----
-    // All word assignments use the registered encoded captures (*_enc_r), not the
-    // raw otp_data_i, so CSR reads are stable and derived from a single source.
-    // VAL word n = <field>_enc_r[32n+31:32n]       (lower 256 bits = value)
+    // All word assignments use the registered captures, not raw otp_data_i.
+    // VAL word n = <field>_enc_r[32n+31:32n] (lower 256 bits = value)
     // CPL word n = <field>_enc_r[256+32n+31:256+32n] (upper 256 bits = ~value)
 
     // CHIPLET_UID (otp_lock_chiplet gates all 16 words)
@@ -772,10 +790,8 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // Assertions
     //=========================================================================
 
-    `TT_ASSERT_KNOWN(ScramblerLockKnown_A, scrambler_lock_q, clk_i, !cold_rst_ni)
-    `TT_ASSERT_KNOWN(IrqKnown_A, km_irq_o, clk_i, !cold_rst_ni)
-    `TT_ASSERT_KNOWN(IrqEntryAddrKnown_A, irq_entry_addr_o, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(ScramblerLockKnown_A, scrambler_lock_q, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(IrqKnown_A, km_irq_o, clk_i, !cold_rst_ni)
+    `OCAH_ASSERT_KNOWN(IrqEntryAddrKnown_A, irq_entry_addr_o, clk_i, !cold_rst_ni)
 
 endmodule : km_csr
-
-`default_nettype wire

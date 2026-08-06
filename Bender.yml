@@ -34,7 +34,7 @@ vendor_package:
   # OpenTitan: prim, per-IP rtl/hjson, and the reggen/mubi file set.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
-    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "bbe4dbf28bbfe815dcd11d723dc3e38635b46704" }
+    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "037f261895f7651a7cbcfabaa8b5e336c3f9576c" }
     include_from_upstream:
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
@@ -104,7 +104,7 @@ vendor_package:
 
   - name: common_cells
     target_dir: "vendor/pulp-platform/common_cells/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "b74f0ad63600762ef101cf1d3365d19dfbb3123b" }
+    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "f7fe931fe630ee0560ca793c482d26099e3a7645" }
     include_from_upstream:
       - "src"
       - "include"
@@ -126,7 +126,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "808e7b326f9f259bd2831847d9362291500db641" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "890cc274200b5502ab601925659d618fa167f369" }
     include_from_upstream:
       - "src"
       - "include"
@@ -135,10 +135,22 @@ vendor_package:
   # idma: vendored src with in-place edits; generated bundle lives in overlay/.
   - name: idma
     target_dir: "vendor/pulp-platform/idma/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "b248755b3265ff88b826eeec5e23eef012ba61b5" }
+    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "1f9c6687a512cb17ad0eb82a5bafa3e247c6f56b" }
     include_from_upstream:
       - "src"
     patch_dir: "vendor/pulp-platform/idma/patches"
+
+  # UNBENT bus error unit (pulp-platform/unbent), Solderpad 0.51.
+  # AXI wrapper path only; OBI wrapper intentionally excluded.
+  - name: unbent
+    target_dir: "vendor/pulp-platform/unbent/upstream"
+    upstream: { git: "https://github.com/tenstorrent-forks/unbent.git", rev: "2df7a3f0307739d3813cf77db8228720b39a94f8" }
+    include_from_upstream:
+      - "src/bus_err_unit_reg_pkg.sv"
+      - "src/bus_err_unit_bare.sv"
+      - "src/bus_err_unit_reg_top.sv"
+      - "src/bus_err_unit.sv"
+      - "src/axi_err_unit_wrap.sv"
 
   - name: axi_stream
     target_dir: "vendor/pulp-platform/axi_stream/upstream"
@@ -171,10 +183,67 @@ vendor_package:
       - "include/register_interface/assign.svh"
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
+  # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
+  # Only the RTL reachable from abr_top; the testbench and coverage collateral
+  # are left out.
+  - name: adams_bridge
+    target_dir: "vendor/chipsalliance/adams-bridge/upstream"
+    upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
+    include_from_upstream:
+      - "src/abr_top/rtl"
+      - "src/abr_libs/rtl"
+      - "src/abr_prim/rtl"
+      - "src/abr_prim_generic/rtl"
+      - "src/abr_sampler_top/rtl"
+      - "src/abr_sha3/rtl"
+      - "src/barrett_reduction/rtl"
+      - "src/cbd_sampler/rtl"
+      - "src/compress/rtl"
+      - "src/decompose/rtl"
+      - "src/decompress/rtl"
+      - "src/exp_mask/rtl"
+      - "src/makehint/rtl"
+      - "src/norm_check/rtl"
+      - "src/ntt_top/rtl"
+      - "src/pk_decode/rtl"
+      - "src/power2round/rtl"
+      - "src/rej_bounded/rtl"
+      - "src/rej_sampler/rtl"
+      - "src/sample_in_ball/rtl"
+      - "src/sigdecode_h/rtl"
+      - "src/sig_decode_z/rtl"
+      - "src/sig_encode_z/rtl"
+      - "src/sk_decode/rtl"
+      - "src/sk_encode/rtl"
+    patch_dir: "vendor/chipsalliance/adams-bridge/patches"
+
+  # Caliptra KeyVault: only the client-side helpers Adams Bridge uses under
+  # `ifdef CALIPTRA`. The vault itself and its registers are not vendored;
+  # sep_abr_kv_shim serves the key-vault read/write instead.
+  - name: caliptra_keyvault
+    target_dir: "vendor/chipsalliance/caliptra-rtl/upstream"
+    upstream: { git: "https://github.com/chipsalliance/caliptra-rtl.git", rev: "ec349a89a0fe7bbe24f16c6bb05f9779d5a3d4c6" }
+    include_from_upstream:
+      - "src/keyvault/rtl/kv_macros.svh"
+      - "src/keyvault/rtl/kv_defines_pkg.sv"
+      - "src/keyvault/rtl/kv_fsm.sv"
+      - "src/keyvault/rtl/kv_read_rule_check.sv"
+      - "src/keyvault/rtl/kv_write_rule_check.sv"
+      - "src/keyvault/rtl/kv_read_client.sv"
+      - "src/keyvault/rtl/kv_write_client.sv"
+      - "src/libs/rtl/caliptra_sva.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+    patch_dir: "vendor/chipsalliance/caliptra-rtl/patches"
+
   # VeeR EL2 core; config snapshots live in overlay/.
   - name: veer_el2
     target_dir: "vendor/chipsalliance/Cores-VeeR-EL2/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-Cores-VeeR-EL2.git", rev: "b5e2e9d0d2383b2cb6d864b6b36d689a09bfb684" }
+    upstream: { git: "https://github.com/tenstorrent/tt-Cores-VeeR-EL2.git", rev: "07a51d817c5042f57850e931a1fb5e6a557a9333" }
     include_from_upstream:
       - "design"
       - "configs"
@@ -205,6 +274,34 @@ vendor_package:
       - "csr"
     patch_dir: "vendor/tenstorrent/aou-rtl/patches"
 
+  # I3C controller/target core. The wrapper and memory primitives are left out;
+  # this tree supplies its own through i3ccore_wrap.
+  - name: i3c-core
+    target_dir: "vendor/chipsalliance/i3c-core/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
+    include_from_upstream:
+      - "src"
+    exclude_from_upstream:
+      - "src/i3c_wrapper.sv"
+      - "src/libs/mem"
+      - "src/*.f"
+    patch_dir: "vendor/chipsalliance/i3c-core/patches"
+
+  - name: i3c-core-caliptra-rtl
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
+    upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "8bd654eba57cfaa0688f9c4804b23253d0235dfc" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
+
+  - name: i3c-core-cocotbext-i3c
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
+    upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
+
+  - name: i3c-core-axi-vip
+    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip"
+    upstream: { git: "https://github.com/antmicro/axi-vip.git", rev: "6aeb0a5ba7810dafd96145f0e569db6996464b0e" }
+    patch_dir: "vendor/chipsalliance/i3c-core/patches/axi-vip"
+
 # RTL sources are partitioned by composable subsystem targets.
 sources:
   # Shared files are selected when any owning subsystem is requested.
@@ -227,6 +324,12 @@ sources:
       - hw/ip/dfd/rtl/misc
       - hw/ip/dfd/rtl/pkg
       - hw/sys/smc/rtl/smc_cpu
+      - hw/ip/i3ccore_wrap/rtl
+      - vendor/chipsalliance/i3c-core/upstream/src
+      - vendor/chipsalliance/i3c-core/upstream/src/libs
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/caliptra_prim/rtl
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl
     files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
   - target: sep
@@ -297,7 +400,6 @@ sources:
     files:
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/models/regs/gen/sv/smc_axil_extension_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
@@ -363,7 +465,6 @@ sources:
       - hw/ip/i2c/rtl/i2c_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
       - hw/ip/i2c/rtl/i2c_wrap_pkg.sv
-      - hw/ip/i3ccore_wrap/rtl/i3c_stub_pkg.sv
       - hw/ip/i3ccore_wrap/rtl/i3ccore_wrap_pkg.sv
   - target: dtp
     files:
@@ -446,6 +547,8 @@ sources:
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
+      - hw/sys/smc/rtl/smc_cpu/chipyard_1core_mem_pkg.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_1core_cpu_pkg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
@@ -469,7 +572,12 @@ sources:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
       - hw/common/och_prim/rtl/prim_apb_mux.sv
-      - hw/common/och_prim/rtl/prim_apb_mux_struct.sv
+      # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
+      # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
+      # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
+      # Verilator accept it. Nothing in this tree or nonfree instantiates the
+      # module, and the file is intentionally kept unpatched, so listing it here
+      # would only break every VCS flow that consumes bender's raw output.
       - hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
       - hw/common/och_prim/rtl/prim_axi_id_converter.sv
       - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
@@ -656,7 +764,6 @@ sources:
       - hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv
       - hw/ip/drbg/rtl/drbg_csrng_seed_adapter.sv
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
-      - hw/ip/drbg/rtl/drbg_entropy_router.sv
   - target: any(sep, smc)
     files:
       - hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv
@@ -690,6 +797,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_sampler_clocks.sv
       - hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
       - hw/ip/entropy_source/rtl/entropy_source.sv
+      - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
       - hw/ip/entropy_source/rtl/gcells.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
@@ -709,8 +817,70 @@ sources:
       - hw/ip/i2c/rtl/i2c_target_fsm.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg.sv
       - hw/ip/i2c/rtl/i2c_wrap.sv
-      - hw/ip/i3ccore_wrap/rtl/i3ccore_stub.sv
-      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper_stub.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/i3ccore_axi_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/axi/rtl/axi_addr.v
+      - vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl/src/libs/rtl/skidbuffer.v
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/buf_pp.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/bufs.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/phy/i3c_phy.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/interrupt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_arb.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_rd.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/libs/axi_sub/i3c_axi_sub_wr.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/read_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues/write_queue.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/ahb_if.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/axi_adapter.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/dxt.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/tti.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/queues.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/hci.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/hci/csri.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_8toN.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/width_converter_Nto8.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_pec.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_receiver.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/recovery/recovery_handler.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_tx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_rx_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_scl_flow.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_start_stop_gen.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ctrl_bus_timers.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/target_reset_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_bus_monitor.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc_entdaa.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/ccc.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/configuration.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/edge_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_rx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_tx.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/descriptor_ibi.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i2c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_controller_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/i3c_target_fsm.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i2c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby_i3c.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_active.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller_standby.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/controller.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/ctrl/stable_high_detector.sv
+      - vendor/chipsalliance/i3c-core/upstream/src/i3c.sv
+      - hw/ip/i3ccore_wrap/rtl/i3c_wrapper.sv
+      - hw/ip/i3ccore_wrap/rtl/i3ccore_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_backend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_frontend_wrapper.sv
       - hw/ip/idma_wrapper/rtl/idma_request_manager_wrapper.sv
@@ -751,6 +921,7 @@ sources:
       - hw/ip/key_manager/rtl/km_csr.sv
       - hw/ip/key_manager/rtl/km_drbg_sampler.sv
       - hw/ip/key_manager/rtl/km_kpv.sv
+      - hw/ip/key_manager/rtl/km_kpv_eraser.sv
       - hw/ip/key_manager/rtl/km_kpv_regfile.sv
       - hw/ip/key_manager/rtl/km_mailbox.sv
       - hw/ip/key_manager/rtl/km_reset_conditioner.sv
@@ -821,6 +992,7 @@ sources:
       - hw/sys/sep/rtl/sep_crypto.sv
       - hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv
       - hw/sys/sep/rtl/sep_dma_wrap.sv
+      - hw/sys/sep/rtl/sep_entropy_fifo.sv
       - hw/sys/sep/rtl/sep_io.sv
       - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
       - hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
@@ -834,6 +1006,223 @@ sources:
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
+      # =====================================================================
+      # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
+      #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
+      #   vendor/chipsalliance/caliptra-rtl : caliptra-rtl @ ec349a89 (KV clients only;
+      #                               kv.sv vault NOT compiled -- sep_abr_kv_shim replaces it)
+      # Two defines, deliberately set together here so they can never disagree:
+      #   CALIPTRA   - required BY THE VENDORED RTL; gates abr_top's Caliptra
+      #                Key-Vault ports and the kv_* client helpers. Do not use it
+      #                as a feature switch in OCAH code.
+      #   SEP_ABR_EN - OCAH's own switch for "is the Adams Bridge block present in
+      #                this SEP build". Used by hw/sys/sep/rtl/sep_crypto.sv and
+      #                hw/top/sep_ip_integration.sv (engine + SRAMs). Enabling ABR
+      #                therefore always brings CALIPTRA along; sep_crypto.sv also
+      #                carries an elaboration check that rejects the mismatch.
+      # File order follows vendor/chipsalliance/adams-bridge/upstream/src/abr_top/config/abr_top.vf.
+      # =====================================================================
+      - defines:
+          CALIPTRA: ~
+          SEP_ABR_EN: ~
+        include_dirs:
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/caliptra_prim/rtl
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/libs/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/barrett_reduction/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_encode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/pk_decode/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl
+        files:
+          # --- Caliptra KV client-side helpers (vault kv.sv intentionally excluded) ---
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_defines_pkg.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_fsm.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_read_rule_check.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_write_rule_check.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_read_client.sv
+          - vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_write_client.sv
+          # --- Adams Bridge packages ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_defines_pkg.sv
+          # --- Adams Bridge libs ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_be_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_1r1w_512x4_ram.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ram_regout.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_icg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_2ff_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_piso_multi.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_piso.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_sample_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_msg_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_rd_lat_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ahb_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ahb_slv_sif.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_adder.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_add_sub_mod.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_ntt_add_sub_mod.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_libs/rtl/abr_splitter.sv
+          # --- Adams Bridge leaf blocks ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl/rej_bounded_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_bounded/rtl/rej_bounded2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl/rej_sampler_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/rej_sampler/rtl/rej_sampler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl/exp_mask_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/exp_mask/rtl/exp_mask.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sib_mem.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball_shuffler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sample_in_ball/rtl/sample_in_ball.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl/cbd_sampler_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/cbd_sampler/rtl/cbd_sampler.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_util_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cipher_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sparse_fsm_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_flop_en.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim_generic/rtl/abr_prim_generic_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_en.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_cdc_rand_delay.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop_2sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_lfsr.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi4_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_diff_decode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sec_anchor_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_slicer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_count.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sparse_fsm_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_dom_and_2share.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sec_anchor_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_reg_we_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_packer_fifo.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_max_tree.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_arb.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_intr_hw.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_onehot_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_mubi8_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_fifo_sync_cnt.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_buf.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_receiver.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_flop.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_alert_sender.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_fifo_sync.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_arbiter_ppc.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_sum_tree.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_subreg_ext.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_prim/rtl/abr_prim_edge_detector.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_keccak_round.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_keccak_2share.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3pad.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_sha3.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/barrett_reduction/rtl/barrett_reduction.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_butterfly2x2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_butterfly.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_mult_dsp.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_div2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_shuffle_buffer.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_twiddle_lookup.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_hybrid_butterfly_2x2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_karatsuba_pairwm.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_r1_lut.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_w1_mem.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_mod_2gamma2.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_w1_encode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompose/rtl/decompose_usehint.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_encode/rtl/skencode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_s1s2_unpack.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sk_decode/rtl/skdecode_t0_unpack.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/makehint_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/hintgen.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/makehint/rtl/makehint.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/norm_check/rtl/norm_check_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_encode_z/rtl/sigencode_z_unit.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sigdecode_h/rtl/sigdecode_h_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/sig_decode_z/rtl/sigdecode_z_unit.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/pk_decode/rtl/pkdecode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_core.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/power2round/rtl/power2round_skencode.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/compress/rtl/compress_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_defines_pkg.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/decompress/rtl/decompress_ctrl.sv
+          # --- Adams Bridge top assembly ---
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_mem_if.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_mem_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_seq.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
+          - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
+          # --- Reused VeeR AXI4->AHB bridge for the AB control/status path.
+          #     The el2 dependency does NOT compile this file for the AXI-mode
+          #     SEP config, so it is pulled in here explicitly from the tracked
+          #     el2 vendor tree (el2_pkg + el2_param.vh come from the el2 dep,
+          #     already in the build). NOTE: use the git-tracked vendor path,
+          #     not deps/el2 (a generated, gitignored dir absent in CI). ---
+          - vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/axi4_to_ahb.sv
+          # --- SEP integration: KV shim + crypto wrapper ---
+          - hw/sys/sep/rtl/sep_abr_kv_shim.sv
+          - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
+          - hw/sys/sep/rtl/sep_abr_mem_1r1w.sv
+          - hw/sys/sep/rtl/sep_abr_mem_1r1w_be.sv
   - target: smc
     files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv

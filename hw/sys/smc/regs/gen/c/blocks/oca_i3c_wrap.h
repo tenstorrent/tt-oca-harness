@@ -10,25 +10,19 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - oca_i3c_wrap_placeholder_mem::mem_word
-#define OCA_I3C_WRAP_PLACEHOLDER_MEM__MEM_WORD__DATA_bm 0xffffffff
-#define OCA_I3C_WRAP_PLACEHOLDER_MEM__MEM_WORD__DATA_bp 0
-#define OCA_I3C_WRAP_PLACEHOLDER_MEM__MEM_WORD__DATA_bw 32
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t data :32;
-    } f;
-    uint32_t w;
-} oca_i3c_wrap_placeholder_mem__mem_word_t;
-
-// mem - oca_i3c_wrap_placeholder_mem
+// mem - I3CCSR::i3ccsr_window
 typedef struct __attribute__ ((__packed__)) {
-    oca_i3c_wrap_placeholder_mem__mem_word_t mem_array[320];
-} oca_i3c_wrap_placeholder_mem_t;
+    uint32_t mem[320];
+} I3CCSR__i3ccsr_window_t;
+
+// addrmap - I3CCSR
+typedef struct __attribute__ ((__packed__)) {
+    I3CCSR__i3ccsr_window_t i3ccsr_window;
+} I3CCSR_t;
 
 // addrmap - oca_i3c_wrap
 typedef struct __attribute__ ((__packed__)) {
-    oca_i3c_wrap_placeholder_mem_t footprint;
+    I3CCSR_t i3c_csr;
 } oca_i3c_wrap_t;
 
 

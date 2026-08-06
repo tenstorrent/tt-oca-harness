@@ -24,6 +24,7 @@
 #include "lifecycle.h"
 #include "sep_dma.h"
 #include "sep_spi.h"
+#include "boot_flash.h"
 #include "errors.h"
 #include "rom_smc.h"
 #include "bl0_state.h"
@@ -97,9 +98,25 @@ static uint32_t manifest_check_integrity(const manifest_t *m) {
     return MANIFEST_OK;
 }
 
-// Load the manifest header (1184 bytes) from source via DMA.
-static uint32_t load_manifest_header(manifest_t *dest, uint32_t src_addr) {
-    uint32_t err = sep_dma_copy((uint32_t)dest, src_addr, (uint32_t)sizeof(manifest_t));
+// Read manifest data into SRAM. For the OpenTitan controller the flash is not
+// memory-mapped, so `src` is a flash byte-offset read through the SPI host;
+// otherwise `src` is an absolute address (Cadence XIP window or SMC SRAM) copied
+// by the secure DMA. Returns 0 on success.
+static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
+#if BOOT_SPI_CONTROLLER_OT
+    if (from_spi) {
+        return boot_flash_read(dst, src, len);
+    }
+#else
+    (void)from_spi;
+#endif
+    return sep_dma_copy(dst, src, len);
+}
+
+// Load the manifest header (1184 bytes) from source.
+static uint32_t load_manifest_header(manifest_t *dest, uint32_t src_addr, bool from_spi) {
+    uint32_t err =
+        manifest_src_read((uint32_t)dest, src_addr, (uint32_t)sizeof(manifest_t), from_spi);
     return err ? MANIFEST_ERR_DMA_FAILED : MANIFEST_OK;
 }
 
@@ -170,13 +187,14 @@ static uint32_t validate_manifest_header(const manifest_t *m) {
 }
 
 // If manifest_length > sizeof(manifest_t), load the extra bytes (v1.x extension).
-static uint32_t load_manifest_extra(manifest_t *m, uint32_t src_addr) {
+static uint32_t load_manifest_extra(manifest_t *m, uint32_t src_addr, bool from_spi) {
     uint32_t hdr_size = (uint32_t)sizeof(manifest_t);
     if (m->manifest_length <= hdr_size) {
         return MANIFEST_OK;
     }
     uint32_t remaining = m->manifest_length - hdr_size;
-    uint32_t err = sep_dma_copy((uint32_t)m + hdr_size, src_addr + hdr_size, remaining);
+    uint32_t err =
+        manifest_src_read((uint32_t)m + hdr_size, src_addr + hdr_size, remaining, from_spi);
     return err ? MANIFEST_ERR_DMA_FAILED : MANIFEST_OK;
 }
 
@@ -277,8 +295,18 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
 static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from_spi) {
     uint32_t err;
 
+#if BOOT_SPI_CONTROLLER_OT
+    // OpenTitan controller: validate the header read is in bounds before issuing
+    // it (redundant, default-reject bounds gate). Applies to the SPI path only.
+    if (from_spi && !boot_flash_bounds_ok(src_addr, (uint32_t)sizeof(manifest_t), (uint32_t)dest,
+                                          (uint32_t)sizeof(manifest_t))) {
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
+        return MANIFEST_ERR_PAYLOAD_BAD_LOC;
+    }
+#endif
+
     // C13.4: Load the manifest header (1184 bytes).
-    err = load_manifest_header(dest, src_addr);
+    err = load_manifest_header(dest, src_addr, from_spi);
     if (err) return err;
 
     // C13.6 (structure): Validate manifest fields.
@@ -386,7 +414,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     }
 
     // Load extra manifest bytes if v1.x.
-    err = load_manifest_extra(dest, src_addr);
+    err = load_manifest_extra(dest, src_addr, from_spi);
     if (err) return err;
 
     // Payload source location check.
@@ -414,6 +442,16 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         // pass. Using from_spi keeps the bounds check consistent with the source
         // selection by construction.
         if (from_spi) {
+#if BOOT_SPI_CONTROLLER_OT
+            // OpenTitan: static slot-region + SRAM-destination bounds (hardened,
+            // default-reject). payload_src is a flash byte-offset here.
+            uint32_t payload_dest = (uint32_t)dest + p_off;
+            if (!boot_flash_bounds_ok(payload_src, p_len, payload_dest, p_len)) {
+                simputs("PAYLOAD_LOC_OT_OOB\n");
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
+                return MANIFEST_ERR_PAYLOAD_BAD_LOC;
+            }
+#else
             // SPI flash path: payload must be within XIP region.
             uint32_t spi_end = SEP_SPI_BASE + SEP_SPI_MAX_SIZE;
             if (payload_src < SEP_SPI_BASE || payload_end > spi_end) {
@@ -421,6 +459,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
                 report_status(STATUS_TYPE_ERROR, SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH);
                 return MANIFEST_ERR_PAYLOAD_BAD_LOC;
             }
+#endif
         } else {
             // SMC SRAM path (recovery / secondary).
             uint32_t smc_sram = sep_get_smc_sram_base();
@@ -439,7 +478,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         if (p_len > 0u && p_off > 0) {
             uint32_t payload_dest = (uint32_t)dest + (uint32_t)p_off;
             uint32_t payload_src = src_addr + (uint32_t)p_off;
-            err = sep_dma_copy(payload_dest, payload_src, p_len);
+            err = manifest_src_read(payload_dest, payload_src, p_len, from_spi);
             if (err) return MANIFEST_ERR_DMA_FAILED;
         }
     }
@@ -506,10 +545,16 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             continue;
         }
 
-        // Calculate source address.
+        // Source of the manifest. The OpenTitan controller has no memory-mapped
+        // flash, so pass the raw flash byte-offset; the Cadence XIP path and the
+        // SMC SRAM path pass an absolute address.
         uint32_t manifest_src;
         if (from_spi) {
+#if BOOT_SPI_CONTROLLER_OT
+            manifest_src = offset;
+#else
             manifest_src = SEP_SPI_BASE + offset;
+#endif
         } else {
             manifest_src = sep_get_smc_sram_base() + offset;
         }
@@ -527,7 +572,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             // Clean up SRAM before retrying.
             if (from_spi && retry < num_retries) {
                 clear_sram_region(SRAM_BASE, SRAM_SIZE);
-                spi_reinit();
+                boot_flash_reinit();
             }
             continue;
         }

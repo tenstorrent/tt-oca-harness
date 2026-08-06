@@ -25,9 +25,9 @@ extern "C" {
 #define HMAC__INTR_STATE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t HMAC_ERR :1;
+        uint32_t hmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t hmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -48,9 +48,9 @@ typedef union {
 #define HMAC__INTR_ENABLE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t HMAC_ERR :1;
+        uint32_t hmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t hmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -71,9 +71,9 @@ typedef union {
 #define HMAC__INTR_TEST__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HMAC_DONE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t HMAC_ERR :1;
+        uint32_t hmac_done :1;
+        uint32_t fifo_empty :1;
+        uint32_t hmac_err :1;
         uint32_t :29;
     } f;
     uint32_t w;
@@ -86,7 +86,7 @@ typedef union {
 #define HMAC__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t FATAL_FAULT :1;
+        uint32_t fatal_fault :1;
         uint32_t :31;
     } f;
     uint32_t w;
@@ -121,13 +121,13 @@ typedef union {
 #define HMAC__CFG__KEY_LENGTH_reset 0x20
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HMAC_EN :1;
-        uint32_t SHA_EN :1;
-        uint32_t ENDIAN_SWAP :1;
-        uint32_t DIGEST_SWAP :1;
-        uint32_t KEY_SWAP :1;
-        uint32_t DIGEST_SIZE :4;
-        uint32_t KEY_LENGTH :6;
+        uint32_t hmac_en :1;
+        uint32_t sha_en :1;
+        uint32_t endian_swap :1;
+        uint32_t digest_swap :1;
+        uint32_t key_swap :1;
+        uint32_t digest_size :4;
+        uint32_t key_length :6;
         uint32_t :17;
     } f;
     uint32_t w;
@@ -148,10 +148,10 @@ typedef union {
 #define HMAC__CMD__HASH_CONTINUE_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HASH_START :1;
-        uint32_t HASH_PROCESS :1;
-        uint32_t HASH_STOP :1;
-        uint32_t HASH_CONTINUE :1;
+        uint32_t hash_start :1;
+        uint32_t hash_process :1;
+        uint32_t hash_stop :1;
+        uint32_t hash_continue :1;
         uint32_t :28;
     } f;
     uint32_t w;
@@ -174,11 +174,11 @@ typedef union {
 #define HMAC__STATUS__FIFO_DEPTH_bw 6
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t HMAC_IDLE :1;
-        uint32_t FIFO_EMPTY :1;
-        uint32_t FIFO_FULL :1;
+        uint32_t hmac_idle :1;
+        uint32_t fifo_empty :1;
+        uint32_t fifo_full :1;
         uint32_t :1;
-        uint32_t FIFO_DEPTH :6;
+        uint32_t fifo_depth :6;
         uint32_t :22;
     } f;
     uint32_t w;
@@ -191,7 +191,7 @@ typedef union {
 #define HMAC__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ERR_CODE :32;
+        uint32_t err_code :32;
     } f;
     uint32_t w;
 } hmac__ERR_CODE_t;
@@ -202,32 +202,32 @@ typedef union {
 #define HMAC__WIPE_SECRET__SECRET_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t SECRET :32;
+        uint32_t secret :32;
     } f;
     uint32_t w;
 } hmac__WIPE_SECRET_t;
 
-// reg - hmac::KEY_0
-#define HMAC__KEY_0__KEY_0_bm 0xffffffff
-#define HMAC__KEY_0__KEY_0_bp 0
-#define HMAC__KEY_0__KEY_0_bw 32
+// reg - hmac::KEY
+#define HMAC__KEY__KEY_0_bm 0xffffffff
+#define HMAC__KEY__KEY_0_bp 0
+#define HMAC__KEY__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t KEY_0 :32;
+        uint32_t key_0 :32;
     } f;
     uint32_t w;
-} hmac__KEY_0_t;
+} hmac__KEY_t;
 
-// reg - hmac::DIGEST_0
-#define HMAC__DIGEST_0__DIGEST_0_bm 0xffffffff
-#define HMAC__DIGEST_0__DIGEST_0_bp 0
-#define HMAC__DIGEST_0__DIGEST_0_bw 32
+// reg - hmac::DIGEST
+#define HMAC__DIGEST__DIGEST_0_bm 0xffffffff
+#define HMAC__DIGEST__DIGEST_0_bp 0
+#define HMAC__DIGEST__DIGEST_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t DIGEST_0 :32;
+        uint32_t digest_0 :32;
     } f;
     uint32_t w;
-} hmac__DIGEST_0_t;
+} hmac__DIGEST_t;
 
 // reg - hmac::MSG_LENGTH_LOWER
 #define HMAC__MSG_LENGTH_LOWER__V_bm 0xffffffff
@@ -235,7 +235,7 @@ typedef union {
 #define HMAC__MSG_LENGTH_LOWER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t V :32;
+        uint32_t v :32;
     } f;
     uint32_t w;
 } hmac__MSG_LENGTH_LOWER_t;
@@ -246,14 +246,14 @@ typedef union {
 #define HMAC__MSG_LENGTH_UPPER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t V :32;
+        uint32_t v :32;
     } f;
     uint32_t w;
 } hmac__MSG_LENGTH_UPPER_t;
 
 // mem - hmac::MSG_FIFO
 typedef struct __attribute__ ((__packed__)) {
-    uint32_t mem[1];
+    uint32_t mem[1024];
 } hmac__MSG_FIFO_t;
 
 // addrmap - hmac
@@ -267,12 +267,12 @@ typedef struct __attribute__ ((__packed__)) {
     hmac__STATUS_t STATUS;
     hmac__ERR_CODE_t ERR_CODE;
     hmac__WIPE_SECRET_t WIPE_SECRET;
-    hmac__KEY_0_t KEY_0[32];
-    hmac__DIGEST_0_t DIGEST_0[16];
+    hmac__KEY_t KEY[32];
+    hmac__DIGEST_t DIGEST[16];
     hmac__MSG_LENGTH_LOWER_t MSG_LENGTH_LOWER;
     hmac__MSG_LENGTH_UPPER_t MSG_LENGTH_UPPER;
     uint8_t RESERVED_ec_fff[0xf14];
-    hmac__MSG_FIFO_t MSG_FIFO[1024];
+    hmac__MSG_FIFO_t MSG_FIFO;
 } hmac_t;
 
 

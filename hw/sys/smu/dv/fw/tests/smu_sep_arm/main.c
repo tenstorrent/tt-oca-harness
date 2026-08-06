@@ -11,8 +11,7 @@
 #define SMC_SCRATCH0_ADDR ((uintptr_t)0xC0039080u)
 #define SMC_TEST_PASS 0xACAFACA1u
 
-int main(void)
-{
+int main(void) {
     *((volatile uint32_t *)SMC_SCRATCH0_ADDR) = SMC_TEST_PASS;
     for (;;) {
         __asm__ volatile("wfi");

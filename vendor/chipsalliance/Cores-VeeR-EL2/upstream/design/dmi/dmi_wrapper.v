@@ -21,7 +21,9 @@
 //
 //-------------------------------------------------------------------------------------
 
-module dmi_wrapper(
+module dmi_wrapper #(
+  parameter [31:0] RESET_VEC = `RV_RESET_VEC
+)(
 
   // JTAG signals
   input              trst_n,              // JTAG reset
@@ -43,7 +45,8 @@ module dmi_wrapper(
   output [6:0]       reg_wr_addr,         // 7 bit reg address to Processor                   
   output             reg_en,              // 1 bit  Read enable to Processor                                    
   output             reg_wr_en,           // 1 bit  Write enable to Processor 
-  output             dmi_hard_reset  
+  output             dmi_hard_reset,
+  output [31:1]      rst_vec
 );
 
 
@@ -57,7 +60,9 @@ module dmi_wrapper(
 
  
   //jtag_tap instantiation
- rvjtag_tap i_jtag_tap(
+ rvjtag_tap #(
+   .RESET_VEC(RESET_VEC)
+ ) i_jtag_tap(
    .trst(trst_n),                      // dedicated JTAG TRST (active low) pad signal or asynchronous active low power on reset
    .tck(tck),                          // dedicated JTAG TCK pad signal
    .tms(tms),                          // dedicated JTAG TMS pad signal
@@ -74,6 +79,7 @@ module dmi_wrapper(
    .dmi_stat(2'b0),                     // no need to wait or error possible
    .version(4'h1),                      // debug spec 0.13 compliant
    .jtag_id(jtag_id),
+   .rst_vec(rst_vec),
    .dmi_hard_reset(dmi_hard_reset),
    .dmi_reset(dmireset)
 );

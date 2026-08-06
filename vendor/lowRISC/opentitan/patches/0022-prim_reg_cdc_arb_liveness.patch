@@ -19,9 +19,9 @@
 -    // configuration for the main clock and the slow aon clock in our FPV tool setup).
 +    // once hardware makes an update request, we must eventually see an update pulse
      `ifdef FPV_ON
--    `ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> ##[0:20] src_update_o,
+-    `OCAH_OT_ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> ##[0:20] src_update_o,
 -            clk_src_i, !rst_src_ni)
-+      `ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> s_eventually(src_update_o),
++      `OCAH_OT_ASSERT(ReqTimeout_A, $rose(id_q == SelHwReq) |-> s_eventually(src_update_o),
 +              clk_src_i, !rst_src_ni)
        // TODO: #14913 check if we can add additional sim assertions.
      `endif

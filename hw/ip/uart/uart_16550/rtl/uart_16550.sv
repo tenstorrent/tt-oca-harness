@@ -1,24 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//-----------------------------------------------------------------------------
-// UART 16550
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-//
+
+// UART 16550
+
 // Description: UART top level wrapper file
-
-
 
 module uart_16550
     import uart_16550_pkg::*;
-    import uart_16550_dl_addrmap_pkg::*;
-    import uart_16550_main_addrmap_pkg::*;
-    import uart_16550_main_wo_addrmap_pkg::*;
 #(
     // TX and RX FIFO depths
     parameter int unsigned TX_FIFO_DEPTH = 16,
@@ -59,6 +50,11 @@ module uart_16550
 );
 
     `include "prim_assert.sv"
+
+    // Register addresses and bitmasks
+    import uart_16550_dl_addrmap_pkg::*;
+    import uart_16550_main_addrmap_pkg::*;
+    import uart_16550_main_wo_addrmap_pkg::*;
 
 
     /////////////////////////
@@ -148,9 +144,9 @@ module uart_16550
 
     always_comb begin
         if (divisor_latch_reg_map_access &&
-            axil_mst_req.aw.addr inside {UART_16550_DL_DLL_BASE_ADDR, UART_16550_DL_DLM_BASE_ADDR}) begin
+            axil_mst_req.aw.addr inside {uart_16550_dl_addrmap_pkg::UART_16550_DL_DLL_BASE_ADDR, uart_16550_dl_addrmap_pkg::UART_16550_DL_DLM_BASE_ADDR}) begin
             axil_aw_select = DL_REG_MAP;
-        end else if (axil_mst_req.aw.addr inside {UART_16550_MAIN_WO_THR_BASE_ADDR, UART_16550_MAIN_WO_FCR_BASE_ADDR}) begin
+        end else if (axil_mst_req.aw.addr inside {uart_16550_main_wo_addrmap_pkg::UART_16550_MAIN_WO_THR_BASE_ADDR, uart_16550_main_wo_addrmap_pkg::UART_16550_MAIN_WO_FCR_BASE_ADDR}) begin
             axil_aw_select = MAIN_WO_REG_MAP;
         end else begin
             axil_aw_select = MAIN_REG_MAP;
@@ -159,7 +155,7 @@ module uart_16550
 
     always_comb begin
         if (divisor_latch_reg_map_access &&
-            axil_mst_req.ar.addr inside {UART_16550_DL_DLL_BASE_ADDR, UART_16550_DL_DLM_BASE_ADDR}) begin
+            axil_mst_req.ar.addr inside {uart_16550_dl_addrmap_pkg::UART_16550_DL_DLL_BASE_ADDR, uart_16550_dl_addrmap_pkg::UART_16550_DL_DLM_BASE_ADDR}) begin
             axil_ar_select = DL_REG_MAP;
         end else begin
             axil_ar_select = MAIN_REG_MAP;
@@ -316,38 +312,38 @@ module uart_16550
     // Assertions //
     ////////////////
 
-    `ASSERT_INIT(paramCheckTxFifoDepth, TX_FIFO_DEPTH >= 4 && TX_FIFO_DEPTH <= 4096 &&
+    `OCAH_OT_ASSERT_INIT(paramCheckTxFifoDepth, TX_FIFO_DEPTH >= 4 && TX_FIFO_DEPTH <= 4096 &&
                                         is_pow_of_2(TX_FIFO_DEPTH))
-    `ASSERT_INIT(paramCheckRxFifoDepth, RX_FIFO_DEPTH >= 4 && RX_FIFO_DEPTH <= 4096 &&
+    `OCAH_OT_ASSERT_INIT(paramCheckRxFifoDepth, RX_FIFO_DEPTH >= 4 && RX_FIFO_DEPTH <= 4096 &&
                                         is_pow_of_2(RX_FIFO_DEPTH))
 
-    `ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
-    `ASSERT_KNOWN(TxKnownO_A, tx_o)
-    `ASSERT_KNOWN(RtsKnownO_A,  rts_no)
-    `ASSERT_KNOWN(DtrKnownO_A,  dtr_no)
-    `ASSERT_KNOWN(Out1KnownO_A, out1_no)
-    `ASSERT_KNOWN(Out2KnownO_A, out2_no)
-    `ASSERT_KNOWN(RxrdyKnownO_A, rxrdy_o)
-    `ASSERT_KNOWN(TxrdyKnownO_A, txrdy_o)
-    `ASSERT_KNOWN(ErrKnownO_A, err_o)
-    `ASSERT_KNOWN(IrqKnownO_A, irq_o)
+    `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
+    `OCAH_OT_ASSERT_KNOWN(TxKnownO_A, tx_o)
+    `OCAH_OT_ASSERT_KNOWN(RtsKnownO_A,  rts_no)
+    `OCAH_OT_ASSERT_KNOWN(DtrKnownO_A,  dtr_no)
+    `OCAH_OT_ASSERT_KNOWN(Out1KnownO_A, out1_no)
+    `OCAH_OT_ASSERT_KNOWN(Out2KnownO_A, out2_no)
+    `OCAH_OT_ASSERT_KNOWN(RxrdyKnownO_A, rxrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(TxrdyKnownO_A, txrdy_o)
+    `OCAH_OT_ASSERT_KNOWN(ErrKnownO_A, err_o)
+    `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
 
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TxFifoWptrErrTriggerAlert_A,
         uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         TxFifoRptrErrTriggerAlert_A,
         uart_core.uart_txfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         RxFifoWptrErrTriggerAlert_A,
         uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr,
         unused_alert_tx
     )
-    `ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
         RxFifoRptrErrTriggerAlert_A,
         uart_core.uart_rxfifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr,
         unused_alert_tx

@@ -33,7 +33,7 @@ static int wait_for_done_or_idle(void) {
     while (timeout-- > 0) {
         hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
         hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (intr.f.HMAC_DONE || sts.f.HMAC_IDLE) {
+        if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
     }
@@ -43,8 +43,8 @@ static int wait_for_done_or_idle(void) {
     }
     // Clear hmac_done if set
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (intr.f.HMAC_DONE) {
-        hmac__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+    if (intr.f.hmac_done) {
+        hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
         WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     }
     return 0;
@@ -52,8 +52,8 @@ static int wait_for_done_or_idle(void) {
 
 static void print_status(const char *tag) {
     hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-    printf("%s STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", tag, s.w, s.f.HMAC_IDLE,
-           s.f.FIFO_EMPTY, s.f.FIFO_FULL, s.f.FIFO_DEPTH);
+    printf("%s STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", tag, s.w, s.f.hmac_idle,
+           s.f.fifo_empty, s.f.fifo_full, s.f.fifo_depth);
 }
 
 static int stage_connectivity(void) {
@@ -64,16 +64,16 @@ static int stage_connectivity(void) {
     printf("  ERR_CODE=0x%08x STATUS=0x%08x\n", err, sts.w);
 
     // Exercise INTR_TEST for hmac_done bit
-    hmac__INTR_TEST_t intr_test = {.f.HMAC_DONE = 1};
+    hmac__INTR_TEST_t intr_test = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, intr_test.w);
 
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-    if (!intr.f.HMAC_DONE) {
+    if (!intr.f.hmac_done) {
         printf("  INTR_TEST did not reflect in INTR_STATE\n");
         return -1;
     }
     // Clear it
-    hmac__INTR_STATE_t clear = {.f.HMAC_DONE = 1};
+    hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return 0;
 }
@@ -81,20 +81,20 @@ static int stage_connectivity(void) {
 static int stage_config(void) {
     printf("[Stage 2] Configure HMAC for SHA-256\n");
     // Enable only hmac_done interrupt
-    hmac__INTR_ENABLE_t intr_en = {.f.HMAC_DONE = 1};
+    hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     // SHA-256, no swaps, SHA enabled, HMAC disabled
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.HMAC_EN = 0;     // HMAC disabled
-    cfg.f.SHA_EN = 1;      // SHA enabled
-    cfg.f.ENDIAN_SWAP = 0; // No endian swap
-    cfg.f.DIGEST_SWAP = 0; // No digest swap
-    cfg.f.DIGEST_SIZE = 1; // SHA2_256 (value=1)
+    cfg.f.hmac_en = 0;     // HMAC disabled
+    cfg.f.sha_en = 1;      // SHA enabled
+    cfg.f.endian_swap = 0; // No endian swap
+    cfg.f.digest_swap = 0; // No digest swap
+    cfg.f.digest_size = 1; // SHA2_256 (value=1)
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start a new hash
-    hmac__CMD_t cmd = {.f.HASH_START = 1};
+    hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After hash_start");
     return 0;
@@ -103,12 +103,12 @@ static int stage_config(void) {
 static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
     printf("[Stage 3] Feed %u bytes into MSG FIFO\n", len);
 
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR(0);
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
 
     for (uint32_t i = 0; i < len; i++) {
         hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         int spins = 0;
-        while (s.f.FIFO_FULL) {
+        while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("  FIFO full timeout\n");
                 return -1;
@@ -131,19 +131,19 @@ static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
 
 static int stage_process_and_read(uint8_t digest[32]) {
     printf("[Stage 4] Process and read digest\n");
-    hmac__CMD_t cmd = {.f.HASH_PROCESS = 1};
+    hmac__CMD_t cmd = {.f.hash_process = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     if (wait_for_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_0_BASE_ADDR(i));
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
         uint32_t swapped = bswap32(raw);
         ((uint32_t *)digest)[i] = swapped;
     }
 
     // Cleanup: disable SHA and wipe
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
-    cfg.f.SHA_EN = 0;
+    cfg.f.sha_en = 0;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);

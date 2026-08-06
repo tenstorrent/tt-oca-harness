@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright 2025 TT
 
 // KMAC Wrapper - AXI to TL-UL Bridge using axi_to_tlul
@@ -10,16 +9,6 @@
 `include "axi/typedef.svh"
 
 module kmac_wrapper
-    import sep_pkg::*;
-    import sep_crypto_pkg::*;
-    import tlul_pkg::*;
-    import edn_pkg::*;
-    import lc_ctrl_pkg::*;
-    import prim_mubi_pkg::*;
-    import prim_alert_pkg::*;
-    import kmac_pkg::*;
-    import keymgr_pkg::*;
-    import kmac_wrapper_key_reg_pkg::*;
 #(
     parameter int unsigned ADDR_WIDTH = 32,
     parameter int unsigned DATA_WIDTH = 32
@@ -28,8 +17,8 @@ module kmac_wrapper
     input logic rst_ni,
 
     // AXI struct interface (64-bit from demux) — data/control path
-    input  sep_32_64_6_12_axi_req_t  kmac_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t kmac_axi_resp_o,
+    input  sep_pkg::sep_32_64_6_12_axi_req_t  kmac_axi_req_i,
+    output sep_pkg::sep_32_64_6_12_axi_resp_t kmac_axi_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req_i,
@@ -120,7 +109,7 @@ module kmac_wrapper
 
     // OpenTitan KMAC has fixed BlockAw=12 (4KB internal address space)
     localparam logic [31:0] KMAC_ADDR_MASK = 32'h0000_0FFF;  // 12 bits for AW=12
-    // Extract lower 12 bits of the normalized SEP addrmap base address.
+    // Extract lower 12 bits of system base address (from och_sep_top_reg.svh via sep_pkg)
     localparam logic [31:0] KMAC_BASE_LOWER = och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR & KMAC_ADDR_MASK;
 
     always_comb begin
@@ -193,7 +182,7 @@ module kmac_wrapper
     // ============================================================================
 
     // HW interface wires for the generated CSR block
-    kmac_wrapper_key__out_t key_csr_hwif_out;
+    kmac_wrapper_key_reg_pkg::kmac_wrapper_key__out_t key_csr_hwif_out;
 
     // Build the keymgr_pkg::hw_key_req_t struct from CSR outputs
     keymgr_pkg::hw_key_req_t kmac_keymgr_key;
@@ -207,7 +196,7 @@ module kmac_wrapper
     end
 
     // Instantiate the PeakRDL-generated KMAC key CSR register block
-    localparam int unsigned KMAC_KEY_CSR_ADDR_WIDTH = KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+    localparam int unsigned KMAC_KEY_CSR_ADDR_WIDTH = kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
     kmac_wrapper_key_reg u_kmac_wrapper_key_reg (
         .clk       (clk_i),

@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // SEP System Peripherals (Mailbox, Watchdog Timer, ...)
-//
-//-----------------------------------------------------------------------------
 
 module sep_system_peripherals
 (
         // Global Interface
         input logic                                                             clk_i,
+        input logic                                                             clk_ref_i,
         input logic                                                             rst_ni,
         input logic                                                             rst_warm_ni,
 
@@ -39,8 +37,10 @@ module sep_system_peripherals
         output sep_pkg::remap_debug_t                                           local_masters_remap_debug_o,
 
         // Outbound Filter Interface
-        output axi_filter_pkg::filter_debug_t                                   outbound_filter_debug_o,
-        output axi_filter_pkg::filter_debug_t                                   inbound_filter_debug_o,
+        output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0]         outbound_write_filter_hit_debug_o,
+        output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0]         outbound_read_filter_hit_debug_o,
+        output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]          inbound_write_filter_hit_debug_o,
+        output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]          inbound_read_filter_hit_debug_o,
 
         // Mailbox Interface
         output logic [sep_pkg::NUM_MAILBOXES-1:0]                               mailbox_inbound_interrupt_o,
@@ -62,7 +62,10 @@ module sep_system_peripherals
         output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,
 
         // External TRNG source selection (from sep_cpu_ctrl)
-        output logic [1:0]                                                      ext_trng_src_sel_o
+        output logic [2:0]                                                      ext_trng_src_sel_o,
+
+        // Key Manager emergency wipe control (from sep_cpu_ctrl)
+        output logic                                                            km_wipe_state_o
     );
 
     /////////////////////////
@@ -202,7 +205,7 @@ module sep_system_peripherals
 
     axi_demux #(
         .AxiIdWidth  (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_ID_WIDTH),
-        .AtopSupport (1'b0), // TODO: I dont think we need this, but should confirm
+        .AtopSupport (1'b0),
         .aw_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_aw_chan_t),
         .w_chan_t    (sep_pkg::sep_system_peripherals_internal_axi_w_chan_t),
         .b_chan_t    (sep_pkg::sep_system_peripherals_internal_axi_b_chan_t),
@@ -371,7 +374,8 @@ module sep_system_peripherals
         .axi_filtered_out_req_o      (smn_outbound_axi_req_o),
         .axi_filtered_out_resp_i     (smn_outbound_axi_resp_i),
 
-        .filter_debug_o              (outbound_filter_debug_o)
+        .write_filter_hit_debug_o    (outbound_write_filter_hit_debug_o),
+        .read_filter_hit_debug_o     (outbound_read_filter_hit_debug_o)
     );
 
     ////////////////////////
@@ -416,14 +420,15 @@ module sep_system_peripherals
         .axi_in_resp_o               (smn_inbound_axi_resp_o),
         .axi_filtered_out_req_o      (smn_inbound_filtered_axi_req),
         .axi_filtered_out_resp_i     (smn_inbound_filtered_axi_resp),
-        .filter_debug_o              (inbound_filter_debug_o)
+        .write_filter_hit_debug_o    (inbound_write_filter_hit_debug_o),
+        .read_filter_hit_debug_o     (inbound_read_filter_hit_debug_o)
     );
 
     ///////////////////////////////////////////////
     // AXI Inbound Global -> Local Address Remap //
     ///////////////////////////////////////////////
 
-    axi_local_alias_remap #(
+    axi_window_remap #(
         .axi_req_t      (sep_pkg::sep_system_peripherals_internal_axi_req_t),
         .axi_resp_t     (sep_pkg::sep_system_peripherals_internal_axi_resp_t),
         .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_ADDR_WIDTH)
@@ -433,7 +438,7 @@ module sep_system_peripherals
         .mst_req_o          (smn_inbound_filtered_from_local_axi_req),
         .mst_resp_i         (smn_inbound_filtered_from_local_axi_resp),
         .local_alias_base_i (sep_global_base_addr),
-        .region_size_i      (sep_region_size_o),
+        .region_size_i      (sep_region_size),
         .target_base_i      ('0)
     );
 
@@ -490,6 +495,7 @@ module sep_system_peripherals
 
     sep_system_csr u_sep_system_csr (
         .clk_i                                     (clk_i),
+        .clk_ref_i                                 (clk_ref_i),
         .rst_ni                                    (rst_ni),
         .rst_warm_ni                               (rst_warm_ni),
         .test_en_i                                 (test_en_i),
@@ -520,7 +526,8 @@ module sep_system_peripherals
 
         .nmi_vec_o                                 (nmi_vec_o),
 
-        .ext_trng_src_sel_o                        (ext_trng_src_sel_o)
+        .ext_trng_src_sel_o                        (ext_trng_src_sel_o),
+        .km_wipe_state_o                           (km_wipe_state_o)
     );
 
     ////////////////////
@@ -592,7 +599,8 @@ module sep_system_peripherals
         .axi_out_resp_i(smn_inbound_to_sep_axi_resp_i)
     );
 
-    // Export sep_region_size for use in sep_cpu local alias remap
+    // Export sep_region_size so SMU can size its SEP-aperture xbar rule.
+    // (The local alias remap window is sized by sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE.)
     assign sep_region_size_o = sep_region_size;
 
     // Export sep_global_base_addr so parents can build the SMU xbar rule.

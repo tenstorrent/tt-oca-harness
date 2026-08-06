@@ -15,7 +15,7 @@
 # (obi_xbar, obi_mux, obi_demux, obi_atop_resolver, obi_cut, obi_err_sbr, obi_intf,
 # obi_rready_converter, obi_sram_shim) were gated behind an `obi_rtl` target OCA never passes
 # and are instantiated nowhere; apb_to_obi.sv compiled but was never instantiated (its only delta,
-# the bare-`ASSERT -> `TT_PULP_ASSERT rename, was the now-dropped assert-prefix patch); and
+# the bare-`ASSERT -> `OCAH_PULP_ASSERT rename, was the now-dropped assert-prefix patch); and
 # include/obi/assign.svh was used only by those pruned modules. Re-vendor them (and re-add any
 # needed patch) if/when OCA starts using them.
 

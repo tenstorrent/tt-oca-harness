@@ -42,7 +42,7 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CONTROL_t ctrl;
+    spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
@@ -54,7 +54,7 @@ int main(void) {
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     ctrl.f.TX_WATERMARK = 4;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Step 1: Verify TX FIFO empty initially */
     printf("\nStep 1: TX FIFO initial state\n");
@@ -77,7 +77,7 @@ int main(void) {
     printf("\nStep 2: Write 8 words to TX FIFO\n");
     uint32_t i;
     for (i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xA0000000 | i);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xA0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After 8 writes: TXQD=%u, TXEMPTY=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXEMPTY,
@@ -103,7 +103,7 @@ int main(void) {
     /* Step 4: Fill TX FIFO to capacity */
     printf("\nStep 4: Fill TX FIFO (writing %d more words)\n", TX_FIFO_DEPTH - 8);
     for (i = 8; i < TX_FIFO_DEPTH; i++) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xB0000000 | i);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xB0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After filling: TXQD=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXFULL);
@@ -119,7 +119,7 @@ int main(void) {
     /* Clear any prior errors */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xDEADBEEF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xDEADBEEF);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x, OVERFLOW=%u\n", err_status.w, err_status.f.OVERFLOW);
     if (err_status.f.OVERFLOW) {
@@ -134,9 +134,9 @@ int main(void) {
 
     /* Step 6: Software reset and verify drain */
     printf("\nStep 6: SW_RST drain test\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     volatile int delay;
     for (delay = 0; delay < 5000; delay++) {

@@ -4,7 +4,7 @@
 from ctypes import Structure, Union, c_uint16, c_uint32, c_uint8
 
 ENTROPY_SOURCE_REG_MAP_BASE_ADDR = 0x00000000
-ENTROPY_SOURCE_REG_MAP_SIZE = 0x00000154
+ENTROPY_SOURCE_REG_MAP_SIZE = 0x0000017C
 COMPONENT_ID_REG_OFFSET = 0x00000000
 COMPONENT_ID_REG_ADDR = 0x00000000
 CTRL_REG_OFFSET = 0x00000004
@@ -71,8 +71,8 @@ DECORRELATOR_CTRL_REG_OFFSET = 0x000000A0
 DECORRELATOR_CTRL_REG_ADDR = 0x000000A0
 DECORRELATOR_MASK_REG_OFFSET = 0x000000A4
 DECORRELATOR_MASK_REG_ADDR = 0x000000A4
-STARTUP_CTRL_REG_OFFSET = 0x000000B0
-STARTUP_CTRL_REG_ADDR = 0x000000B0
+MAIN_SM_STATUS_REG_OFFSET = 0x000000B4
+MAIN_SM_STATUS_REG_ADDR = 0x000000B4
 GENERATOR_0_HEALTH_STATUS_REG_OFFSET = 0x000000C0
 GENERATOR_0_HEALTH_STATUS_REG_ADDR = 0x000000C0
 GENERATOR_1_HEALTH_STATUS_REG_OFFSET = 0x000000C4
@@ -139,6 +139,26 @@ ALERT_SUMMARY_FAIL_COUNTS_REG_OFFSET = 0x0000014C
 ALERT_SUMMARY_FAIL_COUNTS_REG_ADDR = 0x0000014C
 ALERT_FAIL_COUNTS_REG_OFFSET = 0x00000150
 ALERT_FAIL_COUNTS_REG_ADDR = 0x00000150
+FIPS_LOCK_REG_OFFSET = 0x00000154
+FIPS_LOCK_REG_ADDR = 0x00000154
+ALERT_THRESHOLD_REG_OFFSET = 0x00000158
+ALERT_THRESHOLD_REG_ADDR = 0x00000158
+MIN_ENTROPY_H_REG_OFFSET = 0x0000015C
+MIN_ENTROPY_H_REG_ADDR = 0x0000015C
+RECOMMENDED_THRESHOLDS_REG_OFFSET = 0x00000160
+RECOMMENDED_THRESHOLDS_REG_ADDR = 0x00000160
+BIW_OBS_CTRL_REG_OFFSET = 0x00000164
+BIW_OBS_CTRL_REG_ADDR = 0x00000164
+BIW_OBS_STATUS_REG_OFFSET = 0x00000168
+BIW_OBS_STATUS_REG_ADDR = 0x00000168
+BIW_OBS_RDATA_REG_OFFSET = 0x0000016C
+BIW_OBS_RDATA_REG_ADDR = 0x0000016C
+NOISE_OBS_CTRL_REG_OFFSET = 0x00000170
+NOISE_OBS_CTRL_REG_ADDR = 0x00000170
+NOISE_OBS_STATUS_REG_OFFSET = 0x00000174
+NOISE_OBS_STATUS_REG_ADDR = 0x00000174
+NOISE_OBS_RDATA_REG_OFFSET = 0x00000178
+NOISE_OBS_RDATA_REG_ADDR = 0x00000178
 ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT = 0x01000001
 class ENTROPY_SOURCE_COMPONENT_ID_reg_t(Structure):
     _fields_ = [
@@ -170,11 +190,12 @@ class ENTROPY_SOURCE_COMPONENT_ID_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-ENTROPY_SOURCE_CTRL_REG_DEFAULT = 0x10000000
+ENTROPY_SOURCE_CTRL_REG_DEFAULT = 0x10000002
 class ENTROPY_SOURCE_CTRL_reg_t(Structure):
     _fields_ = [
         ('reset', c_uint32, 1),
-        ('rsvd_0', c_uint32, 3),
+        ('module_enable', c_uint32, 1),
+        ('rsvd_0', c_uint32, 2),
         ('autotune_enable', c_uint32, 1),
         ('rsvd_1', c_uint32, 3),
         ('bypass_entropy_compressor', c_uint32, 1),
@@ -184,7 +205,7 @@ class ENTROPY_SOURCE_CTRL_reg_t(Structure):
         ('sha256_whitening_enable', c_uint32, 1),
     ]
 
-ENTROPY_SOURCE_CTRL_REG_DEFAULT = 0x10000000
+ENTROPY_SOURCE_CTRL_REG_DEFAULT = 0x10000002
 
 class ENTROPY_SOURCE_CTRL_reg_u(Union):
     _fields_ = [
@@ -266,20 +287,28 @@ class ENTROPY_SOURCE_DEBUG_CTRL_reg_u(Union):
 ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT = 0x00000000
 class ENTROPY_SOURCE_INTR_STATUS_reg_t(Structure):
     _fields_ = [
-        ('health_test_failed', c_uint16, 1),
-        ('rsvd_0', c_uint16, 3),
-        ('fifo_error', c_uint16, 1),
-        ('rsvd_1', c_uint16, 3),
-        ('fifo_overflow', c_uint16, 1),
-        ('rsvd_2', c_uint16, 3),
-        ('fifo_underflow', c_uint16, 1),
+        ('health_test_failed', c_uint32, 1),
+        ('rsvd_0', c_uint32, 3),
+        ('fifo_error', c_uint32, 1),
+        ('rsvd_1', c_uint32, 3),
+        ('fifo_overflow', c_uint32, 1),
+        ('rsvd_2', c_uint32, 3),
+        ('fifo_underflow', c_uint32, 1),
+        ('rsvd_3', c_uint32, 3),
+        ('persistent_failure', c_uint32, 1),
+        ('rsvd_4', c_uint32, 3),
+        ('autotune_fail', c_uint32, 1),
+        ('rsvd_5', c_uint32, 3),
+        ('biw_obs_overflow', c_uint32, 1),
+        ('rsvd_6', c_uint32, 3),
+        ('noise_obs_overflow', c_uint32, 1),
     ]
 
 ENTROPY_SOURCE_INTR_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_INTR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_INTR_STATUS_reg_t),
     ]
 
@@ -300,20 +329,28 @@ class ENTROPY_SOURCE_INTR_STATUS_reg_u(Union):
 ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT = 0x00000000
 class ENTROPY_SOURCE_INTR_ENABLE_reg_t(Structure):
     _fields_ = [
-        ('health_test_failed', c_uint16, 1),
-        ('rsvd_0', c_uint16, 3),
-        ('fifo_error', c_uint16, 1),
-        ('rsvd_1', c_uint16, 3),
-        ('fifo_overflow', c_uint16, 1),
-        ('rsvd_2', c_uint16, 3),
-        ('fifo_underflow', c_uint16, 1),
+        ('health_test_failed', c_uint32, 1),
+        ('rsvd_0', c_uint32, 3),
+        ('fifo_error', c_uint32, 1),
+        ('rsvd_1', c_uint32, 3),
+        ('fifo_overflow', c_uint32, 1),
+        ('rsvd_2', c_uint32, 3),
+        ('fifo_underflow', c_uint32, 1),
+        ('rsvd_3', c_uint32, 3),
+        ('persistent_failure', c_uint32, 1),
+        ('rsvd_4', c_uint32, 3),
+        ('autotune_fail', c_uint32, 1),
+        ('rsvd_5', c_uint32, 3),
+        ('biw_obs_overflow', c_uint32, 1),
+        ('rsvd_6', c_uint32, 3),
+        ('noise_obs_overflow', c_uint32, 1),
     ]
 
 ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_INTR_ENABLE_reg_t),
     ]
 
@@ -334,20 +371,28 @@ class ENTROPY_SOURCE_INTR_ENABLE_reg_u(Union):
 ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT = 0x00000000
 class ENTROPY_SOURCE_INTR_TEST_reg_t(Structure):
     _fields_ = [
-        ('health_test_failed', c_uint16, 1),
-        ('rsvd_0', c_uint16, 3),
-        ('fifo_error', c_uint16, 1),
-        ('rsvd_1', c_uint16, 3),
-        ('fifo_overflow', c_uint16, 1),
-        ('rsvd_2', c_uint16, 3),
-        ('fifo_underflow', c_uint16, 1),
+        ('health_test_failed', c_uint32, 1),
+        ('rsvd_0', c_uint32, 3),
+        ('fifo_error', c_uint32, 1),
+        ('rsvd_1', c_uint32, 3),
+        ('fifo_overflow', c_uint32, 1),
+        ('rsvd_2', c_uint32, 3),
+        ('fifo_underflow', c_uint32, 1),
+        ('rsvd_3', c_uint32, 3),
+        ('persistent_failure', c_uint32, 1),
+        ('rsvd_4', c_uint32, 3),
+        ('autotune_fail', c_uint32, 1),
+        ('rsvd_5', c_uint32, 3),
+        ('biw_obs_overflow', c_uint32, 1),
+        ('rsvd_6', c_uint32, 3),
+        ('noise_obs_overflow', c_uint32, 1),
     ]
 
 ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_INTR_TEST_reg_t),
     ]
 
@@ -1122,23 +1167,28 @@ class ENTROPY_SOURCE_DECORRELATOR_MASK_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT = 0x00000000
-class ENTROPY_SOURCE_STARTUP_CTRL_reg_t(Structure):
+ENTROPY_SOURCE_MAIN_SM_STATUS_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_MAIN_SM_STATUS_reg_t(Structure):
     _fields_ = [
-        ('delay_cycles', c_uint16, 16),
+        ('state', c_uint16, 9),
+        ('idle', c_uint16, 1),
+        ('alert', c_uint16, 1),
+        ('err', c_uint16, 1),
+        ('boot_phase_done', c_uint16, 1),
+        ('alert_cntr_clr_ok', c_uint16, 1),
     ]
 
-ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT = 0x00000000
+ENTROPY_SOURCE_MAIN_SM_STATUS_REG_DEFAULT = 0x00000000
 
-class ENTROPY_SOURCE_STARTUP_CTRL_reg_u(Union):
+class ENTROPY_SOURCE_MAIN_SM_STATUS_reg_u(Union):
     _fields_ = [
         ('val', c_uint16),
-        ('f', ENTROPY_SOURCE_STARTUP_CTRL_reg_t),
+        ('f', ENTROPY_SOURCE_MAIN_SM_STATUS_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(ENTROPY_SOURCE_STARTUP_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = ENTROPY_SOURCE_STARTUP_CTRL_REG_DEFAULT
+        super(ENTROPY_SOURCE_MAIN_SM_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_MAIN_SM_STATUS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -2067,6 +2117,298 @@ class ENTROPY_SOURCE_ALERT_FAIL_COUNTS_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(ENTROPY_SOURCE_ALERT_FAIL_COUNTS_reg_u, self).__init__(*args, **kwargs)
         self.val = ENTROPY_SOURCE_ALERT_FAIL_COUNTS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_FIPS_LOCK_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_FIPS_LOCK_reg_t(Structure):
+    _fields_ = [
+        ('lock', c_uint8, 1),
+    ]
+
+ENTROPY_SOURCE_FIPS_LOCK_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_FIPS_LOCK_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint8),
+        ('f', ENTROPY_SOURCE_FIPS_LOCK_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_FIPS_LOCK_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_FIPS_LOCK_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_ALERT_THRESHOLD_REG_DEFAULT = 0x00000004
+class ENTROPY_SOURCE_ALERT_THRESHOLD_reg_t(Structure):
+    _fields_ = [
+        ('threshold', c_uint16, 16),
+    ]
+
+ENTROPY_SOURCE_ALERT_THRESHOLD_REG_DEFAULT = 0x00000004
+
+class ENTROPY_SOURCE_ALERT_THRESHOLD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint16),
+        ('f', ENTROPY_SOURCE_ALERT_THRESHOLD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_ALERT_THRESHOLD_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_ALERT_THRESHOLD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_MIN_ENTROPY_H_REG_DEFAULT = 0x0000000C
+class ENTROPY_SOURCE_MIN_ENTROPY_H_reg_t(Structure):
+    _fields_ = [
+        ('h', c_uint8, 8),
+    ]
+
+ENTROPY_SOURCE_MIN_ENTROPY_H_REG_DEFAULT = 0x0000000C
+
+class ENTROPY_SOURCE_MIN_ENTROPY_H_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint8),
+        ('f', ENTROPY_SOURCE_MIN_ENTROPY_H_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_MIN_ENTROPY_H_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_MIN_ENTROPY_H_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_reg_t(Structure):
+    _fields_ = [
+        ('rct_limit', c_uint32, 16),
+        ('apt_limit', c_uint32, 16),
+    ]
+
+ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_RECOMMENDED_THRESHOLDS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_BIW_OBS_CTRL_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_BIW_OBS_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('raw_enable', c_uint8, 1),
+    ]
+
+ENTROPY_SOURCE_BIW_OBS_CTRL_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_BIW_OBS_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint8),
+        ('f', ENTROPY_SOURCE_BIW_OBS_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_BIW_OBS_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_BIW_OBS_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_BIW_OBS_STATUS_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_BIW_OBS_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('level', c_uint32, 7),
+        ('rsvd_0', c_uint32, 1),
+        ('wptr', c_uint32, 5),
+        ('rsvd_1', c_uint32, 3),
+        ('rptr', c_uint32, 5),
+    ]
+
+ENTROPY_SOURCE_BIW_OBS_STATUS_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_BIW_OBS_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ENTROPY_SOURCE_BIW_OBS_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_BIW_OBS_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_BIW_OBS_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_BIW_OBS_RDATA_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_BIW_OBS_RDATA_reg_t(Structure):
+    _fields_ = [
+        ('rdata', c_uint32, 32),
+    ]
+
+ENTROPY_SOURCE_BIW_OBS_RDATA_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_BIW_OBS_RDATA_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ENTROPY_SOURCE_BIW_OBS_RDATA_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_BIW_OBS_RDATA_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_BIW_OBS_RDATA_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('raw_enable', c_uint8, 1),
+        ('flush', c_uint8, 1),
+        ('rsvd_0', c_uint8, 2),
+        ('lane_sel', c_uint8, 4),
+    ]
+
+ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint8),
+        ('f', ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_NOISE_OBS_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('level', c_uint32, 7),
+        ('rsvd_0', c_uint32, 1),
+        ('wptr', c_uint32, 5),
+        ('rsvd_1', c_uint32, 3),
+        ('rptr', c_uint32, 5),
+    ]
+
+ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_NOISE_OBS_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ENTROPY_SOURCE_NOISE_OBS_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_NOISE_OBS_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ENTROPY_SOURCE_NOISE_OBS_RDATA_REG_DEFAULT = 0x00000000
+class ENTROPY_SOURCE_NOISE_OBS_RDATA_reg_t(Structure):
+    _fields_ = [
+        ('rdata', c_uint32, 32),
+    ]
+
+ENTROPY_SOURCE_NOISE_OBS_RDATA_REG_DEFAULT = 0x00000000
+
+class ENTROPY_SOURCE_NOISE_OBS_RDATA_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ENTROPY_SOURCE_NOISE_OBS_RDATA_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ENTROPY_SOURCE_NOISE_OBS_RDATA_reg_u, self).__init__(*args, **kwargs)
+        self.val = ENTROPY_SOURCE_NOISE_OBS_RDATA_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

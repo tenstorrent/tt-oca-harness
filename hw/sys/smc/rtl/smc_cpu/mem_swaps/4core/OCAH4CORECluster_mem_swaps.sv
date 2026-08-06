@@ -270,6 +270,7 @@ module OCAH4CORECluster_rom_ext
     if (!file_loaded) begin
       $error("ERROR: [OCAH4CORECluster_rom_ext] Failed to load ROM file - ROM will contain X's");
     end
+
   end
 
 `else

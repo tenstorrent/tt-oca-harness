@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
 // JTAG Interface Unit
-//
-//-----------------------------------------------------------------------------
 
 module jtag_intf_unit
     import prim_jtag_pkg::*;
@@ -198,21 +195,24 @@ module jtag_intf_unit
     logic dft_nonsecure_security_disable;
     logic dfd_security_disable;
     logic [63:0] feat_ctrl_bits;
-    logic [63:0] feat_ctrl_bits_q;
+    logic [63:0] feat_ctrl_bits_q_n0_scan;
     sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_q;
 
     assign feat_ctrl_bits = feat_ctrl_i;
-    assign feat_ctrl_q = sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t'(feat_ctrl_bits_q);
+    assign feat_ctrl_q = sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t'(feat_ctrl_bits_q_n0_scan);
 
-    for (genvar i = 0; i < 64; i++) begin : gen_feat_ctrl_sync
+    // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
+    // SYS_DIS fields and directly control JTAG/test enablement. Both stages
+    // must therefore remain outside scan.
+    for (genvar i = 0; i < 64; i++) begin : gen_feat_ctrl_sync_n0_scan
         prim_flop_2sync #(
             .Width(1),
             .ResetValue(1'b0)
-        ) u_feat_ctrl_sync (
+        ) u_feat_ctrl_sync_n0_scan (
             .clk_i  (ptap_client_tap_ctrl_i.tck),
             .rst_ni (pwr_on_rst_ni),
             .d_i    (feat_ctrl_bits[i]),
-            .q_o    (feat_ctrl_bits_q[i])
+            .q_o    (feat_ctrl_bits_q_n0_scan[i])
         );
     end
 
@@ -327,11 +327,11 @@ module jtag_intf_unit
     // STAP I/O Port Instantiation (Chiplet-to-Chiplet Connectivity)
     //--------------------------------------------------------------------------
 
-    // Enable-polarity feat_ctrl (DTP_VPLAN): required enable low => security_disable.
+    // feat_ctrl_q is enable-polarity (1 = feature enabled): a STAP/SIB is disabled
+    // whenever any one of its required enables is deasserted.
     assign stap_io_security_disable = !feat_ctrl_q.sip_debug;
     assign stap_smc_security_disable = !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
-    assign stap_sep_security_disable = !feat_ctrl_q.sep_debug || !feat_ctrl_q.soc_debug ||
-                                       !feat_ctrl_q.ap_debug;
+    assign stap_sep_security_disable = !feat_ctrl_q.sep_debug || !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
     assign stap_extra_security_disable = !feat_ctrl_q.ap_debug;
     assign stap_host_security_disable = !feat_ctrl_q.ap_debug;
     assign dft_secure_security_disable = !feat_ctrl_q.fuse_test || !feat_ctrl_q.sep_debug ||
