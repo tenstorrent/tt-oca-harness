@@ -220,11 +220,13 @@ int rom_transfer_key(uint8_t handle, rom_km_dest_bits_t dest_engines) {
  *===========================================================================*/
 
 /**
- * @brief Revoke a key by locking its KPV slots and destroying the handle.
+ * @brief Revoke a key by hardware-erasing its KPV slots and destroying the handle.
  *
- * Write-locks and read-locks all slots so neither KM nor SEP can access
- * the data again, then removes the handle from the registry.  Slot
- * contents are not shredded (write-lock prevents further writes).
+ * Triggers the hardware erase on every slot spanned by the key, which
+ * overwrites the key data with LFSR/scrambler output and clears each slot's
+ * CTRL register (including the lock bits). Erase is not blocked by the slot
+ * locks, and rom_kpv_erase_slot blocks until it completes, so the slots are
+ * wiped and reusable before the handle is removed from the registry.
  *
  * @param handle Key handle.
  * @return 0 on success, -1 if the handle is invalid.
@@ -233,10 +235,9 @@ int rom_revoke_key(uint8_t handle) {
     uint8_t base_slot;
     if (rom_keyreg_get_slot(&rom_keyreg_state, handle, &base_slot) < 0) return -1;
 
-    /* Program lock_use before lock_write; once write lock is set, subsequent
-     * CTRL updates may be blocked by hardware policy. */
-    rom_kpv_read_lock(base_slot);
-    rom_kpv_write_lock(base_slot);
+    /* Erase the slots in hardware (data overwrite + CTRL/lock clear); blocks
+     * until each slot's erase bit self-clears, freeing the slots for reuse. */
+    rom_kpv_erase_slot(base_slot);
 
     if (rom_keyreg_destroy(&rom_keyreg_state, handle) < 0) return -1;
 
@@ -286,7 +287,7 @@ int rom_load_key(uint8_t key_size, rom_km_dest_bits_t dest_valid, const uint32_t
     if (h < 0) return -2;
 
     /* Shred all selected slots before writing SEP-supplied data. */
-    for (uint8_t s = 0; s < num_slots; s++) rom_kpv_shred_slot(base + s, &rom_prng_state);
+    for (uint8_t s = 0; s < num_slots; s++) rom_kpv_shred_slot(base + s);
 
     /* Write key data and control fields (EXTEND, LAST_DWORD). */
     if (rom_kpv_write_key(base, key_data, (uint8_t)(key_size + 1u)) < 0) {

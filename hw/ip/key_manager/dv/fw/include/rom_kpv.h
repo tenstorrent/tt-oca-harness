@@ -16,7 +16,6 @@
 
 #include <stdint.h>
 #include "rom_defs.h"
-#include "rom_prng.h"
 #include "key_manager_fw.h"
 
 /*===========================================================================
@@ -66,30 +65,25 @@ void rom_kpv_scrambler_lock(void);
  *===========================================================================*/
 
 /**
- * @brief Shred all KPV slots.
+ * @brief Shred all KPV slots via the hardware erase path.
  *
- * If any slot is write-locked, returns -1 without shredding.  Otherwise
- * clears slot control registers and shreds the entire key array (512 words)
- * in one call to rom_shred_region (SHRED_ITER+1 passes, reseed from DRBG
- * each pass).
- *
- * @param prng Firmware PRNG state (reseeded each pass).
- * @return 0 on success, -1 if any slot is write-locked.
+ * Calls rom_kpv_shred_slot on every slot, erasing each slot SHRED_ITER+1
+ * times.  Each erase overwrites the slot data with LFSR output (through the
+ * KPV scrambler) and clears the slot CTRL register, so write-locked slots are
+ * wiped too.
  */
-int rom_kpv_shred_all(rom_km_prng_state_t *prng);
+void rom_kpv_shred_all(void);
 
 /**
- * @brief Shred a single KPV slot.
+ * @brief Shred a single KPV slot via the hardware erase path.
  *
- * Clears the slot control register (error if write-locked), then writes
- * PRNG-sourced random data in pseudorandom word order for SHRED_ITER+1
- * passes, reseeding the PRNG from the DRBG before each pass.
+ * Calls rom_kpv_erase_slot on the slot SHRED_ITER+1 times.  Each erase
+ * overwrites the slot data with LFSR output (through the KPV scrambler) and
+ * clears the slot CTRL register, so a write-locked slot is wiped too.
  *
- * @param slot Slot index (0-31).
- * @param prng Firmware PRNG state (reseeded each pass).
- * @return 0 on success, -1 if the slot is write-locked.
+ * @param slot Slot index (0-31); EXTEND determines the span erased.
  */
-int rom_kpv_shred_slot(uint8_t slot, rom_km_prng_state_t *prng);
+void rom_kpv_shred_slot(uint8_t slot);
 
 /**
  * @brief Hardware-erase the base slot and all extended slots, then wait.
