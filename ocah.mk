@@ -23,7 +23,7 @@ OCAH_PHONY += uv-sync
 
 OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
 # Pin the optional nonfree clone to a known-good commit (override to float).
-OCAH_NONFREE_COMMIT ?= ba0c631
+OCAH_NONFREE_COMMIT ?= 3e7a7f3
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
