@@ -39,6 +39,101 @@ protocol shape supports them. For example:
 from ocah_axi_vip import OcahAxiLiteMaster
 ```
 
+## VIP Ownership and Promotion Policy
+
+Start new protocol behavior beside its first consumer. Promotion is a maturity
+decision, not a directory cleanup:
+
+1. **DUT-local** (`hw/<...>/<dut>/dv/`): hierarchy bindings, address maps,
+   loopback fixtures, lifecycle/security policy, and DUT-specific reference
+   models. The DUT DV maintainers own these files.
+2. **IP/domain-local reusable** (`hw/ip/<ip>/dv/` or another domain-owned
+   location): custom protocol behavior reused by related integrations but not
+   yet protocol-neutral.
+3. **Shared VIP** (`hw/common/dv/vip/ocah_<protocol>_vip/`): a
+   protocol-neutral, versioned API owned by the shared DV maintainers and
+   validated by at least one real DUT consumer.
+
+Keep the thin signal-binding adapter local after promotion. Shared code must
+not hard-code `cocotb.top`, DUT hierarchy, register addresses, instance counts,
+or lifecycle policy.
+
+### Promotion checklist
+
+Promote a local helper only when every required item is true:
+
+- [ ] A second independent consumer needs the behavior, or the implemented
+      standard/protocol surface is demonstrably stable and broadly reusable.
+- [ ] Public methods use plain Python values or OCAH item/result dataclasses;
+      backend objects are hidden except for explicitly documented debug escapes.
+- [ ] `__init__.py` exports the stable surface from
+      `ocah_<protocol>_vip`; callers do not import implementation subfolders.
+- [ ] `README.md` documents construction, API, backend/version/license policy,
+      limitations, and the owning maintainer group.
+- [ ] At least one runnable example exists under `cocotb/examples/`; complex
+      APIs should also provide `MANUAL.md`.
+- [ ] Timeouts, unsupported operations, and error responses are deterministic
+      and documented.
+- [ ] At least one named DUT regression gates the promoted behavior.
+- [ ] DUT-specific binding and policy remain in the DUT tree, with a link to
+      the shared package.
+
+If any gate is missing, mark the helper/package experimental or deferred and
+document the missing promotion trigger. Do not create a second shared VIP for
+a protocol already represented here; extend the existing stable wrapper.
+
+### Current shared-package maturity
+
+| Package | Maturity | Public example | Gating consumer / disposition |
+|---------|----------|----------------|-------------------------------|
+| `ocah_axi_vip` | **Promoted** | `ocah_axi_vip/cocotb/examples/example_register_access.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite engines; DUT-local agents retain address and scoreboard policy |
+| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 | `ocah_jtag_vip/cocotb/examples/example_idcode.py` | DTP, SMC, and SMU consume the TAP API; iJTAG, boundary-scan, and DUT TDR maps remain local |
+| `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer; true quad/octal lanes, DDR, and vendor timing remain deferred |
+| `ocah_apb_vip` | Experimental / unadopted | No package-local example | No real DUT consumer; add an APB example and gating integration before promotion |
+| `ocah_entropy_vip` | Experimental | `ocah_entropy_vip/cocotb/examples/example_deterministic_entropy.py` | No real DUT consumer; retain until a subsystem gates deterministic source/monitor behavior |
+| `ocah_i2c_vip` | Experimental | `ocah_i2c_vip/cocotb/examples/example_i2c_eeprom.py` | SMC still needs DUT-local split-port/timing adaptation; upstream reusable fixes instead of creating another I2C VIP |
+| `ocah_i3c_vip` | Experimental / dependency-gated | `ocah_i3c_vip/cocotb/examples/example_priv_rw.py` | SMC use is optional/non-gating until the backend is reproducibly provisioned and a DUT test gates it |
+| `ocah_uart_vip` | Experimental / dependency-gated | `ocah_uart_vip/cocotb/examples/example_loopback.py` | SMC has a consumer, but the optional backend is not part of the locked default environment |
+
+### Deferred and experimental capability tracker
+
+Only **Promoted** rows in the maturity table above are safe dependencies for
+first-milestone P0/P1 tests. Experimental helpers may be used by explicitly
+opted-in tests, but cannot be the sole evidence for a milestone gate. Deferred
+capabilities are P2 follow-up work and must not block baseline transaction BFMs
+or portable P1 checkers.
+
+When a deferred item becomes active, open a focused child issue under
+[#3299](https://github.com/tenstorrent/tt-oca-hw/issues/3299) before changing
+its status.
+
+| Capability | Classification / reason | Owner | Promotion condition and next action | Follow-up |
+|------------|-------------------------|-------|-------------------------------------|-----------|
+| APB shared wrapper | Experimental: documented API, but no package-local example or real DUT adopter | Shared DV + first APB adopter | Add an APB example and make one DUT regression gate real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
+| UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback | Open a #3299 child when dependency work starts |
+| I2C | Experimental: SMC still needs a DUT-local split-port/open-drain timing workaround | Shared I2C VIP + SMC DV | Move only protocol-neutral split-port/timing fixes upstream, document them, and gate with a real SMC transaction | Open a #3299 child when promotion starts |
+| I3C SDR | Experimental/dependency-gated: current SMC use is optional and non-gating | Shared I3C VIP + SMC/SMU DV | Reproducibly provision the backend and make a DUT smoke test gating rather than advisory | SMU consumer [#3547](https://github.com/tenstorrent/tt-oca-hw/issues/3547) |
+| Entropy source/monitor | Experimental: deterministic API/example exists without a real DUT consumer | Shared entropy VIP + first entropy adopter | Add a subsystem integration that drives and checks the shared source/monitor API | Open a #3299 child when a consumer is selected |
+| Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Shared DV + first firmware-bearing DUT | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT | Open a #3299 child before implementation |
+| True QSPI/OSPI multi-lane data | Deferred: `ocah_spi_vip` currently uses single-bit data timing for quad/octal personalities | Shared SPI VIP + SEP/SMC DV | Specify lane turnaround/SDR-DDR timing, implement real multi-lane sampling/driving, and pass a DUT transfer test | Baseline scope [#3290](https://github.com/tenstorrent/tt-oca-hw/issues/3290); advanced work stays under #3299 |
+| Vendor-accurate flash BUSY timing and commands | Deferred: the first milestone is deterministic, instant-ready, and vendor-neutral | Shared SPI VIP + activating flash adopter | Select an adopter requirement, isolate vendor behavior behind a documented profile, and add status/timing checks | Open a #3299 child for the selected profile |
+| I3C HDR-DDR/HDR-BT | Deferred: backend/API and DUT support are not part of the SDR baseline | Shared I3C VIP + activating DUT | Confirm backend support and license, define HDR items/timing, and add a gating HDR consumer; #3547 remains SDR-only | Open a #3299 child when HDR work starts |
+| Full iJTAG/boundary-scan promotion | Deferred: current DTP models encode fixed topology, lifecycle policy, and loopback fixtures | DTP/JTAG domain maintainers | Produce a topology/instrument-neutral model and demonstrate a second independent consumer | Ownership policy [#3292](https://github.com/tenstorrent/tt-oca-hw/issues/3292); open a #3299 child for promotion |
+| Commercial-simulator-only checker/coverage hooks | Deferred: portable checker evidence must exist before licensed-only depth can gate | Checker/DV infrastructure + protocol owner | Land portable item/checker semantics first, then add and validate commercial coverage hooks without making them mandatory for contributors | Checker parent [#2907](https://github.com/tenstorrent/tt-oca-hw/issues/2907); SPI checker [#3297](https://github.com/tenstorrent/tt-oca-hw/issues/3297) |
+
+Two examples define the ownership boundary:
+
+- **DUT-local:** `hw/sys/dtp/dv/cocotb/env/dtp_scan_model.py` models the
+  DTP testbench's compact BSR loopback. Its fixed topology and fixture semantics
+  are not a reusable IEEE boundary-scan VIP.
+- **Shared:** `ocah_axi_vip.OcahAxiMaster` provides protocol-neutral AXI
+  transactions and plain results. DTP, SEP, and SMC keep only their bindings,
+  addresses, expected-response policy, and scoreboards locally.
+
+Contributors should add new DUT-specific behavior under that DUT's `dv/`
+directory. Add or extend shared protocol behavior only under
+`hw/common/dv/vip/ocah_<protocol>_vip/` after the checklist above is met.
+
 DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
 install the shared package and source the OSS DV environment before running tests:
 
@@ -63,13 +158,17 @@ notes:
   `init_read`/`init_write` (or `*_result`) over direct `cocotbext.axi` imports.
 - `hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
   initialization before SEP AXI masters are constructed.
-- SMC I2C/I3C split-port adapters live in `ocah_i2c_vip` /
-  `ocah_i3c_vip` (`Ocah*SplitPort*`); DUT wrappers only bind TB pads.
+- SMC I3C uses a DUT-local bind over `ocah_i3c_vip` split-port helpers. SMC
+  I2C still uses `smc_i2c_protocol_vip.py` because its Verilator/open-drain
+  timing workaround has not yet been promoted into `ocah_i2c_vip`.
 - SMC CPU JTAG uses `ocah_jtag_vip` for bus/device bind; active-high
   `tb_cpu_jtag_reset` stays DUT-local (not mapped to bus `trst`) because
   `cocotbext-jtag` assumes IEEE active-low TRST.
-- `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` remains a
-  DUT-local observability test (probe sampling, no bus BFM).
+- `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` drives real
+  `s_axi_*` traffic into the SMC SEP_IN AXI port through the DUT-local
+  `SmcSysAxiDriver`, which binds the shared `ocah_axi_vip.OcahAxiMaster`.
+  The local layer owns SMC/PyUVM sequencing and policy; the AXI protocol engine
+  remains shared.
 - `ocah_axi_vip.OcahAxiMonitor`, `OcahAxiLiteMonitor`, and
   `ocah_apb_vip.OcahApbMonitor` are OCAH-owned passive samplers that emit plain
   item dataclasses. The released master/responder BFMs remain cocotbext-backed.

@@ -40,11 +40,33 @@ changes do not affect sequences or scoreboards.
 |Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagTap` |Unified OCAH BFM |Active JTAG transaction driver and TAP helper
 |SMC fabric AXI4 manager |`ocah_axi_vip` `OcahAxiRam` |Unified OCAH BFM |AXI memory responder with scoreboard backdoor access
 |SMC/SEP OTP AXI-Lite managers |`ocah_axi_vip` AXI-Lite wrapper |Unified OCAH BFM |AXI-Lite responder model for OTP bridge scenarios
-|XTRIG AXI-Lite CSR subordinate |`ocah_axi_vip` `OcahAxiLiteMaster` |Unified OCAH BFM |CSR access model for XTRIG scenarios
+|XTRIG AXI-Lite CSR subordinate |`DtpFlatAxiLiteMaster` |DUT-local adapter |Current flattened-fixture driver; required generic behavior should converge into `ocah_axi_vip`
 |BSR/STAP scan loopbacks |Minimal OCAH-local scan model |OCAH-local simple model |Compact scan loopback and observable model
 |iJTAG SIB networks |OCAH-local IEEE 1687 model |OCAH-local model |IEEE 1687 scan-network transaction model
 |CTP/CTM cross-trigger protocols |OCAH-local BFMs |OCAH-local BFM |CTP/CTM protocol BFMs; debug TDR clock-stop requests may be driven directly in the TB
 |===
+
+=== DUT-Local Model Ownership
+
+The shared promotion checklist is defined in `hw/common/dv/README.md`. The DTP
+models below intentionally remain local because they encode this DUT's
+topology, lifecycle rules, signal binding, or testbench fixtures:
+
+[cols=",,,",options="header",]
+|===
+|Model / Helper |Current Scope |Why It Stays DUT-Local |Promotion Trigger
+|`DtpScanModel` |8-bit BSR identity-loopback stimulus and checking |Models the compact DTP TB fixture, not generic IEEE 1149.1 boundary cells |A parameterized boundary-cell model with an independent DUT consumer
+|`DtpIjtagSibModel` |Three DTP SIBs, DTP lifecycle gates, looped instruments |Hard-coded DTP scan topology and security policy |Topology/instrument-neutral IEEE 1687 transactions plus a second consumer
+|`DtpStap3dcrModel` |DTP PTAP/STAP selection, 3DCR state, reset/gating |Downstream STAPs are wire loopbacks and the hierarchy is DTP-specific |A parameterized IEEE 1838/STAP model validated against a real downstream topology
+|`DtpXtrigBfm` / `DtpCtmRefModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout |Assumes DTP port counts, flattened signal names, and OCH routing policy |Parameterize binding/counts and demonstrate independent reuse; domain-local ownership may precede shared VIP promotion
+|`DtpFlatAxiLiteMaster` |XTRIG CSR access over this TB's flattened signals |Duplicates a standard protocol already owned by `ocah_axi_vip` |Migrate required behavior to the shared AXI-Lite wrapper; never promote as a second AXI VIP
+|DTP TDR maps/packers |DTP instruction/register semantics layered over `ocah_jtag_vip` |Register layout and polling policy are DUT semantics, not JTAG protocol |Share only with a domain consumer that uses the same DTP register contract
+|===
+
+The shared `ocah_jtag_vip` and `ocah_axi_vip` packages own protocol-neutral
+driving, monitoring, result, and error behavior. DTP agents remain responsible
+for hierarchy binding, address/TDR maps, expected values, lifecycle policy, and
+scoreboarding.
 
 === Testbench Hierarchy
 
