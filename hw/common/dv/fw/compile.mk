@@ -26,6 +26,7 @@ ocah_fw_common_mk := 1
 #   FW_LINKER_SCRIPT - linker script path
 #   FW_ENTRY_SRCS    - entry/main sources
 # Optional, for per-test linked images via `dv-fw-tests`:
+#   FW_TEST_ROOTS               - dirs holding per-test subdirs (default: tests)
 #   FW_LINK_MODES               - link modes; auto-discovered from link/modes/*.ld
 #   FW_EXTRA_LINK_MODES         - modes to add to the discovered set, for a
 #                           linker script that lives outside link/modes/; each
@@ -143,16 +144,21 @@ $(foreach m,$(FW_LINK_MODES),$(eval FW_TEST_ARCHIVE_LINK_$(m) ?= $(FW_TEST_ARCHI
 # otherwise the subsystem's FW_DEFAULT_TEST_MODE applies.
 ocah_fw_test_mode = $(if $(strip $(FW_TEST_MODE_$(1))),$(strip $(FW_TEST_MODE_$(1))),$(FW_DEFAULT_TEST_MODE))
 
-# Unified DV test discovery: one testcase per tests/<name>/ (plus sibling .c),
-# tests/common/ reserved for shared helpers. Opt out by pre-setting FW_TEST_NAMES.
+# Unified DV test discovery: one testcase per <root>/<name>/ (plus sibling .c),
+# <root>/common/ reserved for shared helpers. A subsystem can add roots beyond
+# tests/ to carry images that must build but must not join a regression that
+# enumerates tests/ itself. Opt out entirely by pre-setting FW_TEST_NAMES.
+FW_TEST_ROOTS ?= $(FW_DIR)/tests
 ifndef FW_TEST_NAMES
 FW_TEST_SRCS := $(filter-out \
-  $(FW_DIR)/tests/common/% \
-  $(foreach t,$(FW_TEST_EXCLUDE_NAMES),$(FW_DIR)/tests/$(t)/%), \
-  $(wildcard $(FW_DIR)/tests/*/*.c))
+  $(foreach r,$(FW_TEST_ROOTS),$(r)/common/%) \
+  $(foreach r,$(FW_TEST_ROOTS),$(foreach t,$(FW_TEST_EXCLUDE_NAMES),$(r)/$(t)/%)), \
+  $(foreach r,$(FW_TEST_ROOTS),$(wildcard $(r)/*/*.c)))
 FW_TEST_NAMES := $(sort $(notdir $(patsubst %/,%,$(dir $(FW_TEST_SRCS)))))
-$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_DIR)/tests/$(t)/*.c))))
-$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_DIR)/tests/$(t)/*.c $(FW_DIR)/tests/$(t)/*.S) $(FW_TEST_EXTRA_SRCS_$(t))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_DIR_$(t) := \
+  $(firstword $(foreach r,$(FW_TEST_ROOTS),$(wildcard $(r)/$(t))))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRC_$(t) := $(firstword $(wildcard $(FW_TEST_DIR_$(t))/*.c))))
+$(foreach t,$(FW_TEST_NAMES),$(eval FW_TEST_SRCS_$(t) := $(wildcard $(FW_TEST_DIR_$(t))/*.c $(FW_TEST_DIR_$(t))/*.S) $(FW_TEST_EXTRA_SRCS_$(t))))
 FW_TEST_NAMES := $(sort $(FW_TEST_NAMES) $(FW_TEST_EXTRA_NAMES))
 endif
 
