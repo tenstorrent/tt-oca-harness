@@ -39,7 +39,7 @@ export PYTHONPATH := $(abspath .):$(PYTHONPATH)
 
 # DUT wrapper and cocotb module
 TOPLEVEL = tb_key_manager
-TEST ?= test_hello_world
+TEST ?= test_rom_interface
 MODULE ?= $(TEST)
 # This testbench uses a single cocotb entrypoint.
 TESTCASE ?= test_firmware_generic
@@ -195,11 +195,18 @@ $(SIM_BUILD): $(TB_FILELIST)
 #===========================================================================
 # Firmware images (built by the shared open DV firmware dispatcher)
 #===========================================================================
+# Firmware is compiled in the toolchain container, the same way the SMC/SEP cgen
+# stages build theirs, so the images do not depend on whichever RISC-V toolchain a
+# simulation host happens to carry. `run-here` keeps host paths 1:1 so the
+# absolute `-C $(OCH_ROOT)` resolves inside the sandbox, and `make` is left bare
+# so it binds to the sandbox's own make. Set FW_DISPATCH_RUNNER empty to compile
+# with the toolchain on PATH instead.
+FW_DISPATCH_RUNNER ?= $(OCH_ROOT)/scripts/docker-run.sh run-here
+FW_DISPATCH := $(if $(strip $(FW_DISPATCH_RUNNER)),$(FW_DISPATCH_RUNNER) make,$(MAKE))
+FW_DISPATCH += -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests OCAH_ROOT=$(OCH_ROOT) TARGET=key_manager
+
 # Map cocotb test name to firmware name for the built-in named tests.
-ifeq ($(TEST),test_hello_world)
-  FIRMWARE_NAME := hello_world
-  MODULE := test_firmware
-else ifeq ($(TEST),test_rom_interface)
+ifeq ($(TEST),test_rom_interface)
   FIRMWARE_NAME := test_rom_interface
   MODULE := test_firmware
 else ifeq ($(TEST),test_sram_interface)
@@ -245,13 +252,13 @@ ifndef FW_TEST
 	$(error FW_TEST is not set. Usage: make build_fw FW_TEST=<test_name>)
 endif
 	@echo "Building firmware via open dispatcher: $(FW_TEST)"
-	@$(MAKE) -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests TARGET=key_manager TEST=$(FW_TEST) OCAH_ROOT=$(OCH_ROOT)
+	@$(FW_DISPATCH) TEST=$(FW_TEST)
 
 # Build all discovered firmware images via the open dispatcher.
 .PHONY: build_all_fw
 build_all_fw:
 	@echo "Building all key_manager firmware via open dispatcher..."
-	@$(MAKE) -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests TARGET=key_manager OCAH_ROOT=$(OCH_ROOT)
+	@$(FW_DISPATCH)
 
 .PHONY: run
 run: $(TB_FILELIST) | $(TEST_LOG_DIR)
@@ -325,7 +332,7 @@ help:
 	@echo "  help               - Show this help message"
 	@echo ""
 	@echo "Common variables:"
-	@echo "  TEST=<name>        - Cocotb test selector (default: test_hello_world)"
+	@echo "  TEST=<name>        - Cocotb test selector (default: test_rom_interface)"
 	@echo "  FW_TEST=<name>     - Firmware test to build/run with generic runner"
 	@echo "  WAVES=1 FSDB=1     - Waveform dumping (VCD default; FSDB optional)"
 	@echo "  DEBUG=1            - Broader VCS debug access"
