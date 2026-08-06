@@ -119,7 +119,7 @@ int main(void) {
         int8_t rc = (int8_t)(pw[2] & 0xFF);
         TEST_LOG("  return_code=%d", (int)rc);
         TEST_ASSERT_EQ(rc, (uint32_t)(uint8_t)ROM_KM_RC_SUCCESS, "return_code");
-        TEST_ASSERT_EQ(pw[3], (uint32_t)0x00010000u, "return_arg");
+        TEST_ASSERT_EQ(pw[3], (uint32_t)KMCSR_VERSION_RESET, "return_arg");
         TEST_LOG("  return_arg=0x%08X", pw[3]);
 
         /* Read and verify payload CRC-32C */

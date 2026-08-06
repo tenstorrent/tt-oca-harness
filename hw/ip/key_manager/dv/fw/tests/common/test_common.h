@@ -61,61 +61,21 @@
 #define ROM_KM_OTP_BASE KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR
 #endif
 
-typedef union {
-    struct __attribute__((__packed__)) {
-        uint32_t flush : 1;
-        uint32_t inbound_underflow_resp : 1;
-        uint32_t inbound_overflow_resp : 1;
-        uint32_t outbound_underflow_resp : 1;
-        uint32_t rsvd : 28;
-    } f;
-    uint32_t w;
-} KM_MAILBOX_SEP_CTRL_REG_reg_u;
+/* Expected KMCSR VERSION word. The generator emits per-field reset values but no
+ * register-level default, so compose it from the fields rather than restating the
+ * version in every test that reads it. */
+#define KMCSR_VERSION_RESET                                                \
+    ((KM_CSR__VERSION_REG__MAJOR_reset << KM_CSR__VERSION_REG__MAJOR_bp) |  \
+     (KM_CSR__VERSION_REG__MINOR_reset << KM_CSR__VERSION_REG__MINOR_bp) |  \
+     (KM_CSR__VERSION_REG__PATCH_reset << KM_CSR__VERSION_REG__PATCH_bp))
 
-typedef union {
-    struct __attribute__((__packed__)) {
-        uint32_t inbound_empty : 1;
-        uint32_t outbound_empty : 1;
-        uint32_t inbound_underflow : 1;
-        uint32_t outbound_overflow : 1;
-        uint32_t inbound_overflow : 1;
-        uint32_t outbound_underflow : 1;
-        uint32_t inbound_separator : 1;
-        uint32_t outbound_separator : 1;
-        uint32_t rsvd : 24;
-    } f;
-    uint32_t w;
-} KM_MAILBOX_SEP_STATUS_REG_reg_u;
-
-typedef union {
-    struct __attribute__((__packed__)) {
-        uint32_t inbound_underflow : 1;
-        uint32_t outbound_overflow : 1;
-        uint32_t flushed_by_km : 1;
-        uint32_t flushed_by_sep : 1;
-        uint32_t inbound_overflow : 1;
-        uint32_t outbound_underflow : 1;
-        uint32_t outbound_read_data_avail : 1;
-        uint32_t inbound_write_space_avail : 1;
-        uint32_t rsvd : 24;
-    } f;
-    uint32_t w;
-} KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u;
-
-typedef union {
-    struct __attribute__((__packed__)) {
-        uint32_t inbound_underflow_en : 1;
-        uint32_t outbound_overflow_en : 1;
-        uint32_t flushed_by_km_en : 1;
-        uint32_t flushed_by_sep_en : 1;
-        uint32_t inbound_overflow_en : 1;
-        uint32_t outbound_underflow_en : 1;
-        uint32_t outbound_read_data_avail_en : 1;
-        uint32_t inbound_write_space_avail_en : 1;
-        uint32_t rsvd : 24;
-    } f;
-    uint32_t w;
-} KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
+/* SEP-side mailbox registers are not reachable from the KM CPU; these types only
+ * build the bit patterns handed to the tb_sep_mbox_* commands. Alias the generated
+ * types so a layout here cannot drift from the RDL the hardware decodes. */
+typedef km_mailbox_sep__ctrl_reg_t KM_MAILBOX_SEP_CTRL_REG_reg_u;
+typedef km_mailbox_sep__status_reg_t KM_MAILBOX_SEP_STATUS_REG_reg_u;
+typedef km_mailbox_sep__irq_status_reg_t KM_MAILBOX_SEP_IRQ_STATUS_REG_reg_u;
+typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
 
 /*===========================================================================
  * Memory Map - Test Result Locations (KMCSR Registers)
@@ -1296,7 +1256,8 @@ static inline int tb_get_unrecoverable_fault_code(uint32_t timeout_cycles,
  * Read a key share word from the crypto engine key register block via the
  * testbench (bypasses the write-only register restriction by reading hwif_out).
  *
- * @param engine Engine index (0=HMAC, 1=KMAC, 2=AES, 3=OTBN)
+ * @param engine Engine index (0=HMAC, 1=KMAC, 2=AES, 3=OTBN, 4=ABR_MLDSA_SEED,
+ *               5=ABR_MLKEM_SEED_D, 6=ABR_MLKEM_SEED_Z, 7=ABR_MLKEM_MSG)
  * @param share  Share number (0=SHARE0, 1=SHARE1)
  * @param word   Word index within the share
  * @param value_out Pointer to store the 32-bit value

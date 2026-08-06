@@ -13,7 +13,8 @@
 #include "test_common.h"
 #include "rom_defs.h"
 
-#define UNMAPPED_DECERR_ADDR 0x0001C000u
+/* First unmapped address after the ABR window (0x0001_C000-0x0001_CFFF) */
+#define UNMAPPED_DECERR_ADDR 0x0001D000u
 
 int rom_boot_wipe_enabled(void) {
     return 0;
