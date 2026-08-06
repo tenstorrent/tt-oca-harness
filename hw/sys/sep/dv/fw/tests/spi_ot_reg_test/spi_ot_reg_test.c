@@ -29,10 +29,7 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
+#include "spi_mux.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -58,7 +55,7 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* -------------------------------------------------------------------
@@ -76,16 +73,16 @@ int main(void) {
     if (!check_reg("INTR_TEST default", intr_test.w, 0)) pass = 0;
 
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    if (!check_reg("CTRL default", ctrl.w, 0u)) pass = 0;
+    if (!check_reg("CTRL default", ctrl.w, SPI_CONTROLLER__CTRL_reset)) pass = 0;
 
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_reg("CFG default", cfg.w, 0u)) pass = 0;
+    if (!check_reg("CFG default", cfg.w, SPI_CONTROLLER__CFG_reset)) pass = 0;
 
     uint32_t csid_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR);
     if (!check_reg("CSID default", csid_val, 0)) pass = 0;
 
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE default", err_enable.w, 0x11111u)) pass = 0;
+    if (!check_reg("ERROR_ENABLE default", err_enable.w, SPI_CONTROLLER__ERROR_ENABLE_reset)) pass = 0;
 
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     if (!check_reg("EVENT_ENABLE default", event_enable.w, 0)) pass = 0;
@@ -140,7 +137,7 @@ int main(void) {
     if (!check_reg("INTR_TEST cleared", intr_test.w, 0)) pass = 0;
 
     /* CTRL write-readback (enable controller) */
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);

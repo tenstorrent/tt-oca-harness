@@ -12,7 +12,7 @@
  * All 4 data lines (SD[3:0]) are active in Quad mode.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller (CLKDIV=9, Mode 0)
+ *   1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
  *   2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
  *   3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
  *   4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
@@ -29,12 +29,10 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_clk.h"
+#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
-
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -79,18 +77,18 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     volatile int delay;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
-    /* Configure: CLKDIV=9 (~5MHz from 100MHz), SPI Mode 0, standard CS timing */
+    /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), SPI Mode 0, standard CS timing */
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CPOL = 0;
     cfg.f.CPHA = 0;
     cfg.f.CSNIDLE = 2;

@@ -29,12 +29,10 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_clk.h"
+#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
-
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
 
 static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
@@ -85,18 +83,18 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
-    /* Configure: CLKDIV=9, Mode 0, standard CS timing */
+    /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0, standard CS timing */
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CPOL = 0;
     cfg.f.CPHA = 0;
     cfg.f.CSNIDLE = 2;

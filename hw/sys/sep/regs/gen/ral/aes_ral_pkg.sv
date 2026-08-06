@@ -32,7 +32,7 @@
 
         virtual function void build();
             this.KEY_SHARE0 = uvm_reg_field::type_id::create("KEY_SHARE0");
-            this.KEY_SHARE0.configure(this, 32, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.KEY_SHARE0.configure(this, 32, 0, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__KEY_SHARE0
 
@@ -47,7 +47,7 @@
 
         virtual function void build();
             this.KEY_SHARE1 = uvm_reg_field::type_id::create("KEY_SHARE1");
-            this.KEY_SHARE1.configure(this, 32, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.KEY_SHARE1.configure(this, 32, 0, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__KEY_SHARE1
 
@@ -62,7 +62,7 @@
 
         virtual function void build();
             this.IV = uvm_reg_field::type_id::create("IV");
-            this.IV.configure(this, 32, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.IV.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__IV
 
@@ -77,7 +77,7 @@
 
         virtual function void build();
             this.DATA_IN = uvm_reg_field::type_id::create("DATA_IN");
-            this.DATA_IN.configure(this, 32, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.DATA_IN.configure(this, 32, 0, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__DATA_IN
 
@@ -92,7 +92,7 @@
 
         virtual function void build();
             this.DATA_OUT = uvm_reg_field::type_id::create("DATA_OUT");
-            this.DATA_OUT.configure(this, 32, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.DATA_OUT.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__DATA_OUT
 
@@ -112,17 +112,17 @@
 
         virtual function void build();
             this.OPERATION = uvm_reg_field::type_id::create("OPERATION");
-            this.OPERATION.configure(this, 2, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.OPERATION.configure(this, 2, 0, "RW", 1, 'h1, 1, 1, 0);
             this.MODE = uvm_reg_field::type_id::create("MODE");
-            this.MODE.configure(this, 6, 2, "W1C", 1, 'h0, 0, 1, 0);
+            this.MODE.configure(this, 6, 2, "RW", 1, 'h3f, 1, 1, 0);
             this.KEY_LEN = uvm_reg_field::type_id::create("KEY_LEN");
-            this.KEY_LEN.configure(this, 3, 8, "W1C", 1, 'h0, 0, 1, 0);
+            this.KEY_LEN.configure(this, 3, 8, "RW", 1, 'h1, 1, 1, 0);
             this.SIDELOAD = uvm_reg_field::type_id::create("SIDELOAD");
-            this.SIDELOAD.configure(this, 1, 11, "W1C", 1, 'h0, 0, 1, 0);
+            this.SIDELOAD.configure(this, 1, 11, "RW", 1, 'h0, 1, 1, 0);
             this.PRNG_RESEED_RATE = uvm_reg_field::type_id::create("PRNG_RESEED_RATE");
-            this.PRNG_RESEED_RATE.configure(this, 3, 12, "W1C", 1, 'h0, 0, 1, 0);
+            this.PRNG_RESEED_RATE.configure(this, 3, 12, "RW", 1, 'h1, 1, 1, 0);
             this.MANUAL_OPERATION = uvm_reg_field::type_id::create("MANUAL_OPERATION");
-            this.MANUAL_OPERATION.configure(this, 1, 15, "W1C", 1, 'h0, 0, 1, 0);
+            this.MANUAL_OPERATION.configure(this, 1, 15, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_SHADOWED
 
@@ -138,9 +138,9 @@
 
         virtual function void build();
             this.KEY_TOUCH_FORCES_RESEED = uvm_reg_field::type_id::create("KEY_TOUCH_FORCES_RESEED");
-            this.KEY_TOUCH_FORCES_RESEED.configure(this, 1, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.KEY_TOUCH_FORCES_RESEED.configure(this, 1, 0, "RW", 1, 'h1, 1, 1, 0);
             this.FORCE_MASKS = uvm_reg_field::type_id::create("FORCE_MASKS");
-            this.FORCE_MASKS.configure(this, 1, 1, "W1C", 1, 'h0, 0, 1, 0);
+            this.FORCE_MASKS.configure(this, 1, 1, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_AUX_SHADOWED
 
@@ -155,7 +155,7 @@
 
         virtual function void build();
             this.CTRL_AUX_REGWEN = uvm_reg_field::type_id::create("CTRL_AUX_REGWEN");
-            this.CTRL_AUX_REGWEN.configure(this, 1, 0, "W1C", 1, 'h1, 1, 1, 0);
+            this.CTRL_AUX_REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_AUX_REGWEN
 
@@ -173,13 +173,13 @@
 
         virtual function void build();
             this.START = uvm_reg_field::type_id::create("START");
-            this.START.configure(this, 1, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.START.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
             this.KEY_IV_DATA_IN_CLEAR = uvm_reg_field::type_id::create("KEY_IV_DATA_IN_CLEAR");
-            this.KEY_IV_DATA_IN_CLEAR.configure(this, 1, 1, "WO", 1, 'h0, 0, 1, 0);
+            this.KEY_IV_DATA_IN_CLEAR.configure(this, 1, 1, "WO", 1, 'h1, 1, 1, 0);
             this.DATA_OUT_CLEAR = uvm_reg_field::type_id::create("DATA_OUT_CLEAR");
-            this.DATA_OUT_CLEAR.configure(this, 1, 2, "WO", 1, 'h0, 0, 1, 0);
+            this.DATA_OUT_CLEAR.configure(this, 1, 2, "WO", 1, 'h1, 1, 1, 0);
             this.PRNG_RESEED = uvm_reg_field::type_id::create("PRNG_RESEED");
-            this.PRNG_RESEED.configure(this, 1, 3, "WO", 1, 'h0, 0, 1, 0);
+            this.PRNG_RESEED.configure(this, 1, 3, "WO", 1, 'h1, 1, 1, 0);
         endfunction : build
     endclass : aes__TRIGGER
 
@@ -200,19 +200,19 @@
 
         virtual function void build();
             this.IDLE = uvm_reg_field::type_id::create("IDLE");
-            this.IDLE.configure(this, 1, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.IDLE.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.STALL = uvm_reg_field::type_id::create("STALL");
-            this.STALL.configure(this, 1, 1, "RO", 1, 'h0, 0, 1, 0);
+            this.STALL.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.OUTPUT_LOST = uvm_reg_field::type_id::create("OUTPUT_LOST");
-            this.OUTPUT_LOST.configure(this, 1, 2, "RO", 1, 'h0, 0, 1, 0);
+            this.OUTPUT_LOST.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
             this.OUTPUT_VALID = uvm_reg_field::type_id::create("OUTPUT_VALID");
-            this.OUTPUT_VALID.configure(this, 1, 3, "RO", 1, 'h0, 0, 1, 0);
+            this.OUTPUT_VALID.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
             this.INPUT_READY = uvm_reg_field::type_id::create("INPUT_READY");
-            this.INPUT_READY.configure(this, 1, 4, "RO", 1, 'h0, 0, 1, 0);
+            this.INPUT_READY.configure(this, 1, 4, "RO", 1, 'h0, 1, 1, 0);
             this.ALERT_RECOV_CTRL_UPDATE_ERR = uvm_reg_field::type_id::create("ALERT_RECOV_CTRL_UPDATE_ERR");
-            this.ALERT_RECOV_CTRL_UPDATE_ERR.configure(this, 1, 5, "RO", 1, 'h0, 0, 1, 0);
+            this.ALERT_RECOV_CTRL_UPDATE_ERR.configure(this, 1, 5, "RO", 1, 'h0, 1, 1, 0);
             this.ALERT_FATAL_FAULT = uvm_reg_field::type_id::create("ALERT_FATAL_FAULT");
-            this.ALERT_FATAL_FAULT.configure(this, 1, 6, "RO", 1, 'h0, 0, 1, 0);
+            this.ALERT_FATAL_FAULT.configure(this, 1, 6, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__STATUS
 
@@ -228,9 +228,9 @@
 
         virtual function void build();
             this.PHASE = uvm_reg_field::type_id::create("PHASE");
-            this.PHASE.configure(this, 6, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.PHASE.configure(this, 6, 0, "RW", 1, 'h1, 1, 1, 0);
             this.NUM_VALID_BYTES = uvm_reg_field::type_id::create("NUM_VALID_BYTES");
-            this.NUM_VALID_BYTES.configure(this, 5, 6, "W1C", 1, 'h0, 0, 1, 0);
+            this.NUM_VALID_BYTES.configure(this, 5, 6, "RW", 1, 'h10, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_GCM_SHADOWED
 

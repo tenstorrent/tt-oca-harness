@@ -4,8 +4,9 @@
 /*
  * TC_KMAC_001 (P0) - KMAC Register Defaults and Read/Write Sanity Test
  *
- * Verifies default register values after reset and basic read/write
- * functionality for KMAC configuration and interrupt registers.
+ * Verifies default register values after reset, basic read/write
+ * functionality for KMAC configuration and interrupt registers, and
+ * KEY_SHARE write-only read-as-zero behavior.
  */
 
 #include <stdint.h>
@@ -36,6 +37,18 @@ static void check_rw(const char *name, uint32_t addr, uint32_t write_val, uint32
         test_errors++;
     } else {
         printf("PASS: %s RW readback=0x%08x\n", name, actual);
+    }
+}
+
+static void check_wo_read_zero(const char *name, uint32_t addr, uint32_t write_val) {
+    WRITE_REG(addr, write_val);
+    uint32_t actual = READ_REG(addr);
+    if (actual != 0) {
+        printf("FAIL: %s WO write=0x%08x readback=0x%08x expected=0x00000000\n", name, write_val,
+               actual);
+        test_errors++;
+    } else {
+        printf("PASS: %s WO readback=0x00000000\n", name);
     }
 }
 
@@ -169,6 +182,24 @@ static int test_entropy_period_rw(void) {
     return 0;
 }
 
+static int test_key_share_wo_read_zero(void) {
+    printf("\n=== Test 6: KEY_SHARE Write-Only Read-As-Zero ===\n");
+
+    for (uint32_t i = 0; i < OCH_SEP_TOP_KMAC_KEY_SHARE0_NUM; i++) {
+        char name[32];
+
+        snprintf(name, sizeof(name), "KEY_SHARE0_%u", i);
+        check_wo_read_zero(name, OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i),
+                           0xa5a50000u | (i * 0x0101u) | i);
+
+        snprintf(name, sizeof(name), "KEY_SHARE1_%u", i);
+        check_wo_read_zero(name, OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i),
+                           0x5a5a0000u | (i * 0x0101u) | i);
+    }
+
+    return 0;
+}
+
 int main(void) {
     sep_outbound_filter_init();
 
@@ -182,6 +213,7 @@ int main(void) {
     test_intr_test_w1s();
     test_prefix_rw();
     test_entropy_period_rw();
+    test_key_share_wo_read_zero();
 
     printf("\n========================================\n");
     if (test_errors == 0) {

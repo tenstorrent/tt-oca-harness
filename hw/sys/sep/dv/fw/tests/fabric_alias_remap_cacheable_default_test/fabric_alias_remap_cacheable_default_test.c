@@ -49,19 +49,21 @@ int main(void) {
     printf("====================================================\n\n");
 
     if (!check_eq32("SEP_LOCAL_BASE_ADDR",
-                    READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR), 0u)) {
+                    READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR),
+                    SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset)) {
         pass = 0;
     }
     if (!check_eq32("SEP_REGION_SIZE", READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR),
-                    0u)) {
+                    SEP_CPU_CTRL__SEP_REGION_SIZE_reset)) {
         pass = 0;
     }
     if (!check_eq32("SMU_GLOBAL_BASE_ADDR",
-                    READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_BASE_ADDR), 0u)) {
+                    READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_BASE_ADDR),
+                    SEP_CPU_CTRL__SMU_GLOBAL_BASE_ADDR_reset)) {
         pass = 0;
     }
     if (!check_eq32("SMU_REGION_SIZE", READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SMU_REGION_SIZE_BASE_ADDR),
-                    0u)) {
+                    SEP_CPU_CTRL__SMU_REGION_SIZE_reset)) {
         pass = 0;
     }
 

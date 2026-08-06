@@ -18,9 +18,7 @@
 
 #define TEST_FILTER_IDX 15u
 
-#define MAILBOX_0_APERTURE_SIZE \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MAILBOX_0_APERTURE_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
 
 static int check_eq32(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -90,7 +88,7 @@ int main(void) {
         FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm | (3u << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp);
     write64_split(cfg_addr, cfg_src3);
     cfg_rb = READ_REG(cfg_addr);
-    if (!check_eq32("Inbound filter src_id=3 cfg", cfg_rb, cfg_src3 | 0u)) {
+    if (!check_eq32("Inbound filter src_id=3 cfg", cfg_rb, cfg_src3 | FILTER_CTRL__FILTER_CONFIG_reset)) {
         pass = 0;
     }
 
@@ -101,7 +99,7 @@ int main(void) {
     }
 
     cfg_rb = READ_REG(cfg_addr);
-    if (!check_eq32("Locked filter preserves src_id config", cfg_rb, cfg_src3 | 0u)) {
+    if (!check_eq32("Locked filter preserves src_id config", cfg_rb, cfg_src3 | FILTER_CTRL__FILTER_CONFIG_reset)) {
         pass = 0;
     }
 

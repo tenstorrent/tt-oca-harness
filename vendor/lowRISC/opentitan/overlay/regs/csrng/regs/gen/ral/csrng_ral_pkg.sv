@@ -17,13 +17,13 @@
 
         virtual function void build();
             this.CS_CMD_REQ_DONE = uvm_reg_field::type_id::create("CS_CMD_REQ_DONE");
-            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.CS_ENTROPY_REQ = uvm_reg_field::type_id::create("CS_ENTROPY_REQ");
-            this.CS_ENTROPY_REQ.configure(this, 1, 1, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_ENTROPY_REQ.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.CS_HW_INST_EXC = uvm_reg_field::type_id::create("CS_HW_INST_EXC");
-            this.CS_HW_INST_EXC.configure(this, 1, 2, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_HW_INST_EXC.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
-            this.CS_FATAL_ERR.configure(this, 1, 3, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_FATAL_ERR.configure(this, 1, 3, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INTR_STATE
 
@@ -41,13 +41,13 @@
 
         virtual function void build();
             this.CS_CMD_REQ_DONE = uvm_reg_field::type_id::create("CS_CMD_REQ_DONE");
-            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "RW", 1, 'h0, 1, 1, 0);
             this.CS_ENTROPY_REQ = uvm_reg_field::type_id::create("CS_ENTROPY_REQ");
-            this.CS_ENTROPY_REQ.configure(this, 1, 1, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_ENTROPY_REQ.configure(this, 1, 1, "RW", 1, 'h0, 1, 1, 0);
             this.CS_HW_INST_EXC = uvm_reg_field::type_id::create("CS_HW_INST_EXC");
-            this.CS_HW_INST_EXC.configure(this, 1, 2, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_HW_INST_EXC.configure(this, 1, 2, "RW", 1, 'h0, 1, 1, 0);
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
-            this.CS_FATAL_ERR.configure(this, 1, 3, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_FATAL_ERR.configure(this, 1, 3, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INTR_ENABLE
 
@@ -65,13 +65,13 @@
 
         virtual function void build();
             this.CS_CMD_REQ_DONE = uvm_reg_field::type_id::create("CS_CMD_REQ_DONE");
-            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.CS_CMD_REQ_DONE.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
             this.CS_ENTROPY_REQ = uvm_reg_field::type_id::create("CS_ENTROPY_REQ");
-            this.CS_ENTROPY_REQ.configure(this, 1, 1, "WO", 1, 'h0, 0, 1, 0);
+            this.CS_ENTROPY_REQ.configure(this, 1, 1, "WO", 1, 'h0, 1, 1, 0);
             this.CS_HW_INST_EXC = uvm_reg_field::type_id::create("CS_HW_INST_EXC");
-            this.CS_HW_INST_EXC.configure(this, 1, 2, "WO", 1, 'h0, 0, 1, 0);
+            this.CS_HW_INST_EXC.configure(this, 1, 2, "WO", 1, 'h0, 1, 1, 0);
             this.CS_FATAL_ERR = uvm_reg_field::type_id::create("CS_FATAL_ERR");
-            this.CS_FATAL_ERR.configure(this, 1, 3, "WO", 1, 'h0, 0, 1, 0);
+            this.CS_FATAL_ERR.configure(this, 1, 3, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INTR_TEST
 
@@ -87,9 +87,9 @@
 
         virtual function void build();
             this.RECOV_ALERT = uvm_reg_field::type_id::create("RECOV_ALERT");
-            this.RECOV_ALERT.configure(this, 1, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.RECOV_ALERT.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
             this.FATAL_ALERT = uvm_reg_field::type_id::create("FATAL_ALERT");
-            this.FATAL_ALERT.configure(this, 1, 1, "WO", 1, 'h0, 0, 1, 0);
+            this.FATAL_ALERT.configure(this, 1, 1, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__ALERT_TEST
 
@@ -104,7 +104,7 @@
 
         virtual function void build();
             this.REGWEN = uvm_reg_field::type_id::create("REGWEN");
-            this.REGWEN.configure(this, 1, 0, "W1C", 1, 'h1, 1, 1, 0);
+            this.REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
         endfunction : build
     endclass : csrng__REGWEN
 
@@ -146,13 +146,13 @@
 
         virtual function void build();
             this.acmd = uvm_reg_field::type_id::create("acmd");
-            this.acmd.configure(this, 4, 0, "WO", 1, 'h0, 0, 1, 0);
+            this.acmd.configure(this, 4, 0, "WO", 1, 'h0, 1, 1, 0);
             this.clen = uvm_reg_field::type_id::create("clen");
-            this.clen.configure(this, 4, 4, "WO", 1, 'h0, 0, 1, 0);
+            this.clen.configure(this, 4, 4, "WO", 1, 'h0, 1, 1, 0);
             this.flag0 = uvm_reg_field::type_id::create("flag0");
-            this.flag0.configure(this, 4, 8, "WO", 1, 'h0, 0, 1, 0);
+            this.flag0.configure(this, 4, 8, "WO", 1, 'h0, 1, 1, 0);
             this.glen = uvm_reg_field::type_id::create("glen");
-            this.glen.configure(this, 13, 12, "WO", 1, 'h0, 0, 1, 0);
+            this.glen.configure(this, 13, 12, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__CMD_REQ
 
@@ -249,9 +249,9 @@
 
         virtual function void build();
             this.GENBITS_VLD = uvm_reg_field::type_id::create("GENBITS_VLD");
-            this.GENBITS_VLD.configure(this, 1, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.GENBITS_VLD.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.GENBITS_FIPS = uvm_reg_field::type_id::create("GENBITS_FIPS");
-            this.GENBITS_FIPS.configure(this, 1, 1, "RO", 1, 'h0, 0, 1, 0);
+            this.GENBITS_FIPS.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__GENBITS_VLD
 
@@ -266,7 +266,7 @@
 
         virtual function void build();
             this.GENBITS = uvm_reg_field::type_id::create("GENBITS");
-            this.GENBITS.configure(this, 32, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.GENBITS.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__GENBITS
 
@@ -296,7 +296,7 @@
 
         virtual function void build();
             this.INT_STATE_READ_ENABLE_REGWEN = uvm_reg_field::type_id::create("INT_STATE_READ_ENABLE_REGWEN");
-            this.INT_STATE_READ_ENABLE_REGWEN.configure(this, 1, 0, "W1C", 1, 'h1, 1, 1, 0);
+            this.INT_STATE_READ_ENABLE_REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_READ_ENABLE_REGWEN
 
@@ -311,7 +311,7 @@
 
         virtual function void build();
             this.INT_STATE_NUM = uvm_reg_field::type_id::create("INT_STATE_NUM");
-            this.INT_STATE_NUM.configure(this, 4, 0, "RW", 1, 'h0, 0, 1, 0);
+            this.INT_STATE_NUM.configure(this, 4, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_NUM
 
@@ -326,7 +326,7 @@
 
         virtual function void build();
             this.INT_STATE_VAL = uvm_reg_field::type_id::create("INT_STATE_VAL");
-            this.INT_STATE_VAL.configure(this, 32, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.INT_STATE_VAL.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__INT_STATE_VAL
 
@@ -341,7 +341,7 @@
 
         virtual function void build();
             this.FIPS_FORCE = uvm_reg_field::type_id::create("FIPS_FORCE");
-            this.FIPS_FORCE.configure(this, 3, 0, "RW", 1, 'h0, 0, 1, 0);
+            this.FIPS_FORCE.configure(this, 3, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__FIPS_FORCE
 
@@ -356,7 +356,7 @@
 
         virtual function void build();
             this.HW_EXC_STS = uvm_reg_field::type_id::create("HW_EXC_STS");
-            this.HW_EXC_STS.configure(this, 16, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.HW_EXC_STS.configure(this, 16, 0, "W0C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__HW_EXC_STS
 
@@ -379,23 +379,23 @@
 
         virtual function void build();
             this.ENABLE_FIELD_ALERT = uvm_reg_field::type_id::create("ENABLE_FIELD_ALERT");
-            this.ENABLE_FIELD_ALERT.configure(this, 1, 0, "W1C", 1, 'h0, 0, 1, 0);
+            this.ENABLE_FIELD_ALERT.configure(this, 1, 0, "W0C", 1, 'h0, 1, 1, 0);
             this.SW_APP_ENABLE_FIELD_ALERT = uvm_reg_field::type_id::create("SW_APP_ENABLE_FIELD_ALERT");
-            this.SW_APP_ENABLE_FIELD_ALERT.configure(this, 1, 1, "W1C", 1, 'h0, 0, 1, 0);
+            this.SW_APP_ENABLE_FIELD_ALERT.configure(this, 1, 1, "W0C", 1, 'h0, 1, 1, 0);
             this.READ_INT_STATE_FIELD_ALERT = uvm_reg_field::type_id::create("READ_INT_STATE_FIELD_ALERT");
-            this.READ_INT_STATE_FIELD_ALERT.configure(this, 1, 2, "W1C", 1, 'h0, 0, 1, 0);
+            this.READ_INT_STATE_FIELD_ALERT.configure(this, 1, 2, "W0C", 1, 'h0, 1, 1, 0);
             this.FIPS_FORCE_ENABLE_FIELD_ALERT = uvm_reg_field::type_id::create("FIPS_FORCE_ENABLE_FIELD_ALERT");
-            this.FIPS_FORCE_ENABLE_FIELD_ALERT.configure(this, 1, 3, "W1C", 1, 'h0, 0, 1, 0);
+            this.FIPS_FORCE_ENABLE_FIELD_ALERT.configure(this, 1, 3, "W0C", 1, 'h0, 1, 1, 0);
             this.ACMD_FLAG0_FIELD_ALERT = uvm_reg_field::type_id::create("ACMD_FLAG0_FIELD_ALERT");
-            this.ACMD_FLAG0_FIELD_ALERT.configure(this, 1, 4, "W1C", 1, 'h0, 0, 1, 0);
+            this.ACMD_FLAG0_FIELD_ALERT.configure(this, 1, 4, "W0C", 1, 'h0, 1, 1, 0);
             this.CS_BUS_CMP_ALERT = uvm_reg_field::type_id::create("CS_BUS_CMP_ALERT");
-            this.CS_BUS_CMP_ALERT.configure(this, 1, 12, "W1C", 1, 'h0, 0, 1, 0);
+            this.CS_BUS_CMP_ALERT.configure(this, 1, 12, "W0C", 1, 'h0, 1, 1, 0);
             this.CMD_STAGE_INVALID_ACMD_ALERT = uvm_reg_field::type_id::create("CMD_STAGE_INVALID_ACMD_ALERT");
-            this.CMD_STAGE_INVALID_ACMD_ALERT.configure(this, 1, 13, "W1C", 1, 'h0, 0, 1, 0);
+            this.CMD_STAGE_INVALID_ACMD_ALERT.configure(this, 1, 13, "W0C", 1, 'h0, 1, 1, 0);
             this.CMD_STAGE_INVALID_CMD_SEQ_ALERT = uvm_reg_field::type_id::create("CMD_STAGE_INVALID_CMD_SEQ_ALERT");
-            this.CMD_STAGE_INVALID_CMD_SEQ_ALERT.configure(this, 1, 14, "W1C", 1, 'h0, 0, 1, 0);
+            this.CMD_STAGE_INVALID_CMD_SEQ_ALERT.configure(this, 1, 14, "W0C", 1, 'h0, 1, 1, 0);
             this.CMD_STAGE_RESEED_CNT_ALERT = uvm_reg_field::type_id::create("CMD_STAGE_RESEED_CNT_ALERT");
-            this.CMD_STAGE_RESEED_CNT_ALERT.configure(this, 1, 15, "W1C", 1, 'h0, 0, 1, 0);
+            this.CMD_STAGE_RESEED_CNT_ALERT.configure(this, 1, 15, "W0C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__RECOV_ALERT_STS
 
@@ -404,27 +404,11 @@
         `uvm_object_utils(csrng__ERR_CODE)
         rand uvm_reg_field SFIFO_CMD_ERR;
         rand uvm_reg_field SFIFO_GENBITS_ERR;
-        rand uvm_reg_field SFIFO_CMDREQ_ERR;
-        rand uvm_reg_field SFIFO_RCSTAGE_ERR;
-        rand uvm_reg_field SFIFO_KEYVRC_ERR;
-        rand uvm_reg_field SFIFO_UPDREQ_ERR;
-        rand uvm_reg_field SFIFO_BENCREQ_ERR;
-        rand uvm_reg_field SFIFO_BENCACK_ERR;
-        rand uvm_reg_field SFIFO_PDATA_ERR;
-        rand uvm_reg_field SFIFO_FINAL_ERR;
-        rand uvm_reg_field SFIFO_GBENCACK_ERR;
-        rand uvm_reg_field SFIFO_GRCSTAGE_ERR;
-        rand uvm_reg_field SFIFO_GGENREQ_ERR;
-        rand uvm_reg_field SFIFO_GADSTAGE_ERR;
-        rand uvm_reg_field SFIFO_GGENBITS_ERR;
-        rand uvm_reg_field SFIFO_BLKENC_ERR;
         rand uvm_reg_field CMD_STAGE_SM_ERR;
         rand uvm_reg_field MAIN_SM_ERR;
-        rand uvm_reg_field DRBG_GEN_SM_ERR;
-        rand uvm_reg_field DRBG_UPDBE_SM_ERR;
-        rand uvm_reg_field DRBG_UPDOB_SM_ERR;
+        rand uvm_reg_field CTR_DRBG_SM_ERR;
         rand uvm_reg_field AES_CIPHER_SM_ERR;
-        rand uvm_reg_field CMD_GEN_CNT_ERR;
+        rand uvm_reg_field CTR_ERR;
         rand uvm_reg_field FIFO_WRITE_ERR;
         rand uvm_reg_field FIFO_READ_ERR;
         rand uvm_reg_field FIFO_STATE_ERR;
@@ -435,57 +419,25 @@
 
         virtual function void build();
             this.SFIFO_CMD_ERR = uvm_reg_field::type_id::create("SFIFO_CMD_ERR");
-            this.SFIFO_CMD_ERR.configure(this, 1, 0, "RO", 1, 'h0, 0, 1, 0);
+            this.SFIFO_CMD_ERR.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
             this.SFIFO_GENBITS_ERR = uvm_reg_field::type_id::create("SFIFO_GENBITS_ERR");
-            this.SFIFO_GENBITS_ERR.configure(this, 1, 1, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_CMDREQ_ERR = uvm_reg_field::type_id::create("SFIFO_CMDREQ_ERR");
-            this.SFIFO_CMDREQ_ERR.configure(this, 1, 2, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_RCSTAGE_ERR = uvm_reg_field::type_id::create("SFIFO_RCSTAGE_ERR");
-            this.SFIFO_RCSTAGE_ERR.configure(this, 1, 3, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_KEYVRC_ERR = uvm_reg_field::type_id::create("SFIFO_KEYVRC_ERR");
-            this.SFIFO_KEYVRC_ERR.configure(this, 1, 4, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_UPDREQ_ERR = uvm_reg_field::type_id::create("SFIFO_UPDREQ_ERR");
-            this.SFIFO_UPDREQ_ERR.configure(this, 1, 5, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_BENCREQ_ERR = uvm_reg_field::type_id::create("SFIFO_BENCREQ_ERR");
-            this.SFIFO_BENCREQ_ERR.configure(this, 1, 6, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_BENCACK_ERR = uvm_reg_field::type_id::create("SFIFO_BENCACK_ERR");
-            this.SFIFO_BENCACK_ERR.configure(this, 1, 7, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_PDATA_ERR = uvm_reg_field::type_id::create("SFIFO_PDATA_ERR");
-            this.SFIFO_PDATA_ERR.configure(this, 1, 8, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_FINAL_ERR = uvm_reg_field::type_id::create("SFIFO_FINAL_ERR");
-            this.SFIFO_FINAL_ERR.configure(this, 1, 9, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_GBENCACK_ERR = uvm_reg_field::type_id::create("SFIFO_GBENCACK_ERR");
-            this.SFIFO_GBENCACK_ERR.configure(this, 1, 10, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_GRCSTAGE_ERR = uvm_reg_field::type_id::create("SFIFO_GRCSTAGE_ERR");
-            this.SFIFO_GRCSTAGE_ERR.configure(this, 1, 11, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_GGENREQ_ERR = uvm_reg_field::type_id::create("SFIFO_GGENREQ_ERR");
-            this.SFIFO_GGENREQ_ERR.configure(this, 1, 12, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_GADSTAGE_ERR = uvm_reg_field::type_id::create("SFIFO_GADSTAGE_ERR");
-            this.SFIFO_GADSTAGE_ERR.configure(this, 1, 13, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_GGENBITS_ERR = uvm_reg_field::type_id::create("SFIFO_GGENBITS_ERR");
-            this.SFIFO_GGENBITS_ERR.configure(this, 1, 14, "RO", 1, 'h0, 0, 1, 0);
-            this.SFIFO_BLKENC_ERR = uvm_reg_field::type_id::create("SFIFO_BLKENC_ERR");
-            this.SFIFO_BLKENC_ERR.configure(this, 1, 15, "RO", 1, 'h0, 0, 1, 0);
+            this.SFIFO_GENBITS_ERR.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
             this.CMD_STAGE_SM_ERR = uvm_reg_field::type_id::create("CMD_STAGE_SM_ERR");
-            this.CMD_STAGE_SM_ERR.configure(this, 1, 20, "RO", 1, 'h0, 0, 1, 0);
+            this.CMD_STAGE_SM_ERR.configure(this, 1, 20, "RO", 1, 'h0, 1, 1, 0);
             this.MAIN_SM_ERR = uvm_reg_field::type_id::create("MAIN_SM_ERR");
-            this.MAIN_SM_ERR.configure(this, 1, 21, "RO", 1, 'h0, 0, 1, 0);
-            this.DRBG_GEN_SM_ERR = uvm_reg_field::type_id::create("DRBG_GEN_SM_ERR");
-            this.DRBG_GEN_SM_ERR.configure(this, 1, 22, "RO", 1, 'h0, 0, 1, 0);
-            this.DRBG_UPDBE_SM_ERR = uvm_reg_field::type_id::create("DRBG_UPDBE_SM_ERR");
-            this.DRBG_UPDBE_SM_ERR.configure(this, 1, 23, "RO", 1, 'h0, 0, 1, 0);
-            this.DRBG_UPDOB_SM_ERR = uvm_reg_field::type_id::create("DRBG_UPDOB_SM_ERR");
-            this.DRBG_UPDOB_SM_ERR.configure(this, 1, 24, "RO", 1, 'h0, 0, 1, 0);
+            this.MAIN_SM_ERR.configure(this, 1, 21, "RO", 1, 'h0, 1, 1, 0);
+            this.CTR_DRBG_SM_ERR = uvm_reg_field::type_id::create("CTR_DRBG_SM_ERR");
+            this.CTR_DRBG_SM_ERR.configure(this, 1, 22, "RO", 1, 'h0, 1, 1, 0);
             this.AES_CIPHER_SM_ERR = uvm_reg_field::type_id::create("AES_CIPHER_SM_ERR");
-            this.AES_CIPHER_SM_ERR.configure(this, 1, 25, "RO", 1, 'h0, 0, 1, 0);
-            this.CMD_GEN_CNT_ERR = uvm_reg_field::type_id::create("CMD_GEN_CNT_ERR");
-            this.CMD_GEN_CNT_ERR.configure(this, 1, 26, "RO", 1, 'h0, 0, 1, 0);
+            this.AES_CIPHER_SM_ERR.configure(this, 1, 25, "RO", 1, 'h0, 1, 1, 0);
+            this.CTR_ERR = uvm_reg_field::type_id::create("CTR_ERR");
+            this.CTR_ERR.configure(this, 1, 26, "RO", 1, 'h0, 1, 1, 0);
             this.FIFO_WRITE_ERR = uvm_reg_field::type_id::create("FIFO_WRITE_ERR");
-            this.FIFO_WRITE_ERR.configure(this, 1, 28, "RO", 1, 'h0, 0, 1, 0);
+            this.FIFO_WRITE_ERR.configure(this, 1, 28, "RO", 1, 'h0, 1, 1, 0);
             this.FIFO_READ_ERR = uvm_reg_field::type_id::create("FIFO_READ_ERR");
-            this.FIFO_READ_ERR.configure(this, 1, 29, "RO", 1, 'h0, 0, 1, 0);
+            this.FIFO_READ_ERR.configure(this, 1, 29, "RO", 1, 'h0, 1, 1, 0);
             this.FIFO_STATE_ERR = uvm_reg_field::type_id::create("FIFO_STATE_ERR");
-            this.FIFO_STATE_ERR.configure(this, 1, 30, "RO", 1, 'h0, 0, 1, 0);
+            this.FIFO_STATE_ERR.configure(this, 1, 30, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__ERR_CODE
 
@@ -500,7 +452,7 @@
 
         virtual function void build();
             this.ERR_CODE_TEST = uvm_reg_field::type_id::create("ERR_CODE_TEST");
-            this.ERR_CODE_TEST.configure(this, 5, 0, "RW", 1, 'h0, 0, 1, 0);
+            this.ERR_CODE_TEST.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : csrng__ERR_CODE_TEST
 
@@ -515,7 +467,7 @@
 
         virtual function void build();
             this.MAIN_SM_STATE = uvm_reg_field::type_id::create("MAIN_SM_STATE");
-            this.MAIN_SM_STATE.configure(this, 8, 0, "RO", 1, 'h4e, 1, 1, 0);
+            this.MAIN_SM_STATE.configure(this, 6, 0, "RO", 1, 'h37, 1, 1, 0);
         endfunction : build
     endclass : csrng__MAIN_SM_STATE
 

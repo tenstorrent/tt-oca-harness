@@ -5,8 +5,6 @@ SHELL := /bin/bash
 # A trimmed copy of fw/sep/bootcode adapted for the OSS DV flow:
 #   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT has no Cadence xSPI, so
 #     the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path.
-#   * RSA/OTBN are stubbed (src/rsa_verify.c, src/otbn_driver.c) -- non-secure
-#     boot never uses them, which drops the OTBN assembler toolchain dependency.
 #
 # The manifest+BL1 image the ROM boots (from the SMC-SRAM path) is built entirely
 # from source in this tree: bl1_pass_test (../tests/bl1_pass_test) is compiled and
@@ -100,7 +98,15 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/fuse_lock.o \
 	$(BUILD_DIR)/lifecycle.o $(BUILD_DIR)/manifest_crypto.o \
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
-	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o
+	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \
+	$(BUILD_DIR)/rsa_3072_app_otbn.o
+
+# The secure-boot path verifies the manifest signature on OTBN, so the ROM links
+# the same generated RSA-3072 OTBN application the fw test engine builds. The
+# app (IMEM/DMEM images + DMEM symbol offsets) is emitted by the shared engine
+# under fw/build/otbn/; `make -C .. dv-fw-otbn-apps` regenerates it.
+OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
+OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
 # Optional extra sources injected by a nonfree overlay build (absolute .c paths).
 # Their strong symbols override the weak stubs in src/ at link time (e.g. the
@@ -120,7 +126,7 @@ CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 # through the picolibc spec file - hence the specs on the compile line only.
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 	--specs=picolibc.specs \
-	-I$(INCLUDE_DIR) -I$(BUILD_DIR) $(REG_INCLUDE_DIRS) \
+	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
@@ -164,6 +170,13 @@ $(BUILD_DIR)/rom_metadata.o: $(SRC_DIR)/rom_metadata.c $(BUILD_DIR)/bl0_version.
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
+
+# Generated OTBN application image, built out of tree by the shared fw engine.
+$(BUILD_DIR)/rsa_3072_app_otbn.o: $(OTBN_APP_C) | $(BUILD_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
+
+$(OTBN_APP_C):
+	$(MAKE) -C "$(DV_ROOT)/fw" -f fw.mk OCAH_ROOT="$(OCAH_ROOT)" dv-fw-otbn-apps
 
 # Compile rule for NONFREE_BOOTCODE_SOURCES (static pattern rule so Make maps
 # each object back to its out-of-tree source path).

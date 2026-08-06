@@ -23,11 +23,11 @@
 // Local Alias Configuration
 //-----------------------------------------------------------------------------
 
-// The local alias base address (default 0xC000_0000)
+// The local alias base address (#3711 reset default 0xD000_0000)
 // When CPU accesses address X in range [local_alias_base, local_alias_base + region_size),
-// it gets remapped to X - local_alias_base + target_base (where target_base = 0)
-#define LOCAL_ALIAS_BASE 0xC0000000UL
-#define LOCAL_ALIAS_OFFSET 0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0)
+// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 post-#3711)
+#define LOCAL_ALIAS_BASE 0xD0000000UL
+#define LOCAL_ALIAS_OFFSET 0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0xD000_0000 - 0x1000_0000)
 
 // Direct peripheral addresses (physical addresses at 0x1000_0000 region)
 #define SCRATCH_COLD_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR // 0x1080_2000

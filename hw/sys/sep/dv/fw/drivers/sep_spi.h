@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "spi_mux.h"
+
 // OpenTitan SPI host CSR block (SEP local fabric @ 0x10B0_0000).
 #define SPI_CTRL_BASE 0x10B00000u
 #define SPI_CTRL_REG (SPI_CTRL_BASE + 0x010)
@@ -33,6 +35,12 @@
 // CFG: clkdiv in [15:0]; CPOL/CPHA = 0 (Mode 0). The csnidle/csnlead/csntrail
 // timing in [31:16] gives the device CS setup/hold the OSS flash BFM needs.
 #define SPI_CFG_CLKDIV9_CSN 0x02220009u
+
+// Same CS timing, but with a caller-supplied divider so the SCLK can track the
+// actual core clock (see spi_clk.h). A fixed divider only holds at one core
+// frequency.
+#define SPI_CFG_CSN_TIMING 0x02220000u
+#define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv) & 0xFFFFu))
 
 // CMD fields.
 #define SPI_CMD_LEN_SHIFT 0     // LEN = (#bytes - 1)
@@ -61,15 +69,13 @@ static inline void spi_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
 }
 
-// SPI mux control (extension aperture, offset 0). In the sep_wrapper DUT the
-// och_sep_spi_mux_ctrl_ot register resets SPI_MUX_CTRL.cs_force_high=1, holding the
-// SPI chip-select deasserted; a flash scenario must clear it so CS can toggle. On
-// bare sep this aperture was tied off (the write was a no-op), so it is harmless in
-// either build.
-#define SEP_SPI_MUX_CTRL 0x20000000u
-
+// SPI mux control. Out of reset SPI_MUX_CTRL selects the Cadence xSPI controller
+// and forces CS# high, so an OT scenario must both point the mux at the OT host
+// (spi_sel=1) and release CS# (cs_force_high=0). Writing a plain 0 releases CS#
+// but leaves spi_sel=0, i.e. still Cadence, which the OT host cannot drive
+// through.
 static inline void sep_spi_mux_release_cs(void) {
-    spi_wr(SEP_SPI_MUX_CTRL, 0u); // clear cs_force_high (bit 0)
+    spi_mux_select_ot();
 }
 
 // Spin until the controller can accept a new command (bounded so a wedged host
