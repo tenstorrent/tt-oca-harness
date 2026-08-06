@@ -1,6 +1,6 @@
 # Key Manager Testbench
 
-This directory contains the cocotb-based testbench for the Key Manager MVP subsystem.
+This directory contains the cocotb-based testbench for the Key Manager subsystem.
 
 ## Prerequisites
 
@@ -13,35 +13,33 @@ This directory contains the cocotb-based testbench for the Key Manager MVP subsy
 ## Directory Structure
 
 ```
-hw/ip/key_manager/
-├── tb/                   # This directory – testbench and test firmware
+hw/ip/key_manager/dv/
+├── tb/                       # This directory – testbench, run and regression targets
 │   ├── Makefile              # Build and run tests
 │   ├── bender-targets.mk     # Bender filelist generation targets
 │   ├── tb.f                  # Testbench file list (generated)
 │   ├── rtl.f                 # RTL file list (generated)
 │   ├── tb_key_manager.sv     # Top-level testbench wrapper
 │   ├── test_firmware.py      # Generic firmware test runner
-│   ├── test_*.py             # Individual cocotb tests (if any)
-│   ├── firmware/             # Test firmware (uses primary firmware via KM_FIRMWARE_DIR)
-│   │   ├── .gitignore        # Git ignore patterns for build artifacts
-│   │   ├── Makefile          # Firmware build system
-│   │   ├── km_exec_from_vrom.ld  # Linker script (execute from VROM)
-│   │   ├── common/           # Test-only headers and utilities
-│   │   │   ├── test_common.h # Test protocol (includes irq_common.h)
-│   │   │   └── vuart.h       # Virtual UART for printf
-│   │   ├── demos/            # Demo/test programs
-│   │   │   └── hello_world.c
-│   │   ├── tests/            # Firmware test sources (KM block-level cocotb testbench)
-│   │   │   └── test_*.c      #   auto-discovered by regression; must use test_common.h protocol
-│   │   ├── sep_images/       # SEP UVM testbench KM ROM images (NOT in KM regression)
-│   │   │   └── test_*.c      #   mailbox-protocol agents; build with ROM_IMAGE=1
-│   │   └── build/            # Generated (git-ignored): *.o, *.elf, *.rom.hex, *.vrom.hex, *.dis, *.map, *.sym
+│   ├── cycle_counts/         # Recorded per-test cycle counts (orders the regression)
 │   └── README.md             # This file
-└── firmware/             # Primary KM firmware (shared runtime, startup, headers)
-    ├── include/         # irq_common.h, etc.
-    ├── src/             # rom_memcpy.c, etc.
-    ├── startup/         # crt0.s
-    └── README.md
+├── fw/                       # Firmware under test
+│   ├── fw.mk                 # Sources, includes and link modes for the shared build engine
+│   ├── toolchain.mk          # Architecture, ABI and compiler/linker flags
+│   ├── include/              # Public headers (rom_*.h, irq_common.h)
+│   ├── drivers/              # Runtime sources (rom_*.c, rom_*.S)
+│   ├── startup/              # crt0.s
+│   ├── link/                 # Linker scripts; link/modes/ holds one script per link mode
+│   │   └── modes/            #   vrom.ld (default, VROM split), rom.ld (all-in-ROM)
+│   ├── scripts/              # add_rom_parity.py, km_stack_analyze.py
+│   ├── tests/                # One directory per test
+│   │   ├── common/           # Test-only headers (test_common.h, vuart.h)
+│   │   └── test_*/           #   auto-discovered by regression; must use test_common.h protocol
+│   ├── sep_images/           # KM ROM images for the SEP UVM testbench (not run by this regression)
+│   ├── production/           # rom_main, the production ROM entry (all-in-ROM, not run by this regression)
+│   ├── build/                # Generated (git-ignored): *.o, *.elf, *.rom.hex, *.vrom.hex, *.dis, *.map, *.sym
+│   └── README.md             # Firmware layout and build notes
+└── cocotb/                   # Cocotb support code (env, seq_lib, assertions)
 ```
 
 ## Running Tests
@@ -52,23 +50,20 @@ hw/ip/key_manager/
 cd hw/ip/key_manager/dv/tb
 
 # Build firmware and run it in the cocotb/VCS testbench (recommended)
-make run_fw FW_TEST=hello_world
 make run_fw FW_TEST=test_rom_crc
 make run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
 
 # Run a cocotb hardware test
 make run TEST=test_rom_parity
 
-# Run all firmware tests (automatically discovers tests in firmware/tests/)
+# Run all firmware tests (automatically discovers tests in ../fw/tests/)
 make regression
 ```
 
-### Which `run_fw`?
+### Building firmware vs running it
 
-There are two different `run_fw` targets in the key manager test tree:
-
-- `hw/ip/key_manager/dv/tb/Makefile`: builds firmware, launches simulation, and writes logs to `sim/logs/<test>/`
-- `hw/ip/key_manager/dv/fw/Makefile`: firmware-build convenience target only; it does **not** run the cocotb/VCS testbench
+- `hw/ip/key_manager/dv/tb/Makefile` owns `run_fw`: it builds the firmware, launches simulation, and writes logs to `sim/logs/<test>/`
+- `make -f ocah.mk ocah-dv-fw-tests TARGET=key_manager TEST=<name>` builds one image and nothing else; it does **not** run the cocotb/VCS testbench. `dv/fw/fw.mk` and `dv/fw/toolchain.mk` configure that build but are includes, not entry points
 
 If you want to run any firmware-driven test in simulation, run it from
 `hw/ip/key_manager/dv/tb`:
@@ -83,7 +78,7 @@ make run_fw FW_TEST=test_myfeature
 When `WAVES=1`, VCD is produced by default. Use `FSDB=1` with `WAVES=1` to generate FSDB instead.
 
 ```bash
-make run_fw FW_TEST=hello_world WAVES=1
+make run_fw FW_TEST=test_rom_crc WAVES=1
 make run TEST=test_rom_parity WAVES=1
 make run TEST=test_rom_parity WAVES=1 FSDB=1   # FSDB instead of VCD
 ```
@@ -115,7 +110,8 @@ reported through a standardized protocol.
 
 ### Writing a Firmware Test
 
-Create a new file in `firmware/tests/` (e.g., `firmware/tests/test_myfeature.c`):
+Create a directory under `../fw/tests/` named after the test, holding a source file of the
+same name (e.g. `../fw/tests/test_myfeature/test_myfeature.c`):
 
 ```c
 #include "test_common.h"
@@ -283,7 +279,7 @@ The testbench includes a behavioral AXI-Lite register-file model wired to the DU
 
 ### Virtual ROM (VROM)
 
-The **Virtual ROM (VROM)** is a testbench-only memory region used for main program code (`.text`) and read-only data (`.rodata`). The physical 16KB ROM holds only a small bootstrap (reset, IRQ vector, IRQ handler); the linker script `km_exec_from_vrom.ld` places the rest in VROM so test images are not limited by ROM size.
+The **Virtual ROM (VROM)** is a testbench-only memory region used for main program code (`.text`) and read-only data (`.rodata`). The physical 16KB ROM holds only a small bootstrap (reset, IRQ vector, IRQ handler); the `vrom` link mode (`dv/fw/link/modes/vrom.ld`) places the rest in VROM so test images are not limited by ROM size.
 
 **Key Features:**
 - **Address Range**: 0x1000_0000 - 0x1000_FFFF (64KB)
@@ -293,7 +289,7 @@ The **Virtual ROM (VROM)** is a testbench-only memory region used for main progr
 - **Always used**: All firmware tests use VROM; build always generates a non-empty VROM hex file
 
 **Firmware Build Process:**
-1. Linker script (`km_exec_from_vrom.ld`) places `.text` and `.rodata` in VROM at 0x1000_0000
+1. Linker script (`link/modes/vrom.ld`) places `.text` and `.rodata` in VROM at 0x1000_0000
 2. Build process generates `firmware/build/<test>/<test>.vrom.hex` containing code and rodata
 3. Testbench automatically loads VROM hex file if present (via `+VROM_HEX_FILE` plusarg)
 4. If VROM hex file is missing or empty, testbench initializes VROM with zeros
@@ -557,15 +553,15 @@ uint32_t result = TB_CMD_RESULT;
 
 ## Available Tests
 
-The firmware-driven tests are the `test_*.c` files under `firmware/tests/`,
-auto-discovered by the firmware `Makefile`. Each file's header comment
+The firmware-driven tests are the `test_*` directories under `dv/fw/tests/`,
+auto-discovered by the shared build engine. Each test's header comment
 documents what it covers.
 
 To see the list and run one:
 
 ```bash
 # from hw/ip/key_manager/dv/tb
-ls firmware/tests/test_*.c        # the authoritative list
+ls -d ../fw/tests/test_*          # the authoritative list
 make run_fw FW_TEST=<test_name>   # e.g. FW_TEST=test_sram_parity
 ```
 
@@ -574,24 +570,48 @@ timeouts, build-only).
 
 ### SEP UVM vs KM block-level firmware images
 
-Files under `firmware/tests/` are auto-discovered by the KM regression and must follow the
+Tests under `dv/fw/tests/` are auto-discovered by the KM regression and must follow the
 `test_common.h` protocol (call `TEST_INIT()`, report pass/fail via KMCSR registers). They
 run inside the KM block-level cocotb testbench (`tb_key_manager.sv`).
 
-Files under `firmware/sep_images/` are KM ROM images intended for the **SEP UVM testbench**
-(`dv/sep/tb/`). They communicate with the SEP host via the hardware mailbox rather than
-KMCSR registers, park in an infinite loop when done, and require a live SEP host (EL2 CPU
-or UVM sequence) to complete the test. These are **not** auto-discovered by the KM regression
-and must be built with `ROM_IMAGE=1`:
+Files under `dv/fw/sep_images/` are KM ROM images intended for the **SEP UVM testbench**
+(`nonfree/hw/sys/sep/dv/tb/`), which loads them with `+KM_ROM_HEX_FILE`. They report to the
+SEP host over the hardware mailbox rather than through KMCSR registers, and they need a live
+SEP host (a UVM sequence driving the EL2 CPU) to drive or drain them — each one free-runs or
+parks in an infinite loop rather than ending on its own. That is why they sit outside
+`tests/`: the KM regression enumerates `dv/fw/tests/test_*`, so a test placed there would be
+run without a host and burn its whole cycle budget.
+
+| Image | Purpose |
+|-------|---------|
+| `test_efuse_km_axil` | Routing/remap correctness for KM CPU accesses to the real eFuse controller; reports a 6-word result frame |
+| `test_efuse_km_perm` | Generic UVM-driven eFuse access agent, used to prove KM and SEP host are subject to the same permission policy |
+| `test_efuse_km_coexist` | Free-running eFuse writer that contends with concurrent SEP host reads at the eFuse mux |
+
+`production/rom_main` is loaded the same way and by the most SEP tests, but it is not a test
+image: it is the real ROM entry (`rom_boot_init()` then the `rom_main_step()` mailbox loop),
+used wherever a SEP test needs the KM running its actual firmware rather than a directed
+agent.
+
+All of them are built by the normal firmware targets — no separate flag. Because the SEP
+testbench loads only the physical KM ROM and provides no VROM, `fw.mk` gives these images the
+`rom` link mode (all-in-ROM, production geometry) instead of the default `vrom` mode:
 
 ```bash
-# from hw/ip/key_manager/dv/fw
-make TEST=test_efuse_km_axil ROM_IMAGE=1 all
+# one image, from the repo root
+make -f ocah.mk ocah-dv-fw-tests TARGET=key_manager TEST=rom_main
+
+# or all firmware, including these images
+cd hw/ip/key_manager/dv/tb && make build_all_fw
 ```
+
+Each produces `dv/fw/build/tests/<name>/<name>.rom.parhex` (the full parity-protected ROM
+image) plus `<name>.sym`, which the SEP UVM reads alongside the hex to resolve firmware
+symbols by name.
 
 ### Running Firmware Regression
 
-The top-level `make regression` target lives in `hw/ip/key_manager/dv/tb/Makefile`. It runs every `test_*.c` under `firmware/tests/` and skips demos such as `hello_world`. It is not the same as `make regression` in `tb/firmware/Makefile`, which only builds firmware images.
+The top-level `make regression` target lives in `hw/ip/key_manager/dv/tb/Makefile`. It runs every `test_*` directory under `dv/fw/tests/`. To build the images without running them, use `make build_all_fw`.
 
 #### Basic Regression
 
@@ -610,7 +630,7 @@ Each full run does the following in order:
 5. Record `Cycles:` from `regression_run.log` into `cycle_counts/<name>.txt` when possible.
 6. Print a summary from `regression_result.txt` per test; exit with failure if any test failed.
 
-The default goal in `tb/firmware/Makefile` builds `$(HEX_FILE)` (ROM hex from the linked ELF). See that Makefile for how ELF link and hex generation relate.
+This tree has no standalone firmware `Makefile`: `dv/fw/fw.mk` and `dv/fw/toolchain.mk` are consumed by the shared build engine in `hw/common/dv/fw/`, which links the ELF and post-processes it into the ROM and VROM hex images. See `dv/fw/README.md` for that flow.
 
 #### Regression with Options
 
@@ -620,12 +640,6 @@ make regression PARALLEL_JOBS=12 FW_BUILD_JOBS=6
 ```
 
 Waveform dumps are not supported during full regression (`WAVES=1` / `FSDB=1` are rejected) because all jobs share one `simv`. Run individual tests with `make run_fw FW_TEST=<name> WAVES=1` when you need waves.
-
-**Note:** The `hello_world` demo in `firmware/demos/` is **not** included in the regression. To run it individually:
-
-```bash
-make run_fw FW_TEST=hello_world
-```
 
 #### Regression Output
 

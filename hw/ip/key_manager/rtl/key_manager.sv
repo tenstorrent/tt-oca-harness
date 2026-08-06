@@ -4,7 +4,7 @@
 
 /**
  * @file key_manager.sv
- * @brief Key Manager MVP top-level module.
+ * @brief Key Manager top-level module.
  *
  * @details Integrates all Key Manager subsystem components into a single
  *          hierarchical block:
