@@ -71,8 +71,18 @@ OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 
 # Blocks whose regblock RTL answers a bad address or a write to a read-only
 # register with an error response, rather than silently accepting it. Listed by
-# name; the overlay appends its own (the TRNG wrapper, whose DV env checks it).
-OCAH_REG_ERR_CHECK_BLOCKS ?=
+# name; the overlay appends its own.
+OCAH_REG_ERR_CHECK_BLOCKS ?= \
+  abr_wrapper_key \
+  aes_wrapper_key \
+  hmac_wrapper_key \
+  km_csr \
+  km_drbg_sampler \
+  km_kpv \
+  km_mailbox_km \
+  km_mailbox_sep \
+  kmac_wrapper_key \
+  otbn_wrapper_key
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
