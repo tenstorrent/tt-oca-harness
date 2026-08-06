@@ -5,7 +5,7 @@
 OUTPUT_ARCH( "riscv" )
 
 MEMORY {
-    rom(rx):   ORIGIN = 0x00000000, LENGTH = 0x2000  /* 8KB ROM */
+    rom(rx):   ORIGIN = 0x00000000, LENGTH = 0x4000  /* 16KB ROM */
     sram(rwx): ORIGIN = 0x00004000, LENGTH = 0x4000  /* 16KB SRAM */
 }
 
@@ -53,5 +53,5 @@ SECTIONS {
     /* Overflow assertion */
     ASSERT(SIZEOF(.text.reset) + SIZEOF(.text.irq_vec) + SIZEOF(.text.irq_handler)
            + SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.data) <= LENGTH(rom),
-           "ROM overflow: text + rodata + data load image exceeds 8KB ROM")
+           "ROM overflow: text + rodata + data load image exceeds 16KB ROM")
 }
