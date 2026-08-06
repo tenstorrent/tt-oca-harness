@@ -1,0 +1,386 @@
+hw/sys/sep/dv/fw/tests/fabric_alias_remap_cacheable_default_test/fabric_alias_remap_cacheable_default_test.c
+  s_d605cb93395a31::t_2f22f46748a906 52-53,57,61-62,66
+tools/docker/Dockerfile
+  s_d605cb93395a31::t_e0ef12a6595833 32
+hw/sys/sep/dv/fw/tests/spi_ot_dma_rx_test/spi_ot_dma_rx_test.c
+  s_d605cb93395a31::t_a19ba452074f51 1-32,35-38,40-70,72-75,78-79,81-97,99-123,125-133,136-165,168-183,186-192,194-209,212-217,219,222-244,246-247,249
+hw/sys/sep/dv/fw/bootcode/src/otbn_driver.c
+  s_d605cb93395a31::t_ad10f7cc4c6ba2 3,5-10,14-47,49-74,78-98,102-104,108-110,114-128
+hw/sys/sep/dv/fw/drivers/sep_spi.h
+  s_d605cb93395a31::t_7a8a72ad0c438e 14-15
+  s_d605cb93395a31::t_1e105448b7ed2c 39-44
+  s_d605cb93395a31::t_4d11424e3e424b 72-76,78
+hw/sys/sep/dv/fw/tests/spi_ot_watermark_test/spi_ot_watermark_test.c
+  s_d605cb93395a31::t_9256bbfb4c842d 38
+  s_d605cb93395a31::t_d83cac2082ed73 58
+hw/sys/sep/dv/fw/tests/fabric_filter_default_deny_reset_test/fabric_filter_default_deny_reset_test.c
+  s_d605cb93395a31::t_306b9d33e57a1a 22
+  s_d605cb93395a31::t_4a95c6cb09cef0 92-93,97-99
+hw/sys/sep/dv/fw/tests/common/spi_clk.h
+  s_d605cb93395a31::t_c27122db46a4a3 1-64
+hw/sys/sep/dv/fw/tests/spi_ot_reg_test/spi_ot_reg_test.c
+  s_d605cb93395a31::t_746c98895b4a77 32
+  s_d605cb93395a31::t_2a621904602100 76,140
+  s_d605cb93395a31::t_7ec51fa50c2962 79
+  s_d605cb93395a31::t_7cd4da006acc14 85
+hw/sys/sep/dv/fw/tests/spi_ot_dma_tx_test/spi_ot_dma_tx_test.c
+  s_d605cb93395a31::t_b1b3c925a4bcfa 1-27,30-33,35-64,67-71,73-74,76-78,80-83,85,87-100,105-132,135-136,138-159,162-167,170-195,199-212,214,217-220,222-228,230,232-233,235
+hw/sys/sep/dv/fw/fw.mk
+  s_d605cb93395a31::t_709f505e970ac5 132
+  s_d605cb93395a31::t_7620c8911df59a 115,119-131,133,135-141
+  s_d605cb93395a31::t_317d623442408f 111,113
+  s_d605cb93395a31::t_05017e5b9fa8a7 29-88
+  s_d605cb93395a31::t_01a5d871471d6c 95-110,112,114
+  s_d605cb93395a31::t_7260f0b69e46f2 134
+  s_d605cb93395a31::t_b8d0c4908e0c4c 144-148,155
+  s_d605cb93395a31::t_176de16b0f2701 150,154
+  s_d605cb93395a31::t_dbd10ad57ed953 191-196
+  s_d605cb93395a31::t_eb1e58e389b62b 163-190
+  s_d605cb93395a31::t_9287c761422617 142
+hw/ip/cross_trigger/cross_trigger_network/dv/tb_vcs/test/test_base.py
+  s_d605cb93395a31::t_49ca2185b2df25 18-20
+  s_d605cb93395a31::t_cdbc3750890a55 21
+  s_d605cb93395a31::t_0f76c3294cf657 15-17
+  s_d605cb93395a31::t_a8c899433e9adb 22-24
+ocah.mk
+  s_d605cb93395a31::t_549abbcd04c591 26
+hw/sys/sep/dv/fw/tests/fabric_mailbox_iss_lock_reset_test/fabric_mailbox_iss_lock_reset_test.c
+  s_d605cb93395a31::t_e8063932e1cfe9 21
+hw/sys/sep/dv/fw/tests/local_alias_sanity/local_alias_sanity.c
+  s_d605cb93395a31::t_268c2e649940e2 26,28-30
+hw/sys/sep/dv/fw/tests/otbn_plic_test/otbn_plic_test.c
+  s_d605cb93395a31::t_fcf668e903dbd2 164
+  s_d605cb93395a31::t_5fbf86e966a870 23-24,27-28
+  s_d605cb93395a31::t_43a4004aa49487 215
+  s_d605cb93395a31::t_d71f49a328c3ed 49-50
+hw/common/dv/fw/sep.h
+  s_d605cb93395a31::t_4eaee9f14adb3a 87-89
+  s_d605cb93395a31::t_636506b5a50558 109-120
+  s_d605cb93395a31::t_2af26206f97560 71-86
+  s_d605cb93395a31::t_ae032337eb7a97 98-108,121-126
+  s_d605cb93395a31::t_1a4dc008e7891d 156-171
+  s_d605cb93395a31::t_2e9a8c34d3aa4e 90-97
+hw/sys/sep/dv/fw/tests/common_otbn/otbn_app.mk
+  s_d605cb93395a31::t_6148fb33b97dc9 29-30
+  s_d605cb93395a31::t_6fb1dadf4fe9d1 38-41
+  s_d605cb93395a31::t_91d8d404e6c777 71-80
+  s_d605cb93395a31::t_2eef9c1a1ed317 31-34
+  s_d605cb93395a31::t_204d4e20031116 26-28
+  s_d605cb93395a31::t_67bc74bd2d684b 35-37
+  s_d605cb93395a31::t_4ef460ab9a735a 42-44,68-70
+  s_d605cb93395a31::t_d3c2e6fb69f948 81-83
+hw/common/dv/fw/compile.mk
+  s_d605cb93395a31::t_a546d7ed3bf81b 136
+  s_d605cb93395a31::t_4844869267be76 43-46,52-56
+  s_d605cb93395a31::t_8e64390846377e 210,212-213,216-221,224-227,231-234,236-239,242,247,249-250,254-255
+  s_d605cb93395a31::t_210f287b483604 47-51
+  s_d605cb93395a31::t_909051d49fc517 66-68
+  s_d605cb93395a31::t_950d3eee2c0df1 240-241
+  s_d605cb93395a31::t_b31c049b0580bd 30-32
+  s_d605cb93395a31::t_5006dde28151d8 222
+  s_d605cb93395a31::t_9b35f4e95b9215 159-161,163-164,166-167
+  s_d605cb93395a31::t_dfc07de66b1314 71-72
+  s_d605cb93395a31::t_0ffaad0681fdf1 156
+  s_d605cb93395a31::t_d906b4f9668dca 324
+hw/sys/sep/dv/fw/tests/sep_reset_ctrl_csr_test/sep_reset_ctrl_csr_test.c
+  s_d605cb93395a31::t_f3c2d8b45e1347 31-32
+  s_d605cb93395a31::t_64d478c0630ff2 7-20
+  s_d605cb93395a31::t_4c73b80644fdf2 87,89-92,98-102,104-105,107-108,110-111,113-114,117-121,124-131,133,137-143,145-202,204,206-213,217
+  s_d605cb93395a31::t_6a733762fc56f3 246-252
+  s_d605cb93395a31::t_e586124fc7afa7 55-58
+hw/sys/sep/dv/fw/tests/wdt_bite_before_bark_test/wdt_bite_before_bark_test.c
+  s_d605cb93395a31::t_f7a3e438a292ce 79-87,90-121
+  s_d605cb93395a31::t_8b932372ae551d 132
+  s_d605cb93395a31::t_5d9199fd6bccb0 13-15,17-22
+hw/sys/sep/dv/fw/tests/dma_hash_test/dma_hash_test.c
+  s_d605cb93395a31::t_482af7ef8ad0c2 1-2,4-13,16-19,22,24-29,31,34,37,40-42,46-90,92-94,96-100,111-120,123-183,185-228,231-234,237-262,265-269,272-278,280,282-287,289,291-310,314-325,330-333,335-344
+hw/sys/sep/dv/fw/tests/hmac_cfg_digest_size_test/hmac_cfg_digest_size_test.c
+  s_d605cb93395a31::t_9ce3905cc9bd91 39
+hw/sys/sep/dv/fw/tests/kmac_reg_sanity_test/kmac_reg_sanity_test.c
+  s_d605cb93395a31::t_2810b655e4ce19 43-54
+  s_d605cb93395a31::t_8509bda64224ff 7-9
+  s_d605cb93395a31::t_23499bd57ad205 185-202
+  s_d605cb93395a31::t_34f83a5eb91136 216
+hw/sys/sep/dv/fw/bootcode/src/rsa_verify.c
+  s_d605cb93395a31::t_d55445a1e79ce0 3,5-21,23,26-124,127-179
+hw/sys/sep/dv/fw/bootcode/Makefile
+  s_d605cb93395a31::t_a6cb9f8cbc7ec9 179
+  s_d605cb93395a31::t_6a6df2424e9a9e 129
+  s_d605cb93395a31::t_b83fa31a0bfde1 101-109
+  s_d605cb93395a31::t_d979f6490a2af6 174-178,180
+hw/sys/sep/dv/fw/tests/memory_sanity/memory_sanity.c
+  s_d605cb93395a31::t_21ea5394f76052 239-242
+hw/sys/sep/dv/fw/toolchain.mk
+  s_d605cb93395a31::t_1e4dfd5c002667 11-20
+hw/sys/sep/dv/fw/tests/common_otbn/generate_otbn_c.py
+  s_d605cb93395a31::t_5cf93229d48467 34-41,53,85,94
+  s_d605cb93395a31::t_24f2a662a02b94 90-93
+  s_d605cb93395a31::t_20c892241949a2 112-117
+  s_d605cb93395a31::t_79c55faef1a227 173-181,194
+  s_d605cb93395a31::t_096cdc36216689 30-31
+  s_d605cb93395a31::t_6b13711aceb998 27-29
+  s_d605cb93395a31::t_2b8e9b4cc446b9 32-33
+  s_d605cb93395a31::t_acaecdec012b2c 42-44,50-52
+  s_d605cb93395a31::t_ecc406920baa5d 54-56,82-84
+  s_d605cb93395a31::t_bc453c1de4f7f0 86-89
+  s_d605cb93395a31::t_311f323b5b1db0 95-97,109-111
+  s_d605cb93395a31::t_7fd03f4b0c1feb 118-120,170-172
+  s_d605cb93395a31::t_8aa61e470271e3 182-184,191-193
+  s_d605cb93395a31::t_0fe61af8ec4d22 195-197
+dv/dtp/tb/cocotb/env/FCOV_README.md
+  s_d605cb93395a31::t_743bb660316bdc 1-548
+dv/dtp/tb/cocotb/env/README.md
+  s_d605cb93395a31::t_7d6fc0c9fc0f10 1-247
+dv/dtp/tb/cocotb/env/__init__.py
+  s_d605cb93395a31::t_88a58afb2885fa 1-54
+dv/dtp/tb/cocotb/env/ctm_bfm.py
+  s_d605cb93395a31::t_16417f8e1c719b 1-619
+dv/dtp/tb/cocotb/env/ctp_bfm.py
+  s_d605cb93395a31::t_37b836036aa332 1-760
+dv/dtp/tb/cocotb/env/dtp_enum.py
+  s_d605cb93395a31::t_4e77a4062fe54e 1-1580
+dv/dtp/tb/cocotb/env/dtp_fcov.py
+  s_d605cb93395a31::t_1104c6e9c13bf7 1-1875
+hw/common/dv/vip/jtag_vip/README.md
+  s_d605cb93395a31::t_25fb2e02b08da1 1-689
+hw/common/dv/vip/jtag_vip/__init__.py
+  s_d605cb93395a31::t_1f4c8192efac98 1-111
+hw/common/dv/vip/jtag_vip/jtag_enum.py
+  s_d605cb93395a31::t_4c11fd88e8572d 1-413
+hw/common/dv/vip/jtag_vip/jtag_mon.py
+  s_d605cb93395a31::t_9489275e7a7fad 1-538
+hw/common/dv/vip/jtag_vip/jtag_mst_bfm.py
+  s_d605cb93395a31::t_bd6354df5e6bc3 1-291
+hw/common/dv/vip/jtag_vip/jtag_slv_bfm.py
+  s_d605cb93395a31::t_0ea6216ee30a32 1-583
+hw/common/dv/vip/jtag_vip/jtag_test_example.py
+  s_d605cb93395a31::t_3ed247ea90104f 1-280
+hw/sys/sep/dv/fw/drivers/spi_mux.h
+  s_d605cb93395a31::t_6fc4a5e4155266 4-43
+hw/sys/sep/dv/fw/tests/common_otbn/otbn_app.ld
+  s_d605cb93395a31::t_e609d86bca2326 1-78
+hw/sys/sep/dv/fw/tests/common_otbn/serialize/__init__.py
+  s_d605cb93395a31::t_c0a8a4c868b3d3 1
+hw/sys/sep/dv/fw/tests/common_otbn/serialize/parse_helpers.py
+  s_d605cb93395a31::t_6bc0ea29987008 1-157
+hw/sys/sep/dv/fw/tests/otbn_km_sideload_keydump/otbn_src/keydump.s
+  s_d605cb93395a31::t_5ef742482d2837 1-37
+hw/sys/sep/dv/fw/tests/otbn_loops_test/otbn_src/otbn_loops.s
+  s_d605cb93395a31::t_3ec2321aed7bac 1-2,4-33
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_base.s
+  s_d605cb93395a31::t_40d60d0a97eeae 1-2117
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_ecdsa_sca.s
+  s_d605cb93395a31::t_2f29fb57c14eaa 1-168
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_isoncurve.s
+  s_d605cb93395a31::t_a903afce1fdf8b 1-213
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_key_from_seed_sca.s
+  s_d605cb93395a31::t_02255fac374268 1-165
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_mod_inv_sca.s
+  s_d605cb93395a31::t_a93c2513ef8aac 1-141
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_shared_key.s
+  s_d605cb93395a31::t_ab74460e03249c 1-406
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_sign.s
+  s_d605cb93395a31::t_deb62f3623b9ab 1-290
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/p256_verify.s
+  s_d605cb93395a31::t_221e838337f6f0 1-474
+hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/run_p256.s
+  s_d605cb93395a31::t_6dc43741246a9d 1-430
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/gcd.s
+  s_d605cb93395a31::t_eb9b87854d4d1e 1-310
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/modexp.s
+  s_d605cb93395a31::t_feaa64add5278c 1-721
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/montmul.s
+  s_d605cb93395a31::t_b55b59c5c4f349 1-641
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/mul.s
+  s_d605cb93395a31::t_633cee8277a1cc 1-165
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/rsa_keygen.s
+  s_d605cb93395a31::t_5fdb50de1379da 1-901
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/rsa_modinv_f4.s
+  s_d605cb93395a31::t_a3ee297e256d53 1-534
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/rsa_primality.s
+  s_d605cb93395a31::t_14712fa16a520b 1-448
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/run_rsa.s
+  s_d605cb93395a31::t_29606d009a5956 1-325
+hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/run_rsa_mem.s
+  s_d605cb93395a31::t_519eeb9f176c67 1-121
+hw/sys/sep/dv/fw/tests/otbn_sep_integration_test/otbn_src/otbn_sep_integration.s
+  s_d605cb93395a31::t_265c188174bb51 1-2,4-54
+hw/sys/sep/dv/fw/tests/otbn_smoke_test/otbn_src/otbn_smoke.s
+  s_d605cb93395a31::t_9a165e024f5397 1-2,4-61
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/bad_data_addr.s
+  s_d605cb93395a31::t_3787ffeae95125 1-11
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/bad_insn_addr.s
+  s_d605cb93395a31::t_f4f9c7110518bb 1-11
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/call_stack.s
+  s_d605cb93395a31::t_bb6f0e78be1a68 1-37
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/illegal_insn.s
+  s_d605cb93395a31::t_c5dec00a59874e 1-10
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/loop_error.s
+  s_d605cb93395a31::t_9e88b19cc7a00a 1-15
+hw/sys/sep/dv/fw/tests/sep_smc_notify/sep_smc_notify.c
+  s_d605cb93395a31::t_f3d0184b5e90c6 1-39
+hw/sys/sep/dv/fw/tests/spi_ot_accessinval_test/spi_ot_accessinval_test.c
+  s_d605cb93395a31::t_a71bfc9ec2a3ae 45-46,67,71,77
+hw/sys/sep/dv/fw/tests/spi_ot_clock_config_test/spi_ot_clock_config_test.c
+  s_d605cb93395a31::t_3099f314a03692 28,46
+hw/sys/sep/dv/fw/tests/spi_ot_cmd_queue_test/spi_ot_cmd_queue_test.c
+  s_d605cb93395a31::t_d2594ff578cbd9 29-30,54,58,66
+hw/sys/sep/dv/fw/tests/spi_ot_cs_timing_test/spi_ot_cs_timing_test.c
+  s_d605cb93395a31::t_091271444ce980 34-35,88,92,103,119,133,147
+hw/sys/sep/dv/fw/tests/spi_ot_dma_trigger_test/spi_ot_dma_trigger_test.c
+  s_d605cb93395a31::t_92fe888ca28bfc 35,55
+hw/sys/sep/dv/fw/tests/spi_ot_dual_spi_test/spi_ot_dual_spi_test.c
+  s_d605cb93395a31::t_128559bf6e2f71 16,34-35,82,86,91,93
+hw/sys/sep/dv/fw/tests/spi_ot_enable_disable_test/spi_ot_enable_disable_test.c
+  s_d605cb93395a31::t_93b91e09861884 28,47,65
+hw/sys/sep/dv/fw/tests/spi_ot_error_handling_test/spi_ot_error_handling_test.c
+  s_d605cb93395a31::t_fdb8d16195dd10 32,59,63
+hw/sys/sep/dv/fw/tests/spi_ot_flash_dual_read_test/spi_ot_flash_dual_read_test.c
+  s_d605cb93395a31::t_7c120672bce6da 42-43,45,64,153
+hw/sys/sep/dv/fw/tests/spi_ot_flash_jedec_id_test/spi_ot_flash_jedec_id_test.c
+  s_d605cb93395a31::t_35005fe890f944 41-42,44,57,105
+hw/sys/sep/dv/fw/tests/spi_ot_flash_quad_read_test/spi_ot_flash_quad_read_test.c
+  s_d605cb93395a31::t_e66f77df2174ce 46-47,49,68,157
+hw/sys/sep/dv/fw/tests/spi_ot_flash_read_test/spi_ot_flash_read_test.c
+  s_d605cb93395a31::t_19e5ff20c8e876 41-42,44,56,105
+hw/sys/sep/dv/fw/tests/spi_ot_flash_sector_erase_test/spi_ot_flash_sector_erase_test.c
+  s_d605cb93395a31::t_b4f88157283a34 40-41,43,64,189
+hw/sys/sep/dv/fw/tests/spi_ot_flash_write_read_test/spi_ot_flash_write_read_test.c
+  s_d605cb93395a31::t_6ba2936b14898c 49-50,52,72,160
+hw/sys/sep/dv/fw/tests/spi_ot_interrupt_test/spi_ot_interrupt_test.c
+  s_d605cb93395a31::t_5fceb8eb755833 31,55,59
+hw/sys/sep/dv/fw/tests/spi_ot_multi_segment_test/spi_ot_multi_segment_test.c
+  s_d605cb93395a31::t_25f1282a332a49 32-33,86,90,95,97
+hw/sys/sep/dv/fw/tests/spi_ot_quad_spi_test/spi_ot_quad_spi_test.c
+  s_d605cb93395a31::t_a83e3042ffad72 15,32-33,80,84,89,91
+hw/sys/sep/dv/fw/tests/spi_ot_rx_fifo_test/spi_ot_rx_fifo_test.c
+  s_d605cb93395a31::t_2b33fcdb3cd5a3 33-34,36,84,88
+hw/sys/sep/dv/fw/tests/spi_ot_standard_spi_txrx_test/spi_ot_standard_spi_txrx_test.c
+  s_d605cb93395a31::t_526b5992116f3a 33-34,74,78,83,85
+hw/sys/sep/dv/fw/tests/spi_ot_tx_fifo_test/spi_ot_tx_fifo_test.c
+  s_d605cb93395a31::t_deb32c88d5a298 29,46,50
+hw/sys/sep/dv/fw/tests/spi_sanity_ot/spi_sanity_ot.c
+  s_d605cb93395a31::t_62971e80e23e5b 24,61
+hw/sys/sep/regs/blocks/aes/aes.rdl
+  s_d605cb93395a31::t_8f5de975fcd9ad 35,53,74,90,104,112,119,127,134,142,159,167,179,184,197,204,209,219,230,238,249,253,260,267,278,290,301
+hw/sys/sep/regs/gen/ral/aes_ral_pkg.sv
+  s_d605cb93395a31::t_cdf30a1a928ac1 35,50,65,80,95,115,117,119,121,123,125,141,143,158,176,178,180,182,203,205,207,209,211,213,215,231,233
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl
+  s_d605cb93395a31::t_b6b7c124266033 10,15,20,25,31,35,39,43,49,53,57,61,67,71,78,113,120,126,137,200,204,217,233,248,263,274,285-286,294-295,301-302,308-309,314-315,321-322,328-329,336-337,346-347,354-355,364,371,378,385,392,399,407,414,421,428,439,446,448
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/ral/csrng_ral_pkg.sv
+  s_d605cb93395a31::t_6982c448704c2c 20,22,24,26,44,46,48,50,68,70,72,74,90,92,107,149,151,153,155,252,254,269,299,314,329,344,359,382,384,386,388,390,392,394,396,398,409,411,422,424,426,428-430,432-434,436,438,440,455,470
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/base-insns.yml
+  s_d605cb93395a31::t_734bbc8a3dc8cf 1-690
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/bignum-insns.yml
+  s_d605cb93395a31::t_7b018601658dfc 1-1467
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml
+  s_d605cb93395a31::t_7e9fcd3e76ec32 1-207
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/enc-schemes.yml
+  s_d605cb93395a31::t_3c768ddf5c9c9d 1-463
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/insns.yml
+  s_d605cb93395a31::t_a12c4b9121354b 1-236
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.ld.tpl
+  s_d605cb93395a31::t_744d8730063ba4 1-2,4-74
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/wsr.yml
+  s_d605cb93395a31::t_9b6444e1823e20 1-111
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/Makefile
+  s_d605cb93395a31::t_eb320519c9dc47 1-2,5-6,8-13,15-16,18-19,21-25,27-28,30-31,33-35,37-38,40,42
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/analyze_information_flow.py
+  s_d605cb93395a31::t_b7ef2a4b54aa56 1-163
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/check_call_stack.py
+  s_d605cb93395a31::t_8db3d8ac2e3e09 1-62
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/check_const_time.py
+  s_d605cb93395a31::t_ac2fa4e4e867e3 1-113
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/check_loop.py
+  s_d605cb93395a31::t_0e3027726c23f6 1-235
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/docs/get_impl.py
+  s_d605cb93395a31::t_20ade86ab15bee 1-552
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/docs/md_isrs.py
+  s_d605cb93395a31::t_4019fb1cde9773 1-139
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/get_instruction_count_range.py
+  s_d605cb93395a31::t_5066e03bf8a2e7 1-44
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/make_mulqacc.py
+  s_d605cb93395a31::t_6e21fba5c7edb2 1-260
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/mypy.ini
+  s_d605cb93395a31::t_52b928f575bd43 1-4
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_as.py
+  s_d605cb93395a31::t_0461a60f7e6abf 1-1262
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_ld.py
+  s_d605cb93395a31::t_09db74204d2229 1-102
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_objdump.py
+  s_d605cb93395a31::t_7c6d4e171ddc93 1-134
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_sim_test.py
+  s_d605cb93395a31::t_8fed71c35d1620 1-198
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/__init__.py
+  s_d605cb93395a31::t_8a8379afd7435a 1-18
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/bit_ranges.py
+  s_d605cb93395a31::t_96372d7155dd35 1-113
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/bool_literal.py
+  s_d605cb93395a31::t_4e7db041a2d00e 1-66
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/cache.py
+  s_d605cb93395a31::t_2a96f07457a7d8 1-63
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/check.py
+  s_d605cb93395a31::t_8a332d739ad181 1-63
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/constants.py
+  s_d605cb93395a31::t_1a7bffff585ea6 1-160
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/control_flow.py
+  s_d605cb93395a31::t_98f7fae400d727 1-473
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/decode.py
+  s_d605cb93395a31::t_e9176a9380bfa5 1-126
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/dmem_dump.py
+  s_d605cb93395a31::t_a40191f3354db0 1-58
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/elf.py
+  s_d605cb93395a31::t_da749c587e63c2 1-163
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/encoding.py
+  s_d605cb93395a31::t_9e9c7e9fe81a0f 1-197
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/encoding_scheme.py
+  s_d605cb93395a31::t_05487b52cd5239 1-331
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/information_flow.py
+  s_d605cb93395a31::t_71b53b125af904 1-761
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/information_flow_analysis.py
+  s_d605cb93395a31::t_1a990246e78f55 1-613
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/insn_yaml.py
+  s_d605cb93395a31::t_4b7254a7541bcd 1-442
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/instruction_count_range.py
+  s_d605cb93395a31::t_c2ac1cc947538c 1-156
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/isr.py
+  s_d605cb93395a31::t_eeac1450d0a195 1-94
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/lsu_desc.py
+  s_d605cb93395a31::t_6239ff7c9aaa53 1-76
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/mem_layout.py
+  s_d605cb93395a31::t_0d59ff34b5270f 1-88
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/operand.py
+  s_d605cb93395a31::t_383266ae0f0f90 1-827
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/otbn_reggen.py
+  s_d605cb93395a31::t_a6245a50eba0a2 1-41
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/reg_dump.py
+  s_d605cb93395a31::t_751de7c39a5625 1-45
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/section.py
+  s_d605cb93395a31::t_e3a8dd2276c877 1-32
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/syntax.py
+  s_d605cb93395a31::t_65604ff78027b3 1-371
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/testcase.py
+  s_d605cb93395a31::t_2b76039d6a8d25 1-150
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/testgen.py
+  s_d605cb93395a31::t_ebf1f795caa069 1-94
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/shared/toolchain.py
+  s_d605cb93395a31::t_be21239dd1ab30 1-56
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/yaml_to_doc.py
+  s_d605cb93395a31::t_1b626ba206c869 1-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7f4c610cd463a3e19ed4ef21c87b00dc21abdbcb",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
