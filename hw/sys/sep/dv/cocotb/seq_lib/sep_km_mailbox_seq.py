@@ -2,7 +2,7 @@
 """Host-side Key Manager (KM) mailbox command driver.
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/comp/key_manager/firmware`, `rom_main`) implements, so an OSS cocotb test
+(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
 can drive the KM the same way the OCAH `sep_subsystem_km_consume_base_seq` does:
 send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
 

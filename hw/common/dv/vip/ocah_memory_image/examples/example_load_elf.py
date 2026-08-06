@@ -96,7 +96,7 @@ def example_load_hex_files():
     img.load_hex("sep_sram", "fw/sep/tests/hello_world/hello_world.hex")
 
     # Load the KM ROM constant tables.
-    img.load_hex("km_rom", "hw/comp/key_manager/data/km_rom.hex")
+    img.load_hex("km_rom", "hw/ip/key_manager/dv/fw/build/tests/rom_main/rom_main.rom.hex")
 
     # Emit plusargs.
     plusargs = img.write_plusargs()

@@ -183,7 +183,7 @@ plusargs = img.write_plusargs()
 img = OcahMemoryImage(run_dir=sim_run_dir)
 img.load_hex("sep_boot_rom", "fw/sep/build/sep_boot_rom.hex")
 img.load_hex("sep_sram",     "fw/sep/tests/hello_world/hello_world.hex")
-img.load_hex("km_rom",       "hw/comp/key_manager/data/km_rom.hex")
+img.load_hex("km_rom",       "hw/ip/key_manager/dv/fw/build/tests/rom_main/rom_main.rom.hex")
 plusargs = img.write_plusargs()
 ```
 
