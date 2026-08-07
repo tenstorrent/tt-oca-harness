@@ -1,0 +1,19 @@
+hw/sys/sep/dv/fw/tests/local_alias_sanity/local_alias_sanity.c
+  s_d605cb93395a31::t_33776af5a01a4d 372-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ce6fc5972257861661ba095ee9154e341a5b2479",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
