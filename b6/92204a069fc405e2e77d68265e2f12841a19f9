@@ -1,0 +1,130 @@
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_stress_test/main.c
+  s_d605cb93395a31::t_63293488e73cb4 281-289
+  s_d605cb93395a31::t_d0e56127591a02 278-280
+  s_d605cb93395a31::t_2fb11a9effe32d 290-292
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_coexist/test_efuse_km_coexist.c
+  s_d605cb93395a31::t_7d49c0c4b16612 37-40
+  s_d605cb93395a31::t_fefa0aca57da3b 41-42
+hw/common/dv/fw/sep.h
+  s_d605cb93395a31::t_6e08306e1b40c1 92-93,119,121,162-163,166-169
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_axil/test_efuse_km_axil.c
+  s_d605cb93395a31::t_1922bf8963e663 51-53,58,61-64,103,126
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_perm/test_efuse_km_perm.c
+  s_d605cb93395a31::t_2364aa6aa9827d 39-40,43-45,82,84-85
+hw/ip/key_manager/dv/fw/tests/common/test_common.h
+  s_d605cb93395a31::t_a88114ac5c02c1 67-69
+hw/ip/key_manager/dv/fw/tests/test_km_shred/test_km_shred.c
+  s_d605cb93395a31::t_5318ac7f60bda7 302-303
+hw/ip/key_manager/dv/fw/tests/test_rom_engine/test_rom_engine.c
+  s_d605cb93395a31::t_a80832a1a8ddb8 100-101
+hw/sys/sep/dv/fw/drivers/sep_spi.h
+  s_d605cb93395a31::t_c7b1f7ef6d85e7 43
+hw/sys/sep/dv/fw/drivers/spi_mux.h
+  s_d605cb93395a31::t_419c690ee11edd 28,38-39
+hw/sys/sep/dv/fw/tests/common/spi_clk.h
+  s_d605cb93395a31::t_d9be46a403b2a4 38,48,57
+hw/sys/sep/dv/fw/tests/dma_hash_test/dma_hash_test.c
+  s_d605cb93395a31::t_8205ce79c4c2a7 250-251
+hw/sys/sep/dv/fw/tests/fabric_mailbox_iss_lock_reset_test/fabric_mailbox_iss_lock_reset_test.c
+  s_d605cb93395a31::t_5e4b1f085d9e0c 91-92,103-104
+hw/sys/sep/dv/fw/tests/local_alias_sanity/local_alias_sanity.c
+  s_d605cb93395a31::t_f18b99535c0e10 30-31
+hw/sys/sep/dv/fw/tests/sep_smc_notify/sep_smc_notify.c
+  s_d605cb93395a31::t_0ca1cdac024d98 26
+hw/sys/sep/dv/fw/tests/spi_ot_dma_rx_test/spi_ot_dma_rx_test.c
+  s_d605cb93395a31::t_451efffb009af1 46-48,87-88
+hw/sys/sep/dv/fw/tests/spi_ot_dma_tx_test/spi_ot_dma_tx_test.c
+  s_d605cb93395a31::t_4305141c16ec65 41-42,83-84
+hw/sys/sep/dv/fw/tests/spi_ot_reg_test/spi_ot_reg_test.c
+  s_d605cb93395a31::t_76b7425f813f3e 85-86
+hw/sys/smc/bootrom/prod/include/smc_rom_defs.h
+  s_d605cb93395a31::t_54ad426d2f57ec 55-56,104-106
+hw/sys/smc/dv/fw/common/occp/i2c_controller_driver.c
+  s_d605cb93395a31::t_3042efc3d6f5ce 37,46,56,122-123,125-159,171-181,184-185,200-202,322-323,340-341,353-354,369-370,372-373,389-390,392-393,416-417,432-433,465,491,542,582,596-597,611-612,690,692,695,698,713-714,739-740,749
+hw/sys/smc/dv/fw/common/occp/i3c_controller_driver.c
+  s_d605cb93395a31::t_b254350a9fd0ea 43-44,46-51,62,98-103,105-108,110-119,122-123,126-129,133-137,144-146,148-167,173-187,189-190,195-201,209-210,218-221,228-231,235-243,250-274,283-324,331-337,339-343,352-361,369-381,390-423,426-485,493-543,546-557,565-635,643-648,664-667,672,682-709,719-737,740-753,755-837,839-841,846-850,853-857,860-866,869-871,874-880,883-888,891-893,899-926,932
+hw/sys/smc/dv/fw/include/smc_cpu_ctrl.h
+  s_d605cb93395a31::t_2d146115a59e38 15,40,42
+hw/sys/smc/dv/fw/tests/i3c_raw_master/main.c
+  s_d605cb93395a31::t_c935a2c1c208a9 72-73,113,115-117,119,124
+hw/sys/smc/dv/fw/tests/i3c_raw_slave/main.c
+  s_d605cb93395a31::t_ae825886fa40e2 76,78-80,82,87
+hw/sys/smc/dv/fw/tests/occp_boot_sequence_status_test/main.c
+  s_d605cb93395a31::t_75c86a80043e4f 29-46,54-751
+hw/sys/smc/dv/fw/tests/occp_comprehensive_error_verification_test/main.c
+  s_d605cb93395a31::t_3fba504186b6b5 27-29,32,36,43-45,54-56,59-61,64,92-93,115-116,118-119,127-128,138,140,162-163,174-175,195-197,200-202,224-226,229-231,252-256,278-279,290-291,299-300,320-322,325-326,328,353-356,360,385-389,392,418-419,539-540,576,641-642,665-666
+hw/sys/smc/dv/fw/tests/occp_crc_err_injection_test/main.c
+  s_d605cb93395a31::t_7898ff6c30b9c7 9,23-24,44-45,50-51,61-62,67-69,72-116,192,206-208
+hw/sys/smc/dv/fw/tests/occp_interface_latch_test/main.c
+  s_d605cb93395a31::t_a166d556dadf43 14,16,21,29-30,41,45-50,54,61,81,124-126,131-133,152-154,172-174
+hw/sys/smc/dv/fw/tests/occp_interface_unlatch_test/main.c
+  s_d605cb93395a31::t_4a78c82264658f 16,18,23,31-32,43,46-51,55,62,89,134-152,202-209,211-218,220-227,229-231,233-234,236-237,239-246,248-253,255-264,278,320-322,327-329,341-344,357-360,377-379
+hw/sys/smc/dv/fw/tests/occp_invalid_cmd_test/main.c
+  s_d605cb93395a31::t_573ec9bca79a5d 27-28,39-40,128
+hw/sys/smc/dv/fw/tests/occp_invalid_length_field_test/main.c
+  s_d605cb93395a31::t_f50760d3134da8 12-17,124-126,133-135
+hw/sys/smc/dv/fw/tests/occp_jump/main.c
+  s_d605cb93395a31::t_38d2ccb5bc48b6 16-36,38-39,41-43,48-60,64,66,68-71,73-79,81-82,84-85,87-90,92,96-99,103-108
+hw/sys/smc/dv/fw/tests/occp_jump_invalid_region_test/main.c
+  s_d605cb93395a31::t_b486c832924149 34-35,183,196
+hw/sys/smc/dv/fw/tests/occp_jump_reject/main.c
+  s_d605cb93395a31::t_f898bc19132aff 37-38,51-64,66-67,71-94,96-97,99-101,103,107-120,124,126,128-131,133-139,141-142,144-145,147-150,152,156-159,163-168
+hw/sys/smc/dv/fw/tests/occp_max_size_transfer_test/main.c
+  s_d605cb93395a31::t_5970507622d162 14-60,64-77,81,83,85-88,90-96,98-99,101-102,104-107,109,113-116,120-125
+hw/sys/smc/dv/fw/tests/occp_mem_boundary_access_test/main.c
+  s_d605cb93395a31::t_230a8c7920a83b 22-23,28-41,44-45,49-50,146-147,203-205
+hw/sys/smc/dv/fw/tests/occp_min_size_transfer_test/main.c
+  s_d605cb93395a31::t_2e9ed49d44ef63 14,16,18-19,21-23,25-27,31-44,48,50,52-55,57-63,65-66,68-69,71-74,76,80-83,87-92
+hw/sys/smc/dv/fw/tests/occp_oversize_body_test/main.c
+  s_d605cb93395a31::t_0c47d35148406f 5,56,81-83
+hw/sys/smc/dv/fw/tests/occp_random_test/main.c
+  s_d605cb93395a31::t_33b90498891dec 14-19,21-30,32-33,35-36,38-60,64-77,81,83,85-88,90-96,98-99,101-102,104-107,109,113-116,120-125
+hw/sys/smc/dv/fw/tests/occp_register_access_test/main.c
+  s_d605cb93395a31::t_f343cf9ab295fc 12-40,43-78,81-150,153-164,167-168,170,172-175,177-182,184-185,187-190,192,195-199,202-208
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_advanced_test/main.c
+  s_d605cb93395a31::t_698247f92b05a5 50-51,69-70,88,122-123,138-139,163-164,218-221,266-273,287,306-307,347-348,370-371,403-404
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_overflow_test/main.c
+  s_d605cb93395a31::t_70bae57ac6e2a8 19-23,25,36-182,184,186-564
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_test/main.c
+  s_d605cb93395a31::t_25647306a88a08 50-51,73-74,114-115,144-145,154-155,167-168,195-196,209,237-242,256,276-279,287-290,310-312,316-319,343-344
+hw/sys/smc/dv/fw/tests/occp_secure_access_test/main.c
+  s_d605cb93395a31::t_e00818eae746c6 21-23,50,52-54,56-58,84-85,93-94,97-98,126-127,137-138,160-161,213-214,228-229,251-252,266-267,293-294,308-309,329-330,341-342,346-347,359-360,365-366,377-378,429,436-437,454,469
+hw/sys/smc/dv/fw/tests/occp_secure_boot_test/main.c
+  s_d605cb93395a31::t_af499aa6af83c1 22,25,29,31,36,40,42,47,53,57,59-61,67,71,74,76,78,87,105,107,112,120,123,126,131
+hw/sys/smc/dv/fw/tests/occp_unaligned_access_test/main.c
+  s_d605cb93395a31::t_89544cc166c11c 16-65,68-94,98-121,125-147,151-173,177-188,191-192,194-198,200-204,206-250,252-254,256,258-262,266-269,273-278
+hw/sys/smc/dv/fw/tests/occp_undersize_body_test/main.c
+  s_d605cb93395a31::t_5fb24af95c5995 5,27,35,51-53
+hw/sys/smc/dv/fw/tests/occp_undersize_header_test/main.c
+  s_d605cb93395a31::t_dce6b9197d4f37 5,7-9,11-14,16-19,21-25,27-32,34,56,65-68,76-78
+hw/sys/smc/dv/fw/tests/occp_unsecure_boot_test/main.c
+  s_d605cb93395a31::t_5e27388ed4ecf0 49-51,59,69-70
+hw/sys/smc/dv/fw/tests/occp_unsupported_status_id_test/main.c
+  s_d605cb93395a31::t_1e0c6ff001cfbb 30
+hw/sys/smc/dv/fw/tests/occp_validate_boot_invalid_region_test/main.c
+  s_d605cb93395a31::t_25964bdfccfa9b 33-34,69-72,91-94,115-118,137-140,168-170,177-178,184-185,204-206,247,260
+hw/sys/smc/dv/fw/tests/occp_validate_boot_reject_test/main.c
+  s_d605cb93395a31::t_8adf204844444a 13,17,21,23,25-26,36,44,46,51,55,70-71,73,78,84,86,88,90-91,93,95
+hw/sys/smc/dv/fw/tests/occp_validate_boot_test/main.c
+  s_d605cb93395a31::t_5622c077b764a7 22-25,52,62,75-76
+hw/sys/smc/dv/fw/tests/occp_zero_length_rw_test/main.c
+  s_d605cb93395a31::t_4e4746523632bd 14,49,64
+hw/sys/smc/dv/fw/tests/occp_zero_length_test/main.c
+  s_d605cb93395a31::t_4bedfaffa2d68f 3,6,9,17-18,23,25,28,41,43,49,51,57,67,74,90,93,108,111,113,127,147-149,152-154,171,179,186,189,195,198,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b692204a069fc405e2e77d68265e2f12841a19f9",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
