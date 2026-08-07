@@ -19,7 +19,10 @@ static void run_validate_boot_test(test_context_t *ctx) {
     execute_random_commands(ctx, 10);
 
     simputs("=== Test validate and boot ===\n");
-    uint32_t random_manifest_addr = (ctx->test_base_addr + (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr))) & 0xfffffffc;
+    uint32_t random_manifest_addr =
+        (ctx->test_base_addr +
+         (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr))) &
+        0xfffffffc;
     simputshex32("Random manifest address: ", random_manifest_addr);
     write_scratch(8, random_manifest_addr);
 
@@ -46,7 +49,7 @@ static void finalize_test_results(test_context_t *ctx) {
 }
 
 int main(void) {
-  static test_context_t test_ctx = {0};
+    static test_context_t test_ctx = {0};
 
     init_test(0);
 
@@ -56,7 +59,7 @@ int main(void) {
     }
 
     // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;          // Start of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;         // Start of valid range
     test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR; // End of valid range
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
@@ -69,8 +72,8 @@ int main(void) {
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");
-    while(1) {
-      __asm__("wfi");
+    while (1) {
+        __asm__("wfi");
     }
 
     return 0;

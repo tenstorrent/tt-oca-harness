@@ -36,13 +36,13 @@
 #include <stdint.h>
 #include "rom_mailbox.h"
 
-#define KM_AGENT_ALIVE  0xA11FE5EEu   /* boot/ready heartbeat */
-#define KM_RESP_MAGIC   0xEF112E59u   /* response frame tag    */
+#define KM_AGENT_ALIVE 0xA11FE5EEu /* boot/ready heartbeat */
+#define KM_RESP_MAGIC 0xEF112E59u  /* response frame tag    */
 
 /* Command opcodes (UVM -> KM). */
-#define KM_OP_EXIT   0u
-#define KM_OP_READ   1u
-#define KM_OP_WRITE  2u
+#define KM_OP_EXIT 0u
+#define KM_OP_READ 1u
+#define KM_OP_WRITE 2u
 
 static inline void reg_write32(uint32_t addr, uint32_t val) {
     *(volatile uint32_t *)addr = val;
@@ -79,10 +79,10 @@ int main(void) {
     mbox_put(KM_AGENT_ALIVE, 1);
 
     for (;;) {
-        uint32_t op   = mbox_get();
+        uint32_t op = mbox_get();
         uint32_t addr = mbox_get();
-        uint32_t wd   = mbox_get();
-        uint32_t rd   = 0u;
+        uint32_t wd = mbox_get();
+        uint32_t rd = 0u;
 
         if (op == KM_OP_EXIT) {
             break;

@@ -2,8 +2,7 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctx = {0};
 
     init_test(0);
@@ -54,8 +53,7 @@ int main(void)
     ctx.exp_response_code = OCCP_OVERSIZE_MSG;
 
     // try some jump and validate boot (should fail)
-    if (!is_secure_mode())
-    {
+    if (!is_secure_mode()) {
         occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
         increment_cmd_count(&ctx);
     }
@@ -80,6 +78,8 @@ int main(void)
         test_fail(0);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return 0;
 }

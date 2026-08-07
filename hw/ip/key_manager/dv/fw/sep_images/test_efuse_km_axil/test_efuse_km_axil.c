@@ -48,19 +48,20 @@
  */
 
 #include <stdint.h>
-#include "key_manager_addr.h"       /* KEY_MANAGER_OTP_EFUSE_* register addresses */
-#include "efuse_interface_ctrl.h"   /* CTRL_STATUS sense-done field mask */
-#include "rom_mailbox.h"            /* rom_mailbox_write_data / set_write_separator / space */
+#include "key_manager_addr.h"     /* KEY_MANAGER_OTP_EFUSE_* register addresses */
+#include "efuse_interface_ctrl.h" /* CTRL_STATUS sense-done field mask */
+#include "rom_mailbox.h"          /* rom_mailbox_write_data / set_write_separator / space */
 
 /* ---- Report frame constants ---- */
 #define KM_EFUSE_ALIVE 0xA11FE5EEu /* boot heartbeat, sent before any eFuse access */
 #define KM_EFUSE_MAGIC 0xEF115EEDu
-#define KM_EFUSE_END   0xEF11E0D0u
+#define KM_EFUSE_END 0xEF11E0D0u
 
 /* ---- Benign routing targets (KM-local addresses) ---- */
-#define MAP_RD_ADDR  KEY_MANAGER_OTP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR                 /* 0x0001_10C8 */
-#define CTRL_RD_ADDR KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR /* 0x0001_1400 */
-#define MMR_RW_ADDR  KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)          /* 0x0001_1500 */
+#define MAP_RD_ADDR KEY_MANAGER_OTP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR /* 0x0001_10C8 */
+#define CTRL_RD_ADDR \
+    KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR       /* 0x0001_1400 */
+#define MMR_RW_ADDR KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0) /* 0x0001_1500 */
 
 /* Distinctive sentinel for the MMR write-path check (unlikely to collide with
  * any preloaded token value). */
@@ -99,7 +100,7 @@ int main(void) {
     uint32_t map_rd;
     uint32_t ctrl_rd;
     uint32_t mmr_rd;
-    uint32_t status   = 0u;
+    uint32_t status = 0u;
     uint32_t sense_ok = 0u;
     uint32_t i;
 
@@ -122,7 +123,7 @@ int main(void) {
     }
 
     /* --- Routing reads: each access remaps to its own 0x1093_0xxx region --- */
-    map_rd  = reg_read32(MAP_RD_ADDR);  /* -> 0x1093_00C8 (MAP/shadow)  */
+    map_rd = reg_read32(MAP_RD_ADDR);   /* -> 0x1093_00C8 (MAP/shadow)  */
     ctrl_rd = reg_read32(CTRL_RD_ADDR); /* -> 0x1093_0400 (CTRL CSR)    */
 
     /* --- Write path: benign RW token-input CSR in the MMR region --- */

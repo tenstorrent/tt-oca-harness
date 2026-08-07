@@ -6,7 +6,7 @@ static int exp_num_cmd_failed_errors = 0;
 
 static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
     simputs("=== Reading and validating SMC status buffer ===\n");
-        if (ctx->status_reporting_disabled) {
+    if (ctx->status_reporting_disabled) {
         simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
         return;
     }
@@ -20,11 +20,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
             return;
         }
         simputshex32("SMC Status: ", status_data);
-        if (occp_status_matches_expected(status_data,
-                                         OCCP_FW_ID_SMC_BL0,
-                                         OCCP_STATUS_MSG_ERROR,
-                                         OCCP_SPEC_ERROR_CMD_FAILED,
-                                         false)) {
+        if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                         OCCP_SPEC_ERROR_CMD_FAILED, false)) {
             num_cmd_failed_errors++;
         }
     }
@@ -44,19 +41,14 @@ static void reset_injection_config(test_context_t *ctx) {
     ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
 }
 
-static void configure_injection(test_context_t *ctx,
-                                occp_crc_inject_mode_t header_mode,
-                                occp_crc_inject_mode_t body_mode
-                                )
-{
+static void configure_injection(test_context_t *ctx, occp_crc_inject_mode_t header_mode,
+                                occp_crc_inject_mode_t body_mode) {
     ctx->header_crc_err_inject_mode = header_mode;
     ctx->body_crc_err_inject_mode = body_mode;
 }
 
-static bool run_header_body_combo(test_context_t *ctx,
-                                  occp_crc_inject_mode_t header_mode,
-                                  occp_crc_inject_mode_t body_mode)
-{
+static bool run_header_body_combo(test_context_t *ctx, occp_crc_inject_mode_t header_mode,
+                                  occp_crc_inject_mode_t body_mode) {
     /* Force error injection on this transaction */
     bool expect_header_error = (header_mode == OCCP_CRC_INJECT_DETECTABLE);
     bool expect_body_error = (!expect_header_error) && (body_mode == OCCP_CRC_INJECT_DETECTABLE);
@@ -66,59 +58,62 @@ static bool run_header_body_combo(test_context_t *ctx,
 
     for (int i = 0; i < 2; i++) {
         // don't send get version for body corruption (no body)
-        int cmd_low_bound = (header_mode == OCCP_CRC_INJECT_NONE) ? OCCP_GET_SEP_STATUS : OCCP_GET_VERSION;
+        int cmd_low_bound =
+            (header_mode == OCCP_CRC_INJECT_NONE) ? OCCP_GET_SEP_STATUS : OCCP_GET_VERSION;
         int cmd_upper_bound = is_secure_mode() ? OCCP_VALIDATE_BOOT : OCCP_JUMP;
         int random_cmd = get_random_int() % (cmd_upper_bound - cmd_low_bound + 1) + cmd_low_bound;
         int retval;
         int size;
-        uint32_t addr = (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr) + ctx->test_base_addr) & 0xfffffffc;
+        uint32_t addr = (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr) +
+                         ctx->test_base_addr) &
+                        0xfffffffc;
         uint32_t status;
         switch (random_cmd) {
-            case OCCP_GET_VERSION:
-                retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_VERSION_BOOT:
-                retval = occp_send_get_version_boot_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_STATUS:
-                retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_SEP_STATUS:
-                retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_SMC_STATUS:
-                retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_OCCP_BOOT_STATUS:
-                retval = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_OCCP_INTERFACE_STATUS:
-                retval = occp_send_get_occp_interface_status_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_OCCP_COMMAND_COUNT:
-                retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_GET_OCCP_ERROR_CODE:
-                retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status);
-                break;
-            case OCCP_READ:
-                size = get_random_int() % (MAX_OCCP_READ_SIZE) + 1;
-                retval = occp_send_read_command(ctx, ctx->slave_addr, addr, data, size);
-                break;
-            case OCCP_WRITE:
-                size = get_random_int() % (MAX_OCCP_WRITE_SIZE) + 1;
-                for (int i = 0; i < size; i++) data[i] = get_random_int() % 256;
-                retval = occp_send_write_command(ctx, ctx->slave_addr, addr, data, size);
-                break;
-            case OCCP_JUMP:
-                retval = occp_send_jump_command(ctx, ctx->slave_addr, addr);
-                break;
-            case OCCP_VALIDATE_BOOT:
-                retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, addr);
-                break;
-            default:
-                retval = OCCP_INVALID_CMD;
-                break;
+        case OCCP_GET_VERSION:
+            retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_VERSION_BOOT:
+            retval = occp_send_get_version_boot_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_STATUS:
+            retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_SEP_STATUS:
+            retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_SMC_STATUS:
+            retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_OCCP_BOOT_STATUS:
+            retval = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_OCCP_INTERFACE_STATUS:
+            retval = occp_send_get_occp_interface_status_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_OCCP_COMMAND_COUNT:
+            retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_GET_OCCP_ERROR_CODE:
+            retval = occp_send_get_occp_error_code_command(ctx, ctx->slave_addr, &status);
+            break;
+        case OCCP_READ:
+            size = get_random_int() % (MAX_OCCP_READ_SIZE) + 1;
+            retval = occp_send_read_command(ctx, ctx->slave_addr, addr, data, size);
+            break;
+        case OCCP_WRITE:
+            size = get_random_int() % (MAX_OCCP_WRITE_SIZE) + 1;
+            for (int i = 0; i < size; i++) data[i] = get_random_int() % 256;
+            retval = occp_send_write_command(ctx, ctx->slave_addr, addr, data, size);
+            break;
+        case OCCP_JUMP:
+            retval = occp_send_jump_command(ctx, ctx->slave_addr, addr);
+            break;
+        case OCCP_VALIDATE_BOOT:
+            retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, addr);
+            break;
+        default:
+            retval = OCCP_INVALID_CMD;
+            break;
         }
         if (retval != OCCP_SUCCESS) {
             simputs("FAIL: Command failed\n");
@@ -194,7 +189,7 @@ int main(void) {
 
     /* Validate the SMC status buffer before cooldown */
     // unpredictable and no fixed code for CRC error so let's just skip this
-    //read_and_validate_smc_status_buffer(&ctx);
+    // read_and_validate_smc_status_buffer(&ctx);
 
     /* Cool-down valid commands to ensure recovery */
     execute_random_commands(&ctx, 5);
@@ -208,7 +203,9 @@ int main(void) {
 
 int other_main(int hartid) {
     (void)hartid;
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {

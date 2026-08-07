@@ -27,7 +27,7 @@ static void run_test_suite(test_context_t *ctx) {
 
     uint32_t status = 0;
     for (int i = 0; i < 4; i++) {
-    int rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
+        int rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
         if (rc != OCCP_SUCCESS) {
             simputs("FAIL: GET_OCCP_BOOT_STATUS under unsupported ID injection\n");
             ctx->overall_result = false;

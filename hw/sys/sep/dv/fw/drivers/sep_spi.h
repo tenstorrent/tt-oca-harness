@@ -40,7 +40,7 @@
 // actual core clock (see spi_clk.h). A fixed divider only holds at one core
 // frequency.
 #define SPI_CFG_CSN_TIMING 0x02220000u
-#define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv) & 0xFFFFu))
+#define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
 
 // CMD fields.
 #define SPI_CMD_LEN_SHIFT 0     // LEN = (#bytes - 1)

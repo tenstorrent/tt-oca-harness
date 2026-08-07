@@ -46,8 +46,9 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
 
     while (bytes_transferred < bootcode_size) {
         uint64_t remaining_bytes = bootcode_size - bytes_transferred;
-        uint16_t chunk_size = (remaining_bytes > MAX_TRANSFER_CHUNK_SIZE) ?
-                              MAX_TRANSFER_CHUNK_SIZE : (uint16_t)remaining_bytes;
+        uint16_t chunk_size = (remaining_bytes > MAX_TRANSFER_CHUNK_SIZE)
+                                  ? MAX_TRANSFER_CHUNK_SIZE
+                                  : (uint16_t)remaining_bytes;
 
         // Read chunk from master BFM SRAM using local APIs
         uint8_t transfer_buffer[MAX_TRANSFER_CHUNK_SIZE];
@@ -55,7 +56,7 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
         for (uint16_t i = 0; i < chunk_size; i++) {
             if ((i % 8) == 0 && (i + 8) <= chunk_size) {
                 // Read 8 bytes at once for efficiency
-                uint64_t *dest_ptr = (uint64_t*)&transfer_buffer[i];
+                uint64_t *dest_ptr = (uint64_t *)&transfer_buffer[i];
                 *dest_ptr = read_reg_64(current_master_addr + i);
                 i += 7; // Skip next 7 bytes since we read 8
             } else {
@@ -65,7 +66,8 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
         }
 
         // Transfer chunk to DUT via OCCP
-        retval = occp_send_write_command(ctx, ctx->slave_addr, current_dut_addr, transfer_buffer, chunk_size);
+        retval = occp_send_write_command(ctx, ctx->slave_addr, current_dut_addr, transfer_buffer,
+                                         chunk_size);
         if (retval != OCCP_SUCCESS) {
             simputs("FAIL: Failed to transfer bootcode chunk\n");
             simputshex32("Transfer failed at offset 0x", (uint32_t)bytes_transferred);

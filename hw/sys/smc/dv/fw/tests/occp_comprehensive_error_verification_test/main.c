@@ -24,25 +24,25 @@
 
 // OCCP Error Codes from specification Section 10.3.2
 // Bus/Command Errors (0x100-0x11F)
-#define SMC_OCCP_ERROR_CMD_READ         0x100  /* Command read error from bus */
-#define SMC_OCCP_ERROR_CMD_UNKNOWN      0x101  /* Unknown command */
-#define SMC_OCCP_ERROR_CMD_FAILED       0x110  /* Command execution failed */
+#define SMC_OCCP_ERROR_CMD_READ 0x100    /* Command read error from bus */
+#define SMC_OCCP_ERROR_CMD_UNKNOWN 0x101 /* Unknown command */
+#define SMC_OCCP_ERROR_CMD_FAILED 0x110  /* Command execution failed */
 
 // READ Command Errors (0x120-0x12F)
-#define SMC_OCCP_ERROR_READ_OVERFLOW    0x120  /* READ buffer overflow */
+#define SMC_OCCP_ERROR_READ_OVERFLOW 0x120      /* READ buffer overflow */
 #define SMC_OCCP_ERROR_READ_ACCESS_DENIED 0x121 /* READ access denied */
 
 // WRITE Command Errors (0x130-0x13F)
-#define SMC_OCCP_ERROR_WRITE_OVERFLOW   0x130  /* WRITE buffer overflow */
+#define SMC_OCCP_ERROR_WRITE_OVERFLOW 0x130      /* WRITE buffer overflow */
 #define SMC_OCCP_ERROR_WRITE_ACCESS_DENIED 0x131 /* WRITE access denied */
 
 // Security Violation Errors (0x140-0x14F)
 #define SMC_OCCP_ERROR_VALIDATE_SECURITY 0x140 /* VALIDATE_BOOT security violation */
 
 // JUMP Command Codes (0x200-0x20F)
-#define SMC_OCCP_STATUS_JUMP_EXECUTED   0x200  /* JUMP executed successfully */
-#define SMC_OCCP_ERROR_JUMP_SECURITY    0x201  /* JUMP blocked by security */
-#define SMC_OCCP_ERROR_JUMP_READ_FAILED 0x202  /* JUMP failed due to read error */
+#define SMC_OCCP_STATUS_JUMP_EXECUTED 0x200   /* JUMP executed successfully */
+#define SMC_OCCP_ERROR_JUMP_SECURITY 0x201    /* JUMP blocked by security */
+#define SMC_OCCP_ERROR_JUMP_READ_FAILED 0x202 /* JUMP failed due to read error */
 
 // // Status message format constants
 // #define SMC_STATUS_FW_ID_SMC_BL0        0x3
@@ -51,17 +51,17 @@
 // #define SMC_STATUS_TYPE_ERROR           0x2
 
 // Memory protection boundaries
-#define ROM_PROTECTED_SRAM_BASE     0xC0060000  /* ROM protected region start */
-#define ROM_PROTECTED_SRAM_END      0xC0066000  /* ROM protected region end */
-#define OCCP_ACCESSIBLE_SRAM_BASE   0xC0066000  /* OCCP accessible region start */
+#define ROM_PROTECTED_SRAM_BASE 0xC0060000   /* ROM protected region start */
+#define ROM_PROTECTED_SRAM_END 0xC0066000    /* ROM protected region end */
+#define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000 /* OCCP accessible region start */
 
 // Test configuration
-#define COMPREHENSIVE_ERROR_SCENARIOS   45      /* Total error scenarios (enhanced) */
-#define MAX_STATUS_BUFFER_READS        200      /* Maximum status reads */
-#define MAX_INVALID_COMMANDS           16       /* Maximum invalid commands to test */
+#define COMPREHENSIVE_ERROR_SCENARIOS 45 /* Total error scenarios (enhanced) */
+#define MAX_STATUS_BUFFER_READS 200      /* Maximum status reads */
+#define MAX_INVALID_COMMANDS 16          /* Maximum invalid commands to test */
 
 // Additional bug detection scenarios
-#define CRITICAL_BUG_SCENARIOS          10      /* Critical bug detection tests */
+#define CRITICAL_BUG_SCENARIOS 10 /* Critical bug detection tests */
 
 typedef struct {
     test_context_t *occp_ctx;
@@ -89,7 +89,8 @@ static void init_test_context(comprehensive_error_test_context_t *ctx, test_cont
     ctx->security_violations_tested = 0;
 }
 
-static void mark_test_result(comprehensive_error_test_context_t *ctx, bool passed, const char *test_name) {
+static void mark_test_result(comprehensive_error_test_context_t *ctx, bool passed,
+                             const char *test_name) {
     ctx->total_tests++;
     if (passed) {
         ctx->passed_tests++;
@@ -111,10 +112,11 @@ static bool test_memory_access_violations(comprehensive_error_test_context_t *ct
 
     // Test ROM-protected region violations
     simputs("Testing ROM-protected region violations...\n");
-    for (uint64_t addr = ROM_PROTECTED_SRAM_BASE; addr < ROM_PROTECTED_SRAM_BASE + 0x2000; addr += 0x1000) {
+    for (uint64_t addr = ROM_PROTECTED_SRAM_BASE; addr < ROM_PROTECTED_SRAM_BASE + 0x2000;
+         addr += 0x1000) {
         // Test WRITE_ACCESS_DENIED
-        int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                           addr, test_data, sizeof(test_data));
+        int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, addr,
+                                             test_data, sizeof(test_data));
         if (result != OCCP_SUCCESS) {
             simputs("Expected violation: ROM-protected WRITE denied\n");
             ctx->violations_triggered++;
@@ -122,8 +124,8 @@ static bool test_memory_access_violations(comprehensive_error_test_context_t *ct
 
         // Test READ_ACCESS_DENIED
         uint8_t read_buffer[8];
-        result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                      addr, read_buffer, sizeof(read_buffer));
+        result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, addr, read_buffer,
+                                        sizeof(read_buffer));
         if (result != OCCP_SUCCESS) {
             simputs("Expected violation: ROM-protected READ denied\n");
             ctx->violations_triggered++;
@@ -133,9 +135,9 @@ static bool test_memory_access_violations(comprehensive_error_test_context_t *ct
     // Test invalid address ranges
     simputs("Testing invalid address range violations...\n");
     uint64_t invalid_addrs[] = {0x00000000, 0xFFFFFFFFFFFFFFFF};
-    for (int i = 0; i < sizeof(invalid_addrs)/sizeof(invalid_addrs[0]); i++) {
+    for (int i = 0; i < sizeof(invalid_addrs) / sizeof(invalid_addrs[0]); i++) {
         int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                           invalid_addrs[i], test_data, sizeof(test_data));
+                                             invalid_addrs[i], test_data, sizeof(test_data));
         if (result != OCCP_SUCCESS) {
             simputs("Expected violation: Invalid address WRITE denied\n");
             ctx->violations_triggered++;
@@ -157,8 +159,8 @@ static bool test_command_failures(comprehensive_error_test_context_t *ctx) {
     simputs("Testing zero-length command failures...\n");
 
     // Zero-length WRITE
-    int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                       0xC0070000, NULL, 0);
+    int result =
+        occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0070000, NULL, 0);
     if (result != OCCP_SUCCESS) {
         simputs("Expected failure: Zero-length WRITE rejected\n");
         ctx->violations_triggered++;
@@ -169,8 +171,8 @@ static bool test_command_failures(comprehensive_error_test_context_t *ctx) {
     uint8_t large_data[MAX_OCCP_WRITE_SIZE + 10];
     memset(large_data, 0xAA, sizeof(large_data));
 
-    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                   0xC0070000, large_data, sizeof(large_data));
+    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0070000,
+                                     large_data, sizeof(large_data));
     if (result != OCCP_SUCCESS) {
         simputs("Expected failure: Oversized WRITE rejected\n");
         ctx->violations_triggered++;
@@ -190,14 +192,14 @@ static bool test_jump_security_violations(comprehensive_error_test_context_t *ct
     // Test JUMP to invalid addresses
     simputs("Testing JUMP security violations...\n");
     uint64_t invalid_jump_addrs[] = {
-        0xFFFFFFFFFFFFFFFF,             // Invalid high address
-        0x00000000,                     // Invalid low address
-        ROM_PROTECTED_SRAM_BASE,        // ROM protected region
+        0xFFFFFFFFFFFFFFFF,      // Invalid high address
+        0x00000000,              // Invalid low address
+        ROM_PROTECTED_SRAM_BASE, // ROM protected region
     };
 
-    for (int i = 0; i < sizeof(invalid_jump_addrs)/sizeof(invalid_jump_addrs[0]); i++) {
-        int result = occp_send_jump_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                          invalid_jump_addrs[i]);
+    for (int i = 0; i < sizeof(invalid_jump_addrs) / sizeof(invalid_jump_addrs[0]); i++) {
+        int result =
+            occp_send_jump_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, invalid_jump_addrs[i]);
         if (result != OCCP_SUCCESS) {
             simputs("Expected violation: JUMP security violation\n");
             ctx->violations_triggered++;
@@ -219,12 +221,14 @@ static bool test_invalid_command_injection(comprehensive_error_test_context_t *c
 
     // Send invalid OCCP commands that should trigger CMD_UNKNOWN errors
     uint32_t invalid_commands[] = {
-        0x08, 0x09, 0x0A, 0x0B,     // Invalid single-byte commands
-        0xFF, 0xAA, 0x55, 0xCC,     // More invalid patterns
-        0xDEAD, 0xBEEF, 0x1234      // Multi-byte invalid commands
+        0x08,   0x09,   0x0A,  0x0B, // Invalid single-byte commands
+        0xFF,   0xAA,   0x55,  0xCC, // More invalid patterns
+        0xDEAD, 0xBEEF, 0x1234       // Multi-byte invalid commands
     };
 
-    for (int i = 0; i < sizeof(invalid_commands)/sizeof(invalid_commands[0]) && i < MAX_INVALID_COMMANDS; i++) {
+    for (int i = 0;
+         i < sizeof(invalid_commands) / sizeof(invalid_commands[0]) && i < MAX_INVALID_COMMANDS;
+         i++) {
         simputs("Sending invalid command: ");
         simputshex32("0x", invalid_commands[i]);
         simputs("\n");
@@ -245,11 +249,11 @@ static bool test_invalid_command_injection(comprehensive_error_test_context_t *c
         //         ctx->violations_triggered++;
         //     }
         // } else {
-            if (ctx->occp_ctx->drv.i2c_drv != NULL) {
-                ctx->occp_ctx->drv.i2c_drv->ctrlr_send_data(ctx->occp_ctx->drv.i2c_drv,
-                                                           cmd_packet, sizeof(cmd_packet));
-                ctx->violations_triggered++;
-            }
+        if (ctx->occp_ctx->drv.i2c_drv != NULL) {
+            ctx->occp_ctx->drv.i2c_drv->ctrlr_send_data(ctx->occp_ctx->drv.i2c_drv, cmd_packet,
+                                                        sizeof(cmd_packet));
+            ctx->violations_triggered++;
+        }
         // }
     }
 
@@ -271,8 +275,8 @@ static bool test_buffer_overflow_scenarios(comprehensive_error_test_context_t *c
     memset(max_buffer, 0x5A, sizeof(max_buffer));
 
     // Test exactly at maximum size (should succeed)
-    int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                       0xC0070000, max_buffer, MAX_OCCP_WRITE_SIZE);
+    int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0070000,
+                                         max_buffer, MAX_OCCP_WRITE_SIZE);
     if (result == OCCP_SUCCESS) {
         simputs("Maximum size WRITE: PASS\n");
     } else {
@@ -283,8 +287,8 @@ static bool test_buffer_overflow_scenarios(comprehensive_error_test_context_t *c
     uint8_t oversized_buffer[MAX_OCCP_WRITE_SIZE + 8];
     memset(oversized_buffer, 0xA5, sizeof(oversized_buffer));
 
-    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                   0xC0070000, oversized_buffer, sizeof(oversized_buffer));
+    result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0070000,
+                                     oversized_buffer, sizeof(oversized_buffer));
     if (result != OCCP_SUCCESS) {
         simputs("Expected failure: Oversized buffer overflow protection triggered\n");
         ctx->violations_triggered++;
@@ -292,8 +296,8 @@ static bool test_buffer_overflow_scenarios(comprehensive_error_test_context_t *c
 
     // Test READ buffer overflow scenarios
     uint8_t read_buffer[MAX_OCCP_WRITE_SIZE + 16];
-    result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                  0xC0070000, read_buffer, sizeof(read_buffer));
+    result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0070000,
+                                    read_buffer, sizeof(read_buffer));
     if (result != OCCP_SUCCESS) {
         simputs("Expected failure: READ buffer overflow protection triggered\n");
         ctx->violations_triggered++;
@@ -313,14 +317,15 @@ static bool test_validate_boot_security(comprehensive_error_test_context_t *ctx)
     // Test VALIDATE_AND_BOOT with protected manifest addresses
     simputs("Testing VALIDATE_AND_BOOT security violations...\n");
     uint64_t protected_manifest_addrs[] = {
-        ROM_PROTECTED_SRAM_BASE,        // ROM protected region
-        0x00000000,                     // Invalid low address
-        0xFFFFFFFFFFFFFFFF              // Invalid high address
+        ROM_PROTECTED_SRAM_BASE, // ROM protected region
+        0x00000000,              // Invalid low address
+        0xFFFFFFFFFFFFFFFF       // Invalid high address
     };
 
-    for (int i = 0; i < sizeof(protected_manifest_addrs)/sizeof(protected_manifest_addrs[0]); i++) {
+    for (int i = 0; i < sizeof(protected_manifest_addrs) / sizeof(protected_manifest_addrs[0]);
+         i++) {
         int result = occp_send_validate_boot_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                                                   protected_manifest_addrs[i]);
+                                                     protected_manifest_addrs[i]);
         if (result != OCCP_SUCCESS) {
             simputs("Expected violation: VALIDATE_AND_BOOT security violation\n");
             ctx->violations_triggered++;
@@ -345,14 +350,14 @@ static bool test_helper_macro_functionality(comprehensive_error_test_context_t *
 
     // Test error codes with data (simulating WITH_DATA macro behavior)
     uint32_t error_with_data_tests[] = {
-        SMC_OCCP_ERROR_CMD_UNKNOWN | 0x0A,     // CMD_UNKNOWN with command data
-        SMC_OCCP_ERROR_CMD_UNKNOWN | 0x55,     // CMD_UNKNOWN with different data
-        SMC_OCCP_ERROR_READ_ACCESS_DENIED | 0x01,  // READ error with data
-        SMC_OCCP_ERROR_WRITE_ACCESS_DENIED | 0x02  // WRITE error with data
+        SMC_OCCP_ERROR_CMD_UNKNOWN | 0x0A,        // CMD_UNKNOWN with command data
+        SMC_OCCP_ERROR_CMD_UNKNOWN | 0x55,        // CMD_UNKNOWN with different data
+        SMC_OCCP_ERROR_READ_ACCESS_DENIED | 0x01, // READ error with data
+        SMC_OCCP_ERROR_WRITE_ACCESS_DENIED | 0x02 // WRITE error with data
     };
 
     // Verify error code ranges and patterns
-    for (int i = 0; i < sizeof(error_with_data_tests)/sizeof(error_with_data_tests[0]); i++) {
+    for (int i = 0; i < sizeof(error_with_data_tests) / sizeof(error_with_data_tests[0]); i++) {
         uint32_t error_code = error_with_data_tests[i];
         uint32_t base_error = error_code & 0xFF0;
         uint32_t data_portion = error_code & 0x00F;
@@ -377,14 +382,14 @@ static bool test_helper_macro_functionality(comprehensive_error_test_context_t *
 
     // Test all major error category boundaries
     uint32_t boundary_tests[] = {
-        0x100, 0x11F,  // Bus/Command error boundaries
-        0x120, 0x12F,  // READ error boundaries
-        0x130, 0x13F,  // WRITE error boundaries
-        0x140, 0x14F,  // Security error boundaries
-        0x200, 0x20F   // JUMP error boundaries
+        0x100, 0x11F, // Bus/Command error boundaries
+        0x120, 0x12F, // READ error boundaries
+        0x130, 0x13F, // WRITE error boundaries
+        0x140, 0x14F, // Security error boundaries
+        0x200, 0x20F  // JUMP error boundaries
     };
 
-    for (int i = 0; i < sizeof(boundary_tests)/sizeof(boundary_tests[0]); i++) {
+    for (int i = 0; i < sizeof(boundary_tests) / sizeof(boundary_tests[0]); i++) {
         uint32_t boundary_code = boundary_tests[i];
         if ((boundary_code >= 0x100 && boundary_code <= 0x2FF)) {
             simputs("PASS: Boundary code 0x");
@@ -410,7 +415,8 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
     // Read through status ring buffer looking for errors
     for (int i = 0; i < MAX_STATUS_BUFFER_READS; i++) {
         uint32_t status = 0;
-        int result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        int result =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
 
         if (result == OCCP_SUCCESS && status != 0) {
             uint32_t fw_id = (status >> 28) & 0xF;
@@ -530,7 +536,8 @@ static bool test_critical_integer_overflow_bugs(comprehensive_error_test_context
     };
 
     for (int i = 0; i < 3; i++) {
-        result = occp_send_read_command(ctx->occp_ctx, 0x55, 0xC0066000, overflow_counts[i], dummy_read);
+        result =
+            occp_send_read_command(ctx->occp_ctx, 0x55, 0xC0066000, overflow_counts[i], dummy_read);
         if (result == 0) {
             simputs("POTENTIAL BUG: Overflow count boundary not handled\n");
             test_passed = false;
@@ -566,7 +573,7 @@ static bool test_critical_endianness_bugs(comprehensive_error_test_context_t *ct
             // Verify byte order preservation
             bool endian_correct = true;
             for (int i = 0; i < 8; i++) {
-                if (read_back[i] != test_pattern[7-i]) { // Expected big-endian format
+                if (read_back[i] != test_pattern[7 - i]) { // Expected big-endian format
                     endian_correct = false;
                     break;
                 }
@@ -631,7 +638,8 @@ static bool test_critical_state_machine_bugs(comprehensive_error_test_context_t 
     memset(boundary_data, 0xCC, sizeof(boundary_data));
 
     // Maximum allowed size + 1 to test boundary enforcement
-    result = occp_send_write_command(ctx->occp_ctx, 0x55, 0xC0066000, boundary_data, 255); // Over max
+    result =
+        occp_send_write_command(ctx->occp_ctx, 0x55, 0xC0066000, boundary_data, 255); // Over max
     if (result == 0) {
         simputs("POTENTIAL BUG: Boundary size check failed\n");
         test_passed = false;
@@ -654,8 +662,8 @@ static void finalize_comprehensive_results(comprehensive_error_test_context_t *c
     }
 
     occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                           SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                           (uint8_t *)&result_code, sizeof(result_code));
+                            SMC_CPU_CTRL_SCRATCH_0__REG_ADDR, (uint8_t *)&result_code,
+                            sizeof(result_code));
 }
 
 int main(void) {

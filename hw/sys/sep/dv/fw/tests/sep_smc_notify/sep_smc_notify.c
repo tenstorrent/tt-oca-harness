@@ -23,8 +23,7 @@
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
 
-int main(void)
-{
+int main(void) {
     /* Allow access to the testbench mailbox at 0x80000000. */
     sep_outbound_filter_init();
 

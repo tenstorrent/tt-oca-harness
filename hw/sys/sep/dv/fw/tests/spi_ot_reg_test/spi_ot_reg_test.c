@@ -82,7 +82,8 @@ int main(void) {
     if (!check_reg("CSID default", csid_val, 0)) pass = 0;
 
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE default", err_enable.w, SPI_CONTROLLER__ERROR_ENABLE_reset)) pass = 0;
+    if (!check_reg("ERROR_ENABLE default", err_enable.w, SPI_CONTROLLER__ERROR_ENABLE_reset))
+        pass = 0;
 
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     if (!check_reg("EVENT_ENABLE default", event_enable.w, 0)) pass = 0;

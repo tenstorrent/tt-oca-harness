@@ -30,15 +30,16 @@
 #include "rom_mailbox.h"
 
 #define KM_READY_TOKEN 0xA11FE5EEu /* KM -> EL2 : ready (sent on outbound mailbox) */
-#define EL2_GO_TOKEN   0x60600060u /* EL2 -> KM : start the write loop (inbound)   */
+#define EL2_GO_TOKEN 0x60600060u   /* EL2 -> KM : start the write loop (inbound)   */
 
 /* Two KM-owned MMR registers carry an owner-tagged, incrementing pattern so the
  * EL2 host can validate KM progress AND response attribution (each read must
- * return its register's own tag byte). Payload is the 24-bit counter. */
-#define MMR0_ADDR       KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0) /* KM-local 0x0001_1500 */
-#define MMR1_ADDR       KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1) /* KM-local 0x0001_1504 */
-#define KM_TAG0         0xA5000000u
-#define KM_TAG1         0x5A000000u
+ * return its register's own tag byte). Payload is the 24-bit counter.
+ * MMR0 is KM-local 0x0001_1500, MMR1 is KM-local 0x0001_1504. */
+#define MMR0_ADDR KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
+#define MMR1_ADDR KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
+#define KM_TAG0 0xA5000000u
+#define KM_TAG1 0x5A000000u
 #define KM_PAYLOAD_MASK 0x00FFFFFFu
 
 static inline void reg_write32(uint32_t addr, uint32_t val) {

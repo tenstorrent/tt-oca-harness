@@ -11,19 +11,14 @@
  * dv_rom build force-includes vendor I3C shims whose types collide with it. */
 #include "smc_strap.h"
 
-typedef enum {
-    IFACE_I2C0 = 0,
-    IFACE_I2C1 = 1
-} iface_id_t;
+typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
 
-static void set_ctx_addr_bounds(test_context_t *ctx)
-{
+static void set_ctx_addr_bounds(test_context_t *ctx) {
     ctx->test_base_addr = OCCP_TEST_BASE_ADDR;
     ctx->test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
 }
 
-static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
-{
+static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface) {
     simputshex32("init_ctx_for_iface: iface: ", iface);
     uint8_t controller = (iface == IFACE_I2C0) ? 0 : 1;
     I2C_Driver *drv = I2C_GetDriverInstance(controller);
@@ -31,7 +26,8 @@ static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
         simputs("FAIL: I2C_GetDriverInstance returned NULL\n");
         return false;
     }
-    uint8_t i2c_addr = (controller == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
+    uint8_t i2c_addr =
+        (controller == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
     if (drv->init_i2c_ctrlr(drv, i2c_addr) != I2C_OK) {
         simputs("FAIL: I2C init failed\n");
         return false;
@@ -42,27 +38,27 @@ static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
     return true;
 }
 
-static iface_id_t pick_random_iface(void)
-{
+static iface_id_t pick_random_iface(void) {
     /* Map random selection 0..1 to 2 I2C interfaces */
     uint32_t r = get_random_int() % 2;
     switch (r) {
-        case 0: return IFACE_I2C0;
-        case 1: return IFACE_I2C1;
-        default: return IFACE_I2C0;
+    case 0:
+        return IFACE_I2C0;
+    case 1:
+        return IFACE_I2C1;
+    default:
+        return IFACE_I2C0;
     }
 }
 
-static iface_id_t pick_distinct_iface(iface_id_t exclude)
-{
+static iface_id_t pick_distinct_iface(iface_id_t exclude) {
     while (1) {
         iface_id_t c = pick_random_iface();
         if (c != exclude) return c;
     }
 }
 
-static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count)
-{
+static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count) {
     uint32_t status_data = 0;
     int retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -82,8 +78,7 @@ static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected
     return true;
 }
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctxA = {0};
     static test_context_t ctxB = {0};
 
@@ -126,12 +121,16 @@ int main(void)
     if (!init_ctx_for_iface(&ctxA, ifaceA)) {
         simputs("FAIL: init ifaceA\n");
         test_fail(0);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     if (!init_ctx_for_iface(&ctxB, ifaceB)) {
         simputs("FAIL: init ifaceB\n");
         test_fail(0);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* 1) Latch on ifaceA with a safe valid command */
@@ -150,7 +149,9 @@ int main(void)
     simputs("Step 3: Verify cmd_count unchanged on ifaceA after ifaceB attempts\n");
     if (!get_status_and_check_cmd_count(&ctxA, (uint8_t)ctxA.cmd_count)) {
         test_fail(0);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     /* Reflect second GET_STATUS consumed by ROM */
     increment_cmd_count(&ctxA);
@@ -168,6 +169,8 @@ int main(void)
     }
 
     simputs("Done\n");
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return 0;
 }

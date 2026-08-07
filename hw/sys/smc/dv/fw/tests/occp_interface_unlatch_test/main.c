@@ -13,19 +13,14 @@
  * I3C shims whose types collide with smc_top_regs.h. */
 #include "smc_strap.h"
 
-typedef enum {
-    IFACE_I2C0 = 0,
-    IFACE_I2C1 = 1
-} iface_id_t;
+typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
 
-static void set_ctx_addr_bounds(test_context_t *ctx)
-{
+static void set_ctx_addr_bounds(test_context_t *ctx) {
     ctx->test_base_addr = OCCP_TEST_BASE_ADDR;
     ctx->test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
 }
 
-static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
-{
+static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface) {
     simputshex32("init_ctx_for_iface: iface: ", iface);
     uint8_t controller = (iface == IFACE_I2C0) ? 0 : 1;
     I2C_Driver *drv = I2C_GetDriverInstance(controller);
@@ -33,7 +28,8 @@ static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
         simputs("FAIL: I2C_GetDriverInstance returned NULL\n");
         return false;
     }
-    uint8_t i2c_addr = (controller == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
+    uint8_t i2c_addr =
+        (controller == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
     if (drv->init_i2c_ctrlr(drv, i2c_addr) != I2C_OK) {
         simputs("FAIL: I2C init failed\n");
         return false;
@@ -44,26 +40,26 @@ static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface)
     return true;
 }
 
-static iface_id_t pick_random_iface(void)
-{
+static iface_id_t pick_random_iface(void) {
     uint32_t r = get_random_int() % 2;
     switch (r) {
-        case 0: return IFACE_I2C0;
-        case 1: return IFACE_I2C1;
-        default: return IFACE_I2C0;
+    case 0:
+        return IFACE_I2C0;
+    case 1:
+        return IFACE_I2C1;
+    default:
+        return IFACE_I2C0;
     }
 }
 
-static iface_id_t pick_distinct_iface(iface_id_t exclude)
-{
+static iface_id_t pick_distinct_iface(iface_id_t exclude) {
     while (1) {
         iface_id_t c = pick_random_iface();
         if (c != exclude) return c;
     }
 }
 
-static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count)
-{
+static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count) {
     uint32_t status_data = 0;
     int retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -90,8 +86,7 @@ static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected
  *  - Address outside SRAM range (READ/WRITE)
  *  - Zero-length READ/WRITE
  */
-static int send_random_invalid_for_unlatch(test_context_t *ctx)
-{
+static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     int which = (int)(get_random_int() % 13);
     int rc = OCCP_ERR;
     uint32_t tmp32 = 0;
@@ -136,26 +131,26 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx)
         break;
     case 4: /* Unaligned access (READ/WRITE) */
         simputs("Injecting Unaligned access (READ/WRITE)\n");
-    {
-        bool do_write = ((get_random_int() % 2) == 0);
-        /* Create an address within [base, upper) but not 4-byte aligned */
-        uint16_t len = do_write ? get_random_occp_write_size() : get_random_occp_read_size();
-        uint64_t addr = base + (get_random_int() % (range - len + 1)) & 0xfffffffffffffffc;
-        // make it not 4-byte aligned
-        addr += ((get_random_int() % 3) + 1);
-        ctx->exp_response_code = OCCP_INVALID_ADDRESS;
-        if (do_write) {
-            static uint8_t wbuf[MAX_OCCP_WRITE_SIZE];
-            for (uint16_t i = 0; i < len; i++) wbuf[i] = (uint8_t)(get_random_int() & 0xFF);
-            rc = occp_send_write_command(ctx, ctx->slave_addr, addr, wbuf, len);
-        } else {
-            static uint8_t rbuf[MAX_OCCP_READ_SIZE];
-            rc = occp_send_read_command(ctx, ctx->slave_addr, addr, rbuf, len);
+        {
+            bool do_write = ((get_random_int() % 2) == 0);
+            /* Create an address within [base, upper) but not 4-byte aligned */
+            uint16_t len = do_write ? get_random_occp_write_size() : get_random_occp_read_size();
+            uint64_t addr = base + (get_random_int() % (range - len + 1)) & 0xfffffffffffffffc;
+            // make it not 4-byte aligned
+            addr += ((get_random_int() % 3) + 1);
+            ctx->exp_response_code = OCCP_INVALID_ADDRESS;
+            if (do_write) {
+                static uint8_t wbuf[MAX_OCCP_WRITE_SIZE];
+                for (uint16_t i = 0; i < len; i++) wbuf[i] = (uint8_t)(get_random_int() & 0xFF);
+                rc = occp_send_write_command(ctx, ctx->slave_addr, addr, wbuf, len);
+            } else {
+                static uint8_t rbuf[MAX_OCCP_READ_SIZE];
+                rc = occp_send_read_command(ctx, ctx->slave_addr, addr, rbuf, len);
+            }
+            ctx->exp_response_code = OCCP_ERROR_NONE;
+            increment_cmd_count(ctx);
+            break;
         }
-        ctx->exp_response_code = OCCP_ERROR_NONE;
-        increment_cmd_count(ctx);
-        break;
-    }
     case 5: /* Address outside SRAM (READ/WRITE) */
     {
         simputs("Injecting Address outside SRAM range (READ/WRITE)\n");
@@ -204,69 +199,69 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx)
         break;
     }
     case 7: // oversize body
-      simputs("Injecting Oversize body\n");
-      ctx->inject_oversize_body_err = true;
-      ctx->exp_response_code = OCCP_OVERSIZE_MSG;
-      execute_random_commands(ctx, 1);
-      rc = OCCP_SUCCESS;
-      ctx->inject_oversize_body_err = false;
-      ctx->exp_response_code = OCCP_ERROR_NONE;
-      break;
+        simputs("Injecting Oversize body\n");
+        ctx->inject_oversize_body_err = true;
+        ctx->exp_response_code = OCCP_OVERSIZE_MSG;
+        execute_random_commands(ctx, 1);
+        rc = OCCP_SUCCESS;
+        ctx->inject_oversize_body_err = false;
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        break;
     case 8: // undersize body
-      simputs("Injecting Undersize body\n");
-      ctx->inject_undersize_body_err = true;
-      ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
-      execute_random_commands(ctx, 1);
-      rc = OCCP_SUCCESS;
-      ctx->inject_undersize_body_err = false;
-      ctx->exp_response_code = OCCP_ERROR_NONE;
-      break;
+        simputs("Injecting Undersize body\n");
+        ctx->inject_undersize_body_err = true;
+        ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
+        execute_random_commands(ctx, 1);
+        rc = OCCP_SUCCESS;
+        ctx->inject_undersize_body_err = false;
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        break;
     case 9: // undersize header
-      simputs("Injecting Undersize header\n");
-      ctx->inject_undersize_header_err = true;
-      ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
-      execute_random_commands(ctx, 1);
-      rc = OCCP_SUCCESS;
-      ctx->inject_undersize_header_err = false;
-      ctx->exp_response_code = OCCP_ERROR_NONE;
-      break;
+        simputs("Injecting Undersize header\n");
+        ctx->inject_undersize_header_err = true;
+        ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
+        execute_random_commands(ctx, 1);
+        rc = OCCP_SUCCESS;
+        ctx->inject_undersize_header_err = false;
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        break;
     case 10: // invalid comman
-      simputs("Injecting Invalid command\n");
-      int injection_mode = get_random_int() % 3;
-      switch (injection_mode) {
+        simputs("Injecting Invalid command\n");
+        int injection_mode = get_random_int() % 3;
+        switch (injection_mode) {
         case 0:
-          ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_MSGID;
-          break;
+            ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_MSGID;
+            break;
         case 1:
-          ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_APPID;
-          break;
+            ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_APPID;
+            break;
         case 2:
-          ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_BOTH;
-          break;
-      }
-      execute_random_commands(ctx, 1);
-      rc = OCCP_SUCCESS;
-      ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
-      ctx->exp_response_code = OCCP_ERROR_NONE;
-      break;
+            ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_BOTH;
+            break;
+        }
+        execute_random_commands(ctx, 1);
+        rc = OCCP_SUCCESS;
+        ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        break;
     case 11: // invalid length field
-      simputs("Injecting Invalid length field\n");
-      ctx->invalid_len_err_inject_enable = true;
-      execute_random_commands(ctx, 1);
-      rc = OCCP_SUCCESS;
-      ctx->invalid_len_err_inject_enable = false;
-      break;
+        simputs("Injecting Invalid length field\n");
+        ctx->invalid_len_err_inject_enable = true;
+        execute_random_commands(ctx, 1);
+        rc = OCCP_SUCCESS;
+        ctx->invalid_len_err_inject_enable = false;
+        break;
     case 12: // unsupported status ID
-      simputs("Injecting Unsupported status ID\n");
-      ctx->unsupported_status_id_inject_enable = true;
-      ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
-      //execute_random_commands(ctx, 1);
-      uint32_t status = 0;
-      rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
-      ctx->unsupported_status_id_inject_enable = false;
-      ctx->exp_response_code = OCCP_ERROR_NONE;
-      increment_cmd_count(ctx);
-      break;
+        simputs("Injecting Unsupported status ID\n");
+        ctx->unsupported_status_id_inject_enable = true;
+        ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
+        // execute_random_commands(ctx, 1);
+        uint32_t status = 0;
+        rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
+        ctx->unsupported_status_id_inject_enable = false;
+        ctx->exp_response_code = OCCP_ERROR_NONE;
+        increment_cmd_count(ctx);
+        break;
     default:
         rc = OCCP_ERR;
         break;
@@ -280,8 +275,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx)
     return rc;
 }
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctxA = {0};
     static test_context_t ctxB = {0};
 
@@ -323,12 +317,16 @@ int main(void)
     if (!init_ctx_for_iface(&ctxA, ifaceA)) {
         simputs("FAIL: init ifaceA\n");
         test_fail(0);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
     if (!init_ctx_for_iface(&ctxB, ifaceB)) {
         simputs("FAIL: init ifaceB\n");
         test_fail(0);
-        while (1) { __asm__("wfi"); }
+        while (1) {
+            __asm__("wfi");
+        }
     }
 
     /* 1) Latch on ifaceA with valid commands */
@@ -340,7 +338,10 @@ int main(void)
     simputs("Step 2: Send randomized invalid commands on ifaceA to force unlatch\n");
     for (int i = 0; i < 5; i++) {
         int rc = send_random_invalid_for_unlatch(&ctxA);
-        if (rc != OCCP_SUCCESS) { simputs("Invalid command send failed\n"); ctxA.overall_result = false; }
+        if (rc != OCCP_SUCCESS) {
+            simputs("Invalid command send failed\n");
+            ctxA.overall_result = false;
+        }
     }
 
     ctxB.exp_occp_last_error = ctxA.exp_occp_last_error;
@@ -353,7 +354,10 @@ int main(void)
     simputs("Step 4: Relatch to ifaceA\n");
     for (int i = 0; i < 5; i++) {
         int rc = send_random_invalid_for_unlatch(&ctxB);
-        if (rc != OCCP_SUCCESS) { simputs("Invalid command send failed\n"); ctxA.overall_result = false; }
+        if (rc != OCCP_SUCCESS) {
+            simputs("Invalid command send failed\n");
+            ctxA.overall_result = false;
+        }
     }
 
     ctxA.exp_occp_last_error = ctxB.exp_occp_last_error;
@@ -370,6 +374,8 @@ int main(void)
     }
 
     simputs("Done\n");
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return 0;
 }

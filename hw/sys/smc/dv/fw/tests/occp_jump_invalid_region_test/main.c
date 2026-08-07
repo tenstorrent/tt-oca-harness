@@ -31,11 +31,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         }
         increment_cmd_count(ctx);
         simputshex32("SMC Status: ", status_data);
-        if (occp_status_matches_expected(status_data,
-                                         OCCP_FW_ID_SMC_BL0,
-                                         OCCP_STATUS_MSG_ERROR,
-                                         OCCP_SPEC_ERROR_JUMP_READ_FAILED,
-                                         false)) {
+        if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                         OCCP_SPEC_ERROR_JUMP_READ_FAILED, false)) {
             num_jump_security_errors++;
         }
     }
@@ -183,7 +180,7 @@ int main(void) {
     }
 
     // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;          // Start of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;                     // Start of valid range
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // End of valid range
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
@@ -196,7 +193,7 @@ int main(void) {
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");
-    while(1) {
+    while (1) {
         __asm__("wfi");
     }
 

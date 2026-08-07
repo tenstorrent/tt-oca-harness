@@ -24,7 +24,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
     }
     uint32_t status_data = 0xdeadbeef;
     int num_cmd_unknown_errors = 0;
-    // CMD_UNKNOWN is indistinguishable from CMD_FAILED so we will count both and expect twice the number of errors
+    // CMD_UNKNOWN is indistinguishable from CMD_FAILED so we will count both and expect twice the
+    // number of errors
     exp_num_cmd_unknown_errors *= 2;
     while (status_data != 0x0) {
         int retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
@@ -35,11 +36,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         }
         simputshex32("SMC Status: ", status_data);
         // will match for both CMD_UNKNOWN and CMD_FAILED
-        if (occp_status_matches_expected(status_data,
-                                         OCCP_FW_ID_SMC_BL0,
-                                         OCCP_STATUS_MSG_ERROR,
-                                         OCCP_SPEC_ERROR_CMD_UNKNOWN,
-                                         false)) {
+        if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                         OCCP_SPEC_ERROR_CMD_UNKNOWN, false)) {
             num_cmd_unknown_errors++;
         }
     }
@@ -53,7 +51,6 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         simputs(" CMD_UNKNOWN errors found\n");
     }
 }
-
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting OCCP Invalid Command Code Test ===\n");
@@ -128,7 +125,7 @@ static void finalize_test_results(test_context_t *ctx) {
     }
 
     occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                           (uint8_t *)&result_code, sizeof(result_code));
+                            (uint8_t *)&result_code, sizeof(result_code));
 }
 
 int main(void) {

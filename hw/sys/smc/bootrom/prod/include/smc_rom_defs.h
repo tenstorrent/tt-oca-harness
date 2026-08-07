@@ -52,7 +52,8 @@
 #define SMC_STRAP_BOOT_RECOVERY_BIT 19      /* In LO register */
 #define SMC_STRAP_BL0_PLLCLK_BIT 20         /* In LO register - enables PLL configuration */
 #define SMC_STRAP_STATUS_RPT_DISABLE_BIT 21 /* In LO register - Disable status reporting */
-#define SMC_STRAP_ROTATE_UPDATE_BIT 58 /* In HI register (STRAPS_HI[26]); pad 61 -> 58 after 68->65 shrink */
+#define SMC_STRAP_ROTATE_UPDATE_BIT \
+    58 /* In HI register (STRAPS_HI[26]); pad 61 -> 58 after 68->65 shrink */
 
 /* Strap bit masks */
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK (1U << SMC_STRAP_MEM_REPAIR_BYPASS_BIT)
@@ -100,8 +101,9 @@
 #define SMC_CAT_THERM_GPIO 52   /* thermal trip output (active low) */
 #define SMC_PVT_CLK_OBS_GPIO 57 /* PVT RO clock observation */
 
-#define SMC_STATUS_GPIO 58 /* GPIO used for reset status reporting (pad 61 -> 58 after 68->65 shrink) */
-#define MAX_GPIO_COUNT 71  /* Maximum number of GPIOs supported */
+#define SMC_STATUS_GPIO \
+    58 /* GPIO used for reset status reporting (pad 61 -> 58 after 68->65 shrink) */
+#define MAX_GPIO_COUNT 71 /* Maximum number of GPIOs supported */
 
 /*
  * SRAM Definitions

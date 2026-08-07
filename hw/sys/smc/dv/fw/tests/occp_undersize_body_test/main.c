@@ -2,8 +2,7 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctx = {0};
 
     init_test(0);
@@ -25,7 +24,7 @@ int main(void)
     ctx.invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
 
     /* Warm-up */
-    //execute_random_commands(&ctx, 5);
+    // execute_random_commands(&ctx, 5);
 
     /* Enable undersize body injection */
     ctx.inject_undersize_body_err = true;
@@ -33,8 +32,7 @@ int main(void)
     execute_random_commands(&ctx, 10);
 
     // try some jump and validate boot
-    if (!is_secure_mode())
-    {
+    if (!is_secure_mode()) {
         occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
     }
     occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
@@ -50,9 +48,8 @@ int main(void)
         test_fail(0);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return 0;
 }
-
-
-

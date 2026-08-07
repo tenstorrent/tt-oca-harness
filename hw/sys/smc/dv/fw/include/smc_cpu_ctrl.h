@@ -12,7 +12,7 @@
  * per-register symbols. This tree's generated headers expose the window as an
  * indexed base macro instead, so alias the two rather than editing the tests.
  * Scratch registers are 64-bit strided, matching write_scratch/read_scratch. */
-#define SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(n)                                                        \
+#define SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(n) \
     (SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0) + ((n) * sizeof(uint64_t)))
 
 #define SMC_CPU_CTRL_SCRATCH_0__REG_ADDR SMC_CPU_CTRL_SCRATCH_N__REG_ADDR(0)
@@ -37,9 +37,9 @@
  * CPU_CTRL, so it cannot be spelled the way the reference test spells it. */
 #define SMC_CPU_CTRL_DUMMY_ROM_0_REG_ADDR SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_0_BASE_ADDR
 #define SMC_CPU_CTRL_GLOBAL_BASE_REG_ADDR SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR
-#define SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR                                               \
+#define SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR \
     SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
-#define SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_ADDR                                      \
+#define SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_ADDR \
     SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR
 
 static inline void write_periph_reg(uint64_t offset, uint64_t value) {

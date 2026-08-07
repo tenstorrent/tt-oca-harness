@@ -10,7 +10,6 @@
 // // Define the I3C controller to use (as in your master)
 // #define I3C_CONTROLLER_ID 1
 
-
 // static inline uint32_t be_bytes_to_uint32(const uint8_t *buf) {
 //   return (((uint32_t)buf[0]) << 24) |
 //          (((uint32_t)buf[1]) << 16) |
@@ -67,28 +66,23 @@
 //   }
 // }
 
-
-
 #include <stdint.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 
-
 int main(void) {
 
-  test_pass(0);
+    test_pass(0);
 
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 
-  return 0;
+    return 0;
 }
 
 int secondary_main(void) {
 
-  return main();
-
+    return main();
 }
-

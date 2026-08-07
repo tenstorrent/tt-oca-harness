@@ -47,7 +47,8 @@ static uint32_t create_test_message(uint32_t fw_id, uint32_t msg_type, uint32_t 
     return ((fw_id & 0xF) << 28) | ((msg_type & 0xF) << 24) | (msg_value & 0xFFFFFF);
 }
 
-static bool verify_message_format(uint32_t message, uint32_t exp_fw_id, uint32_t exp_type, uint32_t exp_value) {
+static bool verify_message_format(uint32_t message, uint32_t exp_fw_id, uint32_t exp_type,
+                                  uint32_t exp_value) {
     uint32_t fw_id = (message >> 28) & 0xF;
     uint32_t msg_type = (message >> 24) & 0xF;
     uint32_t msg_value = message & 0xFFFFFF;
@@ -69,7 +70,8 @@ static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
 
     // Test that SMC buffer contains expected initialization status messages
     uint32_t status;
-    int result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+    int result =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: Could not read SMC status\n");
         return false;
@@ -109,8 +111,8 @@ static bool test_message_format_validation(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 2: Message Format Validation ===\n");
 
     // Test all valid firmware IDs (0x0-0x3)
-    uint32_t fw_ids[] = {0x0, 0x1, 0x2, 0x3};  // SEP_BL0, SEP_BL1, SMC_BL0, SMC_BL1
-    uint32_t msg_types[] = {0x0, 0x1, 0x2};     // status, warning, error
+    uint32_t fw_ids[] = {0x0, 0x1, 0x2, 0x3}; // SEP_BL0, SEP_BL1, SMC_BL0, SMC_BL1
+    uint32_t msg_types[] = {0x0, 0x1, 0x2};   // status, warning, error
     uint32_t test_values[] = {0x000001, 0x123456, 0xFFFFFF};
 
     int test_idx = 0;
@@ -139,7 +141,8 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
 
     // Test GET_OCCP_STATUS command (this should work independently)
     uint32_t occp_status;
-    int result = occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
+    int result =
+        occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: GET_OCCP_STATUS command failed\n");
         return false;
@@ -148,7 +151,8 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
 
     // Test SMC status command - should return next message after reading the first one
     uint32_t smc_status;
-    result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
+    result =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: GET_SMC_STATUS command failed\n");
         return false;
@@ -160,7 +164,8 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
 
     // Test SEP status command (should return 0 for empty buffer)
     uint32_t sep_status;
-    result = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
+    result =
+        occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: GET_SEP_STATUS command failed\n");
         return false;
@@ -187,7 +192,8 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
     // Test multiple status command calls to read through ROM initialization messages
     for (int i = 0; i < 5; i++) {
         uint32_t status;
-        result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        result =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
         if (result != OCCP_SUCCESS) {
             simputs("FAIL: Multiple SMC status calls failed\n");
             return false;
@@ -200,7 +206,7 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
         if (status != 0) {
             uint32_t fw_id = (status >> 28) & 0xF;
             uint32_t msg_type = (status >> 24) & 0xF;
-            (void)(status & 0xFFFFFF);  // msg_value unused in validation
+            (void)(status & 0xFFFFFF); // msg_value unused in validation
 
             // Should be SMC_BL0 messages (fw_id = 0x2)
             if (fw_id != 0x2) {
@@ -228,9 +234,12 @@ static bool test_interface_robustness(ring_buffer_test_context_t *ctx) {
     for (int i = 0; i < 10; i++) {
         uint32_t smc_status, sep_status, occp_status;
 
-        int result1 = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
-        int result2 = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
-        int result3 = occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
+        int result1 =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
+        int result2 =
+            occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
+        int result3 =
+            occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
 
         if (result1 != OCCP_SUCCESS || result2 != OCCP_SUCCESS || result3 != OCCP_SUCCESS) {
             simputshex32("FAIL: Command failed at iteration ", i);
@@ -244,7 +253,7 @@ static bool test_interface_robustness(ring_buffer_test_context_t *ctx) {
 
             // Basic format validation
             uint32_t fw_id = (smc_status >> 28) & 0xF;
-            if (fw_id != 0x2) {  // Should be SMC_BL0
+            if (fw_id != 0x2) { // Should be SMC_BL0
                 simputshex32("FAIL: Invalid FW_ID 0x", fw_id);
                 return false;
             }
@@ -264,8 +273,10 @@ static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
     uint32_t sep_status1, sep_status2;
 
     // First set of calls
-    int result1 = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status1);
-    int result2 = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status1);
+    int result1 =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status1);
+    int result2 =
+        occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status1);
 
     if (result1 != OCCP_SUCCESS || result2 != OCCP_SUCCESS) {
         simputs("FAIL: First set of status commands failed\n");
@@ -273,8 +284,10 @@ static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
     }
 
     // Second set of calls
-    result1 = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status2);
-    result2 = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status2);
+    result1 =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status2);
+    result2 =
+        occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status2);
 
     if (result1 != OCCP_SUCCESS || result2 != OCCP_SUCCESS) {
         simputs("FAIL: Second set of status commands failed\n");
@@ -294,19 +307,16 @@ static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
 static void run_test_suite(ring_buffer_test_context_t *ctx) {
     simputs("=== Ring Buffer Core Functionality Test Suite ===\n");
 
-    bool results[] = {
-        test_buffer_initialization(ctx),
-        test_message_format_validation(ctx),
-        test_basic_operations(ctx),
-        test_occp_command_variations(ctx),
-        test_interface_robustness(ctx),
-        test_command_consistency(ctx)
-    };
+    bool results[] = {test_buffer_initialization(ctx), test_message_format_validation(ctx),
+                      test_basic_operations(ctx),      test_occp_command_variations(ctx),
+                      test_interface_robustness(ctx),  test_command_consistency(ctx)};
 
     int passed = 0;
     for (int i = 0; i < 6; i++) {
-        if (results[i]) passed++;
-        else ctx->overall_result = false;
+        if (results[i])
+            passed++;
+        else
+            ctx->overall_result = false;
     }
 
     simputs("\n=== Test Results Summary ===\n");
@@ -330,8 +340,8 @@ static void finalize_test_results(ring_buffer_test_context_t *ctx) {
     }
 
     occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                           SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                           (uint8_t *)&result_code, sizeof(result_code));
+                            SMC_CPU_CTRL_SCRATCH_0__REG_ADDR, (uint8_t *)&result_code,
+                            sizeof(result_code));
 }
 
 int main(void) {

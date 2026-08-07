@@ -11,116 +11,116 @@
 #include <string.h> // For memcpy
 
 static void run_test_suite(test_context_t *ctx) {
-  simputs("=== Starting Max Size Read/Write OCCP Protocol Test ===\n");
+    simputs("=== Starting Max Size Read/Write OCCP Protocol Test ===\n");
 
-  ctx->overall_result = true;
+    ctx->overall_result = true;
 
-  int retval;
-  uint32_t status_data = 0;
+    int retval;
+    uint32_t status_data = 0;
 
-  // TODO: audit these values OCCP spec
-  int exp_interface_status = 0x1;
-  int exp_boot_status = 0x5;
+    // TODO: audit these values OCCP spec
+    int exp_interface_status = 0x1;
+    int exp_boot_status = 0x5;
 
-  // Execute 25 random OCCP commands using shared function
-  simputs("=== Max Size Read/Write OCCP Commands Test (25 commands) ===\n");
-  execute_max_size_rw_commands(ctx, 3);
+    // Execute 25 random OCCP commands using shared function
+    simputs("=== Max Size Read/Write OCCP Commands Test (25 commands) ===\n");
+    execute_max_size_rw_commands(ctx, 3);
 
-  // // general status check
-  // retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
-  // if (retval == OCCP_SUCCESS) {
-  //   check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
-  //   increment_cmd_count(ctx);
-  // } else {
-  //   simputs("GET_STATUS: FAIL\n");
-  //   ctx->overall_result = false;
-  // }
+    // // general status check
+    // retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
+    // if (retval == OCCP_SUCCESS) {
+    //   check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
+    //   increment_cmd_count(ctx);
+    // } else {
+    //   simputs("GET_STATUS: FAIL\n");
+    //   ctx->overall_result = false;
+    // }
 
-  // // EOT: drain ring buffers and check data correctness
-  // do {
-  //   retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
-  //   if (retval == OCCP_SUCCESS) {
-  //     simputshex32("SEP Status: ", status_data);
-  //     simputs("GET_SEP_STATUS: PASS\n");
-  //   } else {
-  //     simputs("GET_SEP_STATUS: FAIL\n");
-  //     ctx->overall_result = false;
-  //   }
-  // } while (status_data != 0 && retval == OCCP_SUCCESS);
+    // // EOT: drain ring buffers and check data correctness
+    // do {
+    //   retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
+    //   if (retval == OCCP_SUCCESS) {
+    //     simputshex32("SEP Status: ", status_data);
+    //     simputs("GET_SEP_STATUS: PASS\n");
+    //   } else {
+    //     simputs("GET_SEP_STATUS: FAIL\n");
+    //     ctx->overall_result = false;
+    //   }
+    // } while (status_data != 0 && retval == OCCP_SUCCESS);
 
-  // do {
-  //   retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
-  //   if (retval == OCCP_SUCCESS) {
-  //     simputshex32("SMC Status: ", status_data);
-  //     simputs("GET_SMC_STATUS: PASS\n");
-  //   } else {
-  //     simputs("GET_SMC_STATUS: FAIL\n");
-  //     ctx->overall_result = false;
-  //   }
-  // } while (status_data != 0 && retval == OCCP_SUCCESS);
+    // do {
+    //   retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
+    //   if (retval == OCCP_SUCCESS) {
+    //     simputshex32("SMC Status: ", status_data);
+    //     simputs("GET_SMC_STATUS: PASS\n");
+    //   } else {
+    //     simputs("GET_SMC_STATUS: FAIL\n");
+    //     ctx->overall_result = false;
+    //   }
+    // } while (status_data != 0 && retval == OCCP_SUCCESS);
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-  uint32_t result_code;
+    uint32_t result_code;
 
-  if (ctx->overall_result) {
-    simputs("ALL TESTS PASSED!\n");
-    result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
-    test_pass(0);
-  } else {
-    simputs("SOME TESTS FAILED!\n");
-    result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
-    test_fail(0);
-  }
+    if (ctx->overall_result) {
+        simputs("ALL TESTS PASSED!\n");
+        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
+        test_pass(0);
+    } else {
+        simputs("SOME TESTS FAILED!\n");
+        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
+        test_fail(0);
+    }
 
-  occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                         (uint8_t *)&result_code, sizeof(result_code));
+    occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+                            (uint8_t *)&result_code, sizeof(result_code));
 }
 
 int main(void) {
-  static test_context_t test_ctx = {0};
+    static test_context_t test_ctx = {0};
 
-  init_test(0);
+    init_test(0);
 
-  if (!initialize_interface(&test_ctx)) {
-    simputs("FAIL: Interface initialization failed\n");
-    return -1;
-  }
+    if (!initialize_interface(&test_ctx)) {
+        simputs("FAIL: Interface initialization failed\n");
+        return -1;
+    }
 
-  // Set up test context
-  test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
-  test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
-  test_ctx.overall_result = true;
-  test_ctx.sram_scoreboard_idx = 0;
-  test_ctx.cmd_count = 0;
-  test_ctx.exp_occp_last_error = 0;
+    // Set up test context
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
+    test_ctx.overall_result = true;
+    test_ctx.sram_scoreboard_idx = 0;
+    test_ctx.cmd_count = 0;
+    test_ctx.exp_occp_last_error = 0;
 
-  // Run the test suite
-  run_test_suite(&test_ctx);
+    // Run the test suite
+    run_test_suite(&test_ctx);
 
-  // Finalize and report results
-  finalize_test_results(&test_ctx);
+    // Finalize and report results
+    finalize_test_results(&test_ctx);
 
-  simputs("Done\n");
-  while (true) {
-    __asm__("wfi");
-  }
+    simputs("Done\n");
+    while (true) {
+        __asm__("wfi");
+    }
 
-  return 0;
+    return 0;
 }
 
 int other_main(int hartid) {
-  (void)hartid;
-  while (1) {
-    __asm__("wfi");
-  }
+    (void)hartid;
+    while (1) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {
-  int hartid = metal_cpu_get_current_hartid();
-  if (hartid == 0) {
-    return main();
-  } else {
-    return other_main(hartid);
-  }
+    int hartid = metal_cpu_get_current_hartid();
+    if (hartid == 0) {
+        return main();
+    } else {
+        return other_main(hartid);
+    }
 }

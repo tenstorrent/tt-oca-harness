@@ -9,8 +9,12 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-static void disable_len_injection(test_context_t *ctx) { ctx->invalid_len_err_inject_enable = false; }
-static void enable_len_injection(test_context_t *ctx) { ctx->invalid_len_err_inject_enable = true; }
+static void disable_len_injection(test_context_t *ctx) {
+    ctx->invalid_len_err_inject_enable = false;
+}
+static void enable_len_injection(test_context_t *ctx) {
+    ctx->invalid_len_err_inject_enable = true;
+}
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting OCCP Invalid Length Field Test ===\n");
@@ -117,14 +121,18 @@ int main(void) {
     finalize_test_results(&ctx);
 
     simputs("Done\n");
-    while (true) { __asm__("wfi"); }
+    while (true) {
+        __asm__("wfi");
+    }
 
     return 0;
 }
 
 int other_main(int hartid) {
     (void)hartid;
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
 }
 
 int secondary_main(void) {

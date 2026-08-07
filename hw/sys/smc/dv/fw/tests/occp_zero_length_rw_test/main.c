@@ -11,8 +11,7 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-static void run_zero_len_body_cases(test_context_t *ctx)
-{
+static void run_zero_len_body_cases(test_context_t *ctx) {
     uint64_t range = ctx->test_upper_addr_bound - ctx->test_base_addr;
     uint64_t addr = ctx->test_base_addr + (get_random_int() % (range ? range : 4));
     addr &= 0xfffffffffffffffcULL; /* 4B aligned */
@@ -47,8 +46,7 @@ static void run_zero_len_body_cases(test_context_t *ctx)
     ctx->invalid_message_length_zero_inject_enable = false;
 }
 
-static void finalize_test_results(test_context_t *ctx)
-{
+static void finalize_test_results(test_context_t *ctx) {
     uint32_t result_code;
     if (ctx->overall_result) {
         simputs("ALL TESTS PASSED!\n");
@@ -63,8 +61,7 @@ static void finalize_test_results(test_context_t *ctx)
                             (uint8_t *)&result_code, sizeof(result_code));
 }
 
-int main(void)
-{
+int main(void) {
     static test_context_t test_ctx = {0};
 
     init_test(0);

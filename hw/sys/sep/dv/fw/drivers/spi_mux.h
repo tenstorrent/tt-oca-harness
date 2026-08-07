@@ -25,8 +25,7 @@
 #ifdef OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm
 
 /* Route the SPI pads to the OpenTitan host and release CS#. */
-static inline void spi_mux_select_ot(void)
-{
+static inline void spi_mux_select_ot(void) {
     och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t spi_mux;
     spi_mux.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset;
     spi_mux.f.spi_sel = 1;
@@ -36,7 +35,8 @@ static inline void spi_mux_select_ot(void)
 
 #else
 
-static inline void spi_mux_select_ot(void) {}
+static inline void spi_mux_select_ot(void) {
+}
 
 #endif /* OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm */
 

@@ -34,8 +34,7 @@
 #define DEBUG_PRINT 0
 
 // Wrapper that replaces direct simputs() calls with a debug-enabled version.
-static inline void log_simputs(const char *msg)
-{
+static inline void log_simputs(const char *msg) {
 #if DEBUG_PRINT
     simputs(msg);
 #else
@@ -44,8 +43,7 @@ static inline void log_simputs(const char *msg)
 }
 
 // Wrapper that replaces direct simputshex16() calls with a debug-enabled version.
-static inline void log_simputshex16(const char *msg, uint16_t val)
-{
+static inline void log_simputshex16(const char *msg, uint16_t val) {
 #if DEBUG_PRINT
     simputshex16(msg, val);
 #else
@@ -55,8 +53,7 @@ static inline void log_simputshex16(const char *msg, uint16_t val)
 }
 
 // Wrapper that replaces direct simputshex32() calls with a debug-enabled version.
-static inline void log_simputshex32(const char *msg, uint32_t val)
-{
+static inline void log_simputshex32(const char *msg, uint32_t val) {
 #if DEBUG_PRINT
     simputshex32(msg, val);
 #else
@@ -122,43 +119,44 @@ static uint16_t round_up_divide(uint32_t a, uint32_t b) {
     return (uint16_t)(((a - 1u) / b) + 1u);
 }
 
-static i2c_timing_config_t default_timing_for_speed(i2c_speed_t speed, uint32_t clock_period_nanos) {
+static i2c_timing_config_t default_timing_for_speed(i2c_speed_t speed,
+                                                    uint32_t clock_period_nanos) {
     switch (speed) {
-        case kI2cSpeedStandard:
-            return (i2c_timing_config_t){
-                .scl_time_high_cycles = round_up_divide(4000u, clock_period_nanos),
-                .scl_time_low_cycles = round_up_divide(4700u, clock_period_nanos),
-                .start_signal_setup_cycles = round_up_divide(4700u, clock_period_nanos),
-                .start_signal_hold_cycles = round_up_divide(4000u, clock_period_nanos),
-                .data_signal_setup_cycles = round_up_divide(250u, clock_period_nanos),
-                .data_signal_hold_cycles = 1u,
-                .stop_signal_setup_cycles = round_up_divide(4000u, clock_period_nanos),
-                .stop_signal_hold_cycles = round_up_divide(4700u, clock_period_nanos),
-            };
-        case kI2cSpeedFast:
-            return (i2c_timing_config_t){
-                .scl_time_high_cycles = round_up_divide(600u, clock_period_nanos),
-                .scl_time_low_cycles = round_up_divide(1300u, clock_period_nanos),
-                .start_signal_setup_cycles = round_up_divide(600u, clock_period_nanos),
-                .start_signal_hold_cycles = round_up_divide(600u, clock_period_nanos),
-                .data_signal_setup_cycles = round_up_divide(100u, clock_period_nanos),
-                .data_signal_hold_cycles = 1u,
-                .stop_signal_setup_cycles = round_up_divide(600u, clock_period_nanos),
-                .stop_signal_hold_cycles = round_up_divide(1300u, clock_period_nanos),
-            };
-        case kI2cSpeedFastPlus:
-            return (i2c_timing_config_t){
-                .scl_time_high_cycles = round_up_divide(260u, clock_period_nanos),
-                .scl_time_low_cycles = round_up_divide(500u, clock_period_nanos),
-                .start_signal_setup_cycles = round_up_divide(260u, clock_period_nanos),
-                .start_signal_hold_cycles = round_up_divide(260u, clock_period_nanos),
-                .data_signal_setup_cycles = round_up_divide(50u, clock_period_nanos),
-                .data_signal_hold_cycles = 1u,
-                .stop_signal_setup_cycles = round_up_divide(260u, clock_period_nanos),
-                .stop_signal_hold_cycles = round_up_divide(500u, clock_period_nanos),
-            };
-        default:
-            return (i2c_timing_config_t){0};
+    case kI2cSpeedStandard:
+        return (i2c_timing_config_t){
+            .scl_time_high_cycles = round_up_divide(4000u, clock_period_nanos),
+            .scl_time_low_cycles = round_up_divide(4700u, clock_period_nanos),
+            .start_signal_setup_cycles = round_up_divide(4700u, clock_period_nanos),
+            .start_signal_hold_cycles = round_up_divide(4000u, clock_period_nanos),
+            .data_signal_setup_cycles = round_up_divide(250u, clock_period_nanos),
+            .data_signal_hold_cycles = 1u,
+            .stop_signal_setup_cycles = round_up_divide(4000u, clock_period_nanos),
+            .stop_signal_hold_cycles = round_up_divide(4700u, clock_period_nanos),
+        };
+    case kI2cSpeedFast:
+        return (i2c_timing_config_t){
+            .scl_time_high_cycles = round_up_divide(600u, clock_period_nanos),
+            .scl_time_low_cycles = round_up_divide(1300u, clock_period_nanos),
+            .start_signal_setup_cycles = round_up_divide(600u, clock_period_nanos),
+            .start_signal_hold_cycles = round_up_divide(600u, clock_period_nanos),
+            .data_signal_setup_cycles = round_up_divide(100u, clock_period_nanos),
+            .data_signal_hold_cycles = 1u,
+            .stop_signal_setup_cycles = round_up_divide(600u, clock_period_nanos),
+            .stop_signal_hold_cycles = round_up_divide(1300u, clock_period_nanos),
+        };
+    case kI2cSpeedFastPlus:
+        return (i2c_timing_config_t){
+            .scl_time_high_cycles = round_up_divide(260u, clock_period_nanos),
+            .scl_time_low_cycles = round_up_divide(500u, clock_period_nanos),
+            .start_signal_setup_cycles = round_up_divide(260u, clock_period_nanos),
+            .start_signal_hold_cycles = round_up_divide(260u, clock_period_nanos),
+            .data_signal_setup_cycles = round_up_divide(50u, clock_period_nanos),
+            .data_signal_hold_cycles = 1u,
+            .stop_signal_setup_cycles = round_up_divide(260u, clock_period_nanos),
+            .stop_signal_hold_cycles = round_up_divide(500u, clock_period_nanos),
+        };
+    default:
+        return (i2c_timing_config_t){0};
     }
 }
 
@@ -170,20 +168,21 @@ static bool compute_timing(const i2c_timing_input_t *input, i2c_timing_config_t 
     const uint32_t kNanosPerKBaud = 1000000u;
     uint32_t lowest_speed_khz;
     switch (input->lowest_target_device_speed) {
-        case kI2cSpeedStandard:
-            lowest_speed_khz = 100u;
-            break;
-        case kI2cSpeedFast:
-            lowest_speed_khz = 400u;
-            break;
-        case kI2cSpeedFastPlus:
-            lowest_speed_khz = 1000u;
-            break;
-        default:
-            return false;
+    case kI2cSpeedStandard:
+        lowest_speed_khz = 100u;
+        break;
+    case kI2cSpeedFast:
+        lowest_speed_khz = 400u;
+        break;
+    case kI2cSpeedFastPlus:
+        lowest_speed_khz = 1000u;
+        break;
+    default:
+        return false;
     }
 
-    *config = default_timing_for_speed(input->lowest_target_device_speed, input->clock_period_nanos);
+    *config =
+        default_timing_for_speed(input->lowest_target_device_speed, input->clock_period_nanos);
     config->rise_cycles = round_up_divide(input->sda_rise_nanos, input->clock_period_nanos);
     config->fall_cycles = round_up_divide(input->sda_fall_nanos, input->clock_period_nanos);
 
@@ -198,9 +197,9 @@ static bool compute_timing(const i2c_timing_input_t *input, i2c_timing_config_t 
     (void)lowest_speed_khz;
 #endif
     const uint16_t scl_period_cycles = round_up_divide(scl_period_nanos, input->clock_period_nanos);
-    int32_t lengthened_high_cycles =
-        (int32_t)scl_period_cycles - (int32_t)config->scl_time_low_cycles -
-        (int32_t)config->rise_cycles - (int32_t)config->fall_cycles;
+    int32_t lengthened_high_cycles = (int32_t)scl_period_cycles -
+                                     (int32_t)config->scl_time_low_cycles -
+                                     (int32_t)config->rise_cycles - (int32_t)config->fall_cycles;
     if (lengthened_high_cycles > (int32_t)config->scl_time_high_cycles) {
         if (lengthened_high_cycles < 0 || lengthened_high_cycles > INT16_MAX) {
             return false;
@@ -320,7 +319,8 @@ static void enable_controller(uint8_t i2c_id) {
 static void configure_controller_timeout(uint8_t i2c_id) {
     simputshex32("[I2C_CTRL][timeout] HOST_TIMEOUT_CTRL write begin: ",
                  I2C_CONTROLLER_TIMEOUT_CYCLES);
-    write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_TIMEOUT_CTRL_REG_OFFSET, I2C_CONTROLLER_TIMEOUT_CYCLES);
+    write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_TIMEOUT_CTRL_REG_OFFSET,
+                  I2C_CONTROLLER_TIMEOUT_CYCLES);
     simputs("[I2C_CTRL][timeout] HOST_TIMEOUT_CTRL write done\n");
 
     I2C_TIMEOUT_CTRL_reg_u timeout_ctrl = {.val = 0};
@@ -337,8 +337,8 @@ static I2C_Status wait_for_host_idle(uint8_t i2c_id, uint32_t timeout) {
     if (timeout == 0) {
         uint32_t spin = 0;
         while (1) {
-            I2C_STATUS_reg_u status =
-                {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
+            I2C_STATUS_reg_u status = {
+                .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
             if (status.f.hostidle) {
                 return I2C_OK;
             }
@@ -350,8 +350,8 @@ static I2C_Status wait_for_host_idle(uint8_t i2c_id, uint32_t timeout) {
 
     uint32_t remaining = timeout;
     while (remaining--) {
-        I2C_STATUS_reg_u status =
-            {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
+        I2C_STATUS_reg_u status = {.val =
+                                       read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
         if (status.f.hostidle) {
             return I2C_OK;
         }
@@ -366,11 +366,11 @@ static I2C_Status wait_for_fmt_space(uint8_t i2c_id, uint32_t timeout) {
     if (timeout == 0) {
         uint32_t spin = 0;
         while (1) {
-            I2C_STATUS_reg_u status =
-                {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
+            I2C_STATUS_reg_u status = {
+                .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
             if (!status.f.fmtfull) {
-                I2C_HOST_FIFO_STATUS_reg_u fifo =
-                    {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+                I2C_HOST_FIFO_STATUS_reg_u fifo = {
+                    .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
                 if (fifo.f.fmtlvl < I2C_PARAM_FIFO_DEPTH) {
                     return I2C_OK;
                 }
@@ -386,11 +386,11 @@ static I2C_Status wait_for_fmt_space(uint8_t i2c_id, uint32_t timeout) {
     uint32_t remaining = timeout;
     uint32_t initial = remaining;
     while (remaining--) {
-        I2C_STATUS_reg_u status =
-            {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
+        I2C_STATUS_reg_u status = {.val =
+                                       read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};
         if (!status.f.fmtfull) {
-            I2C_HOST_FIFO_STATUS_reg_u fifo =
-                {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+            I2C_HOST_FIFO_STATUS_reg_u fifo = {
+                .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
             if (fifo.f.fmtlvl < I2C_PARAM_FIFO_DEPTH) {
                 return I2C_OK;
             }
@@ -413,8 +413,8 @@ static I2C_Status wait_for_rx_level(uint8_t i2c_id, size_t level, uint32_t timeo
     if (timeout == 0) {
         uint32_t spin = 0;
         while (1) {
-            I2C_HOST_FIFO_STATUS_reg_u fifo =
-                {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+            I2C_HOST_FIFO_STATUS_reg_u fifo = {
+                .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
             if (fifo.f.rxlvl >= level) {
                 return I2C_OK;
             }
@@ -429,8 +429,8 @@ static I2C_Status wait_for_rx_level(uint8_t i2c_id, size_t level, uint32_t timeo
     uint32_t remaining = timeout;
     uint32_t initial = remaining;
     while (remaining--) {
-        I2C_HOST_FIFO_STATUS_reg_u fifo =
-            {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+        I2C_HOST_FIFO_STATUS_reg_u fifo = {
+            .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
         if (fifo.f.rxlvl >= level) {
             return I2C_OK;
         }
@@ -462,7 +462,7 @@ void I2C_release_reset(uint8_t i2c_id) {
     // peripheral_reset_ctrl.val = read_reg(RESET_UNIT_PERIPHERAL_RESETS_REG_ADDR);
     // peripheral_reset_ctrl.f.i2c_reset_n_n0_scan = 1;
     // write_reg(RESET_UNIT_PERIPHERAL_RESETS_REG_ADDR, peripheral_reset_ctrl.val);
-    //i2c_wrapper disable
+    // i2c_wrapper disable
     I2C_CTRL_I2C_CTRL_reg_u ctrl_gate = {.val = read_reg(kCtrlGateAddrs[i2c_id])};
     ctrl_gate.f.i2c_en = 0;
     ctrl_gate.f.i2c_controller_mode_en = 1;
@@ -488,7 +488,7 @@ I2C_Status init_i2c_ctrlr(I2C_Driver *drv, uint8_t i2c_addr) {
     log_simputs("[I2C_CTRL][init_i2c_ctrlr] target_addr=");
     log_simputshex16("", i2c_addr);
     I2C_release_reset(i2c_id);
-    //i2c_wrapper disable
+    // i2c_wrapper disable
     I2C_CTRL_I2C_CTRL_reg_u ctrl_gate = {.val = read_reg(kCtrlGateAddrs[i2c_id])};
     ctrl_gate.f.i2c_en = 1;
     ctrl_gate.f.i2c_controller_mode_en = 1;
@@ -539,9 +539,7 @@ I2C_Status init_i2c_ctrlr(I2C_Driver *drv, uint8_t i2c_addr) {
     return I2C_OK;
 }
 
-I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv,
-                                     const uint8_t *tx_buf,
-                                     size_t tx_buf_len,
+I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv, const uint8_t *tx_buf, size_t tx_buf_len,
                                      int timeout) {
 
     if (!drv || !drv->ctx.initialized || !is_valid_controller(drv->ctx.controller_id) ||
@@ -581,8 +579,7 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv,
         I2C_FDATA_reg_u data_cmd = {.val = 0};
         data_cmd.f.fbyte = tx_buf[i];
         data_cmd.f.stop = (i == tx_buf_len - 1);
-        if(data_cmd.f.stop)
-            simputs("[I2C_CTRL][TX] stop bit\n");
+        if (data_cmd.f.stop) simputs("[I2C_CTRL][TX] stop bit\n");
         write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, data_cmd.val);
         // Debug: log full FDATA word for each data phase entry
         log_simputs("[I2C_CTRL][TX] data_cmd=");
@@ -596,8 +593,8 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv,
         simputs("[I2C_CTRL][TX] exit OK\n");
     }
     simputs("[I2C_CTRL][TX] DONE----------\n");
-    I2C_HOST_FIFO_STATUS_reg_u fifo_dbg =
-        {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+    I2C_HOST_FIFO_STATUS_reg_u fifo_dbg = {
+        .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
     simputs("fmtlvl=");
     simputshex16("", fifo_dbg.f.fmtlvl);
     simputs("rxlvl=");
@@ -611,14 +608,10 @@ I2C_Status ctrlr_send_data(I2C_Driver *drv, const uint8_t *tx_buf, size_t tx_buf
     return ctrlr_send_data_w_timeout(drv, tx_buf, tx_buf_len, 0);
 }
 
-I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
-                                        uint8_t *rx_buf,
-                                        size_t rx_buf_len,
-                                        size_t *bytes_received,
-                                        int timeout) {
+I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len,
+                                        size_t *bytes_received, int timeout) {
 
     simputs("[I2C_CTRL][RX] enter++++++++++\n");
-
 
     if (!drv || !drv->ctx.initialized || !is_valid_controller(drv->ctx.controller_id) ||
         rx_buf == NULL) {
@@ -643,7 +636,6 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
         }
         return I2C_OK;
     }
-
 
     simputs("[I2C_CTRL][RX] LEN==");
     simputshex16("", (uint32_t)rx_buf_len);
@@ -695,16 +687,15 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
         I2C_FDATA_reg_u read_cmd = {.val = 0};
         // 0 encodes 256 bytes in hardware.
         read_cmd.f.fbyte = (uint8_t)(chunk_len & 0xFF);
-        read_cmd.f.readb = 1;                         // "read N bytes" command
+        read_cmd.f.readb = 1; // "read N bytes" command
         read_cmd.f.rcont = is_last_chunk ? 0 : 1;
-        read_cmd.f.stop  = 0;                         // do NOT generate STOP here (higher layer terminates)
+        read_cmd.f.stop = 0; // do NOT generate STOP here (higher layer terminates)
         write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, read_cmd.val);
 
-        if(!is_last_chunk){
+        if (!is_last_chunk) {
             simputs("[I2C_CTRL][RX] remaining=");
             simputshex16("", remaining);
-        }
-        else{
+        } else {
             simputs("[I2C_CTRL][RX] last remaining=");
             simputshex16("", remaining);
         }
@@ -719,8 +710,8 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
                 }
                 return status;
             }
-            I2C_RDATA_reg_u rdata =
-                {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__RDATA_REG_OFFSET)};
+            I2C_RDATA_reg_u rdata = {
+                .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__RDATA_REG_OFFSET)};
             // Debug: log every data byte received from the bus
             log_simputs("[I2C_CTRL][RX] data_byte=");
             log_simputshex16("", (uint32_t)rdata.f.data);
@@ -745,8 +736,8 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
 
     simputs("[I2C_CTRL][RX] DONE-----------\n");
 
-    I2C_HOST_FIFO_STATUS_reg_u fifo_dbg =
-        {.val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
+    I2C_HOST_FIFO_STATUS_reg_u fifo_dbg = {
+        .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__HOST_FIFO_STATUS_REG_OFFSET)};
     simputs("fmtlvl=");
     simputshex16("", fifo_dbg.f.fmtlvl);
     simputs("rxlvl=");
@@ -755,9 +746,7 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv,
     return I2C_OK;
 }
 
-I2C_Status ctrlr_receive_data(I2C_Driver *drv,
-                              uint8_t *rx_buf,
-                              size_t rx_buf_len,
+I2C_Status ctrlr_receive_data(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len,
                               size_t *bytes_received) {
     log_simputs("[I2C_CTRL][ctrlr_receive_data] enter\n");
     return ctrlr_receive_data_w_timeout(drv, rx_buf, rx_buf_len, bytes_received, 0);

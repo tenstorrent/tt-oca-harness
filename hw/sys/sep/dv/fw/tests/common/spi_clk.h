@@ -35,8 +35,7 @@
 
 /* Real core clock (MHz) from the sensed eFuse smu_pll_sysclk field; 0 -> 100
  * (reference-clock fallback, matching ROM pll_init). */
-static inline uint32_t spi_core_mhz(void)
-{
+static inline uint32_t spi_core_mhz(void) {
     uint32_t raw = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
     uint32_t f = (raw & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>
                  SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp;
@@ -46,8 +45,7 @@ static inline uint32_t spi_core_mhz(void)
 /* OT spi_host clkdiv for a target SCLK:
  *   SCLK = core / (2*(clkdiv+1))
  *   => clkdiv = core/(2*target) - 1, clamped to [0, 0xFFFF]. */
-static inline uint16_t spi_clkdiv_for(uint32_t target_mhz)
-{
+static inline uint16_t spi_clkdiv_for(uint32_t target_mhz) {
     uint32_t core = spi_core_mhz();
     uint32_t d2 = 2u * target_mhz;
     uint32_t div = (core > d2) ? (core / d2 - 1u) : 0u;
@@ -56,8 +54,7 @@ static inline uint16_t spi_clkdiv_for(uint32_t target_mhz)
 }
 
 /* clkdiv for the default 25 MHz target (15 @800, 1 @100). */
-static inline uint16_t spi_clkdiv(void)
-{
+static inline uint16_t spi_clkdiv(void) {
     return spi_clkdiv_for(SPI_TARGET_SCLK_MHZ);
 }
 

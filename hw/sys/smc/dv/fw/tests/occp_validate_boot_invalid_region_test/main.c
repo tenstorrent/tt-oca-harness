@@ -30,11 +30,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         }
         increment_cmd_count(ctx);
         simputshex32("SMC Status: ", status_data);
-        if (occp_status_matches_expected(status_data,
-                                         OCCP_FW_ID_SMC_BL0,
-                                         OCCP_STATUS_MSG_ERROR,
-                                         OCCP_SPEC_ERROR_VALIDATE_ADDRESS_FAILED,
-                                         false)) {
+        if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                         OCCP_SPEC_ERROR_VALIDATE_ADDRESS_FAILED, false)) {
             num_validate_security_errors++;
         }
     }
@@ -69,8 +66,10 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     simputs("=== Test 1: Validate and Boot with address below valid range ===\n");
 
     // Test 1: Address below valid range
-    uint64_t invalid_addr_below = (ctx->test_base_addr - 1 - (get_random_int() % 0x5000)) & 0xfffffffc;
-    simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (below range): 0x", invalid_addr_below);
+    uint64_t invalid_addr_below =
+        (ctx->test_base_addr - 1 - (get_random_int() % 0x5000)) & 0xfffffffc;
+    simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (below range): 0x",
+                 invalid_addr_below);
     simputshex64("Valid range is: 0x", ctx->test_base_addr);
     simputshex64(" to 0x", OCCP_TEST_UPPER_ADDR);
 
@@ -88,10 +87,11 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
 
     simputs("PASS: VALIDATE_AND_BOOT command issued successfully (below range)\n");
 
-
     simputs("=== Test 2: Validate and Boot with address just below valid range ===\n");
-    uint64_t invalid_addr_below_valid = (ctx->test_base_addr - 1 - (get_random_int() % 0x10)) & 0xfffffffc;
-    simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (just below range): 0x", invalid_addr_below_valid);
+    uint64_t invalid_addr_below_valid =
+        (ctx->test_base_addr - 1 - (get_random_int() % 0x10)) & 0xfffffffc;
+    simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (just below range): 0x",
+                 invalid_addr_below_valid);
     simputshex64("Valid range is: 0x", ctx->test_base_addr);
     simputshex64(" to 0x", OCCP_TEST_UPPER_ADDR);
 
@@ -112,8 +112,10 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
         simputs("=== Test 3: Validate and Boot with address above valid range ===\n");
 
         // Test 2: Address above valid range
-        uint64_t invalid_addr_above = (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x5000)) & 0xfffffffc;
-        simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (above range): 0x", invalid_addr_above);
+        uint64_t invalid_addr_above =
+            (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x5000)) & 0xfffffffc;
+        simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (above range): 0x",
+                     invalid_addr_above);
 
         ctx->exp_response_code = OCCP_INVALID_ADDRESS;
         retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, invalid_addr_above);
@@ -132,8 +134,10 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
         simputs("=== Test 4: Validate and Boot with address just above valid range ===\n");
 
         // Test 4: Address just above valid range
-        uint64_t invalid_addr_above_valid = (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x10)) & 0xfffffffc;
-        simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (just above range): 0x", invalid_addr_above_valid);
+        uint64_t invalid_addr_above_valid =
+            (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x10)) & 0xfffffffc;
+        simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (just above range): 0x",
+                     invalid_addr_above_valid);
         simputshex64("Valid range is: 0x", ctx->test_base_addr);
         simputshex64(" to 0x", OCCP_TEST_UPPER_ADDR);
 
@@ -150,7 +154,6 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
         exp_num_validate_security_errors++;
 
         simputs("PASS: VALIDATE_AND_BOOT command issued successfully (just above range)\n");
-
     }
     // relatch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
@@ -162,20 +165,24 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     // send invalid commands in protected region
     simputs("=== Test 5: Validate and Boot with invalid commands in protected region ===\n");
     for (int i = 0; i < 4; i++) {
-        uint64_t invalid_addr = (SMC_SRAM_BASE_ADDR + (get_random_int() % (OCCP_TEST_BASE_ADDR - SMC_SRAM_BASE_ADDR))) & 0xfffffffc;
+        uint64_t invalid_addr =
+            (SMC_SRAM_BASE_ADDR + (get_random_int() % (OCCP_TEST_BASE_ADDR - SMC_SRAM_BASE_ADDR))) &
+            0xfffffffc;
         simputshex64("Attempting VALIDATE_AND_BOOT to invalid address: 0x", invalid_addr);
         ctx->exp_response_code = OCCP_INVALID_ADDRESS;
         retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, invalid_addr);
         increment_cmd_count(ctx);
         ctx->exp_response_code = OCCP_SUCCESS;
         if (retval != OCCP_SUCCESS) {
-            simputs("FAIL: Failed to issue VALIDATE_AND_BOOT command (invalid commands in protected region)\n");
+            simputs("FAIL: Failed to issue VALIDATE_AND_BOOT command (invalid commands in "
+                    "protected region)\n");
             ctx->overall_result = false;
             return;
         }
         exp_num_validate_security_errors++;
 
-        simputs("PASS: VALIDATE_AND_BOOT command issued successfully (invalid commands in protected region)\n");
+        simputs("PASS: VALIDATE_AND_BOOT command issued successfully (invalid commands in "
+                "protected region)\n");
     }
 
     // re-latch to recover
@@ -194,7 +201,9 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     simputs("=== Test 5: Validate and Boot with valid address for comparison ===\n");
 
     // Test 5: Valid address for comparison
-    uint64_t valid_addr = (ctx->test_base_addr + (get_random_int() % (OCCP_TEST_UPPER_ADDR - ctx->test_base_addr))) & 0xfffffffc;
+    uint64_t valid_addr =
+        (ctx->test_base_addr + (get_random_int() % (OCCP_TEST_UPPER_ADDR - ctx->test_base_addr))) &
+        0xfffffffc;
     simputshex64("Attempting VALIDATE_AND_BOOT to valid address: 0x", valid_addr);
 
     retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, valid_addr);
@@ -235,7 +244,7 @@ int main(void) {
     }
 
     // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;          // Start of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;                     // Start of valid range
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // End of valid range
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
@@ -248,7 +257,7 @@ int main(void) {
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");
-    while(1) {
+    while (1) {
         __asm__("wfi");
     }
 

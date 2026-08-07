@@ -69,7 +69,8 @@
 //     return -1;
 //   }
 
-//   boot_send_write32(drv, discovered_devices[1].dynamic_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR, 0xacafaca1);
+//   boot_send_write32(drv, discovered_devices[1].dynamic_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+//   0xacafaca1);
 
 //   simputs("Done\n");
 //   while (true)
@@ -102,27 +103,23 @@
 //   }
 // }
 
-
-
 #include <stdint.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 
-
 int main(void) {
 
-  test_pass(0);
+    test_pass(0);
 
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 
-  return 0;
+    return 0;
 }
 
 int secondary_main(void) {
 
-  return main();
-
+    return main();
 }

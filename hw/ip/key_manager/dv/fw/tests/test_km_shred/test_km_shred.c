@@ -299,10 +299,8 @@ int main(void) {
      *=================================================================*/
     TEST_SUBTEST_START("CMD_ENGINE_SHRED all four ABR seeds");
     {
-        rom_km_dest_bits_t all_abr = {.abr_mldsa_seed   = 1,
-                                      .abr_mlkem_seed_d = 1,
-                                      .abr_mlkem_seed_z = 1,
-                                      .abr_mlkem_msg    = 1};
+        rom_km_dest_bits_t all_abr = {
+            .abr_mldsa_seed = 1, .abr_mlkem_seed_d = 1, .abr_mlkem_seed_z = 1, .abr_mlkem_msg = 1};
         uint32_t payload[1] = {all_abr.raw};
 
         send_cmd_with_payload(ROM_KM_CMD_ENGINE_SHRED, payload, 1);

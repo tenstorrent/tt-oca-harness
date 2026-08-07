@@ -2,35 +2,36 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-//void run_undersize_sequence(test_context_t *ctx)
+// void run_undersize_sequence(test_context_t *ctx)
 //{
-//    uint32_t status32 = 0;
-//    uint8_t buf4[4] = {0};
-//    uint8_t recv1[1] = {0};
+//     uint32_t status32 = 0;
+//     uint8_t buf4[4] = {0};
+//     uint8_t recv1[1] = {0};
 //
-//    if (occp_send_get_status_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
-//        simputs("Undersize GET_STATUS failed\n");
-//        ctx->overall_result = false;
-//    }
+//     if (occp_send_get_status_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
+//         simputs("Undersize GET_STATUS failed\n");
+//         ctx->overall_result = false;
+//     }
 //
-//    if (occp_send_get_version_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
-//        simputs("Undersize GET_VERSION failed\n");
-//        ctx->overall_result = false;
-//    }
+//     if (occp_send_get_version_command(ctx, ctx->slave_addr, &status32) != OCCP_SUCCESS) {
+//         simputs("Undersize GET_VERSION failed\n");
+//         ctx->overall_result = false;
+//     }
 //
-//    if (occp_send_write_command(ctx, ctx->slave_addr, ctx->test_base_addr, buf4, sizeof(buf4)) != OCCP_SUCCESS) {
-//        simputs("Undersize WRITE failed\n");
-//        ctx->overall_result = false;
-//    }
+//     if (occp_send_write_command(ctx, ctx->slave_addr, ctx->test_base_addr, buf4, sizeof(buf4)) !=
+//     OCCP_SUCCESS) {
+//         simputs("Undersize WRITE failed\n");
+//         ctx->overall_result = false;
+//     }
 //
-//    if (occp_send_read_command(ctx, ctx->slave_addr, ctx->test_base_addr, recv1, sizeof(recv1)) != OCCP_SUCCESS) {
-//        simputs("Undersize READ failed\n");
-//        ctx->overall_result = false;
-//    }
-//}
+//     if (occp_send_read_command(ctx, ctx->slave_addr, ctx->test_base_addr, recv1, sizeof(recv1))
+//     != OCCP_SUCCESS) {
+//         simputs("Undersize READ failed\n");
+//         ctx->overall_result = false;
+//     }
+// }
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctx = {0};
 
     init_test(0);
@@ -52,7 +53,7 @@ int main(void)
     ctx.invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
 
     execute_random_commands(&ctx, 5);
-    
+
     /* Enable undersize header injection */
     ctx.inject_undersize_header_err = true;
     execute_random_commands(&ctx, 10);
@@ -60,10 +61,11 @@ int main(void)
     // disable and recover
     ctx.inject_undersize_header_err = false;
     execute_random_commands(&ctx, 5);
-    
-    //ctx.timeout = 1000; /* ensure expected timeout path progresses */
 
-    uint32_t result_code = ctx.overall_result ? SMC_SCRATCHPAD_SIM_PASS_CODE : SMC_SCRATCHPAD_SIM_FAIL_CODE;
+    // ctx.timeout = 1000; /* ensure expected timeout path progresses */
+
+    uint32_t result_code =
+        ctx.overall_result ? SMC_SCRATCHPAD_SIM_PASS_CODE : SMC_SCRATCHPAD_SIM_FAIL_CODE;
 
     if (ctx.overall_result) {
         test_pass(0);
@@ -71,6 +73,8 @@ int main(void)
         test_fail(0);
     }
 
-    while (1) { __asm__("wfi"); }
+    while (1) {
+        __asm__("wfi");
+    }
     return 0;
 }

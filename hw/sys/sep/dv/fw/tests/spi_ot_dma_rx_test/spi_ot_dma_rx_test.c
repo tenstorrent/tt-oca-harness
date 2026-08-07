@@ -43,8 +43,9 @@
 #define MUBI4_TRUE 0x6
 
 #define DMA_RX_SIZE 64
-#define DMA_CHUNK_SIZE 16 /* RX_WATERMARK * TRANSFER_WIDTH_BYTES: drain FIFO to below WM, deasserts trigger */
-#define CFG_TX_WATERMARK 0    /* Set to 0 so tx_wm is never asserted in RX-only mode */
+#define DMA_CHUNK_SIZE \
+    16 /* RX_WATERMARK * TRANSFER_WIDTH_BYTES: drain FIFO to below WM, deasserts trigger */
+#define CFG_TX_WATERMARK 0 /* Set to 0 so tx_wm is never asserted in RX-only mode */
 #define CFG_RX_WATERMARK 4
 #define SPI_CLKDIV spi_clkdiv()
 #define DMA_TIMEOUT 200000
@@ -83,7 +84,8 @@ static int configure_dma_for_spi_rx(uint32_t dst_addr, uint32_t total_size, uint
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
 
     /* SRC: SPI RXDATA (fixed register), DST: SRAM (incrementing) */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+              OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_addr);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);

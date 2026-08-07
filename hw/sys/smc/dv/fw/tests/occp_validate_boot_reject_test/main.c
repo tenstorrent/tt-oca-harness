@@ -10,19 +10,20 @@
 
 static void run_validate_boot_rejection_test(test_context_t *ctx) {
     simputs("=== Starting OCCP Validate and Boot Rejection Test ===\n");
-    
+
     ctx->overall_result = true;
     int retval;
     uint32_t status_data = 0;
-    
+
     // Execute 10 random OCCP commands before the test command
     simputs("=== Random OCCP Commands (10 before rejection test) ===\n");
     execute_random_commands(ctx, 10);
-    
+
     simputs("=== Validate and Boot Rejection Test ===\n");
-    
+
     // Attempt to send a VALIDATE_AND_BOOT command (should be rejected in non-secure mode)
-    uint64_t random_addr = ctx->test_base_addr + (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr));
+    uint64_t random_addr = ctx->test_base_addr +
+                           (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr));
     simputshex64("Attempting VALIDATE_AND_BOOT to random address: ", random_addr);
     retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, random_addr);
     increment_cmd_count(ctx);
@@ -32,7 +33,7 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
         ctx->overall_result = false;
         return;
     }
-    
+
     // Check if the command was rejected
     retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -40,18 +41,18 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
         ctx->overall_result = false;
         return;
     }
-    
+
     // TODO: Define this error code once OCCP spec is finalized
-    ctx->exp_occp_last_error = 0x5; 
+    ctx->exp_occp_last_error = 0x5;
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
     check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
     increment_cmd_count(ctx);
-    
+
     // Execute 10 more random commands to ensure ROM is still responsive
     simputs("=== Random OCCP Commands (10 after rejection test) ===\n");
     execute_random_commands(ctx, 10);
-    
+
     simputs("Validate and Boot rejection test passed\n");
 }
 
@@ -66,29 +67,29 @@ static void finalize_test_results(test_context_t *ctx) {
 }
 
 int main(void) {
-  static test_context_t test_ctx = {0};
-    
+    static test_context_t test_ctx = {0};
+
     init_test(0);
-    
+
     if (!initialize_interface(&test_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         return -1;
     }
-    
+
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
-    
+
     run_validate_boot_rejection_test(&test_ctx);
-    
+
     finalize_test_results(&test_ctx);
-    
+
     simputs("Done\n");
-    while(1) {
-      __asm__("wfi");
+    while (1) {
+        __asm__("wfi");
     }
-    
+
     return 0;
-} 
+}

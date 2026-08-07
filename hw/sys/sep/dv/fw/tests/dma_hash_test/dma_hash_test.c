@@ -247,7 +247,8 @@ int main(void) {
         printf("  ERROR_CODE = 0x%x\n", error_code.w);
 
         // Decode error bits using struct fields
-        if (error_code.f.SRC_ADDR_ERROR) printf("    - SRC_ADDR_ERROR: Source address is invalid\n");
+        if (error_code.f.SRC_ADDR_ERROR)
+            printf("    - SRC_ADDR_ERROR: Source address is invalid\n");
         if (error_code.f.DST_ADDR_ERROR)
             printf("    - DST_ADDR_ERROR: Destination address is invalid\n");
         if (error_code.f.OPCODE_ERROR) printf("    - OPCODE_ERROR: Opcode is invalid\n");

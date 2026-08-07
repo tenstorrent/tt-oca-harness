@@ -19,32 +19,35 @@
 
 // Scoreboard structure
 typedef struct {
-    uint8_t lower_scoreboard[SCOREBOARD_SIZE];  // Track lower 2047 bytes
-    uint8_t upper_scoreboard[SCOREBOARD_SIZE];  // Track upper 2047 bytes
+    uint8_t lower_scoreboard[SCOREBOARD_SIZE]; // Track lower 2047 bytes
+    uint8_t upper_scoreboard[SCOREBOARD_SIZE]; // Track upper 2047 bytes
 } boundary_scoreboard_t;
 
 static boundary_scoreboard_t scoreboard = {0};
 
-static void update_scoreboard(uint64_t addr, uint8_t *data, uint16_t len, uint64_t lower_base, uint64_t upper_base) {
-	/* Mirror OCCP alignment/padding behavior to keep scoreboard consistent with ROM writes */
-	/* Apply payload bytes */
-	for (int i = 0; i < len; i++) {
-		uint64_t byte_addr = addr + (uint64_t)i;
-		if (byte_addr >= lower_base && byte_addr < (lower_base + SCOREBOARD_SIZE)) {
-			uint32_t offset = (uint32_t)(byte_addr - lower_base);
-			scoreboard.lower_scoreboard[offset] = data[i];
-		} else if (byte_addr >= upper_base && byte_addr < (upper_base + SCOREBOARD_SIZE)) {
-			uint32_t offset = (uint32_t)(byte_addr - upper_base);
-			scoreboard.upper_scoreboard[offset] = data[i];
-		}
-	}
+static void update_scoreboard(uint64_t addr, uint8_t *data, uint16_t len, uint64_t lower_base,
+                              uint64_t upper_base) {
+    /* Mirror OCCP alignment/padding behavior to keep scoreboard consistent with ROM writes */
+    /* Apply payload bytes */
+    for (int i = 0; i < len; i++) {
+        uint64_t byte_addr = addr + (uint64_t)i;
+        if (byte_addr >= lower_base && byte_addr < (lower_base + SCOREBOARD_SIZE)) {
+            uint32_t offset = (uint32_t)(byte_addr - lower_base);
+            scoreboard.lower_scoreboard[offset] = data[i];
+        } else if (byte_addr >= upper_base && byte_addr < (upper_base + SCOREBOARD_SIZE)) {
+            uint32_t offset = (uint32_t)(byte_addr - upper_base);
+            scoreboard.upper_scoreboard[offset] = data[i];
+        }
+    }
 }
 
-static bool verify_scoreboard(test_context_t *ctx, uint64_t addr, uint8_t *data, uint16_t len, uint64_t lower_base, uint64_t upper_base) {
+static bool verify_scoreboard(test_context_t *ctx, uint64_t addr, uint8_t *data, uint16_t len,
+                              uint64_t lower_base, uint64_t upper_base) {
     for (int i = 0; i < len; i++) {
         uint64_t byte_addr = addr + i;
 
-        if (byte_addr < lower_base || byte_addr >= (upper_base + SCOREBOARD_SIZE) || ((byte_addr >= (lower_base + SCOREBOARD_SIZE)) && (byte_addr < (upper_base)))) {
+        if (byte_addr < lower_base || byte_addr >= (upper_base + SCOREBOARD_SIZE) ||
+            ((byte_addr >= (lower_base + SCOREBOARD_SIZE)) && (byte_addr < (upper_base)))) {
             simputs("FAIL: Address out of scoreboard range\n");
             simputshex32("Address: 0x", (uint32_t)byte_addr);
             simputshex32("Lower base: 0x", (uint32_t)lower_base);
@@ -140,7 +143,8 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
             simputshex32(" bytes to 0x", (uint32_t)target_addr);
             simputs(target_lower ? " (lower)\n" : " (upper)\n");
 
-            int retval = occp_send_write_command(ctx, ctx->slave_addr, target_addr, write_data, len);
+            int retval =
+                occp_send_write_command(ctx, ctx->slave_addr, target_addr, write_data, len);
             if (retval == OCCP_SUCCESS) {
                 // Update scoreboard with written data
                 update_scoreboard(target_addr, write_data, len, lower_base, upper_base);
@@ -196,8 +200,9 @@ int main(void) {
     }
 
     // Set up test context with specified memory boundaries
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;           // Lower boundary
-    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;    // Upper boundary (not inclusive)
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR; // Lower boundary
+    test_ctx.test_upper_addr_bound =
+        OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // Upper boundary (not inclusive)
     test_ctx.overall_result = true;
     test_ctx.sram_scoreboard_idx = 0;
     test_ctx.cmd_count = 0;

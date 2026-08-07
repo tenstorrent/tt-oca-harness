@@ -47,7 +47,8 @@ static uint32_t create_status_message(uint32_t fw_id, uint32_t msg_type, uint32_
     return ((fw_id & 0xF) << 28) | ((msg_type & 0xF) << 24) | (msg_value & 0xFFFFFF);
 }
 
-static bool validate_message_format(uint32_t message, uint32_t exp_fw_id, uint32_t exp_type, uint32_t exp_value) {
+static bool validate_message_format(uint32_t message, uint32_t exp_fw_id, uint32_t exp_type,
+                                    uint32_t exp_value) {
     uint32_t fw_id = (message >> 28) & 0xF;
     uint32_t msg_type = (message >> 24) & 0xF;
     uint32_t msg_value = message & 0xFFFFFF;
@@ -65,7 +66,8 @@ static bool validate_message_format(uint32_t message, uint32_t exp_fw_id, uint32
     return true;
 }
 
-static void mark_test_result(ring_buffer_advanced_test_context_t *ctx, bool passed, const char *test_name) {
+static void mark_test_result(ring_buffer_advanced_test_context_t *ctx, bool passed,
+                             const char *test_name) {
     ctx->total_tests++;
     if (passed) {
         ctx->passed_tests++;
@@ -83,7 +85,7 @@ static bool test_message_format_validation(ring_buffer_advanced_test_context_t *
 
     bool test_passed = true;
     uint32_t fw_ids[] = {SMC_STATUS_FW_ID_SEP_BL0, SMC_STATUS_FW_ID_SEP_BL1,
-                        SMC_STATUS_FW_ID_SMC_BL0, SMC_STATUS_FW_ID_SMC_BL1};
+                         SMC_STATUS_FW_ID_SMC_BL0, SMC_STATUS_FW_ID_SMC_BL1};
     uint32_t msg_types[] = {SMC_STATUS_TYPE_STATUS, SMC_STATUS_TYPE_WARNING, SMC_STATUS_TYPE_ERROR};
     uint32_t test_values[] = {0x000001, 0x123456, 0xFFFFFF, 0xABCDEF, 0x000000};
 
@@ -117,7 +119,8 @@ static bool test_ring_buffer_basic_operations(ring_buffer_advanced_test_context_
     int result;
     bool test_passed = true;
 
-    result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
+    result =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
     if (result != OCCP_SUCCESS) {
         simputs("Failed to get SMC status\n");
         test_passed = false;
@@ -132,7 +135,8 @@ static bool test_ring_buffer_basic_operations(ring_buffer_advanced_test_context_
         }
     }
 
-    result = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
+    result =
+        occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
     if (result != OCCP_SUCCESS) {
         simputs("Failed to get SEP status\n");
         test_passed = false;
@@ -156,7 +160,8 @@ static bool test_ring_buffer_wrap_around(ring_buffer_advanced_test_context_t *ct
     simputs("Reading SMC status messages to test wrap-around behavior\n");
 
     while (total_reads < max_reads && consecutive_empty_reads < 10) {
-        int result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        int result =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
 
         if (result != OCCP_SUCCESS) {
             simputs("Failed to read SMC status during wrap-around test\n");
@@ -210,8 +215,10 @@ static bool test_concurrent_buffer_access(ring_buffer_advanced_test_context_t *c
     int smc_result, sep_result;
 
     for (int i = 0; i < 20; i++) {
-        smc_result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
-        sep_result = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
+        smc_result =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
+        sep_result =
+            occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
 
         if (smc_result != OCCP_SUCCESS) {
             simputs("SMC status command failed during concurrent test\n");
@@ -256,10 +263,14 @@ static bool test_status_command_variations(ring_buffer_advanced_test_context_t *
     bool test_passed = true;
     uint32_t version, occp_status, smc_status, sep_status;
 
-    int version_result = occp_send_get_version_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &version);
-    int occp_result = occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
-    int smc_result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
-    int sep_result = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
+    int version_result =
+        occp_send_get_version_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &version);
+    int occp_result =
+        occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
+    int smc_result =
+        occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
+    int sep_result =
+        occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
 
     if (version_result != OCCP_SUCCESS || occp_result != OCCP_SUCCESS ||
         smc_result != OCCP_SUCCESS || sep_result != OCCP_SUCCESS) {
@@ -273,7 +284,7 @@ static bool test_status_command_variations(ring_buffer_advanced_test_context_t *
 
         if (smc_status != 0) {
             if (!validate_message_format(smc_status, SMC_STATUS_FW_ID_SMC_BL0,
-                                       (smc_status >> 24) & 0xF, smc_status & 0xFFFFFF)) {
+                                         (smc_status >> 24) & 0xF, smc_status & 0xFFFFFF)) {
                 test_passed = false;
             }
         }
@@ -292,7 +303,8 @@ static bool test_rapid_status_polling(ring_buffer_advanced_test_context_t *ctx) 
     const int total_polls = 50;
 
     for (int i = 0; i < total_polls; i++) {
-        int result = occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        int result =
+            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
 
         if (result != OCCP_SUCCESS) {
             simputshex32("Failed status poll at iteration: ", i);
@@ -332,11 +344,8 @@ static bool test_edge_cases_and_boundary_conditions(ring_buffer_advanced_test_co
     bool test_passed = true;
 
     uint32_t test_messages[] = {
-        create_status_message(0x0, 0x0, 0x000000),
-        create_status_message(0x3, 0x2, 0xFFFFFF),
-        create_status_message(0x2, 0x1, 0x123456),
-        create_status_message(0x1, 0x0, 0xABCDEF)
-    };
+        create_status_message(0x0, 0x0, 0x000000), create_status_message(0x3, 0x2, 0xFFFFFF),
+        create_status_message(0x2, 0x1, 0x123456), create_status_message(0x1, 0x0, 0xABCDEF)};
 
     for (int i = 0; i < 4; i++) {
         uint32_t msg = test_messages[i];
@@ -358,7 +367,8 @@ static bool test_edge_cases_and_boundary_conditions(ring_buffer_advanced_test_co
 
 static void run_test_suite(ring_buffer_advanced_test_context_t *ctx) {
     simputs("=== Ring Buffer Advanced Test Suite ===\n");
-    simputs("Testing overflow protection, wrap-around, concurrent access, and message validation\n");
+    simputs(
+        "Testing overflow protection, wrap-around, concurrent access, and message validation\n");
 
     test_message_format_validation(ctx);
     test_ring_buffer_basic_operations(ctx);
@@ -390,8 +400,8 @@ static void finalize_test_results(ring_buffer_advanced_test_context_t *ctx) {
     }
 
     occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
-                           SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                           (uint8_t *)&result_code, sizeof(result_code));
+                            SMC_CPU_CTRL_SCRATCH_0__REG_ADDR, (uint8_t *)&result_code,
+                            sizeof(result_code));
 }
 
 int main(void) {

@@ -64,9 +64,9 @@
 /* Expected KMCSR VERSION word. The generator emits per-field reset values but no
  * register-level default, so compose it from the fields rather than restating the
  * version in every test that reads it. */
-#define KMCSR_VERSION_RESET                                                \
-    ((KM_CSR__VERSION_REG__MAJOR_reset << KM_CSR__VERSION_REG__MAJOR_bp) |  \
-     (KM_CSR__VERSION_REG__MINOR_reset << KM_CSR__VERSION_REG__MINOR_bp) |  \
+#define KMCSR_VERSION_RESET \
+    ((KM_CSR__VERSION_REG__MAJOR_reset << KM_CSR__VERSION_REG__MAJOR_bp) | \
+     (KM_CSR__VERSION_REG__MINOR_reset << KM_CSR__VERSION_REG__MINOR_bp) | \
      (KM_CSR__VERSION_REG__PATCH_reset << KM_CSR__VERSION_REG__PATCH_bp))
 
 /* SEP-side mailbox registers are not reachable from the KM CPU; these types only
