@@ -16,7 +16,7 @@ meta:
 #       --config fw/sep/bootcode/configs/secure_boot_test.yaml \
 #       --out fw/sep/bootcode/build/secure_boot.spi_preload
 #
-# Key: fw/deps/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem
+# Key: tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem (submodule)
 # Key digest (SHA-256 of modulus) must match key_digests.c slot 0.
 
 primary:
