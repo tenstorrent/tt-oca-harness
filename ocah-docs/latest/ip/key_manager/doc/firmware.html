@@ -4243,17 +4243,16 @@ arrays or <code>alloca</code>.  All scratch buffers are fixed-size locals or
 file-scope <code>static</code>.</p>
 </li>
 <li>
-<p><code>tools/km_stack_analyze.py</code> walks the disassembled call graph of the
+<p><code>scripts/km_stack_analyze.py</code> walks the disassembled call graph of the
 linked production ELF (rooted at <code>main</code>, and separately at the dedicated
 IRQ entry <code>rom_irq</code>) and sums per-function stack frames along the deepest
-path.  It fails the build if it finds a dynamic frame, an unresolved
+path.  It reports a failure if it finds a dynamic frame, an unresolved
 indirect call on a reachable path, or a call-graph cycle.</p>
 </li>
 <li>
-<p>The firmware <code>Makefile</code> passes the budget to the linker via
-<code>--defsym=__rom_max_stack=$(ROM_KM_MAX_STACK_BYTES)</code> (default <code>0x600</code>) and
-gates <code>build_production</code> on the analyzer reporting a worst case within that
-budget.  <code>make stack_report</code> prints the worst-case depth and deepest path.</p>
+<p>The firmware build passes the budget to the linker via
+<code>--defsym=__rom_max_stack=0x600</code>, so the load ceiling below is derived from the
+same value the analyzer checks the image against.</p>
 </li>
 <li>
 <p>The linker (<code>km_sram_layout.ld</code>) derives the load ceiling
@@ -4265,10 +4264,17 @@ rejects any image whose top exceeds this symbol.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>Run <code>make stack_report</code> to see the analyzer&#8217;s current worst-case main and
-IRQ stack depths and deepest paths for the production ELF.  Raise
-<code>ROM_KM_MAX_STACK_BYTES</code> only if the analyzer reports a worst case that
-exceeds the configured budget.</p>
+<p>Run the analyzer on the production image to see the current worst-case main and
+IRQ stack depths and deepest paths:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
+  --objdump riscv64-unknown-elf-objdump --root main --limit 0x600</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Raise the budget only if the analyzer reports a worst case that exceeds it.</p>
 </div>
 </div>
 </div>
