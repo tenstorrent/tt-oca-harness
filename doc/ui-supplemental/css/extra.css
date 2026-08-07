@@ -403,11 +403,11 @@
     display: inline-flex;
     align-items: center;
     text-decoration: none;
+    vertical-align: middle;
 }
 
 .footer .footer-tt-icon {
     height: 20px;
-    vertical-align: middle;
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather

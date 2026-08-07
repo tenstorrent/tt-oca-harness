@@ -168,6 +168,52 @@ python3 tools/dv/run_dv.py --dut smc_wrapper --tag mailbox_depth   --tool verila
 Use `--rebuild` only after changing SystemVerilog TB/stubs, Bender/filelist
 inputs, RTL, or generated hardware files.
 
+### Public bus/register helper
+
+The public access path selected for the Project 335 SMC bus-helper milestone is
+the SEP_IN AXI ingress:
+
+```text
+smc_output_filter_remap_security_test
+  -> SmcCsrSeq / SmcSysAxiItem / SmcSysAxiDriver
+  -> ocah_axi_vip.OcahAxiMaster
+  -> tb_top.sv s_axi_*
+  -> smc.sep_axi_in_req_i
+  -> SMC filter/remap CSRs
+```
+
+This is active stimulus, not an observation-only proxy. The scenario programs
+the filter/remap CSRs through SEP_IN, then uses the public JTAG AXI injection
+port to prove an allowed write/read with golden-memory comparison and a blocked
+write that returns exact DECERR without corrupting the retained data. The
+flattened public buses are AXI4 with a 56-bit address and 64-bit data path; the
+local helper supports 1-, 2-, 4-, and 8-byte single-beat CSR accesses.
+
+`SmcSysAxiDriver` bounds every access with `SmcEnvCfg.axi_timeout_ns` (50,000 ns
+by default). A normal access fails on timeout or a non-OKAY response. A negative
+test may explicitly allow an error response, but an expected SLVERR/DECERR must
+complete; `expect_error` rejects both an incorrect OKAY response and a timeout.
+
+The Python attribute names are historical: `env.sys_axi_agent` drives the
+`s_axi_*` SEP_IN bridge above. The separate `env.sys_in_axi_agent` drives
+`sys_axi_*` into `sys_axi_in_req_i`; this scenario does not exercise that SYS_IN
+path. Its direct `jtag_axi_*` injection is an AXI fabric path, not proof of
+serial JTAG-to-AXI conversion.
+
+The AXI protocol engine remains shared in `ocah_axi_vip`. The
+`SmcSysAxiDriver` and `SmcCsrSeq` adapters stay DUT-local because they carry
+PyUVM sequencing, SMC address/catalog policy, SMC error signatures, and
+SMC-specific register-to-pin helpers. Promote a register helper to shared DV
+only after a second DUT needs the same protocol-neutral API with those policies
+removed.
+
+Focused validation:
+
+```bash
+python3 tools/dv/run_dv.py --dut smc_wrapper \
+  --items smc_output_filter_remap_security_test --tool verilator --seed 1
+```
+
 ---
 
 ## 3. Functional Coverage Pipeline
@@ -377,7 +423,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 
 | Area | Promoted tests | What made it non-proxy |
 |------|----------------|------------------------|
-| Output fabric | `smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test` | `tb_top` exposes flattened `jtag_axi_*` / `sys_axi_*` inputs; JTAG AXI traffic drives a DV-only output-fabric responder. Checks write/read completion, readback data, blocked-write `DECERR`, and `tb_output_axi_*` counters |
+| Output fabric | `smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test` | `tb_top` exposes flattened `s_axi_*` / `jtag_axi_*` inputs; SEP_IN programs the fabric and JTAG AXI traffic drives a DV-only output-fabric responder. Checks write/read completion, readback data, blocked-write `DECERR`, and `tb_output_axi_*` counters |
 | I2C | `smc_i2c_master_target_test`, `smc_i2c_p1_rdwr_protocol_test`, `smc_i2c_error_fifo_depth_test` | I2C0 resolved SCL/SDA exposed; release/pull-low behavior checked through the DUT override path |
 | I3C | `smc_i3c_to_fabric_test`, `smc_i3c_oca_write_read_sanity_test`, `smc_i3c_ibi_ccc_depth_test` | I3C0 resolved SCL/SDA exposed; external pull-low/release verified |
 | CPU JTAG | `smc_ijtag_basic_test`, `smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_dft_timeout_proxy_test`, `smc_jtag_reset_proxy_test` | TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required |
@@ -394,12 +440,14 @@ confirming the promoted tests did not regress the broader planned suite.
 
 ### Common VIP reuse layer
 
-Three thin adapter modules under `seq_lib/` target the `tb_top.sv` split-port
-`ext_low` open-drain convention and reuse the upstream `cocotbext-*` libraries
-that `hw/common/dv/vip/ocah_*_vip/` already wraps:
+The SMC environment keeps DUT-specific adapters around shared protocol engines.
+The AXI adapter binds flattened SMC ports directly; three additional adapters
+under `seq_lib/` target the `tb_top.sv` split-port `ext_low` open-drain
+convention:
 
 | Wrapper | Underlying VIP | Adapter reason |
 |---------|----------------|----------------|
+| `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMaster` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
 | `smc_jtag_protocol_vip.SmcJtagTap` | `cocotbext.jtag` (`JTAGBus` + `JTAGDriver`) | `ocah_jtag_vip` depends on an uninstalled `jtag_vip` package; `cocotbext.jtag` binds cleanly to the public `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` pins. `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5)` mirrors the JEP106 straps hard-coded in `tb_top.sv` |
 | `smc_i2c_protocol_vip.SmcI2cEepromSlave` / `SmcI2cBusMonitor` | `cocotbext.i2c` (`I2cMemory` / `I2cDevice`) | `ocah_i2c_vip.OcahI2cMaster` uses an older single-signal 2-arg form that cannot bind to the split-port TB. `cocotbext.i2c` exposes 4-arg `sda/sda_o/scl/scl_o`; an `_InvertedPolarityMixin` overrides `_set_sda/_set_scl` because `sda_o=0` (VIP: pull low) maps to `tb_i2c0_sda_ext_low=1` (TB: pull low) |
 | `smc_i3c_protocol_vip.SmcI3cSlaveVip` | `cocotbext_i3c.I3CTarget` | Upstream ships as a bundled submodule rather than a PyPI package, so the wrapper augments `sys.path` at import time and degrades gracefully when absent. Overrides the `sda`/`scl` property setters with the same polarity inversion |

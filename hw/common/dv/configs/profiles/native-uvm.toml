@@ -1,0 +1,77 @@
+# Shared profile for DUTs that use the native runner with SystemVerilog UVM tests.
+#
+# Profile naming uses <runner>-<framework>: this file is the native runner's UVM profile. A DUT
+# opts in with `profile = "native-uvm"` and carries only its local launch content. The UVM
+# library comes from the simulator itself (`-ntb_opts uvm`), selected by `framework = "uvm"`.
+
+kind = "dv"
+framework = "uvm"
+visibility = "maintainer"
+runnability = "maintainer"
+license = "required-commercial"
+
+# VCS only. Xcelium lands as its own change (generic uvm_* stage-kind dispatcher + kind flip +
+# real-run sign-off); until that change merges, nothing advertises Xcelium support.
+default_tool = "vcs"
+tools = ["vcs"]
+
+[scheduler]
+default_executor = "local"
+allowed = ["local"]
+
+[defaults]
+seed = 1
+timeout_sec = 1800
+run_mode = "smoke"
+target = "default"
+
+# Shared cold-build/cache policy, mirroring native-cocotb. Tool-specific acceleration knobs live
+# in simulators.toml [<tool>.build_defaults] or DUT [build.<tool>] overrides.
+[build.options]
+build_jobs = 0
+cflags = ""
+cache_enabled = false
+rebuild = false
+cache_key_extra = []
+
+# Simulation defines mirrored from native-cocotb's [target_defaults.default]: this is the define
+# set the DTP RTL graph already compiles with under VCS in the cocotb flow. Keep identical
+# initially; enabling SVAs for UVM (dropping DISABLE_ASSERT / COMMON_CELLS_ASSERTS_OFF) is a
+# deliberate follow-up, not a silent difference between the two flows.
+[target_defaults.default]
+defines = [
+  "SIM",
+  "NO_LIBCELL",
+  "DISABLE_ASSERT",
+  "COMMON_CELLS_ASSERTS_OFF",
+  "INITIALIZE_MEMORY",
+  "RANDOM=0",
+  "RANDOMIZE_MEM_INIT",
+  "RANDOMIZE_REG_INIT",
+  "RANDOMIZE_GARBAGE_ASSIGN",
+  "RANDOMIZE_INVALID_ASSIGN",
+  "RANDOMIZE_DELAY=0.02",
+]
+
+[target_defaults.default.tools.vcs]
+# -sverilog/-full64/-ntb_opts uvm/-timescale come from the vcs_* stage preamble.
+flags = []
+
+[native]
+enabled = true
+status = "active"
+
+# Three-step VCS UVM flow on the existing, already-exercised stage kinds. No coverage stages:
+# the vcs_* build/sim stages do not inject `-cm ...` instrumentation args, so --cov is rejected
+# up front by the runner until UVM-flow coverage wiring lands (a documented follow-up).
+[native.stages.flist]
+kind = "bender_filelist"
+
+[native.stages.hdl_compile]
+kind = "vcs_analyze"
+
+[native.stages.elaborate]
+kind = "vcs_elaborate"
+
+[native.stages.sim]
+kind = "vcs_sim"

@@ -27,3 +27,9 @@ sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
+
+# DTP SV-UVM flow (shares hw/sys/dtp/dv with the cocotb `dtp` flow; separate sim config,
+# testlist namespace, and build/uvm work dir).
+[duts.dtp_uvm]
+root = "hw/sys/dtp/dv"
+sim_cfg = "hw/sys/dtp/dv/dtp_uvm_sim_cfg.toml"

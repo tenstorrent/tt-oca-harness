@@ -26,8 +26,13 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import Timer
 
-from ocah_jtag_vip import IDCODE_OPCODE, OcahJtagChecker, OcahJtagMonitor, OcahJtagTap
-from ocah_jtag_vip.ocah_jtag_tap import OcahJtagTapError
+from ocah_jtag_vip import (
+    IDCODE_OPCODE,
+    OcahJtagChecker,
+    OcahJtagMonitor,
+    OcahJtagTap,
+    OcahJtagTapError,
+)
 
 
 # ---------------------------------------------------------------------------
