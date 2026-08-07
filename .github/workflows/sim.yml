@@ -3,6 +3,11 @@
 
 name: sim
 
+# Label scheduled and manually dispatched runs in the Actions list; PR and
+# push runs yield an empty run-name, which falls back to the default
+# event-specific title (PR title / commit message).
+run-name: ${{ github.event_name == 'schedule' && 'sim nightly (scheduled) - dtp all x3 seeds' || github.event_name == 'workflow_dispatch' && format('sim {0} (manual dispatch)', inputs.tier) || '' }}
+
 on:
   pull_request:
   workflow_dispatch:
