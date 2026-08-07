@@ -32,10 +32,14 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
     uint64_t master_bootcode_addr = read_scratch(5);
     uint64_t bootcode_size = read_scratch(6);
     uint64_t target_dut_addr = read_scratch(7);
+    // Where main() sits inside the bootcode image, derived by the loader from the
+    // build's own symbol map so this test does not assume a fixed image layout.
+    uint64_t entry_offset = read_scratch(8);
 
     simputshex64("Master bootcode address: 0x", master_bootcode_addr);
     simputshex64("Bootcode size: 0x", bootcode_size);
     simputshex64("Target DUT address: 0x", target_dut_addr);
+    simputshex64("Entry offset: 0x", entry_offset);
 
     simputs("=== Starting bootcode transfer to DUT ===\n");
 
@@ -92,8 +96,8 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
 
     simputs("=== Executing OCCP JUMP command to start bootcode ===\n");
 
-    // Execute jump command to start the bootcode (0x3e0 is the offset to main function)
-    retval = occp_send_jump_command(ctx, ctx->slave_addr, target_dut_addr + 0x3e0);
+    // Execute jump command to start the bootcode
+    retval = occp_send_jump_command(ctx, ctx->slave_addr, target_dut_addr + entry_offset);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: OCCP JUMP command failed\n");
         ctx->overall_result = false;

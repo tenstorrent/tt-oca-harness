@@ -30,10 +30,12 @@ static void run_secure_boot_test(test_context_t *ctx) {
     simputs("=== Reading bootcode parameters ===\n");
 
     // Read bootcode parameters from scratch registers (set by CocoTB)
+    uint64_t entry_offset = read_scratch(4);
     uint64_t master_bootcode_addr = read_scratch(5);
     uint64_t bootcode_size = read_scratch(6);
     uint64_t target_dut_addr = read_scratch(7);
 
+    simputshex64("Entry offset: 0x", entry_offset);
     simputshex64("Master bootcode address: 0x", master_bootcode_addr);
     simputshex64("Bootcode size: 0x", bootcode_size);
     simputshex64("Target DUT address: 0x", target_dut_addr);
@@ -76,8 +78,9 @@ static void run_secure_boot_test(test_context_t *ctx) {
 
     simputs("=== Executing OCCP VALIDATE_BOOT command ===\n");
 
-    // Execute validate and boot command to signal the ROM (0x3e0 is the offset to main function)
-    uint64_t manifest_addr = target_dut_addr + 0x3e0;
+    // The ROM republishes this address as the manifest offset and the harness uses it as the
+    // cores' reset vector, so it must be the payload's entry point rather than a fixed offset.
+    uint64_t manifest_addr = target_dut_addr + entry_offset;
     retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, manifest_addr);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: OCCP VALIDATE_BOOT command failed\n");

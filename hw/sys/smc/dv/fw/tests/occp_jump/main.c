@@ -35,8 +35,20 @@ static void run_test_suite(test_context_t *ctx) {
         simputshex32("Test address: ", test_addr);
     }
 
-    // jump directly to the test address + 0x3e0 (0x3e0 is the offset to the main function)
-    retval = occp_send_jump_command(ctx, ctx->slave_addr, test_addr + 0x3e0);
+    // The loader publishes where main() sits inside the payload (scratch 5, written
+    // before the base in scratch 4). Deriving it there keeps this jump correct when
+    // the toolchain moves main() within the image.
+    uint32_t entry_offset = 0;
+    retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
+                                    (uint8_t *)&entry_offset, sizeof(entry_offset));
+    if (retval != OCCP_SUCCESS) {
+        simputs("Failed to read scratch 5\n");
+        ctx->overall_result = false;
+        return;
+    }
+    simputshex32("Entry offset: ", entry_offset);
+
+    retval = occp_send_jump_command(ctx, ctx->slave_addr, test_addr + entry_offset);
     if (retval != OCCP_SUCCESS) {
         simputs("Failed to jump to test address\n");
         ctx->overall_result = false;
