@@ -60,6 +60,7 @@ topology, lifecycle rules, signal binding, or testbench fixtures:
 |`DtpStap3dcrModel` |DTP PTAP/STAP selection, 3DCR state, reset/gating |Downstream STAPs are wire loopbacks and the hierarchy is DTP-specific |A parameterized IEEE 1838/STAP model validated against a real downstream topology
 |`DtpXtrigBfm` / `DtpCtmRefModel` |DTP CTP wire-OR/P2P pins, CTM masks, CSR layout |Assumes DTP port counts, flattened signal names, and OCH routing policy |Parameterize binding/counts and demonstrate independent reuse; domain-local ownership may precede shared VIP promotion
 |`DtpFlatAxiLiteMaster` |XTRIG CSR access over this TB's flattened signals |Duplicates a standard protocol already owned by `ocah_axi_vip` |Migrate required behavior to the shared AXI-Lite wrapper; never promote as a second AXI VIP
+|`DtpBypassSuiteCfg` / `DtpBypassRefModel` |BYPASS opcode, pattern, capture, and one-bit-delay prediction |Encodes the DTP BYPASS scenario and evidence context |Consider protocol-level promotion only after an independent JTAG consumer needs the same model
 |DTP TDR maps/packers |DTP instruction/register semantics layered over `ocah_jtag_vip` |Register layout and polling policy are DUT semantics, not JTAG protocol |Share only with a domain consumer that uses the same DTP register contract
 |===
 
@@ -67,6 +68,28 @@ The shared `ocah_jtag_vip` and `ocah_axi_vip` packages own protocol-neutral
 driving, monitoring, result, and error behavior. DTP agents remain responsible
 for hierarchy binding, address/TDR maps, expected values, lifecycle policy, and
 scoreboarding.
+
+=== BYPASS Reference-Model Contract
+
+The DTP BYPASS scenario is the concrete reference-model/scoreboard example for
+https://github.com/tenstorrent/tt-oca-hw/issues/3294[tt-oca-hw#3294]:
+
+[source,text]
+----
+DtpBypassSuiteCfg
+  -> load_ir / shift_dr JTAG stimulus
+  -> DtpBypassRefModel.predict(case) -> expected TDO
+completed DtpJtagItem.result         -> observed TDO
+expected + observed
+  -> OcahJtagChecker
+  -> CHK-BYPASS-* / CHK-NONVAC / CHECKER_SUMMARY
+----
+
+The frozen suite config is the single source for opcode, width, pattern,
+capture bit, seed, and evidence context. The pure model has no simulator
+handles or DUT reads. Aggregate checker mode lets every configured case run;
+finalization then reports total checks/errors/missing IDs before failing.
+Passing `results.xml` and native `result.json` remain the run authority.
 
 === Testbench Hierarchy
 
