@@ -224,6 +224,42 @@ $(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 	python3 "$(BIN_TO_SPI)" "$(NS_BOOT_BIN)" "$(NS_SPI_HEX)"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(NS_SPI_HEX)" > "$@"
 
+# --- signed (secure boot) SPI image ---
+# sep_rom_secure_boot_test and sep_rom_ot_secure_boot_test load this image to
+# exercise the RSA-3072 signature check. Same packer as the non-secure image; the
+# config just turns on secure_boot and names a signing key.
+#
+# That key is the one piece that cannot live here. key_digests.c pins slot 0 to
+# the SHA-256 of the dev0 modulus, so only that exact key produces an image the
+# ROM will accept, and it ships in the private tt-boot-manifest repo rather than
+# with the vendored packer. Point SEP_SIGNING_KEY at it, or check the repo out
+# under tools/tests/signing_keys/.
+#
+# To move to a key that can live in the open tree, generate one, regenerate the
+# digest table with tools/generate_key_digests.py, and commit both.
+SECURE_PACK_CONFIG := $(CURDIR)/configs/secure_boot_test.yaml
+SECURE_BOOT_BIN    := $(BUILD_DIR)/secure_boot.bin
+SECURE_SPI_HEX     := $(BUILD_DIR)/secure_boot.spi_preload
+SEP_SIGNING_KEY    ?= $(TOOLS_DIR)/tests/signing_keys/rsa_private_key.dev0.pem
+
+.PHONY: secure_boot_spi
+secure_boot_spi: $(SECURE_SPI_HEX)
+
+# Fail here with the reason rather than letting the packer die on a missing file
+# or, worse, letting the test start and stall waiting for an image nobody built.
+$(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: secure boot image needs the dev0 signing key, which is not in this tree."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  echo "       It ships in the private tt-boot-manifest repo; check it out under"; \
+	  echo "       $(TOOLS_DIR)/tests/signing_keys/ or set SEP_SIGNING_KEY=<path>."; \
+	  echo "       key_digests.c slot 0 pins the accepted key, so no other key will boot."; \
+	  exit 1; }
+	PYTHONPATH="$(TOOLS_DIR)$(if $(PYTHONPATH),:$(PYTHONPATH))" OCH_ROOT="$(DV_ROOT)" \
+	ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
+		python3 -m tt_boot_manifest.pack_images --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
+	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
+
 clean:
 	rm -rf "$(BUILD_DIR)"
 	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true
