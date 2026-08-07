@@ -41,8 +41,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
         )
 
         # CLA enable bit alone must appear on hierarchical observe.
-        # CLA fb path (dtp_xtrig_clk_stop_req[0]) stays 0 without real CLA halt —
-        # that is observe of the product glue, not Force inject.
+        # CLA fb path (dtp_xtrig_clk_stop_req[0]) stays 0 without real CLA halt.
         val_cla = pack_debug_control(cla_clock_stop_en=1)
         await jtag.write("DEBUG_CONTROL", val_cla)
         await ClockCycles(dut.clk_smu_i, 8)

@@ -4,8 +4,7 @@
 SMC padring maps lsio_pad2core_data[60] to boot_stall_from_bp. With JTAG
 override idle, GPIO stall is sticky across cold reset until cleared.
 
-Stimulus uses TB ``gpio_boot_stall_drive_i`` (OR into pad2core) — Verilator
-rejects Force on the continuous pad2core loopback assign.
+Stimulus uses TB ``gpio_boot_stall_drive_i`` (OR into pad2core).
 
 Real checkers:
   1. Drive pad bit[60]=1 across cold reset -> fuse_reset_n_delayed_o stays 0

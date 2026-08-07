@@ -1,15 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""smu_xtrig_ctm_illegal_phase_test - pin-only illegal CTM corners (no Force).
+"""smu_xtrig_ctm_illegal_phase_test - pin-only illegal CTM corners.
 
-Legal four-phase (Force dst_ack / src_req) remains deferred. This enrolled
-subset uses only product TB pins:
+This enrolled subset uses only product TB pins:
 
   1. req drop without ack: assert then clear dst_req -> TB ack stays 0;
      SMC[1:0] idle (no phantom handshake)
   2. double-req: change pattern mid-req without completing four-phase ->
      new pattern visible on DTP[9:2]; SMC[1:0] never polluted
-
-ack-before-req (needed Force on wire-OR dst_ack) stays out of scope.
 """
 
 from __future__ import annotations
