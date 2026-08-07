@@ -286,9 +286,13 @@ package smc_pkg;
 	localparam smc_axi_user_t SEP_SRC_ID = smc_axi_user_t'('hF);
 
 	// Address Remap Parameters
-    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_BASE_ADDR);
+    // The remap starts are offsets into the SMC register window, since the fabric adds them to a
+    // runtime window base. SMC_TOP_BASE_ADDR is the addrmap root (0), not the window base, so the
+    // window base is taken from the lowest-addressed block in the window instead.
+    localparam smc_axi_addr_t REG_WINDOW_BASE      = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+    localparam smc_axi_addr_t MMODE_REMAP_START    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR) - REG_WINDOW_BASE;
     localparam smc_axi_addr_t MMODE_REMAP_SIZE     = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_SIZE);
-    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_BASE_ADDR);
+    localparam smc_axi_addr_t XVISOR_REMAP_START   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR) - REG_WINDOW_BASE;
     localparam smc_axi_addr_t XVISOR_REMAP_SIZE    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_SIZE);
 
 	// Filter Parameters
