@@ -844,6 +844,53 @@ Recommended CI assertions include:
 * staged coverage paths exist when coverage was expected;
 * the publication source contains only approved files.
 
+== Continuous integration
+
+The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
+the nightly regression dashboard automatically:
+
+. The `sim` workflow's nightly tier uploads the native run tree as the
+  artifact `dv-run-<dut>-<tool>-nightly` (see the CI section in
+  xref:run-dv.adoc[DV and FV Runner]).
+. `dashboard.yml` triggers on `sim` completion (scheduled nightlies publish
+  automatically; manually dispatched nightlies are published by dispatching
+  `dashboard.yml` with the sim run id), downloads the artifact, and runs
+  `collect` -> `report` -> `dashboard` with the trend history file.
+. The bundle is committed to the `gh-pages` branch and served by GitHub
+  Pages.
+
+Publication layout on `gh-pages`:
+
+[source,text]
+----
+dv/
+├── latest/                      # current bundle: index.html, <dut>.html,
+│                                # summary.json, <dut>.result.json
+└── data/
+    ├── history.json             # trend store (trimmed to 90 points in CI)
+    ├── runs/<date>-run<id>.result.json.gz   # per-night archives (90 kept)
+    └── classification/<date>.json  # infra/design/flaky split per night
+----
+
+Operational rules:
+
+* A red nightly still publishes: the workflow gates on the presence of the
+  native `result.json` in the artifact, never on the run's conclusion.
+* The failure classification (infrastructure `ERROR`/`TIMEOUT` vs design/test
+  `FAIL` vs `UNKNOWN` evidence gaps) and the mixed-seed flaky list are
+  computed from the native leaf records, because the normalized dashboard
+  schema collapses those statuses into `FAIL`.
+* The docs deploy (`make ocah-doc-push-ghpages`) force-replaces the whole
+  `gh-pages` branch via `ghp-import -f`; it preserves the `dv/` dashboard
+  subtree by copying it into the staging tree first. Keep that preservation
+  step when changing either publisher.
+* An email digest is sent per nightly publication when the
+  `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
+  provisioned; the step self-disables while they are absent, and GitHub's
+  native scheduled-workflow failure notification covers the interim.
+* Pull requests get a sticky smoke-summary comment from the `sim` workflow's
+  `pr-comment` job instead of an email.
+
 == Troubleshooting
 
 === Imports fail before a subcommand runs
@@ -914,7 +961,9 @@ Treat these as implementation constraints, not intended architecture:
 * Local publication does not constrain name/timestamp paths; all publication
   replaces destination trees non-atomically and has no secret scan.
 
-There is no implemented database service, live dashboard server, automatic
-artifact retention policy, or end-to-end repository CI integration. Add those
-capabilities only after defining their ownership and preserving the file
-contracts documented here.
+There is no implemented database service or live dashboard server. Repository
+CI integration and retention are provided by `.github/workflows/dashboard.yml`
+(see <<Continuous integration>>): CI trims trend history and per-night
+archives to 90 entries; the tool itself still has no retention policy. Add
+further capabilities only after defining their ownership and preserving the
+file contracts documented here.

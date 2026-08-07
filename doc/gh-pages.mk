@@ -66,6 +66,18 @@ ocah-doc-push-ghpages: ocah-doc-stage-ghpages
 		echo "install uv, or see https://docs.astral.sh/uv/"; \
 		exit 1; \
 	}
+	@# ghp-import -f replaces the entire gh-pages branch, so the DV dashboard
+	@# subtree published there by .github/workflows/dashboard.yml must be
+	@# carried into the staging tree or a docs deploy would delete it.
+	@cd "$(OCAH_ROOT)" && \
+	if git fetch origin gh-pages >/dev/null 2>&1 && \
+	   [ -n "$$(git ls-tree FETCH_HEAD dv 2>/dev/null)" ]; then \
+		rm -rf "$(OCAH_GHPAGES_DIR)/dv"; \
+		git archive FETCH_HEAD dv | tar -x -C "$(OCAH_GHPAGES_DIR)"; \
+		echo "Preserved gh-pages dv/ dashboard subtree in the staging tree."; \
+	else \
+		echo "No gh-pages dv/ dashboard subtree to preserve (or fetch failed)."; \
+	fi
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
 	@echo "Deployed to GitHub Pages (gh-pages branch)."
 

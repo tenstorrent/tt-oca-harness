@@ -1,0 +1,217 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: dashboard
+
+# Label runs in the Actions list by what they publish.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard backfill (sim run {0})', inputs.run_id) || 'dashboard publish (nightly)' }}
+
+on:
+  workflow_run:
+    workflows: [sim]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "sim workflow run id to collect and publish (manual nightlies, backfill)"
+        required: true
+
+permissions:
+  contents: write # push the gh-pages dashboard subtree
+  actions: read # download artifacts from the triggering sim run
+
+# Serialize gh-pages publications; never cancel a publish in flight.
+concurrency:
+  group: dashboard-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Cron nightlies publish automatically. Manually dispatched sim nightlies
+    # are published by dispatching this workflow with their run id. PR/push
+    # smoke runs are skipped: the dashboard tracks the nightly regression.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SIM_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+      # Email is optional until the mail secrets are provisioned; the step
+      # self-disables when OCAH_MAIL_TO is empty.
+      OCAH_MAIL_TO: ${{ secrets.OCAH_MAIL_TO }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: ghpages
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+
+      # A dispatch can name any sim run; publish only runs that carry a
+      # nightly run tree. DUT and tool come from the artifact name
+      # (dv-run-<dut>-<tool>-nightly; dut/tool never contain hyphens).
+      - name: Locate nightly artifact
+        id: art
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          name=$(gh api "repos/${{ github.repository }}/actions/runs/$SIM_RUN_ID/artifacts" \
+            --jq '[.artifacts[].name | select(test("^dv-run-.+-nightly$"))][0] // empty')
+          if [ -z "$name" ]; then
+            echo "No dv-run-*-nightly artifact on sim run $SIM_RUN_ID; nothing to publish." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base=${name#dv-run-}
+          base=${base%-nightly}
+          {
+            echo "found=true"
+            echo "name=$name"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "DUT=${base%%-*}"
+            echo "TOOL=${base#*-}"
+          } >> "$GITHUB_ENV"
+
+      - name: Download nightly run tree
+        if: steps.art.outputs.found == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.art.outputs.name }}
+          run-id: ${{ env.SIM_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: nightly-run
+
+      # Fail closed on a malformed artifact: the run-level result.json must
+      # exist. A FAIL/UNKNOWN status still publishes -- a red nightly must
+      # appear on the dashboard, not vanish. `collect` itself exits 0 even
+      # without usable input, so the file check is the real gate.
+      - name: Collect normalized result
+        if: steps.art.outputs.found == 'true'
+        run: |
+          test -f nightly-run/result.json
+          mkdir -p bundle
+          python3 tools/dv/run_dashboard.py collect \
+            --dut "$DUT" \
+            --run-dir nightly-run \
+            --output "bundle/$DUT.result.json"
+          echo "STATUS=$(jq -r .status "bundle/$DUT.result.json")" >> "$GITHUB_ENV"
+
+      - name: Render report and dashboard with trend history
+        if: steps.art.outputs.found == 'true'
+        run: |
+          mkdir -p ghpages/dv/data
+          python3 tools/dv/run_dashboard.py report \
+            --result "bundle/$DUT.result.json" \
+            --html-out "bundle/$DUT.html"
+          python3 tools/dv/run_dashboard.py dashboard \
+            --results "bundle/*.result.json" \
+            --html-out bundle/index.html \
+            --summary-out bundle/summary.json \
+            --history-in ghpages/dv/data/history.json \
+            --history-out ghpages/dv/data/history.json
+          # The tool has no retention policy; keep the newest 90 trend points.
+          jq '.points |= (sort_by(.generated_at) | .[-90:])' \
+            ghpages/dv/data/history.json > history.tmp
+          mv history.tmp ghpages/dv/data/history.json
+
+      # Native leaf taxonomy: ERROR/TIMEOUT = infrastructure, FAIL = design or
+      # test, UNKNOWN = evidence gap. The dashboard schema collapses these
+      # into FAIL, so the split is computed here from the native records.
+      # Flaky = a test with both passing and non-passing seeds this night.
+      - name: Classify failures and build digest
+        if: steps.art.outputs.found == 'true'
+        run: |
+          find nightly-run -path '*/attempt_*/result.json' | while read -r f; do
+            t=${f#nightly-run/}
+            printf '%s\t%s\n' "${t%%/*}" "$(jq -r .status "$f")"
+          done | sort > leaves.tsv
+          total=$(wc -l < leaves.tsv | tr -d ' ')
+          pass=$(cut -f2 leaves.tsv | grep -cx PASS || true)
+          infra=$(cut -f2 leaves.tsv | grep -cxE 'ERROR|TIMEOUT' || true)
+          design=$(cut -f2 leaves.tsv | grep -cx FAIL || true)
+          unknown=$(cut -f2 leaves.tsv | grep -cx UNKNOWN || true)
+          flaky=$(awk -F'\t' '{s[$1]=s[$1]" "$2}
+            END{for (t in s) if (s[t] ~ /PASS/ && s[t] ~ /FAIL|ERROR|TIMEOUT|UNKNOWN/) print t}' \
+            leaves.tsv | sort)
+          failed_tests=$(awk -F'\t' '$2!="PASS"{print $1" ["$2"]"}' leaves.tsv | sort -u | head -20)
+          day=$(date -u +%F)
+          mkdir -p ghpages/dv/data/classification
+          jq -n --arg date "$day" --arg run_id "$SIM_RUN_ID" --arg status "$STATUS" \
+            --argjson total "$total" --argjson pass "$pass" --argjson infra "$infra" \
+            --argjson design "$design" --argjson unknown "$unknown" \
+            --arg flaky "$flaky" \
+            '{date: $date, sim_run_id: $run_id, status: $status,
+              leaves: {total: $total, pass: $pass},
+              failures: {infra: $infra, design: $design, unknown: $unknown},
+              flaky_tests: ($flaky | split("\n") | map(select(length > 0)))}' \
+            > "ghpages/dv/data/classification/$day.json"
+          {
+            echo "Subject: [OCAH DV nightly] $STATUS $DUT/$TOOL $day - $pass/$total"
+            echo ""
+            echo "Nightly regression: $DUT / $TOOL"
+            echo "Status: $STATUS  (leaves: $pass passed, $((total - pass)) failed, of $total)"
+            echo "Infra failures (ERROR/TIMEOUT): $infra    Design/test failures (FAIL): $design    Evidence gaps (UNKNOWN): $unknown"
+            echo "Flaky (mixed per-seed results): ${flaky:-none}"
+            if [ -n "$failed_tests" ]; then
+              echo ""
+              echo "Failed tests (first 20):"
+              echo "$failed_tests"
+            fi
+            echo ""
+            echo "Run:       ${{ github.server_url }}/${{ github.repository }}/actions/runs/$SIM_RUN_ID"
+            echo "Artifact:  ${{ steps.art.outputs.name }} (14-day retention)"
+          } > digest.txt
+          {
+            echo '```'
+            cat digest.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish to gh-pages
+        if: steps.art.outputs.found == 'true'
+        run: |
+          rm -rf ghpages/dv/latest
+          mkdir -p ghpages/dv/latest ghpages/dv/data/runs
+          cp bundle/index.html bundle/summary.json "bundle/$DUT.html" "bundle/$DUT.result.json" ghpages/dv/latest/
+          if [ -d bundle/artifacts ]; then cp -R bundle/artifacts ghpages/dv/latest/; fi
+          gzip -c "bundle/$DUT.result.json" \
+            > "ghpages/dv/data/runs/$(date -u +%Y%m%d)-run$SIM_RUN_ID.result.json.gz"
+          # Keep the newest 90 per-night archives.
+          find ghpages/dv/data/runs -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          cd ghpages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dv
+          if git diff --cached --quiet; then
+            echo "No dashboard changes to publish."
+            exit 0
+          fi
+          git commit -m "dv dashboard: publish sim run $SIM_RUN_ID ($STATUS)"
+          # A docs deploy may push gh-pages concurrently; rebase and retry.
+          for _ in 1 2 3; do
+            if git push origin gh-pages; then exit 0; fi
+            git pull --rebase origin gh-pages
+          done
+          exit 1
+
+      # Self-disables until the mail secrets exist (see run-dashboard.adoc).
+      - name: Email digest
+        if: steps.art.outputs.found == 'true' && env.OCAH_MAIL_TO != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.OCAH_MAIL_USERNAME }}
+          password: ${{ secrets.OCAH_MAIL_PASSWORD }}
+          from: OCAH DV CI
+          to: ${{ secrets.OCAH_MAIL_TO }}
+          subject: "[OCAH DV nightly] ${{ env.STATUS }} ${{ env.DUT }}/${{ env.TOOL }}"
+          body: file://digest.txt
