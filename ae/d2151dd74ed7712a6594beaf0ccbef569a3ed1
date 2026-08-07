@@ -1,0 +1,37 @@
+hw/sys/smc/dv/fw/tests/smu_smc_stall_sep/main.c
+  s_d605cb93395a31::t_a63e2e8581ec5a 1-130
+hw/sys/smc/dv/fw/tests/smu_sep_ext_axi/main.c
+  s_d605cb93395a31::t_ddb4e42ec3e13e 1-150
+hw/sys/smc/dv/fw/fw.mk
+  s_d605cb93395a31::t_d0eeca624efb7a 52-54,56-57
+hw/sys/smc/dv/fw/tests/sep_mbox_irq/main.c
+  s_d605cb93395a31::t_d65381f3ef101b 1-161
+hw/sys/smc/dv/fw/tests/smu_sep_boot/main.c
+  s_d605cb93395a31::t_1d5f9cd80654f0 1-41
+hw/sys/smc/dv/fw/include/smc_cla_boot.h
+  s_d605cb93395a31::t_f2f8829ac763f1 1-71
+hw/sys/smc/dv/fw/include/smc_defines.h
+  s_d605cb93395a31::t_4e0daf29e80834 21
+hw/sys/smc/dv/fw/include/smc_stackless_test.h
+  s_d605cb93395a31::t_765188e28b9eaa 1-72
+hw/sys/smc/dv/fw/include/smc_test.h
+  s_d605cb93395a31::t_948576a803b1db 18-19,28-35
+  s_d605cb93395a31::t_98eaf5450fa582 9
+  s_d605cb93395a31::t_623a41c7e9c8d3 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aed2151dd74ed7712a6594beaf0ccbef569a3ed1",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
