@@ -155,3 +155,56 @@ jobs:
           path: ${{ env.RUN_DIR }}
           retention-days: 14
           if-no-files-found: ignore
+
+  # Sticky PR summary comment built from the smoke run's native results.
+  # Same-repo PRs only: fork PRs get a read-only token and cannot comment.
+  pr-comment:
+    needs: verilator-smoke
+    if: always() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download smoke artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: dv-run-*-smoke
+          path: runs
+
+      - name: Post sticky summary comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          marker='<!-- ocah-dv-smoke-summary -->'
+          {
+            echo "$marker"
+            echo "### DV smoke summary"
+            found=false
+            for r in runs/*/result.json; do
+              [ -f "$r" ] || continue
+              found=true
+              jq -r '"- **\(.flow) / \(.tool)**: \(.status)"' "$r"
+              find "$(dirname "$r")" -path '*/attempt_*/result.json' | while read -r leaf; do
+                s=$(jq -r .status "$leaf")
+                if [ "$s" != "PASS" ]; then
+                  t=${leaf#"$(dirname "$r")"/}
+                  echo "  - \`${t%%/*}\`: $s"
+                fi
+              done
+            done
+            if [ "$found" = false ]; then
+              echo "- No native result was recorded (the run failed before results were written); see the workflow logs."
+            fi
+            echo ""
+            echo "_Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (job result: ${{ needs.verilator-smoke.result }})_"
+          } > comment.md
+          pr=${{ github.event.pull_request.number }}
+          cid=$(gh api "repos/${{ github.repository }}/issues/$pr/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
+          if [ -n "$cid" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$cid" -F body=@comment.md
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/$pr/comments" -F body=@comment.md
+          fi
