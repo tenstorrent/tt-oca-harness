@@ -369,9 +369,14 @@ static int test_dma_alias(void) {
 
     printf("  DMA: 0x%08X -> 0x%08X (physical SRAM)\n", src_direct_addr, dst_direct_addr);
 
-    // Configure DMA transfer
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0u);
+    // Configure DMA transfer. ASID 0 is not a valid address space and makes the
+    // DMA report ASID_ERROR, so both ASIDs must carry the OT internal bus default.
+    WRITE_REG(
+        OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+        (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
+            (SECURE_DMA__ADDR_SPACE_ID__DST_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+              SECURE_DMA__TRANSFER_WIDTH__WIDTH_reset << SECURE_DMA__TRANSFER_WIDTH__WIDTH_bp);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
