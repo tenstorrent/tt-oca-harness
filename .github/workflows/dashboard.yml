@@ -3,12 +3,19 @@
 
 name: dashboard
 
-# Label runs in the Actions list by what they publish.
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard backfill (sim run {0})', inputs.run_id) || 'dashboard publish (nightly)' }}
+# Label runs in the Actions list by what they do.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard backfill (sim run {0})', inputs.run_id) || (github.event.workflow_run.name == 'sim' && 'dashboard publish (nightly)' || 'dashboard restore (after docs deploy)') }}
 
+# The `dv-dashboard-data` branch is the dashboard's source of truth (trend
+# history, per-night archives, classification, current bundle). The gh-pages
+# `dv/` subtree is only a rendered copy for GitHub Pages: the docs deploy
+# (ghp-import -f) force-replaces the whole gh-pages branch and deletes it,
+# so this workflow also triggers on the docs workflow's completion and
+# restores dv/ from the data branch. No dashboard data ever lives only on
+# gh-pages.
 on:
   workflow_run:
-    workflows: [sim]
+    workflows: [sim, Build and Deploy Documentation]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -17,10 +24,10 @@ on:
         required: true
 
 permissions:
-  contents: write # push the gh-pages dashboard subtree
+  contents: write # push dv-dashboard-data and the gh-pages dv/ subtree
   actions: read # download artifacts from the triggering sim run
 
-# Serialize gh-pages publications; never cancel a publish in flight.
+# Serialize publications and restores; never cancel one in flight.
 concurrency:
   group: dashboard-publish
   cancel-in-progress: false
@@ -30,7 +37,7 @@ jobs:
     # Cron nightlies publish automatically. Manually dispatched sim nightlies
     # are published by dispatching this workflow with their run id. PR/push
     # smoke runs are skipped: the dashboard tracks the nightly regression.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'schedule'
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.name == 'sim' && github.event.workflow_run.event == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -47,6 +54,12 @@ jobs:
         with:
           ref: gh-pages
           path: ghpages
+
+      - name: Checkout dashboard data branch
+        uses: actions/checkout@v4
+        with:
+          ref: dv-dashboard-data
+          path: ghdata
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -106,7 +119,7 @@ jobs:
       - name: Render report and dashboard with trend history
         if: steps.art.outputs.found == 'true'
         run: |
-          mkdir -p ghpages/dv/data
+          mkdir -p ghdata/data
           python3 tools/dv/run_dashboard.py report \
             --result "bundle/$DUT.result.json" \
             --html-out "bundle/$DUT.html"
@@ -114,12 +127,12 @@ jobs:
             --results "bundle/*.result.json" \
             --html-out bundle/index.html \
             --summary-out bundle/summary.json \
-            --history-in ghpages/dv/data/history.json \
-            --history-out ghpages/dv/data/history.json
+            --history-in ghdata/data/history.json \
+            --history-out ghdata/data/history.json
           # The tool has no retention policy; keep the newest 90 trend points.
           jq '.points |= (sort_by(.generated_at) | .[-90:])' \
-            ghpages/dv/data/history.json > history.tmp
-          mv history.tmp ghpages/dv/data/history.json
+            ghdata/data/history.json > history.tmp
+          mv history.tmp ghdata/data/history.json
 
       # Native leaf taxonomy: ERROR/TIMEOUT = infrastructure, FAIL = design or
       # test, UNKNOWN = evidence gap. The dashboard schema collapses these
@@ -142,7 +155,7 @@ jobs:
             leaves.tsv | sort)
           failed_tests=$(awk -F'\t' '$2!="PASS"{print $1" ["$2"]"}' leaves.tsv | sort -u | head -20)
           day=$(date -u +%F)
-          mkdir -p ghpages/dv/data/classification
+          mkdir -p ghdata/data/classification
           jq -n --arg date "$day" --arg run_id "$SIM_RUN_ID" --arg status "$STATUS" \
             --argjson total "$total" --argjson pass "$pass" --argjson infra "$infra" \
             --argjson design "$design" --argjson unknown "$unknown" \
@@ -151,7 +164,7 @@ jobs:
               leaves: {total: $total, pass: $pass},
               failures: {infra: $infra, design: $design, unknown: $unknown},
               flaky_tests: ($flaky | split("\n") | map(select(length > 0)))}' \
-            > "ghpages/dv/data/classification/$day.json"
+            > "ghdata/data/classification/$day.json"
           {
             echo "Subject: [OCAH DV nightly] $STATUS $DUT/$TOOL $day - $pass/$total"
             echo ""
@@ -174,23 +187,35 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish to gh-pages
+      # The data branch is canonical: bundle plus data are committed there
+      # first, then mirrored to gh-pages dv/ for serving.
+      - name: Publish to the data branch and gh-pages
         if: steps.art.outputs.found == 'true'
         run: |
-          rm -rf ghpages/dv/latest
-          mkdir -p ghpages/dv/latest ghpages/dv/data/runs
-          cp bundle/index.html bundle/summary.json "bundle/$DUT.html" "bundle/$DUT.result.json" ghpages/dv/latest/
-          if [ -d bundle/artifacts ]; then cp -R bundle/artifacts ghpages/dv/latest/; fi
+          rm -rf ghdata/latest
+          mkdir -p ghdata/latest ghdata/data/runs
+          cp bundle/index.html bundle/summary.json "bundle/$DUT.html" "bundle/$DUT.result.json" ghdata/latest/
+          if [ -d bundle/artifacts ]; then cp -R bundle/artifacts ghdata/latest/; fi
           gzip -c "bundle/$DUT.result.json" \
-            > "ghpages/dv/data/runs/$(date -u +%Y%m%d)-run$SIM_RUN_ID.result.json.gz"
+            > "ghdata/data/runs/$(date -u +%Y%m%d)-run$SIM_RUN_ID.result.json.gz"
           # Keep the newest 90 per-night archives.
-          find ghpages/dv/data/runs -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          find ghdata/data/runs -name '*.result.json.gz' | sort | head -n -90 | xargs -r rm --
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          cd ghdata
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "dv dashboard: publish sim run $SIM_RUN_ID ($STATUS)"
+            git push origin dv-dashboard-data
+          fi
+          cd ..
+          rm -rf ghpages/dv
+          mkdir -p ghpages/dv
+          cp -R ghdata/latest ghdata/data ghpages/dv/
           cd ghpages
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dv
           if git diff --cached --quiet; then
-            echo "No dashboard changes to publish."
+            echo "gh-pages dv/ already current."
             exit 0
           fi
           git commit -m "dv dashboard: publish sim run $SIM_RUN_ID ($STATUS)"
@@ -215,3 +240,46 @@ jobs:
           to: ${{ secrets.OCAH_MAIL_TO }}
           subject: "[OCAH DV nightly] ${{ env.STATUS }} ${{ env.DUT }}/${{ env.TOOL }}"
           body: file://digest.txt
+
+  # The docs deploy force-replaces the whole gh-pages branch (ghp-import -f),
+  # deleting the dv/ rendered copy. Restore it from the data branch.
+  restore:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Build and Deploy Documentation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: ghpages
+
+      - name: Checkout dashboard data branch
+        uses: actions/checkout@v4
+        with:
+          ref: dv-dashboard-data
+          path: ghdata
+
+      - name: Restore dv/ from the data branch
+        run: |
+          if [ ! -d ghdata/latest ]; then
+            echo "Data branch has no published dashboard yet; nothing to restore."
+            exit 0
+          fi
+          rm -rf ghpages/dv
+          mkdir -p ghpages/dv
+          cp -R ghdata/latest ghdata/data ghpages/dv/
+          cd ghpages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dv
+          if git diff --cached --quiet; then
+            echo "gh-pages dv/ already current; nothing to restore."
+            exit 0
+          fi
+          git commit -m "dv dashboard: restore dv/ after docs deploy"
+          for _ in 1 2 3; do
+            if git push origin gh-pages; then exit 0; fi
+            git pull --rebase origin gh-pages
+          done
+          exit 1

@@ -859,17 +859,17 @@ the nightly regression dashboard automatically:
 . The bundle is committed to the `gh-pages` branch and served by GitHub
   Pages.
 
-Publication layout on `gh-pages`:
+Publication layout — identical at the `dv-dashboard-data` branch root
+(canonical) and under `dv/` on `gh-pages` (rendered copy):
 
 [source,text]
 ----
-dv/
-├── latest/                      # current bundle: index.html, <dut>.html,
-│                                # summary.json, <dut>.result.json
-└── data/
-    ├── history.json             # trend store (trimmed to 90 points in CI)
-    ├── runs/<date>-run<id>.result.json.gz   # per-night archives (90 kept)
-    └── classification/<date>.json  # infra/design/flaky split per night
+latest/                          # current bundle: index.html, <dut>.html,
+                                 # summary.json, <dut>.result.json
+data/
+├── history.json                 # trend store (trimmed to 90 points in CI)
+├── runs/<date>-run<id>.result.json.gz   # per-night archives (90 kept)
+└── classification/<date>.json   # infra/design/flaky split per night
 ----
 
 Operational rules:
@@ -880,10 +880,14 @@ Operational rules:
   `FAIL` vs `UNKNOWN` evidence gaps) and the mixed-seed flaky list are
   computed from the native leaf records, because the normalized dashboard
   schema collapses those statuses into `FAIL`.
-* The docs deploy (`make ocah-doc-push-ghpages`) force-replaces the whole
-  `gh-pages` branch via `ghp-import -f`; it preserves the `dv/` dashboard
-  subtree by copying it into the staging tree first. Keep that preservation
-  step when changing either publisher.
+* The `dv-dashboard-data` branch is the source of truth; the `gh-pages`
+  `dv/` subtree is a disposable rendered copy. The docs deploy
+  (`ghp-import -f`) force-replaces the whole `gh-pages` branch and deletes
+  `dv/` — that is expected: `dashboard.yml` also triggers on the docs
+  workflow's completion and restores `dv/` from the data branch within
+  minutes. The docs build system needs no dashboard awareness. Manual local
+  doc deploys also clobber `dv/`; the next restore or nightly publish
+  repairs it.
 * An email digest is sent per nightly publication when the
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
