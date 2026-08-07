@@ -800,8 +800,10 @@ not a merge gate; a red nightly run is a triage signal.
 Pull requests never run the `all` regression; the tier is selected by the
 triggering event, so PR cost stays bounded by the smoke group.
 
-Each job writes an explicit per-tier run directory
-(`build/ci/runs/<dut>/<tool>/<tier>`), gates on the native run-level
+Each job writes an explicit per-run directory
+(`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
+recorded run identity unique for downstream trend history), gates on the
+native run-level
 `result.json` (`schema_version` 1, matching `flow`/`tool`, `status` `PASS`),
 and uploads the unchanged run-directory hierarchy as
 `dv-run-<dut>-<tool>-<tier>` with 14-day retention, including on failure.
