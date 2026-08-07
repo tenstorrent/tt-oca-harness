@@ -107,19 +107,21 @@ static int test_local_alias_config(void) {
 //-----------------------------------------------------------------------------
 // Test: Set Local Alias Base to 0
 //-----------------------------------------------------------------------------
-static int test_set_local_base_to_zero(void) {
-    printf("\n--- Test: Set Local Alias Base to 0 ---\n");
+static int test_local_base_writable(void) {
+    const uint64_t ALT_BASE =
+        0xE0000000UL; // window [0xE000_0000, 0x1_1000_0000): working set stays passthrough
 
-    // Write 0 to local base address register
-    printf("  Writing 0 to SEP_LOCAL_BASE_ADDR register...\n");
-    WRITE_REG64(SEP_LOCAL_BASE_ADDR_REG, 0x0);
+    printf("\n--- Test: SEP_LOCAL_BASE_ADDR Writable ---\n");
+
+    printf("  Writing 0x%08lX to SEP_LOCAL_BASE_ADDR register...\n", (unsigned long)ALT_BASE);
+    WRITE_REG64(SEP_LOCAL_BASE_ADDR_REG, ALT_BASE);
 
     // Verify the write
     uint64_t readback = READ_REG64(SEP_LOCAL_BASE_ADDR_REG);
     printf("  Readback: 0x%08lX\n", (unsigned long)readback);
 
-    if (readback != 0x0) {
-        printf("  ERROR: Write failed, expected 0x0\n");
+    if (readback != ALT_BASE) {
+        printf("  ERROR: Write failed, expected 0x%08lX\n", (unsigned long)ALT_BASE);
         return 0;
     }
 
@@ -442,7 +444,7 @@ int main(void) {
 
     // Run tests
     report_test("Local Alias Configuration", test_local_alias_config());
-    report_test("Set Local Base to Zero", test_set_local_base_to_zero());
+    report_test("SEP_LOCAL_BASE_ADDR Writable", test_local_base_writable());
     report_test("Scratch Register Alias", test_scratch_alias());
     report_test("SRAM Alias (0xD000_0000)", test_sram_alias());
     report_test("64-bit Access via Alias", test_64bit_alias());
