@@ -1,0 +1,34 @@
+ocah.mk
+  s_d605cb93395a31::t_42c7fb9ebab022 26
+hw/sys/sep/dv/fw/bootcode/configs/secure_boot_test.yaml
+  s_d605cb93395a31::t_a15e59f2206b3d 19
+hw/sys/sep/dv/fw/bootcode/src/key_digests.c
+  s_d605cb93395a31::t_1fd40eefb8e095 6
+hw/sys/sep/dv/fw/bootcode/Makefile
+  s_d605cb93395a31::t_9d82c56d1c5461 251-254,256-257,261,270,272-275,277-278
+  s_d605cb93395a31::t_19c932409e5dc2 27-28
+  s_d605cb93395a31::t_84b34bdf87afbe 211-225,227-235,238-239,241-242
+  s_d605cb93395a31::t_96db79d308a736 11-15
+flows/lint/clang-format.mk
+  s_d605cb93395a31::t_f0bec8ddf2f241 14-20,23
+.gitmodules
+  s_d605cb93395a31::t_1265f4668b1457 1-3
+hw/sys/sep/dv/fw/bootcode/tools/tt-boot-manifest
+  s_d605cb93395a31::t_625b44e731c01a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a786e0489fbbf5bdb0dbc2c9da8f6aa57050cf5b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
