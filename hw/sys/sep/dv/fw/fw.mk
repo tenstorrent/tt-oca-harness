@@ -150,7 +150,7 @@ $(if $(filter rom_only,$(3)),
 	  --change-addresses "-0xC0000000" "$(4).itcm.hex"
 	$(OBJCOPY) -O verilog $(1) \
 	  --only-section=.data --only-section=.sdata --only-section=.rodata --only-section=.srodata \
-	  --only-section=.bss --only-section=.sbss \
+	  --only-section=.tdata --only-section=.bss --only-section=.sbss \
 	  --change-addresses "-0xC0040000" "$(4).dtcm.hex"
 )
 endef
