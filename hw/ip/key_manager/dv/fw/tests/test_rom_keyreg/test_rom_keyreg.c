@@ -52,11 +52,12 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* 3. get_slot / get_crc */
-    TEST_SUBTEST_START("get_slot and get_crc");
+    /* 3. get_slot / get_crc / get_dest_valid */
+    TEST_SUBTEST_START("get_slot, get_crc, and get_dest_valid");
     {
         uint8_t slot;
         uint32_t crc;
+        rom_km_dest_bits_t dest_valid;
         int rc;
 
         rc = rom_keyreg_get_slot(&reg, 1, &slot);
@@ -74,6 +75,10 @@ int main(void) {
         rc = rom_keyreg_get_crc(&reg, 3, &crc);
         TEST_ASSERT_EQ(rc, 0u, "get_crc(3) rc");
         TEST_ASSERT_EQ(crc, 0x3333u, "get_crc(3) value");
+
+        rc = rom_keyreg_get_dest_valid(&reg, 2, &dest_valid);
+        TEST_ASSERT_EQ(rc, 0u, "get_dest_valid(2) rc");
+        TEST_ASSERT_EQ(dest_valid.raw, 0x02u, "get_dest_valid(2) value");
     }
     TEST_SUBTEST_PASS();
 
@@ -100,7 +105,7 @@ int main(void) {
     TEST_SUBTEST_START("Destroy");
     rom_keyreg_init(&reg);
     {
-        int h = rom_keyreg_generate(&reg, 10, 1, 0xAAAAu, (rom_km_dest_bits_t){.raw = 0x04u});
+        int h = rom_keyreg_generate(&reg, 10, 1, 0xAAAAu, (rom_km_dest_bits_t){.raw = 0x01u});
         TEST_ASSERT_EQ(h, 1u, "generated handle");
 
         int rc = rom_keyreg_destroy(&reg, (uint8_t)h);
@@ -111,6 +116,12 @@ int main(void) {
         if (rc != -1) {
             TEST_FAIL("get_slot after destroy should return -1, got %d", rc);
         }
+
+        rom_km_dest_bits_t dest_valid;
+        rc = rom_keyreg_get_dest_valid(&reg, (uint8_t)h, &dest_valid);
+        if (rc != -1) {
+            TEST_FAIL("get_dest_valid after destroy should return -1, got %d", rc);
+        }
     }
     TEST_SUBTEST_PASS();
 
@@ -118,7 +129,7 @@ int main(void) {
     TEST_SUBTEST_START("Reverse map (slot_to_handle)");
     rom_keyreg_init(&reg);
     {
-        int h = rom_keyreg_generate(&reg, 5, 2, 0xBBBBu, (rom_km_dest_bits_t){.raw = 0x04u});
+        int h = rom_keyreg_generate(&reg, 5, 2, 0xBBBBu, (rom_km_dest_bits_t){.raw = 0x0Cu});
         if (h < 1) {
             TEST_FAIL("generate returned %d", h);
         }

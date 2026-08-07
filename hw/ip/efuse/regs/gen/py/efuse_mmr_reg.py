@@ -159,7 +159,7 @@ EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT = 0x00000000
 
 class EFUSE_MMR_TOKEN_MATCH_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EFUSE_MMR_TOKEN_MATCH_reg_t),
     ]
 

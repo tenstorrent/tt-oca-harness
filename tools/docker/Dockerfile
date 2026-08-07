@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         python3 \
         python3-pyelftools \
+        python3-yaml \
         gcc-riscv64-unknown-elf \
         picolibc-riscv64-unknown-elf \
     && rm -rf /var/lib/apt/lists/*

@@ -42,9 +42,10 @@ This generates CTN-specific files:
 - `tb_vcs/test/test_base.py` - Test utilities with matching configuration
 - `regs/cross_trigger_network.rdl` - Address map RDL
 
-**Note**: CTP and CTM are generated separately by `tools/generate_all.py` or their
-respective `generate_ip.py` scripts. When using `generate_all.py`, CTP/CTM/CTN are
-generated in the correct dependency order with matching parameters.
+**Note**: CTP and CTM are generated separately by their respective
+`generate_ip.py` scripts, which must be run with matching parameters. Their
+register collateral then comes from `make -f ocah.mk ocah-regen-regs`, like
+every other block.
 
 Options:
 - `--num-ctp`: Number of external CTPs (1-32, default: 16)

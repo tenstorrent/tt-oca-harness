@@ -38,8 +38,10 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_clk.h"
+#include "spi_mux.h"
 
-#define SPI_CLKDIV 9
+#define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
 #define READ_LEN_BYTES 16 /* 4 words */
 
@@ -49,13 +51,9 @@
 /* Read address (start of flash, typically erased = 0xFF) */
 #define FLASH_READ_ADDR 0x000000
 
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
-
 static void init_spi_controller(void) {
     spi_controller__CTRL_t ctrl;
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
@@ -104,7 +102,7 @@ int main(void) {
     int pass = 1;
     uint32_t i;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();

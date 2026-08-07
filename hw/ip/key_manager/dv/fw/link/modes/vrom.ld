@@ -5,7 +5,7 @@
 OUTPUT_ARCH( "riscv" )
 
 MEMORY {
-    rom(rx):  ORIGIN = 0x00000000, LENGTH = 0x2000  /* 8KB ROM */
+    rom(rx):  ORIGIN = 0x00000000, LENGTH = 0x4000  /* 16KB ROM */
     sram(rwx): ORIGIN = 0x00004000, LENGTH = 0x4000  /* 16KB SRAM */
     vrom(r):  ORIGIN = 0x10000000, LENGTH = 0x10000  /* 64KB Virtual ROM (testbench only) */
 }
@@ -59,7 +59,7 @@ SECTIONS {
 
     ASSERT(SIZEOF(.text.reset) + SIZEOF(.text.irq_vec) + SIZEOF(.text.irq_handler)
            <= LENGTH(rom),
-           "ROM overflow: bootstrap code exceeds 8KB ROM")
+           "ROM overflow: bootstrap code exceeds 16KB ROM")
     ASSERT(SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.data) <= LENGTH(vrom),
            "VROM overflow: text + rodata + data load image exceeds 64KB VROM")
 }

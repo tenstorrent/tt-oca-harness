@@ -357,7 +357,7 @@ The bare `sep` module used to externalize these as ports (idle by default) backe
 
 **Architecture facts that drive the gaps:**
 - The SEP **Key Manager is its own CPU** (PicoRV32) that boots firmware from KM-ROM/KM-SRAM
-  (`hw/comp/key_manager/rtl/key_manager.sv`, `hw/comp/key_manager/firmware/src/rom_main.c`). So the
+  (`hw/ip/key_manager/rtl/key_manager.sv`, `hw/ip/key_manager/dv/fw/production/rom_main/rom_main.c`). So the
   KM-sideload tests need a `km_rom`/`km_sram` responder **plus a KM firmware image** — a second-core boot,
   not a flat memory. This is the single biggest remaining model.
 - **OTBN** executes a program loaded into IMEM (the KM→OTBN keydump program is embedded in the OCAH

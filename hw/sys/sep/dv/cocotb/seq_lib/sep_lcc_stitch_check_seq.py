@@ -25,7 +25,7 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE
 from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 
-# SEP local fabric addresses (sep_local_axi_xbar / och_sep_top_reg). The LCC
+# SEP local fabric addresses (sep_local_axi_xbar / sep_addr.h). The LCC
 # register map lives in env.sep_lcc_golden (single source of truth).
 LC_STATE_SHADOW = SHADOW_BASE + 0x8     # 0x1093_0008, eFuse shadow word 2
 

@@ -24,8 +24,7 @@ Quick Start
 
 1. Generate register files:
    ```bash
-   cd ../regs
-   ./generate_register_files.sh
+   make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_port
    ```
 
 2. Run sanity test:

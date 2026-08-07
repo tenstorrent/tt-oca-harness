@@ -19,9 +19,7 @@ Second, make sure you have built the Log Engine Component and testbench as descr
 `README.adoc` file of the Log Engine Component:
 
 ```bash
-pushd ..
-python3 generate_all.py -i axi4-lite
-popd
+make -f ocah.mk ocah-regen-regs
 ```
 
 Next, run

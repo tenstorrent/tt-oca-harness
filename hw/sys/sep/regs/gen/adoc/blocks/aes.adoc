@@ -28,6 +28,7 @@
 .Register Map
 |===
 | Address | Name | Access | Description
+| 0x0 | ALERT_TEST | W a| -
 | 0x4 - 0x20 | KEY_SHARE0[8] | W a| -
 | 0x24 - 0x40 | KEY_SHARE1[8] | W a| -
 | 0x44 - 0x50 | IV[4] | RW a| -
@@ -39,6 +40,15 @@
 | 0x80 | TRIGGER | W a| -
 | 0x84 | STATUS | R a| -
 | 0x88 | CTRL_GCM_SHADOWED | RW a| -
+|===
+
+[cols="1,1,1,1,3", options="header"]
+.ALERT_TEST Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:2 | `Reserved` | - | - a| Reserved
+| 1 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `recov_ctrl_update_err` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
 [cols="1,1,1,1,3", options="header"]

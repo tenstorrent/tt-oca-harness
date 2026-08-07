@@ -36,7 +36,7 @@ int main(void) {
 
     printf("Step 1: Verify CFG default\n");
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("CFG default", cfg.w, 0u)) pass = 0;
+    if (!check_reg("CFG default", cfg.w, HMAC__CFG_reset)) pass = 0;
 
     printf("\nStep 2: Set digest_size=SHA-256 (0x1)\n");
     cfg.w = 0;

@@ -16,7 +16,7 @@
  * bit. This client mirrors the proven sequence from sep_cpu_sram_aes_sram_test
  * (#565) and is extracted here so ABR/ML-KEM sideload tests can reuse it.
  *
- * Command / destination encodings match hw/comp/key_manager/firmware
+ * Command / destination encodings match hw/ip/key_manager/dv/fw
  * (rom_defs.h rom_km_cmd_id_t / rom_km_dest_bits_t).
  */
 

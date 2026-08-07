@@ -143,7 +143,7 @@ SECURE_DMA_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_STATE_reg_t),
     ]
 
@@ -173,7 +173,7 @@ SECURE_DMA_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_ENABLE_reg_t),
     ]
 
@@ -203,7 +203,7 @@ SECURE_DMA_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_INTR_TEST_reg_t),
     ]
 
@@ -231,7 +231,7 @@ SECURE_DMA_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ALERT_TEST_reg_t),
     ]
 
@@ -372,7 +372,7 @@ SECURE_DMA_ADDR_SPACE_ID_REG_DEFAULT = 0x00000077
 
 class SECURE_DMA_ADDR_SPACE_ID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ADDR_SPACE_ID_reg_t),
     ]
 
@@ -456,7 +456,7 @@ SECURE_DMA_RANGE_VALID_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_RANGE_VALID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_RANGE_VALID_reg_t),
     ]
 
@@ -484,7 +484,7 @@ SECURE_DMA_RANGE_REGWEN_REG_DEFAULT = 0x00000006
 
 class SECURE_DMA_RANGE_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_RANGE_REGWEN_reg_t),
     ]
 
@@ -512,7 +512,7 @@ SECURE_DMA_CFG_REGWEN_REG_DEFAULT = 0x00000006
 
 class SECURE_DMA_CFG_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CFG_REGWEN_reg_t),
     ]
 
@@ -596,7 +596,7 @@ SECURE_DMA_TRANSFER_WIDTH_REG_DEFAULT = 0x00000002
 
 class SECURE_DMA_TRANSFER_WIDTH_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_TRANSFER_WIDTH_reg_t),
     ]
 
@@ -661,7 +661,7 @@ SECURE_DMA_SRC_CONFIG_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_SRC_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_SRC_CONFIG_reg_t),
     ]
 
@@ -690,7 +690,7 @@ SECURE_DMA_DST_CONFIG_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_DST_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_DST_CONFIG_reg_t),
     ]
 
@@ -723,7 +723,7 @@ SECURE_DMA_STATUS_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_STATUS_reg_t),
     ]
 
@@ -758,7 +758,7 @@ SECURE_DMA_ERROR_CODE_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_ERROR_CODE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SECURE_DMA_ERROR_CODE_reg_t),
     ]
 
@@ -814,7 +814,7 @@ SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT = 0x000007FF
 
 class SECURE_DMA_HANDSHAKE_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_HANDSHAKE_INTR_ENABLE_reg_t),
     ]
 
@@ -842,7 +842,7 @@ SECURE_DMA_CLEAR_INTR_SRC_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_CLEAR_INTR_SRC_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CLEAR_INTR_SRC_reg_t),
     ]
 
@@ -870,7 +870,7 @@ SECURE_DMA_CLEAR_INTR_BUS_REG_DEFAULT = 0x00000000
 
 class SECURE_DMA_CLEAR_INTR_BUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SECURE_DMA_CLEAR_INTR_BUS_reg_t),
     ]
 

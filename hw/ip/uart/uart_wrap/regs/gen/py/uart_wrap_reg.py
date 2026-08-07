@@ -319,7 +319,7 @@ UART_LOG_ENGINE_CTRL_CTRL_REG_DEFAULT = 0x00000000
 
 class UART_LOG_ENGINE_CTRL_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_LOG_ENGINE_CTRL_CTRL_reg_t),
     ]
 
@@ -347,7 +347,7 @@ UART_16550_MAIN_RBR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_RBR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_RBR_reg_t),
     ]
 
@@ -379,7 +379,7 @@ UART_16550_MAIN_IER_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_IER_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_IER_reg_t),
     ]
 
@@ -410,7 +410,7 @@ UART_16550_MAIN_IIR_REG_DEFAULT = 0x00000001
 
 class UART_16550_MAIN_IIR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_IIR_reg_t),
     ]
 
@@ -444,7 +444,7 @@ UART_16550_MAIN_LCR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_LCR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_LCR_reg_t),
     ]
 
@@ -477,7 +477,7 @@ UART_16550_MAIN_MCR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_MCR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_MCR_reg_t),
     ]
 
@@ -512,7 +512,7 @@ UART_16550_MAIN_LSR_REG_DEFAULT = 0x00000060
 
 class UART_16550_MAIN_LSR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_LSR_reg_t),
     ]
 
@@ -547,7 +547,7 @@ UART_16550_MAIN_MSR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_MSR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_MSR_reg_t),
     ]
 
@@ -575,7 +575,7 @@ UART_16550_MAIN_SCR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_SCR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_SCR_reg_t),
     ]
 
@@ -603,7 +603,7 @@ UART_16550_MAIN_ECR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_ECR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_ECR_reg_t),
     ]
 
@@ -636,7 +636,7 @@ UART_16550_MAIN_ITR_REG_DEFAULT = 0x00000000
 
 class UART_16550_MAIN_ITR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_MAIN_ITR_reg_t),
     ]
 
@@ -664,7 +664,7 @@ LOG_ENGINE_CTRL_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_CTRL_reg_t),
     ]
 
@@ -779,7 +779,7 @@ LOG_ENGINE_INTR_STATUS_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_STATUS_reg_t),
     ]
 
@@ -809,7 +809,7 @@ LOG_ENGINE_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_ENABLE_reg_t),
     ]
 
@@ -839,7 +839,7 @@ LOG_ENGINE_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_TEST_reg_t),
     ]
 
@@ -867,7 +867,7 @@ LOG_ENGINE_LOG_CTRL_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_LOG_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_LOG_CTRL_reg_t),
     ]
 

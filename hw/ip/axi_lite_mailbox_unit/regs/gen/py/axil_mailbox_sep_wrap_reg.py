@@ -426,7 +426,7 @@ AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_STATUS_reg_t),
     ]
 
@@ -455,7 +455,7 @@ AXIL_MAILBOX_ERROR_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_ERROR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_ERROR_reg_t),
     ]
 
@@ -483,7 +483,7 @@ AXIL_MAILBOX_WIRQT_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_WIRQT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_WIRQT_reg_t),
     ]
 
@@ -511,7 +511,7 @@ AXIL_MAILBOX_RIRQT_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_RIRQT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_RIRQT_reg_t),
     ]
 
@@ -541,7 +541,7 @@ AXIL_MAILBOX_IRQS_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQS_reg_t),
     ]
 
@@ -571,7 +571,7 @@ AXIL_MAILBOX_IRQEN_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQEN_reg_t),
     ]
 
@@ -601,7 +601,7 @@ AXIL_MAILBOX_IRQP_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_IRQP_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_IRQP_reg_t),
     ]
 
@@ -630,7 +630,7 @@ AXIL_MAILBOX_CTRL_REG_DEFAULT = 0x0000000000000000
 
 class AXIL_MAILBOX_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint64),
         ('f', AXIL_MAILBOX_CTRL_reg_t),
     ]
 

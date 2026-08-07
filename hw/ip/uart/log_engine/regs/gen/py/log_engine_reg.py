@@ -61,7 +61,7 @@ LOG_ENGINE_CTRL_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_CTRL_reg_t),
     ]
 
@@ -176,7 +176,7 @@ LOG_ENGINE_INTR_STATUS_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_STATUS_reg_t),
     ]
 
@@ -206,7 +206,7 @@ LOG_ENGINE_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_ENABLE_reg_t),
     ]
 
@@ -236,7 +236,7 @@ LOG_ENGINE_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_INTR_TEST_reg_t),
     ]
 
@@ -264,7 +264,7 @@ LOG_ENGINE_LOG_CTRL_REG_DEFAULT = 0x00000000
 
 class LOG_ENGINE_LOG_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', LOG_ENGINE_LOG_CTRL_reg_t),
     ]
 

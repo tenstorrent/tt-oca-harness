@@ -52,7 +52,7 @@ EDN_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class EDN_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_INTR_STATE_reg_t),
     ]
 
@@ -81,7 +81,7 @@ EDN_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class EDN_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_INTR_ENABLE_reg_t),
     ]
 
@@ -110,7 +110,7 @@ EDN_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class EDN_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_INTR_TEST_reg_t),
     ]
 
@@ -139,7 +139,7 @@ EDN_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class EDN_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_ALERT_TEST_reg_t),
     ]
 
@@ -167,7 +167,7 @@ EDN_REGWEN_REG_DEFAULT = 0x00000001
 
 class EDN_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_REGWEN_reg_t),
     ]
 
@@ -198,7 +198,7 @@ EDN_CTRL_REG_DEFAULT = 0x00009999
 
 class EDN_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EDN_CTRL_reg_t),
     ]
 
@@ -313,7 +313,7 @@ EDN_SW_CMD_STS_REG_DEFAULT = 0x00000000
 
 class EDN_SW_CMD_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_SW_CMD_STS_reg_t),
     ]
 
@@ -345,7 +345,7 @@ EDN_HW_CMD_STS_REG_DEFAULT = 0x00000000
 
 class EDN_HW_CMD_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EDN_HW_CMD_STS_reg_t),
     ]
 
@@ -463,7 +463,7 @@ EDN_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
 
 class EDN_RECOV_ALERT_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EDN_RECOV_ALERT_STS_reg_t),
     ]
 
@@ -528,7 +528,7 @@ EDN_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
 
 class EDN_ERR_CODE_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', EDN_ERR_CODE_TEST_reg_t),
     ]
 
@@ -556,7 +556,7 @@ EDN_MAIN_SM_STATE_REG_DEFAULT = 0x000000C1
 
 class EDN_MAIN_SM_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EDN_MAIN_SM_STATE_reg_t),
     ]
 

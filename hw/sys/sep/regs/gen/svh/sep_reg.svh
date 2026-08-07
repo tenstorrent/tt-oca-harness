@@ -349,6 +349,8 @@ localparam int unsigned AES_REG_MAP_BASE_ADDR                                   
 localparam int unsigned AES_REG_MAP_SIZE                                                                          = 32'h0000008C;
 
 
+localparam int unsigned AES_ALERT_TEST_REG_OFFSET                                                                 = 32'h00000000;
+localparam int unsigned AES_ALERT_TEST_REG_ADDR                                                                   = 32'h10910000;
 localparam int unsigned AES_KEY_SHARE0_0__REG_OFFSET                                                              = 32'h00000004;
 localparam int unsigned AES_KEY_SHARE0_0__REG_ADDR                                                                = 32'h10910004;
 localparam int unsigned AES_KEY_SHARE0_1__REG_OFFSET                                                              = 32'h00000008;
@@ -3885,6 +3887,7 @@ localparam longint unsigned OTBN_ERR_BITS_REG_DEFAULT                           
 localparam longint unsigned OTBN_FATAL_ALERT_CAUSE_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned OTBN_INSN_CNT_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned OTBN_LOAD_CHECKSUM_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned AES_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_KEY_SHARE0_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_KEY_SHARE1_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_IV_REG_DEFAULT                                                                    = 32'h00000000;
@@ -4378,6 +4381,12 @@ localparam int unsigned OTBN_INSN_CNT_INSN_CNT_SHIFT                            
 
 localparam int unsigned OTBN_LOAD_CHECKSUM_CHECKSUM_MASK                                                          = 32'hFFFFFFFF;
 localparam int unsigned OTBN_LOAD_CHECKSUM_CHECKSUM_SHIFT                                                         = 0;
+
+localparam int unsigned AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_MASK                                                 = 32'h1;
+localparam int unsigned AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_SHIFT                                                = 0;
+
+localparam int unsigned AES_ALERT_TEST_FATAL_FAULT_MASK                                                           = 32'h2;
+localparam int unsigned AES_ALERT_TEST_FATAL_FAULT_SHIFT                                                          = 1;
 
 localparam int unsigned AES_KEY_SHARE0_KEY_SHARE0_MASK                                                            = 32'hFFFFFFFF;
 localparam int unsigned AES_KEY_SHARE0_KEY_SHARE0_SHIFT                                                           = 0;
@@ -6463,6 +6472,13 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   checksum ;
 } otbn_load_checksum_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fatal_fault ;
+    logic [0:0]   recov_ctrl_update_err ;
+} aes_alert_test_reg_t;
 
 
 

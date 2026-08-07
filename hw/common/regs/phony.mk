@@ -41,6 +41,16 @@ ocah-regen-regs-svh: $(OCAH_REGEN_REG_SVH)
 .PHONY: ocah-regen-regs-py
 ocah-regen-regs-py: $(OCAH_REGEN_REG_PY)
 
+## Regenerate JSON register models for the OCAH register blocks that opt in.
+## @param TARGET=smc Optional register block basename to regenerate
+.PHONY: ocah-regen-regs-json
+ocah-regen-regs-json: $(OCAH_REGEN_REG_JSON)
+
+## Regenerate UVM RAL register models for the OCAH register blocks that opt in.
+## @param TARGET=smc Optional register block basename to regenerate
+.PHONY: ocah-regen-regs-ral
+ocah-regen-regs-ral: $(OCAH_REGEN_REG_RAL)
+
 ## Regenerate AsciiDoc register documentation for OCAH register blocks.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-adoc
@@ -78,6 +88,8 @@ OCAH_PHONY += \
   ocah-regen-regs-addrpkg \
   ocah-regen-regs-svh \
   ocah-regen-regs-py \
+  ocah-regen-regs-ral \
+  ocah-regen-regs-json \
   ocah-regen-regs-adoc \
   ocah-regen-regs-html \
   ocah-regen-regs-clean \

@@ -1088,7 +1088,7 @@ SMC_CLA_CDbgSignalEdgeDetectCfg_REG_DEFAULT = 0x0000000000000000
 
 class SMC_CLA_CDbgSignalEdgeDetectCfg_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint64),
         ('f', SMC_CLA_CDbgSignalEdgeDetectCfg_reg_t),
     ]
 
@@ -1166,7 +1166,7 @@ SMC_CLA_CDbgClaCtrlStatus_REG_DEFAULT = 0x0000000000001B00
 
 class SMC_CLA_CDbgClaCtrlStatus_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint64),
         ('f', SMC_CLA_CDbgClaCtrlStatus_reg_t),
     ]
 
@@ -2516,7 +2516,7 @@ SMC_CLA_Trfunnelcontrol_REG_DEFAULT = 0x00000008
 
 class SMC_CLA_Trfunnelcontrol_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SMC_CLA_Trfunnelcontrol_reg_t),
     ]
 
@@ -2546,7 +2546,7 @@ SMC_CLA_Trfunnelimpl_REG_DEFAULT = 0x00000801
 
 class SMC_CLA_Trfunnelimpl_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SMC_CLA_Trfunnelimpl_reg_t),
     ]
 
@@ -2574,7 +2574,7 @@ SMC_CLA_Trfunneldisinput_REG_DEFAULT = 0x00000000
 
 class SMC_CLA_Trfunneldisinput_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SMC_CLA_Trfunneldisinput_reg_t),
     ]
 
@@ -2608,7 +2608,7 @@ SMC_CLA_Trramcontrol_REG_DEFAULT = 0x00000008
 
 class SMC_CLA_Trramcontrol_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SMC_CLA_Trramcontrol_reg_t),
     ]
 
@@ -2962,7 +2962,7 @@ SMC_CLA_Trdstramcontrol_REG_DEFAULT = 0x00000008
 
 class SMC_CLA_Trdstramcontrol_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', SMC_CLA_Trdstramcontrol_reg_t),
     ]
 

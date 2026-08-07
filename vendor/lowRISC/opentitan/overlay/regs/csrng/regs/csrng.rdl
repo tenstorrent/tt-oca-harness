@@ -7,79 +7,75 @@ addrmap csrng {
             sw = rw;
             onwrite = woclr;
             desc = "Asserted when a command request is completed.";
-        } CS_CMD_REQ_DONE[0:0];
+        } CS_CMD_REQ_DONE[0:0] = 0x0;
         field {
             sw = rw;
             onwrite = woclr;
             desc = "Asserted when a request for entropy has been made.";
-        } CS_ENTROPY_REQ[1:1];
+        } CS_ENTROPY_REQ[1:1] = 0x0;
         field {
             sw = rw;
             onwrite = woclr;
             desc = "Asserted when a hardware-attached CSRNG instance encounters a command exception";
-        } CS_HW_INST_EXC[2:2];
+        } CS_HW_INST_EXC[2:2] = 0x0;
         field {
             sw = rw;
             onwrite = woclr;
             desc = "Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.";
-        } CS_FATAL_ERR[3:3];
-    } INTERRUPT_STATE @ 0x0;
+        } CS_FATAL_ERR[3:3] = 0x0;
+    } INTR_STATE @ 0x0;
     reg {
         field {
             sw = rw;
-            onwrite = woclr;
             desc = "Enable interrupt when cs_cmd_req_done is set.";
-        } CS_CMD_REQ_DONE[0:0];
+        } CS_CMD_REQ_DONE[0:0] = 0x0;
         field {
             sw = rw;
-            onwrite = woclr;
             desc = "Enable interrupt when cs_entropy_req is set.";
-        } CS_ENTROPY_REQ[1:1];
+        } CS_ENTROPY_REQ[1:1] = 0x0;
         field {
             sw = rw;
-            onwrite = woclr;
             desc = "Enable interrupt when cs_hw_inst_exc is set.";
-        } CS_HW_INST_EXC[2:2];
+        } CS_HW_INST_EXC[2:2] = 0x0;
         field {
             sw = rw;
-            onwrite = woclr;
             desc = "Enable interrupt when cs_fatal_err is set.";
-        } CS_FATAL_ERR[3:3];
-    } INTERRUPT_ENABLE @ 0x4;
+        } CS_FATAL_ERR[3:3] = 0x0;
+    } INTR_ENABLE @ 0x4;
     reg {
         field {
             sw = w;
             desc = "Write 1 to force cs_cmd_req_done to 1.";
-        } CS_CMD_REQ_DONE[0:0];
+        } CS_CMD_REQ_DONE[0:0] = 0x0;
         field {
             sw = w;
             desc = "Write 1 to force cs_entropy_req to 1.";
-        } CS_ENTROPY_REQ[1:1];
+        } CS_ENTROPY_REQ[1:1] = 0x0;
         field {
             sw = w;
             desc = "Write 1 to force cs_hw_inst_exc to 1.";
-        } CS_HW_INST_EXC[2:2];
+        } CS_HW_INST_EXC[2:2] = 0x0;
         field {
             sw = w;
             desc = "Write 1 to force cs_fatal_err to 1.";
-        } CS_FATAL_ERR[3:3];
-    } INTERRUPT_TEST @ 0x8;
+        } CS_FATAL_ERR[3:3] = 0x0;
+    } INTR_TEST @ 0x8;
     reg {
         field {
             sw = w;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } RECOV_ALERT[0:0];
+        } RECOV_ALERT[0:0] = 0x0;
         field {
             sw = w;
             desc = "Write 1 to trigger one alert event of this kind.";
-        } FATAL_ALERT[1:1];
+        } FATAL_ALERT[1:1] = 0x0;
     } ALERT_TEST @ 0xC;
     reg {
         field {
             desc = "When true, all writeable registers can be modified.
             When false, they become read-only.";
             sw = rw;
-            onwrite = woclr;
+            onwrite = wzc;
         } REGWEN[0:0] = 0x1;
     } REGWEN @ 0x10;
     reg {
@@ -114,20 +110,20 @@ addrmap csrng {
             and uninstantiate. Each application interface port used by peripheral
             hardware commands a unique instance number in CSRNG.";
             sw = w;
-        } acmd[3:0];
+        } acmd[3:0] = 0x0;
         field {
             desc = "Command Length: Number of 32-bit words that can optionally be appended
             to the command. A value of zero will only transfer the command header.
             A value of 4'hc will transfer the header plus an additional twelve
             32-bit words of data.";
             sw = w;
-        } clen[7:4];
+        } clen[7:4] = 0x0;
         field {
             desc = "Command Flag0: flag0 is associated with current command. Setting this
             field to kMultiBitBool4True will enable flag0 to be enabled. Note that
             flag0 is used for the instantiate and reseed commands only, for all other commands its value is ignored.";
             sw = w;
-        } flag0[11:8];
+        } flag0[11:8] = 0x0;
         field {
             desc = "Generate Length: Only defined for the generate command, this field
             is the total number of cryptographic entropy blocks requested. Each
@@ -138,7 +134,7 @@ addrmap csrng {
             4096 x 128 bits. For a smaller example, a value of 8 would return
             a total of 1024 bits.";
             sw = w;
-        } glen[24:12];
+        } glen[24:12] = 0x0;
     } CMD_REQ @ 0x18;
     reg {
         field {
@@ -201,11 +197,11 @@ addrmap csrng {
         field {
             desc = "This bit is set when genbits are available on this application interface.";
             sw = r;
-        } GENBITS_VLD[0:0];
+        } GENBITS_VLD[0:0] = 0x0;
         field {
             desc = "This bit is set when genbits are FIPS/CC compliant.";
             sw = r;
-        } GENBITS_FIPS[1:1];
+        } GENBITS_FIPS[1:1] = 0x0;
     } GENBITS_VLD @ 0x30;
     reg {
         field {
@@ -218,7 +214,7 @@ addrmap csrng {
             In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
             Otherwise, the register reads as 0.";
             sw = r;
-        } GENBITS[31:0];
+        } GENBITS[31:0] = 0x0;
     } GENBITS @ 0x34;
     reg {
         field {
@@ -234,7 +230,7 @@ addrmap csrng {
             desc = "INT_STATE_READ_ENABLE register configuration enable bit.
             If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.";
             sw = rw;
-            onwrite = woclr;
+            onwrite = wzc;
         } INT_STATE_READ_ENABLE_REGWEN[0:0] = 0x1;
     } INT_STATE_READ_ENABLE_REGWEN @ 0x3C;
     reg {
@@ -249,7 +245,7 @@ addrmap csrng {
             Note: This register should be read back after being written to ensure
             that the !!INT_STATE_VAL read back is accurate.";
             sw = rw;
-        } INT_STATE_NUM[3:0];
+        } INT_STATE_NUM[3:0] = 0x0;
     } INT_STATE_NUM @ 0x40;
     reg {
         field {
@@ -264,7 +260,7 @@ addrmap csrng {
             Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.
             Otherwise, the register reads as 0.";
             sw = r;
-        } INT_STATE_VAL[31:0];
+        } INT_STATE_VAL[31:0] = 0x0;
     } INT_STATE_VAL @ 0x44;
     reg {
         field {
@@ -275,7 +271,7 @@ addrmap csrng {
 
             Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.";
             sw = rw;
-        } FIPS_FORCE[2:0];
+        } FIPS_FORCE[2:0] = 0x0;
     } FIPS_FORCE @ 0x48;
     reg {
         field {
@@ -286,8 +282,8 @@ addrmap csrng {
             to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register
             resets the status bits.";
             sw = rw;
-            onwrite = woclr;
-        } HW_EXC_STS[15:0];
+            onwrite = wzc;
+        } HW_EXC_STS[15:0] = 0x0;
     } HW_EXC_STS @ 0x4C;
     reg {
         field {
@@ -295,50 +291,50 @@ addrmap csrng {
             a value other than kMultiBitBool4True or kMultiBitBool4False.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } ENABLE_FIELD_ALERT[0:0];
+            onwrite = wzc;
+        } ENABLE_FIELD_ALERT[0:0] = 0x0;
         field {
             desc = "This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
             a value other than kMultiBitBool4True or kMultiBitBool4False.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } SW_APP_ENABLE_FIELD_ALERT[1:1];
+            onwrite = wzc;
+        } SW_APP_ENABLE_FIELD_ALERT[1:1] = 0x0;
         field {
             desc = "This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
             a value other than kMultiBitBool4True or kMultiBitBool4False.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } READ_INT_STATE_FIELD_ALERT[2:2];
+            onwrite = wzc;
+        } READ_INT_STATE_FIELD_ALERT[2:2] = 0x0;
         field {
             desc = "This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } FIPS_FORCE_ENABLE_FIELD_ALERT[3:3];
+            onwrite = wzc;
+        } FIPS_FORCE_ENABLE_FIELD_ALERT[3:3] = 0x0;
         field {
             desc = "This bit is set when the FLAG0 field in the Application Command is set to
             a value other than kMultiBitBool4True or kMultiBitBool4False.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } ACMD_FLAG0_FIELD_ALERT[4:4];
+            onwrite = wzc;
+        } ACMD_FLAG0_FIELD_ALERT[4:4] = 0x0;
         field {
             desc = "This bit is set when the software application port genbits bus value is equal
             to the prior valid value on the bus, indicating a possible attack.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } CS_BUS_CMP_ALERT[12:12];
+            onwrite = wzc;
+        } CS_BUS_CMP_ALERT[12:12] = 0x0;
         field {
             desc = "This bit is set when an unsupported/illegal CSRNG command is received by the
             main state machine.
             The invalid command is ignored and CSRNG continues to operate.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } CMD_STAGE_INVALID_ACMD_ALERT[13:13];
+            onwrite = wzc;
+        } CMD_STAGE_INVALID_ACMD_ALERT[13:13] = 0x0;
         field {
             desc = "This bit is set when an out of order command is received by the main state machine.
             This happens when an instantiate command is sent for a state that was already
@@ -347,16 +343,16 @@ addrmap csrng {
             The invalid command is ignored and CSRNG continues to operate.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } CMD_STAGE_INVALID_CMD_SEQ_ALERT[14:14];
+            onwrite = wzc;
+        } CMD_STAGE_INVALID_CMD_SEQ_ALERT[14:14] = 0x0;
         field {
             desc = "This bit is set when the maximum number of generate requests between reseeds is
             exceeded.
             The invalid generate command is ignored and CSRNG continues to operate.
             Writing a zero resets this status bit.";
             sw = rw;
-            onwrite = woclr;
-        } CMD_STAGE_RESEED_CNT_ALERT[15:15];
+            onwrite = wzc;
+        } CMD_STAGE_RESEED_CNT_ALERT[15:15] = 0x0;
     } RECOV_ALERT_STS @ 0x50;
     reg {
         field {
@@ -365,154 +361,42 @@ addrmap csrng {
             bits (bits 28 through 30 of this register).
             This bit will stay set until the next reset.";
             sw = r;
-        } SFIFO_CMD_ERR[0:0];
+        } SFIFO_CMD_ERR[0:0] = 0x0;
         field {
             desc = "This bit will be set to one when an error has been detected for the
             command stage genbits FIFO. The type of error is reflected in the type status
             bits (bits 28 through 30 of this register).
             This bit will stay set until the next reset.";
             sw = r;
-        } SFIFO_GENBITS_ERR[1:1];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            cmdreq FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_CMDREQ_ERR[2:2];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            rcstage FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_RCSTAGE_ERR[3:3];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            keyvrc FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_KEYVRC_ERR[4:4];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            updreq FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_UPDREQ_ERR[5:5];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            bencreq FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_BENCREQ_ERR[6:6];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            bencack FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_BENCACK_ERR[7:7];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            pdata FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_PDATA_ERR[8:8];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            final FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_FINAL_ERR[9:9];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            gbencack FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_GBENCACK_ERR[10:10];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            grcstage FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_GRCSTAGE_ERR[11:11];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            ggenreq FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_GGENREQ_ERR[12:12];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            gadstage FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_GADSTAGE_ERR[13:13];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            ggenbits FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_GGENBITS_ERR[14:14];
-        field {
-            desc = "This bit will be set to one when an error has been detected for the
-            blkenc FIFO. The type of error is reflected in the type status
-            bits (bits 28 through 30 of this register).
-            This bit will stay set until the next reset.";
-            sw = r;
-        } SFIFO_BLKENC_ERR[15:15];
+        } SFIFO_GENBITS_ERR[1:1] = 0x0;
         field {
             desc = "This bit will be set to one when an illegal state has been detected for the
             command stage state machine. This error will signal a fatal alert, and also
             an interrupt if enabled.
             This bit will stay set until the next reset.";
             sw = r;
-        } CMD_STAGE_SM_ERR[20:20];
+        } CMD_STAGE_SM_ERR[20:20] = 0x0;
         field {
             desc = "This bit will be set to one when an illegal state has been detected for the
             main state machine. This error will signal a fatal alert, and also
             an interrupt if enabled.
             This bit will stay set until the next reset.";
             sw = r;
-        } MAIN_SM_ERR[21:21];
+        } MAIN_SM_ERR[21:21] = 0x0;
         field {
             desc = "This bit will be set to one when an illegal state has been detected for the
             ctr_drbg gen state machine. This error will signal a fatal alert, and also
             an interrupt if enabled.
             This bit will stay set until the next reset.";
             sw = r;
-        } DRBG_GEN_SM_ERR[22:22];
-        field {
-            desc = "This bit will be set to one when an illegal state has been detected for the
-            ctr_drbg update block encode state machine. This error will signal a fatal alert, and also
-            an interrupt if enabled.
-            This bit will stay set until the next reset.";
-            sw = r;
-        } DRBG_UPDBE_SM_ERR[23:23];
-        field {
-            desc = "This bit will be set to one when an illegal state has been detected for the
-            ctr_drbg update out block state machine. This error will signal a fatal alert, and also
-            an interrupt if enabled.
-            This bit will stay set until the next reset.";
-            sw = r;
-        } DRBG_UPDOB_SM_ERR[24:24];
+        } CTR_DRBG_SM_ERR[22:22] = 0x0;
         field {
             desc = "This bit will be set to one when an AES fatal error has been detected.
             This error will signal a fatal alert, and also
             an interrupt if enabled.
             This bit will stay set until the next reset.";
             sw = r;
-        } AES_CIPHER_SM_ERR[25:25];
+        } AES_CIPHER_SM_ERR[25:25] = 0x0;
         field {
             desc = "This bit will be set to one when a mismatch in any of the hardened counters
             has been detected.
@@ -520,28 +404,28 @@ addrmap csrng {
             an interrupt if enabled.
             This bit will stay set until the next reset.";
             sw = r;
-        } CMD_GEN_CNT_ERR[26:26];
+        } CTR_ERR[26:26] = 0x0;
         field {
             desc = "This bit will be set to one when any of the source bits (bits 0 through 15 of this
             this register) are asserted as a result of an error pulse generated from
             any full FIFO that has been recieved a write pulse.
             This bit will stay set until the next reset.";
             sw = r;
-        } FIFO_WRITE_ERR[28:28];
+        } FIFO_WRITE_ERR[28:28] = 0x0;
         field {
             desc = "This bit will be set to one when any of the source bits (bits 0 through 15 of this
             this register) are asserted as a result of an error pulse generated from
             any empty FIFO that has recieved a read pulse.
             This bit will stay set until the next reset.";
             sw = r;
-        } FIFO_READ_ERR[29:29];
+        } FIFO_READ_ERR[29:29] = 0x0;
         field {
             desc = "This bit will be set to one when any of the source bits (bits 0 through 15 of this
             this register) are asserted as a result of an error pulse generated from
             any FIFO where both the empty and full status bits are set.
             This bit will stay set until the next reset.";
             sw = r;
-        } FIFO_STATE_ERR[30:30];
+        } FIFO_STATE_ERR[30:30] = 0x0;
     } ERR_CODE @ 0x54;
     reg {
         field {
@@ -552,13 +436,13 @@ addrmap csrng {
             register is to test that any error properly propagates to either
             an interrupt or an alert.";
             sw = rw;
-        } ERR_CODE_TEST[4:0];
+        } ERR_CODE_TEST[4:0] = 0x0;
     } ERR_CODE_TEST @ 0x58;
     reg {
         field {
             desc = "This is the state of the CSRNG main state machine.
             See the RTL file `csrng_main_sm` for the meaning of the values.";
             sw = r;
-        } MAIN_SM_STATE[7:0] = 0x4E;
+        } MAIN_SM_STATE[5:0] = 0x37;
     } MAIN_SM_STATE @ 0x5C;
 };

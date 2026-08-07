@@ -145,7 +145,7 @@ TT does not instantiate OpenTitan `otp_ctrl` RTL; the package satisfies OTBN’s
 | `keymgr_pkg.sv` | `SwBindingWidth`, `SaltWidth` derived from reg counts |
 | *(no direct RTL import elsewhere)* | Required whenever `keymgr_pkg` is compiled |
 
-**Not instantiated:** TT **`hw/comp/key_manager`** is a separate design; it does not include the OT `keymgr` reg block. It drives **`keymgr_pkg`** sideload structs from its own CSRs.
+**Not instantiated:** TT **`hw/ip/key_manager`** is a separate design; it does not include the OT `keymgr` reg block. It drives **`keymgr_pkg`** sideload structs from its own CSRs.
 
 ---
 
@@ -214,7 +214,7 @@ The `ot_pkg` copy exists for legacy SMU filelists; Bender already compiles `hw/c
 |------|----------------|
 | `vendor/opentitan/upstream/hw/ip/<ip>/rtl/*_pkg.sv` | Upstream originals; compare before any merge |
 | `hw/comp/csrng`, `hw/comp/edn`, `hw/comp/drbg` | TT DRBG stack; uses `entropy_src_pkg` from here + local `csrng`/`edn` packages |
-| `hw/comp/key_manager` | TT key delivery; drives `keymgr_pkg` interfaces |
+| `hw/ip/key_manager` | TT key delivery; drives `keymgr_pkg` interfaces |
 | `hw/ip/entropy_source` | TT physical entropy block (registers + RTL) |
 | `hw/sep/sep_pkg.sv` | TT lifecycle / fuse map — **not** `lc_ctrl_state_pkg` |
 

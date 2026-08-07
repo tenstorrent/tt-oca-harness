@@ -43,18 +43,17 @@
 /* Chiplet ID constants for clock configuration */
 #define SMC_AUX_CHIPLET_ID 3
 
-/**
- * TODO: These definitions have come from the boot scratch document but currently collide with
- * BOOT_RECOVERY_BIT and STATUS_RPT_DISABLE_BIT which should be moving.
- */
-#define SMC_STRAP_CHIP_ID_1 55
-#define SMC_STRAP_CHIP_ID_0 57
+// CHIP_ID_1/0 relocated off pads 55/57 to Harness input pads 15 (UART1 rx) and 23 (UART3 rx), which
+// live in STRAPS_LO.
+#define SMC_STRAP_CHIP_ID_1 15
+#define SMC_STRAP_CHIP_ID_0 23
 
 #define SMC_STRAP_MEM_BIST_BYPASS_BIT 54    /* In HI register */
-#define SMC_STRAP_BOOT_RECOVERY_BIT 55      /* In HI register */
-#define SMC_STRAP_BL0_PLLCLK_BIT 56         /* In HI register - enables PLL configuration */
+#define SMC_STRAP_BOOT_RECOVERY_BIT 19      /* In LO register */
+#define SMC_STRAP_BL0_PLLCLK_BIT 20         /* In LO register - enables PLL configuration */
 #define SMC_STRAP_STATUS_RPT_DISABLE_BIT 21 /* In LO register - Disable status reporting */
-#define SMC_STRAP_ROTATE_UPDATE_BIT 61      /* In HI register */
+#define SMC_STRAP_ROTATE_UPDATE_BIT \
+    58 /* In HI register (STRAPS_HI[26]); pad 61 -> 58 after 68->65 shrink */
 
 /* Strap bit masks */
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK (1U << SMC_STRAP_MEM_REPAIR_BYPASS_BIT)
@@ -64,12 +63,12 @@
 #define SMC_STRAP_PRIMARY_CHIPLET_MASK (1U << SMC_STRAP_PRIMARY_CHIPLET_BIT)
 #define SMC_STRAP_CHIP_ID_3_MASK (1U << SMC_STRAP_CHIP_ID_3)
 #define SMC_STRAP_CHIP_ID_2_MASK (1U << SMC_STRAP_CHIP_ID_2)
-#define SMC_STRAP_CHIP_ID_1_MASK (1U << (SMC_STRAP_CHIP_ID_1 - 32))
-#define SMC_STRAP_CHIP_ID_0_MASK (1U << (SMC_STRAP_CHIP_ID_0 - 32))
+#define SMC_STRAP_CHIP_ID_1_MASK (1U << SMC_STRAP_CHIP_ID_1) /* STRAPS_LO bit 15 */
+#define SMC_STRAP_CHIP_ID_0_MASK (1U << SMC_STRAP_CHIP_ID_0) /* STRAPS_LO bit 23 */
 #define SMC_STRAP_BOOT_I2C_MASK (1U << SMC_STRAP_BOOT_I2C_BIT)
 #define SMC_STRAP_MEM_BIST_BYPASS_MASK (1U << (SMC_STRAP_MEM_BIST_BYPASS_BIT - 32))
-#define SMC_STRAP_BL0_PLLCLK_MASK (1U << (SMC_STRAP_BL0_PLLCLK_BIT - 32))
-#define SMC_STRAP_BOOT_RECOVERY_MASK (1U << (SMC_STRAP_BOOT_RECOVERY_BIT - 32))
+#define SMC_STRAP_BL0_PLLCLK_MASK (1U << SMC_STRAP_BL0_PLLCLK_BIT)
+#define SMC_STRAP_BOOT_RECOVERY_MASK (1U << SMC_STRAP_BOOT_RECOVERY_BIT)
 #define SMC_STRAP_STATUS_RPT_DISABLE_MASK (1U << SMC_STRAP_STATUS_RPT_DISABLE_BIT)
 #define SMC_STRAP_SPI_USE_FUSED_CONFIG_MASK (1U << SMC_STRAP_SPI_USE_FUSED_CONFIG_BIT)
 #define SMC_STRAP_ROTATE_UPDATE_MASK (1U << (SMC_STRAP_ROTATE_UPDATE_BIT - 32))
@@ -81,8 +80,8 @@
  */
 #define SMC_I3C_0_SCL_GPIO 27
 #define SMC_I3C_0_SDA_GPIO 28
-#define SMC_I3C_1_SCL_GPIO 66 /* unbonded */
-#define SMC_I3C_1_SDA_GPIO 67 /* unbonded */
+#define SMC_I3C_1_SCL_GPIO 63 /* unbonded */
+#define SMC_I3C_1_SDA_GPIO 64 /* unbonded */
 #define SMC_I3C_2_SCL_GPIO 29
 #define SMC_I3C_2_SDA_GPIO 30
 #define SMC_I3C_3_SCL_GPIO 31
@@ -102,8 +101,9 @@
 #define SMC_CAT_THERM_GPIO 52   /* thermal trip output (active low) */
 #define SMC_PVT_CLK_OBS_GPIO 57 /* PVT RO clock observation */
 
-#define SMC_STATUS_GPIO 61 /* GPIO used for reset status reporting */
-#define MAX_GPIO_COUNT 71  /* Maximum number of GPIOs supported */
+#define SMC_STATUS_GPIO \
+    58 /* GPIO used for reset status reporting (pad 61 -> 58 after 68->65 shrink) */
+#define MAX_GPIO_COUNT 71 /* Maximum number of GPIOs supported */
 
 /*
  * SRAM Definitions
@@ -248,9 +248,19 @@
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
 #define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0002090
 #define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0002094
-#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL 0xC000BAFC
-#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC000BB04
-#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000F800
+/* These mirror generated symbols in smc_top_regs.h, which cannot be included
+ * here because its C typedefs do not assemble. Each block below sat 0x4000 high
+ * from before the peripherals moved, so the early MBIST check read an address
+ * with nothing behind it, saw mbist_done clear, and took the "not done, assume
+ * not required" branch -- booting normally and reporting success even when a
+ * failure had been injected. Keep these in step with the generated header:
+ *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_0__BASE_ADDR
+ *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_2__BASE_ADDR
+ *   SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR
+ */
+#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL 0xC0007AFC
+#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC0007B04
+#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000B800
 #define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL 0xC00390F8
 #define ROM_PADDING_TRAP_STATUS_VAL 0xBADF00D0
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK_VAL 0x00002000

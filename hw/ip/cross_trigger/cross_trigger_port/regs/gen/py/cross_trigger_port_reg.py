@@ -23,7 +23,7 @@ CROSS_TRIGGER_PORT_CONFIG_REG_DEFAULT = 0x00000000
 
 class CROSS_TRIGGER_PORT_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CROSS_TRIGGER_PORT_CONFIG_reg_t),
     ]
 
@@ -56,7 +56,7 @@ CROSS_TRIGGER_PORT_STATUS_REG_DEFAULT = 0x00000000
 
 class CROSS_TRIGGER_PORT_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CROSS_TRIGGER_PORT_STATUS_reg_t),
     ]
 
@@ -84,7 +84,7 @@ CROSS_TRIGGER_PORT_STRETCH_MULT_REG_DEFAULT = 0x00000000
 
 class CROSS_TRIGGER_PORT_STRETCH_MULT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', CROSS_TRIGGER_PORT_STRETCH_MULT_reg_t),
     ]
 

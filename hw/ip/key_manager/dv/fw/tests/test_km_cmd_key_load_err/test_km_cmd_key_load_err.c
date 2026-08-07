@@ -11,7 +11,7 @@
  *   AS2.1 / SC-2739-004: Payload-length/KEY_SIZE mismatch  → invalid_arg, arg=0
  *   AS2.2 / SC-2739-004: DEST_VALID reserved bits [31:8] set → invalid_arg, arg=1
  *   AS2.2 / SC-2739-004: DEST_VALID == 0                  → invalid_arg, arg=1
- *   AS2.2:               DEST_VALID[7:4] != 0              → invalid_arg, arg=1
+ *   AS2.2:               DEST_VALID[31:8] != 0 (bit 8)     → invalid_arg, arg=1
  *   AS2.4 / SC-2739-005: KPV full (no eligible slots)     → failure, no arg
  *   AS2.5:               Handle-pool exhausted             → failure, no arg, no KPV mutation
  *
@@ -283,11 +283,12 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.2: DEST_VALID[7:4] != 0 → invalid_arg, arg=1
+     * AS2.2: DEST_VALID[31:8] != 0 → invalid_arg, arg=1
+     * (Bits 4-7 are now valid for ABR seeds; bit 8 and above remain reserved.)
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.2: DEST_VALID rsvd[7:4] set → invalid_arg");
+    TEST_SUBTEST_START("AS2.2: DEST_VALID rsvd[31:8] set (bit 8) → invalid_arg");
     {
-        uint32_t payload[6] = {3u,    0x00000010u, /* DEST_VALID: bit 4 set (reserved[7:4]) */
+        uint32_t payload[6] = {3u,    0x00000100u, /* DEST_VALID: bit 8 set (truly reserved) */
                                0x11u, 0x22u,       0x33u, 0x44u};
         snapshot_kpv_ctrl(snap_before);
         int8_t rc;
@@ -295,10 +296,10 @@ int main(void) {
         do_key_load_raw(payload, 6u, &rc, &arg);
         snapshot_kpv_ctrl(snap_after);
 
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "DEST rsvd[7:4] → invalid_arg");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "DEST rsvd[31:8] → invalid_arg");
         TEST_ASSERT_EQ(arg & 0xFFu, 1u, "return arg = word 1 (DEST_VALID)");
         assert_kpv_unchanged(snap_before, snap_after);
-        TEST_LOG("  DEST_VALID rsvd[7:4] rejected correctly");
+        TEST_LOG("  DEST_VALID rsvd[31:8] rejected correctly");
     }
     TEST_SUBTEST_PASS();
 

@@ -263,43 +263,75 @@ module abr_wrapper_key_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
-        is_valid_addr = '1; // No valid address check
-        is_valid_rw = '1; // No valid RW check
+        is_valid_addr = '0;
+        is_valid_rw = '0;
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLDSA_SEED.KEY_SHARE0[i0] = cpuif_req_masked & (cpuif_addr == 11'h0 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h0 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h0 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLDSA_SEED.KEY_SHARE1[i0] = cpuif_req_masked & (cpuif_addr == 11'h20 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h20 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h20 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         decoded_reg_strb.MLDSA_SEED.KEY_CTRL = cpuif_req_masked & (cpuif_addr == 11'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h40);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h40);
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE0[i0] = cpuif_req_masked & (cpuif_addr == 11'h100 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h100 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h100 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_SEED_D.KEY_SHARE1[i0] = cpuif_req_masked & (cpuif_addr == 11'h120 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h120 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h120 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         decoded_reg_strb.MLKEM_SEED_D.KEY_CTRL = cpuif_req_masked & (cpuif_addr == 11'h140);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h140);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h140);
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE0[i0] = cpuif_req_masked & (cpuif_addr == 11'h200 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h200 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h200 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_SEED_Z.KEY_SHARE1[i0] = cpuif_req_masked & (cpuif_addr == 11'h220 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h220 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h220 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         decoded_reg_strb.MLKEM_SEED_Z.KEY_CTRL = cpuif_req_masked & (cpuif_addr == 11'h240);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h240);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h240);
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_MSG.KEY_SHARE0[i0] = cpuif_req_masked & (cpuif_addr == 11'h300 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h300 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h300 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_MSG.KEY_SHARE1[i0] = cpuif_req_masked & (cpuif_addr == 11'h320 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h320 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h320 + (11)'(i0) * 11'h4) & cpuif_req_is_wr;
         end
         decoded_reg_strb.MLKEM_MSG.KEY_CTRL = cpuif_req_masked & (cpuif_addr == 11'h340);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h340);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h340);
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.MLKEM_SHARED_KEY.KEY[i0] = cpuif_req_masked & (cpuif_addr == 11'h400 + (11)'(i0) * 11'h4) & !cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h400 + (11)'(i0) * 11'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h400 + (11)'(i0) * 11'h4) & !cpuif_req_is_wr;
         end
         decoded_reg_strb.MLKEM_SHARED_KEY.KEY_CTRL = cpuif_req_masked & (cpuif_addr == 11'h420);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h420);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h420);
         decoded_reg_strb.MLKEM_SHARED_KEY.IRQ_STATUS = cpuif_req_masked & (cpuif_addr == 11'h424);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h424);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h424);
         decoded_reg_strb.MLKEM_SHARED_KEY.IRQ_ENABLE = cpuif_req_masked & (cpuif_addr == 11'h428);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h428);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h428);
+        decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req;
     end
 
     // Pass down signals to next stage
@@ -888,7 +920,7 @@ module abr_wrapper_key_reg (
     //--------------------------------------------------------------------------
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -938,7 +970,7 @@ module abr_wrapper_key_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign cpuif_rd_ack = readback_done;

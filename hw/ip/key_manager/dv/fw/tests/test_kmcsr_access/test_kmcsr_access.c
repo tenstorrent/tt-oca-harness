@@ -31,8 +31,8 @@ int main(void) {
     /* Test 1: Read VERSION register (semantic version 1.0.0) */
     TEST_SUBTEST_START("Read VERSION register");
     version_val = KMCSR_VERSION_REG.w;
-    TEST_LOG("  VERSION = 0x%08X (expected 0x%08X)", version_val, 0x00010000u);
-    TEST_ASSERT_EQ(version_val, 0x00010000u, "VERSION raw value");
+    TEST_LOG("  VERSION = 0x%08X (expected 0x%08X)", version_val, KMCSR_VERSION_RESET);
+    TEST_ASSERT_EQ(version_val, KMCSR_VERSION_RESET, "VERSION raw value");
     TEST_ASSERT_EQ(KMCSR_VERSION_REG.f.major, 1u, "VERSION.MAJOR");
     TEST_ASSERT_EQ(KMCSR_VERSION_REG.f.minor, 0u, "VERSION.MINOR");
     TEST_ASSERT_EQ(KMCSR_VERSION_REG.f.patch, 0u, "VERSION.PATCH");
@@ -41,8 +41,8 @@ int main(void) {
     /* Test 2: Read DEBUG register */
     TEST_SUBTEST_START("Read DEBUG register");
     debug_val = KMCSR_DEBUG_REG.w;
-    TEST_LOG("  DEBUG = 0x%08X (expected 0x%08X)", debug_val, 0u);
-    TEST_ASSERT_EQ(debug_val, 0u, "DEBUG.MAGIC");
+    TEST_LOG("  DEBUG = 0x%08X (expected 0x%08X)", debug_val, KM_CSR__DEBUG_REG__MAGIC_reset);
+    TEST_ASSERT_EQ(debug_val, KM_CSR__DEBUG_REG__MAGIC_reset, "DEBUG.MAGIC");
     TEST_SUBTEST_PASS();
 
     TEST_PASS();

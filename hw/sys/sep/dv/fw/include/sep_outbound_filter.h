@@ -63,6 +63,22 @@
 //==============================================================================
 
 /**
+ * Initialize SEP outbound filter 0 for an arbitrary [start, end] address range.
+ *
+ * Same all-pass config value as the mailbox default (read/write/non-secure/burst),
+ * but the caller chooses the range -- e.g. open the whole SEP->SMC region plus the
+ * mailbox (0x4000_0000..0x800000FF) so the SEP can reach the SMC CPU_CTRL/SRAM as
+ * well as STDOUT. START/END are written before CONFIG so the filter enables
+ * atomically over the final range.
+ */
+static inline void sep_outbound_filter_init_range(uint64_t start, uint64_t end) {
+    WRITE_REG64(OUTBOUND_FILTER_BASE + START_ADDR_OFFSET, start);
+    WRITE_REG64(OUTBOUND_FILTER_BASE + END_ADDR_OFFSET, end);
+    WRITE_REG64(OUTBOUND_FILTER_BASE + FILTER_CONFIG_OFFSET, FILTER_CONFIG_VALUE);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+/**
  * Initialize SEP outbound filter 0 for testpass mailbox access
  *
  * Configures filter 0 to allow read/write access to 0x8000_0000, which is
@@ -80,15 +96,8 @@
  *   - Locked: NO (can be reconfigured)
  */
 static inline void sep_outbound_filter_init(void) {
-    // Write START_ADDR register (must be configured before enabling filter)
-    WRITE_REG64(OUTBOUND_FILTER_BASE + START_ADDR_OFFSET, FILTER_START_ADDR);
-
-    // Write END_ADDR register (must be configured before enabling filter)
-    WRITE_REG64(OUTBOUND_FILTER_BASE + END_ADDR_OFFSET, FILTER_END_ADDR);
-
-    // Write FILTER_CONFIG register (enables filter atomically)
-    // This must be written LAST to ensure address range is configured first
-    WRITE_REG64(OUTBOUND_FILTER_BASE + FILTER_CONFIG_OFFSET, FILTER_CONFIG_VALUE);
+    // Backward-compatible default: open the testpass mailbox range only.
+    sep_outbound_filter_init_range(FILTER_START_ADDR, FILTER_END_ADDR);
 }
 
 #endif // SEP_OUTBOUND_FILTER_H

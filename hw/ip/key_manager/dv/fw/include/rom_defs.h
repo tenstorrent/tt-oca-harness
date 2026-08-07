@@ -60,7 +60,7 @@
  * Defined by the linker (km_sram_layout.ld) as STACK - __rom_max_stack, rounded
  * DOWN to a SRAM_LOCK_REGION_BYTES boundary, where __rom_max_stack is the
  * worst-case ROM main-stack budget validated against the production ELF by
- * tools/km_stack_analyze.py.  Because it is a build-time constant rather than a
+ * scripts/km_stack_analyze.py.  Because it is a build-time constant rather than a
  * function of the live stack pointer, a warm-reset CMD_SRAM_EXEC restart can
  * never let the deeper-running ROM stack overwrite the loaded image, and the
  * image and ROM stack always occupy disjoint SRAM write-lock regions.

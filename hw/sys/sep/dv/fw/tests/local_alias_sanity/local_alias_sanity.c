@@ -23,11 +23,12 @@
 // Local Alias Configuration
 //-----------------------------------------------------------------------------
 
-// The local alias base address (default 0xC000_0000)
+// The local alias base address (#3711 reset default 0xD000_0000)
 // When CPU accesses address X in range [local_alias_base, local_alias_base + region_size),
-// it gets remapped to X - local_alias_base + target_base (where target_base = 0)
-#define LOCAL_ALIAS_BASE 0xC0000000UL
-#define LOCAL_ALIAS_OFFSET 0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0)
+// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 post-#3711)
+#define LOCAL_ALIAS_BASE 0xD0000000UL
+#define LOCAL_ALIAS_OFFSET \
+    0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0xD000_0000 - 0x1000_0000)
 
 // Direct peripheral addresses (physical addresses at 0x1000_0000 region)
 #define SCRATCH_COLD_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR // 0x1080_2000
@@ -107,19 +108,21 @@ static int test_local_alias_config(void) {
 //-----------------------------------------------------------------------------
 // Test: Set Local Alias Base to 0
 //-----------------------------------------------------------------------------
-static int test_set_local_base_to_zero(void) {
-    printf("\n--- Test: Set Local Alias Base to 0 ---\n");
+static int test_local_base_writable(void) {
+    const uint64_t ALT_BASE =
+        0xE0000000UL; // window [0xE000_0000, 0x1_1000_0000): working set stays passthrough
 
-    // Write 0 to local base address register
-    printf("  Writing 0 to SEP_LOCAL_BASE_ADDR register...\n");
-    WRITE_REG64(SEP_LOCAL_BASE_ADDR_REG, 0x0);
+    printf("\n--- Test: SEP_LOCAL_BASE_ADDR Writable ---\n");
+
+    printf("  Writing 0x%08lX to SEP_LOCAL_BASE_ADDR register...\n", (unsigned long)ALT_BASE);
+    WRITE_REG64(SEP_LOCAL_BASE_ADDR_REG, ALT_BASE);
 
     // Verify the write
     uint64_t readback = READ_REG64(SEP_LOCAL_BASE_ADDR_REG);
     printf("  Readback: 0x%08lX\n", (unsigned long)readback);
 
-    if (readback != 0x0) {
-        printf("  ERROR: Write failed, expected 0x0\n");
+    if (readback != ALT_BASE) {
+        printf("  ERROR: Write failed, expected 0x%08lX\n", (unsigned long)ALT_BASE);
         return 0;
     }
 
@@ -366,9 +369,14 @@ static int test_dma_alias(void) {
 
     printf("  DMA: 0x%08X -> 0x%08X (physical SRAM)\n", src_direct_addr, dst_direct_addr);
 
-    // Configure DMA transfer
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0u);
+    // Configure DMA transfer. ASID 0 is not a valid address space and makes the
+    // DMA report ASID_ERROR, so both ASIDs must carry the OT internal bus default.
+    WRITE_REG(
+        OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+        (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
+            (SECURE_DMA__ADDR_SPACE_ID__DST_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+              SECURE_DMA__TRANSFER_WIDTH__WIDTH_reset << SECURE_DMA__TRANSFER_WIDTH__WIDTH_bp);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
@@ -442,7 +450,7 @@ int main(void) {
 
     // Run tests
     report_test("Local Alias Configuration", test_local_alias_config());
-    report_test("Set Local Base to Zero", test_set_local_base_to_zero());
+    report_test("SEP_LOCAL_BASE_ADDR Writable", test_local_base_writable());
     report_test("Scratch Register Alias", test_scratch_alias());
     report_test("SRAM Alias (0xD000_0000)", test_sram_alias());
     report_test("64-bit Access via Alias", test_64bit_alias());

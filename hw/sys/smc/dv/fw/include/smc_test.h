@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 
+#include "smc_cla_boot.h"
 #include "smc_io.h"
 #include "virt_console.h"
 
@@ -14,6 +15,8 @@
 #define TEST_ROM_PASS 0x77777777
 #define TEST_STATUS_SCRATCH 0
 
+#define SMU_SEP_DV_CLA_ARM_TOKEN 0x02200100u
+
 #define ERROR_STATUS_REG 2
 #define ERROR_COUNT_REG 3
 #define SEED_REG 3
@@ -21,6 +24,15 @@
 static uint32_t _ERROR_CNT;
 extern uint32_t _RANDOM_LFSR;
 static uint32_t _TEST_CONTROL;
+
+/* SMU-SEP DV test bring-up **************************************************/
+/* Arms the real CLA boot path, then publishes the token that the SV real-CLA
+ * liveness monitor waits on before it will let the SEP core run. */
+static inline void smu_sep_dv_test_bringup(void) {
+    smu_sep_program_real_cla_boot();
+    write_scratch(1, SMU_SEP_DV_CLA_ARM_TOKEN);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
 
 /* Core test control *********************************************************/
 static inline __attribute__((noreturn)) void test_pass(int mhart_id) {

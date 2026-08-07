@@ -1286,16 +1286,15 @@ The bound is enforced statically:
   arrays or `alloca`.  All scratch buffers are fixed-size locals or
   file-scope `static`.
 
-* `tools/km_stack_analyze.py` walks the disassembled call graph of the
+* `scripts/km_stack_analyze.py` walks the disassembled call graph of the
   linked production ELF (rooted at `main`, and separately at the dedicated
   IRQ entry `rom_irq`) and sums per-function stack frames along the deepest
-  path.  It fails the build if it finds a dynamic frame, an unresolved
+  path.  It reports a failure if it finds a dynamic frame, an unresolved
   indirect call on a reachable path, or a call-graph cycle.
 
-* The firmware `Makefile` passes the budget to the linker via
-  `--defsym=__rom_max_stack=$(ROM_KM_MAX_STACK_BYTES)` (default `0x600`) and
-  gates `build_production` on the analyzer reporting a worst case within that
-  budget.  `make stack_report` prints the worst-case depth and deepest path.
+* The firmware build passes the budget to the linker via
+  `--defsym=__rom_max_stack=0x600`, so the load ceiling below is derived from the
+  same value the analyzer checks the image against.
 
 * The linker (`km_sram_layout.ld`) derives the load ceiling
   `__km_fw_load_limit = (STACK - __rom_max_stack)`, rounded down to a 512-byte
@@ -1303,10 +1302,16 @@ The bound is enforced statically:
   and asserts that a non-empty load area remains.  `rom_cmd_sram_load_exec()`
   rejects any image whose top exceeds this symbol.
 
-Run `make stack_report` to see the analyzer's current worst-case main and
-IRQ stack depths and deepest paths for the production ELF.  Raise
-`ROM_KM_MAX_STACK_BYTES` only if the analyzer reports a worst case that
-exceeds the configured budget.
+Run the analyzer on the production image to see the current worst-case main and
+IRQ stack depths and deepest paths:
+
+[source,bash]
+----
+python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
+  --objdump riscv64-unknown-elf-objdump --root main --limit 0x600
+----
+
+Raise the budget only if the analyzer reports a worst case that exceeds it.
 
 [[km-firmware-bootloader]]
 ===== Bootloader

@@ -21,6 +21,7 @@
 #include "rom_mailbox.h"
 #include "rom_kmcsr.h"
 #include "rom_picorv32.h"
+#include "rom_secutil.h"
 
 /*===========================================================================
  * IRQ-Masked Buffer Helpers
@@ -173,7 +174,7 @@ void rom_msg_rx_process(void) {
     }
 
     /* Step 9: Read payload words (if any). */
-    uint32_t payload[header.payload_len ? header.payload_len : 1];
+    static uint32_t payload[ROM_KM_MAX_PAYLOAD_LEN];
     for (uint8_t i = 0; i < header.payload_len; i++) rx_pop_word(&payload[i]);
 
     /* Step 10: Validate payload CRC-32C (if payload present). */
@@ -184,6 +185,10 @@ void rom_msg_rx_process(void) {
         uint32_t computed_crc =
             rom_crc32c((const uint8_t *)payload, (uint32_t)header.payload_len * 4);
         if (rx_crc != computed_crc) {
+            /* CMD_KEY_LOAD carries a plaintext key in the shared payload[]
+             * buffer; clear the populated words before bailing out. */
+            if (header.id == ROM_KM_CMD_KEY_LOAD)
+                rom_secure_memzero(payload, (size_t)header.payload_len * sizeof(payload[0]));
             rx_consume_frame();
             send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_PAYLOAD_CRC, 1, computed_crc);
             return;
@@ -198,6 +203,8 @@ void rom_msg_rx_process(void) {
         if (header.id != ROM_KM_CMD_HW_VER && header.id != ROM_KM_CMD_ROM_VER &&
             header.id != ROM_KM_CMD_SRAM_VER && header.id != ROM_KM_CMD_STAT &&
             header.id != ROM_KM_CMD_RECOV_ACK) {
+            if (header.id == ROM_KM_CMD_KEY_LOAD)
+                rom_secure_memzero(payload, (size_t)header.payload_len * sizeof(payload[0]));
             rx_consume_frame();
             send_resp_cmd(header.seq_num, header.id, ROM_KM_RC_FAILURE, 0, 0);
             return;
@@ -207,6 +214,11 @@ void rom_msg_rx_process(void) {
     /* Step 12: Dispatch to command handler. */
     rom_km_cmd_result_t result =
         rom_cmd_dispatch(header.id, header.seq_num, header.payload_len, payload);
+
+    /* Wipe the plaintext key from the shared payload[] buffer once the
+     * CMD_KEY_LOAD handler has consumed it. */
+    if (header.id == ROM_KM_CMD_KEY_LOAD)
+        rom_secure_memzero(payload, (size_t)header.payload_len * sizeof(payload[0]));
 
     /* Step 13: Drop the fully processed frame, then send RESP_CMD. */
     rx_consume_frame();

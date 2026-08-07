@@ -27,7 +27,7 @@
 // word-addressed register file; W1C/RO per-field semantics of the real block are NOT
 // modelled (unnecessary -- the ABR path is un-exercised; the real block is covered by
 // the KM IP / OCAH testbenches). Keep the port list in sync with
-// hw/comp/key_manager/data/registers/rtl/abr_wrapper_key_reg.sv.
+// hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv.
 module abr_wrapper_key_reg (
     input  wire                                           clk,
     input  wire                                           arst_n,
