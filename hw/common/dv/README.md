@@ -134,6 +134,41 @@ Contributors should add new DUT-specific behavior under that DUT's `dv/`
 directory. Add or extend shared protocol behavior only under
 `hw/common/dv/vip/ocah_<protocol>_vip/` after the checklist above is met.
 
+## Checker Ownership and Evidence
+
+`vip/ocah_checker/` owns protocol-neutral checker evidence: stable `CHK-*`
+identifiers, exact expected/observed/context formatting, required-ID tracking,
+timeout checks, retained findings, and strict finalization. It is checker
+infrastructure, not a protocol VIP.
+
+Checker ownership follows these boundaries:
+
+- each shared `ocah_<protocol>_vip` owns item-level protocol legality and
+  structural checks, composed over `ocah_checker`;
+- DUT `cocotb/assertions/` owns pure hierarchy/address/lifecycle invariants;
+- DUT `cocotb/env/` owns lifecycle-aware scoreboards, predictors, and reference
+  models;
+- tests and sequences configure independent expected values and must finalize
+  every checker they use.
+
+Named evidence uses one line per concrete VPLAN intent:
+
+```text
+CHK-<ID> PASS expected=<value> observed=<value> context=<address/field/loop>
+CHK-<ID> FAIL expected=<value> observed=<value> context=<address/field/loop>
+CHECKER_SUMMARY name=<name> checks=<n> passed=<n> failed=<n> missing=<n>
+```
+
+Finalization fails on retained errors, zero executed checks, or missing required
+IDs. A nonzero generic check count is not domain non-vacuity; tests must add a
+meaningful `CHK-NONVAC` comparison when their VPLAN requires it.
+
+Transaction timeout fails unless the VPLAN explicitly expects a bounded timeout
+and records that bound. Runner stage timeout is always `TIMEOUT`/124 and cannot
+be converted into checker PASS. Positive `CHK-*` text is auditable log evidence;
+passing `results.xml` and native schema-1 `result.json` remain authoritative for
+the runner.
+
 DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
 install the shared package and source the OSS DV environment before running tests:
 
