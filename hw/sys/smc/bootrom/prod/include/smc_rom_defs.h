@@ -246,9 +246,19 @@
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
 #define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0002090
 #define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0002094
-#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL 0xC000BAFC
-#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC000BB04
-#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000F800
+/* These mirror generated symbols in smc_top_regs.h, which cannot be included
+ * here because its C typedefs do not assemble. Each block below sat 0x4000 high
+ * from before the peripherals moved, so the early MBIST check read an address
+ * with nothing behind it, saw mbist_done clear, and took the "not done, assume
+ * not required" branch -- booting normally and reporting success even when a
+ * failure had been injected. Keep these in step with the generated header:
+ *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_0__BASE_ADDR
+ *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_2__BASE_ADDR
+ *   SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR
+ */
+#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL 0xC0007AFC
+#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC0007B04
+#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000B800
 #define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL 0xC00390F8
 #define ROM_PADDING_TRAP_STATUS_VAL 0xBADF00D0
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK_VAL 0x00002000

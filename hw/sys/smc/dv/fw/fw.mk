@@ -34,6 +34,10 @@ FW_C_SRCS += \
 # ROM tests never return so it just spins in WFI).
 FW_C_SRCS += $(FW_DIR)/startup/exit_stub.c
 
+# The one deliberate edge from DV into the boot ROM, and it points at an
+# interface rather than an implementation: smc_occp_error_codes.h is the OCCP
+# status contract the ROM produces and these tests assert against, so the two
+# must not drift. Dependencies run this way only -- the ROM never includes DV.
 FW_INCLUDES += \
   -I$(FW_DIR)/common/occp \
   -I$(OCAH_ROOT)/hw/sys/smc/bootrom/prod/include
@@ -45,12 +49,8 @@ FW_REG_SYS := smc
 # Test discovery is unified in compile.mk; declare only the SMC deltas. coremark
 # pulls in the shared core_portme.c harness alongside its own source.
 FW_TEST_EXTRA_SRCS_coremark := $(FW_DIR)/tests/core_portme.c
-# The boot ROM's registers dir is test-only: a few OCCP master-BFM tests include
-# smc_top_regs.h directly. It stays out of FW_INCLUDES because the nonfree dv_rom
-# build force-includes vendor I3C shims whose types collide with it.
 FW_TEST_INCLUDES := \
-  -I$(FW_DIR)/tests \
-  -I$(OCAH_ROOT)/hw/sys/smc/bootrom/prod/registers
+  -I$(FW_DIR)/tests
 # Test sources predate strict prototypes / native register headers; keep these
 # relaxations so they compile unchanged.
 FW_TEST_EXTRA_CFLAGS += \
