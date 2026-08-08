@@ -46,6 +46,11 @@ from env.sep_efuse_image import SepEfuseImage
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
 # depend on it: without the file they would sense a zero OTP.
+# Bound for the per-CSR reads in report_entropy_stall(). Generous versus a healthy
+# AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
+# the diagnostic itself into a sim timeout.
+_STALL_CSR_TIMEOUT_NS = 50_000
+
 _DEFAULT_EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[2] / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 )
@@ -529,6 +534,14 @@ class sep_base_test(uvm_test):
 
         # Frontdoor status: FIFO level and health-test result decide whether the
         # ESRC itself is stuck or the DRBG side is not draining.
+        #
+        # Every read is BOUNDED and failure-tolerant. One plausible cause of the
+        # stall is a fabric that never released, in which case these reads would
+        # never retire -- and an unbounded diagnostic would turn an attributed
+        # failure into a bare sim timeout, the exact outcome AGENTS.md §7 exists to
+        # prevent. The strobe counts above always survive, so a wedged CSR path
+        # degrades to "counts logged, CSR unreadable" instead of taking the whole
+        # report down with it.
         from seq_lib.sep_esrc_bringup_seq import (
             ESRC_FIFO_STATUS,
             ESRC_HEALTH_TEST_CTRL,
@@ -547,7 +560,18 @@ class sep_base_test(uvm_test):
             ("ESRC_MAIN_SM_STATUS", ESRC_MAIN_SM_STATUS),
         ):
             seq = SepAxiAccessSeq(op=SepAxiOp.READ, addr=addr)
-            await self.start_seq(seq)
+            try:
+                await with_timeout(self.start_seq(seq), _STALL_CSR_TIMEOUT_NS, "ns")
+            except SimTimeoutError:
+                self.logger.error(
+                    "entropy stall: %s (0x%08x) = <no AXI response within %d ns> -- the "
+                    "CSR path is wedged too, not just the entropy chain; skipping the "
+                    "remaining status reads",
+                    label,
+                    addr,
+                    _STALL_CSR_TIMEOUT_NS,
+                )
+                break
             self.logger.error("entropy stall: %s (0x%08x) = 0x%08x", label, addr, seq.rdata)
 
     async def wait_genbits(self, timeout: int = 60_000) -> bool:

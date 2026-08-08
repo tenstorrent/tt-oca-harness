@@ -2,11 +2,12 @@
 """SEP eFuse/OTP image builder for the OSS cocotb flow.
 
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
-generic efuse bank model (``hw/.bos/models/efuse/efuse_bank_model.sv``)
+generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
 loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
 field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
-(``meta/registers/svh/sep_efuse_map_reg.svh``); the constraints mirror the
-OCAH UVM ``sep_efuse_item`` golden model.
+(``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
+``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
+mirror the OCAH UVM ``sep_efuse_item`` golden model.
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the

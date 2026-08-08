@@ -1,4 +1,6 @@
 .venv/
+# VCS classic cocotb 1.9.x stack provisioned by hw/sys/sep/dv/sim/run.sh --tool vcs
+/venv/
 .bender/
 __pycache__/
 *.pyc

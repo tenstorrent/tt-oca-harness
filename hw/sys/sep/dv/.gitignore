@@ -11,6 +11,9 @@ cocotb/tests/sep_itcm.hex
 cocotb/tests/sep_dtcm.hex
 !cocotb/tests/sep_boot_rom.hex
 
+# Personal local runner / working folder (run.sh, history logs, etc.)
+/sim/
+
 # Python bytecode
 **/__pycache__/
 *.pyc

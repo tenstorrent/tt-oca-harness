@@ -59,6 +59,15 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
+  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
+]
+# PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
+# aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
+# generated block from every target's bender flist; the stub above replaces it.
+# Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
+exclude_files = [
+  "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
 # FIXME(transition): `stubs` are transitional Verilator/VCS-compat overrides, listed ahead of
 # the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
@@ -157,11 +166,18 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # environment wins; then the project container's riscv-gnu-toolchain; then a local
 # xPack riscv-none-elf install (the macOS/Verilator-only route). NOTE: no ${...}
 # brace expansions in argv -- these strings go through str.format() for {fw_target}.
+#
+# RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared engine
+# accepts (hw/common/dv/fw/compile.mk); do not invent per-tool RISCV_GCC/_NM vars.
+# When RISCV_TOOLCHAIN is given without RISCV_PREFIX we still probe the directory
+# for both tool names, because the auto-detect loop that would have picked the
+# right prefix is skipped in that case -- otherwise pointing RISCV_TOOLCHAIN at an
+# xPack install would silently fall back to the riscv64-unknown-elf- prefix.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; fi; exec make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST={fw_target} OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; exec make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST={fw_target} OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
@@ -234,9 +250,9 @@ defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
-# The legacy ABR key CSR shim swap was retired with the port: the current
-# sep_crypto.sv no longer instantiates abr_wrapper_key_reg, so neither the
-# exclude nor shims/crypto/abr_wrapper_key_reg_stub.sv is needed.
+# abr_wrapper_key_reg stub swap is DUT-wide ([build].exclude_files + sources):
+# sep_crypto_abr_wrapper instantiates u_abr_key_csr again; Verilator still cannot
+# compile the PeakRDL-generated block (see shims/crypto/abr_wrapper_key_reg_stub.sv).
 
 [targets.default.tools.verilator]
 flags = [

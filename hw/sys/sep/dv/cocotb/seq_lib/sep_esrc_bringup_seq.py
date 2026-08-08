@@ -32,11 +32,17 @@ from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL
 # --- register map -----------------------------------------------------------
 # sep_cpu_ctrl addresses come from the generated SystemRDL export (AGENTS.md §7).
 # CLOCK_GATE_CTRL is a placeholder in this repository's sep_cpu_ctrl.rdl with ONE
-# implemented bit (pka_cg_enable[0:0]) -- there is no entropy_fifo gate bit, so the
-# ESRC/CSRNG/EDN CSRs are unconditionally clocked. The write below stays as CSR
-# write-path coverage; it releases nothing.
+# implemented bit (pka_cg_enable[0:0], itself marked "not yet implemented") -- there
+# is no entropy_fifo gate bit, so the ESRC/CSRNG/EDN CSRs are unconditionally
+# clocked. The write below is CSR write-path coverage only; it releases nothing.
+#
+# It writes the register's RESET value, NOT `mask32()`. `mask32()` is the union of
+# implemented field bits, i.e. "set every field to all-ones" -- inert today (0x1
+# into a placeholder) but it tracks the RDL, so the day this placeholder gains real
+# clock-gate enables this bring-up write would silently assert every one of them.
+# The reset value stays inert by construction no matter how the register grows.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
-CLOCK_GATE_ENTROPY = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
+CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
 # The ESRC / CSRNG / EDN addresses below stay LITERAL, unlike every other block in
 # this env, because the generated top-level export does not cover them: there is no
@@ -248,7 +254,7 @@ class SepEsrcConfigSeq(uvm_sequence):
 
     async def body(self) -> None:
         cfg = self.cfg
-        await _wr(self, CLOCK_GATE_CTRL, CLOCK_GATE_ENTROPY)  # ungate entropy_fifo clock
+        await _wr(self, CLOCK_GATE_CTRL, CLOCK_GATE_CTRL_RESET)  # CSR write path only
         await _wr(self, EXT_TRNG_SRC_SEL, cfg.ext_trng_src_sel)
         await _wr(self, ESRC_RING_OSC_ENABLE, RING_OSC_SAMPLECLK_ONLY)  # generators off
         await _wr(self, ESRC_DECORRELATOR_CTRL, cfg.decor_ctrl)

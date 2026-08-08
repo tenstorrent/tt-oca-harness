@@ -2,20 +2,19 @@
 //
 // abr_wrapper_key_reg -- SEP OSS DV shim for the PeakRDL-generated ABR key CSR block.
 //
-// FIXME(SEP-DV): RETIRED from the active build. The current sep_crypto.sv no
-// longer instantiates abr_wrapper_key_reg, so sep_sim_cfg.toml dropped the
-// exclude/sources swap for this shim. Kept as deferred reference only; delete
-// it (or re-wire the swap) when the ABR engine integration returns.
+// Active via sep_sim_cfg.toml [build] exclude_files + sources: drop the PeakRDL
+// abr_wrapper_key_reg.sv and append this shim. Needed again once
+// sep_crypto_abr_wrapper re-instantiated u_abr_key_csr (ABR engine integration).
 //
-// WHY THIS EXISTS: main #3417 replaced the ABR DECERR placeholder with the generated
-// abr_wrapper_key_reg. That generated block does NOT build under Verilator 5.046:
-// sep_crypto.sv ties its hwif_in struct to '0, and Verilator then either (a) const-
-// folds the tied-'0 struct and emits invalid C++ for the block's reads of it
-// ("0U.__PVT__KEY[5U].__PVT__data..." -> g++ 'operator""U.__PVT__KEY'), or (b) if the
-// module is marked public to defeat that fold, emits a mismatched nested-struct
-// aggregate init. Neither builds, which breaks the shared OSS Verilator model for every
-// crypto test. VCS builds the real block fine; this shim is swapped in for the OSS DV
-// build (both tools, for model parity) via sep_sim_cfg.toml exclude_files/sources.
+// WHY THIS EXISTS: the PeakRDL-generated abr_wrapper_key_reg does NOT build under
+// the site FOSS VL 5.046 flow. sep_crypto / abr wrapper ties hwif_in in ways that
+// make the codegen either (a) const-fold the tied-'0 struct and emit invalid C++
+// for the block's reads of it ("0U.__PVT__KEY[5U].__PVT__data..." -> g++
+// 'operator""U.__PVT__KEY'), or (b) if the module is marked public to defeat that
+// fold, emit a mismatched nested-struct aggregate init (missing
+// __PVT__MLKEM_SHARED_KEY). Neither builds, which breaks the shared OSS model for
+// every crypto test. VCS builds the real block fine; this shim is swapped in for
+// OSS DV (both tools, for model parity) via sep_sim_cfg.toml.
 //
 // FIDELITY: the real block is an ABR-engine placeholder -- there is no ABR engine
 // (hwif_in tied '0), and no OSS test exercises the ABR datapath. sep_crypto only reads
@@ -154,10 +153,10 @@ module abr_wrapper_key_reg (
     // from real (AXI-written) regfile state. Two deliberate reasons:
     //   * regfile is a variable (AXI-written) -> Verilator cannot const-fold hwif_out
     //     into sep_crypto's reads (that would recreate the "0U.__PVT__..." bug).
-    //   * NO struct-level aggregate ('{default:'0}) is written -- Verilator 5.046
+    //   * NO struct-level aggregate ('{default:'0}) is written -- VL 5.046
     //     miscompiles an aggregate-zero of the nested abr_wrapper_key__out_t type
     //     ("abr_seed_rf__out_t has no member __PVT__MLDSA_SEED"). The other struct
-    //     fields are left to Verilator's default zero-init (never read by sep_crypto).
+    //     fields are left to the simulator's default zero-init (never read by sep_crypto).
     // With no ABR engine the ML-KEM shared-key IRQ stays de-asserted unless firmware
     // writes IRQ_ENABLE (still gated by IRQ_STATUS.key_valid, which no engine sets).
     assign hwif_out.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.value    = regfile[IRQ_STATUS_W][0];
