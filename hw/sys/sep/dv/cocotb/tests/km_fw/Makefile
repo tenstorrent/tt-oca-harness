@@ -29,9 +29,22 @@ OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
 KM_FW_DIR := $(OCH_ROOT)/hw/ip/key_manager/dv/fw
 KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
 
+# The wipe knobs are COMPILE-TIME DEFINES, not make variables. Upstream's KM tb
+# Makefile maps PROD_BOOT_WIPE/PROD_UNREC_WIPE onto them, but the shared DV
+# firmware engine has no such mapping -- passing PROD_* here is silently ignored
+# and drivers/rom_boot.c falls back to its `#ifndef` defaults of 1 (wipe ENABLED).
+# A rom_main built that way runs ~24k instructions, performs the production boot
+# wipe and HALTS before posting RESP_KM_READY, which reads exactly like a dead KM
+# (km_rom_req_count stops at a fixed value; the mailbox never produces a word).
+#
+# rom_boot.c is a DRIVER, not a test source, so the define must ride
+# FW_EXTRA_CFLAGS (compile.mk applies it to the driver rule);
+# FW_TEST_EXTRA_CFLAGS is test-only and would not reach it.
+ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAULT=0
+
 rom_main:
 	$(MAKE) -C $(KM_FW_DIR) -f fw.mk dv-fw-tests TEST=rom_main \
-	    OCAH_ROOT=$(OCH_ROOT) PROD_BOOT_WIPE=0 PROD_UNREC_WIPE=0
+	    OCAH_ROOT=$(OCH_ROOT) FW_EXTRA_CFLAGS="$(ROM_MAIN_WIPE_DEFINES)"
 	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
 

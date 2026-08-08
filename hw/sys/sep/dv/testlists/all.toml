@@ -51,11 +51,7 @@ tests = [
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_irq_ip_to_aggregator_test",
-    # Parked: after entropy bring-up + KM release, wait_km_ready() never sees
-    # RESP_KM_READY (mailbox STATUS stays outbound-empty @ 0x1092000c) while the
-    # background ESRC FIFO drain keeps the log looking alive. Revisit later;
-    # crypto.toml leaf kept for by-name runs.
-    #   "sep_drbg_real_sink_multi_km_aes_test",
+    "sep_drbg_real_sink_multi_km_aes_test",
     # The 4 KM sideload KATs are excluded from the regression group: they fail in
     # KM firmware, not in DV. rom_drbg_get_block() blocks on a DRBG read while
     # leaving CFG.TIMEOUT at its 256-cycle reset, so CMD_KEY_TRANSFER aborts long
@@ -137,8 +133,7 @@ tests = [
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
     "sep_irq_ip_to_aggregator_test",
-    # Parked (same as "all" group): wait_km_ready never gets RESP_KM_READY.
-    #   "sep_drbg_real_sink_multi_km_aes_test",
+    "sep_drbg_real_sink_multi_km_aes_test",
     # The 4 KM sideload KATs are excluded here for the same reason as in the "all"
     # group above (KM ROM firmware blocks on a DRBG read with CFG.TIMEOUT at its
     # reset). See docs/SEP_OSS_KM_SIDELOAD_KAT_PARKED.md; km.toml keeps the leaves.
