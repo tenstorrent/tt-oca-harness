@@ -139,11 +139,14 @@ mode) contains data.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `DCD` | R | 0x0 a| Data Carrier Detect. This bit is the active-low version of the `dcd_ni`
-input.
-| 6 | `RI` | R | 0x0 a| Ring Indicator. This bit is the active-low version of the `ri_ni` input.
-| 5 | `DSR` | R | 0x0 a| Data Set Ready. This bit is the active-low version of the `dsr_ni` input.
-| 4 | `CTS` | R | 0x0 a| Clear to Send. This bit is the active-low version of the `cts_ni` input.
+| 7 | `DCD` | R | 0x0 a| Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite
+polarity, so it reads `1` while a carrier is detected.
+| 6 | `RI` | R | 0x0 a| Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so
+it reads `1` while the remote modem signals an incoming call.
+| 5 | `DSR` | R | 0x0 a| Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,
+so it reads `1` while the remote modem is connected and ready.
+| 4 | `CTS` | R | 0x0 a| Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
+it reads `1` while the remote device is ready to receive data.
 | 3 | `DDCD` | R | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
 since the last time this register was read. This bit triggers the Modem Status
 Interrupt.

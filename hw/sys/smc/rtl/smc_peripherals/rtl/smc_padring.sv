@@ -375,9 +375,9 @@ module smc_padring #(
 
 		// SPI DQS Loopback
 		lsio_interface_select_o[54] = spi_enable_i;
-		lsio_core2pad_en_n[54]      = spi_mem_rebar_oepad_i;
+		lsio_core2pad_en_n[54]      = ~spi_mem_rebar_oepad_i;
 		lsio_core2pad_data[54]      = spi_mem_rebar_opad_i;
-		lsio_pad2core_en_n[54]      = spi_mem_rebar_iepad_i;
+		lsio_pad2core_en_n[54]      = ~spi_mem_rebar_iepad_i;
 		spi_mem_rebar_ipad_o        = lsio_pad2core_data[54];
 
 		// System Timer OCTS (old 58/59, now 55/56 after the 68->65 GPIO shrink)

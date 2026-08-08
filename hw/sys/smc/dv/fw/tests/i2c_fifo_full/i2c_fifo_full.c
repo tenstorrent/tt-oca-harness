@@ -342,17 +342,17 @@ int main(void) {
     }
     write_scratch(1, 0x00000035);
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
+    // Explicitly set ACQ_START_STOP_EN via generated field (not hand bit index).
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
 
-    // Signal setup complete to testbench
-    write_scratch(1, 0xEBEDEBE4);
+    // Distinct setup marker (TB must not race this with final DONE).
+    write_scratch(1, 0xEBEDEBE2);
 
     // Test FMT FIFO
     write_scratch(1, 0x00000040);
@@ -397,9 +397,7 @@ int main(void) {
     //=========================================================================
     // Test Complete - Signal to testbench
     //=========================================================================
-    write_scratch(1, 0x00000090);
-
-    // NOW signal setup complete to testbench
+    // Final DONE marker for TB (distinct from setup 0xEBEDEBE2).
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");

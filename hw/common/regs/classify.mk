@@ -29,7 +29,7 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
-  csrng edn secure_dma spi_controller \
+  csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl
@@ -114,6 +114,7 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   i2c_wrap \
   key_manager \
   oca_i3c_wrap \
+  sep_external \
   smc \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \

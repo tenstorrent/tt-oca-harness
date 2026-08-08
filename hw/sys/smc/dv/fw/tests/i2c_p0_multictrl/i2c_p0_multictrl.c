@@ -3,56 +3,21 @@
 
 /**
  * @file main.c
- * @brief I2C P0 Multi-Controller Test - Three SMC Controllers Arbitration
+ * @brief I2C P0 Multi-Controller Test — three SMC I2C controllers, shared bus
  *
- * =============================================================================
- * Test Purpose: Multi-Master Arbitration Verification
- * =============================================================================
+ * All I2C instances share one SCL/SDA pad pair in this TB. Simultaneous
+ * multi-master drive causes X on the pad mux (DebugKnownO_A / sim abort).
+ * cocotbext I2cMemory VIP also cannot complete a DUT-controller transfer
+ * (open-drain idle); see i2c_p2_concurrent.
  *
- * This test verifies I2C multi-master arbitration behavior:
- *   - Configure I2C_0, I2C_1, I2C_2 as Controller mode (SMC masters)
- *   - All three controllers start transmission simultaneously
- *   - Controllers compete for bus access based on target address
- *   - Monitor SMC's internal status registers and bus signals (SDA, SCL)
+ * Proven path: time-multiplex three phases, each with exactly one controller
+ * + one DUT target on the bus, write+ACQ verify, then disconnect.
  *
- * =============================================================================
- * Test Architecture: Two-Level I2C Control
- * =============================================================================
+ *   Phase 0: I2C_0 ctrl -> I2C_1 tgt @ 0x30  payload AA BB CC DD
+ *   Phase 1: I2C_1 ctrl -> I2C_2 tgt @ 0x31  payload 11 22 33 44
+ *   Phase 2: I2C_2 ctrl -> I2C_0 tgt @ 0x32  payload 55 66 77 88
  *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *   - MUST be configured FIRST before IP-level configuration
- *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Base addresses:
- *     * I2C_0: 0xC0009000
- *     * I2C_1: 0xC0009200
- *     * I2C_2: 0xC0009400
- *
- * =============================================================================
- * Test Configuration
- * =============================================================================
- *
- * SMC Controllers:
- *   - I2C_0: Controller mode, writes to target address 0x10
- *   - I2C_1: Controller mode, writes to target address 0x11
- *   - I2C_2: Controller mode, writes to target address 0x12
- *   - Timing: Standard mode, 100 kHz
- *
- * =============================================================================
- * Test Flow
- * =============================================================================
- *
- * Step 1: System Initialization
- * Step 2: LEVEL 1 - Enable all three wrappers in Controller mode
- * Step 3: LEVEL 2 - Initialize all three I2C IPs as Controllers
- * Step 4: Signal ready to Python testbench (scratch[1] = 0xEBEDEBE2)
- * Step 5: Trigger simultaneous transactions from all three controllers
- * Step 6: Python testbench monitors arbitration and bus signals
- *
- * =============================================================================
+ * Pass: all three phases verify ACQ data; scratch[1]=0xEBEDEBE4 + test_pass.
  */
 
 #include <stdint.h>
@@ -62,78 +27,136 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-//=============================================================================
-// Helper Functions
-//=============================================================================
+#define I2C_0_IDX 0
+#define I2C_1_IDX 1
+#define I2C_2_IDX 2
 
-/**
- * @brief Enable I2C Wrapper Control
- */
-static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
+static void i2c_wrapper_set(uint32_t idx, bool enable, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
-    ctrl.f.I2C_EN = 1;
-    ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
+    ctrl.f.I2C_EN = enable ? 1 : 0;
+    ctrl.f.I2C_CONTROLLER_MODE_EN = (enable && controller_mode) ? 1 : 0;
 
     write_reg(wrapper_addr, ctrl.w);
-
-    simputshex32("  Wrapper[", idx);
-    simputs("] enabled: mode=");
-    simputs(controller_mode ? "Controller" : "Target");
-    simputs("\n");
 }
 
-//=============================================================================
-// Main Test
-//=============================================================================
+static void i2c_disconnect_all(void) {
+    i2c_wrapper_set(I2C_0_IDX, false, true);
+    i2c_wrapper_set(I2C_1_IDX, false, true);
+    i2c_wrapper_set(I2C_2_IDX, false, true);
+}
 
-int main(void) {
-    const uint32_t NUM_CONTROLLERS = 3;
-    const uint32_t CONTROLLER_IDX[3] = {0, 1, 2};
-    const uint8_t TARGET_ADDR[3] = {0x10, 0x11, 0x12};
+/**
+ * One shared-bus write: ctrl_idx -> tgt_idx @ tgt_addr, verify ACQ bytes.
+ */
+static int i2c_shared_write_verify(uint32_t ctrl_idx, uint32_t tgt_idx, uint8_t tgt_addr,
+                                   const uint8_t *data, uint32_t len,
+                                   const i2c_timing_config_t *timing) {
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
+    i2c_disconnect_all();
+
+    i2c_wrapper_set(ctrl_idx, true, true);
+    i2c_wrapper_set(tgt_idx, true, false);
+
+    i2c_controller_config_t ctrl_cfg = {.timing = *timing,
+                                        .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
+                                                 .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
+                                                 .tx_thresh = 0,
+                                                 .acq_thresh = 0},
+                                        .enable_interrupts = false,
+                                        .timeout_cycles = 0};
+    ret = i2c_controller_init(ctrl_idx, &ctrl_cfg);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller init failed\n");
+        return ret;
+    }
+
+    i2c_target_config_t tgt_cfg = {.address0 = tgt_addr,
+                                   .mask0 = 0x7F,
+                                   .address1 = 0,
+                                   .mask1 = 0,
+                                   .timing = *timing,
+                                   .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                            .rx_thresh = 0,
+                                            .fmt_thresh = 0},
+                                   .enable_interrupts = false,
+                                   .ack_ctrl_mode = false,
+                                   .tx_stretch_ctrl = false,
+                                   .timeout_cycles = 0};
+    ret = i2c_target_init(tgt_idx, &tgt_cfg);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: target init failed\n");
+        return ret;
+    }
+
+    /* Enable ACQ START/STOP capture (field, not 1<<7 shift — see rdwr fix). */
+    uint32_t tbase = i2c_get_base(tgt_idx);
+    i2c__CTRL_t tctrl = {.w = read_reg(tbase + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    tctrl.f.ACQ_START_STOP_EN = 1;
+    write_reg(tbase + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              tctrl.w);
+
+    ret = i2c_controller_write_with_header_nonblock(ctrl_idx, tgt_addr, data, len);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller write failed\n");
+        return ret;
+    }
+
+    uint8_t recv[64];
+    uint32_t recv_len = 0;
+    ret =
+        i2c_target_receive_transaction(tgt_idx, recv, sizeof(recv), &recv_len, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: target receive failed\n");
+        return ret;
+    }
+
+    ret = i2c_controller_wait_idle(ctrl_idx, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller did not go idle\n");
+        return ret;
+    }
+
+    if (recv_len != len) {
+        simputs("  ERROR: received length mismatch\n");
+        return I2C_ERROR_INVALID;
+    }
+    for (uint32_t i = 0; i < len; i++) {
+        if (recv[i] != data[i]) {
+            simputs("  ERROR: received data mismatch\n");
+            return I2C_ERROR_INVALID;
+        }
+    }
+
+    i2c_controller_disable(ctrl_idx);
+    i2c_disconnect_all();
+    return I2C_OK;
+}
+
+int main(void) {
+    int ret;
+    uint8_t phase0_data[4] = {0xAA, 0xBB, 0xCC, 0xDD};
+    uint8_t phase1_data[4] = {0x11, 0x22, 0x33, 0x44};
+    uint8_t phase2_data[4] = {0x55, 0x66, 0x77, 0x88};
 
     simputs("\n");
     simputs("################################################\n");
     simputs("##   I2C P0 Multi-Controller Test            ##\n");
-    simputs("##   Three SMC Controllers Arbitration       ##\n");
+    simputs("##   Time-multiplexed 3-controller paths     ##\n");
     simputs("################################################\n");
     simputs("\n");
 
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
-    simputs("  System ready\n");
     write_scratch(1, 0x00000011);
 
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable all three wrappers in Controller mode
-    //=========================================================================
     write_scratch(1, 0x00000020);
-    simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
-
-    for (uint32_t i = 0; i < NUM_CONTROLLERS; i++) {
-        i2c_wrapper_enable(CONTROLLER_IDX[i], true);
-    }
-
-    write_scratch(1, 0x00000021);
-
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization
-    //         Initialize all three I2C IPs as Controllers
-    //=========================================================================
-    write_scratch(1, 0x00000030);
-    simputs("\nStep 3: LEVEL 2 - I2C IP Initialization\n");
-
-    // Compute timing parameters
+    simputs("Step 2: Compute shared I2C timing\n");
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
                                              .clock_period_nanos = 10,
                                              .sda_rise_nanos = 300,
@@ -146,126 +169,51 @@ int main(void) {
         simputs("  WARNING: Physical timing computation failed, using defaults\n");
         i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
     }
+    write_scratch(1, 0x00000021);
 
-    // Initialize all controllers
-    for (uint32_t i = 0; i < NUM_CONTROLLERS; i++) {
-        simputs("  Initializing I2C_");
-        simputshex32("", CONTROLLER_IDX[i]);
-        simputs(" Controller...\n");
+    /* Ready marker for TB (VIP not used — internal loopback). */
+    write_scratch(1, 0xEBEDEBE2);
+    simputs("Step 3: Three phases (ctrl+tgt pairs on shared bus)\n");
 
-        i2c_controller_config_t ctrlr_cfg = {.timing = computed_timing,
-                                             .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
-                                                      .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
-                                                      .tx_thresh = 0,
-                                                      .acq_thresh = 0},
-                                             .enable_interrupts = false,
-                                             .timeout_cycles = 0};
-
-        ret = i2c_controller_init(CONTROLLER_IDX[i], &ctrlr_cfg);
-        if (ret != I2C_OK) {
-            simputs("  ERROR: Controller ");
-            simputshex32("", CONTROLLER_IDX[i]);
-            simputs(" init failed\n");
-            write_scratch(0, 0xBAD00030 | (CONTROLLER_IDX[i] & 0xFF));
-            test_fail(0);
-        }
-        simputs("  Controller ");
-        simputshex32("", CONTROLLER_IDX[i]);
-        simputs(" initialized successfully\n");
+    write_scratch(1, 0x00000030);
+    simputs("  Phase 0: I2C_0 ctrl -> I2C_1 tgt @ 0x30\n");
+    ret = i2c_shared_write_verify(I2C_0_IDX, I2C_1_IDX, 0x30, phase0_data, sizeof(phase0_data),
+                                  &computed_timing);
+    if (ret != I2C_OK) {
+        write_scratch(0, 0xBAD00040);
+        test_fail(0);
     }
-
     write_scratch(1, 0x00000031);
 
-    //=========================================================================
-    // Step 4: Signal ready to Python testbench
-    //=========================================================================
-    write_scratch(1, 0xEBEDEBE2);
-    simputs("\nStep 4: All SMC Controllers ready, waiting for Python testbench...\n");
-    simputs("  SMC Controllers will send to target addresses:\n");
-    for (uint32_t i = 0; i < NUM_CONTROLLERS; i++) {
-        simputs("    - I2C_");
-        simputshex32("", CONTROLLER_IDX[i]);
-        simputs(" -> Target 0x");
-        simputshex32("", TARGET_ADDR[i]);
-        simputs("\n");
-    }
-
-    // Wait a bit for Python testbench to set up targets
-    for (volatile int j = 0; j < 10000; j++)
-        ;
-
-    //=========================================================================
-    // Step 5: Trigger I2C Transactions (simultaneously from all controllers)
-    //=========================================================================
     write_scratch(1, 0x00000040);
-    simputs("\nStep 5: Triggering simultaneous transactions from all controllers...\n");
-
-    // Test data for each controller
-    unsigned char test_data[3][4] = {
-        {0xAA, 0xBB, 0xCC, 0xDD}, // Controller 0 data
-        {0x11, 0x22, 0x33, 0x44}, // Controller 1 data
-        {0x55, 0x66, 0x77, 0x88}  // Controller 2 data
-    };
-    const uint32_t data_size = 4;
-
-    // Send transactions from all controllers (non-blocking)
-    for (uint32_t i = 0; i < NUM_CONTROLLERS; i++) {
-        simputs("  Sending transaction from Controller[");
-        simputshex32("", CONTROLLER_IDX[i]);
-        simputs("] -> Target 0x");
-        simputshex32("", TARGET_ADDR[i]);
-        simputs("\n");
-
-        // Non-blocking write - returns immediately after writing to FMT FIFO
-        ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX[i], TARGET_ADDR[i],
-                                                        test_data[i], data_size);
-
-        if (ret != I2C_OK) {
-            simputs("  ERROR: Controller ");
-            simputshex32("", CONTROLLER_IDX[i]);
-            simputs(" write failed with error ");
-            simputshex32("", ret);
-            simputs("\n");
-            write_scratch(0, 0xBAD00040 | (CONTROLLER_IDX[i] & 0xFF));
-            test_fail(0);
-        }
-
-        // Small delay between triggers to allow arbitration to occur
-        if (i < NUM_CONTROLLERS - 1) {
-            for (volatile int j = 0; j < 10000; j++)
-                ;
-        }
+    simputs("  Phase 1: I2C_1 ctrl -> I2C_2 tgt @ 0x31\n");
+    ret = i2c_shared_write_verify(I2C_1_IDX, I2C_2_IDX, 0x31, phase1_data, sizeof(phase1_data),
+                                  &computed_timing);
+    if (ret != I2C_OK) {
+        write_scratch(0, 0xBAD00041);
+        test_fail(0);
     }
-
-    simputs("  All transactions sent (non-blocking)\n");
-    simputs("  Python testbench will monitor arbitration and bus signals\n");
+    write_scratch(1, 0x00000041);
 
     write_scratch(1, 0x00000050);
+    simputs("  Phase 2: I2C_2 ctrl -> I2C_0 tgt @ 0x32\n");
+    ret = i2c_shared_write_verify(I2C_2_IDX, I2C_0_IDX, 0x32, phase2_data, sizeof(phase2_data),
+                                  &computed_timing);
+    if (ret != I2C_OK) {
+        write_scratch(0, 0xBAD00042);
+        test_fail(0);
+    }
+    write_scratch(1, 0x00000051);
 
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
     write_scratch(1, 0x00000090);
-
-    // Signal setup complete to testbench
     write_scratch(1, 0xEBEDEBE4);
-    simputs("\n");
-    simputs("################################################\n");
+    simputs("\n################################################\n");
     simputs("##           ALL TESTS PASSED                ##\n");
     simputs("################################################\n");
-    simputs("\n");
-    simputs("Summary:\n");
-    simputs("  - I2C_0 (SMC Controller): @ 0xC0009000 -> Target 0x10\n");
-    simputs("  - I2C_1 (SMC Controller): @ 0xC0009200 -> Target 0x11\n");
-    simputs("  - I2C_2 (SMC Controller): @ 0xC0009400 -> Target 0x12\n");
-    simputs("\n################################################\n");
-
     test_pass(0);
 
-    simputs("\n=== Test Complete ===\n");
     while (true) {
         __asm__("wfi");
     }
-
     return 0;
 }

@@ -104,90 +104,6 @@ typedef enum {
 //=============================================================================
 
 /**
- * @brief Print complete FIFO status for debugging
- */
-static void print_complete_fifo_status(uint32_t controller_idx, uint32_t target_idx,
-                                       const char *label) {
-    simputs("  [FIFO_STATUS] ");
-    simputs(label);
-    simputs("\n");
-
-    // Controller Status
-    {
-        uint32_t base = i2c_get_base(controller_idx);
-        i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        i2c__HOST_FIFO_STATUS_t fifo_status = {
-            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
-                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-
-        simputs("    Controller[");
-        simputshex32("", controller_idx);
-        simputs("]:\n");
-        simputs("      CTRL: enablehost=");
-        simputshex32("", ctrl.f.ENABLEHOST);
-        simputs(", enabletarget=");
-        simputshex32("", ctrl.f.ENABLETARGET);
-        simputs("\n");
-        simputs("      STATUS: hostidle=");
-        simputshex32("", status.f.HOSTIDLE);
-        simputs(", fmtfull=");
-        simputshex32("", status.f.FMTFULL);
-        simputs(", fmtempty=");
-        simputshex32("", status.f.FMTEMPTY);
-        simputs(", rxfull=");
-        simputshex32("", status.f.RXFULL);
-        simputs(", rxempty=");
-        simputshex32("", status.f.RXEMPTY);
-        simputs("\n");
-        simputs("      FIFO: fmtlvl=");
-        simputshex32("", fifo_status.f.FMTLVL);
-        simputs(", rxlvl=");
-        simputshex32("", fifo_status.f.RXLVL);
-        simputs("\n");
-    }
-
-    // Target Status
-    {
-        uint32_t base = i2c_get_base(target_idx);
-        i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        i2c__TARGET_FIFO_STATUS_t fifo_status = {
-            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
-                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-
-        simputs("    Target[");
-        simputshex32("", target_idx);
-        simputs("]:\n");
-        simputs("      CTRL: enablehost=");
-        simputshex32("", ctrl.f.ENABLEHOST);
-        simputs(", enabletarget=");
-        simputshex32("", ctrl.f.ENABLETARGET);
-        simputs("\n");
-        simputs("      STATUS: targetidle=");
-        simputshex32("", status.f.TARGETIDLE);
-        simputs(", acqfull=");
-        simputshex32("", status.f.ACQFULL);
-        simputs(", acqempty=");
-        simputshex32("", status.f.ACQEMPTY);
-        simputs(", txfull=");
-        simputshex32("", status.f.TXFULL);
-        simputs(", txempty=");
-        simputshex32("", status.f.TXEMPTY);
-        simputs("\n");
-        simputs("      FIFO: txlvl=");
-        simputshex32("", fifo_status.f.TXLVL);
-        simputs(", acqlvl=");
-        simputshex32("", fifo_status.f.ACQLVL);
-        simputs("\n");
-    }
-}
-
-/**
  * @brief Enable I2C Wrapper Control
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
@@ -207,152 +123,74 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 }
 
 /**
- * @brief Write with header and optional STOP control using i2c_opentitan functions
- * This function writes data with length header, supporting Repeated START
- * Uses i2c_opentitan.c helper functions for consistency
+ * @brief Fail-closed: wait for ACQ DATA byte matching expected, then drain/reset ACQ.
  */
-static int i2c_controller_write_with_header_conti(uint32_t idx, uint8_t target_addr,
-                                                  const uint8_t *data, uint32_t len,
-                                                  bool send_stop) {
-    if (!data || len == 0) return I2C_ERROR_INVALID;
+static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expected) {
+    uint32_t target_base = i2c_get_base(target_idx);
+    uint32_t wait_count = 0;
+    const uint32_t ACQ_WAIT_TIMEOUT = 10000;
+    bool found = false;
 
-    uint32_t base = i2c_get_base(idx);
-
-    // CRITICAL FIX: Support Repeated START (same logic as i2c_controller_write)
-    // In Repeated START scenarios, controller stays busy between transactions.
-    // Only wait for idle if controller was previously stopped (hostidle=1).
-    // If controller is already busy (hostidle=0), assume Repeated START sequence.
-    i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-
-    // Check if we need to wait for idle
-    // If hostidle=1, wait normally (previous transaction sent STOP)
-    // If hostidle=0, skip wait (Repeated START - controller intentionally kept busy)
-    if (status.f.HOSTIDLE) {
-        // Controller was idle, wait for it to be ready
-        int ret = i2c_controller_wait_idle(idx, I2C_TIMEOUT_DEFAULT);
-        if (ret != I2C_OK) return ret;
-    }
-// else: Controller is busy - this is a Repeated START, continue directly
-
-// Helper macro: Wait for FIFO to be NOT FULL before writing (from i2c_opentitan.c)
-// FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
-#define WAIT_FIFO_NOT_FULL() \
-    do { \
-        uint32_t timeout = 5000; \
-        i2c__STATUS_t fifo_status; \
-        while (timeout > 0) { \
-            fifo_status.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) - \
-                                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))); \
-            if (fifo_status.f.FMTFULL == 0) break; \
-            timeout--; \
-        } \
-        if (timeout == 0) return I2C_ERROR_TIMEOUT; \
-    } while (0)
-
-    i2c__FDATA_t fdata = {.w = 0};
-
-    // Send START + address (write bit = 0)
-    // If controller was busy, this becomes a Repeated START automatically
-    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
-    fdata.f.FBYTE = (target_addr << 1) | 0x0;
-    fdata.f.START = 1;
-    fdata.f.READB = 0;
-    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
-                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-              fdata.w);
-
-    // Send length header
-    WAIT_FIFO_NOT_FULL(); // Ensure FIFO ready before write
-    fdata.w = 0;
-    fdata.f.FBYTE = (len & 0xFF);
-    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
-                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-              fdata.w);
-
-    // Send data bytes with STOP control
-    for (uint32_t i = 0; i < len; i++) {
-        WAIT_FIFO_NOT_FULL(); // CRITICAL: Check before EACH write!
-        fdata.w = 0;
-        fdata.f.FBYTE = data[i];
-        if (send_stop && (i == len - 1)) {
-            fdata.f.STOP = 1;
-        }
-        fdata.f.READB = 0;
-        write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
-                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-                  fdata.w);
-    }
-
-#undef WAIT_FIFO_NOT_FULL
-
-    // CRITICAL: Wait for FMT FIFO to be completely processed AND controller ready for next
-    // transaction In repeated START scenario, we need to ensure:
-    // 1. FMT FIFO is empty (all entries processed)
-    // 2. FMT FIFO has space for next transaction (at least 2 entries for START+address and data)
-    // 3. Controller state machine is ready (not in PopFmtFifo state waiting for more entries)
-    if (!send_stop) {
-        // For repeated START: Wait for FMT FIFO to become empty AND have space
-        // This ensures the entire transaction has been sent AND controller is ready for next
-        // transaction
-        uint32_t wait_count = 0;
-        const uint32_t MAX_WAIT = 100000; // Increased timeout for complete transaction
-        i2c__STATUS_t status;
-        i2c__HOST_FIFO_STATUS_t fifo_status;
-
-        // Step 1: Wait for FMT FIFO to become empty (all entries processed)
-        while (wait_count < MAX_WAIT) {
-            status.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                        SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-            if (status.f.FMTEMPTY) {
-                // FMT FIFO is empty, all entries have been processed
-                break;
+    while (wait_count < ACQ_WAIT_TIMEOUT && !found) {
+        i2c__STATUS_t status = {
+            .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        if (!status.f.ACQEMPTY) {
+            i2c__ACQDATA_t acqdata = {
+                .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+            if (acqdata.f.SIGNAL == I2C_ACQ_SIGNAL_DATA) {
+                uint8_t abyte = (uint8_t)acqdata.f.ABYTE;
+                simputs("    ACQ DATA abyte: 0x");
+                simputshex32("", abyte);
+                simputs("\n");
+                if (abyte != expected) {
+                    simputs("    ERROR: ACQ DATA mismatch, expected 0x");
+                    simputshex32("", expected);
+                    simputs("\n");
+                    return I2C_ERROR;
+                }
+                found = true;
             }
+        } else {
             wait_count++;
-        }
-
-        if (wait_count >= MAX_WAIT) {
-            simputs("    [Controller] WARNING: Timeout waiting for FMT FIFO to become empty\n");
-            return I2C_ERROR_TIMEOUT;
-        }
-
-        // Step 2: Wait for FMT FIFO to have space (at least 2 entries for next transaction)
-        // This ensures controller state machine has moved past PopFmtFifo state
-        wait_count = 0;
-        while (wait_count < MAX_WAIT) {
-            fifo_status.w =
-                read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
-                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-            status.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                        SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-
-            // Check: FMT FIFO empty AND has space (fmtfull=0 means space available)
-            if (status.f.FMTEMPTY && !status.f.FMTFULL && fifo_status.f.FMTLVL == 0) {
-                // FMT FIFO is empty and ready for next transaction
-                break;
+            if ((wait_count % 1000) == 0) {
+                for (volatile int i = 0; i < 100; i++) {
+                }
             }
-            wait_count++;
         }
-
-        if (wait_count >= MAX_WAIT) {
-            simputs("    [Controller] WARNING: Timeout waiting for FMT FIFO to be ready\n");
-            return I2C_ERROR_TIMEOUT;
-        }
-
-        // Step 3: Small delay to ensure controller state machine is stable
-        // This gives the FSM time to transition from PopFmtFifo/Active to Idle (ready for next
-        // command)
-        for (volatile int i = 0; i < 100; i++)
-            ;
-
-        simputs("    [Controller] FMT FIFO ready, controller ready for next transaction\n");
-    } else {
-        // For STOP transaction: Wait for controller to become idle
-        // This ensures transaction is completely finished
-        int ret = i2c_controller_wait_idle(idx, I2C_TIMEOUT_DEFAULT);
-        if (ret != I2C_OK) return ret;
     }
 
+    if (!found) {
+        simputs("    ERROR: timeout waiting for ACQ DATA byte\n");
+        return I2C_ERROR;
+    }
+
+    uint32_t target_events = i2c_get_target_events(target_idx);
+    if (target_events != 0) {
+        i2c_clear_target_events(target_idx, 0xFFFFFFFF);
+    }
+
+    uint32_t drain_count = 0;
+    while (!i2c_target_acq_fifo_empty(target_idx)) {
+        (void)read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+        drain_count++;
+        if (drain_count > 8) {
+            break;
+        }
+    }
+    i2c_reset_fifos(target_idx, false, false, false, true);
+    if (!i2c_target_acq_fifo_empty(target_idx)) {
+        while (!i2c_target_acq_fifo_empty(target_idx)) {
+            (void)read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+        }
+    }
+
+    simputs("    ACQ verified and cleared (extra drained ");
+    simputshex32("", drain_count);
+    simputs(")\n");
     return I2C_OK;
 }
 
@@ -489,11 +327,11 @@ int main(void) {
     }
     simputs("  Target initialized successfully\n");
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
+    // Enable ACQ START/STOP capture so DATA bytes are distinguishable
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
@@ -594,78 +432,12 @@ int main(void) {
                 test_fail(0);
             }
 
-            // ==================================================================
-            // CRITICAL FIX: Clear Target ACQ FIFO after write transaction
-            // ==================================================================
-            // Problem: Write transactions leave entries in Target ACQ FIFO:
-            //   - START entry
-            //   - Address byte entry
-            //   - Data byte entries
-            //   - STOP entry (if last transaction)
-            //
-            // If ACQ FIFO is not cleared, entries accumulate:
-            //   - ACQ FIFO depth increases
-            //   - When depth > 6 (remainder <= 2), acq_fifo_plenty_space = 0
-            //   - This causes stretch_addr = 1 and stretch_rx = 1
-            //   - Target cannot leave stretch state until ACQ FIFO is cleared
-            //
-            // Solution: Clear ACQ FIFO immediately after each transaction
-            //   - For non-last transactions (repeated start): Must clear immediately
-            //   - For last transaction: Can clear after transaction completes
-            // ==================================================================
-            if (!send_stop) {
-                // CRITICAL: For repeated START transactions, clear ACQ FIFO immediately
-                // This prevents ACQ FIFO from filling up and causing stretch in next transaction
-                simputs(
-                    "    [Target] Clearing ACQ FIFO after write transaction (repeated START)...\n");
-
-                // Step 1: Clear any unhandled TARGET_EVENTS
-                uint32_t target_events = i2c_get_target_events(TARGET_IDX);
-                if (target_events != 0) {
-                    simputs("    [Target] Clearing unhandled TARGET_EVENTS: 0x");
-                    simputshex32("", target_events);
-                    simputs("\n");
-                    i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
-                }
-
-                // Step 2: Drain ACQ FIFO entries
-                uint32_t drain_base = i2c_get_base(TARGET_IDX);
-                uint32_t drain_count = 0;
-                while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                    (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                    drain_count++;
-                    if (drain_count > 8) {
-                        simputs("    [Target] WARNING: Drained more than 8 entries, stopping\n");
-                        break;
-                    }
-                }
-
-                // Step 3: Reset ACQ FIFO to ensure it's completely empty
-                i2c_reset_fifos(TARGET_IDX, false, false, false, true);
-
-                // Step 4: Verify ACQ FIFO is empty
-                if (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                    simputs("    [Target] WARNING: ACQ FIFO not empty after reset, draining "
-                            "again...\n");
-                    while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                        (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                                     SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                    }
-                }
-
-                simputs("    [Target] ACQ FIFO cleared (drained ");
-                simputshex32("", drain_count);
-                simputs(" entries)\n");
+            // Fail-closed: prove target ACQ saw write data, then clear for next txn
+            simputs("    [Target] Verifying ACQ DATA after write...\n");
+            if (target_verify_acq_data_and_clear(TARGET_IDX, write_data) != I2C_OK) {
+                write_scratch(0, 0xBAD00044 | (txn & 0xFF));
+                test_fail(0);
             }
-            // Note: For last transaction (with STOP), ACQ FIFO can be cleared after all
-            // transactions But for repeated START, we must clear immediately to prevent stretch
-
-            // Original code (commented out - no ACQ FIFO clearing):
-            // simputs("  Transaction ");
-            // simputshex32("", txn);
-            // simputs(" completed successfully\n");
-            // write_scratch(0, 0xDEB00040 | (txn & 0xFF));
 
             simputs("  Transaction ");
             simputshex32("", txn);
@@ -724,78 +496,35 @@ int main(void) {
                 test_fail(0);
             }
 
-            // ==================================================================
-            // CRITICAL FIX: Clear Target ACQ FIFO after read transaction
-            // ==================================================================
-            // Problem: Read transactions leave entries in Target ACQ FIFO:
-            //   - START entry
-            //   - Address byte entry (with READ bit)
-            //
-            // If ACQ FIFO is not cleared, entries accumulate:
-            //   - ACQ FIFO depth increases
-            //   - When depth > 6 (remainder <= 2), acq_fifo_plenty_space = 0
-            //   - This causes stretch_addr = 1 and stretch_rx = 1
-            //   - Target cannot leave stretch state until ACQ FIFO is cleared
-            //
-            // Solution: Clear ACQ FIFO immediately after each transaction
-            //   - For non-last transactions (repeated start): Must clear immediately
-            //   - For last transaction: Can clear after transaction completes
-            // ==================================================================
-            if (!send_stop) {
-                // CRITICAL: For repeated START transactions, clear ACQ FIFO immediately
-                // This prevents ACQ FIFO from filling up and causing stretch in next transaction
-                simputs(
-                    "    [Target] Clearing ACQ FIFO after read transaction (repeated START)...\n");
-
-                // Step 1: Clear any unhandled TARGET_EVENTS
-                uint32_t target_events = i2c_get_target_events(TARGET_IDX);
-                if (target_events != 0) {
-                    simputs("    [Target] Clearing unhandled TARGET_EVENTS: 0x");
-                    simputshex32("", target_events);
-                    simputs("\n");
-                    i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
-                }
-
-                // Step 2: Drain ACQ FIFO entries
-                uint32_t drain_base = i2c_get_base(TARGET_IDX);
-                uint32_t drain_count = 0;
-                while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                    (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                    drain_count++;
-                    if (drain_count > 8) {
-                        simputs("    [Target] WARNING: Drained more than 8 entries, stopping\n");
-                        break;
-                    }
-                }
-
-                // Step 3: Reset ACQ FIFO to ensure it's completely empty
-                i2c_reset_fifos(TARGET_IDX, false, false, false, true);
-
-                // Step 4: Verify ACQ FIFO is empty
-                if (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                    simputs("    [Target] WARNING: ACQ FIFO not empty after reset, draining "
-                            "again...\n");
-                    while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-                        (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                                     SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                    }
-                }
-
-                simputs("    [Target] ACQ FIFO cleared (drained ");
-                simputshex32("", drain_count);
-                simputs(" entries)\n");
+            if (read_recv_buffer[txn] != read_data) {
+                simputs("  ERROR: Read data mismatch got 0x");
+                simputshex32("", read_recv_buffer[txn]);
+                simputs(" expected 0x");
+                simputshex32("", read_data);
+                simputs("\n");
+                write_scratch(0, 0xBAD00055 | (txn & 0xFF));
+                test_fail(0);
             }
-            // Note: For last transaction (with STOP), ACQ FIFO can be cleared after all
-            // transactions But for repeated START, we must clear immediately to prevent stretch
+            simputs("    PASS: Read data matches expected 0x");
+            simputshex32("", read_data);
+            simputs("\n");
 
-            // Original code (commented out - no ACQ FIFO clearing):
-            // simputs("  Transaction ");
-            // simputshex32("", txn);
-            // simputs(" completed successfully (read 0x");
-            // simputshex32("", read_recv_buffer[txn]);
-            // simputs(")\n");
-            // write_scratch(0, 0xDEB00050 | (txn & 0xFF));
+            // Clear leftover ACQ START/addr entries so next Repeated START does not stretch
+            uint32_t target_events = i2c_get_target_events(TARGET_IDX);
+            if (target_events != 0) {
+                i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
+            }
+            uint32_t drain_base = i2c_get_base(TARGET_IDX);
+            uint32_t drain_count = 0;
+            while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
+                (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                drain_count++;
+                if (drain_count > 8) {
+                    break;
+                }
+            }
+            i2c_reset_fifos(TARGET_IDX, false, false, false, true);
 
             simputs("  Transaction ");
             simputshex32("", txn);
@@ -810,10 +539,8 @@ int main(void) {
     write_scratch(1, 0x00000041);
 
     //=========================================================================
-    // Test Complete - Signal to testbench
+    // Test Complete - unique DONE (driver also pulses scratch[1] with 0x8x/0x9x)
     //=========================================================================
-    write_scratch(1, 0x00000090);
-
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");
@@ -850,7 +577,7 @@ int main(void) {
     simputs(
         "  - Function:           i2c_controller_write/i2c_controller_read from i2c_opentitan.c\n");
     simputs("  - Data:                0x5A, 0x5B (1 byte per transaction)\n");
-    simputs("  - Verification:       Check waveform\n");
+    simputs("  - Verification:       ACQ DATA + RX buffer fail-closed compares\n");
     simputs("\n################################################\n");
 
     test_pass(0);

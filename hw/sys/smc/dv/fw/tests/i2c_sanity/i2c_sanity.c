@@ -179,7 +179,7 @@ int main(void) {
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
@@ -408,10 +408,11 @@ int main(void) {
         }
     }
     if (idle_wait_count >= IDLE_WAIT_TIMEOUT) {
-        simputs("  WARNING: Target did not become idle before read request\n");
-    } else {
-        simputs("  Target confirmed idle (SCL should be released)\n");
+        simputs("  ERROR: Target did not become idle before read request\n");
+        write_scratch(0, 0xBAD00060);
+        test_fail(0);
     }
+    simputs("  Target confirmed idle (SCL should be released)\n");
 
     // Final check: Verify no unhandled TARGET_EVENTS before read request
     target_events = i2c_get_target_events(TARGET_IDX);
@@ -477,6 +478,13 @@ int main(void) {
                 simputs("    Received register address from ACQ FIFO: 0x");
                 simputshex32("", abyte);
                 simputs("\n");
+                if (abyte != (uint8_t)REG_ADDR) {
+                    simputs("    ERROR: ACQ DATA abyte mismatch vs REG_ADDR 0x");
+                    simputshex32("", REG_ADDR);
+                    simputs("\n");
+                    write_scratch(0, 0xBAD00064);
+                    test_fail(0);
+                }
                 found_reg_addr = true;
             } else {
                 simputs("    Skipped ACQ signal ");
@@ -495,7 +503,9 @@ int main(void) {
         }
     }
     if (!found_reg_addr) {
-        simputs("    WARNING: Register address not received in ACQ FIFO\n");
+        simputs("    ERROR: Register address not received in ACQ FIFO\n");
+        write_scratch(0, 0xBAD00063);
+        test_fail(0);
     }
 
     // Now perform read phase

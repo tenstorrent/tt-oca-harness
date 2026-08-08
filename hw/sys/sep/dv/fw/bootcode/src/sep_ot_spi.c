@@ -126,7 +126,7 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
     mux.f.spi_sel = 1u; /* 0 = Cadence, 1 = OpenTitan */
     mux.f.cs_force_high = 0u;
-    mmio_write32(OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, mux.w);
+    mmio_write32(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, mux.w);
 
     /* Clock / mode / chip-select timing. */
     spi_controller__CFG_t cfg = {.w = 0u};

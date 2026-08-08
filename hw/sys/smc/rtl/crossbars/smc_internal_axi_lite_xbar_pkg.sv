@@ -5,7 +5,6 @@
 // AUTOMATICALLY GENERATED - DO NOT EDIT
 //
 // Fabric: smc_internal_axi_lite_xbar
-// Generated: 2026-07-21 21:05:01
 
 `include "axi/typedef.svh"
 
