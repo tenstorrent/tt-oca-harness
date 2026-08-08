@@ -58,7 +58,7 @@ IRQ_EIRQ = 1 << 2
 ERR_READ = 1 << 0
 ERR_WRITE = 1 << 1
 
-# CLOCK_GATE_CTRL, from the generated SystemRDL export (AGENTS.md §7). There is no
+# CLOCK_GATE_CTRL, from the generated SystemRDL export. There is no
 # dedicated mailbox gate bit in this repository's sep_cpu_ctrl.rdl -- CLOCK_GATE_CTRL
 # is a placeholder with one implemented bit (pka_cg_enable[0:0]) -- so the mailbox is
 # unconditionally clocked and the "ungate" is a CSR write-path exercise, not a gate

@@ -34,7 +34,7 @@ from sep_reg_meta import SEP_CPU_CTRL
 # sep_cpu_ctrl CLOCK_GATE_CTRL on the CPU-local map: a known-good decode target
 # with a deterministic reset value and no read side effects -- the same anchor the
 # smoke/address-map tests use. Address and expected value are derived from the
-# generated SystemRDL export, never hardcoded (AGENTS.md §7).
+# generated SystemRDL export, never hardcoded.
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 

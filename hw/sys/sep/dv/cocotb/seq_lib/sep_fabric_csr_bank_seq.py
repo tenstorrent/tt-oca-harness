@@ -36,7 +36,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from sep_reg_meta import SEP_CPU_CTRL, sym
 
 # --- fabric clock ungate ------------------------------------------------------
-# Derived from the generated SystemRDL export, never hardcoded (AGENTS.md §7).
+# Derived from the generated SystemRDL export, never hardcoded.
 # sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
 # bit (pka_cg_enable[0:0], reset 0); the per-block gates an earlier revision
 # assumed (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) do not exist, so

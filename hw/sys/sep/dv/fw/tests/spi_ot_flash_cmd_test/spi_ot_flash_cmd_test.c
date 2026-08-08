@@ -71,7 +71,7 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
-// No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is retired in this
+// No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is a nonfree shim absent from this
 // repository (the wrapper's SPI is a struct boundary), so nothing holds CS
 // deasserted and the 0x2000_0000 extension aperture decode-errors.
 

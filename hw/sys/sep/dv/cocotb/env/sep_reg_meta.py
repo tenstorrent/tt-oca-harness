@@ -2,7 +2,7 @@
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks (AGENTS.md §7: prefer source-derived expected values over
+values, or field masks. House rule: prefer source-derived expected values over
 hardcoded literals). ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
 machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
 and hands out three things per register:
@@ -118,7 +118,7 @@ class CHeaderRegBlock:
     Some IP blocks (entropy_source is one) emit per-field metadata only into the
     generated C header, as
     ``<BLOCK>__<REG>__<FIELD>_{bm,bp,bw,reset}`` defines. Parse those so field
-    masks and reset values stay source-derived (AGENTS.md §7) instead of being
+    masks and reset values stay source-derived instead of being
     re-encoded as magic numbers in a sequence.
 
     The important primitive is :meth:`value`: build a register value from named
@@ -201,7 +201,7 @@ def sym(name: str) -> int:
     generated name, e.g. ``sym("AES_REG_MAP_BASE_ADDR")``. Raises rather than
     returning a wrong value if the register flow renames or drops the symbol, so a
     map change surfaces as an import-time error instead of a silently stale
-    constant (AGENTS.md §7).
+    constant.
 
     NOT every hex literal in the DV is an address -- SHA round constants, KAT key
     vectors and CSR bitmasks must stay literal. Only use this where the value is

@@ -30,7 +30,7 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from sep_reg_meta import ENTROPY_SOURCE, SEP_CPU_CTRL
 
 # --- register map -----------------------------------------------------------
-# sep_cpu_ctrl addresses come from the generated SystemRDL export (AGENTS.md §7).
+# sep_cpu_ctrl addresses come from the generated SystemRDL export, never literals.
 # CLOCK_GATE_CTRL is a placeholder in this repository's sep_cpu_ctrl.rdl with ONE
 # implemented bit (pka_cg_enable[0:0], itself marked "not yet implemented") -- there
 # is no entropy_fifo gate bit, so the ESRC/CSRNG/EDN CSRs are unconditionally
@@ -106,7 +106,7 @@ HEALTH_CTRL_DEFAULT = 0x0000_3207
 # failing windows park the FSM permanently in AlertHang -- after which the
 # decorrelator keeps sampling but the SHA whitener never accepts a word and no seed
 # ever reaches CSRNG. That is a shrink which breaks the mechanism it is meant to
-# exercise (AGENTS.md §8), not a timing-only knob.
+# exercise, not a timing-only knob.
 #
 # Cost at the /8 raw-sampling default: one window is 2048 samples x 8 core cycles
 # ~= 16.4k cycles, well inside wait_seed_ready()'s 60k budget.

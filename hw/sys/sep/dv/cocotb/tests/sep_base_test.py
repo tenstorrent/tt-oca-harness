@@ -46,14 +46,14 @@ from env.sep_efuse_image import SepEfuseImage
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
 # depend on it: without the file they would sense a zero OTP.
+_DEFAULT_EFUSE_PRELOAD = (
+    Path(__file__).resolve().parents[2] / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
+)
+
 # Bound for the per-CSR reads in report_entropy_stall(). Generous versus a healthy
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
-
-_DEFAULT_EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[2] / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
-)
 
 
 class sep_base_test(uvm_test):
@@ -509,7 +509,7 @@ class sep_base_test(uvm_test):
     async def report_entropy_stall(self, window: int = 4_000) -> None:
         """Log WHERE the ESRC->DRBG chain stopped after a seed/genbits timeout.
 
-        AGENTS.md §7 requires a bounded wait to name the handshake that did not
+        A bounded wait must name the handshake that did not
         retire, not just report "no seed". The chain is
         decor -> BIW/whitener -> compressor -> ESRC FIFO -> DRBG seed packer, and
         tb_top exposes a strobe at each stage, so counting them over one window
@@ -545,8 +545,8 @@ class sep_base_test(uvm_test):
         # Every read is BOUNDED and failure-tolerant. One plausible cause of the
         # stall is a fabric that never released, in which case these reads would
         # never retire -- and an unbounded diagnostic would turn an attributed
-        # failure into a bare sim timeout, the exact outcome AGENTS.md §7 exists to
-        # prevent. The strobe counts above always survive, so a wedged CSR path
+        # failure into a bare sim timeout, the exact outcome a bounded wait exists
+        # to prevent. The strobe counts above always survive, so a wedged CSR path
         # degrades to "counts logged, CSR unreadable" instead of taking the whole
         # report down with it.
         from seq_lib.sep_esrc_bringup_seq import (

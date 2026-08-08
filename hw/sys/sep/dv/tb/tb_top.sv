@@ -2,7 +2,8 @@
 //
 // SEP OSS DV testbench top.
 //
-// Wraps the bare `sep` subsystem (hw/sep/sep.sv) for the OSS cocotb flow: brings
+// Wraps the `sep_wrapper` DUT (hw/top/sep_wrapper.sv, which instantiates the bare
+// `sep` core from hw/sys/sep/rtl/sep.sv) for the OSS cocotb flow: brings
 // clocks/reset/boot controls out as top-level ports and ties every unused DUT
 // port to a benign idle value. Stimulus is injected on the SEP CPU's own LSU AXI
 // master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an

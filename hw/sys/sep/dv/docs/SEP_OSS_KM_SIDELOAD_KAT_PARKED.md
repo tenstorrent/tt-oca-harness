@@ -49,6 +49,6 @@ internal `tt-oca-hw` repository — it cannot be made from this tree.
 2. Run each of the four tests individually by name on Verilator.
 3. Confirm the KM entropy handshake is non-zero and the scoreboard reaches
    `report()` (CHK1–CHK4 strict, CHK5_km in `observe` mode — bit-exact CHK5_km is
-   infeasible against `rom_main`; see `AGENTS.md` §9).
+   infeasible against `rom_main`).
 4. Restore the four commented lines in both the `all` and `cpu` groups in
    `testlists/all.toml`, and delete this document.

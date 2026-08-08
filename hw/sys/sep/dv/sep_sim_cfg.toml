@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # SEP OSS simulation config (native build/filelist manifest).
-# No-CPU AXI smoke. DUT = bare `sep`; vendor-clean by construction
-# (bender_targets deliberately exclude "simulation").
+# DUT = `sep_wrapper` (the bare `sep` core plus its IP integration); vendor-clean
+# by construction (bender_targets deliberately exclude "simulation").
 
 schema_version = 1
 
-# Launch entry: selected by `--dut sep`. No-CPU AXI smoke; a cocotbext-axi AxiMaster is
-# spliced onto the CPU LSU bus (the no_cpu stub drives it) to exercise the SEP register/fabric
-# map. The shared stage
+# Launch entry: selected by `--dut sep`. Two run modes: no_cpu, where a cocotbext-axi
+# AxiMaster drives the CPU LSU bus (the stub is its sole driver) to exercise the SEP
+# register/fabric map, and cpu, where VeeR EL2 boots firmware. The shared stage
 # graph + tool list come from profile = "native-cocotb" (Verilator is the verified OSS backend).
 name = "sep"
 profile = "native-cocotb"
-description = "SEP (Security Processor) OSS cocotb no-CPU AXI smoke flow"
+description = "SEP (Security Processor) OSS cocotb DV flow (no_cpu AXI + cpu firmware boot)"
 # Verilator remains the pre-merge acceptance backend. VCS/Xcelium are supported by
 # the native cocotb runner for development iteration and share the same OSS-safe
 # filelist/stub injection.
@@ -224,10 +224,12 @@ args = ["+cpu_boot"]
 #   * lsu_stub_all_live  (CPU stubbed)      : no VeeR; m_axi + j_axi live.
 #
 # Daily commit/push validation is two regressions, not one mixed `all` run:
-#   ./run.sh no_cpu --regress --stage flist,hdl_compile,sim
-#   ./run.sh cpu    --regress --stage flist,hdl_compile,sim
-# The wrapper inserts `c_compile` before sim/regress when selected firmware is
-# stale; explicit firmware-only rebuilds use `./run.sh <test> --stage c_compile`.
+#   python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
+#       --tool verilator --stage flist --stage hdl_compile --stage sim
+#   python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
+#       --tool verilator --stage flist --stage hdl_compile --stage sim
+# Add `--stage c_compile` when the selected CPU firmware is stale, or run that
+# stage alone for a firmware-only rebuild.
 # The wrapper keeps build parallelism high for both, uses high sim fanout for
 # no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
 # single-threaded by default.

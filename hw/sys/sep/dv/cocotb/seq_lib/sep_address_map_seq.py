@@ -19,7 +19,7 @@ HMAC, KMAC, CSRNG, EDN, entropy source, lifecycle ctrl, KM mailbox, eFuse shadow
 AXI-lite mailbox, alias-remap, output-remap, and the OpenTitan SPI host —
 confirming every block decodes on the LSU bus.
 
-Expected values are SOURCE-DERIVED, never hardcoded (AGENTS.md §7). Offsets,
+Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
 which reads the generated `hw/sys/sep/regs/gen/py/sep_reg.py` export of the
 SystemRDL. Only the write PATTERNS and the fabric-walk block addresses are

@@ -46,8 +46,8 @@ hw/sys/sep/dv/
 ## Two Run Modes
 
 The run mode selects who owns the CPU master buses. The `testlists/` tree is the
-authoritative test index (52 tests in `all.toml`'s `all` group); the entries below
-are the entry-point examples, not the full list.
+authoritative test index — `python3 tools/dv/run_dv.py --dut sep --items all --list`
+prints the current set. The entries below are entry-point examples, not the full list.
 
 **No-CPU AXI** (`run_modes.no_cpu`, tag `smoke`) — the CPU is held off
 (`mpc_reset_run_req=0`) and a cocotbext-axi `AxiMaster` drives the CPU LSU bus
@@ -215,7 +215,7 @@ port, not a memory model.
 # regenerating (regeneration is a deliberate, reviewed change to tracked collateral).
 
 # Build the OSS firmware first (RISC-V GCC on PATH; no picolibc) — only for boot:
-make -C hw/sys/sep/dv/fw/tests/hello_world
+make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST=hello_world OCAH_ROOT="$PWD"
 
 # For sep_rom_non_secure_boot_test, build the Boot ROM + manifest + BL1 image.
 # This compiles bl1_pass_test (fw/tests/bl1_pass_test) and packs it with the
