@@ -4,7 +4,7 @@
 Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on its
 ``feat_ctrl`` output as a function of the eFuse-sensed lifecycle state and the
 DEMOTE / secure-test-mode / security-disable inputs. It is an independent port
-of the RTL combinational decode (``hw/sep/sep_lifecycle_ctrl.sv`` lines 61-154),
+of the RTL combinational decode (``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv`` lines 61-154),
 cross-checked against the OCAH UVM golden model
 (``compute_expected_feature_ctrl`` in ``sep_lcc_uvm_base_test_seq.sv``). Because
 it is derived from the spec/RTL -- not from observed DUT output -- a feat_ctrl

@@ -12,7 +12,7 @@
 // chunks -> seed_done -> rand_valid). This is the deliberate fix vs the OCAH
 // kmac_test.c, which selects EDN mode (entropy_mode=0x1) yet writes a SW seed --
 // that would block waiting for EDN; SW mode is self-contained and cannot hang on
-// an unseeded EDN. cf. hw/ip/kmac/rtl/kmac_entropy.sv + vendor prim_trivium.sv.
+// an unseeded EDN. cf. vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_entropy.sv + vendor prim_trivium.sv.
 
 #ifndef SEP_KMAC_H
 #define SEP_KMAC_H

@@ -2,7 +2,7 @@
 //
 // SEP CPU IFU/LSU local-alias-remap firmware test (OSS port of the OCAH
 // sep_cpu_ifu_lsu_alias_remap_matrix_test). Proves the CPU-side local alias remap
-// (hw/sep/sep_cpu.sv u_lsu/u_ifu/u_dbg axi_window_remap, edge E12): a CPU fabric
+// (hw/sys/sep/rtl/sep_cpu.sv u_lsu/u_ifu/u_dbg axi_window_remap, edge E12): a CPU fabric
 // access in [SEP_LOCAL_BASE, SEP_LOCAL_BASE+SEP_LOCAL_ALIAS_REGION_SIZE) is remapped
 // to (addr - (SEP_LOCAL_BASE - SEP_LOCAL_ALIAS_REGION_BASE)), and an access outside
 // the window passes through unchanged.

@@ -4,7 +4,7 @@
 // (Do NOT start a comment line with the word "verilator" -- the lexer treats it as a pragma.)
 //
 // This restores the OCH `ifndef SYNTHESIS gating of OCAH_OT_ASSUME/OCAH_OT_COVER/OCAH_OT_ASSERT_NEVER (and
-// OCAH_OT_ASSERT under VERILATOR) that lived in hw/common/ot_prim_modifications/rtl/prim_assert.sv
+// OCAH_OT_ASSERT under VERILATOR) that lived in vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv
 // until the vendoring reorg deleted that override and left the build resolving the
 // vendored upstream OpenTitan prim_assert.sv. The upstream copy only no-ops OCAH_OT_ASSERT
 // under VERILATOR and leaves OCAH_OT_ASSUME unconditional, so with +define+SYNTHESIS the

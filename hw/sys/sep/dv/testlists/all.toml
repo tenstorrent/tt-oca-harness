@@ -60,7 +60,8 @@ tests = [
     # KM firmware, not in DV. rom_drbg_get_block() blocks on a DRBG read while
     # leaving CFG.TIMEOUT at its 256-cycle reset, so CMD_KEY_TRANSFER aborts long
     # before this integration's first entropy arrives. The fix belongs in the KM
-    # ROM firmware, which lives in the internal repository.
+    # ROM firmware (hw/ip/key_manager/dv/fw/drivers/rom_drbg.c), and needs KM-owner
+    # sign-off -- KM has its own tests asserting that timeout.
     # See docs/SEP_OSS_KM_SIDELOAD_KAT_PARKED.md for the analysis and the
     # re-enable checklist. Leaf entries in km.toml are kept, so each test still
     # runs by name.

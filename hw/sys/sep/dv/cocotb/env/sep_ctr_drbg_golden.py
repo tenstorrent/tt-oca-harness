@@ -5,7 +5,7 @@ Bit-exact Python port of the SystemVerilog golden
 ``dv/sep/tb/tb_uvm/common/dpi/drbg_ctr_drbg_pkg.sv`` (itself lifted from the
 OpenTitan csrng_scoreboard), which implements NIST SP 800-90A Section 10.2.1
 CTR_DRBG with **no derivation function**. Cross-checked against the synthesizable
-RTL ``hw/comp/csrng/rtl/csrng_ctr_drbg.sv`` (no-df, AES-256, CtrLen < BlkLen).
+RTL ``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_ctr_drbg.sv`` (no-df, AES-256, CtrLen < BlkLen).
 
 Self-contained: includes a minimal pure-Python AES (128/192/256 ECB encrypt) so
 this has no dependency on pycryptodome/cryptography. Because the reference is

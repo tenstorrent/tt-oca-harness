@@ -39,8 +39,35 @@ The contrast case is in-tree and confirms the mechanism: the hand-assembled
 `cocotb/tests/km_fw/km_rom_entropy.S` disables the timeout by writing `CFG = 0`
 first, and consequently **does** get KM beats.
 
-The fix belongs in the KM ROM firmware (`rom_drbg.c`), which lives in the
-internal `tt-oca-hw` repository — it cannot be made from this tree.
+## Where the fix has to go
+
+The KM ROM firmware **is now in this repository** — `hw/ip/key_manager/dv/fw/`
+arrived with the SEP/SMU/KM DV collateral port, and the offending function is
+`hw/ip/key_manager/dv/fw/drivers/rom_drbg.c:59`:
+
+```c
+cfg.w = DRBG_CFG.w;
+cfg.f.prefetch = 1;
+DRBG_CFG.w = cfg.w;                    /* TIMEOUT left at its 256-cycle reset */
+for (uint8_t i = 0; i < count; i++)
+    buf[i] = ROM_DRBG_DATA_REG.w;      /* blocking */
+```
+
+(An earlier revision of this note said the fix could not be made from this tree.
+That was true before the collateral port and is no longer true.)
+
+**A SEP-side workaround is not available.** The obvious one — make sure entropy is
+flowing before `CMD_KEY_TRANSFER` — is already done: each KAT calls
+`bring_up_entropy()` and then asserts `wait_genbits()` before issuing the
+transfer, so CSRNG genbits provably exist by that point. The stall is downstream
+of that: the EDN→KM sampler only advances on a KM-CPU `DATA` read or an enabled
+prefetch, so the first KM-side word still arrives far later than the 256-cycle
+window the firmware leaves open. Nothing the SEP testbench drives can shorten it.
+
+That leaves the firmware change: clear or raise `CFG.TIMEOUT` for the duration of
+the blocking read, restoring it afterwards. **It needs KM-owner sign-off** — KM
+ships `tests/test_drbg_timeout` and `tests/test_drbg_timeout_boundary` against
+exactly this behavior, so the current timeout may be deliberate.
 
 ## Re-enable checklist
 

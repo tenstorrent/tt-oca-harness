@@ -13,25 +13,26 @@ PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
 all: $(PARHEX)
 
-# rom_main: the real KM production ROM, built from tracked KM firmware source
-# (hw/comp/key_manager/firmware/src/rom_main.c) via the KM tb firmware Makefile.
+# rom_main: the real KM production ROM, built from tracked KM firmware source.
 # PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0 disable the boot/unrecoverable-fault SRAM
-# shred so rom_main's SRAM-scrambler cold-boot does not trip a parity fault on the
-# behavioral SRAM responder -- matching the OCAH subsystem tb. The output is
-# gitignored (not a committed blob). Requires the rv32emc/ilp32e toolchain on PATH
-# (module load riscv-gnu-toolchain/2025.01.20-rhel-8.10).
-# FIXME(SEP-DV): rom_main cannot build in this repository yet -- the KM tb
-# firmware tree (legacy hw/comp/key_manager/tb/firmware) was not ported; the
-# key manager now lives at hw/ip/key_manager without a tb/ directory. The 5
-# tests consuming rom_main.rom.parhex stay blocked until it is restored.
+# shred so rom_main's SRAM-scrambler cold-boot does not trip a parity fault --
+# matching the OCAH subsystem tb. The output is gitignored (not a committed blob).
+# Requires the rv32emc/ilp32e toolchain on PATH.
+#
+# The firmware is in-tree at hw/ip/key_manager/dv/fw and builds through the shared
+# DV firmware engine, the same one SEP's own firmware uses; the entry point is
+# production/rom_main and the engine's parity step emits rom_main.rom.parhex.
+# (This target previously drove a `hw/ip/key_manager/tb/firmware` tree from a
+# `hw/comp/key_manager/...` source path -- both leftovers from the old repository
+# layout that never existed here.)
 OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
-KM_FW_TB := $(OCH_ROOT)/hw/ip/key_manager/tb/firmware
+KM_FW_DIR := $(OCH_ROOT)/hw/ip/key_manager/dv/fw
+KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
 
 rom_main:
-	$(MAKE) -C $(KM_FW_TB) clean build_production \
-	    FW_SRC=$(OCH_ROOT)/hw/comp/key_manager/firmware/src/rom_main.c \
-	    BUILD_DIR=build/rom_main PROD_BOOT_WIPE=0 PROD_UNREC_WIPE=0
-	cp $(KM_FW_TB)/build/rom_main/rom_main.rom.parhex $(OUT_DIR)/rom_main.rom.parhex
+	$(MAKE) -C $(KM_FW_DIR) -f fw.mk dv-fw-tests TEST=rom_main \
+	    OCAH_ROOT=$(OCH_ROOT) PROD_BOOT_WIPE=0 PROD_UNREC_WIPE=0
+	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
 
 $(OUT_DIR)/%.parhex: %.S gen_parhex.py
@@ -41,4 +42,4 @@ $(OUT_DIR)/%.parhex: %.S gen_parhex.py
 
 clean:
 	rm -f *.elf *.bin $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
-	rm -rf $(KM_FW_TB)/build/rom_main
+	rm -rf $(KM_FW_DIR)/build/tests/rom_main

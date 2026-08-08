@@ -25,7 +25,7 @@
  *
  * Note: PIC source = sep_internal_interrupts index + 1 (extintsrc_req is 1-based;
  * bit 0 is the tied no-interrupt source). After the DMA/WDT alert reallocation
- * (hw/sep/sep.sv), OTBN done is internal index 29 -> PIC source 30. This test
+ * (hw/sys/sep/rtl/sep.sv), OTBN done is internal index 29 -> PIC source 30. This test
  * REQUIRES the ISR to fire (no INTR_STATE poll fallback):
  * polling INTR_STATE only proves the IP status register, not CPU delivery.
  */

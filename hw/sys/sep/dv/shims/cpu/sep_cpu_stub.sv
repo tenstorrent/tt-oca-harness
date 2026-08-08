@@ -3,7 +3,7 @@
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
 // (Verilator and VCS) targets.
 //
-// The real sep_cpu (hw/sep/sep_cpu.sv) instantiates el2_veer_wrapper (the full
+// The real sep_cpu (hw/sys/sep/rtl/sep_cpu.sv) instantiates el2_veer_wrapper (the full
 // VeeR EL2 RISC-V core complex), which is heavy to elaborate/build and is not
 // needed by the no_cpu testbench. Because the stub is the sole driver of the
 // CPU's LSU master, it drives the LSU request net directly from the tb's
@@ -20,7 +20,7 @@
 // the real module so the tb probe hierarchy matches.
 //
 // Selection (sep_sim_cfg.toml target lsu_stub_all_live): that target sets
-// +define+SEP_CPU_STUB, drops the real hw/sep/sep_cpu.sv via per-target
+// +define+SEP_CPU_STUB, drops the real hw/sys/sep/rtl/sep_cpu.sv via per-target
 // `exclude_files`, and appends THIS file via per-target `sources` (after the bender
 // filelist, so all DUT packages are already declared). So this stub is the single
 // `sep_cpu` definition for that target -- no -Wno-MODDUP/first-wins reliance. The
@@ -149,7 +149,7 @@ module sep_cpu
   assign lsu_axi_req = sep_uvm_top.lsu_req_drive;
 
   ///////////////////
-  // LSU AXI Demux //  (reproduced VERBATIM from hw/sep/sep_cpu.sv)
+  // LSU AXI Demux //  (reproduced VERBATIM from hw/sys/sep/rtl/sep_cpu.sv)
   ///////////////////
 
   sep_32_64_3_12_axi_req_t  [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;

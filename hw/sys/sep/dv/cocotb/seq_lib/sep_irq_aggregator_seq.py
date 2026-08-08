@@ -11,8 +11,8 @@ OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
   INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
   INTR_TEST   @ +0x08  WO    -- write 1 to a bit to set the matching INTR_STATE bit
-CSRNG/EDN bases (hw/sep/sep_crypto_pkg.sv) and the per-source aggregator-bit map
-(hw/sep/sep.sv sep_internal_interrupts assembly). 32-bit AXI beats
+CSRNG/EDN bases (hw/sys/sep/rtl/sep_crypto_pkg.sv) and the per-source aggregator-bit map
+(hw/sys/sep/rtl/sep.sv sep_internal_interrupts assembly). 32-bit AXI beats
 (size=2) via the sep_crypto TL-UL bridge, like the AES/OTBN drivers.
 """
 
