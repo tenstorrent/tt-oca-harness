@@ -1,238 +1,425 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-
-/*
- * SPI OT DMA TX Test - TC_SPIOT_016 (P1)
- *
- * Verifies SRAM-to-SPI TX FIFO transfer using DMA hardware handshake.
- * The Secure DMA reads from SRAM (incrementing source), writes to the
- * SPI TXDATA register (fixed destination, WRAP), triggered by
- * lsio_trigger_o when TX FIFO drops below the watermark.
- *
- * Signal path:
- *   spi_controller.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
- *
- * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable SPI controller
- *   2. Configure SPI clock, watermarks, events
- *   3. Fill SRAM buffer with test pattern
- *   4. Configure Secure DMA: SRAM -> TXDATA with HW handshake
- *   5. Issue SPI CMD (TX direction) for N bytes
- *   6. Start DMA with HARDWARE_HANDSHAKE_ENABLE + GO
- *   7. Poll DMA STATUS for DONE or ERROR
- *   8. Verify no SPI errors, DMA completed
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_dma_tx_test STACK=sim
- */
+// SPDX-License-Identifier: Apache-2.0
+//
+// SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
+// Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
+// (hardware handshake) -> OT SPI host TX FIFO -> flash. The OT SPI TX watermark
+// drives lsio_trigger, which refills the TX FIFO from SRAM a chunk at a time:
+//
+//   spi_host.lsio_trigger_o(=tx_wm|rx_wm) -> sep.lsio_trigger[0] -> secure_dma
+//
+// STRONGER than the OCAH spi_ot_dma_tx_test (which DMA-streams raw bytes and only
+// checks "DMA done + no SPI error"): here the DMA feeds a REAL flash PAGE PROGRAM
+// stream (opcode 0x02 + 24-bit addr + data) from SRAM, and the firmware then reads
+// the flash back over SPI and value-checks it == the programmed data. RX is kept
+// quiescent so the single lsio_trigger (tx_wm | rx_wm) is TX-watermark-driven.
+//
+// RANDOMIZATION ([RAND-REP]): cocotb owns the scenario table in g_spi3_params
+// (patched at SPI3_PARAM_MAGIC). One boot deterministically walks the required
+// length/trigger cells, while the seed selects legal flash addresses and data.
+//
+// main returns the error count; start.S emits PASS/FAIL magic. Each checker logs
+// a positive PASS line.
 
 #include <stdint.h>
-#include <stdio.h>
-#include "sep.h"
-#include "och_sep_common.h"
-#include "test_completion.h"
+
 #include "sep_outbound_filter.h"
-#include "spi_clk.h"
-#include "spi_mux.h"
+#include "sep_mailbox.h"
+#include "sep_dma.h"
+#include "sep_spi.h"
 
-#define MUBI4_TRUE 0x6
+#define TIMEOUT 200000
+#define DMA_POLL_LIM 200000
+#define MAX_WORDS 16
+#define MAX_CASES 3
+#define PARAM_STRIDE (2 + MAX_WORDS)
+#define TX_WATERMARK 4 // words; tx_wm asserts when TXQD < this
+#define DMA_CHUNK 16   // bytes (= TX_WATERMARK words) per refill
 
-#define DMA_TX_SIZE 64
-#define DMA_CHUNK_SIZE \
-    16 /* TX_WATERMARK * TRANSFER_WIDTH_BYTES: fills FIFO to WM, deasserts trigger */
-#define CFG_TX_WATERMARK 4
-#define CFG_RX_WATERMARK 1
-#define SPI_CLKDIV spi_clkdiv()
-#define DMA_TIMEOUT 200000
+#define FLASH_CMD_WREN 0x06u
+#define FLASH_CMD_PP 0x02u
+#define FLASH_CMD_READ 0x03u
 
-static void init_spi_controller(void) {
-    spi_controller__CTRL_t ctrl;
-    ctrl.w = 0;
-    ctrl.f.RX_WATERMARK = CFG_RX_WATERMARK;
-    ctrl.f.TX_WATERMARK = CFG_TX_WATERMARK;
-    ctrl.f.SPIEN = 1;
-    ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+// SRAM staging for the DMA source: word0 = PP cmd+addr header, then data words.
+#define SRC_BASE (0x10000000u + 0x5000u)
 
-    spi_controller__CFG_t cfg;
-    cfg.w = 0;
-    cfg.f.CLKDIV = SPI_CLKDIV;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+#define SPI3_PARAM_MAGIC 0x5A11D00Eu // little-endian in mem: 0E D0 11 5A
 
-    spi_controller__EVENT_ENABLE_t event_en;
-    event_en.w = 0;
-    event_en.f.TXWM = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_en.w);
+// Scenario block. [0]=magic, [1]=case count, then each case is:
+// [addr, nword count, data[0..MAX_WORDS-1]]. Volatile so cocotb-patched
+// values are not folded. Defaults walk the same directed length cells.
+volatile uint32_t g_spi3_params[2 + MAX_CASES * PARAM_STRIDE] = {
+    SPI3_PARAM_MAGIC,
+    3u,
+    0x001000u,
+    7u,
+    0xC0DE0001u,
+    0xC0DE0002u,
+    0xC0DE0003u,
+    0xC0DE0004u,
+    0xC0DE0005u,
+    0xC0DE0006u,
+    0xC0DE0007u,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0x002000u,
+    11u,
+    0xD0DE0001u,
+    0xD0DE0002u,
+    0xD0DE0003u,
+    0xD0DE0004u,
+    0xD0DE0005u,
+    0xD0DE0006u,
+    0xD0DE0007u,
+    0xD0DE0008u,
+    0xD0DE0009u,
+    0xD0DE000Au,
+    0xD0DE000Bu,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0x003000u,
+    15u,
+    0xE0DE0001u,
+    0xE0DE0002u,
+    0xE0DE0003u,
+    0xE0DE0004u,
+    0xE0DE0005u,
+    0xE0DE0006u,
+    0xE0DE0007u,
+    0xE0DE0008u,
+    0xE0DE0009u,
+    0xE0DE000Au,
+    0xE0DE000Bu,
+    0xE0DE000Cu,
+    0xE0DE000Du,
+    0xE0DE000Eu,
+    0xE0DE000Fu,
+    0,
+};
+
+static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
+    return (opcode & 0xFF) | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) |
+           (((addr >> 0) & 0xFF) << 24);
 }
 
-static int configure_dma_for_spi_tx(uint32_t src_addr, uint32_t total_size, uint32_t chunk_size) {
-    uint32_t cfg_regwen = READ_REG(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
-    if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
-        printf("  WARNING: DMA may be busy or locked (CFG_REGWEN=0x%x)\n", cfg_regwen);
+static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
+    uint32_t v = (direction << SPI_CMD_DIR_SHIFT) | ((len_bytes - 1) & 0x1FF);
+    if (csaat) v |= SPI_CMD_CSAAT;
+    return v;
+}
+
+static void spi_init(void) {
+    // No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is retired in this
+    // repository (the wrapper's SPI is a struct boundary), so nothing holds CS
+    // deasserted and the 0x2000_0000 extension aperture decode-errors.
+    // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
+    spi_wr(SPI_CTRL_REG, (TX_WATERMARK << SPI_CTRL_TX_WM_SHIFT) | (1u << SPI_CTRL_RX_WM_SHIFT) |
+                             SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
+    spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(SPI_CSID_REG, 0);
+    spi_wr(SPI_EVENT_ENABLE_REG, SPI_EVENT_TXWM); // TX watermark -> lsio_trigger
+    spi_wr(SPI_ERROR_STATUS_REG, 0xFFFFFFFFu);
+}
+
+static int flash_wren(void) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(SPI_TXDATA_REG, FLASH_CMD_WREN);
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    return spi_wait_idle(TIMEOUT);
+}
+
+// CHK-TRIGGER (port of the OCAH spi_ot_dma_trigger_test intent): positively prove
+// the TX-watermark signal that SOURCES lsio_trigger (= tx_wm | rx_wm) correlates
+// with TXQD crossing TX_WATERMARK, and that both trigger-enable registers are
+// live. The lsio_trigger wire is internal (not a CSR), so we observe its source
+// STATUS.TXWM + TXQD directly; RX is held quiescent so the OR-ed trigger is
+// TX-driven. Returns the error count and logs the observed TXQD/TXWM values.
+static int chk_trigger(void) {
+    int err = 0;
+
+    // SPI-side trigger source enable: EVENT_ENABLE.TXWM read-back live.
+    uint32_t evt = spi_rd(SPI_EVENT_ENABLE_REG);
+    if (!(evt & SPI_EVENT_TXWM)) {
+        sep_mbx_puts("FAIL: CHK-TRIGGER EVENT_ENABLE.TXWM not set\n");
+        err++;
+    }
+    // DMA-side trigger enable: HANDSHAKE_INTR_ENABLE write/read-back live (the bare
+    // -sep handshake is FIFO-level based; the CTN interrupt-clear regs are tied off
+    // and intentionally unused).
+    sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
+    if (sep_dma_rd(SEP_DMA_HANDSHAKE_INTR_ENABLE) != 0x1) {
+        sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE not live\n");
+        err++;
     }
 
-    /* Set up side effect region for DMA */
-    __asm__ volatile("csrw 0x7c0, %0" : : "r"(0x8));
+    // TXWM tracks TXQD across the watermark: empty (TXQD=0 < wm) -> TXWM=1;
+    // fill past wm -> TXWM=0; SW_RST drain -> TXWM=1.
+    uint32_t st = spi_rd(SPI_STATUS_REG);
+    uint32_t txqd_empty = st & SPI_STATUS_TXQD_MASK;
+    int txwm_empty = !!(st & SPI_STATUS_TXWM);
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    for (uint32_t i = 0; i < TX_WATERMARK + 4u; i++) {
+        spi_wr(SPI_TXDATA_REG, 0xD0000000u + i);
+    }
+    st = spi_rd(SPI_STATUS_REG);
+    uint32_t txqd_full = st & SPI_STATUS_TXQD_MASK;
+    int txwm_full = !!(st & SPI_STATUS_TXWM);
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_addr);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
-              OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    spi_wr(SPI_CTRL_REG, spi_rd(SPI_CTRL_REG) | SPI_CTRL_SW_RST); // drain FIFO
+    spi_wr(SPI_CTRL_REG, spi_rd(SPI_CTRL_REG) & ~SPI_CTRL_SW_RST);
+    st = spi_rd(SPI_STATUS_REG);
+    uint32_t txqd_drain = st & SPI_STATUS_TXQD_MASK;
+    int txwm_drain = !!(st & SPI_STATUS_TXWM);
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0x77);
+    sep_mbx_puts("CHK-TRIGGER TXQD empty=");
+    sep_mbx_puthex(txqd_empty);
+    sep_mbx_puts(" full=");
+    sep_mbx_puthex(txqd_full);
+    sep_mbx_puts(" drain=");
+    sep_mbx_puthex(txqd_drain);
+    sep_mbx_puts(" TXWM=");
+    sep_mbx_puthex((uint32_t)((txwm_empty << 2) | (txwm_full << 1) | txwm_drain));
+    sep_mbx_putc('\n');
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2);
+    if (!(txqd_full > txqd_empty)) {
+        sep_mbx_puts("FAIL: CHK-TRIGGER TXQD did not rise on fill\n");
+        err++;
+    }
+    if (!(txwm_empty && !txwm_full && txwm_drain)) {
+        sep_mbx_puts("FAIL: CHK-TRIGGER TXWM did not track TXQD vs watermark\n");
+        err++;
+    }
+    if (err == 0) {
+        sep_mbx_puts("CHK-TRIGGER PASS: TXWM(=lsio_trigger src) tracks TXQD across "
+                     "wm; EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE live\n");
+    }
+    return err;
+}
 
-    /* SRC: increment (walk through SRAM), DST: wrap (fixed TXDATA register) */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x1);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x2);
-
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total_size);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk_size);
-
-    /* Enable hardware handshake from SPI trigger (bit 0).
-     * lsio_trigger_o is FIFO-level-based (tx_wm), not interrupt-status-based,
-     * so CLEAR_INTR_SRC is not needed (and the CTN bus used by default for
-     * interrupt clears is tied off in sep_dma_wrap and would hang). */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
-
+// Read nwords back from flash via a standard READ (0x03) -- firmware-side value
+// check that the DMA-fed PAGE PROGRAM actually reached the flash.
+static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(SPI_TXDATA_REG, pack_hdr(FLASH_CMD_READ, addr));
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX, release CS
+    if (spi_wait_idle(TIMEOUT)) return -1;
+    for (uint32_t i = 0; i < nwords; i++) out[i] = spi_rd(SPI_RXDATA_REG);
     return 0;
 }
 
-static int start_dma_and_wait(void) {
-    secure_dma__CONTROL_t control;
-    control.w = 0;
-    control.f.OPCODE = 0;
-    control.f.HARDWARE_HANDSHAKE_ENABLE = 1;
-    control.f.INITIAL_TRANSFER = 1;
-    control.f.GO = 1;
+// Arm the Secure DMA in hardware-handshake mode: SRC=SRAM (incrementing),
+// DST=SPI TXDATA (fixed/wrap), refilled on the TX-watermark lsio_trigger.
+static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
+    sep_dma_wr(SEP_DMA_ENABLED_RANGE_BASE, 0x0);
+    sep_dma_wr(SEP_DMA_ENABLED_RANGE_LIMIT, 0xFFFFFFFFu);
+    sep_dma_wr(SEP_DMA_RANGE_VALID, 0x1);
+    sep_dma_wr(SEP_DMA_SRC_ADDR_LO, src);
+    sep_dma_wr(SEP_DMA_SRC_ADDR_HI, 0x0);
+    sep_dma_wr(SEP_DMA_DST_ADDR_LO, SPI_TXDATA_REG);
+    sep_dma_wr(SEP_DMA_DST_ADDR_HI, 0x0);
+    sep_dma_wr(SEP_DMA_ADDR_SPACE_ID, SEP_DMA_ASID_OT | (SEP_DMA_ASID_OT << 4));
+    sep_dma_wr(SEP_DMA_TRANSFER_WIDTH, SEP_DMA_WIDTH_4B);
+    sep_dma_wr(SEP_DMA_SRC_CONFIG, SEP_DMA_ADDR_INCR); // walk SRAM
+    sep_dma_wr(SEP_DMA_DST_CONFIG, SEP_DMA_ADDR_WRAP); // fixed TXDATA register
+    sep_dma_wr(SEP_DMA_TOTAL_DATA_SIZE, total_bytes);
+    sep_dma_wr(SEP_DMA_CHUNK_DATA_SIZE, DMA_CHUNK);
+    sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
+    sep_dma_wr(SEP_DMA_CONTROL, SEP_DMA_CTRL_GO | SEP_DMA_CTRL_INITIAL | SEP_DMA_CTRL_HW_HANDSHAKE |
+                                    SEP_DMA_OPCODE_COPY);
+}
 
-    printf("  Starting DMA: CONTROL=0x%08x\n", control.w);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, control.w);
+static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, uint32_t nwords) {
+    int errors = 0;
+    uint32_t rd[MAX_WORDS];
 
-    secure_dma__STATUS_t status;
-    int timeout = DMA_TIMEOUT;
-    while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if (status.f.DONE) {
-            printf("  DMA transfer completed (STATUS=0x%08x)\n", status.w);
-            return 0;
+    if (nwords < 1 || nwords > MAX_WORDS) {
+        sep_mbx_puts("FAIL: bad nwords\n");
+        return 1;
+    }
+    sep_mbx_puts("SCENARIO case=");
+    sep_mbx_puthex(case_idx);
+    sep_mbx_puts(" addr=");
+    sep_mbx_puthex(addr);
+    sep_mbx_puts(" nwords=");
+    sep_mbx_puthex(nwords);
+    sep_mbx_putc('\n');
+
+    // Build the DMA source in SRAM: [PP cmd+addr] then the data words.
+    volatile uint32_t *src = (volatile uint32_t *)SRC_BASE;
+    src[0] = pack_hdr(FLASH_CMD_PP, addr);
+    for (uint32_t i = 0; i < nwords; i++) src[1 + i] = data[i];
+    __asm__ volatile("fence" ::: "memory");
+    uint32_t total_bytes = (1u + nwords) * 4u; // cmd+addr word + data words
+
+    // The DMA TOTAL spans this many 16-byte chunks; >1 means the TX-watermark
+    // refill loop must iterate (the dynamic half of CHK-TRIGGER).
+    sep_mbx_puts("DMA-TX case=");
+    sep_mbx_puthex(case_idx);
+    sep_mbx_puts(" chunks=");
+    sep_mbx_puthex((total_bytes + DMA_CHUNK - 1) / DMA_CHUNK);
+    sep_mbx_putc('\n');
+
+    spi_init();
+
+    // WREN (direct), then the PAGE PROGRAM stream via DMA-fed TX.
+    if (flash_wren()) {
+        sep_mbx_puts("FAIL: WREN timeout\n");
+        return 1;
+    }
+    if (spi_wait_ready(TIMEOUT)) {
+        sep_mbx_puts("FAIL: SPI not ready\n");
+        return 1;
+    }
+
+    // Issue the TX command BEFORE starting the DMA (OCAH order): the SPI stalls
+    // for TX data, the DMA feeds it on each TX-watermark trigger. LEN == TOTAL-1.
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
+    dma_arm_tx(SRC_BASE, total_bytes);
+
+    // --- CHK-DMA-DONE: run the handshake transfer to completion ---
+    // chunk_done (bit 5) is an interrupt-backed per-chunk status set as each 16B
+    // chunk is refilled; in HW-handshake mode it is NOT still latched at done. So
+    // prove its RW1C mid-transfer: while polling for done, when chunk_done is seen
+    // set, write 1 to clear it and read back 0 (a real RW1C proof). Then at done,
+    // W1C done and read the STATUS back clean (the audit's readback-after-clear).
+    uint32_t st = 0;
+    int t = DMA_POLL_LIM;
+    int chunk_done_seen = 0, chunk_done_w1c_ok = 0;
+    while (t-- > 0) {
+        st = sep_dma_rd(SEP_DMA_STATUS);
+        if ((st & SEP_DMA_STATUS_CHUNK_DONE) && !chunk_done_seen) {
+            chunk_done_seen = 1;
+            sep_dma_wr(SEP_DMA_STATUS, SEP_DMA_STATUS_CHUNK_DONE); // W1C the exact bit
+            __asm__ volatile("fence" ::: "memory");
+            if (!(sep_dma_rd(SEP_DMA_STATUS) & SEP_DMA_STATUS_CHUNK_DONE)) chunk_done_w1c_ok = 1;
         }
-        if (status.f.ERROR) {
-            uint32_t err_code = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-            printf("  DMA ERROR: STATUS=0x%08x, ERROR_CODE=0x%08x\n", status.w, err_code);
-            return -1;
+        if (st & (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR)) break;
+    }
+    if (!(st & SEP_DMA_STATUS_DONE) || (st & SEP_DMA_STATUS_ERROR) ||
+        sep_dma_rd(SEP_DMA_ERROR_CODE) != 0) {
+        sep_mbx_puts("FAIL: CHK-DMA-DONE status=");
+        sep_mbx_puthex(st);
+        sep_mbx_putc('\n');
+        errors++;
+    } else if (chunk_done_seen && !chunk_done_w1c_ok) {
+        sep_mbx_puts("FAIL: DMA STATUS.chunk_done W1C did not clear mid-transfer\n");
+        errors++;
+    } else {
+        // W1C done (+ any residual chunk_done) and READ THE STATUS BACK to prove both
+        // bits are clear -- not a blind write.
+        sep_dma_wr(SEP_DMA_STATUS, SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_CHUNK_DONE);
+        __asm__ volatile("fence" ::: "memory");
+        uint32_t post = sep_dma_rd(SEP_DMA_STATUS);
+        if (post & (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_CHUNK_DONE)) {
+            sep_mbx_puts("FAIL: DMA STATUS RW1C did not read back clear post=");
+            sep_mbx_puthex(post);
+            sep_mbx_putc('\n');
+            errors++;
+        } else if (chunk_done_seen) {
+            sep_mbx_puts("CHK-DMA-DONE PASS: done RW1C + chunk_done set/W1C-cleared "
+                         "mid-transfer; STATUS reads back clear\n");
+        } else {
+            sep_mbx_puts("CHK-DMA-DONE PASS: done RW1C reads back clear "
+                         "(chunk_done not observed at poll rate in HW-handshake mode)\n");
         }
     }
 
-    printf("  DMA TIMEOUT: STATUS=0x%08x after %d polls\n", status.w, DMA_TIMEOUT);
-    return -2;
+    // --- CHK-SPI-IDLE: SPI drains and reports no error ---
+    if (spi_wait_idle(TIMEOUT)) {
+        sep_mbx_puts("FAIL: SPI not idle\n");
+        errors++;
+    }
+    uint32_t serr = spi_rd(SPI_ERROR_STATUS_REG);
+    if (serr != 0) {
+        sep_mbx_puts("FAIL: CHK-SPI-IDLE ERROR_STATUS=");
+        sep_mbx_puthex(serr);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-SPI-IDLE PASS: OT SPI idle + ERROR_STATUS==0\n");
+    }
+
+    // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
+    if (flash_read(addr, rd, nwords)) {
+        sep_mbx_puts("FAIL: flash READ timeout\n");
+        return 1;
+    }
+    int data_ok = 1, any_nonerased = 0;
+    for (uint32_t i = 0; i < nwords; i++) {
+        if (data[i] != 0xFFFFFFFFu) any_nonerased = 1;
+        if (rd[i] != data[i]) {
+            sep_mbx_puts("FAIL: CHK-DMA-TX word ");
+            sep_mbx_puthex(i);
+            sep_mbx_puts(" got ");
+            sep_mbx_puthex(rd[i]);
+            sep_mbx_puts(" exp ");
+            sep_mbx_puthex(data[i]);
+            sep_mbx_putc('\n');
+            errors++;
+            data_ok = 0;
+        }
+    }
+    if (data_ok) {
+        sep_mbx_puts("CHK-DMA-TX PASS: flash content == SRAM source "
+                     "(SRAM->DMA->TXFIFO->flash)\n");
+    }
+    // --- CHK-NONVAC: the DMA-fed data was real, not the erased/stuck 0xFF ---
+    if (data_ok && any_nonerased) {
+        sep_mbx_puts("CHK-NONVAC PASS: programmed data differs from erased 0xFF\n");
+    } else if (!any_nonerased) {
+        sep_mbx_puts("FAIL: CHK-NONVAC source was all-0xFF (vacuous)\n");
+        errors++;
+    }
+
+    return errors;
 }
 
 int main(void) {
+    int errors = 0;
+
     sep_outbound_filter_init();
+    sep_mbx_puts("SEP SPI OT DMA TX test\n");
 
-    printf("\n========================================\n");
-    printf("SPI OT DMA TX Test (TC_SPIOT_016)\n");
-    printf("========================================\n\n");
+    if (g_spi3_params[0] != SPI3_PARAM_MAGIC) {
+        sep_mbx_puts("FAIL: bad param magic\n");
+        return 1;
+    }
+    uint32_t ncases = g_spi3_params[1];
+    if (ncases < 1 || ncases > MAX_CASES) {
+        sep_mbx_puts("FAIL: bad case count\n");
+        return 1;
+    }
+    sep_mbx_puts("RAND-REP cases=");
+    sep_mbx_puthex(ncases);
+    sep_mbx_putc('\n');
 
-    int pass = 1;
+    spi_init();
+    // CHK-TRIGGER: prove the TX-watermark trigger source + DMA trigger-enable
+    // once before the RAND-REP transfer sweep relies on them.
+    errors += chk_trigger();
 
-    /* Step 1: SPI mux + controller init */
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
-
-    init_spi_controller();
-    printf("SPI controller enabled: CLKDIV=%d, TX_WM=%d\n", SPI_CLKDIV, CFG_TX_WATERMARK);
-
-    /* Step 2: Prepare SRAM test pattern */
-    uint32_t src_base = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x4000;
-    volatile uint32_t *src_ptr = (volatile uint32_t *)src_base;
-    uint32_t num_words = DMA_TX_SIZE / 4;
-    uint32_t i;
-
-    printf("\nPreparing SRAM test pattern at 0x%08x (%u bytes)\n", src_base, DMA_TX_SIZE);
-    for (i = 0; i < num_words; i++) {
-        src_ptr[i] = 0xCA000000 | (i & 0xFF);
+    for (uint32_t c = 0; c < ncases; c++) {
+        uint32_t base = 2u + c * PARAM_STRIDE;
+        uint32_t addr = g_spi3_params[base];
+        uint32_t nwords = g_spi3_params[base + 1u];
+        volatile uint32_t *data = &g_spi3_params[base + 2u];
+        errors += run_case(c, addr, data, nwords);
     }
 
-    /* Verify pattern written */
-    for (i = 0; i < num_words; i++) {
-        if (src_ptr[i] != (0xCA000000 | (i & 0xFF))) {
-            printf("  FAIL: SRAM pattern mismatch at word %u\n", i);
-            pass = 0;
-            break;
-        }
+    if (errors == 0) {
+        sep_mbx_puts("CHK-RAND-REP PASS: walked deterministic DMA length/trigger cells\n");
+        sep_mbx_puts("PASS: OT SPI DMA-TX program/readback all OK\n");
     }
-    printf("  SRAM pattern ready (%u words)\n", num_words);
-
-    /* Step 3: Issue SPI CMD for TX direction */
-    spi_controller__CMD_t cmd;
-    cmd.w = 0;
-    cmd.f.LEN = DMA_TX_SIZE - 1;
-    cmd.f.DIRECTION = 2;
-    cmd.f.SPEED = 0;
-    cmd.f.CSAAT = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-    printf("SPI CMD issued: LEN=%u, DIRECTION=TX, SPEED=Standard\n", DMA_TX_SIZE - 1);
-
-    /* Step 4: Configure and start DMA */
-    printf("\nConfiguring DMA for SRAM->TXDATA transfer\n");
-    int rc = configure_dma_for_spi_tx(src_base, DMA_TX_SIZE, DMA_CHUNK_SIZE);
-    if (rc != 0) {
-        printf("DMA configuration failed\n");
-        pass = 0;
-    }
-
-    if (pass) {
-        printf("\nStarting DMA transfer...\n");
-        rc = start_dma_and_wait();
-        if (rc != 0) {
-            printf("DMA transfer failed (rc=%d)\n", rc);
-            pass = 0;
-        }
-    }
-
-    /* Step 5: Check SPI status */
-    spi_controller__STATUS_t spi_status;
-    spi_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("\nSPI STATUS after DMA: 0x%08x\n", spi_status.w);
-    printf("  TXQD=%u, RXQD=%u, TXEMPTY=%u, ACTIVE=%u\n", spi_status.f.TXQD, spi_status.f.RXQD,
-           spi_status.f.TXEMPTY, spi_status.f.ACTIVE);
-
-    /* Check for SPI errors */
-    spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2_t
-        err_status;
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    if (err_status.w != 0) {
-        printf("  SPI ERROR_STATUS=0x%08x\n", err_status.w);
-        pass = 0;
-    } else {
-        printf("  No SPI errors\n");
-    }
-
-    /* Cleanup: disable handshake, restore defaults */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR,
-              SECURE_DMA__HANDSHAKE_INTR_ENABLE_reset);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
-
-    printf("\n========================================\n");
-    if (pass) {
-        printf("=== SPI OT DMA TX TEST PASSED ===\n");
-        test_pass(0);
-    } else {
-        printf("=== SPI OT DMA TX TEST FAILED ===\n");
-        test_fail(0);
-    }
-    printf("========================================\n");
-
-    while (1) {
-        __asm__("wfi");
-    }
-    return pass ? 0 : -1;
+    return errors;
 }
