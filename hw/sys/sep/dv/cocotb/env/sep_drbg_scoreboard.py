@@ -184,11 +184,15 @@ class SepDrbgScoreboard:
         self.golden = SepEntropyGolden(**self._gk)
         self.chain = SepEntropyGolden(**self._gk)
 
-        # CHK4 protocol-check state (genbits FIPS flag + gen_last/glen cadence).
+        # CHK4 protocol-check state (genbits FIPS flag + Generate segmentation).
+        # glen is the length the SEQUENCE commands; it is not a global invariant,
+        # because the other EDN endpoints raise their own requests with their own
+        # lengths. So the segmentation is observed and reported rather than
+        # asserted equal to glen.
         self.glen = int(self._gk.get("glen", 32))
         self._fips_violations = 0
-        self._genlast_violations = 0
         self._genbits_in_gen = 0
+        self._gen_lengths = Counter()   # observed blocks-per-Generate histogram
 
         # CHK5 per-sink ROUTING (golden crypto sink) + genbits-chain membership state.
         # axis1_q: live ordered crypto-leg AXIS1 words (popped per AES beat for the
@@ -401,6 +405,11 @@ class SepDrbgScoreboard:
         self._genbits_words.clear()
         self._axis1_member_hits = 0
         self._axis1_member_misses = 0
+        # Pre-reset genbits are X/garbage, so any Generate they opened is not a
+        # real unterminated command -- drop the segmentation state with them.
+        self._genbits_in_gen = 0
+        self._gen_lengths.clear()
+        self._fips_violations = 0
 
     # --------------------------------------------------------------- recording
     def _expected_q(self, key):
@@ -587,9 +596,20 @@ class SepDrbgScoreboard:
             prev = hs
 
     async def _mon_genbits(self):
-        """CHK4: compare each genbits block to the golden AND check CSRNG protocol:
-        every emitted block must carry genbits_fips_o==1, and each completed
-        Generate (marked by gen_last) must emit exactly glen blocks."""
+        """CHK4: compare each genbits block to the golden AND check CSRNG protocol.
+
+        The golden is pulled ONE BLOCK PER OBSERVED BEAT, and each Generate is
+        closed on the RTL's own gen_last. Genbits are demand-driven: with all
+        three DRBG EDN endpoints live (KM, crypto adapter, entropy pool) a single
+        seed routinely serves several Generate commands, so the command
+        boundaries -- and therefore where each trailing CTR_DRBG Update lands --
+        are not predictable from the seed stream alone. Only the boundary comes
+        from the DUT; every block VALUE is still predicted independently from the
+        (key, V) chain, so the compare stays a true golden compare.
+
+        Protocol: every emitted block must carry genbits_fips_o==1. The observed
+        Generate segmentation is reported (not asserted) -- see report().
+        """
         d = self.dut
         while True:
             await RisingEdge(d.clk_i)
@@ -598,6 +618,9 @@ class SepDrbgScoreboard:
                 continue
             v = _safe_int(d.drbg_genbits_data_o)
             if v is not None:
+                # Predict this block before comparing it. Returns None only in the
+                # pre-seed boot window, where _record() will flag the empty queue.
+                self.chain.genbits_block()
                 block = v & ((1 << 128) - 1)
                 self._record("CHK4_genbits", block)
                 # Pool the 4 32-bit slices of this CHK4-verified block: the golden
@@ -608,8 +631,9 @@ class SepDrbgScoreboard:
                 self._fips_violations += 1
             self._genbits_in_gen += 1
             if _safe_int(d.drbg_gen_last_o) or 0:
-                if self._genbits_in_gen != self.glen:
-                    self._genlast_violations += 1
+                # Trailing Update, then any reseed deferred across this command.
+                self.chain.genbits_gen_last()
+                self._gen_lengths[self._genbits_in_gen] += 1
                 self._genbits_in_gen = 0
 
     # --------------------------------------------------------------- accessors
@@ -772,10 +796,19 @@ class SepDrbgScoreboard:
             self.log.error("CHK4 FIPS violation: %d genbits with genbits_fips_o != 1",
                            self._fips_violations)
             any_fail = True
-        if self._genlast_violations:
-            self.log.error("CHK4 gen_last/glen violation: %d Generates whose block "
-                           "count != glen(%d)", self._genlast_violations, self.glen)
-            any_fail = True
+        # Generate segmentation, informational. gen_last is NOT a per-command
+        # terminator pulse: csrng_core.gen_last_q latches acmd_bus[16], the
+        # "last Generate of the chain" attribute of the application command
+        # (csrng_core.sv:748), and feeds csrng_ctr_drbg_gen.req_glast_i. A
+        # command with glast=0 legitimately performs NO trailing Update, so
+        # blocks outstanding with no gen_last is the normal steady state, not a
+        # defect -- do not turn this into a failure. (Same tap as the upstream
+        # SV scoreboard's hw_gen_last.)
+        self.log.info("CHK4 Generate segmentation: %d glast Updates, blocks/cmd %s, "
+                      "%d block(s) in the open command (seq-commanded glen=%d)",
+                      sum(self._gen_lengths.values()),
+                      dict(sorted(self._gen_lengths.items())) or "{}",
+                      self._genbits_in_gen, self.glen)
         self.log.info("==== end report (strict=%s, any_fail=%s) ====",
                       self.strict, any_fail)
         if self.strict and any_fail:

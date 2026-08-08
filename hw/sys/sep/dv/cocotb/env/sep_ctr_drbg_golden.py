@@ -242,14 +242,32 @@ class SepCtrDrbgGolden:
         if additional_input != 0:
             self._update(additional_input)
 
-        out: List[int] = []
-        for _ in range(num_128b_blocks):
-            self._v_increment()
-            out.append(self._block_encrypt(self.key, self.v))
+        out: List[int] = [self.generate_one() for _ in range(num_128b_blocks)]
 
-        self._update(additional_input)
-        self.reseed_counter += 1
+        self.generate_done(additional_input)
         return out
+
+    # -- per-block Generate, for RTL-segmented (demand-driven) modelling ----
+    #
+    # A CSRNG Generate(glen) command is glen x (V++, AES) followed by exactly
+    # ONE trailing Update. The block VALUES depend only on the running (key, V)
+    # chain, but WHERE that trailing Update lands depends on the command
+    # boundaries -- and those are set by EDN endpoint demand, which the golden
+    # cannot predict on its own. So model one block at a time and take the
+    # boundary from the RTL's own gen_last, exactly as the upstream SV
+    # scoreboard does (ctr_drbg_generate_one + gen_last -> ctr_drbg_generate_done).
+    # Assuming a fixed glen instead desynchronises the whole chain the moment a
+    # second Generate runs on one seed -- the normal case once every EDN
+    # endpoint is live.
+    def generate_one(self) -> int:
+        """One 128b Generate output block. No trailing Update -- see generate_done()."""
+        self._v_increment()
+        return self._block_encrypt(self.key, self.v)
+
+    def generate_done(self, additional_input: int = 0) -> None:
+        """Finalize a Generate command: the single trailing Update."""
+        self._update(additional_input & _SEED_MASK)
+        self.reseed_counter += 1
 
     # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
     def uninstantiate(self) -> None:

@@ -458,7 +458,23 @@ module sep_uvm_top
     // is a direct rst_vec input (the vendored VeeR tap dropped the TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
-    sep_wrapper #(.EXT_TRNG_NUM_AXIS(2)) u_dut (
+    // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3):
+    // sep_crypto binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
+    // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
+    // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Passing 2 truncated
+    // that bind; sep_crypto.sv's g_drbg_endpoint_mux_width_check catches it, but
+    // only under simulators that evaluate elaboration-time $error -- VCS fails
+    // elaboration while Verilator silently skips the check, so this was latent in
+    // every Verilator run.
+    //
+    // The third leg is NOT free. sep_entropy_fifo drives edn_req from the first
+    // post-reset cycle, so once endpoint [2] is connected the DRBG grants it real
+    // genbits blocks and a single seed serves several Generate commands. That is
+    // why the CHK4 golden is demand-driven (sep_entropy_golden.genbits_block() /
+    // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
+    // the first extra Generate. Truncating to 2 to dodge that is not an option
+    // either -- it left the dropped leg's inputs X-driven.
+    sep_wrapper #(.EXT_TRNG_NUM_AXIS(3)) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
         .clk_wdt_i                    (clk_wdt_i),

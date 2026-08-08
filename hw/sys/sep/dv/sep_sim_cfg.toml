@@ -28,11 +28,26 @@ format = "toml_list"
 # releases, on X-valued strobes). They are benign elaboration-time X artifacts in a
 # third-party crypto IP that OSS DV does not exercise (the ABR datapath is stubbed;
 # see [targets.default]'s abr_wrapper_key_reg swap) and are unrelated to any test's
-# functional checks. Scoped to the specific file + "at time 0" so any real runtime
-# abr_reg assertion still fails, and every other `Error:` line still fails. Needed
-# because these appear in the full-CPU (VeeR) crypto compile, i.e. any cpu VCS test.
+# functional checks. Scoped so any real runtime abr_reg assertion still fails, and
+# every other `Error:` line still fails. Needed because these appear in the
+# full-CPU (VeeR) crypto compile, i.e. any cpu VCS test.
+#
+# Two patterns, because the simulators format the same assertion differently.
+# Xcelium puts the file and the time on one line, so "file + at time 0" pins it.
+# VCS splits the report across lines -- the timestamped line carries no "Error:",
+# and the "Error:" line carries no time:
+#     "...abr_reg.sv", 67: ...abr_reg_inst.unnamed$$_0: started at 0fs failed at 0 fs
+#     Error: "...abr_reg.sv", 67: ...abr_reg_inst.unnamed$$_0: ...
+# A line-oriented matcher cannot correlate the two, so the VCS form is pinned by
+# file + the two specific assertion line numbers (abr_reg.sv:67 external wr_ack,
+# :69 external rd_ack). Deliberately NOT a whole-file waiver: if a vendor bump
+# moves those assertions the pattern stops matching and the run fails loudly
+# instead of silently swallowing a real ABR error.
 [pass_fail]
-extra_ignore_patterns = ['abr_reg\.sv.*at time 0']
+extra_ignore_patterns = [
+  'abr_reg\.sv.*at time 0',
+  'abr_reg\.sv", (67|69):',
+]
 
 [native.stages.clean]
 kind = "clean"

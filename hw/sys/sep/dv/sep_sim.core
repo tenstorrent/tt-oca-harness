@@ -24,10 +24,10 @@ filesets:
   # regenerate the lists before relying on it from an external FuseSoC consumer.
   files_wrapper_models:
     files:
-      - ../../../../../hw/ip/efuse/rtl/efuse_interface_shim.sv
-      - ../../../../../hw/ip/efuse/dv/models/efuse_bank_model.sv
-      - ../../../../../hw/top/sep_ip_integration.sv
-      - ../../../../../hw/top/sep_wrapper.sv
+      - ../../../../hw/ip/efuse/rtl/efuse_interface_shim.sv
+      - ../../../../hw/ip/efuse/dv/models/efuse_bank_model.sv
+      - ../../../../hw/top/sep_ip_integration.sv
+      - ../../../../hw/top/sep_wrapper.sv
     file_type: systemVerilogSource
 
   # TB sources compiled alongside tb_top. The bare-sep memory/eFuse behavioral

@@ -62,8 +62,13 @@ class SepEntropyGolden:
       expected_compress_words 32b compressor-output word (post-SHA when
                               whitening), one per produced word
       expected_seed           384b es_bits seed, one per seed
-      expected_genbits        128b genbits block, glen per seed
+      expected_genbits        128b genbits block, one per genbits_block() call
       expected_km_words       32b KM beat, KM_BEATS_PER_BLOCK per genbits block
+
+    The decor/compress/seed stages are pure stream models: step_cycle() fills
+    them ahead of the DUT. Genbits are different -- they are DEMAND-driven, so
+    the scoreboard pulls them one at a time with genbits_block() and closes each
+    Generate command with genbits_gen_last() off the RTL's gen_last.
     """
 
     def __init__(self, *, sample_clk_div=7, byte_mask=0xFF, bypass=False,
@@ -95,6 +100,8 @@ class SepEntropyGolden:
         self._ingress_seen = 0           # compressor words observed (for skip)
         self._seed_words = []            # accumulating 12 words for current seed
         self._seed_done = False          # first seed instantiated?
+        self._generate_active = False    # a Generate command is in flight
+        self._reseed_pending = None      # seed held until the in-flight gen_last
 
         # --- expected-item queues ----------------------------------------
         self.expected_decor_bytes = deque()
@@ -110,6 +117,7 @@ class SepEntropyGolden:
         self.n_seeds = 0
         self.n_genbits = 0
         self.n_km_words = 0
+        self.n_generates = 0             # Generate commands finalized (gen_last)
 
     def seed_decor_sr(self, sr_packed, clk_divider=None):
         """Seed all 12 decorrelator shift registers from a live RTL ff_stage
@@ -217,21 +225,59 @@ class SepEntropyGolden:
         self._run_drbg(seed)
 
     def _run_drbg(self, seed):
-        """First seed instantiates; each seed then generates glen 128b blocks."""
+        """Apply a seed to the CTR_DRBG state. Produces no blocks.
+
+        Genbits are NOT generated here. How many blocks a seed yields, and where
+        each Generate's trailing Update lands, is decided by EDN endpoint
+        demand: with all three DRBG EDN endpoints live (KM, crypto adapter,
+        entropy pool) a single seed routinely serves more than one Generate
+        command. Blocks are therefore produced lazily by genbits_block(), and
+        the command boundary is taken from the RTL's own gen_last via
+        genbits_gen_last(). See SepCtrDrbgGolden.generate_one().
+        """
         if not self._seed_done:
             self._drbg.instantiate(seed)
             self._seed_done = True
+            return
+
+        # CSRNG processes a Reseed BETWEEN Generate commands. If a Generate is
+        # in flight the new Key/V must not take effect until it finalizes --
+        # applying it early would corrupt every remaining block of that command.
+        if self._generate_active:
+            self._reseed_pending = seed
         else:
             self._drbg.reseed(seed)
 
-        blocks = self._drbg.generate(self.glen)
-        for blk in blocks:
-            blk &= (1 << BLOCK_LEN) - 1
-            self.expected_genbits.append(blk)
-            self.n_genbits += 1
-            for beat in self._km_beats(blk):
-                self.expected_km_words.append(beat)
-                self.n_km_words += 1
+    # ------------------------------------------------- demand-driven genbits
+    def genbits_block(self):
+        """Produce the next predicted 128b genbits block (and its KM beats).
+
+        Called once per observed RTL genbits beat. Returns None before the first
+        seed has instantiated the DRBG -- the pre-model boot window, where no
+        prediction can exist.
+        """
+        if not self._seed_done:
+            return None
+        self._generate_active = True
+        blk = self._drbg.generate_one() & ((1 << BLOCK_LEN) - 1)
+        self.expected_genbits.append(blk)
+        self.n_genbits += 1
+        for beat in self._km_beats(blk):
+            self.expected_km_words.append(beat)
+            self.n_km_words += 1
+        return blk
+
+    def genbits_gen_last(self):
+        """RTL marked the end of a Generate command: run the single trailing
+        Update, then apply any reseed deferred while the command was in flight."""
+        if not self._seed_done:
+            return
+        self._drbg.generate_done()
+        self._generate_active = False
+        self.n_generates += 1
+        if self._reseed_pending is not None:
+            self._drbg.reseed(self._reseed_pending)
+            self._reseed_pending = None
 
     def _km_beats(self, block):
         """Slice a 128b genbits block into 4x32b KM beats.
@@ -290,11 +336,32 @@ if __name__ == "__main__":
     # (ingress_skip + 12)-th post-SHA digest word arrives.
     assert g.n_compress_words >= INGRESS + SEED_WORDS, "too few compressor words"
 
-    # ----- (c) CTR_DRBG yields glen 128b blocks per seed; (d) 4 KM beats/block -----
-    assert g.n_genbits == g.n_seeds * GLEN, (
-        f"genbits {g.n_genbits} != seeds*glen {g.n_seeds * GLEN}")
+    # ----- (c) genbits are demand-driven; (d) 4 KM beats/block -----
+    # Seeds alone produce no blocks now: the scoreboard pulls them. Pull one
+    # full Generate's worth and close the command, as the RTL gen_last would.
+    assert g.n_genbits == 0, (
+        f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled")
+    for _ in range(GLEN):
+        assert g.genbits_block() is not None, "genbits_block() returned None after a seed"
+    g.genbits_gen_last()
+    assert g.n_genbits == GLEN, f"pulled {g.n_genbits} blocks, expected {GLEN}"
+    assert g.n_generates == 1, f"{g.n_generates} Generates finalized, expected 1"
     assert g.n_km_words == g.n_genbits * KM_BEATS_PER_BLOCK, (
         f"km words {g.n_km_words} != genbits*4 {g.n_genbits * 4}")
+
+    # (c2) The per-block path must reproduce the monolithic generate() bit for
+    # bit -- same block values, same trailing Update, same resulting state.
+    # This is the property the whole demand-driven refactor rests on.
+    ref = SepCtrDrbgGolden()
+    ref.instantiate(g.expected_seed[0])
+    lazy = SepCtrDrbgGolden()
+    lazy.instantiate(g.expected_seed[0])
+    ref_blocks = ref.generate(GLEN)
+    lazy_blocks = [lazy.generate_one() for _ in range(GLEN)]
+    lazy.generate_done()
+    assert lazy_blocks == ref_blocks, "generate_one() stream != generate() stream"
+    assert (lazy.key, lazy.v, lazy.reseed_counter) == (ref.key, ref.v, ref.reseed_counter), (
+        "generate_done() left a different CTR_DRBG state than generate()")
 
     # KM beats really reconstruct the genbits block (LSW-first).
     blk0 = g.expected_genbits[0]
