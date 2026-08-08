@@ -1,6 +1,22 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SEP OSS DV Testbench Audit Report
 
+> **Addendum 2026-08-08 — the findings below are a 2026-06-29 snapshot; two are now
+> closed.** The report is left unedited as a dated record; this note only states what
+> changed since.
+>
+> - **§9 "Actionable: the 7 Phase-2 reps are not yet credited"** — CLOSED. A kept
+>   Verilator `all --regress` now covers them: 52 tests, 140 item-runs, 0 FAIL.
+> - **"5 KM blocked by #3266"** — CLOSED, and the attributed cause was wrong. The
+>   five KM tests (4 sideload KATs + `sep_drbg_real_sink_multi_km_aes_test`) were
+>   blocked because `rom_main` was built with the production boot wipe ENABLED:
+>   `PROD_BOOT_WIPE`/`PROD_UNREC_WIPE` are upstream make variables with no mapping in
+>   the shared DV firmware engine, so they were silently ignored and `rom_boot.c`
+>   fell back to its `#ifndef` defaults of 1. Passing the real defines
+>   (`ROM_KM_BOOT_WIPE_DEFAULT` / `ROM_KM_UNREC_WIPE_DEFAULT`) through
+>   `FW_EXTRA_CFLAGS` unblocked all five; each now passes on 3 seeds.
+> - Test counts throughout (38 runnable, `all`=38) predate the current 52.
+
 **Date**: 2026-06-29
 **Auditor**: Claude Code (5-agent parallel audit, then synthesis)
 **Scope**: Full SEP OSS DV environment — `hw/sys/sep/dv/` — 38 runnable cocotb tests (+ `sep_base_test.py` base), 28 seq_lib, 19 env (agents/scoreboards/goldens), 9 shims, 8 testlists, `sep_sim_cfg.toml`, `tb/tb_top.sv`, docs/VPLANs. Audited against `AGENTS.md` (§1–12), `hw/sep/doc/*.adoc` (spec golden), and `hw/sep/` RTL.
