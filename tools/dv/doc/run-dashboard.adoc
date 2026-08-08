@@ -779,8 +779,9 @@ allowlist. Review the complete source tree before publishing it.
 |One or more normalized-result paths or glob patterns.
 
 |`--html-out PATH`
-|Required
-|Aggregate static HTML destination.
+|Optional
+|Aggregate static HTML destination; omit for a data-only aggregate
+(summary/history without rendering).
 
 |`--summary-out PATH`
 |Required
@@ -847,7 +848,9 @@ Recommended CI assertions include:
 == Continuous integration
 
 The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
-the nightly regression dashboard automatically:
+the nightly regression results as **data only** — no HTML is rendered or
+hosted by this repository. The website that renders the dashboard is owned
+externally and consumes the published data.
 
 . The `sim` workflow's nightly tier uploads the native run tree as the
   artifact `dv-run-<dut>-<tool>-nightly` (see the CI section in
@@ -855,17 +858,24 @@ the nightly regression dashboard automatically:
 . `dashboard.yml` triggers on `sim` completion (scheduled nightlies publish
   automatically; manually dispatched nightlies are published by dispatching
   `dashboard.yml` with the sim run id), downloads the artifact, and runs
-  `collect` -> `report` -> `dashboard` with the trend history file.
-. The bundle is committed to the `gh-pages` branch and served by GitHub
-  Pages.
+  `collect` followed by a data-only `dashboard` aggregate (no `--html-out`)
+  with the trend history file.
+. The data is published two ways with identical content.
 
-Publication layout — identical at the `dv-dashboard-data` branch root
-(canonical) and under `dv/` on `gh-pages` (rendered copy):
+Consumption interfaces:
+
+* **Workflow artifact `dv-dashboard-data`** (90-day retention) — the per-run
+  consumable bundle for the external website pipeline: the per-DUT
+  normalized results (schema `"0.1"`), `summary.json`, the current
+  `history.json` snapshot (schema `"0.2"`), and the night's
+  `classification.json`.
+* **Branch `dv-dashboard-data`** — the canonical cross-run store. Trend
+  history must chain across nights indefinitely, and artifacts expire, so
+  continuity lives here. Layout:
 
 [source,text]
 ----
-latest/                          # current bundle: index.html, <dut>.html,
-                                 # summary.json, <dut>.result.json
+latest/                          # <dut>.result.json, summary.json
 data/
 ├── history.json                 # trend store (trimmed to 90 points in CI)
 ├── runs/<date>-run<id>.result.json.gz   # per-night archives (90 kept)
@@ -880,14 +890,8 @@ Operational rules:
   `FAIL` vs `UNKNOWN` evidence gaps) and the mixed-seed flaky list are
   computed from the native leaf records, because the normalized dashboard
   schema collapses those statuses into `FAIL`.
-* The `dv-dashboard-data` branch is the source of truth; the `gh-pages`
-  `dv/` subtree is a disposable rendered copy. The docs deploy
-  (`ghp-import -f`) force-replaces the whole `gh-pages` branch and deletes
-  `dv/` — that is expected: `dashboard.yml` also triggers on the docs
-  workflow's completion and restores `dv/` from the data branch within
-  minutes. The docs build system needs no dashboard awareness. Manual local
-  doc deploys also clobber `dv/`; the next restore or nightly publish
-  repairs it.
+* Nothing dashboard-related is published to `gh-pages`; the docs deploy and
+  the dashboard pipeline do not interact.
 * An email digest is sent per nightly publication when the
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
