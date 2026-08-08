@@ -26,6 +26,7 @@ void rom_keyreg_init(rom_km_keyreg_t *reg) {
     for (uint16_t i = 0; i < ROM_KM_MAX_KEY_HANDLES + 1; i++) {
         reg->handles[i].base_slot = 0;
         reg->handles[i].valid = 0;
+        reg->handles[i].dest_valid.raw = 0;
         reg->handles[i].crc32 = 0;
     }
 
@@ -140,6 +141,7 @@ int rom_keyreg_destroy(rom_km_keyreg_t *reg, uint8_t handle) {
     if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
 
     reg->handles[handle].valid = 0;
+    reg->handles[handle].dest_valid.raw = 0;
 
     for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) {
         if (reg->slot_to_handle[s] == handle) reg->slot_to_handle[s] = ROM_KM_KEY_HANDLE_NULL;

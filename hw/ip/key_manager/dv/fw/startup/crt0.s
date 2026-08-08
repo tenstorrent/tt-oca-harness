@@ -161,6 +161,29 @@ irq_restore:
 .align 4
 .global _start_init
 _start_init:
+    /* Establish a defined state for every RV32E GPR before anything else.
+     * tp (x4) is never written by C code, and several other GPRs are not yet
+     * written when the first IRQ fires. Because the IRQ handler context-saves
+     * x1..x15 into irq_frame (in parity-protected SRAM), an X-valued GPR would
+     * be stored with X parity and later read back as an X parity error, which
+     * poisons the KM IRQ aggregation. Zeroing here gives a deterministic boot
+     * state. */
+    li x1,  0
+    li x2,  0
+    li x3,  0
+    li x4,  0
+    li x5,  0
+    li x6,  0
+    li x7,  0
+    li x8,  0
+    li x9,  0
+    li x10, 0
+    li x11, 0
+    li x12, 0
+    li x13, 0
+    li x14, 0
+    li x15, 0
+
     /* Initialize global pointer and stack pointer. */
     .option push
     .option norelax

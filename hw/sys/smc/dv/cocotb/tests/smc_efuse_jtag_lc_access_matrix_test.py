@@ -34,7 +34,7 @@ import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from smc_base_test import smc_base_test
 
-# JTAG-side eFuse (full SMC-local) addresses (smc_top_reg.svh).
+# JTAG-side eFuse (full SMC-local) addresses (smc_reg.svh).
 EFUSE_MAP_NON_ID = 0xC000_B000  # EFUSE_MAP entry 0 (outside the ID windows)
 EFUSE_MAP_CHIPLET_ID = 0xC000_B008
 EFUSE_MAP_PACKAGE_ID = 0xC000_B028

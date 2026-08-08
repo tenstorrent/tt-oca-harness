@@ -19,9 +19,9 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "manifest.h"        /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
-#include "och_sep_top_reg.h" /* SEP_SRAM_MEM_BASE_ADDR / SEP_SRAM_MEM_SIZE   */
-#include "harden.h"          /* fault-injection value launder (harden_u32)  */
+#include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
+#include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "harden.h"   /* fault-injection value launder (harden_u32)  */
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
@@ -35,10 +35,10 @@
 #include "sep_dma.h"
 /* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
 #ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR)
+#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_BASE_ADDR)
 #endif
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_SIZE)
 #endif
 #endif
 
@@ -109,9 +109,9 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
     /* Static bound: the read must stay within a known primary/backup boot-slot
      * window, and the destination within SEP SRAM. A slot's flash span cannot
      * exceed the max staged size (header + payload <= SEP SRAM). */
-    const uint32_t slot_span = (uint32_t)SEP_SRAM_MEM_SIZE;
-    const uint32_t sram_base = (uint32_t)SEP_SRAM_MEM_BASE_ADDR;
-    const uint32_t sram_size = (uint32_t)SEP_SRAM_MEM_SIZE;
+    const uint32_t slot_span = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
+    const uint32_t sram_base = (uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+    const uint32_t sram_size = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
 
     bool flash_ok_1 =
         boot_flash_range_within(flash_off, len, (uint32_t)PRIMARY_MANIFEST_OFFSET, slot_span) ||

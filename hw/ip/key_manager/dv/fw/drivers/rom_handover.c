@@ -104,17 +104,17 @@ static void send_direct_success(uint8_t cmd_seq, uint8_t cmd_id) {
  *   - Registered slot: set lock_use (read-lock).  lock_use is independent of
  *     lock_write, so this works on the already-write-locked key slots; the HW
  *     then returns zero for KM-port key reads.
- *   - Unregistered slot: overwrite with pseudorandom data.  If such a slot is
- *     write-locked (e.g. a revoked key, whose slots are also already
- *     read-locked) the HW rejects the shred, so fall back to a read-lock to
- *     keep its contents unreadable.
+ *   - Unregistered slot: shred it.  rom_kpv_shred_slot drives the hardware
+ *     erase path, which is not blocked by the slot locks, so even a
+ *     write-locked free slot (e.g. a revoked key) is wiped and its contents
+ *     made unreadable.
  */
 void rom_handover_lock_kpv_root_keys(void) {
     for (uint8_t slot = 0u; slot < ROM_KM_KPV_NUM_SLOTS; slot++) {
         if (rom_keyreg_get_handle(&rom_keyreg_state, slot) != ROM_KM_KEY_HANDLE_NULL) {
             rom_kpv_read_lock(slot);
-        } else if (rom_kpv_shred_slot(slot, &rom_prng_state) < 0) {
-            rom_kpv_read_lock(slot);
+        } else {
+            rom_kpv_shred_slot(slot);
         }
     }
 }

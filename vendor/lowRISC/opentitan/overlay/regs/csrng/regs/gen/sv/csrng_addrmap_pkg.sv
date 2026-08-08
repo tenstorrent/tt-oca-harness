@@ -13,10 +13,9 @@ localparam longint unsigned CSRNG_REGWEN_BASE_ADDR = 64'h10;
 localparam longint unsigned CSRNG_CTRL_BASE_ADDR = 64'h14;
 localparam longint unsigned CSRNG_CMD_REQ_BASE_ADDR = 64'h18;
 localparam longint unsigned CSRNG_RESEED_INTERVAL_BASE_ADDR = 64'h1C;
-function automatic longint unsigned CSRNG_RESEED_COUNTER_0_BASE_ADDR(input int unsigned RESEED_COUNTER_0_idx);
-    return 64'h20 + (RESEED_COUNTER_0_idx * 64'h4);
-endfunction
-localparam longint unsigned CSRNG_RESEED_COUNTER_0_NUM = 64'h3;
+localparam longint unsigned CSRNG_RESEED_COUNTER_0_BASE_ADDR = 64'h20;
+localparam longint unsigned CSRNG_RESEED_COUNTER_1_BASE_ADDR = 64'h24;
+localparam longint unsigned CSRNG_RESEED_COUNTER_2_BASE_ADDR = 64'h28;
 localparam longint unsigned CSRNG_SW_CMD_STS_BASE_ADDR = 64'h2C;
 localparam longint unsigned CSRNG_GENBITS_VLD_BASE_ADDR = 64'h30;
 localparam longint unsigned CSRNG_GENBITS_BASE_ADDR = 64'h34;
@@ -31,10 +30,5 @@ localparam longint unsigned CSRNG_ERR_CODE_BASE_ADDR = 64'h54;
 localparam longint unsigned CSRNG_ERR_CODE_TEST_BASE_ADDR = 64'h58;
 localparam longint unsigned CSRNG_MAIN_SM_STATE_BASE_ADDR = 64'h5C;
 
-
-typedef enum logic [0:0] {
-    TRUE = 1'd6,
-    FALSE = 1'd9
-} MultiBitBool4_e;
 
 endpackage;

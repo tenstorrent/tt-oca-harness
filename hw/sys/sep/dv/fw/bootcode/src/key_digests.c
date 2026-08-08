@@ -3,7 +3,7 @@
 // Each entry is the SHA-256 digest of the RSA-3072 modulus (384 bytes, big-endian).
 //
 // Test key (slot 0, dev0):
-//   Source: fw/deps/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem
+//   Source: tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem (submodule)
 //   Computed: SHA-256(modulus_3072bit_big_endian) → 32 bytes
 //
 // Production builds MUST replace this file with real key digests.

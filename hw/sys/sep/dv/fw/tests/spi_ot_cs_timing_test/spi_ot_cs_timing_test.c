@@ -31,12 +31,10 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_clk.h"
+#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
-
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
 
 static int check_timing(const char *label, uint32_t csnidle, uint32_t csnlead, uint32_t csntrail,
                         uint32_t exp_csnidle, uint32_t exp_csnlead, uint32_t exp_csntrail) {
@@ -87,11 +85,11 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
@@ -102,7 +100,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("Step 1: Min CS timing values (all 0)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CPOL = 0;
     cfg.f.CPHA = 0;
     cfg.f.CSNIDLE = 0;
@@ -118,7 +116,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("\nStep 2: Max CS timing values (all 15)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CSNIDLE = 15;
     cfg.f.CSNLEAD = 15;
     cfg.f.CSNTRAIL = 15;
@@ -132,7 +130,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("\nStep 3: Mixed CS timing values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3)\n");
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CSNIDLE = 5;
     cfg.f.CSNLEAD = 10;
     cfg.f.CSNTRAIL = 3;
@@ -146,7 +144,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("\nStep 4: Restore working values (all=2) and issue TX command\n");
     cfg.w = 0;
-    cfg.f.CLKDIV = 9;
+    cfg.f.CLKDIV = spi_clkdiv();
     cfg.f.CPOL = 0;
     cfg.f.CPHA = 0;
     cfg.f.CSNIDLE = 2;

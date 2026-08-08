@@ -418,12 +418,19 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux_release_cs() helper: the och_sep_spi_mux_ctrl_ot register block
-    # (and its cs_force_high bit) does not exist in this repository. The wrapper's
-    # SPI left the register boundary for a struct one, and tb_top drives the pads
-    # straight off it (`assign spi_cs_n_o = sep_io_spi_req_w.cs_n`), so nothing
-    # holds chip-select deasserted and there is nothing to clear. The old helper
-    # wrote the retired 0x2000_0000 aperture, which now DECERRs.
+    # No spi_mux_release_cs() helper on the Python side. The SPI pad mux
+    # (och_sep_spi_mux_ctrl_ot SPI_MUX_CTRL: spi_sel + cs_force_high) is a NONFREE
+    # shim block inside sep_axi_extension, so a pure-open SEP -- what these cocotb
+    # tests build -- has no mux at all: the generated open register export contains
+    # no SPI_MUX symbol, tb_top drives the pads straight off the wrapper's struct
+    # port, and nothing holds chip-select deasserted. There is nothing to release.
+    # The old helper wrote a fixed 0x2000_0000 aperture, which DECERRs here.
+    #
+    # This is deliberately NOT symmetric with the firmware side: fw/drivers/spi_mux.h
+    # keeps a spi_mux_select_ot() that is #ifdef-gated on the mux register existing,
+    # because CPU firmware also runs in overlay builds where the mux IS present and
+    # must be pointed at the OT host (spi_sel=1), not merely CS-released. If these
+    # Python tests ever run against an overlay build, they need that same select.
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).

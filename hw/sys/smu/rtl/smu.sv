@@ -1170,7 +1170,7 @@ module smu #(
         // Lifecycle state -- original standalone behavior
         // ==================================================================
         assign sep_lc_state      = 8'hf0;
-        assign sep_feat_ctrl     = '0;
+        assign sep_feat_ctrl     = '1;
         assign sep_lc_sigint_err = 1'b0;
         assign lc_state_o        = sep_lc_state;
         assign lc_sigint_err_o   = efuse_lc_sigint_err;

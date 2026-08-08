@@ -37,7 +37,7 @@ EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
 
 class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t),
     ]
 

@@ -247,19 +247,26 @@ module km_kpv_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
-        is_valid_rw = '1; // No valid RW check
+        is_valid_addr = '0;
+        is_valid_rw = '0;
         for(int i0=0; i0<32; i0++) begin
             decoded_reg_strb.KEY_ENTRY[i0] = cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h40) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h40 + 12'h3f);
             is_external |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h40) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h40 + 12'h3f);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h40) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h40 + 12'h3f);
             is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h40) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h40 + 12'h3f);
         end
         for(int i0=0; i0<32; i0++) begin
             decoded_reg_strb.CTRL[i0] = cpuif_req_masked & (cpuif_addr == 12'h800 + (12)'(i0) * 12'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h800 + (12)'(i0) * 12'h4);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h800 + (12)'(i0) * 12'h4);
         end
         decoded_reg_strb.KPV_SCRAMBLER_KEY = cpuif_req_masked & (cpuif_addr == 12'h880);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h880);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h880);
         decoded_reg_strb.KPV_SCRAMBLER_CTRL = cpuif_req_masked & (cpuif_addr == 12'h884);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h884);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h884);
+        decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -596,7 +603,7 @@ module km_kpv_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -660,7 +667,7 @@ module km_kpv_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

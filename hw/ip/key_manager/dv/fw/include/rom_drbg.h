@@ -49,8 +49,9 @@ void rom_drbg_init(void);
 /**
  * @brief Read multiple random words using the DRBG prefetch path.
  *
- * Enables prefetch, reads @p count words from
- * DRBG_SAMPLER_PREFETCH_DATA_REG, then disables prefetch.
+ * Enables prefetch, reads @p count words from DATA, then disables prefetch.
+ * Reads go to DATA rather than PREFETCH_DATA because only a DATA read consumes
+ * the prefetched word and starts the next fetch.
  *
  * @param buf Destination buffer (must hold at least @p count words).
  * @param count Number of 32-bit words to read.

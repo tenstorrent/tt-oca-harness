@@ -11,7 +11,7 @@
  *   scrambler on and verify it is working; lock. Continue with rest.
  * - Shred-all, write/read key, write-lock, read-lock, shred-slot.
  *
- * Requires DRBG and PRNG to be initialized first.
+ * Requires the DRBG to be initialized first (for the scrambler key).
  *
  * Run with:
  *   make run_fw FW_TEST=test_rom_kpv
@@ -19,11 +19,8 @@
 
 #include "test_common.h"
 #include "rom_kpv.h"
-#include "rom_prng.h"
 #include "rom_drbg.h"
 #include "rom_defs.h"
-
-static rom_km_prng_state_t prng;
 
 /**
  * Assert that not all words in the shredded region are the same constant.
@@ -57,8 +54,7 @@ static void verify_shred_all_changed(void) {
     uint8_t s, w;
 
     write_known_pattern_all();
-    rom_prng_seed(&prng);
-    rom_kpv_shred_all(&prng);
+    rom_kpv_shred_all();
     for (s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) {
         for (w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++) {
             uint32_t expected = 0xDEAD0000u | (uint32_t)s << 8 | (uint32_t)w;
@@ -80,10 +76,7 @@ static void verify_shred_slot_changed(uint8_t slot) {
     for (w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++) {
         KPV_KEY_WORD(slot, w) = pattern_base | (uint32_t)w;
     }
-    rom_prng_seed(&prng);
-    if (rom_kpv_shred_slot(slot, &prng) != 0) {
-        TEST_FAIL("shred_slot(%u) failed", (unsigned)slot);
-    }
+    rom_kpv_shred_slot(slot);
     for (w = 0; w < ROM_KM_KPV_WORDS_PER_SLOT; w++) {
         uint32_t expected = pattern_base | (uint32_t)w;
         uint32_t after = KPV_KEY_WORD(slot, w);
@@ -132,7 +125,6 @@ int main(void) {
     }
 
     rom_drbg_init();
-    rom_prng_seed(&prng);
 
     /* 1. Scrambler init (do not enable or lock yet) */
     TEST_SUBTEST_START("Scrambler init");
@@ -239,7 +231,9 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* 9. Shred-slot: slot 1 (unlocked) ok, verify all words changed; slot 0 (write-locked) error */
+    /* 9. Shred-slot: slot 1 (unlocked) wipes all words; slot 0 (write+read
+     *    locked) now also wipes via the hardware erase path and clears its
+     *    CTRL locks, leaving the slot reusable. */
     TEST_SUBTEST_START("Shred-slot");
     {
         if (!tb_drbg_set_seed(123, 1000)) {
@@ -248,12 +242,24 @@ int main(void) {
         rom_drbg_init();
         verify_shred_slot_changed(1);
 
-        rom_prng_seed(&prng);
-        int rc = rom_kpv_shred_slot(0, &prng);
-        if (rc != -1) {
-            TEST_FAIL("shred_slot(0, write-locked) should return -1, got %d", rc);
+        rom_kpv_shred_slot(0);
+        if (KPV_CTRL(0).f.lock_write || KPV_CTRL(0).f.lock_use) {
+            TEST_FAIL("shred_slot(0) did not clear slot 0 CTRL locks (0x%08X)",
+                      (unsigned)KPV_CTRL(0).w);
         }
-        TEST_LOG("  shred-slot verified");
+
+        /* Slot 0 is now reusable: a fresh key write must succeed. */
+        {
+            uint32_t key_in[16];
+            for (uint32_t i = 0; i < 16; i++) {
+                key_in[i] = 0x11223300u + i;
+            }
+            int wrc = rom_kpv_write_key(0, key_in, 16);
+            if (wrc != 0) {
+                TEST_FAIL("write_key to shredded slot 0 returned %d", wrc);
+            }
+        }
+        TEST_LOG("  shred-slot on locked slot verified");
     }
     TEST_SUBTEST_PASS();
 

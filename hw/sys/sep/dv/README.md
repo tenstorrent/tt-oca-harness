@@ -186,8 +186,13 @@ the DUT moved to `sep_wrapper` (see `docs/SEP_OSS_WRAPPER_MIGRATION_PLAN.md`):
   `+sep_efuse_prog_fail_seed`.
 - **OpenTitan SPI mux/host** — internal to the wrapper; its pads come out as scalar
   cocotb ports in `tb_top.sv` so tests can attach the Apache-2.0 `OcahSpiFlash`
-  Python BFM. Flash tests clear `SPI_MUX_CTRL.cs_force_high` (resets to 1) before
-  driving transactions.
+  Python BFM. The SPI **pad mux** (`SPI_MUX_CTRL`: `spi_sel` + `cs_force_high`) is a
+  nonfree shim block inside `sep_axi_extension` and is therefore **absent from a
+  pure-open build** — the pads are driven straight off the wrapper's struct port,
+  and flash tests need no mux step. In an overlay build the mux comes back, resets
+  to "Cadence selected, CS# forced high", and a scenario must point it at the OT
+  host (`spi_sel=1`, `cs_force_high=0`); firmware does this through the
+  `#ifdef`-gated `spi_mux_select_ot()` in `fw/drivers/spi_mux.h`.
 
 Kept TB shims (`shims/`): the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR
 key-CSR Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv`

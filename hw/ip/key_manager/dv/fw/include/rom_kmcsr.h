@@ -108,12 +108,29 @@ uint8_t rom_kmcsr_irq_entry_lock_read(void);
  */
 void rom_kmcsr_irq_entry_lock_set(void);
 
+/**
+ * @brief Read the SRAM write-lock region mask.
+ *
+ * @return `SRAM_LOCK.lock_bits`, one bit per 512-byte SRAM region.
+ */
 static inline uint32_t rom_kmcsr_sram_lock_read(void) {
-    return ROM_KMCSR_SRAM_LOCK_REG.w;
+    return ROM_KMCSR_SRAM_LOCK_REG.f.lock_bits;
 }
 
-static inline void rom_kmcsr_sram_lock_set(uint32_t mask) {
-    ROM_KMCSR_SRAM_LOCK_REG.w = mask;
+/**
+ * @brief Set the SRAM write-lock region mask, with triple write.
+ *
+ * The register write is issued three times so a single skipped store (e.g.
+ * from a fault-injection glitch) cannot leave a region writable.
+ *
+ * @param region_mask One bit per 512-byte SRAM region; bits are sticky.
+ */
+static inline void rom_kmcsr_sram_lock_set(uint32_t region_mask) {
+    km_csr__sram_lock_reg_t w = {0};
+    w.f.lock_bits = region_mask;
+    ROM_KMCSR_SRAM_LOCK_REG.w = w.w;
+    ROM_KMCSR_SRAM_LOCK_REG.w = w.w;
+    ROM_KMCSR_SRAM_LOCK_REG.w = w.w;
 }
 
 /**

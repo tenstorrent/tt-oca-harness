@@ -238,13 +238,16 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
 #endif
 
 /* Enable the GPIO 2nd HW function override for the always-on observation
- * functions (thermal trip and PVT RO observation). These are routed through
- * the smc_ip_integration override path, so hw2_ovrd must be set for them to
- * reach their pads. CAT_THERM is a safety output and must be active out of boot.
+ * functions. This is routed through the smc_ip_integration override path, so
+ * hw2_ovrd must be set for it to reach its pad. CAT_THERM is a safety output
+ * and must be active out of boot.
+ *
+ * PVT RO observation is deliberately absent: the pad shrink removed GPIO 57 and
+ * moved that function to the dedicated PVT_CLK_OBS_PAD, so there is no GPIO
+ * override left to program.
  */
 static void enable_observation_gpio_overrides(void) {
-    enable_gpio_hw_override(SMC_CAT_THERM_GPIO);   /* thermal trip output */
-    enable_gpio_hw_override(SMC_PVT_CLK_OBS_GPIO); /* PVT RO observation */
+    enable_gpio_hw_override(SMC_CAT_THERM_GPIO); /* thermal trip output */
 }
 
 /**
@@ -256,21 +259,21 @@ static void enable_observation_gpio_overrides(void) {
 static void set_gpio_status(occp_error_code_t status) {
     GPIO_INTF_DATA_CTRL_reg_u gpio_control;
 
-    gpio_control.val = read_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET);
+    gpio_control.val = read_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET);
     gpio_control.f.interface_enable = 1; // Enable the interface
     gpio_control.f.enable_rx_tx = 1;     // Enable Tx
 
     if (status == OCCP_ERROR_NONE) {
         // Set GPIO to indicate success
         gpio_control.f.core2pad = 1; // Register driven data send to pad
-        write_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET,
+        write_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET,
                    gpio_control.val); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate success\n");
     } else {
 
         // Clear GPIO to indicate error
         gpio_control.f.core2pad = 0; // Set chip to pad mode
-        write_gpio(61, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_61__CONTROL_REG_OFFSET,
+        write_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET,
                    gpio_control.val); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate error\n");
     }

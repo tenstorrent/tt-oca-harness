@@ -46,8 +46,8 @@ message.  No other import-time side-effects occur.  This mirrors the
 ```
 ocah_uart_vip/
   __init__.py                  — exports OcahUartConsole, OcahUartMonitor
-  ocah_uart_console.py         — OcahUartConsole (active host)
-  ocah_uart_monitor.py         — OcahUartMonitor (passive tap)
+  cocotb/ocah_uart_console.py         — OcahUartConsole (active host)
+  cocotb/ocah_uart_monitor.py         — OcahUartMonitor (passive tap)
   examples/
     example_loopback.py        — annotated usage snippets
 ```
@@ -220,3 +220,18 @@ See `examples/example_loopback.py` for four annotated examples:
 2. Pattern matching with `expect()`.
 3. Passive monitoring with `OcahUartMonitor` alongside a console driver.
 4. Mid-test baud-rate reconfiguration.
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_uart_vip import <Class>`, never from the subfolders.
+`interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.

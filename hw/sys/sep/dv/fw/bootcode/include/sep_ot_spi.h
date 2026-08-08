@@ -7,8 +7,8 @@
  * bring-up + read entry points; --gc-sections drops the optional flash
  * write/erase code (and PIO read when the DMA path is built).
  *
- * Register bindings: meta/registers/c/och_sep_top_reg.h (SPI_CONTROLLER_* +
- * SECURE_DMA_* + the SPI mux), already on the ROM include path.
+ * Register bindings: the sep.h umbrella (SPI_CONTROLLER_* + SECURE_DMA_* + the
+ * SPI mux), already on the ROM include path.
  * Freestanding: no libc, no heap. MMIO via include/rom_mmio.h.
  *
  * The controller (Cadence vs OpenTitan) is chosen at build time; this driver is

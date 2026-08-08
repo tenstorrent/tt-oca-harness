@@ -263,36 +263,45 @@ $(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
 $(BIN_DIR) $(HEX_DIR) $(DISASM_DIR):
 	@mkdir -p $@
 
+# Header dependency tracking. Without it an incremental build keeps objects whose
+# headers have since changed, so editing an address in smc_rom_defs.h leaves the
+# old constant baked into the ROM and only a clean build shows the edit. That is
+# especially easy to miss for the .S files, whose constants come entirely from
+# headers. -MP emits phony targets so a deleted header does not wedge the build.
+DEPFLAGS := -MMD -MP
+
 $(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)/src
 	@echo "CC  $<"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 $(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)/src
 	@echo "CXX $<"
-	@$(CXX) $(CXXFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 $(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.S | $(OBJ_DIR)/src
 	@echo "AS  $<"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 $(OBJ_DIR)/lib/%.o: $(LIB_DIR)/src/%.c | $(OBJ_DIR)/lib
 	@echo "CC  $<"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 $(OBJ_DIR)/boot/%.o: $(BOOT_DIR)/%.S | $(OBJ_DIR)/boot
 	@echo "AS  $<"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 $(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c | $(OBJ_DIR)/drivers
 	@echo "CC  $<"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
 # Compile rule for NONFREE_DRIVER_SOURCES.  Uses a static pattern rule so Make
 # knows the prerequisite source path for each extra object without a VPATH.
 $(NONFREE_DRIVER_OBJS): $(OBJ_DIR)/drivers/%.o: | $(OBJ_DIR)/drivers
 	@echo "CC (extra) $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES))"
-	@$(GCC) $(CFLAGS) $(INCLUDES) $(DEFINES) \
+	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) \
 	    -c $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES)) -o $@
+
+-include $(ALL_OBJS:.o=.d)
 
 $(ELF_FILE): $(ALL_OBJS) $(LINKER_SCRIPT) | $(BIN_DIR)
 	@echo "LD  $@"

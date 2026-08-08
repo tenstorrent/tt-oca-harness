@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import random
 
+import cocotb
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
 from env.dtp_types import DtpJtagInstr, decode_idcode
+from ocah_jtag_vip import OcahJtagChecker
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -30,22 +32,49 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
         self.second_idcode = 0
         self.idcode_fields: dict[str, int] = {}
         self.read_loops = read_loops
+        self.checker = OcahJtagChecker(
+            name=f"{name}.checker",
+            logger=cocotb.log,
+            required_ids={
+                "CHK-IDCODE-RAW",
+                "CHK-IDCODE-STABLE",
+                "CHK-IDCODE-MARKER",
+                "CHK-IDCODE-VERSION",
+                "CHK-IDCODE-PART-NUMBER",
+                "CHK-IDCODE-MANUFACTURER",
+                "CHK-NONVAC",
+            },
+        )
 
     def check_idcode_fields(self) -> None:
         """Check raw IDCODE value and decoded IEEE 1149.1 fields."""
         expected_fields = decode_idcode(DTP_DEFAULT_IDCODE)
 
-        assert self.idcode == DTP_DEFAULT_IDCODE, (
-            f"IDCODE mismatch: expected 0x{DTP_DEFAULT_IDCODE:08x}, "
-            f"got 0x{self.idcode:08x}"
+        self.checker.expect_equal(
+            "CHK-IDCODE-RAW",
+            self.idcode,
+            DTP_DEFAULT_IDCODE,
+            context="final decoded IDCODE",
         )
-        assert self.idcode_fields["lsb"] == 1, (
-            f"IDCODE marker bit must be 1, got {self.idcode_fields['lsb']}"
+        self.checker.expect_equal(
+            "CHK-IDCODE-MARKER",
+            self.idcode_fields["lsb"],
+            1,
+            context=f"raw=0x{self.idcode:08x} bit=0",
         )
-        for field, expected in expected_fields.items():
+        field_ids = {
+            "version": "CHK-IDCODE-VERSION",
+            "part_number": "CHK-IDCODE-PART-NUMBER",
+            "manufacturer": "CHK-IDCODE-MANUFACTURER",
+        }
+        for field, check_id in field_ids.items():
+            expected = expected_fields[field]
             observed = self.idcode_fields[field]
-            assert observed == expected, (
-                f"IDCODE {field} mismatch: expected 0x{expected:x}, got 0x{observed:x}"
+            self.checker.expect_equal(
+                check_id,
+                observed,
+                expected,
+                context=f"field={field} raw=0x{self.idcode:08x}",
             )
 
         self.log.info(
@@ -80,7 +109,9 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, pattern, width=32)
 
     async def body(self) -> None:
-        seed = self.scenario_seed if self.scenario_seed is not None else self.random_seed()
+        seed = (
+            self.scenario_seed if self.scenario_seed is not None else self.random_seed()
+        )
         self.log.info("Using IDCODE random seed %d", seed)
         rng = random.Random(seed)
 
@@ -90,18 +121,34 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             item = await self.read_idcode()
             observed_values.append(item.result)
 
-            assert item.result == DTP_DEFAULT_IDCODE, (
-                f"IDCODE mismatch in loop {loop_idx}: expected 0x{DTP_DEFAULT_IDCODE:08x}, "
-                f"got 0x{item.result:08x}"
+            self.checker.expect_equal(
+                "CHK-IDCODE-RAW",
+                item.result,
+                DTP_DEFAULT_IDCODE,
+                context=f"loop={loop_idx} precondition=randomized",
             )
 
         self.idcode = observed_values[0]
         self.second_idcode = observed_values[-1]
 
-        assert len(set(observed_values)) == 1, (
-            "IDCODE not stable across randomized read loops: "
-            + ", ".join(f"0x{value:08x}" for value in observed_values)
+        self.checker.expect_equal(
+            "CHK-IDCODE-STABLE",
+            len(set(observed_values)),
+            1,
+            context=(
+                f"reads={len(observed_values)} values="
+                + ",".join(f"0x{value:08x}" for value in observed_values)
+            ),
         )
 
         self.idcode_fields = decode_idcode(self.idcode)
         self.check_idcode_fields()
+        self.checker.expect_true(
+            "CHK-NONVAC",
+            len(observed_values) >= 2 and self.idcode not in (0, 0xFFFF_FFFF),
+            context=(
+                f"reads={len(observed_values)} exact_expected=0x{DTP_DEFAULT_IDCODE:08x} "
+                f"observed=0x{self.idcode:08x}"
+            ),
+        )
+        self.checker.finalize()

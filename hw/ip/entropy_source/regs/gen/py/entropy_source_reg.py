@@ -237,7 +237,7 @@ ENTROPY_SOURCE_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_STATUS_reg_t),
     ]
 
@@ -266,7 +266,7 @@ ENTROPY_SOURCE_DEBUG_CTRL_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_DEBUG_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_DEBUG_CTRL_reg_t),
     ]
 
@@ -423,7 +423,7 @@ ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_SHA256_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_SHA256_STATUS_reg_t),
     ]
 
@@ -453,7 +453,7 @@ ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT = 0x00000001
 
 class ENTROPY_SOURCE_FIFO_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_FIFO_CTRL_reg_t),
     ]
 
@@ -542,7 +542,7 @@ ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT = 0x00001907
 
 class ENTROPY_SOURCE_HEALTH_TEST_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_HEALTH_TEST_CTRL_reg_t),
     ]
 
@@ -570,7 +570,7 @@ ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT = 0x00000800
 
 class ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_reg_t),
     ]
 
@@ -627,7 +627,7 @@ ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_HEALTH_TEST_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_HEALTH_TEST_STATUS_reg_t),
     ]
 
@@ -655,7 +655,7 @@ ENTROPY_SOURCE_REPETITION_TEST_COUNT_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_REPETITION_TEST_COUNT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_REPETITION_TEST_COUNT_reg_t),
     ]
 
@@ -805,7 +805,7 @@ ENTROPY_SOURCE_APT_PROPORTION_1BIT_REG_DEFAULT = 0x000004B0
 
 class ENTROPY_SOURCE_APT_PROPORTION_1BIT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_APT_PROPORTION_1BIT_reg_t),
     ]
 
@@ -833,7 +833,7 @@ ENTROPY_SOURCE_APT_PROPORTION_2BIT_REG_DEFAULT = 0x00000080
 
 class ENTROPY_SOURCE_APT_PROPORTION_2BIT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_APT_PROPORTION_2BIT_reg_t),
     ]
 
@@ -861,7 +861,7 @@ ENTROPY_SOURCE_APT_PROPORTION_3BIT_REG_DEFAULT = 0x00000040
 
 class ENTROPY_SOURCE_APT_PROPORTION_3BIT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_APT_PROPORTION_3BIT_reg_t),
     ]
 
@@ -889,7 +889,7 @@ ENTROPY_SOURCE_APT_PROPORTION_4BIT_REG_DEFAULT = 0x00000020
 
 class ENTROPY_SOURCE_APT_PROPORTION_4BIT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_APT_PROPORTION_4BIT_reg_t),
     ]
 
@@ -917,7 +917,7 @@ ENTROPY_SOURCE_APT_PROPORTION_LO_REG_DEFAULT = 0x00000350
 
 class ENTROPY_SOURCE_APT_PROPORTION_LO_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_APT_PROPORTION_LO_reg_t),
     ]
 
@@ -1092,7 +1092,7 @@ ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT = 0x00000FFF
 
 class ENTROPY_SOURCE_RING_OSC_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_RING_OSC_CTRL_reg_t),
     ]
 
@@ -1149,7 +1149,7 @@ ENTROPY_SOURCE_DECORRELATOR_MASK_REG_DEFAULT = 0x000000FF
 
 class ENTROPY_SOURCE_DECORRELATOR_MASK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_DECORRELATOR_MASK_reg_t),
     ]
 
@@ -1182,7 +1182,7 @@ ENTROPY_SOURCE_MAIN_SM_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_MAIN_SM_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_MAIN_SM_STATUS_reg_t),
     ]
 
@@ -1210,7 +1210,7 @@ ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_reg_t),
     ]
 
@@ -1238,7 +1238,7 @@ ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_reg_t),
     ]
 
@@ -1266,7 +1266,7 @@ ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_reg_t),
     ]
 
@@ -1294,7 +1294,7 @@ ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_reg_t),
     ]
 
@@ -1322,7 +1322,7 @@ ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_reg_t),
     ]
 
@@ -1350,7 +1350,7 @@ ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_reg_t),
     ]
 
@@ -1378,7 +1378,7 @@ ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_reg_t),
     ]
 
@@ -1406,7 +1406,7 @@ ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_reg_t),
     ]
 
@@ -1434,7 +1434,7 @@ ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_reg_t),
     ]
 
@@ -1462,7 +1462,7 @@ ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_reg_t),
     ]
 
@@ -1490,7 +1490,7 @@ ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_reg_t),
     ]
 
@@ -1518,7 +1518,7 @@ ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_reg_t),
     ]
 
@@ -1546,7 +1546,7 @@ ENTROPY_SOURCE_GENERATOR_0_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_0_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_0_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1574,7 +1574,7 @@ ENTROPY_SOURCE_GENERATOR_1_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_1_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_1_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1602,7 +1602,7 @@ ENTROPY_SOURCE_GENERATOR_2_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000001
 
 class ENTROPY_SOURCE_GENERATOR_2_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_2_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1630,7 +1630,7 @@ ENTROPY_SOURCE_GENERATOR_3_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000001
 
 class ENTROPY_SOURCE_GENERATOR_3_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_3_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1658,7 +1658,7 @@ ENTROPY_SOURCE_GENERATOR_4_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000002
 
 class ENTROPY_SOURCE_GENERATOR_4_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_4_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1686,7 +1686,7 @@ ENTROPY_SOURCE_GENERATOR_5_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000002
 
 class ENTROPY_SOURCE_GENERATOR_5_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_5_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1714,7 +1714,7 @@ ENTROPY_SOURCE_GENERATOR_6_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_6_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_6_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1742,7 +1742,7 @@ ENTROPY_SOURCE_GENERATOR_7_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_GENERATOR_7_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_7_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1770,7 +1770,7 @@ ENTROPY_SOURCE_GENERATOR_8_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000001
 
 class ENTROPY_SOURCE_GENERATOR_8_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_8_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1798,7 +1798,7 @@ ENTROPY_SOURCE_GENERATOR_9_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000001
 
 class ENTROPY_SOURCE_GENERATOR_9_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_9_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1826,7 +1826,7 @@ ENTROPY_SOURCE_GENERATOR_10_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000002
 
 class ENTROPY_SOURCE_GENERATOR_10_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_10_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1854,7 +1854,7 @@ ENTROPY_SOURCE_GENERATOR_11_SAMPLE_CLK_CONFIG_REG_DEFAULT = 0x00000002
 
 class ENTROPY_SOURCE_GENERATOR_11_SAMPLE_CLK_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_GENERATOR_11_SAMPLE_CLK_CONFIG_reg_t),
     ]
 
@@ -1882,7 +1882,7 @@ ENTROPY_SOURCE_HT_WATERMARK_NUM_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_HT_WATERMARK_NUM_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_HT_WATERMARK_NUM_reg_t),
     ]
 
@@ -1910,7 +1910,7 @@ ENTROPY_SOURCE_HT_WATERMARK_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_HT_WATERMARK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_HT_WATERMARK_reg_t),
     ]
 
@@ -2078,7 +2078,7 @@ ENTROPY_SOURCE_ALERT_SUMMARY_FAIL_COUNTS_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_ALERT_SUMMARY_FAIL_COUNTS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_ALERT_SUMMARY_FAIL_COUNTS_reg_t),
     ]
 
@@ -2138,7 +2138,7 @@ ENTROPY_SOURCE_FIPS_LOCK_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_FIPS_LOCK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_FIPS_LOCK_reg_t),
     ]
 
@@ -2166,7 +2166,7 @@ ENTROPY_SOURCE_ALERT_THRESHOLD_REG_DEFAULT = 0x00000004
 
 class ENTROPY_SOURCE_ALERT_THRESHOLD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_ALERT_THRESHOLD_reg_t),
     ]
 
@@ -2194,7 +2194,7 @@ ENTROPY_SOURCE_MIN_ENTROPY_H_REG_DEFAULT = 0x0000000C
 
 class ENTROPY_SOURCE_MIN_ENTROPY_H_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_MIN_ENTROPY_H_reg_t),
     ]
 
@@ -2251,7 +2251,7 @@ ENTROPY_SOURCE_BIW_OBS_CTRL_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_BIW_OBS_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_BIW_OBS_CTRL_reg_t),
     ]
 
@@ -2342,7 +2342,7 @@ ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT = 0x00000000
 
 class ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', ENTROPY_SOURCE_NOISE_OBS_CTRL_reg_t),
     ]
 

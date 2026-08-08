@@ -3,17 +3,33 @@
 
 name: sim
 
+# Label scheduled and manually dispatched runs in the Actions list; PR and
+# push runs yield an empty run-name, which falls back to the default
+# event-specific title (PR title / commit message).
+run-name: ${{ github.event_name == 'schedule' && 'sim nightly (scheduled) - dtp all x3 seeds' || github.event_name == 'workflow_dispatch' && format('sim {0} (manual dispatch)', inputs.tier) || '' }}
+
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      tier:
+        description: "Test tier: smoke (PR gate) or nightly (all group x3 random seeds)"
+        type: choice
+        options: [smoke, nightly]
+        default: smoke
   push:
     branches: [main]
+  schedule:
+    # 18:00 UTC == 02:00 UTC+8 the next day; runs the nightly tier on main.
+    - cron: "0 18 * * *"
 
-# Superseded runs of the same ref are cancelled; sim jobs are too heavy to
-# let stale PR pushes pile up.
+# Superseded PR runs are cancelled; sim jobs are too heavy to let stale PR
+# pushes pile up. The event name and tier are part of the group so a push to
+# main can never cancel an in-flight scheduled nightly run, and only PR runs
+# are ever auto-cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   # Pinned Verilator release. cocotb 2.x (locked in uv.lock) requires a newer
@@ -23,24 +39,33 @@ env:
 
 jobs:
   verilator-smoke:
+    # Explicit name so adding the tool matrix axis keeps the pre-existing PR
+    # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.
+    # (The env context is unavailable here, so the tier expression is inlined.)
+    name: verilator-smoke (${{ matrix.dut }})${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && ' nightly' || '' }}
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ matrix.timeout }}
+    # The nightly tier gets headroom for a Verilator cache miss (from-source
+    # build) plus ~450 scheduler leaves at --sim-jobs 4 in the same budget.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 90 || 60 }}
     permissions: { contents: read }
     strategy:
       fail-fast: false
       matrix:
-        # One artifact and one run_dv.py invocation per DUT. `items` is per-DUT
-        # because the entry-point group name is not uniform: dtp has a `smoke`
-        # group, sep's single no-CPU entry point is the `sanity` group. `timeout`
-        # is per-DUT because model build cost is not comparable across DUTs --
-        # sep verilates a far larger design than dtp.
+        # One artifact and one run_dv.py invocation per CI-qualified DUT/tool
+        # pair. Extend this list only with combinations proven Verilator-clean
+        # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
         include:
           - dut: dtp
-            items: smoke
-            timeout: 60
-          - dut: sep
-            items: sanity
-            timeout: 180
+            tool: verilator
+    env:
+      # smoke: pull_request, push, and default manual dispatch.
+      # nightly: daily schedule, or manual dispatch with tier=nightly.
+      TIER: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}
+      # The run id keeps the recorded native run_dir unique per run: the
+      # dashboard trend-point identity hashes it, so a repeated path would
+      # make consecutive nightly points replace each other whenever main has
+      # not moved. (env cannot reference env, hence the inlined tier.)
+      RUN_DIR: build/ci/runs/${{ matrix.dut }}/${{ matrix.tool }}/${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}/${{ github.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,20 +110,40 @@ jobs:
         run: |
           verilator --version
           python3 tools/dv/run_dv.py --validate-configs
-          python3 tools/dv/run_dv.py --doctor --dut ${{ matrix.dut }}
+          python3 tools/dv/run_dv.py --doctor --dut ${{ matrix.dut }} --tool ${{ matrix.tool }}
 
-      # No RISC-V toolchain is installed, so every DUT's CI entry point must be a
-      # group that needs no c_compile stage. For sep that means `sanity` (the
-      # no_cpu AXI smoke, CPU held off) -- the `boot`-tagged tests build firmware
-      # and are deliberately out of scope here.
-      - name: Run smoke tests
+      # smoke gates PRs with the 2-test smoke group; nightly regresses the
+      # full `all` group with 3 random seeds per test (~450 recorded,
+      # replayable scheduler leaves) on the 4-vCPU hosted runner. The
+      # explicit --run-dir keeps every tier's tree separate and means
+      # run_dv.py never creates a `latest` symlink.
+      - name: Run DV tests
         run: |
+          if [ "$TIER" = "nightly" ]; then
+            items=all
+            sim_jobs=4
+            tier_args=(--reseed 3)
+          else
+            items=smoke
+            sim_jobs=2
+            tier_args=()
+          fi
           python3 tools/dv/run_dv.py \
             --dut ${{ matrix.dut }} \
-            --items ${{ matrix.items }} \
-            --tool verilator \
-            --sim-jobs 2 \
-            --run-dir build/ci/runs/${{ matrix.dut }}
+            --items "$items" \
+            --tool ${{ matrix.tool }} \
+            --sim-jobs "$sim_jobs" \
+            --run-dir "$RUN_DIR" \
+            "${tier_args[@]}"
+
+      # run_dv.py already exits nonzero on FAIL/ERROR/TIMEOUT/UNKNOWN; this
+      # gate is defense-in-depth so the job can never go green without a
+      # native schema-v1 PASS record matching this exact invocation.
+      - name: Gate on native result
+        run: |
+          jq -e --arg flow "${{ matrix.dut }}" --arg tool "${{ matrix.tool }}" \
+            '.schema_version == 1 and .flow == $flow and .tool == $tool and .status == "PASS"' \
+            "$RUN_DIR/result.json"
 
       # Logs and result.json for every test in the run; result.json is the
       # schema-v1 record that tools/dv/run_dashboard.py collect consumes.
@@ -106,7 +151,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dv-run-${{ matrix.dut }}
-          path: build/ci/runs/${{ matrix.dut }}
+          name: dv-run-${{ matrix.dut }}-${{ matrix.tool }}-${{ env.TIER }}
+          path: ${{ env.RUN_DIR }}
           retention-days: 14
           if-no-files-found: ignore

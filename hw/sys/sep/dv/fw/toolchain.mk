@@ -8,9 +8,16 @@
 #
 # A full SEP compile also needs the VeeR EL2 snapshot (not bundled); set
 # FW_SEP_SNAPSHOT_DIR to enable it. Until then the link/hex stages are gated.
-FW_ARCH    ?= rv32imc_zicsr_zifencei_zba_zbb_zbc
-FW_LD_ARCH ?= rv32imac
-FW_ABI     ?= ilp32
+#
+# Zb* is deliberately absent from the default. GCC will happily emit sh2add and
+# rev8 for ordinary C, and those trap as illegal instructions on the EL2 config
+# this testbench runs, so all but a handful of tests are built without the
+# bit-manip extensions. FW_ARCH_BITMANIP is the opt-in for the tests that are
+# built with them; see FW_TEST_BITMANIP in fw.mk.
+FW_ARCH          ?= rv32imc_zicsr_zifencei
+FW_ARCH_BITMANIP ?= rv32imc_zicsr_zifencei_zba_zbb_zbc
+FW_LD_ARCH       ?= rv32imac
+FW_ABI           ?= ilp32
 
 FW_WARNINGS ?= -Wall -Wextra
 FW_OPT ?= -Os -fdata-sections -ffunction-sections -fno-common -fstack-usage

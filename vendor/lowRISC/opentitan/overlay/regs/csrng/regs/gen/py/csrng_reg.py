@@ -21,12 +21,12 @@ CMD_REQ_REG_OFFSET = 0x00000018
 CMD_REQ_REG_ADDR = 0x00000018
 RESEED_INTERVAL_REG_OFFSET = 0x0000001C
 RESEED_INTERVAL_REG_ADDR = 0x0000001C
-RESEED_COUNTER_0_0__REG_OFFSET = 0x00000020
-RESEED_COUNTER_0_0__REG_ADDR = 0x00000020
-RESEED_COUNTER_0_1__REG_OFFSET = 0x00000024
-RESEED_COUNTER_0_1__REG_ADDR = 0x00000024
-RESEED_COUNTER_0_2__REG_OFFSET = 0x00000028
-RESEED_COUNTER_0_2__REG_ADDR = 0x00000028
+RESEED_COUNTER_0_REG_OFFSET = 0x00000020
+RESEED_COUNTER_0_REG_ADDR = 0x00000020
+RESEED_COUNTER_1_REG_OFFSET = 0x00000024
+RESEED_COUNTER_1_REG_ADDR = 0x00000024
+RESEED_COUNTER_2_REG_OFFSET = 0x00000028
+RESEED_COUNTER_2_REG_ADDR = 0x00000028
 SW_CMD_STS_REG_OFFSET = 0x0000002C
 SW_CMD_STS_REG_ADDR = 0x0000002C
 GENBITS_VLD_REG_OFFSET = 0x00000030
@@ -66,7 +66,7 @@ CSRNG_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class CSRNG_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INTR_STATE_reg_t),
     ]
 
@@ -97,7 +97,7 @@ CSRNG_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class CSRNG_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INTR_ENABLE_reg_t),
     ]
 
@@ -128,7 +128,7 @@ CSRNG_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class CSRNG_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INTR_TEST_reg_t),
     ]
 
@@ -157,7 +157,7 @@ CSRNG_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class CSRNG_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_ALERT_TEST_reg_t),
     ]
 
@@ -185,7 +185,7 @@ CSRNG_REGWEN_REG_DEFAULT = 0x00000001
 
 class CSRNG_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_REGWEN_reg_t),
     ]
 
@@ -216,7 +216,7 @@ CSRNG_CTRL_REG_DEFAULT = 0x00009999
 
 class CSRNG_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', CSRNG_CTRL_reg_t),
     ]
 
@@ -237,7 +237,10 @@ class CSRNG_CTRL_reg_u(Union):
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
 class CSRNG_CMD_REQ_reg_t(Structure):
     _fields_ = [
-        ('cmd_req', c_uint32, 32),
+        ('acmd', c_uint32, 4),
+        ('clen', c_uint32, 4),
+        ('flag0', c_uint32, 4),
+        ('glen', c_uint32, 13),
     ]
 
 CSRNG_CMD_REQ_REG_DEFAULT = 0x00000000
@@ -318,6 +321,62 @@ class CSRNG_RESEED_COUNTER_0_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
+CSRNG_RESEED_COUNTER_1_REG_DEFAULT = 0x00000000
+class CSRNG_RESEED_COUNTER_1_reg_t(Structure):
+    _fields_ = [
+        ('reseed_counter_0', c_uint32, 32),
+    ]
+
+CSRNG_RESEED_COUNTER_1_REG_DEFAULT = 0x00000000
+
+class CSRNG_RESEED_COUNTER_1_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CSRNG_RESEED_COUNTER_1_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CSRNG_RESEED_COUNTER_1_reg_u, self).__init__(*args, **kwargs)
+        self.val = CSRNG_RESEED_COUNTER_1_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+CSRNG_RESEED_COUNTER_2_REG_DEFAULT = 0x00000000
+class CSRNG_RESEED_COUNTER_2_reg_t(Structure):
+    _fields_ = [
+        ('reseed_counter_0', c_uint32, 32),
+    ]
+
+CSRNG_RESEED_COUNTER_2_REG_DEFAULT = 0x00000000
+
+class CSRNG_RESEED_COUNTER_2_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CSRNG_RESEED_COUNTER_2_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CSRNG_RESEED_COUNTER_2_reg_u, self).__init__(*args, **kwargs)
+        self.val = CSRNG_RESEED_COUNTER_2_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 CSRNG_SW_CMD_STS_REG_DEFAULT = 0x00000000
 class CSRNG_SW_CMD_STS_reg_t(Structure):
     _fields_ = [
@@ -331,7 +390,7 @@ CSRNG_SW_CMD_STS_REG_DEFAULT = 0x00000000
 
 class CSRNG_SW_CMD_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_SW_CMD_STS_reg_t),
     ]
 
@@ -360,7 +419,7 @@ CSRNG_GENBITS_VLD_REG_DEFAULT = 0x00000000
 
 class CSRNG_GENBITS_VLD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_GENBITS_VLD_reg_t),
     ]
 
@@ -416,7 +475,7 @@ CSRNG_INT_STATE_READ_ENABLE_REG_DEFAULT = 0x00000007
 
 class CSRNG_INT_STATE_READ_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INT_STATE_READ_ENABLE_reg_t),
     ]
 
@@ -444,7 +503,7 @@ CSRNG_INT_STATE_READ_ENABLE_REGWEN_REG_DEFAULT = 0x00000001
 
 class CSRNG_INT_STATE_READ_ENABLE_REGWEN_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INT_STATE_READ_ENABLE_REGWEN_reg_t),
     ]
 
@@ -472,7 +531,7 @@ CSRNG_INT_STATE_NUM_REG_DEFAULT = 0x00000000
 
 class CSRNG_INT_STATE_NUM_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_INT_STATE_NUM_reg_t),
     ]
 
@@ -528,7 +587,7 @@ CSRNG_FIPS_FORCE_REG_DEFAULT = 0x00000000
 
 class CSRNG_FIPS_FORCE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_FIPS_FORCE_reg_t),
     ]
 
@@ -556,7 +615,7 @@ CSRNG_HW_EXC_STS_REG_DEFAULT = 0x00000000
 
 class CSRNG_HW_EXC_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', CSRNG_HW_EXC_STS_reg_t),
     ]
 
@@ -593,7 +652,7 @@ CSRNG_RECOV_ALERT_STS_REG_DEFAULT = 0x00000000
 
 class CSRNG_RECOV_ALERT_STS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', CSRNG_RECOV_ALERT_STS_reg_t),
     ]
 
@@ -616,14 +675,29 @@ class CSRNG_ERR_CODE_reg_t(Structure):
     _fields_ = [
         ('sfifo_cmd_err', c_uint32, 1),
         ('sfifo_genbits_err', c_uint32, 1),
-        ('rsvd_0', c_uint32, 18),
+        ('sfifo_cmdreq_err', c_uint32, 1),
+        ('sfifo_rcstage_err', c_uint32, 1),
+        ('sfifo_keyvrc_err', c_uint32, 1),
+        ('sfifo_updreq_err', c_uint32, 1),
+        ('sfifo_bencreq_err', c_uint32, 1),
+        ('sfifo_bencack_err', c_uint32, 1),
+        ('sfifo_pdata_err', c_uint32, 1),
+        ('sfifo_final_err', c_uint32, 1),
+        ('sfifo_gbencack_err', c_uint32, 1),
+        ('sfifo_grcstage_err', c_uint32, 1),
+        ('sfifo_ggenreq_err', c_uint32, 1),
+        ('sfifo_gadstage_err', c_uint32, 1),
+        ('sfifo_ggenbits_err', c_uint32, 1),
+        ('sfifo_blkenc_err', c_uint32, 1),
+        ('rsvd_0', c_uint32, 4),
         ('cmd_stage_sm_err', c_uint32, 1),
         ('main_sm_err', c_uint32, 1),
-        ('ctr_drbg_sm_err', c_uint32, 1),
-        ('rsvd_1', c_uint32, 2),
+        ('drbg_gen_sm_err', c_uint32, 1),
+        ('drbg_updbe_sm_err', c_uint32, 1),
+        ('drbg_updob_sm_err', c_uint32, 1),
         ('aes_cipher_sm_err', c_uint32, 1),
-        ('ctr_err', c_uint32, 1),
-        ('rsvd_2', c_uint32, 1),
+        ('cmd_gen_cnt_err', c_uint32, 1),
+        ('rsvd_1', c_uint32, 1),
         ('fifo_write_err', c_uint32, 1),
         ('fifo_read_err', c_uint32, 1),
         ('fifo_state_err', c_uint32, 1),
@@ -661,7 +735,7 @@ CSRNG_ERR_CODE_TEST_REG_DEFAULT = 0x00000000
 
 class CSRNG_ERR_CODE_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_ERR_CODE_TEST_reg_t),
     ]
 
@@ -679,17 +753,17 @@ class CSRNG_ERR_CODE_TEST_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x00000037
+CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x0000004E
 class CSRNG_MAIN_SM_STATE_reg_t(Structure):
     _fields_ = [
-        ('main_sm_state', c_uint8, 6),
+        ('main_sm_state', c_uint8, 8),
     ]
 
-CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x00000037
+CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x0000004E
 
 class CSRNG_MAIN_SM_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', CSRNG_MAIN_SM_STATE_reg_t),
     ]
 

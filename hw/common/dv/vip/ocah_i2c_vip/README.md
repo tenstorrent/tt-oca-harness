@@ -46,10 +46,10 @@ migration-plan pattern.
 ocah_i2c_vip/
   __init__.py              — exports OcahI2cMaster, OcahI2cDevice,
                              OcahI2cMemory, OcahI2cMonitor
-  ocah_i2c_master.py       — OcahI2cMaster (active master driver)
-  ocah_i2c_device.py       — OcahI2cDevice (custom callback device emulator)
-  ocah_i2c_memory.py       — OcahI2cMemory (EEPROM-style memory device)
-  ocah_i2c_monitor.py      — OcahI2cMonitor (passive bus observation)
+  cocotb/ocah_i2c_master.py       — OcahI2cMaster (active master driver)
+  cocotb/ocah_i2c_device.py       — OcahI2cDevice (custom callback device emulator)
+  cocotb/ocah_i2c_memory.py       — OcahI2cMemory (EEPROM-style memory device)
+  cocotb/ocah_i2c_monitor.py      — OcahI2cMonitor (passive bus observation)
   examples/
     example_i2c_eeprom.py  — annotated usage snippets
 ```
@@ -302,3 +302,18 @@ See `examples/example_i2c_eeprom.py` for four annotated examples:
 2. Preload from bytes/file + readback.
 3. Custom device handler callback.
 4. Passive monitoring with `OcahI2cMonitor`.
+
+## Hierarchical VIP Layout
+
+This package follows the OCAH hierarchical VIP convention (see
+`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+code lives in `cocotb/`, and the root `__init__.py` is a thin shim
+re-exporting the stable public API — always import
+`from ocah_i2c_vip import <Class>`, never from the subfolders.
+`interface/` (shared SV interfaces) and `uvm/`
+(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+template and the commercial-VIP plug-in contract (env-level factory
+override, user-implemented API wrapper, monitor closing, nested vendor
+interface) are documented in `../ocah_jtag_vip/README.md`
+("Template Contract") — the reference implementation for all OCAH SV-UVM
+VIPs.
