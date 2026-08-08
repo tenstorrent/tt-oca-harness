@@ -52,19 +52,11 @@ tests = [
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_irq_ip_to_aggregator_test",
     "sep_drbg_real_sink_multi_km_aes_test",
-    # The 4 KM sideload KATs are excluded from the regression group: they fail in
-    # KM firmware, not in DV. rom_drbg_get_block() blocks on a DRBG read while
-    # leaving CFG.TIMEOUT at its 256-cycle reset, so CMD_KEY_TRANSFER aborts long
-    # before this integration's first entropy arrives. The fix belongs in the KM
-    # ROM firmware (hw/ip/key_manager/dv/fw/drivers/rom_drbg.c), and needs KM-owner
-    # sign-off -- KM has its own tests asserting that timeout.
-    # See docs/SEP_OSS_KM_SIDELOAD_KAT_PARKED.md for the analysis and the
-    # re-enable checklist. Leaf entries in km.toml are kept, so each test still
-    # runs by name.
-    #   "sep_km_otbn_sideload_kat_test",
-    #   "sep_km_aes_sideload_kat_test",
-    #   "sep_km_hmac_sideload_kat_test",
-    #   "sep_km_kmac_sideload_kat_test",
+
+    "sep_km_otbn_sideload_kat_test",
+    "sep_km_aes_sideload_kat_test",
+    "sep_km_hmac_sideload_kat_test",
+    "sep_km_kmac_sideload_kat_test",
     "sep_lcc_uvm_inbound_filter_gating_test",
     "sep_nmi_sanity_test",
     "sep_reset_wdt_sanity_test",
@@ -134,13 +126,11 @@ tests = [
     "sep_esrc_e2e_smoke_test",
     "sep_irq_ip_to_aggregator_test",
     "sep_drbg_real_sink_multi_km_aes_test",
-    # The 4 KM sideload KATs are excluded here for the same reason as in the "all"
-    # group above (KM ROM firmware blocks on a DRBG read with CFG.TIMEOUT at its
-    # reset). See docs/SEP_OSS_KM_SIDELOAD_KAT_PARKED.md; km.toml keeps the leaves.
-    #   "sep_km_otbn_sideload_kat_test",
-    #   "sep_km_aes_sideload_kat_test",
-    #   "sep_km_hmac_sideload_kat_test",
-    #   "sep_km_kmac_sideload_kat_test",
+
+    "sep_km_otbn_sideload_kat_test",
+    "sep_km_aes_sideload_kat_test",
+    "sep_km_hmac_sideload_kat_test",
+    "sep_km_kmac_sideload_kat_test",
     "sep_lcc_uvm_inbound_filter_gating_test",
     "sep_fabric_decode_error_response_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
