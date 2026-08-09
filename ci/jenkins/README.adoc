@@ -1,0 +1,343 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH Native VCS Jenkins Pipeline
+:sectnums:
+:toc:
+:toclevels: 3
+:source-highlighter: highlight.js
+
+[[jenkins-vcs-purpose]]
+== Purpose
+
+`Jenkinsfile.vcs-dashboard` runs the checked-in native DV profiles with VCS and
+publishes a data-only dashboard bundle. It does not call TTEM or consume legacy
+TTEM XML.
+
+The ownership boundary is:
+
+[source,text]
+----
+Jenkins
+  -> checkout, node allocation, timeout, retention, JUnit, archive
+run-vcs-dashboard.sh
+  -> profile matrix and run/collect/aggregate ordering
+run_dv.py
+  -> VCS build, local regression scheduling, native result.json
+run_dashboard.py
+  -> normalized results, aggregate summary, trend history
+external renderer
+  -> consumes archived dashboard-data/
+----
+
+Jenkins is the outer scheduler. `run_dv.py` uses its implemented `local`
+executor on the selected Jenkins agent; `--queue`, `--cores`, `--mem-mb`, and
+`--walltime` are not a Jenkins or farm submission interface.
+
+[[jenkins-vcs-item]]
+== One-Time Jenkins Items
+
+The repository does not create its own Jenkins items. A Jenkins administrator
+creates one Pipeline-from-SCM item per cluster so regressions run in parallel
+on separate licensed agents and stay independently red or green:
+
+[source,text]
+----
+Folder:      tt-oca-harness
+Items:       vcs-dtp-nightly   PROFILES=dtp,dtp_uvm
+             vcs-sep-nightly   PROFILES=sep
+             vcs-smc-nightly   PROFILES=smc_wrapper
+             vcs-smu-nightly   PROFILES=smu,smu_wrapper
+SCM:         git@github.com:tenstorrent/tt-oca-harness.git
+Branch:      main
+Script path: ci/jenkins/Jenkinsfile.vcs-dashboard
+----
+
+All items share the one checked-in Jenkinsfile; only the pinned `PROFILES`
+value differs. Stagger the nightly cron entries so cluster runs do not compete
+for licenses or agents.
+
+The pipeline qualifies the branch the item tracks: `checkout scm` supplies the
+Jenkinsfile, the `ci/jenkins` helpers, and the DV code from one commit, so
+there is no ref parameter and pipeline logic can never diverge from the
+qualified revision. To qualify a different branch, create a separate item that
+tracks it.
+
+Configure build permissions on each item.
+Do not add the pipeline as another build step in the existing TTEM Freestyle
+jobs; it owns a separate native `run_dv.py` result contract.
+
+The selected SCM credential reads only `tenstorrent/tt-oca-harness`. This
+Pipeline does not clone the nonfree repository. It clears inherited
+`OCAH_NONFREE_REMOTE` and `NONFREE_REPO_PAT` values so token-bearing URLs
+cannot leak through command tracing or runner environment snapshots.
+
+The item needs standard Pipeline, JUnit, and artifact-archiver support. No HTML
+Publisher or Copy Artifact plugin is required. Trend restoration reads the
+previous completed build's archived `history.json` through the Jenkins artifact
+URL; a first build or inaccessible artifact starts a new history chain.
+
+[[jenkins-vcs-node]]
+== Agent Requirements
+
+The configured `VCS_AGENT_LABEL` must select a node with:
+
+* the central Environment Modules tree initialized by
+  `/tools_soc/tt/bin/bashrc`;
+* VCS on `PATH`;
+* a valid `SNPSLMD_LICENSE_FILE` or `LM_LICENSE_FILE`;
+* Bender, `uv`, `jq`, `curl`, `make`, and required firmware tools;
+* Python 3.11, 3.12, or 3.13 available to `uv`;
+* enough scratch capacity for all selected build and run directories.
+
+License values belong in node configuration or Jenkins credentials and must
+not be echoed. The pipeline verifies presence, not server reachability or
+checkout entitlement.
+
+Jenkins starts a non-login shell on the selected node. Every licensed shell
+stage sources `ci/jenkins/init-site-env.sh`. The helper initializes Environment
+Modules through `/tools_soc/tt/bin/bashrc`, uses `SITE_ENV_MODULE` when that
+module is globally available, and otherwise loads the minimum central modules
+required by the native flow: GCC, Bender, Synopsys licenses, VCS, Verdi, Perl,
+and `soc_tools`. Setup is repeated per shell step because shell
+environment changes do not persist between Jenkins steps.
+
+The native regressions consume only the open `run_dv.py` configurations. TTEM,
+nonfree RTL, and nonfree testlists are not invoked.
+
+The pipeline provisions two Python environments:
+
+[cols="<2,<3,<5",options="header"]
+|===
+|Path |Cocotb |Purpose
+
+|`.venv/`
+|Locked repository version (2.x)
+|`run_dv.py` launcher, configuration, and dashboard tools.
+
+|`venv/`
+|1.9.2
+|Classic VCS Make/VPI simulator process. Dependencies are pinned by
+`ci/jenkins/vcs-cocotb-requirements.txt`.
+|===
+
+Do not replace `venv/` with `.venv/`. The current classic VCS integration
+requires cocotb earlier than 2.0, while the repository's supported public
+environment uses cocotb 2.x. The runner deliberately selects `venv/bin/python`
+for VCS.
+
+The default implementation runs profiles serially to avoid shared DV build-tree
+and license races. Test leaves inside one profile use `SIM_JOBS`; VCS compilation
+uses `BUILD_JOBS`.
+
+[[jenkins-vcs-matrix]]
+== Default Matrix
+
+[cols="<2,<3,<5",options="header"]
+|===
+|Profile |Group |Scope
+
+|`dtp`
+|`all`
+|Complete native PyUVM/cocotb DTP catalog.
+
+|`dtp_uvm`
+|`smoke`
+|SystemVerilog UVM VCS smoke.
+
+|`sep`
+|`all`
+|Complete enrolled SEP native catalog.
+
+|`smc_wrapper`
+|`project_p0_triplets`
+|Project P0 SMC triplet regression.
+
+|`smu`
+|`sep0_p4_all`
+|Complete enrolled SEP=0 SMU set through phase 4.
+
+|`smu_wrapper`
+|`all`
+|Green wrapper catalog; blocked SEP execution groups remain excluded.
+|===
+
+`PROFILES` may select a comma-separated subset, but each profile keeps the
+group above. Unknown, duplicate, or empty profile entries fail before
+simulation.
+
+[[jenkins-vcs-parameters]]
+== Parameters
+
+[cols="<3,<2,<5",options="header"]
+|===
+|Parameter |Default |Meaning
+
+|`VCS_AGENT_LABEL`
+|`redhat8`
+|Licensed Jenkins node label.
+
+|`SITE_ENV_MODULE`
+|`tt_ocah_env`
+|Optional bundled site module; the helper loads the required central modules
+directly when it is unavailable.
+
+|`PROFILES`
+|all six
+|Comma-separated profile selection.
+
+|`RESEED`
+|`1`
+|Random seeds generated per selected test.
+
+|`SIM_JOBS`
+|`4`
+|Maximum concurrent local simulation leaves within one profile.
+
+|`BUILD_JOBS`
+|`4`
+|VCS backend compile parallelism.
+
+|`RETRY`
+|`0`
+|Retries per non-passing leaf.
+
+|`MAX_FAILURES`
+|empty
+|Optional positive stop-launching threshold. Empty is unlimited; zero is
+rejected because it would skip every leaf.
+
+|`PYTHON_VERSION`
+|`3.11`
+|Locked DV environment interpreter.
+
+|`JOB_TIMEOUT_HOURS`
+|`24`
+|Jenkins-enforced timeout around real regressions and aggregation.
+
+|`VALIDATE_DRY_RUN`
+|`true`
+|Resolve every selected profile/group through a VCS dry-run before execution.
+
+|`DRY_RUN_ONLY`
+|`false`
+|Resolve commands without simulation or dashboard publication.
+|===
+
+Coverage is intentionally disabled in the initial matrix. Do not apply one
+global `--cov`: `dtp_uvm` has no supported coverage stages, and each profile
+must be qualified independently before coverage becomes a matrix option.
+
+[[jenkins-vcs-execution]]
+== Execution and Failure Semantics
+
+For each selected profile the driver runs the equivalent of:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut <profile> \
+  --items <mapped-group> \
+  --tool vcs \
+  --regress \
+  --reseed "$RESEED" \
+  --sim-jobs "$SIM_JOBS" \
+  --build-jobs "$BUILD_JOBS" \
+  --retry "$RETRY" \
+  --run-dir "$WORKSPACE/jenkins-out/runs/<profile>" \
+  --ui plain
+----
+
+A nonzero regression return does not stop the remaining profiles. The driver
+then calls `run_dashboard.py collect` once per profile and performs one
+data-only aggregate after all profiles complete.
+
+The driver returns nonzero after publication when any of these is true:
+
+* a runner or collector command returns nonzero;
+* native or normalized status is not `PASS`;
+* a selected profile result is missing;
+* the summary flow set/count differs from the requested matrix;
+* the trend history has no point.
+
+`collect` intentionally turns a missing native result into `UNKNOWN`; the
+driver retains that record and then fails the Jenkins build. This prevents a
+broken profile from disappearing from the dashboard.
+
+[[jenkins-vcs-artifacts]]
+== Data and Debug Artifacts
+
+The external renderer consumes:
+
+[source,text]
+----
+jenkins-out/dashboard-data/
+├── dtp.result.json
+├── dtp_uvm.result.json
+├── sep.result.json
+├── smc_wrapper.result.json
+├── smu.result.json
+├── smu_wrapper.result.json
+├── summary.json
+├── history.json
+└── manifest.json
+----
+
+`manifest.json` records the Jenkins build URL, the qualified Git commit,
+profile/group/tool matrix, runner and collector return codes, native and
+normalized status, aggregate counts, and history length.
+
+Jenkins separately archives selective native evidence:
+
+* run, regression, and leaf `result.json`;
+* simulation logs and stage logs;
+* cocotb/JUnit XML;
+* coverage manifests/reports when a future qualified profile enables coverage.
+
+Build binaries and waveforms are not archived by default. The native schema-1
+run-level `result.json` remains authoritative; JUnit provides Jenkins test
+navigation and the dashboard JSON provides cross-profile reporting.
+
+[[jenkins-vcs-history]]
+== Trend History
+
+Before a real run, the pipeline attempts to download:
+
+[source,text]
+----
+${JOB_URL}lastCompletedBuild/artifact/
+  jenkins-out/dashboard-data/history.json
+----
+
+The restored file is passed as `--history-in`; the current bundle receives the
+updated `--history-out`. If restoration fails, the pipeline logs the condition
+and starts a new chain. Artifact retention therefore bounds history continuity;
+the external consumer should persist `history.json` if it needs a longer
+guarantee.
+
+[[jenkins-vcs-rerun]]
+== Rerun and Triage
+
+Use the native leaf's recorded test and seed:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py \
+  --dut <profile> \
+  --items <failed-test> \
+  --tool vcs \
+  --stage sim \
+  --seed <recorded-seed> \
+  --waves vpd
+----
+
+Inspect in this order:
+
+. Jenkins JUnit failure;
+. profile run-level `result.json`;
+. leaf `result.json` and parser evidence;
+. simulation log and failure buckets;
+. same-seed rerun command.
+
+Do not infer PASS from the shell return code alone. `UNKNOWN`, `TIMEOUT`,
+`ERROR`, and `FAIL` are all non-passing native statuses.

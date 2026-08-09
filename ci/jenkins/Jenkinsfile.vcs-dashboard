@@ -1,0 +1,345 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+/*
+ * Native OCAH VCS regression and data-only dashboard pipeline.
+ *
+ * Jenkins is the outer scheduler. Each run_dv.py invocation uses the local
+ * executor on this licensed agent and writes one authoritative schema-1
+ * result.json. The driver normalizes all selected profiles only after every
+ * regression has completed.
+ */
+
+pipeline {
+    agent {
+        label "${params.VCS_AGENT_LABEL}"
+    }
+
+    options {
+        buildDiscarder(logRotator(
+            numToKeepStr: '90',
+            artifactNumToKeepStr: '30',
+        ))
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+        timestamps()
+    }
+
+    parameters {
+        string(
+            name: 'VCS_AGENT_LABEL',
+            defaultValue: 'redhat8',
+            description: 'Jenkins node label with VCS and the OCAH toolchain.',
+            trim: true,
+        )
+        string(
+            name: 'SITE_ENV_MODULE',
+            defaultValue: 'tt_ocah_env',
+            description: 'Environment module that provisions VCS, licenses, and Bender.',
+            trim: true,
+        )
+        string(
+            name: 'PROFILES',
+            defaultValue: 'dtp,dtp_uvm,sep,smc_wrapper,smu,smu_wrapper',
+            description: 'Comma-separated native DV profiles.',
+            trim: true,
+        )
+        string(
+            name: 'RESEED',
+            defaultValue: '1',
+            description: 'Random seeds per selected regression test.',
+            trim: true,
+        )
+        string(
+            name: 'SIM_JOBS',
+            defaultValue: '4',
+            description: 'Maximum local simulation leaves per profile.',
+            trim: true,
+        )
+        string(
+            name: 'BUILD_JOBS',
+            defaultValue: '4',
+            description: 'Backend VCS compile job count.',
+            trim: true,
+        )
+        string(
+            name: 'RETRY',
+            defaultValue: '0',
+            description: 'Retries per non-passing regression leaf.',
+            trim: true,
+        )
+        string(
+            name: 'MAX_FAILURES',
+            defaultValue: '',
+            description: 'Optional stop-launching threshold; empty means unlimited.',
+            trim: true,
+        )
+        string(
+            name: 'PYTHON_VERSION',
+            defaultValue: '3.11',
+            description: 'Python version selected by uv (supported: 3.11-3.13).',
+            trim: true,
+        )
+        string(
+            name: 'JOB_TIMEOUT_HOURS',
+            defaultValue: '24',
+            description: 'Jenkins-enforced wall-clock timeout for all regressions.',
+            trim: true,
+        )
+        booleanParam(
+            name: 'VALIDATE_DRY_RUN',
+            defaultValue: true,
+            description: 'Resolve every profile/group through a VCS dry-run first.',
+        )
+        booleanParam(
+            name: 'DRY_RUN_ONLY',
+            defaultValue: false,
+            description: 'Validate commands without simulation or dashboard publication.',
+        )
+    }
+
+    environment {
+        OCAH_OUT_ROOT = "${WORKSPACE}/jenkins-out"
+        OCAH_PREVIOUS_HISTORY = "${WORKSPACE}/previous-history/history.json"
+        OCAH_PIPELINE_RC = '2'
+        // Never inherit token-bearing nonfree URL overrides from a node/job.
+        OCAH_NONFREE_REMOTE = ''
+        NONFREE_REPO_PAT = ''
+    }
+
+    stages {
+        stage('Checkout tracked branch') {
+            steps {
+                script {
+                    if (!(params.VCS_AGENT_LABEL ==~ /[A-Za-z0-9._&|!()\/ -]+/)) {
+                        error('VCS_AGENT_LABEL contains unsupported characters')
+                    }
+                    // The pipeline, its helper scripts, and the qualified DV
+                    // code must come from the single commit the Jenkins item
+                    // tracks; a ref parameter would let them diverge. Ad-hoc
+                    // refs get their own Jenkins item.
+                    deleteDir()
+                    checkout scm
+                    env.OCAH_QUALIFIED_REV = sh(
+                        returnStdout: true,
+                        script: 'git rev-parse HEAD',
+                    ).trim()
+                }
+                sh(
+                    label: 'Record checked-out Git revision',
+                    script: '''
+                        set -eu
+                        git rev-parse HEAD
+                        git status --short --branch
+                    ''',
+                )
+            }
+        }
+
+        stage('Restore dashboard history') {
+            when {
+                expression {
+                    return !params.DRY_RUN_ONLY
+                }
+            }
+            steps {
+                sh(
+                    label: 'Restore previous data-only history',
+                    script: '''
+                        set -eu
+                        mkdir -p previous-history
+                        history_url="${JOB_URL}lastCompletedBuild/artifact/jenkins-out/dashboard-data/history.json"
+                        if curl --max-time 30 --fail --silent --show-error \
+                            "$history_url" -o "$OCAH_PREVIOUS_HISTORY"; then
+                            echo "Restored dashboard history from the previous completed build."
+                        else
+                            rm -f "$OCAH_PREVIOUS_HISTORY"
+                            echo "No previous dashboard history is available; starting a new chain."
+                        fi
+                    ''',
+                )
+            }
+        }
+
+        stage('Tool and configuration preflight') {
+            steps {
+                withEnv([
+                    "OCAH_PYTHON_VERSION=${params.PYTHON_VERSION}",
+                    "OCAH_PROFILES=${params.PROFILES}",
+                    "OCAH_SITE_MODULE=${params.SITE_ENV_MODULE ?: 'tt_ocah_env'}",
+                ]) {
+                    sh(
+                        label: 'Validate licensed VCS environment',
+                        script: '''#!/usr/bin/env bash
+                            set -eu
+                            source ci/jenkins/init-site-env.sh
+                            command -v vcs >/dev/null
+                            command -v bender >/dev/null
+                            command -v uv >/dev/null
+                            command -v jq >/dev/null
+                            command -v curl >/dev/null
+                            if [ -z "${SNPSLMD_LICENSE_FILE:-}" ] &&
+                               [ -z "${LM_LICENSE_FILE:-}" ]; then
+                                echo "VCS license environment is not configured." >&2
+                                exit 2
+                            fi
+                            case "$OCAH_PYTHON_VERSION" in
+                                3.11|3.12|3.13) ;;
+                                *)
+                                    echo "Unsupported PYTHON_VERSION=$OCAH_PYTHON_VERSION" >&2
+                                    exit 2
+                                    ;;
+                            esac
+                            uv sync --project . --locked --group dv \
+                                --python "$OCAH_PYTHON_VERSION"
+                            uv venv venv --clear --python "$OCAH_PYTHON_VERSION"
+                            uv pip install \
+                                --python venv/bin/python \
+                                --requirement ci/jenkins/vcs-cocotb-requirements.txt
+                            venv/bin/python -c \
+                                'import cocotb, pyuvm; print(f"VCS cocotb={cocotb.__version__} pyuvm={pyuvm.__version__}")'
+                            python3 tools/dv/run_dv.py --validate-configs
+                            old_ifs=$IFS
+                            IFS=,
+                            for profile in $OCAH_PROFILES; do
+                                profile=$(printf '%s' "$profile" | xargs)
+                                test -n "$profile"
+                                python3 tools/dv/run_dv.py \
+                                    --doctor --dut "$profile" --tool vcs
+                            done
+                            IFS=$old_ifs
+                        ''',
+                    )
+                }
+            }
+        }
+
+        stage('Resolve VCS regression matrix') {
+            when {
+                expression {
+                    return params.VALIDATE_DRY_RUN || params.DRY_RUN_ONLY
+                }
+            }
+            steps {
+                withEnv([
+                    "PROFILES=${params.PROFILES}",
+                    "RESEED=${params.RESEED}",
+                    "SIM_JOBS=${params.SIM_JOBS}",
+                    "BUILD_JOBS=${params.BUILD_JOBS}",
+                    "RETRY=${params.RETRY}",
+                    "MAX_FAILURES=${params.MAX_FAILURES}",
+                    'DRY_RUN=true',
+                    "OCAH_OUT_ROOT=${env.WORKSPACE}/jenkins-dry-run",
+                    "OCAH_SITE_MODULE=${params.SITE_ENV_MODULE ?: 'tt_ocah_env'}",
+                ]) {
+                    sh(
+                        label: 'Dry-run every selected VCS profile',
+                        script: '''#!/usr/bin/env bash
+                            set -euo pipefail
+                            source ci/jenkins/init-site-env.sh
+                            bash ci/jenkins/run-vcs-dashboard.sh
+                        ''',
+                    )
+                }
+            }
+        }
+
+        stage('Run VCS regressions and aggregate data') {
+            when {
+                expression {
+                    return !params.DRY_RUN_ONLY
+                }
+            }
+            steps {
+                script {
+                    int requestedHours
+                    try {
+                        requestedHours = params.JOB_TIMEOUT_HOURS.toInteger()
+                    } catch (NumberFormatException ignored) {
+                        error("JOB_TIMEOUT_HOURS must be an integer: ${params.JOB_TIMEOUT_HOURS}")
+                    }
+                    if (requestedHours < 1) {
+                        error('JOB_TIMEOUT_HOURS must be at least 1')
+                    }
+
+                    int rc = 2
+                    timeout(time: requestedHours, unit: 'HOURS') {
+                        withEnv([
+                            "PROFILES=${params.PROFILES}",
+                            "RESEED=${params.RESEED}",
+                            "SIM_JOBS=${params.SIM_JOBS}",
+                            "BUILD_JOBS=${params.BUILD_JOBS}",
+                            "RETRY=${params.RETRY}",
+                            "MAX_FAILURES=${params.MAX_FAILURES}",
+                            'DRY_RUN=false',
+                            "HISTORY_IN=${env.OCAH_PREVIOUS_HISTORY}",
+                            "OCAH_GIT_REF=${env.OCAH_QUALIFIED_REV}",
+                            "OCAH_SITE_MODULE=${params.SITE_ENV_MODULE ?: 'tt_ocah_env'}",
+                        ]) {
+                            rc = sh(
+                                label: 'Run all native VCS profiles',
+                                returnStatus: true,
+                                script: '''#!/usr/bin/env bash
+                                    set -euo pipefail
+                                    source ci/jenkins/init-site-env.sh
+                                    bash ci/jenkins/run-vcs-dashboard.sh
+                                ''',
+                            )
+                        }
+                    }
+                    env.OCAH_PIPELINE_RC = "${rc}"
+                }
+            }
+        }
+
+        stage('Gate on native aggregate') {
+            when {
+                expression {
+                    return !params.DRY_RUN_ONLY
+                }
+            }
+            steps {
+                script {
+                    String summary = sh(
+                        returnStdout: true,
+                        script: '''
+                            set -eu
+                            test -f "$OCAH_OUT_ROOT/dashboard-data/summary.json"
+                            jq -r '"flows=\\(.flows.passing)/\\(.flows.total) tests=\\(.tests.passing)/\\(.tests.total)"' \
+                                "$OCAH_OUT_ROOT/dashboard-data/summary.json"
+                        ''',
+                    ).trim()
+                    currentBuild.description = "${env.OCAH_QUALIFIED_REV.take(12)} ${summary}"
+                    if (env.OCAH_PIPELINE_RC != '0') {
+                        error("Native VCS aggregate is non-passing (rc=${env.OCAH_PIPELINE_RC})")
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit(
+                allowEmptyResults: true,
+                skipMarkingBuildUnstable: true,
+                testResults: 'jenkins-out/runs/**/results/*.xml',
+            )
+            archiveArtifacts(
+                allowEmptyArchive: true,
+                fingerprint: true,
+                artifacts: [
+                    'jenkins-out/dashboard-data/**',
+                    'jenkins-out/run-status.tsv',
+                    'jenkins-out/runs/**/result.json',
+                    'jenkins-out/runs/**/regression.json',
+                    'jenkins-out/runs/**/logs/**',
+                    'jenkins-out/runs/**/results/*.xml',
+                    'jenkins-out/runs/**/coverage/coverage.json',
+                    'jenkins-out/runs/**/coverage/report/**',
+                    'jenkins-out/runs/**/stages/**/logs/**',
+                ].join(','),
+            )
+        }
+    }
+}

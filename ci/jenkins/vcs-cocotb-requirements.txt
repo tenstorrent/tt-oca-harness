@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# VCS uses cocotb's classic Make/VPI integration. Keep this environment
+# separate from the locked cocotb 2.x launcher/dashboard environment.
+
+cocotb==1.9.2
+cocotbext-axi==0.1.28
+cocotbext-i2c==0.1.2
+cocotbext-jtag==0.4.0
+pyuvm==4.0.1

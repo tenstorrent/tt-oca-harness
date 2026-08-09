@@ -899,6 +899,77 @@ Operational rules:
 * Pull requests get a sticky smoke-summary comment from the `sim` workflow's
   `pr-comment` job instead of an email.
 
+=== Jenkins VCS data publication
+
+`ci/jenkins/Jenkinsfile.vcs-dashboard` implements the corresponding internal
+licensed-tool flow. It runs each selected native profile with `run_dv.py
+--tool vcs`, collects one native run tree per profile, and creates one
+data-only aggregate.
+
+The checked-in Jenkins pipeline does not create its Jenkins items. An
+administrator creates one Pipeline-from-SCM item per cluster
+(`tt-oca-harness/vcs-<cluster>-nightly`) with script path
+`ci/jenkins/Jenkinsfile.vcs-dashboard` and a pinned `PROFILES` subset, so
+clusters regress in parallel on separate licensed agents and stay
+independently red or green. Detailed node requirements, parameters, matrix
+ownership, artifacts, and rerun guidance are in `ci/jenkins/README.adoc`.
+
+The initial Jenkins matrix covers the six valid native profiles:
+
+* `dtp` / `all`;
+* `dtp_uvm` / `smoke`;
+* `sep` / `all`;
+* `smc_wrapper` / `project_p0_triplets`;
+* `smu` / `sep0_p4_all`;
+* `smu_wrapper` / `all`.
+
+Jenkins is the outer scheduler. The runner's executor remains `local`: test
+leaves execute on the licensed Jenkins agent with bounded `--sim-jobs`; no
+TTEM, LSF, or SLURM dispatch is implied.
+
+Each licensed shell step sources `ci/jenkins/init-site-env.sh`. The helper
+initializes the central module tree through `/tools_soc/tt/bin/bashrc`, loads
+`SITE_ENV_MODULE` when available, and otherwise loads the minimum GCC, Bender,
+Synopsys license/VCS/Verdi, Perl, and `soc_tools` modules directly.
+Jenkins launches non-login shells, so this setup cannot rely on an interactive
+login environment.
+
+Regression selection and result generation remain owned by the open native
+profiles and `run_dv.py`; nonfree checkout, TTEM, and nonfree testlists are not
+invoked.
+
+The pipeline provisions the locked `.venv` for the launcher/dashboard and a
+separate `venv` with cocotb 1.9.2 for the classic VCS Make/VPI path. The runner
+selects `venv/bin/python` for VCS; substituting the locked cocotb 2.x
+interpreter fails before compilation.
+
+The pipeline attempts every selected profile before aggregation. A non-passing
+runner return does not suppress publication. Missing native evidence becomes
+an `UNKNOWN` normalized record, and the Jenkins build fails only after the
+data bundle has been validated and archived.
+
+The external renderer consumes:
+
+[source,text]
+----
+jenkins-out/dashboard-data/
+├── <profile>.result.json
+├── summary.json
+├── history.json
+└── manifest.json
+----
+
+The manifest binds the bundle to the Jenkins build URL, the qualified Git
+commit, profile/group matrix, native run paths, return codes, and
+statuses. Jenkins also archives selective native logs, JUnit XML, regression
+metadata, and result fragments for triage. Build products and waves remain
+outside the data-only bundle.
+
+History is restored from the previous completed Jenkins artifact when
+available. This makes Jenkins artifact retention part of the trend-retention
+contract; an external consumer that needs longer continuity must persist the
+latest `history.json`.
+
 == Troubleshooting
 
 === Imports fail before a subcommand runs
