@@ -215,6 +215,11 @@ rejected because it would skip every leaf.
 |`24`
 |Jenkins-enforced timeout around real regressions and aggregation.
 
+|`COVERAGE`
+|`true`
+|Collect VCS coverage on every profile whose flow declares coverage stages.
+`dtp_uvm` always runs without `--cov`; see below.
+
 |`VALIDATE_DRY_RUN`
 |`true`
 |Resolve every selected profile/group through a VCS dry-run before execution.
@@ -224,9 +229,14 @@ rejected because it would skip every leaf.
 |Resolve commands without simulation or dashboard publication.
 |===
 
-Coverage is intentionally disabled in the initial matrix. Do not apply one
-global `--cov`: `dtp_uvm` has no supported coverage stages, and each profile
-must be qualified independently before coverage becomes a matrix option.
+Coverage is enabled by default and applied per profile from the flow's stage
+graph rather than as one global `--cov`: every `native-cocotb` profile (`dtp`,
+`sep`, `smc_wrapper`, `smu`, `smu_wrapper`) collects, merges, and reports VCS
+coverage, while `dtp_uvm` (`native-uvm`) declares no coverage stages and
+always runs without `--cov` — the runner would otherwise reject the flag
+before any stage executes. Coverage thresholds come from each profile's
+configuration, and a threshold miss fails that flow like any other failing
+stage. Set `COVERAGE=false` to disable collection for a build.
 
 [[jenkins-vcs-execution]]
 == Execution and Failure Semantics
@@ -292,7 +302,7 @@ Jenkins separately archives selective native evidence:
 * run, regression, and leaf `result.json`;
 * simulation logs and stage logs;
 * cocotb/JUnit XML;
-* coverage manifests/reports when a future qualified profile enables coverage.
+* coverage manifests/reports for every coverage-enabled profile.
 
 Build binaries and waveforms are not archived by default. The native schema-1
 run-level `result.json` remains authoritative; JUnit provides Jenkins test

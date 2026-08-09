@@ -28,6 +28,7 @@ readonly BUILD_JOB_COUNT="${BUILD_JOBS:-$SIM_JOB_COUNT}"
 readonly RETRY_COUNT="${RETRY:-0}"
 readonly MAX_FAILURE_COUNT="${MAX_FAILURES:-}"
 readonly DRY_RUN_MODE="${DRY_RUN:-false}"
+readonly COVERAGE_MODE="${COVERAGE:-true}"
 readonly HISTORY_INPUT="${HISTORY_IN:-}"
 
 die() {
@@ -53,6 +54,17 @@ group_for_profile() {
         smc_wrapper) echo "project_p0_triplets" ;;
         smu) echo "sep0_p4_all" ;;
         smu_wrapper) echo "all" ;;
+        *) return 1 ;;
+    esac
+}
+
+# Coverage follows each flow's stage graph: the native-cocotb profile declares
+# cov_merge/cov_report, while native-uvm (dtp_uvm) has none and run_dv.py
+# rejects --cov there before any stage executes.
+cov_supported_for_profile() {
+    case "$1" in
+        dtp | sep | smc_wrapper | smu | smu_wrapper) echo "true" ;;
+        dtp_uvm) echo "false" ;;
         *) return 1 ;;
     esac
 }
@@ -85,6 +97,10 @@ fi
 case "$DRY_RUN_MODE" in
     true | false) ;;
     *) die "DRY_RUN must be true or false, got '$DRY_RUN_MODE'" ;;
+esac
+case "$COVERAGE_MODE" in
+    true | false) ;;
+    *) die "COVERAGE must be true or false, got '$COVERAGE_MODE'" ;;
 esac
 
 IFS=',' read -r -a raw_profiles <<<"$PROFILES_CSV"
@@ -128,6 +144,10 @@ for profile in "${profiles[@]}"; do
     )
     if [[ -n "$MAX_FAILURE_COUNT" ]]; then
         runner+=(--max-failures "$MAX_FAILURE_COUNT")
+    fi
+    if [[ "$COVERAGE_MODE" == "true" &&
+        "$(cov_supported_for_profile "$profile")" == "true" ]]; then
+        runner+=(--cov)
     fi
     if [[ "$DRY_RUN_MODE" == "true" ]]; then
         runner+=(--dry-run)
