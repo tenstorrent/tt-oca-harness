@@ -3,8 +3,11 @@
 
 name: dashboard
 
-# Label runs in the Actions list by what they publish.
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard data publish (sim run {0})', inputs.run_id) || 'dashboard data publish (nightly)' }}
+# Label runs in the Actions list by what they publish. Non-nightly sim
+# completions still trigger this workflow (workflow_run cannot filter on the
+# triggering event), but the publish job skips them; label those runs as
+# skipped so they are not read as failed publications.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard data publish (sim run {0})', inputs.run_id) || github.event.workflow_run.event == 'schedule' && 'dashboard data publish (nightly)' || format('dashboard skipped ({0} sim run; only nightly data is published)', github.event.workflow_run.event) }}
 
 # Data-only publication: this workflow collects the nightly run into the
 # normalized dashboard data contracts and publishes them for consumption.
