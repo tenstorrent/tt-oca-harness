@@ -14,7 +14,7 @@ readonly SCRIPT_DIR
 if [[ -n "${OCAH_ROOT:-}" ]]; then
     resolved_root="$OCAH_ROOT"
 else
-    resolved_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    resolved_root="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 fi
 readonly OCAH_ROOT="$resolved_root"
 readonly OUT_ROOT="${OCAH_OUT_ROOT:-$OCAH_ROOT/build/jenkins-vcs-dashboard}"
