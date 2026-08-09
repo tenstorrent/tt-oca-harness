@@ -1,0 +1,14 @@
+ocah.mk
+  h_1abe2da33d4938 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bfb4648f2e5c1eea11cd7ee7ec54d0a733ed9995",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

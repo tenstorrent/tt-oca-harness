@@ -1,0 +1,25 @@
+hw/common/dv/fw/smc.h
+  s_d605cb93395a31::t_5db6dc7666a6bc 71-75
+hw/sys/sep/dv/fw/tests/common/sep_mbox_irq_protocol.h
+  s_d605cb93395a31::t_5b78069a320076 174
+hw/sys/smc/dv/fw/include/smc_strap.h
+  s_d605cb93395a31::t_6230f2dc406e28 34-35
+hw/sys/smc/dv/fw/common/occp/occp_interfaces.c
+  s_d605cb93395a31::t_08ec34c32a2feb 66-67,70-71,73-75,79,82-83,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "097d11c48cd28c255fb9c36f72dd6cfec4b840e3",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

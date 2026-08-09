@@ -1,0 +1,71 @@
+hw/sys/sep/dv/fw/tests/sep_smu_efuse/sep_smu_efuse.c
+  s_d605cb93395a31::t_56045a65a18457 25-26,28-29
+hw/sys/sep/dv/fw/tests/sep_smu_modules/sep_smu_modules.c
+  s_d605cb93395a31::t_c5efb0ce0ffae9 309-310
+hw/sys/smc/dv/fw/tests/dfx_ctrl_sanity/main.c
+  s_d605cb93395a31::t_43b6d6a6939cfb 22-23,82,84-86,88,93
+hw/sys/smc/dv/fw/tests/dual_octs_test/main.c
+  s_d605cb93395a31::t_c3a198244f9ea3 25-31,34-35,37-38,40,43-45,48-81,84-121,124-126,128,130,132,134-136,138,140-144,146-153,155-157,159,161-163,165,169-173,177-182
+hw/sys/smc/dv/fw/tests/octs_p0_credit_test/main.c
+  s_d605cb93395a31::t_5334027c06c18d 29-32,35-36,38-39,41,44-46,49-81,84-122,125-166,169-174,177-183
+hw/sys/smc/dv/fw/tests/octs_p0_primary_test/main.c
+  s_d605cb93395a31::t_ef7cc4bff81e4d 12-13,18-21,24-27,31-33,36-68,71-98,101-102,104-105,107,110-112,115-160,163-254,257-331
+hw/sys/smc/dv/fw/tests/octs_p0_sec_test/main.c
+  s_d605cb93395a31::t_5218e1533bc811 29,31-34,37-38,40-41,43,46-48,51-83,86-124,127-168,171-176,179-185
+hw/sys/smc/dv/fw/tests/octs_p0_sync_load_test/main.c
+  s_d605cb93395a31::t_9661ef355c5685 30,32-35,38-39,41-42,44,47-49,52-84,87-125,128-169,172-177,180-186
+hw/sys/smc/dv/fw/tests/octs_p12_test/main.c
+  s_d605cb93395a31::t_e44655e6d5fb3c 33-39,42-43,45-46,48,51-53,56-89,92-130,133-198,202-206,210-215
+hw/sys/smc/dv/fw/tests/octs_p1_credit_test/main.c
+  s_d605cb93395a31::t_4f3304fcc6d7be 25-31,34-35,37-38,40,43-45,48-81,84-121,124-126,128,130,132,134-136,138,140-144,146-153,155-157,159,161-163,165,169-173,177-182
+hw/sys/smc/dv/fw/tests/octs_p1_test/main.c
+  s_d605cb93395a31::t_1f36b805c7e645 33-39,42-43,45-46,48,51-53,56-89,92-130,133-198,202-206,210-215
+hw/sys/smc/dv/fw/tests/octs_p2_sync_recovery_test/main.c
+  s_d605cb93395a31::t_9ff49aba604e79 33-34,37,39-42,45-46,48-49,51,54-56,59-92,95-132,135-366,370-374,378-383
+hw/sys/smc/dv/fw/tests/octs_p2_test/main.c
+  s_d605cb93395a31::t_e8b59069edb9f7 33-34,37,39-42,45-46,48-49,51,54-56,59-92,95-132,135-366,370-374,378-383
+hw/sys/smc/dv/fw/tests/sep_bidirectional/main.c
+  s_d605cb93395a31::t_6fac34e0b98f88 51,53-54,57-58,61-63,65-70,73-74,81-85,89,93,95-98,102,104-115,119,128,139-141
+hw/sys/smc/dv/fw/tests/sep_error_recovery/main.c
+  s_d605cb93395a31::t_1fa272f1348aac 53,55,57-58,61,63,65-67,69,71-72,74-75,79,83,92,109
+hw/sys/smc/dv/fw/tests/sep_fw_request/main.c
+  s_d605cb93395a31::t_9d95df012b089a 40,42-43,46,48,50-55,63-67,74-75,79,83,85-88,92,94-105,109,111,120,138-140
+hw/sys/smc/dv/fw/tests/sep_interaction/main.c
+  s_d605cb93395a31::t_0cec20c5a70381 22-23,25
+hw/sys/smc/dv/fw/tests/sep_interop/main.c
+  s_d605cb93395a31::t_2b8cdcfb5eb944 7,29-31,35,37-44,50-52,55-61,65-147,150-152
+hw/sys/smc/dv/fw/tests/sep_multi_cmd/main.c
+  s_d605cb93395a31::t_c3c399d88e6742 43-45,47,52-53,57,61,63-72,76
+hw/sys/smc/dv/fw/tests/sep_notification/main.c
+  s_d605cb93395a31::t_8ba15780d19724 38,40-41,44-48,50
+hw/sys/smc/dv/fw/tests/sep_ring_buffer_test/main.c
+  s_d605cb93395a31::t_432722eb9be8aa 35,45-47,52,88,99,106-107,147,167,194,201
+hw/sys/smc/dv/fw/tests/sep_seq_validation/main.c
+  s_d605cb93395a31::t_311cbdb8f50639 41,43,45-46,49,51,53-55,57,59-61,63-64,68,72,81-82,99-100
+hw/sys/smc/dv/fw/tests/sep_service_req/main.c
+  s_d605cb93395a31::t_0e19602c2c49f2 45,47,49-50,53,56,58-60,62,65-69,73,77,86,108
+hw/sys/smc/dv/fw/tests/smc_sep_xbar/main.c
+  s_d605cb93395a31::t_16a540d7e35971 7,26-30,34-41,45-121,124-126
+hw/sys/smc/dv/fw/tests/smu_bidirect/main.c
+  s_d605cb93395a31::t_24a201bd2aadd2 10-27,30-32,35-37,40-44,47-51,53,56-75,78-93,95-96,100,103-104
+hw/sys/smc/dv/fw/tests/st_octs_p1_credit_test/main.c
+  s_d605cb93395a31::t_67fee0ebe645e5 34-38,42-45,48-49,51-52,54,57-58,61-63,66-68,71-108,111-179,182-280,284-288,292-297
+hw/sys/smc/dv/fw/tests/st_octs_p2_sync_recovery_test/main.c
+  s_d605cb93395a31::t_f0e4c71e615a5b 33-35,39-42,45-46,48-49,51,54-56,59-94,97-134,137-355,359-363,367-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a1ed37a0a36490c0c62992bc9db7f2b331f33723",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

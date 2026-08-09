@@ -1,0 +1,27 @@
+hw/sys/sep/dv/fw/tests/common/smu_smc_stall_protocol.h
+  s_d605cb93395a31::t_4b176a3bdb67fb 40
+hw/sys/sep/dv/fw/tests/common/sep_interop_protocol.h
+  s_d605cb93395a31::t_42f98bf7f7f968 88
+hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h
+  s_d605cb93395a31::t_d29375a7906f6d 89
+hw/sys/sep/dv/fw/tests/common/smc_sep_xbar_protocol.h
+  s_d605cb93395a31::t_6ab486583da242 34
+hw/sys/sep/dv/fw/tests/common/smu_cla_sep_cpu_debug_protocol.h
+  s_d605cb93395a31::t_947291cead250c 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cd5f23c65061b21c41a4e19888ce30e810ef67bd",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

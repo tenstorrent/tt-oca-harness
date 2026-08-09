@@ -1,0 +1,21 @@
+hw/sys/smc/lint/smc.vclint.waiver.tcl
+  s_d605cb93395a31::t_9220056f5de945 1-2
+hw/sys/smc/rdc/smc.vcrdc.waiver.tcl
+  s_d605cb93395a31::t_8c3c9254db8c7f 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9b5e21586b498470e7de5743d993329827b5939b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
