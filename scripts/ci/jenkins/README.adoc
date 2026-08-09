@@ -50,7 +50,7 @@ Items:       vcs-dtp-nightly   PROFILES=dtp,dtp_uvm
              vcs-smu-nightly   PROFILES=smu,smu_wrapper
 SCM:         git@github.com:tenstorrent/tt-oca-harness.git
 Branch:      main
-Script path: ci/jenkins/Jenkinsfile.vcs-dashboard
+Script path: scripts/ci/jenkins/Jenkinsfile.vcs-dashboard
 ----
 
 All items share the one checked-in Jenkinsfile; only the pinned `PROFILES`
@@ -58,7 +58,7 @@ value differs. Stagger the nightly cron entries so cluster runs do not compete
 for licenses or agents.
 
 The pipeline qualifies the branch the item tracks: `checkout scm` supplies the
-Jenkinsfile, the `ci/jenkins` helpers, and the DV code from one commit, so
+Jenkinsfile, the `scripts/ci/jenkins` helpers, and the DV code from one commit, so
 there is no ref parameter and pipeline logic can never diverge from the
 qualified revision. To qualify a different branch, create a separate item that
 tracks it.
@@ -95,7 +95,7 @@ not be echoed. The pipeline verifies presence, not server reachability or
 checkout entitlement.
 
 Jenkins starts a non-login shell on the selected node. Every licensed shell
-stage sources `ci/jenkins/init-site-env.sh`. The helper initializes Environment
+stage sources `scripts/ci/jenkins/init-site-env.sh`. The helper initializes Environment
 Modules through `/tools_soc/tt/bin/bashrc`, uses `SITE_ENV_MODULE` when that
 module is globally available, and otherwise loads the minimum central modules
 required by the native flow: GCC, Bender, Synopsys licenses, VCS, Verdi, Perl,
@@ -118,7 +118,7 @@ The pipeline provisions two Python environments:
 |`venv/`
 |1.9.2
 |Classic VCS Make/VPI simulator process. Dependencies are pinned by
-`ci/jenkins/vcs-cocotb-requirements.txt`.
+`scripts/ci/jenkins/vcs-cocotb-requirements.txt`.
 |===
 
 Do not replace `venv/` with `.venv/`. The current classic VCS integration

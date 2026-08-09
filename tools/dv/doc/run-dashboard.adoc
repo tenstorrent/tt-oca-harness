@@ -901,7 +901,7 @@ Operational rules:
 
 === Jenkins VCS data publication
 
-`ci/jenkins/Jenkinsfile.vcs-dashboard` implements the corresponding internal
+`scripts/ci/jenkins/Jenkinsfile.vcs-dashboard` implements the corresponding internal
 licensed-tool flow. It runs each selected native profile with `run_dv.py
 --tool vcs`, collects one native run tree per profile, and creates one
 data-only aggregate.
@@ -909,10 +909,10 @@ data-only aggregate.
 The checked-in Jenkins pipeline does not create its Jenkins items. An
 administrator creates one Pipeline-from-SCM item per cluster
 (`tt-oca-harness/vcs-<cluster>-nightly`) with script path
-`ci/jenkins/Jenkinsfile.vcs-dashboard` and a pinned `PROFILES` subset, so
+`scripts/ci/jenkins/Jenkinsfile.vcs-dashboard` and a pinned `PROFILES` subset, so
 clusters regress in parallel on separate licensed agents and stay
 independently red or green. Detailed node requirements, parameters, matrix
-ownership, artifacts, and rerun guidance are in `ci/jenkins/README.adoc`.
+ownership, artifacts, and rerun guidance are in `scripts/ci/jenkins/README.adoc`.
 
 The initial Jenkins matrix covers the six valid native profiles:
 
@@ -927,7 +927,7 @@ Jenkins is the outer scheduler. The runner's executor remains `local`: test
 leaves execute on the licensed Jenkins agent with bounded `--sim-jobs`; no
 TTEM, LSF, or SLURM dispatch is implied.
 
-Each licensed shell step sources `ci/jenkins/init-site-env.sh`. The helper
+Each licensed shell step sources `scripts/ci/jenkins/init-site-env.sh`. The helper
 initializes the central module tree through `/tools_soc/tt/bin/bashrc`, loads
 `SITE_ENV_MODULE` when available, and otherwise loads the minimum GCC, Bender,
 Synopsys license/VCS/Verdi, Perl, and `soc_tools` modules directly.

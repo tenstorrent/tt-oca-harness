@@ -8,7 +8,7 @@
 # tree installed.
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    echo "ERROR: source ci/jenkins/init-site-env.sh; do not execute it" >&2
+    echo "ERROR: source scripts/ci/jenkins/init-site-env.sh; do not execute it" >&2
     exit 2
 fi
 

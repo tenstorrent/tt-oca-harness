@@ -172,7 +172,7 @@ pipeline {
                         label: 'Validate licensed VCS environment',
                         script: '''#!/usr/bin/env bash
                             set -eu
-                            source ci/jenkins/init-site-env.sh
+                            source scripts/ci/jenkins/init-site-env.sh
                             command -v vcs >/dev/null
                             command -v bender >/dev/null
                             command -v uv >/dev/null
@@ -195,7 +195,7 @@ pipeline {
                             uv venv venv --clear --python "$OCAH_PYTHON_VERSION"
                             uv pip install \
                                 --python venv/bin/python \
-                                --requirement ci/jenkins/vcs-cocotb-requirements.txt
+                                --requirement scripts/ci/jenkins/vcs-cocotb-requirements.txt
                             venv/bin/python -c \
                                 'import cocotb, pyuvm; print(f"VCS cocotb={cocotb.__version__} pyuvm={pyuvm.__version__}")'
                             python3 tools/dv/run_dv.py --validate-configs
@@ -236,8 +236,8 @@ pipeline {
                         label: 'Dry-run every selected VCS profile',
                         script: '''#!/usr/bin/env bash
                             set -euo pipefail
-                            source ci/jenkins/init-site-env.sh
-                            bash ci/jenkins/run-vcs-dashboard.sh
+                            source scripts/ci/jenkins/init-site-env.sh
+                            bash scripts/ci/jenkins/run-vcs-dashboard.sh
                         ''',
                     )
                 }
@@ -281,8 +281,8 @@ pipeline {
                                 returnStatus: true,
                                 script: '''#!/usr/bin/env bash
                                     set -euo pipefail
-                                    source ci/jenkins/init-site-env.sh
-                                    bash ci/jenkins/run-vcs-dashboard.sh
+                                    source scripts/ci/jenkins/init-site-env.sh
+                                    bash scripts/ci/jenkins/run-vcs-dashboard.sh
                                 ''',
                             )
                         }
