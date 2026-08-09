@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-08T19:32:37+00:00",
+  "generated_at": "2026-08-09T19:00:34+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -31,6 +31,30 @@
       "flow_pass_rate": 100.0,
       "generated_at": "2026-08-08T19:32:37+00:00",
       "id": "b5e97db5cb1da72a",
+      "per_dut": [
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-09T19:00:34+00:00",
+      "id": "009005e21fbe1270",
       "per_dut": [
         {
           "comparison_key": null,
