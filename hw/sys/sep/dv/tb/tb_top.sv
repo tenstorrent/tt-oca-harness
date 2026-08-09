@@ -333,6 +333,7 @@ module sep_uvm_top
     `define SEP_CORE u_dut.u_sep
     `define SEP_IPI  u_dut.u_sep_ip_integration
 
+
     // ------------------------------------------------------------------
     // Idle / benign tie-off nets for the unused external ports.
     // ('0 default-init on structs keeps every input req/rsp port at idle.)

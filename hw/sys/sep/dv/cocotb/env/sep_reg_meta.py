@@ -27,6 +27,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -39,6 +40,11 @@ if _GEN_PY.is_dir() and str(_GEN_PY) not in sys.path:
     sys.path.insert(0, str(_GEN_PY))
 
 import sep_reg  # noqa: E402  (path bootstrap must precede the import)
+
+# RDL reserved-field names as emitted by the generator: `rsvd`, `rsvd_<n>`,
+# `reserved`, `reserved_<n>`. Anchored so real fields that merely contain the
+# word (`test_reserved`, `spi_control_field_en_rsvd`) are NOT excluded.
+_RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
 # Registers whose OFFSET is emitted per instance but whose DEFAULT/struct is
 # emitted once per RDL *type* (the generator does not duplicate a reused `reg`
@@ -88,15 +94,28 @@ class RegBlock:
         return int(self._sym(name, "REG_DEFAULT", alias_ok=True))
 
     def mask(self, name: str) -> int:
-        """Union of the register's implemented field bits.
+        """Union of the register's IMPLEMENTED field bits.
 
         Each bitfield is set to all-ones on a fresh union and the raw value is
         OR-ed in, so the result reflects the fields' real bit positions.
+
+        RDL reserved fields are excluded. They appear in the generated struct
+        like any other field, so OR-ing them in claims bits software cannot use.
+        SEP_NMI_VEC is the worked example: its bit 0 is `rsvd`, so the
+        implemented mask is 0xFFFF_FFFE, not 0xFFFF_FFFF. A register that is
+        reserved end to end (TIMEOUT_COUNT -- a lone 1-bit `reserved`) then
+        correctly masks to 0, which callers must treat as "nothing to prove"
+        rather than as a passing check.
+
+        Matched by exact name, not substring: `test_reserved` and
+        `spi_control_field_en_rsvd` are real, software-visible fields.
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
         bits = 0
         for field_name, _ctype, width in struct._fields_:
+            if _RESERVED_FIELD_RE.match(field_name):
+                continue
             view = union()
             view.val = 0
             setattr(view.f, field_name, (1 << width) - 1)

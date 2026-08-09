@@ -179,6 +179,10 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_high = 0
         self.base_addr_rw_checks = 0
         self.write_readback_checks = 0
+        # Registers whose implemented-field mask is 0 (fully reserved): decode and
+        # write path exercised, but no readback proof is possible. Reported
+        # separately so the PASS count never overstates what was proven.
+        self.write_readback_skipped = []
 
     async def _read(self, addr: int, expected: int | None, name: str) -> int:
         item = SepAxiItem(f"rd_{name}")
@@ -234,6 +238,22 @@ class sep_address_map_seq(uvm_sequence):
         for name, pattern in WRITE_READBACK:
             addr = BASE + SEP_CPU_CTRL.offset(name)
             mask = SEP_CPU_CTRL.mask32(name)
+            # A register with no implemented (non-reserved) fields proves nothing
+            # here: `pattern & mask` is 0, which is also its reset value, so a DUT
+            # that dropped the write entirely would still "pass". Exercise decode +
+            # the write path and check the response, but do NOT value-compare and
+            # do NOT count it as a readback proof.
+            #
+            # The value genuinely is not predictable: TIMEOUT_COUNT* read back 0x1
+            # here regardless of the pattern written, because they are hw-driven
+            # counters. That is also a live disagreement worth knowing about --
+            # the RDL describes the bit as `reserved`, the hardware clearly drives
+            # it -- so pinning any expected value would be inventing one.
+            if mask == 0:
+                await self._write(addr, pattern, name=name)
+                await self._read(addr, expected=None, name=f"{name}_reserved")
+                self.write_readback_skipped.append(name)
+                continue
             await self._write(addr, pattern, name=name)
             await self._read(addr, expected=pattern & mask, name=name)
             # Restore the generated reset value.

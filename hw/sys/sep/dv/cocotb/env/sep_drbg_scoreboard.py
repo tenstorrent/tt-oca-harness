@@ -27,6 +27,10 @@ from __future__ import annotations
 
 from collections import Counter, deque
 
+# Largest number of 128b blocks one CSRNG Generate command can request: the glen
+# field is GenBitsCtrWidth bits (csrng_pkg.sv:26, GenBitsCtrWidth = 12).
+_CSRNG_MAX_GLEN = (1 << 12) - 1
+
 import cocotb
 from cocotb.triggers import RisingEdge, ReadOnly, NextTimeStep
 from cocotb.utils import get_sim_time
@@ -175,6 +179,9 @@ class SepDrbgScoreboard:
         self.noise_gen = SepNoiseGolden()
         self.noise_gen.configure(noise_mode, seed_base=noise_seed_base)
         self._gk = dict(golden_kwargs or {})
+        # Scoreboard-only knob: consumed here, never forwarded to SepEntropyGolden.
+        _legal = self._gk.pop("legal_gen_lengths", None)
+        self.legal_gen_lengths = None if _legal is None else {int(v) for v in _legal}
         # Two golden instances, decoupled at the decorrelator boundary:
         #   golden -- the feedback SR, fed noise + seeded from live ff_stage (CHK1).
         #   chain  -- BIW/SHA/seed/DRBG/KM, fed one CHK1-verified decor sample per
@@ -187,8 +194,9 @@ class SepDrbgScoreboard:
         # CHK4 protocol-check state (genbits FIPS flag + Generate segmentation).
         # glen is the length the SEQUENCE commands; it is not a global invariant,
         # because the other EDN endpoints raise their own requests with their own
-        # lengths. So the segmentation is observed and reported rather than
-        # asserted equal to glen.
+        # lengths. Callers that know the full set can pin it via
+        # golden_kwargs["legal_gen_lengths"]; otherwise segments are only bounds-
+        # checked (see report()).
         self.glen = int(self._gk.get("glen", 32))
         self._fips_violations = 0
         self._genbits_in_gen = 0
@@ -603,12 +611,21 @@ class SepDrbgScoreboard:
         three DRBG EDN endpoints live (KM, crypto adapter, entropy pool) a single
         seed routinely serves several Generate commands, so the command
         boundaries -- and therefore where each trailing CTR_DRBG Update lands --
-        are not predictable from the seed stream alone. Only the boundary comes
-        from the DUT; every block VALUE is still predicted independently from the
-        (key, V) chain, so the compare stays a true golden compare.
+        are not predictable from the seed stream alone.
 
-        Protocol: every emitted block must carry genbits_fips_o==1. The observed
-        Generate segmentation is reported (not asserted) -- see report().
+        MODELLING DEPENDENCY, stated plainly: the Update BOUNDARY is taken from
+        the DUT (gen_last), so a DUT that segmented wrongly would be followed by
+        the golden rather than caught by it. Every block VALUE is still predicted
+        independently from the (key, V) chain, so a wrong block, a missing Update
+        or an extra Update all still mismatch; what the value compare cannot see
+        is gen_last itself landing on the wrong beat. report() bounds-checks the
+        resulting segment lengths, and a caller that knows its endpoints' request
+        sizes should pin them via golden_kwargs["legal_gen_lengths"] to close the
+        gap. Predicting the boundary outright would mean modelling EDN
+        arbitration, or probing the commanded glen inside the vendored
+        csrng_cmd_stage generate block.
+
+        Protocol: every emitted block must carry genbits_fips_o==1.
         """
         d = self.dut
         while True:
@@ -796,19 +813,35 @@ class SepDrbgScoreboard:
             self.log.error("CHK4 FIPS violation: %d genbits with genbits_fips_o != 1",
                            self._fips_violations)
             any_fail = True
-        # Generate segmentation, informational. gen_last is NOT a per-command
-        # terminator pulse: csrng_core.gen_last_q latches acmd_bus[16], the
-        # "last Generate of the chain" attribute of the application command
-        # (csrng_core.sv:748), and feeds csrng_ctr_drbg_gen.req_glast_i. A
-        # command with glast=0 legitimately performs NO trailing Update, so
-        # blocks outstanding with no gen_last is the normal steady state, not a
-        # defect -- do not turn this into a failure. (Same tap as the upstream
-        # SV scoreboard's hw_gen_last.)
-        self.log.info("CHK4 Generate segmentation: %d glast Updates, blocks/cmd %s, "
+        # Generate segmentation. gen_last IS a per-Generate-command terminator:
+        # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
+        # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as
+        # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
+        # acmd_sop (csrng_core.sv:750) to drive ctr_drbg_gen.req_glast_i. So each
+        # Generate command ends with exactly one glast beat, and that is where its
+        # single trailing Update lands.
+        self.log.info("CHK4 Generate segmentation: %d completed commands, blocks/cmd %s, "
                       "%d block(s) in the open command (seq-commanded glen=%d)",
                       sum(self._gen_lengths.values()),
                       dict(sorted(self._gen_lengths.items())) or "{}",
                       self._genbits_in_gen, self.glen)
+        # A completed command must carry a legal number of blocks. glen is a
+        # GenBitsCtrWidth field, so a segment can never exceed its maximum, and a
+        # zero-length segment would mean gen_last fired with no genbits at all.
+        # When the caller declares the lengths its endpoints request
+        # (golden_kwargs["legal_gen_lengths"]) anything else is a hard failure.
+        for seg_len, count in sorted(self._gen_lengths.items()):
+            bad = (seg_len < 1) or (seg_len > _CSRNG_MAX_GLEN) or (
+                self.legal_gen_lengths is not None and seg_len not in self.legal_gen_lengths)
+            if bad:
+                self.log.error("CHK4 illegal Generate segmentation: %d command(s) emitted "
+                               "%d blocks; legal=%s (max %d). gen_last landed somewhere the "
+                               "commanded glen cannot explain, so the trailing CTR_DRBG "
+                               "Update ran at the wrong point.",
+                               count, seg_len,
+                               sorted(self.legal_gen_lengths) if self.legal_gen_lengths
+                               else ">=1", _CSRNG_MAX_GLEN)
+                any_fail = True
         self.log.info("==== end report (strict=%s, any_fail=%s) ====",
                       self.strict, any_fail)
         if self.strict and any_fail:

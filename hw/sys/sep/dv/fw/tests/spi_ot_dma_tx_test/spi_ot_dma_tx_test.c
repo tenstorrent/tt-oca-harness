@@ -139,25 +139,33 @@ static int flash_wren(void) {
 
 // CHK-TRIGGER (port of the OCAH spi_ot_dma_trigger_test intent): positively prove
 // the TX-watermark signal that SOURCES lsio_trigger (= tx_wm | rx_wm) correlates
-// with TXQD crossing TX_WATERMARK, and that both trigger-enable registers are
-// live. The lsio_trigger wire is internal (not a CSR), so we observe its source
+// with TXQD crossing TX_WATERMARK, and that both trigger-enable registers hold
+// the value they were programmed with.
+//
+// Be precise about what each half proves. The two enable checks below are
+// CSR-level ONLY: a write followed by a read-back shows the bit is stored, not
+// that the enable has any effect, so they are reported as "programmed" and must
+// never be described as live. The liveness evidence in this checker is the
+// dynamic half further down -- STATUS.TXWM tracking TXQD across the watermark.
+//
+// The lsio_trigger wire is internal (not a CSR), so we observe its source
 // STATUS.TXWM + TXQD directly; RX is held quiescent so the OR-ed trigger is
 // TX-driven. Returns the error count and logs the observed TXQD/TXWM values.
 static int chk_trigger(void) {
     int err = 0;
 
-    // SPI-side trigger source enable: EVENT_ENABLE.TXWM read-back live.
+    // SPI-side trigger source enable: EVENT_ENABLE.TXWM reads back as programmed.
     uint32_t evt = spi_rd(SPI_EVENT_ENABLE_REG);
     if (!(evt & SPI_EVENT_TXWM)) {
         sep_mbx_puts("FAIL: CHK-TRIGGER EVENT_ENABLE.TXWM not set\n");
         err++;
     }
-    // DMA-side trigger enable: HANDSHAKE_INTR_ENABLE write/read-back live (the bare
+    // DMA-side trigger enable: HANDSHAKE_INTR_ENABLE stores what we write (the bare
     // -sep handshake is FIFO-level based; the CTN interrupt-clear regs are tied off
     // and intentionally unused).
     sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
     if (sep_dma_rd(SEP_DMA_HANDSHAKE_INTR_ENABLE) != 0x1) {
-        sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE not live\n");
+        sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE did not retain 0x1\n");
         err++;
     }
 

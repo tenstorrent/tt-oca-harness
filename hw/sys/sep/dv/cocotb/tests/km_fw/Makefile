@@ -42,9 +42,26 @@ KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
 # FW_TEST_EXTRA_CFLAGS is test-only and would not reach it.
 ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAULT=0
 
-rom_main:
+# The defines above are COMPILE flags, and compile.mk's dependency tracking
+# (-MMD -MP) records HEADER dependencies only -- it cannot see a CFLAGS change.
+# So an object left over from a build that did not pass them would be silently
+# reused, re-enabling the boot wipe and reproducing the exact dead-KM symptom
+# these tests were once parked for. Stamp the flags and force a clean rebuild
+# whenever they differ from what the existing objects were built with.
+ROM_MAIN_STAMP := $(KM_FW_DIR)/build/tests/rom_main/.wipe_defines
+.PHONY: rom_main_stamp
+rom_main_stamp:
+	@mkdir -p $(dir $(ROM_MAIN_STAMP))
+	@if [ "$$(cat $(ROM_MAIN_STAMP) 2>/dev/null)" != "$(ROM_MAIN_WIPE_DEFINES)" ]; then \
+	    echo "[km_fw] wipe defines changed -> rebuilding rom_main from scratch"; \
+	    rm -rf $(KM_FW_DIR)/build/tests/rom_main; \
+	fi
+
+rom_main: rom_main_stamp
 	$(MAKE) -C $(KM_FW_DIR) -f fw.mk dv-fw-tests TEST=rom_main \
 	    OCAH_ROOT=$(OCH_ROOT) FW_EXTRA_CFLAGS="$(ROM_MAIN_WIPE_DEFINES)"
+	@mkdir -p $(dir $(ROM_MAIN_STAMP))
+	@printf '%s' "$(ROM_MAIN_WIPE_DEFINES)" > $(ROM_MAIN_STAMP)
 	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
 
