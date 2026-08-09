@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-
 // #include <stdint.h>
 
 // #include "metal/atomic.h"
@@ -20,7 +19,8 @@
 //     int hartid = metal_cpu_get_current_hartid();
 
 //     DFX_CTRL_STATUS_STATUS_reg_u dft_soc_status = {.val = DFX_CTRL_STATUS_STATUS_REG_DEFAULT};
-//     DFX_CTRL_STATUS_STATUS_reg_u dft_sep_smc_status = {.val = DFX_CTRL_STATUS_STATUS_REG_DEFAULT};
+//     DFX_CTRL_STATUS_STATUS_reg_u dft_sep_smc_status = {.val =
+//     DFX_CTRL_STATUS_STATUS_REG_DEFAULT};
 
 //     dft_soc_status.val = read_reg(DFX_CTRL_STATUS_SMU_REG_ADDR);
 
@@ -72,29 +72,23 @@
 //     }
 // }
 
-
-
-
-
 #include <stdint.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 
-
 int main(void) {
 
-  test_pass(0);
+    test_pass(0);
 
-  while (true) {
-    __asm__("wfi");
-  }
+    while (true) {
+        __asm__("wfi");
+    }
 
-  return 0;
+    return 0;
 }
 
 int secondary_main(void) {
 
-  return main();
-
+    return main();
 }

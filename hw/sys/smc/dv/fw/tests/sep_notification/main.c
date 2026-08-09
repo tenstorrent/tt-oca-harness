@@ -35,20 +35,19 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#define N_EVENTS           4
+#define N_EVENTS 4
 
-#define HANDSHAKE_SCRATCH  1
-#define ACK_SCRATCH        2
+#define HANDSHAKE_SCRATCH 1
+#define ACK_SCRATCH 2
 
 /* Token constants — must match testbench */
-#define NOTIFY_READY  0xA5000001U
-#define EVENT_BASE    0xA5010000U    /* event i → EVENT_BASE + i          */
-#define TRIGGER       0xFEED0000U    /* TB sends TRIGGER to ACK_SCRATCH    */
-                                     /* ack for event i → TRIGGER + i + 1 */
-#define NOTIFY_DONE   0xA5FFFFFFU
+#define NOTIFY_READY 0xA5000001U
+#define EVENT_BASE 0xA5010000U /* event i → EVENT_BASE + i          */
+#define TRIGGER 0xFEED0000U    /* TB sends TRIGGER to ACK_SCRATCH    */
+                               /* ack for event i → TRIGGER + i + 1 */
+#define NOTIFY_DONE 0xA5FFFFFFU
 
-int main(void)
-{
+int main(void) {
     /* Signal that firmware is alive and ready for the trigger */
     write_scratch(ACK_SCRATCH, 0U);
     write_scratch(HANDSHAKE_SCRATCH, NOTIFY_READY);

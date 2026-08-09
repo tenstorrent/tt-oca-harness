@@ -19,10 +19,10 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#define CMD_READY_TOKEN    0xBEEFCAFEU
-#define CMD_SCRATCH_NUM    5
+#define CMD_READY_TOKEN 0xBEEFCAFEU
+#define CMD_SCRATCH_NUM 5
 #define RESULT_SCRATCH_NUM 6
-#define HANDSHAKE_SCRATCH  1
+#define HANDSHAKE_SCRATCH 1
 
 int main(void) {
     /* Phase 1: clear working scratches then signal ready to testbench */

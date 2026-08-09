@@ -48,73 +48,75 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#define N_ROUNDS           3
+#define N_ROUNDS 3
 
-#define HANDSHAKE_SCRATCH  1
-#define CTRL_SCRATCH_NUM   5   /* dual-use: SEP response (A) / SEP cmd+ack (B) */
+#define HANDSHAKE_SCRATCH 1
+#define CTRL_SCRATCH_NUM 5 /* dual-use: SEP response (A) / SEP cmd+ack (B) */
 
 /* Phase A tokens (FW-initiated) — written to scratch[1] by FW */
-#define FW_REQ_A_BASE    0xD1D10000U   /* | (round << 8) | op_A */
-#define FW_ACK_A_BASE    0xD1A10000U   /* | round               */
+#define FW_REQ_A_BASE 0xD1D10000U /* | (round << 8) | op_A */
+#define FW_ACK_A_BASE 0xD1A10000U /* | round               */
 
 /* Phase B tokens (SEP-initiated) */
-#define FW_READY_B_BASE  0xD1B10000U   /* | round  (FW→TB via scratch[1])   */
-#define SEP_CMD_MAGIC    0xD1C10000U   /* | op_B   (TB→FW via scratch[5])   */
-#define SEP_ACK_B_BASE   0xD1E10000U   /* | round  (TB→FW via scratch[5])   */
+#define FW_READY_B_BASE 0xD1B10000U /* | round  (FW→TB via scratch[1])   */
+#define SEP_CMD_MAGIC 0xD1C10000U   /* | op_B   (TB→FW via scratch[5])   */
+#define SEP_ACK_B_BASE 0xD1E10000U  /* | round  (TB→FW via scratch[5])   */
 
-#define OP_NOT        0x01U
-#define OP_XOR_MAGIC  0x02U
-#define OP_BYTE_REV   0x03U
-#define OP_ROT_L8     0x04U
-#define OP_POPCOUNT   0x05U
-#define XOR_MAGIC     0xDEADBEEFU
+#define OP_NOT 0x01U
+#define OP_XOR_MAGIC 0x02U
+#define OP_BYTE_REV 0x03U
+#define OP_ROT_L8 0x04U
+#define OP_POPCOUNT 0x05U
+#define XOR_MAGIC 0xDEADBEEFU
 
 /* Phase A: FW asks SEP to apply op_A[r] to DATA_A[r] */
-static const uint8_t  OP_A[N_ROUNDS]   = { OP_NOT, OP_XOR_MAGIC, OP_BYTE_REV };
-static const uint32_t DATA_A[N_ROUNDS] = { 0x12345678U, 0xA5A5A5A5U, 0x11223344U };
+static const uint8_t OP_A[N_ROUNDS] = {OP_NOT, OP_XOR_MAGIC, OP_BYTE_REV};
+static const uint32_t DATA_A[N_ROUNDS] = {0x12345678U, 0xA5A5A5A5U, 0x11223344U};
 
 /*
  * Phase B: SEP asks FW to apply op_B[r] to DATA_B[r].
  * DATA_B models locally held key material in FW — TB agrees on the same
  * constants but never needs to transfer the data over the bus.
  */
-static const uint8_t  OP_B[N_ROUNDS]   = { OP_XOR_MAGIC, OP_POPCOUNT, OP_ROT_L8 };
-static const uint32_t DATA_B[N_ROUNDS] = { 0xCAFEBABEU, 0x0F0F0F0FU, 0xF1F2F3F4U };
+static const uint8_t OP_B[N_ROUNDS] = {OP_XOR_MAGIC, OP_POPCOUNT, OP_ROT_L8};
+static const uint32_t DATA_B[N_ROUNDS] = {0xCAFEBABEU, 0x0F0F0F0FU, 0xF1F2F3F4U};
 
-static uint32_t byte_reverse(uint32_t x)
-{
-    return ((x & 0xFFU) << 24) |
-           (((x >> 8)  & 0xFFU) << 16) |
-           (((x >> 16) & 0xFFU) <<  8) |
+static uint32_t byte_reverse(uint32_t x) {
+    return ((x & 0xFFU) << 24) | (((x >> 8) & 0xFFU) << 16) | (((x >> 16) & 0xFFU) << 8) |
            ((x >> 24) & 0xFFU);
 }
 
-static uint32_t rotate_left_8(uint32_t x)
-{
+static uint32_t rotate_left_8(uint32_t x) {
     return (x << 8) | (x >> 24);
 }
 
-static uint32_t popcount(uint32_t x)
-{
+static uint32_t popcount(uint32_t x) {
     uint32_t n = 0;
-    while (x) { n += x & 1U; x >>= 1; }
+    while (x) {
+        n += x & 1U;
+        x >>= 1;
+    }
     return n;
 }
 
-static uint32_t compute(uint8_t op, uint32_t data)
-{
+static uint32_t compute(uint8_t op, uint32_t data) {
     switch (op) {
-    case OP_NOT:       return ~data;
-    case OP_XOR_MAGIC: return data ^ XOR_MAGIC;
-    case OP_BYTE_REV:  return byte_reverse(data);
-    case OP_ROT_L8:    return rotate_left_8(data);
-    case OP_POPCOUNT:  return popcount(data);
-    default:           return 0U;
+    case OP_NOT:
+        return ~data;
+    case OP_XOR_MAGIC:
+        return data ^ XOR_MAGIC;
+    case OP_BYTE_REV:
+        return byte_reverse(data);
+    case OP_ROT_L8:
+        return rotate_left_8(data);
+    case OP_POPCOUNT:
+        return popcount(data);
+    default:
+        return 0U;
     }
 }
 
-int main(void)
-{
+int main(void) {
     for (uint32_t r = 0; r < N_ROUNDS; r++) {
 
         /* ================================================================
@@ -123,8 +125,7 @@ int main(void)
 
         /* A-1: clear control scratch, signal request to SEP */
         write_scratch(CTRL_SCRATCH_NUM, 0U);
-        write_scratch(HANDSHAKE_SCRATCH,
-                      FW_REQ_A_BASE | ((r & 0xFFU) << 8) | OP_A[r]);
+        write_scratch(HANDSHAKE_SCRATCH, FW_REQ_A_BASE | ((r & 0xFFU) << 8) | OP_A[r]);
 
         /* A-2: wait for SEP response */
         uint32_t resp_a;
@@ -135,7 +136,9 @@ int main(void)
         /* A-3: verify */
         if (resp_a != compute(OP_A[r], DATA_A[r])) {
             test_fail(0);
-            while (true) { __asm__("wfi"); }
+            while (true) {
+                __asm__("wfi");
+            }
         }
 
         /* A-4: acknowledge */

@@ -40,41 +40,40 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#define NUM_ROUNDS         4
-#define CMD_READY_BASE     0xBEEF0000U   /* OR with round number — TB waits for this */
-#define CMD_SCRATCH_NUM    5
+#define NUM_ROUNDS 4
+#define CMD_READY_BASE 0xBEEF0000U /* OR with round number — TB waits for this */
+#define CMD_SCRATCH_NUM 5
 #define RESULT_SCRATCH_NUM 6
-#define HANDSHAKE_SCRATCH  1
+#define HANDSHAKE_SCRATCH 1
 
 /* XOR mask used in round 1 */
 #define XOR_MAGIC 0xDEADBEEFU
 
-static uint32_t byte_reverse(uint32_t x)
-{
-    return ((x & 0xFFU) << 24) |
-           (((x >> 8) & 0xFFU) << 16) |
-           (((x >> 16) & 0xFFU) << 8) |
+static uint32_t byte_reverse(uint32_t x) {
+    return ((x & 0xFFU) << 24) | (((x >> 8) & 0xFFU) << 16) | (((x >> 16) & 0xFFU) << 8) |
            ((x >> 24) & 0xFFU);
 }
 
-static uint32_t rotate_left_8(uint32_t x)
-{
+static uint32_t rotate_left_8(uint32_t x) {
     return (x << 8) | (x >> 24);
 }
 
-static uint32_t apply_operation(uint32_t round, uint32_t cmd)
-{
+static uint32_t apply_operation(uint32_t round, uint32_t cmd) {
     switch (round) {
-    case 0:  return ~cmd;
-    case 1:  return cmd ^ XOR_MAGIC;
-    case 2:  return byte_reverse(cmd);
-    case 3:  return rotate_left_8(cmd);
-    default: return ~cmd;
+    case 0:
+        return ~cmd;
+    case 1:
+        return cmd ^ XOR_MAGIC;
+    case 2:
+        return byte_reverse(cmd);
+    case 3:
+        return rotate_left_8(cmd);
+    default:
+        return ~cmd;
     }
 }
 
-int main(void)
-{
+int main(void) {
     for (uint32_t r = 0; r < NUM_ROUNDS; r++) {
         /* Phase 1: clear working scratches, signal ready for round r */
         write_scratch(CMD_SCRATCH_NUM, 0U);

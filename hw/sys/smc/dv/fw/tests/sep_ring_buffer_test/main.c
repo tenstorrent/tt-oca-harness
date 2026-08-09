@@ -32,7 +32,7 @@
 /* Scratch register addresses */
 #define SMC_SCRATCH_10_ADDR (SMC_CPU_CTRL_SCRATCH_10__REG_ADDR)
 #define SMC_SCRATCH_12_ADDR (SMC_CPU_CTRL_SCRATCH_12__REG_ADDR)
-#define SMC_SCRATCH_5_ADDR  (SMC_CPU_CTRL_SCRATCH_5__REG_ADDR)
+#define SMC_SCRATCH_5_ADDR (SMC_CPU_CTRL_SCRATCH_5__REG_ADDR)
 
 /* Coordination magic number */
 #define COCOTB_READY_MAGIC 0xC0C07B00
@@ -42,15 +42,14 @@
 
 /* Status message format constants */
 #define SMC_STATUS_FW_ID_SEP_BL0 0x1
-#define SMC_STATUS_TYPE_STATUS   0x1
-#define SMC_STATUS_TYPE_WARNING  0x8
-#define SMC_STATUS_TYPE_ERROR    0xF
+#define SMC_STATUS_TYPE_STATUS 0x1
+#define SMC_STATUS_TYPE_WARNING 0x8
+#define SMC_STATUS_TYPE_ERROR 0xF
 
 /*
  * Wait for cocotb driver to signal that entries are ready.
  */
-static bool wait_for_cocotb_ready(test_context_t *ctx, uint32_t timeout_ms)
-{
+static bool wait_for_cocotb_ready(test_context_t *ctx, uint32_t timeout_ms) {
     (void)ctx;
     (void)timeout_ms;
 
@@ -86,8 +85,7 @@ static bool wait_for_cocotb_ready(test_context_t *ctx, uint32_t timeout_ms)
 /*
  * Read number of entries written by cocotb from Scratch 12.
  */
-static uint32_t get_entry_count(test_context_t *ctx)
-{
+static uint32_t get_entry_count(test_context_t *ctx) {
     (void)ctx;
 
     simputs("\n=== Reading Entry Count ===\n");
@@ -98,15 +96,15 @@ static uint32_t get_entry_count(test_context_t *ctx)
     return count;
 }
 
-static bool read_and_validate_sep_status_buffer(test_context_t *ctx)
-{
+static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
     uint32_t total_written = get_entry_count(ctx);
     simputshex32("Total entries written: ", total_written);
 
     simputs("\n=== Reading Buffer Contents ===\n");
     /* one entry always empty in the buffer, so capacity is one less than the total written */
     for (uint32_t i = 0;
-         i < (total_written > (SMC_RING_BUFFER_SIZE - 1) ? (SMC_RING_BUFFER_SIZE - 1) : total_written);
+         i <
+         (total_written > (SMC_RING_BUFFER_SIZE - 1) ? (SMC_RING_BUFFER_SIZE - 1) : total_written);
          i++) {
         uint32_t status = 0;
 
@@ -146,8 +144,7 @@ static bool read_and_validate_sep_status_buffer(test_context_t *ctx)
 /*
  * Finalize test results and report to cocotb.
  */
-static void finalize_test_results(test_context_t *ctx)
-{
+static void finalize_test_results(test_context_t *ctx) {
     uint32_t result_code;
 
     simputs("\n========================================\n");
@@ -167,8 +164,7 @@ static void finalize_test_results(test_context_t *ctx)
     }
 }
 
-int main(void)
-{
+int main(void) {
     static test_context_t ctx = {0};
 
     init_test(0);
@@ -195,16 +191,14 @@ int main(void)
     finalize_test_results(&ctx);
 }
 
-int other_main(int hartid)
-{
+int other_main(int hartid) {
     (void)hartid;
     while (1) {
         __asm__("wfi");
     }
 }
 
-int secondary_main(void)
-{
+int secondary_main(void) {
     int hartid = metal_cpu_get_current_hartid();
     if (hartid == 0) {
         return main();

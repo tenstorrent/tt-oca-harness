@@ -42,44 +42,39 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#define NUM_REQUESTS       5
+#define NUM_REQUESTS 5
 
-#define CMD_READY_TOKEN    0xBEEFCAFEU
+#define CMD_READY_TOKEN 0xBEEFCAFEU
 
-#define CMD_SCRATCH_NUM    5
-#define DATA_SCRATCH_NUM   4
+#define CMD_SCRATCH_NUM 5
+#define DATA_SCRATCH_NUM 4
 #define RESULT_SCRATCH_NUM 6
 #define STATUS_SCRATCH_NUM 7
-#define HANDSHAKE_SCRATCH  1
+#define HANDSHAKE_SCRATCH 1
 
 /* Operation codes — must match values in the cocotb test */
-#define OP_NOT       0x01U
+#define OP_NOT 0x01U
 #define OP_XOR_MAGIC 0x02U
-#define OP_BYTE_REV  0x03U
-#define OP_ROT_L8    0x04U
-#define OP_POPCOUNT  0x05U
+#define OP_BYTE_REV 0x03U
+#define OP_ROT_L8 0x04U
+#define OP_POPCOUNT 0x05U
 
-#define XOR_MAGIC    0xDEADBEEFU
+#define XOR_MAGIC 0xDEADBEEFU
 
 /* Status codes written to STATUS_SCRATCH_NUM */
-#define STATUS_OK           0x00000000U
-#define STATUS_UNKNOWN_OP   0xE0000001U
+#define STATUS_OK 0x00000000U
+#define STATUS_UNKNOWN_OP 0xE0000001U
 
-static uint32_t byte_reverse(uint32_t x)
-{
-    return ((x & 0xFFU) << 24) |
-           (((x >> 8) & 0xFFU) << 16) |
-           (((x >> 16) & 0xFFU) << 8) |
+static uint32_t byte_reverse(uint32_t x) {
+    return ((x & 0xFFU) << 24) | (((x >> 8) & 0xFFU) << 16) | (((x >> 16) & 0xFFU) << 8) |
            ((x >> 24) & 0xFFU);
 }
 
-static uint32_t rotate_left_8(uint32_t x)
-{
+static uint32_t rotate_left_8(uint32_t x) {
     return (x << 8) | (x >> 24);
 }
 
-static uint32_t popcount(uint32_t x)
-{
+static uint32_t popcount(uint32_t x) {
     uint32_t count = 0;
     while (x) {
         count += x & 1U;
@@ -88,8 +83,7 @@ static uint32_t popcount(uint32_t x)
     return count;
 }
 
-int main(void)
-{
+int main(void) {
     for (uint32_t req = 0; req < NUM_REQUESTS; req++) {
         /* Signal ready for the next request.
          * NOTE: DATA_SCRATCH_NUM is NOT cleared here.  With all CPU cores
@@ -111,7 +105,7 @@ int main(void)
 
         /* Extract operation code (bits [7:0]) and read operand data */
         uint32_t op_code = cmd_hdr & 0xFFU;
-        uint32_t data    = read_scratch(DATA_SCRATCH_NUM);
+        uint32_t data = read_scratch(DATA_SCRATCH_NUM);
 
         /* Dispatch on operation code */
         uint32_t result = 0U;
