@@ -108,6 +108,7 @@ FW_TEST_MODE_occp_validate_boot_reject_test := rom
 FW_TEST_MODE_occp_validate_boot_test := rom
 FW_TEST_MODE_occp_zero_length_rw_test := rom
 FW_TEST_MODE_occp_zero_length_test := rom
+FW_TEST_MODE_sep_ring_buffer_test := rom
 
 # Make the simulator-consumed ECC image the primary postprocess target. The
 # shared engine then rebuilds sidecars when the ELF or either converter changes
