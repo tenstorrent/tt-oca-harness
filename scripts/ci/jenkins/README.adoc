@@ -48,7 +48,7 @@ Items:       vcs-dtp-nightly   PROFILES=dtp,dtp_uvm
              vcs-sep-nightly   PROFILES=sep
              vcs-smc-nightly   PROFILES=smc_wrapper
              vcs-smu-nightly   PROFILES=smu,smu_wrapper
-SCM:         git@github.com:tenstorrent/tt-oca-harness.git
+SCM:         https://github.com/tenstorrent/tt-oca-harness.git
 Branch:      main
 Script path: scripts/ci/jenkins/Jenkinsfile.vcs-dashboard
 ----
