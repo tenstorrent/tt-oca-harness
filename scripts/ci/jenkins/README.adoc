@@ -215,10 +215,13 @@ rejected because it would skip every leaf.
 |`24`
 |Jenkins-enforced timeout around real regressions and aggregation.
 
-|`COVERAGE`
+|`COLLECT_COVERAGE`
 |`true`
 |Collect VCS coverage on every profile whose flow declares coverage stages.
-`dtp_uvm` always runs without `--cov`; see below.
+`dtp_uvm` always runs without `--cov`; see below. The parameter is not named
+`COVERAGE` because Jenkins exports parameters into the environment and
+cocotb 1.x treats a `COVERAGE` env var as a Python-coverage switch; the
+runner also unsets any ambient `COVERAGE` before simulation.
 
 |`VALIDATE_DRY_RUN`
 |`true`
@@ -236,7 +239,7 @@ coverage, while `dtp_uvm` (`native-uvm`) declares no coverage stages and
 always runs without `--cov` — the runner would otherwise reject the flag
 before any stage executes. Coverage thresholds come from each profile's
 configuration, and a threshold miss fails that flow like any other failing
-stage. Set `COVERAGE=false` to disable collection for a build.
+stage. Set `COLLECT_COVERAGE=false` to disable collection for a build.
 
 [[jenkins-vcs-execution]]
 == Execution and Failure Semantics

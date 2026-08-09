@@ -28,7 +28,11 @@ readonly BUILD_JOB_COUNT="${BUILD_JOBS:-$SIM_JOB_COUNT}"
 readonly RETRY_COUNT="${RETRY:-0}"
 readonly MAX_FAILURE_COUNT="${MAX_FAILURES:-}"
 readonly DRY_RUN_MODE="${DRY_RUN:-false}"
-readonly COVERAGE_MODE="${COVERAGE:-true}"
+readonly COVERAGE_MODE="${OCAH_COVERAGE:-true}"
+# cocotb 1.x enables Python coverage when a COVERAGE env var is present and
+# hard-fails the leaf log when the module is missing; never let an ambient
+# value (Jenkins parameter export, node profile) reach the sim processes.
+unset COVERAGE
 readonly HISTORY_INPUT="${HISTORY_IN:-}"
 
 die() {
@@ -100,7 +104,7 @@ case "$DRY_RUN_MODE" in
 esac
 case "$COVERAGE_MODE" in
     true | false) ;;
-    *) die "COVERAGE must be true or false, got '$COVERAGE_MODE'" ;;
+    *) die "OCAH_COVERAGE must be true or false, got '$COVERAGE_MODE'" ;;
 esac
 
 IFS=',' read -r -a raw_profiles <<<"$PROFILES_CSV"

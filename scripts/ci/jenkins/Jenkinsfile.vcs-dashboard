@@ -86,8 +86,11 @@ pipeline {
             description: 'Jenkins-enforced wall-clock timeout for all regressions.',
             trim: true,
         )
+        // Deliberately NOT named COVERAGE: Jenkins exports parameters as
+        // environment variables, and cocotb 1.x interprets a COVERAGE env
+        // var as "enable Python coverage", breaking every VCS sim leaf.
         booleanParam(
-            name: 'COVERAGE',
+            name: 'COLLECT_COVERAGE',
             defaultValue: true,
             description: 'Collect VCS coverage on every profile whose flow declares coverage stages; dtp_uvm (native-uvm) has none and always runs without --cov.',
         )
@@ -234,9 +237,8 @@ pipeline {
                     "RETRY=${params.RETRY}",
                     "MAX_FAILURES=${params.MAX_FAILURES}",
                     // != false keeps coverage on for the first build after
-                    // this parameter is introduced, when params.COVERAGE is
-                    // still null.
-                    "COVERAGE=${params.COVERAGE != false}",
+                    // this parameter is introduced, when the param is null.
+                    "OCAH_COVERAGE=${params.COLLECT_COVERAGE != false}",
                     'DRY_RUN=true',
                     "OCAH_OUT_ROOT=${env.WORKSPACE}/jenkins-dry-run",
                     "OCAH_SITE_MODULE=${params.SITE_ENV_MODULE ?: 'tt_ocah_env'}",
@@ -280,7 +282,7 @@ pipeline {
                             "BUILD_JOBS=${params.BUILD_JOBS}",
                             "RETRY=${params.RETRY}",
                             "MAX_FAILURES=${params.MAX_FAILURES}",
-                            "COVERAGE=${params.COVERAGE != false}",
+                            "OCAH_COVERAGE=${params.COLLECT_COVERAGE != false}",
                             'DRY_RUN=false',
                             "HISTORY_IN=${env.OCAH_PREVIOUS_HISTORY}",
                             "OCAH_GIT_REF=${env.OCAH_QUALIFIED_REV}",
