@@ -26,7 +26,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     dash = subparsers.add_parser("dashboard", help="generate top-level dashboard")
     dash.add_argument("--results", nargs="+", required=True)
-    dash.add_argument("--html-out", required=True)
+    dash.add_argument("--html-out")
     dash.add_argument("--summary-out", required=True)
     dash.add_argument("--history-in")
     dash.add_argument("--history-out")
@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "dashboard":
         return gen_dashboard.main([
             "--results", *args.results,
-            "--html-out", args.html_out,
+            *(["--html-out", args.html_out] if args.html_out else []),
             "--summary-out", args.summary_out,
             *(["--history-in", args.history_in] if args.history_in else []),
             *(["--history-out", args.history_out] if args.history_out else []),
