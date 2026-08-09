@@ -114,7 +114,11 @@ BASE_ADDR_RW = [
 # checked honestly instead of against a full 32-bit pattern.
 WRITE_READBACK = [
     ("SEP_SW_DEBUG", 0xDEAD_BEEF),
-    ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DE),
+    # Odd literal on purpose: TIMEOUT_COUNT* implement only bit 0 (a placeholder
+    # `reserved` field declared sw=rw), and its reset is 0. An even pattern would
+    # mask to 0 == reset, so the readback could not tell a stored write from an
+    # ignored one. 0x…DE would have been exactly that; 0x…DF is not.
+    ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
     ("RAS_BANK_INFO", 0x0000_00FF),
@@ -238,20 +242,31 @@ class sep_address_map_seq(uvm_sequence):
         for name, pattern in WRITE_READBACK:
             addr = BASE + SEP_CPU_CTRL.offset(name)
             mask = SEP_CPU_CTRL.mask32(name)
-            # A register with no implemented (non-reserved) fields proves nothing
-            # here: `pattern & mask` is 0, which is also its reset value, so a DUT
-            # that dropped the write entirely would still "pass". Exercise decode +
-            # the write path and check the response, but do NOT value-compare and
-            # do NOT count it as a readback proof.
+            # A register with no software-usable fields cannot prove an
+            # implemented-field readback: `pattern & mask` is 0, which is also its
+            # reset value, so a DUT that dropped the write would still "pass".
             #
-            # The value genuinely is not predictable: TIMEOUT_COUNT* read back 0x1
-            # here regardless of the pattern written, because they are hw-driven
-            # counters. That is also a live disagreement worth knowing about --
-            # the RDL describes the bit as `reserved`, the hardware clearly drives
-            # it -- so pinning any expected value would be inventing one.
+            # It can still prove STORAGE, because these placeholder registers
+            # declare their lone field `sw=rw; hw=r` while naming it `reserved`
+            # (sep_cpu_ctrl.rdl:76-80) -- real read/write storage that mask()
+            # rightly refuses to call implemented. So compare against the storage
+            # mask instead, and require the pattern to differ from reset (the
+            # WRITE_READBACK patterns are chosen odd for exactly this reason);
+            # otherwise the check still could not distinguish a stored write from
+            # an ignored one. Counted separately from the readback proofs.
             if mask == 0:
+                store_mask = SEP_CPU_CTRL.mask32_all(name)
+                expected = pattern & store_mask
+                assert expected != (SEP_CPU_CTRL.reset32(name) & store_mask), (
+                    f"{name}: WRITE_READBACK pattern 0x{pattern:08X} masks to the reset "
+                    f"value under storage mask 0x{store_mask:08X}; the check could not "
+                    f"tell a stored write from an ignored one. Pick a pattern whose "
+                    f"low bits differ from reset."
+                )
                 await self._write(addr, pattern, name=name)
-                await self._read(addr, expected=None, name=f"{name}_reserved")
+                await self._read(addr, expected=expected, name=f"{name}_storage")
+                # Restore reset so later reads of this placeholder are predictable.
+                await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
                 self.write_readback_skipped.append(name)
                 continue
             await self._write(addr, pattern, name=name)

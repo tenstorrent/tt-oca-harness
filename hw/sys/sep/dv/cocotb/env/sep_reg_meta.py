@@ -122,6 +122,30 @@ class RegBlock:
             bits |= int(view.val)
         return bits
 
+    def mask_all(self, name: str) -> int:
+        """Union of EVERY field bit, reserved included -- the storage mask.
+
+        Distinct from mask(), which reports only software-usable fields. Use this
+        when the question is "did the write reach storage", not "what may software
+        use". TIMEOUT_COUNT is the case that forces the distinction: its lone
+        field is declared `sw=rw; hw=r` yet named `reserved`
+        (sep_cpu_ctrl.rdl:76-80), so it is real read/write storage that mask()
+        must not count as implemented but a storage proof still can.
+        """
+        struct = self._sym(name, "reg_t", alias_ok=True)
+        union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
+        bits = 0
+        for field_name, _ctype, width in struct._fields_:
+            view = union()
+            view.val = 0
+            setattr(view.f, field_name, (1 << width) - 1)
+            bits |= int(view.val)
+        return bits
+
+    def mask32_all(self, name: str) -> int:
+        """Storage mask truncated to the low 32 bits (the DV access width)."""
+        return self.mask_all(name) & 0xFFFF_FFFF
+
     def reset32(self, name: str) -> int:
         """Reset value truncated to the low 32 bits (the DV access width)."""
         return self.reset(name) & 0xFFFF_FFFF
