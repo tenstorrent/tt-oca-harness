@@ -17,7 +17,7 @@ package smc_periph_axi_lite_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 1;
   localparam int unsigned NumOutputs    = 12;
-  localparam int unsigned NumAddrRules  = 12;
+  localparam int unsigned NumAddrRules  = 13;
 
   // ===========================================================================
   // Protocol Type Definitions

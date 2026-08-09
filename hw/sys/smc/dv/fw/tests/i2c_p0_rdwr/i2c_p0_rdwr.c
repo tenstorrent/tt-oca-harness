@@ -175,11 +175,11 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
+    // Explicitly set ACQ_START_STOP_EN via generated field (not a bit literal)
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
@@ -408,7 +408,9 @@ int main(void) {
         }
     }
     if (idle_wait_count >= IDLE_WAIT_TIMEOUT) {
-        simputs("  WARNING: Target did not become idle before read request\n");
+        simputs("  ERROR: Target did not become idle before read request\n");
+        write_scratch(0, 0xBAD00060);
+        test_fail(0);
     } else {
         simputs("  Target confirmed idle (SCL should be released)\n");
     }
@@ -472,11 +474,18 @@ int main(void) {
             uint32_t signal = acqdata.f.SIGNAL;
             uint8_t abyte = (uint8_t)acqdata.f.ABYTE;
 
-            // Skip START/RESTART signals, only process DATA signals
-            if (signal == 0) { // I2C_ACQ_SIGNAL_DATA
-                simputs("    Received register address from ACQ FIFO: 0x");
+            // Skip START/RESTART; require exact register address on DATA
+            if (signal == I2C_ACQ_SIGNAL_DATA) {
+                simputs("    Received ACQ DATA abyte: 0x");
                 simputshex32("", abyte);
                 simputs("\n");
+                if (abyte != REG_ADDR) {
+                    simputs("    ERROR: ACQ DATA != REG_ADDR (expected 0x");
+                    simputshex32("", REG_ADDR);
+                    simputs(")\n");
+                    write_scratch(0, 0xBAD00063);
+                    test_fail(0);
+                }
                 found_reg_addr = true;
             } else {
                 simputs("    Skipped ACQ signal ");
@@ -495,7 +504,9 @@ int main(void) {
         }
     }
     if (!found_reg_addr) {
-        simputs("    WARNING: Register address not received in ACQ FIFO\n");
+        simputs("    ERROR: Register address not received in ACQ FIFO\n");
+        write_scratch(0, 0xBAD00063);
+        test_fail(0);
     }
 
     // Now perform read phase

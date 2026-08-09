@@ -319,13 +319,13 @@ static int stage_kmac(void) {
  *     (b) SPI clk div   : write a custom divider value and read it back.
  *     (c) SPI ctrl      : reset assert/deassert pattern + spi_enable.
  *   These prove that the SEP CPU can reach the SPI controller register
- *   space across the SEP fabric (SEP_AXI_EXTENSION @ 0x2000_0000).
+ *   space across the SEP fabric (SEP_EXTERNAL @ 0x2000_0000).
  * ------------------------------------------------------------------------ */
 
-#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
-#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
+#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
+#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
 #define SPI_CLK_DIV_CTRL_ADDR \
-    OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
+    OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
 
 static int spi_check_field(const char *name, uint32_t got, uint32_t exp) {
     if (got != exp) {

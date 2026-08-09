@@ -21,8 +21,10 @@
 #include "i2c_opentitan.h"
 
 // Test configuration
-const uint32_t CONTROLLER_IDX = 0;   // I2C_0 as Controller
-const uint8_t VIP_SLAVE_ADDR = 0x10; // VIP slave address (7-bit)
+const uint32_t CONTROLLER_IDX = 0;         // I2C_0 as Controller
+const uint32_t TARGET_IDX = 1;             // I2C_1 as internal Target (positive control)
+const uint8_t VIP_SLAVE_ADDR = 0x10;       // VIP slave address (7-bit)
+const uint8_t INTERNAL_TARGET_ADDR = 0x20; // Internal allow-path target
 
 /**
  * @brief Enable I2C Wrapper Control
@@ -93,6 +95,75 @@ static void check_controller_status(uint32_t idx, const char *label) {
 }
 
 /**
+ * @brief Positive control: ACK'd write to internal I2C_1 target.
+ * Proves the controller allow-path before NACK injection legs.
+ */
+static int test_ack_positive_control(uint32_t controller_idx, uint32_t target_idx,
+                                     uint8_t target_addr, const i2c_timing_config_t *timing) {
+    simputs("\n=== Positive Control: ACK allow-path (I2C_1 target) ===\n");
+
+    i2c_wrapper_enable(target_idx, false);
+
+    i2c_target_config_t tgt_cfg = {.address0 = target_addr,
+                                   .mask0 = 0x7F,
+                                   .address1 = 0,
+                                   .mask1 = 0,
+                                   .timing = *timing,
+                                   .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                            .rx_thresh = 0,
+                                            .fmt_thresh = 0},
+                                   .enable_interrupts = false,
+                                   .ack_ctrl_mode = false,
+                                   .tx_stretch_ctrl = false,
+                                   .timeout_cycles = 0};
+
+    int ret = i2c_target_init(target_idx, &tgt_cfg);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Internal target init failed\n");
+        return ret;
+    }
+
+    uint32_t tgt_base = i2c_get_base(target_idx);
+    i2c__CTRL_t ctrl = {.w = read_reg(tgt_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    ctrl.f.ACQ_START_STOP_EN = 1;
+    write_reg(tgt_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              ctrl.w);
+
+    clear_controller_events(controller_idx, 0xF);
+    ret = i2c_controller_wait_idle(controller_idx, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Controller not idle before allow-path\n");
+        return ret;
+    }
+
+    uint8_t payload[1] = {0x5A};
+    ret = i2c_controller_write(controller_idx, target_addr, payload, 1, true);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Allow-path write failed\n");
+        return ret;
+    }
+
+    ret = i2c_controller_wait_idle(controller_idx, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Controller did not return idle after allow-path\n");
+        return ret;
+    }
+
+    uint32_t events = read_controller_events(controller_idx);
+    if (events & 0x1) {
+        simputs("  ERROR: NACK set on allow-path (unexpected)\n");
+        return I2C_ERROR;
+    }
+
+    simputs("  PASS: Allow-path write completed with idle and no NACK\n");
+    clear_controller_events(controller_idx, 0xF);
+    return I2C_OK;
+}
+
+/**
  * @brief Test Case 1: NACK at address phase
  */
 static int test_nack_at_address(uint32_t controller_idx, uint8_t target_addr) {
@@ -136,12 +207,12 @@ static int test_nack_at_address(uint32_t controller_idx, uint8_t target_addr) {
             simputs("  NACK detected!\n");
             check_controller_status(controller_idx, "After NACK");
 
-            // Verify abort condition (controller should be halted)
-            if (status.f.HOSTIDLE == 0) {
-                simputs("  PASS: Controller halted after NACK (abort condition)\n");
-            } else {
-                simputs("  WARNING: Controller idle after NACK (may have auto-recovered)\n");
+            /* RTL ClockPulseAck halt: hostidle must stay 0 until SW recover. */
+            if (status.f.HOSTIDLE != 0) {
+                simputs("  ERROR: Controller idle after NACK (expected halt)\n");
+                return I2C_ERROR;
             }
+            simputs("  PASS: Controller halted after NACK\n");
 
             // Clear events for next test
             clear_controller_events(controller_idx, 0xF);
@@ -202,44 +273,31 @@ static int test_nack_at_data(uint32_t controller_idx, uint8_t target_addr) {
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               fdata.w);
 
-    // Small delay to allow NACK event to be set
-    for (volatile int i = 0; i < 1000; i++)
-        ;
+    // Bounded poll for CONTROLLER_EVENTS.nack — busy alone is not proof
+    uint32_t timeout = I2C_TIMEOUT_DEFAULT;
+    uint32_t count = 0;
+    while (count < timeout) {
+        uint32_t events = read_controller_events(controller_idx);
+        i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
-    // Check for NACK event immediately
-    uint32_t events = read_controller_events(controller_idx);
-    i2c__STATUS_t status = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-
-    check_controller_status(controller_idx, "After data transmission");
-
-    if (events & 0x1) {
-        // Verify abort condition (controller should be halted)
-        if (status.f.HOSTIDLE == 0) {
-            // PASS: Controller halted after NACK
-        } else {
-            // WARNING: Controller idle after NACK (may have auto-recovered)
-        }
-
-        // Clear events for next test
-        clear_controller_events(controller_idx, 0xF);
-        return I2C_OK;
-    } else {
-        // Even if no NACK event, check if controller is halted (indicating NACK occurred)
-        if (status.f.HOSTIDLE == 0) {
-            // Controller is halted (NACK occurred but event not set)
-            // PASS: Treating as successful NACK test
-
-            // Clear events for next test
+        if (events & 0x1) {
+            simputs("  NACK detected at data phase!\n");
+            check_controller_status(controller_idx, "After data NACK");
+            /* RTL ClockPulseAck halt: hostidle must stay 0 until SW recover. */
+            if (status.f.HOSTIDLE != 0) {
+                simputs("  ERROR: Controller idle after data NACK (expected halt)\n");
+                return I2C_ERROR;
+            }
+            simputs("  PASS: Controller halted after data NACK\n");
             clear_controller_events(controller_idx, 0xF);
             return I2C_OK;
-        } else {
-            // Controller still idle, no NACK occurred
-            return I2C_ERROR;
         }
+
+        count++;
     }
 
-    simputs("  ERROR: Timeout waiting for NACK\n");
+    simputs("  ERROR: Timeout waiting for data-phase NACK event\n");
     check_controller_status(controller_idx, "After timeout");
     return I2C_ERROR_TIMEOUT;
 }
@@ -313,6 +371,21 @@ int main(void) {
         test_fail(0);
     }
     simputs("  Controller initialized successfully\n");
+
+    //=========================================================================
+    // Positive control (FIND-004): ACK allow-path via internal I2C_1 target
+    // before any VIP NACK injection. Uses addr 0x20 so it never collides
+    // with VIP_SLAVE_ADDR (0x10).
+    //=========================================================================
+    write_scratch(1, 0x00000035);
+    ret = test_ack_positive_control(CONTROLLER_IDX, TARGET_IDX, INTERNAL_TARGET_ADDR,
+                                    &computed_timing);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Positive allow-path control failed\n");
+        write_scratch(0, 0xBAD00035);
+        test_fail(0);
+    }
+    write_scratch(1, 0x00000036);
 
     write_scratch(1, 0x00000031);
 

@@ -68,7 +68,11 @@
  */
 #define SMC_TOP_GPIO_CTRL_COUNT 65
 #define SMC_TOP_GPIO_CTRL_STRIDE 0x20u
-#define SMC_TOP_GPIO_CTRL_WINDOW_OFFSET 0x100u
+/* The vendor eFuse shim CSR owns the first 0x1000 of the window, so the
+ * mandatory map starts one 4K page up. Must track ExtGpioCtrlBase in
+ * hw/top/smc_ip_integration.sv -- addresses below it are unclaimed and the
+ * demux answers DECERR, which hangs the firmware. */
+#define SMC_TOP_GPIO_CTRL_WINDOW_OFFSET 0x1100u
 
 #define SMC_TOP_GPIO_CTRL_BASE_ADDR(i) \
     (SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SMC_TOP_GPIO_CTRL_WINDOW_OFFSET + \

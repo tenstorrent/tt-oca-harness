@@ -11,6 +11,9 @@ module smc_dfd_wrap
 #(
 	parameter  BASE_ADDR       = 0,
 	parameter  NUM_INPUT_LANES = 64,
+	// Width of the reference tick accounting counters. Bounds how far clk_gated_i may fall behind
+	// clk_ref_i before ticks are lost; 2**REF_CNT_W ref cycles of slack.
+	parameter  int unsigned REF_CNT_W = 8,
 	localparam LANE_WIDTH      = 16
 ) (
 	input  logic                                                                     clk_smc_i,
@@ -54,8 +57,11 @@ module smc_dfd_wrap
 
 	logic                                                    	      smc_action_halt_clock_o;
 
-	logic                                                             ref_sync, ref_sync_ff;
 	logic                                                             time_tick;
+	logic                                                             rst_ref_n;
+	logic [REF_CNT_W-1:0]                                             ref_cnt, ref_cnt_gray_q;
+	logic [REF_CNT_W-1:0]                                             ref_cnt_gray, ref_cnt_gray_sync;
+	logic [REF_CNT_W-1:0]                                             ref_cnt_sync, tick_cnt;
 
 	logic [LANE_WIDTH*16-1:0]                                         debug_bus_l2;
 	logic [LANE_WIDTH*32-1:0]                                         debug_bus_l3;
@@ -215,9 +221,46 @@ module smc_dfd_wrap
 	// Time Tick Generation //
 	//////////////////////////
 
-	prim_sync3r #(.WIDTH(1))   ref_clk_sync   ( .i_clk(clk_gated_i), .i_reset_n(rst_primary_ni),              .i_d(clk_ref_i),         .o_q(ref_sync));
-	dfd_rv_dff #(.WIDTH(1))    ref_edge_det   ( .i_clk(clk_gated_i), .i_reset_n(rst_primary_ni), .i_en(1'b1), .i_d(ref_sync),          .o_q(ref_sync_ff));
-	assign time_tick = ref_sync && !ref_sync_ff;
+	// count in refclk and then send value to clk_gated_i domain
+	// - do this to be able to detect every rising edge of refclk
+	prim_sync_reset #(.WIDTH(3)) u_ref_rst_sync (
+		.clk			(clk_ref_i),
+		.rst_n			(rst_primary_ni),
+		.test_mode		(test_en_i),
+		.scan_rst_n		(rst_primary_ni),
+		.sync_rst_n		(rst_ref_n)
+	);
+
+	always_ff @(posedge clk_ref_i) begin
+		if (!rst_ref_n) begin
+			ref_cnt        <= '0;
+			ref_cnt_gray_q <= '0;
+		end else begin
+			ref_cnt        <= REF_CNT_W'(ref_cnt + 1'b1);
+			ref_cnt_gray_q <= ref_cnt_gray;
+		end
+	end
+
+	prim_bin2gray #(.N(REF_CNT_W)) u_ref_cnt_bin2gray (.A(ref_cnt), .Z(ref_cnt_gray));
+
+	prim_sync3r #(.WIDTH(REF_CNT_W)) u_ref_cnt_sync (
+		.i_clk		(clk_gated_i),
+		.i_reset_n	(rst_primary_ni),
+		.i_d		(ref_cnt_gray_q),
+		.o_q		(ref_cnt_gray_sync)
+	);
+
+	prim_gray2bin #(.N(REF_CNT_W)) u_ref_cnt_gray2bin (.A(ref_cnt_gray_sync), .Z(ref_cnt_sync));
+
+	assign time_tick = (tick_cnt != ref_cnt_sync);
+
+	always_ff @(posedge clk_gated_i or negedge rst_primary_ni) begin
+		if (!rst_primary_ni) begin
+			tick_cnt <= '0;
+		end else if (time_tick) begin
+			tick_cnt <= REF_CNT_W'(tick_cnt + 1'b1);
+		end
+	end
 
 	////////////////////
 	// Cross Triggers //

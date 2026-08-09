@@ -108,12 +108,12 @@ int main(void) {
         /* Native generated type; the reference spells this GPIO_INTF_DATA_CTRL_reg_u
          * with a .val raw word. Same layout, and DATA_CTRL is at offset 0. */
         gpio_intf__DATA_CTRL_t gpio_control;
-        gpio_control.w = read_gpio(61, 0x0u);
+        gpio_control.w = read_gpio(58, 0x0u);
         gpio_control.f.interface_enable = 1;
         gpio_control.f.enable_rx_tx = 2;
-        write_gpio(61, 0x0u, gpio_control.w);
+        write_gpio(58, 0x0u, gpio_control.w);
         do {
-            gpio_control.w = read_gpio(61, 0x0u);
+            gpio_control.w = read_gpio(58, 0x0u);
         } while (gpio_control.f.pad2core == 0);
     }
 

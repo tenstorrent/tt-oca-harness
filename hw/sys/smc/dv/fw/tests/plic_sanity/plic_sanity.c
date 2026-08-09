@@ -14,12 +14,16 @@
 #define TEST_INTERRUPT_ID 23
 
 static void test_interrupt_handler(int id, void *priv) {
-    // Log the claimed interrupt ID
+    (void)priv;
     simputshex32("Interrupt fired: ID = ", id);
-
+    if (id != TEST_INTERRUPT_ID) {
+        simputs("ERROR: claimed interrupt ID mismatch\n");
+        simputshex32("  expected=", TEST_INTERRUPT_ID);
+        simputs("\n");
+        test_fail(0);
+    }
     test_pass(0);
 
-    // Wait-for-interrupt (optional, depending on system requirements)
     while (true) {
         __asm__ volatile("wfi");
     }

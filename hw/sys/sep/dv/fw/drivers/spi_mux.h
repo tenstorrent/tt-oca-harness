@@ -11,7 +11,7 @@
  * drives its transactions into pads the OT host does not own: the flash model
  * never sees CS# fall, and every status read comes back 0x00.
  *
- * The mux is a nonfree shim block inside sep_axi_extension, so it is only
+ * The mux is a nonfree shim block inside sep_external, so it is only
  * visible when the register overlay supplies it. A pure-open SEP has no mux and
  * needs no switching, hence the same #ifdef gating sep.h uses for the vendor
  * block reset constants.
@@ -30,7 +30,7 @@ static inline void spi_mux_select_ot(void) {
     spi_mux.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset;
     spi_mux.f.spi_sel = 1;
     spi_mux.f.cs_force_high = 0;
-    WRITE_REG(OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
+    WRITE_REG(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
 }
 
 #else

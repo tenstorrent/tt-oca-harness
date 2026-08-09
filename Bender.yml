@@ -395,7 +395,7 @@ sources:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/sys/sep/dv/models/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: smc
     files:
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
@@ -1565,6 +1565,7 @@ sources:
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
+      - hw/top/smc_ijtag_net.sv
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:

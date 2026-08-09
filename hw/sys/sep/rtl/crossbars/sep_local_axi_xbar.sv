@@ -25,13 +25,13 @@
 // | sep_system_peripherals | AXI4 | 0x0000_4000_0000 | 0x0000_c000_0000 |    2 GB |
 // | sep_io                 | AXI4 | 0x0000_10b0_0000 | 0x0000_10bf_ffff | 1023 KB |
 // | entropy_fifo           | AXI4 | 0x0000_1095_0000 | 0x0000_1096_0000 |   64 KB |
-// | axi_extension          | AXI4 | 0x0000_2000_0000 | 0x0000_4000_0000 |  512 MB |
+// | sep_external           | AXI4 | 0x0000_2000_0000 | 0x0000_4000_0000 |  512 MB |
 // +────────────────────────+──────+──────────────────+──────────────────+─────────+
 //
 // ============================================================================
 // CONNECTIVITY MATRIX
 // +──────────+───────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────┬────────────────────────+
-// | Input    |        cpu_tcm         |          sram          |        dma_csr         |        sep_wdt         |     sep_reset_ctrl     |       sep_crypto       | sep_system_peripherals |         sep_io         |      entropy_fifo      |     axi_extension      |
+// | Input    |        cpu_tcm         |          sram          |        dma_csr         |        sep_wdt         |     sep_reset_ctrl     |       sep_crypto       | sep_system_peripherals |         sep_io         |      entropy_fifo      |      sep_external      |
 // +──────────+───────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────┼────────────────────────+
 // | ifu_sram |                        |          YES           |                        |                        |                        |                        |                        |                        |                        |                        |
 // | lsu      |                        |          YES           |          YES           |          YES           |          YES           |          YES           |          YES           |          YES           |          YES           |          YES           |
@@ -113,9 +113,9 @@ module sep_local_axi_xbar
   output axi_out_req_t  entropy_fifo_req_o,
   input  axi_out_resp_t entropy_fifo_resp_i,
 
-  // axi_extension (AXI4, 64-bit)
-  output axi_out_req_t  axi_extension_req_o,
-  input  axi_out_resp_t axi_extension_resp_i
+  // sep_external (AXI4, 64-bit)
+  output axi_out_req_t  sep_external_req_o,
+  input  axi_out_resp_t sep_external_resp_i
 
 );
 
@@ -157,7 +157,7 @@ module sep_local_axi_xbar
     '{idx: 7, start_addr: 32'h10b00000, end_addr: 33'h10bfffff},
     // entropy_fifo.main: 0x10950000 - 0x10960000
     '{idx: 8, start_addr: 32'h10950000, end_addr: 33'h10960000},
-    // axi_extension.main: 0x20000000 - 0x40000000
+    // sep_external.main: 0x20000000 - 0x40000000
     '{idx: 9, start_addr: 32'h20000000, end_addr: 33'h40000000}
   };
 
@@ -292,10 +292,10 @@ module sep_local_axi_xbar
   assign xbar_mst_resp[8] = entropy_fifo_resp_i;
 
   // ---------------------------------------------------------------------------
-  // Output: axi_extension (AXI4, 64-bit)
+  // Output: sep_external (AXI4, 64-bit)
   // ---------------------------------------------------------------------------
   // Direct connection (no conversion needed)
-  assign axi_extension_req_o = xbar_mst_req[9];
-  assign xbar_mst_resp[9] = axi_extension_resp_i;
+  assign sep_external_req_o = xbar_mst_req[9];
+  assign xbar_mst_resp[9] = sep_external_resp_i;
 
 endmodule : sep_local_axi_xbar

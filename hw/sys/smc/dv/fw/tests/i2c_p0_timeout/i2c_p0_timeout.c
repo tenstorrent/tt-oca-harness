@@ -2,81 +2,231 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * I2C P0 Timeout Test - Simplified Implementation
+ * @file main.c
+ * @brief I2C P0 controller stretch-timeout observation test
  *
- * Test Description:
- * Verify timeout reaction with stretch condition:
- * 1. Initialize the write transaction
- * 2. Force the SCL to delay a random range period of time
- * 3. Repeat a random times (ms in total)
- *
- * Check:
- * 1. If the stretch_timeout can be triggered
- * 2. The idle count
+ * I2C_1 (controller) issues a READ while I2C_0 (target) leaves TX FIFO empty,
+ * causing automatic TX clock stretch. Firmware fail-closed waits for
+ * INTR_STATE.stretch_timeout on the controller, then disables both sides for
+ * a clean end. Recovery/verify-write is covered by
+ * smc_i2c_tx_stretch_timeout_recovery_test.
  */
 
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "smc_io.h"
 #include "smc_test.h"
+#include "i2c_opentitan.h"
 
-// Test results tracking
-typedef struct {
-    uint32_t transactions_attempted;
-    uint32_t transactions_completed;
-    uint32_t timeout_events_detected;
-    uint32_t stretch_timeout_count;
-    uint32_t idle_count_before;
-    uint32_t idle_count_after;
-    bool stretch_timeout_triggered;
-    bool test_passed;
-} timeout_test_results_t;
+#define TARGET_IDX 0
+#define CONTROLLER_IDX 1
+#define TARGET_ADDR 0x10
+#define READ_STRETCH_TIMEOUT_CYCLES 2000
+#define POLL_TIMEOUT 100000
 
-static timeout_test_results_t test_results = {0};
+static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
 
-/**
- * Main test entry point
- */
+    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
+    ctrl.f.I2C_EN = 1;
+    ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
+    write_reg(wrapper_addr, ctrl.w);
+}
+
+static void get_test_timing(i2c_timing_config_t *timing) {
+    i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
+                                             .clock_period_nanos = 10,
+                                             .sda_rise_nanos = 300,
+                                             .sda_fall_nanos = 100,
+                                             .scl_period_nanos = 0};
+
+    if (i2c_compute_timing_from_physical(&physical_params, timing) != I2C_OK) {
+        i2c_get_default_timing(I2C_SPEED_STANDARD, 100, timing);
+    }
+}
+
+static int init_controller(void) {
+    i2c_timing_config_t timing;
+    get_test_timing(&timing);
+
+    i2c_controller_config_t controller_cfg = {.timing = timing,
+                                              .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
+                                                       .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
+                                                       .tx_thresh = 0,
+                                                       .acq_thresh = 0},
+                                              .enable_interrupts = false,
+                                              .timeout_cycles = READ_STRETCH_TIMEOUT_CYCLES};
+
+    int ret = i2c_controller_init(CONTROLLER_IDX, &controller_cfg);
+    if (ret != I2C_OK) {
+        return ret;
+    }
+
+    i2c_config_timeout(CONTROLLER_IDX, READ_STRETCH_TIMEOUT_CYCLES, true, true);
+
+    /* Enable stretch_timeout sticky bit observation */
+    uint32_t base = i2c_get_base(CONTROLLER_IDX);
+    i2c__INTR_ENABLE_t intr_en = {
+        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    intr_en.f.STRETCH_TIMEOUT = 1;
+    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
+                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              intr_en.w);
+    i2c_clear_interrupts(CONTROLLER_IDX, 0xFFFFFFFF);
+
+    return I2C_OK;
+}
+
+static int init_target(void) {
+    i2c_timing_config_t timing;
+    get_test_timing(&timing);
+
+    i2c_target_config_t target_cfg = {.address0 = TARGET_ADDR,
+                                      .mask0 = 0x7F,
+                                      .address1 = 0,
+                                      .mask1 = 0,
+                                      .timing = timing,
+                                      .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                               .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                               .rx_thresh = 0,
+                                               .fmt_thresh = 0},
+                                      .enable_interrupts = false,
+                                      .ack_ctrl_mode = false,
+                                      .tx_stretch_ctrl = false,
+                                      .timeout_cycles = 0};
+
+    int ret = i2c_target_init(TARGET_IDX, &target_cfg);
+    if (ret != I2C_OK) {
+        return ret;
+    }
+
+    uint32_t target_base = i2c_get_base(TARGET_IDX);
+    i2c__CTRL_t target_ctrl = {
+        .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                     SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    target_ctrl.f.ACQ_START_STOP_EN = 1;
+    write_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              target_ctrl.w);
+    i2c_reset_fifos(TARGET_IDX, false, false, true, true);
+    return I2C_OK;
+}
+
+static int enqueue_controller_read_one_byte(void) {
+    uint32_t base = i2c_get_base(CONTROLLER_IDX);
+
+    for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
+        i2c__HOST_FIFO_STATUS_t fifo_status = {
+            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        if ((64u - fifo_status.f.FMTLVL) >= 2u) {
+            break;
+        }
+        if (i + 1u == POLL_TIMEOUT) {
+            simputs("  ERROR: FMT FIFO space timeout\n");
+            return I2C_ERROR_TIMEOUT;
+        }
+    }
+
+    i2c__FDATA_t fdata = {.w = 0};
+    fdata.f.FBYTE = (TARGET_ADDR << 1) | 0x1;
+    fdata.f.START = 1;
+    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              fdata.w);
+
+    fdata.w = 0;
+    fdata.f.FBYTE = 1;
+    fdata.f.READB = 1;
+    fdata.f.STOP = 1;
+    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
+                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              fdata.w);
+    return I2C_OK;
+}
+
+static int wait_stretch_timeout_intr(void) {
+    uint32_t base = i2c_get_base(CONTROLLER_IDX);
+
+    simputs("  Polling INTR_STATE.stretch_timeout...\n");
+    for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
+        i2c__INTR_STATE_t intr = {
+            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        if (intr.f.STRETCH_TIMEOUT) {
+            simputs("  PASS: stretch_timeout interrupt asserted\n");
+            simputshex32("  INTR_STATE=0x", intr.w);
+            simputs("\n");
+            return I2C_OK;
+        }
+    }
+
+    i2c__INTR_STATE_t last = {
+        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    simputs("  ERROR: stretch_timeout not observed, INTR_STATE=0x");
+    simputshex32("", last.w);
+    simputs("\n");
+    return I2C_ERROR_TIMEOUT;
+}
+
 int main(void) {
-    // Initialize test results
-    test_results.transactions_attempted = 1;
-    test_results.transactions_completed = 1;
-    test_results.timeout_events_detected = 0;
-    test_results.stretch_timeout_triggered = 0;
-    test_results.test_passed = 1;
+    int ret;
 
-    // Write test results to scratch registers
-    write_scratch(1, test_results.transactions_attempted);
-    write_scratch(2, test_results.transactions_completed);
-    write_scratch(3, test_results.timeout_events_detected);
-    write_scratch(4, test_results.stretch_timeout_triggered);
+    simputs("\n");
+    simputs("################################################\n");
+    simputs("##   I2C P0 Stretch Timeout Observation      ##\n");
+    simputs("################################################\n");
+    simputs("\n");
 
-    // Signal test completion
-    if (test_results.test_passed) {
-        test_pass(0);
-    } else {
+    write_scratch(1, 0x00000010);
+    i2c_wrapper_enable(TARGET_IDX, false);
+    i2c_wrapper_enable(CONTROLLER_IDX, true);
+
+    ret = init_target();
+    if (ret != I2C_OK) {
+        simputs("  ERROR: target init failed\n");
+        write_scratch(0, 0xBAD00010);
+        test_fail(0);
+    }
+    ret = init_controller();
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller init failed\n");
+        write_scratch(0, 0xBAD00011);
         test_fail(0);
     }
 
-    // Wait forever
-    while (1) {
-        __asm__("wfi");
+    write_scratch(1, 0x00000020);
+    simputs("  Enqueue READ with empty target TX (expect stretch timeout)...\n");
+    ret = enqueue_controller_read_one_byte();
+    if (ret != I2C_OK) {
+        write_scratch(0, 0xBAD00020);
+        test_fail(0);
     }
 
+    write_scratch(1, 0x00000030);
+    ret = wait_stretch_timeout_intr();
+    if (ret != I2C_OK) {
+        write_scratch(0, 0xBAD00030);
+        test_fail(0);
+    }
+
+    /* Release bus for a clean end (full recovery covered elsewhere) */
+    write_scratch(1, 0x00000040);
+    i2c_target_disable(TARGET_IDX);
+    i2c_controller_disable(CONTROLLER_IDX);
+
+    write_scratch(1, 0xEBEDEBE6);
+    simputs("\n");
+    simputs("################################################\n");
+    simputs("##   I2C P0 Stretch Timeout Observation PASS ##\n");
+    simputs("################################################\n");
+    test_pass(0);
+
+    while (true) {
+        __asm__("wfi");
+    }
     return 0;
-}
-
-int other_main(int hartid) {
-    while (1) {
-        __asm__("wfi");
-    }
-}
-
-int secondary_main(void) {
-    int hartid = metal_cpu_get_current_hartid();
-
-    if (hartid == 0) {
-        return main();
-    } else {
-        return other_main(hartid);
-    }
 }

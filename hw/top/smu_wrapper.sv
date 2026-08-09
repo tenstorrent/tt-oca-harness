@@ -373,8 +373,8 @@ module smu_wrapper
     km_intf_pkg::km_sram_mem_req_t km_sram_mem_req;
     km_intf_pkg::km_sram_mem_rsp_t km_sram_mem_rsp;
 
-    sep_pkg::sep_32_64_6_12_axi_req_t  sep_axi_extension_req;
-    sep_pkg::sep_32_64_6_12_axi_resp_t sep_axi_extension_resp;
+    sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_req;
+    sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_resp;
 
     /////////////////////
     // SMU core        //
@@ -437,8 +437,8 @@ module smu_wrapper
         .sep_km_sram_mem_req_o (km_sram_mem_req),
         .sep_km_sram_mem_rsp_i (km_sram_mem_rsp),
 
-        .sep_axi_extension_req_o  (sep_axi_extension_req),
-        .sep_axi_extension_resp_i (sep_axi_extension_resp)
+        .sep_external_req_o  (sep_external_req),
+        .sep_external_resp_i (sep_external_resp)
     );
 
     /////////////////////////
@@ -520,8 +520,8 @@ module smu_wrapper
         .abr_mem_req_i (abr_mem_req),
         .abr_mem_rsp_o (abr_mem_rsp),
 
-        .axi_extension_axi_req_i  (sep_axi_extension_req),
-        .axi_extension_axi_resp_o (sep_axi_extension_resp),
+        .axi_extension_axi_req_i  (sep_external_req),
+        .axi_extension_axi_resp_o (sep_external_resp),
 
         .efuse_debug_bus_o (sep_efuse_debug_bus_o)
     );

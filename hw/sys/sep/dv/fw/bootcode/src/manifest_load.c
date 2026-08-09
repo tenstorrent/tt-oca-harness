@@ -39,7 +39,7 @@
 
 // SPI XIP region size (for payload location check).
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
 // ---------------------------------------------------------------------------

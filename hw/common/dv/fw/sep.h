@@ -25,7 +25,6 @@
 #include "sep_efuse_map.h"
 #include "efuse_interface_ctrl.h"
 #include "efuse_mmr.h"
-#include "efuse_shim_ctrl.h"
 #include "sep_lifecycle_ctrl.h"
 #include "km_mailbox_sep.h"
 #include "output_remap.h"
@@ -35,18 +34,22 @@
 #include "sep_cpu_ctrl.h"
 #include "sep_reset_ctrl.h"
 #include "spi_controller.h"
-#include "sep_axi_extension.h"
+#include "sep_external.h"
 #include "sep_scratch.h"
 #include "el2_pic.h"
 
 /*
  * The vendor SPI shim blocks (och_sep_cdns_spi_ctrl, och_sep_spi_mux_ctrl) have
- * no include line of their own: they are sub-blocks of sep_axi_extension, and
+ * no include line of their own: they are sub-blocks of sep_external, and
  * the nonfree variant of that header - which the register overlay puts ahead of
  * the open one - carries them inline. Including the per-block headers as well
  * would redeclare every type. A pure-open build resolves the open
- * sep_axi_extension.h, which has neither block, so firmware that touches them
+ * sep_external.h, which has neither block, so firmware that touches them
  * needs the overlay, exactly as before.
+ *
+ * efuse_shim_ctrl follows the same rule since the shim moved to the base of the
+ * sep_external window. It differs from the SPI blocks in that both variants of
+ * sep_external.h carry it, so a pure-open build still sees the open model.
  */
 
 /*

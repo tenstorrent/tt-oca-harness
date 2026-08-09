@@ -39,10 +39,11 @@ package sep_crypto_pkg;
         end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_KMAC_SIZE
     };
 
+    // Contiguous eFuse block: MAP -> INTERFACE CSR -> MMR.
     parameter axi_pkg::xbar_rule_32_t fuse_rule = '{
         idx:        4,
         start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
-        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_SHIM_CTRL_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_SHIM_CTRL_SIZE  // 1 KB for Fuse +
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t lifecycle_rule = '{

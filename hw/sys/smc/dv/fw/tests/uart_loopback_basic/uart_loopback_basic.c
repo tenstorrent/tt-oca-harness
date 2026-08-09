@@ -196,27 +196,46 @@ int main(void) {
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   lcr2.w);
 
-        // Drive a non-zero pattern; expect RX to observe 0x00 because tx_out
-        // is forced low by set_break. Don't fail the test on the value — just
-        // toggle the path so VCS records the branch hit.
+        // Drive a non-zero pattern; with set_break, RX should see 0x00 and LSR.BI.
         write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   0x5Au);
 
-        // Poll for DR with a generous timeout. Break condition still produces a
-        // received byte (typically 0x00 with LSR.BI=1 set).
+        // Poll for DR|BI; expiry must fail closed.
+        int saw_dr_or_bi = 0;
+        uart_16550_main__LSR_t lsr2;
         for (int iter = 0; iter < 2000; iter++) {
-            uart_16550_main__LSR_t lsr2;
             lsr2.w = read_reg(uart_base +
                               (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
             if (lsr2.f.DR || lsr2.f.BI) {
-                // Capture and discard
-                (void)read_reg(uart_base +
-                               (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
-                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+                saw_dr_or_bi = 1;
                 break;
             }
+        }
+
+        if (!saw_dr_or_bi) {
+            simputs("UART_LOOPBACK: set_break DR|BI timeout\n");
+            simputshex32("  LSR = 0x", lsr2.w);
+            simputs("\n");
+            test_fail(0);
+        }
+
+        if (!lsr2.f.BI) {
+            simputs("UART_LOOPBACK: set_break expected LSR.BI=1\n");
+            simputshex32("  LSR = 0x", lsr2.w);
+            simputs("\n");
+            test_fail(0);
+        }
+
+        uint8_t rx_break = (uint8_t)read_reg(
+            uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
+                         SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+        if (rx_break != 0x00u) {
+            simputs("UART_LOOPBACK: set_break expected RX=0x00\n");
+            simputshex32("  RX = 0x", (uint32_t)rx_break);
+            simputs("\n");
+            test_fail(0);
         }
 
         // Clear set_break

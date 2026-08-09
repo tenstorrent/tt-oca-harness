@@ -35,10 +35,10 @@
 #include "sep_dma.h"
 /* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
 #ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_BASE_ADDR)
+#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
 #endif
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 #endif
 

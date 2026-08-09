@@ -731,10 +731,6 @@ EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET = 0x00000068
 EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR = 0x10930568
 EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET = 0x0000006C
 EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR = 0x1093056C
-EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR = 0x10930600
-EFUSE_SHIM_CTRL_REG_MAP_SIZE = 0x00000004
-EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET = 0x00000000
-EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR = 0x10930600
 AXIL_MAILBOX_REG_MAP_BASE_ADDR = 0x10A00000
 AXIL_MAILBOX_REG_MAP_SIZE = 0x00007850
 AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR = 0x10A00000
@@ -1923,10 +1919,14 @@ AP_REGION_MEM_BASE_ADDR = 0x11000000
 AP_REGION_MEM_SIZE = 0x00800000
 STEE_REGION_MEM_BASE_ADDR = 0x11800000
 STEE_REGION_MEM_SIZE = 0x00800000
-SEP_AXI_EXTENSION_REG_MAP_BASE_ADDR = 0x20000000
-SEP_AXI_EXTENSION_REG_MAP_SIZE = 0x20000000
-SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR = 0x30000000
-SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE = 0x10000000
+SEP_EXTERNAL_REG_MAP_BASE_ADDR = 0x20000000
+SEP_EXTERNAL_REG_MAP_SIZE = 0x20000000
+SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR = 0x20000000
+SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE = 0x00000004
+SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET = 0x00000000
+SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR = 0x20000000
+SEP_EXTERNAL_XIP_REGION_MEM_BASE_ADDR = 0x30000000
+SEP_EXTERNAL_XIP_REGION_MEM_SIZE = 0x10000000
 SEP_ICCM_MEM_BASE_ADDR = 0xC0000000
 SEP_ICCM_MEM_SIZE = 0x00040000
 SEP_DCCM_MEM_BASE_ADDR = 0xC0040000
@@ -4021,7 +4021,7 @@ class AES_DATA_OUT_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AES_CTRL_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_SHADOWED_REG_DEFAULT = 0x000011FD
 class AES_CTRL_SHADOWED_reg_t(Structure):
     _fields_ = [
         ('operation', c_uint16, 2),
@@ -4032,7 +4032,7 @@ class AES_CTRL_SHADOWED_reg_t(Structure):
         ('manual_operation', c_uint16, 1),
     ]
 
-AES_CTRL_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_SHADOWED_REG_DEFAULT = 0x000011FD
 
 class AES_CTRL_SHADOWED_reg_u(Union):
     _fields_ = [
@@ -4054,14 +4054,14 @@ class AES_CTRL_SHADOWED_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AES_CTRL_AUX_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_AUX_SHADOWED_REG_DEFAULT = 0x00000001
 class AES_CTRL_AUX_SHADOWED_reg_t(Structure):
     _fields_ = [
         ('key_touch_forces_reseed', c_uint8, 1),
         ('force_masks', c_uint8, 1),
     ]
 
-AES_CTRL_AUX_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_AUX_SHADOWED_REG_DEFAULT = 0x00000001
 
 class AES_CTRL_AUX_SHADOWED_reg_u(Union):
     _fields_ = [
@@ -4111,7 +4111,7 @@ class AES_CTRL_AUX_REGWEN_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AES_TRIGGER_REG_DEFAULT = 0x00000000
+AES_TRIGGER_REG_DEFAULT = 0x0000000E
 class AES_TRIGGER_reg_t(Structure):
     _fields_ = [
         ('start', c_uint8, 1),
@@ -4120,7 +4120,7 @@ class AES_TRIGGER_reg_t(Structure):
         ('prng_reseed', c_uint8, 1),
     ]
 
-AES_TRIGGER_REG_DEFAULT = 0x00000000
+AES_TRIGGER_REG_DEFAULT = 0x0000000E
 
 class AES_TRIGGER_reg_u(Union):
     _fields_ = [
@@ -4176,14 +4176,14 @@ class AES_STATUS_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AES_CTRL_GCM_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_GCM_SHADOWED_REG_DEFAULT = 0x00000401
 class AES_CTRL_GCM_SHADOWED_reg_t(Structure):
     _fields_ = [
         ('phase', c_uint16, 6),
         ('num_valid_bytes', c_uint16, 5),
     ]
 
-AES_CTRL_GCM_SHADOWED_REG_DEFAULT = 0x00000000
+AES_CTRL_GCM_SHADOWED_REG_DEFAULT = 0x00000401
 
 class AES_CTRL_GCM_SHADOWED_reg_u(Union):
     _fields_ = [
@@ -6334,34 +6334,6 @@ class EFUSE_MMR_TOKEN_MATCH_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT = 0x00000020
-class EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_t(Structure):
-    _fields_ = [
-        ('init_time', c_uint32, 32),
-    ]
-
-EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT = 0x00000020
-
-class EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
 AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT = 0x0000000000000000
 class AXIL_MAILBOX_WRITE_DATA_reg_t(Structure):
     _fields_ = [
@@ -8023,6 +7995,34 @@ class REMAPPED_REGION_MEM_WORD_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(REMAPPED_REGION_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
         self.val = REMAPPED_REGION_MEM_WORD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT = 0x00000020
+class EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_t(Structure):
+    _fields_ = [
+        ('init_time', c_uint32, 32),
+    ]
+
+EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT = 0x00000020
+
+class EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

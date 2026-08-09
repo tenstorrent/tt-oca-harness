@@ -22,9 +22,11 @@ static int run_efuse_reg_sequence(void) {
         return -1;
     if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
         return -2;
-    if (rw_check32(OCH_SEP_TOP_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR, 0x0000ABCDu) != 0)
+    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
+                   0x0000ABCDu) != 0)
         return -3;
-    if (rw_check32(OCH_SEP_TOP_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_BASE_ADDR, 0x00000020u) != 0)
+    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_BASE_ADDR,
+                   0x00000020u) != 0)
         return -4;
 
     /* Read-only touchpoint to ensure token map access is alive. */

@@ -71,29 +71,48 @@ static int calculate_parity_u64(uint64_t n) {
     return n & 1;
 }
 
+/*
+ * EXPECT-SOURCE: SiFive Rocket Chip Hsiao SECDED (72,64) parity-check matrix
+ * for 64-bit data words (SiFive E2/E3 Core Complex Manual — ECC / Bus Error
+ * Unit data encoding; open-source rocket-chip util/ECC Hsiao construction).
+ * Rows are the published H-matrix over data[63:0]; overall parity is XOR of
+ * all data bits and check bits cb0..cb6. Independent of DUT RTL net names.
+ *
+ * Approved fixed-vector KAT (data -> ECC byte) below is computed from this
+ * matrix definition (not from RTL dumps) and spot-checks the encoder.
+ */
+static const uint64_t ECC64_HSIAO_H_ROW[7] = {
+    0xAB55555556AAAD5BULL, /* cb0 — H-matrix row 0 */
+    0xCD9999999B33366DULL, /* cb1 — H-matrix row 1 */
+    0xF1E1E1E1E3C3C78EULL, /* cb2 — H-matrix row 2 */
+    0x01FE01FE03FC07F0ULL, /* cb3 — H-matrix row 3 */
+    0x01FFFE0003FFF800ULL, /* cb4 — H-matrix row 4 */
+    0x01FFFFFFFC000000ULL, /* cb5 — H-matrix row 5 */
+    0xFE00000000000000ULL, /* cb6 — H-matrix row 6 */
+};
+
+typedef struct {
+    uint64_t data;
+    uint8_t ecc;
+} ecc64_kat_entry_t;
+
+/* EXPECT-SOURCE: fixed vectors from ECC64_HSIAO_H_ROW (SiFive Hsiao SECDED). */
+static const ecc64_kat_entry_t ECC64_KAT[] = {
+    {0x0000000000000000ULL, 0x00}, {0x0000000000000001ULL, 0x83}, {0xFFFFFFFFFFFFFFFFULL, 0xFF},
+    {0x0123456789ABCDEFULL, 0x9C}, {0xA5A5A5A5A5A5A5A5ULL, 0xD1}, {0x55AA55AA55AA55AAULL, 0x56},
+};
+
 uint8_t generate_ecc_bits_for_64bit_data(uint64_t data_input) {
     uint8_t check_bits[7];
-
-    // Masks derived from the _coded_syndromeUInt_T* wires in the SV module
-    const uint64_t MASK_CB0 = 0xAB55555556AAAD5BULL; // Corresponds to ^_coded_syndromeUInt_T
-    const uint64_t MASK_CB1 = 0xCD9999999B33366DULL; // Corresponds to ^_coded_syndromeUInt_T_3
-    const uint64_t MASK_CB2 = 0xF1E1E1E1E3C3C78EULL; // Corresponds to ^_coded_syndromeUInt_T_6
-    const uint64_t MASK_CB3 = 0x1FE01FE03FC07F0ULL;  // Corresponds to ^_coded_syndromeUInt_T_9
-    const uint64_t MASK_CB4 = 0x1FFFE0003FFF800ULL;  // Corresponds to ^_coded_syndromeUInt_T_12
-    const uint64_t MASK_CB5 = 0x1FFFFFFFC000000ULL;  // Corresponds to ^_coded_syndromeUInt_T_15
-    const uint64_t MASK_CB6 = 0xFE00000000000000ULL; // Corresponds to ^_coded_syndromeUInt_T_18
+    static int kat_checked = 0;
 
     // Calculate the 7 individual check bits (cb0 to cb6)
-    // The order corresponds to how they appear in the SV concatenation for ECC bits [70:64]
-    check_bits[0] = calculate_parity_u64(data_input & MASK_CB0); // cb0
-    check_bits[1] = calculate_parity_u64(data_input & MASK_CB1); // cb1
-    check_bits[2] = calculate_parity_u64(data_input & MASK_CB2); // cb2
-    check_bits[3] = calculate_parity_u64(data_input & MASK_CB3); // cb3
-    check_bits[4] = calculate_parity_u64(data_input & MASK_CB4); // cb4
-    check_bits[5] = calculate_parity_u64(data_input & MASK_CB5); // cb5
-    check_bits[6] = calculate_parity_u64(data_input & MASK_CB6); // cb6
+    // Order matches ECC byte bits [6:0] (cb6..cb0) with P_overall in bit 7
+    for (int i = 0; i < 7; i++) {
+        check_bits[i] = (uint8_t)calculate_parity_u64(data_input & ECC64_HSIAO_H_ROW[i]);
+    }
 
-    // Calculate the overall parity bit (P_overall), which is ECC bit 71
+    // Overall parity bit (P_overall) — ECC bit 71 / MSB of the ECC byte
     int parity_of_data_input = calculate_parity_u64(data_input);
     uint8_t p_overall = check_bits[0] ^ check_bits[1] ^ check_bits[2] ^ check_bits[3] ^
                         check_bits[4] ^ check_bits[5] ^ check_bits[6] ^ parity_of_data_input;
@@ -108,6 +127,16 @@ uint8_t generate_ecc_bits_for_64bit_data(uint64_t data_input) {
     ecc_output |= (check_bits[2] & 1) << 2; // Bit 66
     ecc_output |= (check_bits[1] & 1) << 1; // Bit 65
     ecc_output |= (check_bits[0] & 1) << 0; // Bit 64 (LSB of ECC byte)
+
+    // One-shot KAT self-check against the approved fixed-vector table
+    if (!kat_checked) {
+        kat_checked = 1;
+        for (unsigned k = 0; k < sizeof(ECC64_KAT) / sizeof(ECC64_KAT[0]); k++) {
+            if (generate_ecc_bits_for_64bit_data(ECC64_KAT[k].data) != ECC64_KAT[k].ecc) {
+                test_fail(0);
+            }
+        }
+    }
 
     return ecc_output;
 }
