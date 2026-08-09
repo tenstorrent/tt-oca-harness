@@ -1202,7 +1202,7 @@ software uses either direct internal addresses (<code>0x1000_0000</code>,
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x2000_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4000_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI Extension</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP External</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved for adopter extension IP</p></td>
 </tr>
 <tr>
@@ -1237,7 +1237,7 @@ software uses either direct internal addresses (<code>0x1000_0000</code>,
 </table>
 <div class="paragraph">
 <p>The <code>SEP Local Alias</code> row is an alternate CPU-side name for the same
-hardware listed in the <code>SEP Local</code> and <code>SEP AXI Extension</code> rows. For
+hardware listed in the <code>SEP Local</code> and <code>SEP External</code> rows. For
 example, <code>0xD000_0000</code> aliases <code>0x1000_0000</code> and <code>0xD080_2000</code> aliases
 <code>0x1080_2000</code>. This alias range is used by SEP-local masters, while
 external masters use chiplet-global addresses.</p>
@@ -1549,7 +1549,7 @@ remap.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x2000_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4000_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Extension Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP External Region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved for adopter extension IP</p></td>
 </tr>
 </tbody>

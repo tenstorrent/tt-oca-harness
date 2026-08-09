@@ -1968,8 +1968,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Horizontal</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID[1]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID is the I2C/I3C static address strap</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
@@ -2038,8 +2038,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Horizontal</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0_PLLCLK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
@@ -2080,8 +2080,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Horizontal</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID[0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID is the I2C/I3C static address strap</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
@@ -2524,48 +2524,6 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock OBS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation pin</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID[1]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID is the I2C/I3C static address strap</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[56]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BL0_PLLCLK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When asserted, use the PLL-generated clock in BL0. When deasserted, use the reference clock.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">57</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[57]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT RO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Process sensor RO output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID[0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CHIP_ID is the I2C/I3C static address strap</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">58</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[58]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System Timer Sync Load</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
@@ -2574,8 +2532,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">59</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[59]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[56]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -2588,8 +2546,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[60]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">57</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[57]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -2602,13 +2560,13 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">61</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[61]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">58</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[58]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCCP Interface</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2616,13 +2574,13 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Swaps primary and backup image in SEP BL0 ROM</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">62</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[62]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">59</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[59]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C SCL for test benches (ticket QUAS-1835)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2630,13 +2588,13 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">63</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[63]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[60]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C SCL for test benches (ticket QUAS-1835)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2644,8 +2602,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[64]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">61</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[61]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -2658,8 +2616,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[65]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">62</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[62]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -2672,8 +2630,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">66</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[66]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">63</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[63]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -2686,8 +2644,8 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">In package pull-up</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">67</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[67]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[64]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">n/a</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -2698,6 +2656,48 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not allowed</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">In package pull-up</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">66</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">67</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
@@ -3001,6 +3001,48 @@ during fuse sensing.</p>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">VDDIO</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">90</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PLL_CLK_OBS_PAD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock OBS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation pin</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">91</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PVT_CLK_OBS_PAD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vertical</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Process sensor RO output</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">92</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -9415,7 +9457,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_extension_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -9424,7 +9466,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_extension_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external_resp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>

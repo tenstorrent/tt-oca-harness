@@ -415,6 +415,110 @@ secret-bearing storage (including the KPV key vault) is scannable but never
 scan-dumpable (secure_tm-gated), and reconciled the Attack Countermeasures
 chapter to match.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Addressed SEP Lifecycle Controller and Key
+Manager review comments.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Lifecycle Controller / Fuse Controller:
+terminology and English cleanup, added the PUBK_PROVISIONED co-sign-trigger
+fuse field, and standardized public-key fuse naming (*_PUBK_HASH).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-06-29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP secure-boot signing model: per-owner
+classical + post-quantum (ML-DSA) key hashes, new REQUIRED_SIGNERS /
+REQUIRED_ALGS policy vectors, generalized CHIPLET_PUBK_REVOKE to all owners'
+keys, and removed PUBK_PROVISIONED.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Document dual LSIO on GPIO[25:26] in
+<code>ocah_gpio_table.adoc</code>: PSYSCRITB/VRHOTB when enabled, else UART[3].RTS/CTS when
+UART[3] is enabled (QUAS-4655).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clarify that GPIO[52]/[55]/[57]
+(Thermal Emergency / PLL OBS / PVT RO) claim the pad only when that function is enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reframed the SEP secure-boot signing model as
+fuse-seeded and firmware-propagated: REQUIRED_SIGNERS is now the required-signer
+set (0 = required; firmware-writable shadow, seed made immutable by a fuse-only
+LOCK) decoupled from REQUIRED_ALGS; added KEY_PROVISIONED (per owner/algorithm)
+with a fuse-map reorg (32 fields, 8192 bits); rewrote the Signing-Model
+Enforcement section (three-fuse model, firmware propagation, manifest
+terminology) and added signing-model examples.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Revised the Life Cycle Controller and Fuse
+Controller specification following manager review of the secure-boot and
+demotion model. Simplified the secure-boot signing model (2-bit REQUIRED_SIGNERS;
+removed KEY_PROVISIONED); reworked in-field debug demotion into two independent
+controls, Demotion 1 (local debug) and Demotion 2 (inter-chiplet debug bypass);
+added a Secure-Boot Enforcement section; added a second SiP root-key slot for key
+revocation; and revised the wording throughout for clarity.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle Controller: clarified that SIP_DBG
+is the SiP debug-access gate at each LCC-bearing chiplet and reworked the
+Multiple Security Domains access rules and example accordingly. Security
+Disable: restructured the section to present rationale and behavior before
+implementation requirements. Key Manager: the life-cycle state is now an input
+to the software/hardware root-key derivations, aligning the chapter with the
+KM KDF design specification; demotion is excluded from root derivation and
+binds at leaf-key derivation only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-07-28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Addressed review feedback. Life Cycle
+Controller: aligned the scan-protection and demotion text with the SIP_DBG
+debug-access-path model (SEP_DBG / CHIPLET_DBG are local gates; external
+access additionally requires the SIP_DBG path). Key Manager: made the implicit
+life-cycle binding of UID-derived keys explicit (a life-cycle transition
+invalidates the roots and the entire UID-derived hierarchy). Security Disable:
+the comparator kill switch is a metal-programmable revision cell, and the
+token hash is not a secret&#8201;&#8212;&#8201;secrecy rests on the full-entropy token held in
+the HSM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-08-05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Haohao Liao</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expanded the SEP fuse map to relieve the
+lock-bit budget and to carry Key Manager identity inputs. LOCK is widened from
+64 to 96 bits, raising the field count from 32 to 48 slots (41 now defined).
+Added three public per-owner identity fuses, SEP_CHIPLET_ID / SEP_SIP_ID /
+SEP_SYS_ID, which personalize each owner&#8217;s Key Manager identity root and,
+being public, need no read protection. Replaced the two coarse reserved blocks
+with eight individually lockable 256-bit spare fields (spare0-spare7) so an
+adopter can provision and lock spare storage one field at a time. The map
+remains 8192 bits.</p></td>
+</tr>
 </tbody>
 </table>
 </div>

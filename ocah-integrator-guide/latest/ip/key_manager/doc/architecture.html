@@ -198,11 +198,21 @@ This data comes from the following sources:</p>
 <p>Demotion state (CSR)</p>
 </li>
 <li>
-<p>OTP fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY</p>
+<p>OTP secret fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY</p>
 <div class="ulist">
 <ul>
 <li>
 <p>Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>OTP public fields: SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Per-owner public identity values that personalize each owner&#8217;s identity root. Being public they are not read-locked; only their integrity matters</p>
 </li>
 </ul>
 </div>
