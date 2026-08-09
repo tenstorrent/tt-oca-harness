@@ -40,7 +40,8 @@ class sep_address_map_test(sep_base_test):
             "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore"
             "%s",
             seq.write_readback_checks,
-            (f" (+{len(seq.write_readback_skipped)} storage-only, no software-usable "
-             f"fields: {', '.join(seq.write_readback_skipped)})")
-            if seq.write_readback_skipped else "",
+            (f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
+             f"`reserved` placeholders with no software-usable fields: "
+             f"{', '.join(seq.write_readback_storage_only)})")
+            if seq.write_readback_storage_only else "",
         )

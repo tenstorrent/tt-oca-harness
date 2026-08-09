@@ -15,8 +15,17 @@ and hands out three things per register:
 
 The mask matters because a write/readback check must compare against
 ``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) implement a single bit today, so a
+``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single bit today, so a
 32-bit pattern reads back as just that bit.
+
+Two masks, deliberately distinct:
+  ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
+  ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
+They differ wherever a placeholder field is declared ``sw=rw`` yet named
+``reserved`` (``TIMEOUT_COUNT``/``TIMEOUT_ENABLE``, sep_cpu_ctrl.rdl:76-80): real
+read/write storage that software must not treat as an implemented field. Use
+``mask()`` to ask "what may software use", ``mask_all()`` to ask "did the write
+reach storage" — a write/readback check wants the latter.
 
 Usage:
     from sep_reg_meta import SEP_CPU_CTRL as CPU_CTRL
@@ -96,7 +105,7 @@ class RegBlock:
     def mask(self, name: str) -> int:
         """Union of the register's IMPLEMENTED field bits.
 
-        Each bitfield is set to all-ones on a fresh union and the raw value is
+        Each non-reserved bitfield is set to all-ones on a fresh union and the raw value is
         OR-ed in, so the result reflects the fields' real bit positions.
 
         RDL reserved fields are excluded. They appear in the generated struct
@@ -289,11 +298,13 @@ def _selftest() -> int:
         # (register, offset, reset, mask)
         ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),          # pka_cg_enable[0:0], placeholder
         ("PKA_CTRL", 0x020, 0x0, 0x7),                 # 3 x 1-bit placeholder fields
-        ("TIMEOUT_ENABLE", 0x068, 0x0, 0x1),           # reserved[0:0], placeholder
+        # reserved[0:0] placeholder: real sw=rw storage, but NOT a software-usable
+        # field, so the implemented mask is 0. Storage is pinned separately below.
+        ("TIMEOUT_ENABLE", 0x068, 0x0, 0x0),
         ("SEP_LOCAL_BASE_ADDR", 0x0C8, 0xD000_0000, 0xFFFF_FFFF),
         ("SEP_REGION_SIZE", 0x0D0, 0x0100_0000, 0xFFFF_FFFF),
         ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),           # bank_chip[3:0] + bank_instance[7:4]
-        ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFF),
+        ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFE),  # bit 0 is rsvd
         ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),         # sel[2:0] = 0x7
         ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),    # distinct type, must NOT alias to _SEL
         ("SEP_VERSION_ID", 0x1000, 0xDEAD_BEEF, 0xFFFF_FFFF),
@@ -306,12 +317,28 @@ def _selftest() -> int:
             failures.append(f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}")
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
-    # type's 1-bit mask via _TYPE_ALIAS.
+    # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
+    # makes this a tripwire for the reserved-field exclusion itself rather than a
+    # re-baselined constant: the lone field is declared `sw=rw; hw=r` yet named
+    # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
+    # that is NOT software-usable (mask 0x0). If the generator ever renames the
+    # field, or the exclusion regex stops matching it, these disagree and fail.
     for name in _TYPE_ALIAS:
-        if cpu.mask32(name) != 0x1:
-            failures.append(f"{name}: mask {hex(cpu.mask32(name))} != 0x1")
+        if cpu.mask32(name) != 0x0:
+            failures.append(f"{name}: implemented mask {hex(cpu.mask32(name))} != 0x0")
+        if cpu.mask32_all(name) != 0x1:
+            failures.append(f"{name}: storage mask {hex(cpu.mask32_all(name))} != 0x1")
         if cpu.reset32(name) != 0x0:
             failures.append(f"{name}: reset {hex(cpu.reset32(name))} != 0x0")
+
+    # Same pairing for the two named placeholders and for the one register whose
+    # implemented/storage masks differ by exactly the reserved bit.
+    if cpu.mask32_all("TIMEOUT_ENABLE") != 0x1:
+        failures.append(
+            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1")
+    if cpu.mask32_all("SEP_NMI_VEC") != 0xFFFF_FFFF:
+        failures.append(
+            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff")
     if cpu.offset("TIMEOUT_COUNT_DMA") == cpu.offset("TIMEOUT_COUNT_SYS_IN"):
         failures.append("TIMEOUT_COUNT_* instances collapsed to one offset")
 

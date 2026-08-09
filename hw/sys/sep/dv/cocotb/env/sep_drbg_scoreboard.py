@@ -198,6 +198,13 @@ class SepDrbgScoreboard:
         # golden_kwargs["legal_gen_lengths"]; otherwise segments are only bounds-
         # checked (see report()).
         self.glen = int(self._gk.get("glen", 32))
+        # Default the legal set to the sequence's own commanded glen. Leaving it
+        # None degraded the check to 1 <= n <= 4095, where n < 1 is structurally
+        # impossible and 4095 is ~90x any block count these tests reach -- i.e.
+        # unfalsifiable. No construction site passes the knob today, so without
+        # this default the predicate could never reject anything.
+        if self.legal_gen_lengths is None:
+            self.legal_gen_lengths = {self.glen}
         self._fips_violations = 0
         self._genbits_in_gen = 0
         self._gen_lengths = Counter()   # observed blocks-per-Generate histogram
@@ -821,10 +828,23 @@ class SepDrbgScoreboard:
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
         self.log.info("CHK4 Generate segmentation: %d completed commands, blocks/cmd %s, "
-                      "%d block(s) in the open command (seq-commanded glen=%d)",
+                      "%d block(s) in the open command (seq-commanded glen=%d, legal=%s)",
                       sum(self._gen_lengths.values()),
                       dict(sorted(self._gen_lengths.items())) or "{}",
-                      self._genbits_in_gen, self.glen)
+                      self._genbits_in_gen, self.glen, sorted(self.legal_gen_lengths))
+        # State plainly when the segmentation check had nothing to act on. These
+        # runs never observe a completed Generate command -- gen_last is a level
+        # held from acmd_sop and EDN's own commanded glen is larger than the block
+        # count any test reaches -- so the loop below cannot fire and CHK4's
+        # Update boundary is taken from the DUT unchecked. Say so rather than let
+        # a silent zero read as coverage.
+        if not self._gen_lengths and self.results["CHK4_genbits"].dut_items:
+            self.log.info("CHK4 segmentation NOT EXERCISED: no Generate command completed "
+                          "in this run (%d genbits observed), so gen_last was never seen "
+                          "asserted and the trailing-Update boundary is unverified. "
+                          "Closing this needs an independent probe of the commanded glen "
+                          "inside csrng_cmd_stage.",
+                          self.results["CHK4_genbits"].dut_items)
         # A completed command must carry a legal number of blocks. glen is a
         # GenBitsCtrWidth field, so a segment can never exceed its maximum, and a
         # zero-length segment would mean gen_last fired with no genbits at all.

@@ -143,8 +143,8 @@ When OSS RTL-side ROM/SRAM/OTP models are available:
 
 Required checks after shim changes:
 
-- `python3 tools/dv/run_dv.py --cfg hw/sys/sep/dv/sep_sim_cfg.toml --list-tests`
-- `python3 tools/dv/run_dv.py --cfg hw/sys/sep/dv/sep_sim_cfg.toml --test <test> --stage flist`
+- `python3 tools/dv/run_dv.py --dut sep --list`
+- `python3 tools/dv/run_dv.py --dut sep --items <test> --stage flist`
 - `python3 tools/dv/check_no_vendor_paths.py --filelist hw/sys/sep/dv/build/sep_dut_compile.f`
 - `python3 tools/dv/check_no_vendor_paths.py --filelist hw/sys/sep/dv/build/sep_bender.f`
 - `sep_sram_smoke_test`

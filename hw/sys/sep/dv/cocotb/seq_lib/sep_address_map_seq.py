@@ -183,10 +183,11 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_high = 0
         self.base_addr_rw_checks = 0
         self.write_readback_checks = 0
-        # Registers whose implemented-field mask is 0 (fully reserved): decode and
-        # write path exercised, but no readback proof is possible. Reported
-        # separately so the PASS count never overstates what was proven.
-        self.write_readback_skipped = []
+        # Registers whose only fields are RDL `reserved` placeholders. They are
+        # still fully checked above (real sw=rw storage), but what they prove is
+        # storage rather than an implemented-field readback -- noted so the
+        # evidence line can say so.
+        self.write_readback_storage_only = []
 
     async def _read(self, addr: int, expected: int | None, name: str) -> int:
         item = SepAxiItem(f"rd_{name}")
@@ -242,38 +243,35 @@ class sep_address_map_seq(uvm_sequence):
         for name, pattern in WRITE_READBACK:
             addr = BASE + SEP_CPU_CTRL.offset(name)
             mask = SEP_CPU_CTRL.mask32(name)
-            # A register with no software-usable fields cannot prove an
-            # implemented-field readback: `pattern & mask` is 0, which is also its
-            # reset value, so a DUT that dropped the write would still "pass".
-            #
-            # It can still prove STORAGE, because these placeholder registers
-            # declare their lone field `sw=rw; hw=r` while naming it `reserved`
-            # (sep_cpu_ctrl.rdl:76-80) -- real read/write storage that mask()
-            # rightly refuses to call implemented. So compare against the storage
-            # mask instead, and require the pattern to differ from reset (the
-            # WRITE_READBACK patterns are chosen odd for exactly this reason);
-            # otherwise the check still could not distinguish a stored write from
-            # an ignored one. Counted separately from the readback proofs.
-            if mask == 0:
-                store_mask = SEP_CPU_CTRL.mask32_all(name)
-                expected = pattern & store_mask
-                assert expected != (SEP_CPU_CTRL.reset32(name) & store_mask), (
-                    f"{name}: WRITE_READBACK pattern 0x{pattern:08X} masks to the reset "
-                    f"value under storage mask 0x{store_mask:08X}; the check could not "
-                    f"tell a stored write from an ignored one. Pick a pattern whose "
-                    f"low bits differ from reset."
-                )
-                await self._write(addr, pattern, name=name)
-                await self._read(addr, expected=expected, name=f"{name}_storage")
-                # Restore reset so later reads of this placeholder are predictable.
-                await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
-                self.write_readback_skipped.append(name)
-                continue
+            # Compare against the STORAGE mask, not the implemented-field mask.
+            # Every register here is plain SW-write storage read straight back
+            # (sep_cpu_ctrl_reg.sv:937-950 is the worked example: a `decoded_strb
+            # && decoded_req_is_wr` load into field_storage, with no hw driver on
+            # the field), so the readback is fully predictable even where the only
+            # field is a `sw=rw` placeholder that RDL names `reserved`. Using
+            # mask() here instead would silently drop TIMEOUT_* to expected==0 and
+            # stop proving anything.
+            store_mask = SEP_CPU_CTRL.mask32_all(name)
+            expected = pattern & store_mask
+            # Vacuity is a property of the PATTERN, not of the register: if the
+            # masked pattern equals the masked reset, the readback cannot tell a
+            # stored write from an ignored one. Fail loudly at authoring time
+            # rather than reporting a check that proves nothing.
+            assert expected != (SEP_CPU_CTRL.reset32(name) & store_mask), (
+                f"{name}: WRITE_READBACK pattern 0x{pattern:08X} masks to the reset "
+                f"value under storage mask 0x{store_mask:08X}; this check could not "
+                f"distinguish a stored write from an ignored one. Choose a pattern "
+                f"whose masked value differs from reset."
+            )
             await self._write(addr, pattern, name=name)
-            await self._read(addr, expected=pattern & mask, name=name)
+            await self._read(addr, expected=expected, name=name)
             # Restore the generated reset value.
             await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
             self.write_readback_checks += 1
+            # Informational only: these have no software-usable fields, so what was
+            # proven is storage, not an implemented-field readback.
+            if mask == 0:
+                self.write_readback_storage_only.append(name)
 
         for name, value in WRITE_ONLY:
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)

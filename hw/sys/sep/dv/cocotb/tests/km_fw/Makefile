@@ -46,15 +46,26 @@ ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAUL
 # (-MMD -MP) records HEADER dependencies only -- it cannot see a CFLAGS change.
 # So an object left over from a build that did not pass them would be silently
 # reused, re-enabling the boot wipe and reproducing the exact dead-KM symptom
-# these tests were once parked for. Stamp the flags and force a clean rebuild
-# whenever they differ from what the existing objects were built with.
-ROM_MAIN_STAMP := $(KM_FW_DIR)/build/tests/rom_main/.wipe_defines
+# these tests were once parked for.
+#
+# The object that carries these defines is NOT under build/tests/. rom_boot.c is
+# a DRIVER, and compile.mk:118 places driver objects FLAT in $(FW_BUILD_DIR)
+# via $(addprefix $(FW_BUILD_DIR)/,$(notdir ...)), while tests go to
+# $(FW_BUILD_DIR)/tests (compile.mk:127). So the stale artifacts are
+#     $(KM_FW_DIR)/build/rom_boot.o
+#     $(KM_FW_DIR)/build/libkey_manager.a
+# which are SIBLINGS of build/tests/rom_main -- wiping only the test directory
+# leaves them untouched and they get re-linked verbatim. Wipe the whole build
+# tree instead; it only happens when the defines actually change.
+# Outside $(KM_FW_DIR)/build on purpose: the guard below wipes that whole
+# tree, which would delete the stamp it is about to compare against.
+ROM_MAIN_STAMP := $(OUT_DIR)/.km_rom_wipe_defines
 .PHONY: rom_main_stamp
 rom_main_stamp:
 	@mkdir -p $(dir $(ROM_MAIN_STAMP))
 	@if [ "$$(cat $(ROM_MAIN_STAMP) 2>/dev/null)" != "$(ROM_MAIN_WIPE_DEFINES)" ]; then \
-	    echo "[km_fw] wipe defines changed -> rebuilding rom_main from scratch"; \
-	    rm -rf $(KM_FW_DIR)/build/tests/rom_main; \
+	    echo "[km_fw] wipe defines changed -> rebuilding KM firmware from scratch"; \
+	    rm -rf $(KM_FW_DIR)/build; \
 	fi
 
 rom_main: rom_main_stamp
@@ -72,4 +83,6 @@ $(OUT_DIR)/%.parhex: %.S gen_parhex.py
 
 clean:
 	rm -f *.elf *.bin $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
-	rm -rf $(KM_FW_DIR)/build/tests/rom_main
+	# Whole build tree, not just build/tests/rom_main: the driver objects that
+	# carry the wipe defines (rom_boot.o, libkey_manager.a) live flat in build/.
+	rm -rf $(KM_FW_DIR)/build

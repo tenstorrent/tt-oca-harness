@@ -207,8 +207,14 @@ static int chk_trigger(void) {
         err++;
     }
     if (err == 0) {
+        // Say exactly what was proven: the TXWM/TXQD correlation is the live
+        // evidence; the two enables were only read back, which shows the bits are
+        // stored, not that they have any effect. This string is what lands in the
+        // kept log and what a VPLAN box gets ticked from, so it must not claim
+        // more than the FAIL paths above actually check.
         sep_mbx_puts("CHK-TRIGGER PASS: TXWM(=lsio_trigger src) tracks TXQD across "
-                     "wm; EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE live\n");
+                     "wm (live); EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE "
+                     "readback-only (programmed, effect not proven)\n");
     }
     return err;
 }
