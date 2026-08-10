@@ -2,9 +2,6 @@
 """smc_security_demote_pm_test - SEP=0 demote / lc_state observe-only.
 
 Bare smu (SEP=0) ties lcc_demote_state_*_o to 0 and drives lc_state=0xf0.
-Hierarchical Force of lc_state for sigint inject was removed (no-Force policy);
-idle-only ``lc_sigint_err_o==0`` is NOT claimed here (no legal producer under
-SEP=0). Re-enable integrity inject when a legal TB pin exists or under SEP=1 LCC.
 
 Evidence kept (frontdoor observe):
 
@@ -37,7 +34,7 @@ def _sample(signal, name: str) -> int:
 
 @pyuvm.test()
 class smc_security_demote_pm_test(smu_base_test):
-    """SEP=0 demote outputs + default lc_state (no Force / no idle-sigint claim)."""
+    """SEP=0 demote outputs + default lc_state observe."""
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -81,6 +78,5 @@ class smc_security_demote_pm_test(smu_base_test):
         )
 
         self.logger.info(
-            "smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK "
-            "(sigint inject deferred — no idle-only claim)"
+            "smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK"
         )

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""smu_xtrig_ctm_remap_test - product-pin CTM remap (no Force).
+"""smu_xtrig_ctm_remap_test - product-pin CTM remap.
 
 Proves SMU glue on real TB ports (same class as clock-stop remap):
 
@@ -7,8 +7,6 @@ Proves SMU glue on real TB ports (same class as clock-stop remap):
   2. xtrig_ctm_dst_ack stays 0 (wire-OR / no CT peer — by construction)
   3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
   4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
-
-Full four-phase handshake (Force dst_ack / src_req) stays deferred.
 """
 
 from __future__ import annotations
