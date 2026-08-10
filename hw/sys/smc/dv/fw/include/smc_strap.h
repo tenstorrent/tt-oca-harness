@@ -6,23 +6,32 @@
 
 #include "smc_reg_access.h"
 
-// SMC Strap bit positions (based on smc_utils.py)
+// SMC strap GPIO indices, ordered by index.
+//
+// Source of truth is the RTL config package tt_smc_master_chiplet_config_pkg.sv, mirrored in
+// hw/sys/smc/bootrom/prod/include/smc_rom_defs.h. Cross-checked against the Strap column of
+// doc/integrator/meta/ocah_gpio_table.adoc and STRAP_DICT in the nonfree cocotb smc_utils.py.
+// Keep all four in sync when a strap moves.
 typedef enum {
-    SMC_STRAP_SEP_BYPASS_MEM_REPAIR = 13,
-    SMC_STRAP_SEP_TEST_EN = 14,
+    SMC_STRAP_CHIP_ID_3 = 11,
+    SMC_STRAP_CHIP_ID_2 = 12,
+    SMC_STRAP_MEM_REPAIR_BYPASS = 13,
+    SMC_STRAP_TEST_EN = 14,
+    // CHIP_ID_1/0 relocated off pads 55/57 onto harness input pads 15 (UART1 RX) and 23 (UART3 RX),
+    // so all four CHIP_ID straps now land in STRAPS_LO.
+    SMC_STRAP_CHIP_ID_1 = 15,
     SMC_STRAP_BOOT_STALL = 17,
     SMC_STRAP_BOOT_I2C = 18,
-    SMC_STRAP_SEP_USE_FUSED_CONFIG = 22,
-    SMC_STRAP_PRIMARY_CHIPLET = 25,
-    SMC_STRAP_DISABLE_SMC_AUTO_ZERO = 26,
     SMC_STRAP_BOOT_RECOVERY = 19,
     SMC_STRAP_BL0_PLLCLK = 20,
     SMC_STRAP_STATUS_RPT_DISABLE = 21,
-    SMC_STRAP_ROTATE_UPDATE = 61,
-    SMC_STRAP_CHIP_ID_0 = 57,
-    SMC_STRAP_CHIP_ID_1 = 55,
-    SMC_STRAP_CHIP_ID_2 = 12,
-    SMC_STRAP_CHIP_ID_3 = 11
+    SMC_STRAP_SPI_USE_FUSED_CONFIG = 22,
+    SMC_STRAP_CHIP_ID_0 = 23,
+    SMC_STRAP_PRIMARY_CHIPLET = 25,
+    SMC_STRAP_SRAM_AUTO_ZERO_DISABLE = 26,
+    SMC_STRAP_MEM_BIST_BYPASS = 54,
+    // Pad 61 -> 58 after the 68->65 GPIO shrink; see smc_padring.sv ROTATE_UPDATE pad.
+    SMC_STRAP_ROTATE_UPDATE = 58
 } SmcStrapBit;
 
 // Read strap value from GPIO_CTRL register's CONTROL field.

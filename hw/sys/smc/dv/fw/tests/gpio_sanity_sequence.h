@@ -22,9 +22,12 @@
     (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0))
 
 const uint32_t NUM_GPIOS = 65;       // GPIO_0 through GPIO_64
-const uint32_t gpio_skips[1] = {64}; // GPIO_64 is cool_reset_in, will reset chip if toggled
+// GPIO_61 is cool_reset_in, will reset chip if toggled. This was 64 before the GPIO shrink;
+// NUM_GPIOS was updated to 65 at the time but the skip index was not, so the sequence was
+// toggling cool_reset_in (and needlessly skipping 64, which is now I3C1 SDA).
+const uint32_t gpio_skips[1] = {61};
 const uint32_t write_filter_skips[9] = {11, 12, 15, 16, 19,
-                                        20, 23, 24, 64}; // UART GPIOs cannot be write-locked
+                                        20, 23, 24, 61}; // UART GPIOs cannot be write-locked
                                                          // write-locking them prevents switching
                                                          // back to LSIO interface for UART sequence
 const size_t len_gpio_skips = sizeof(gpio_skips) / sizeof(gpio_skips[0]);
