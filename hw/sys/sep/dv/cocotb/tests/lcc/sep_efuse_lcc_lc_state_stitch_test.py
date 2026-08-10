@@ -30,6 +30,8 @@ cocotb.top -- but it is covered indirectly, since a spurious sigint forces
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import hashlib
 
 import cocotb
@@ -55,7 +57,7 @@ _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
-_SHADOW_BASE = 0x1093_0000
+_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 _EFUSE_CTRL_BASE = _SHADOW_BASE + 0x400
 _EFUSE_MMR_BASE = _SHADOW_BASE + 0x500
 _EFUSE_PROGRAM_CTRL = _EFUSE_CTRL_BASE + 0x4

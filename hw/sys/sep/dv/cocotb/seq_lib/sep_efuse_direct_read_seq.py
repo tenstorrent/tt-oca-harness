@@ -14,6 +14,8 @@ Result word is left in ``self.rdata`` for the caller to check.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from pyuvm import uvm_sequence
@@ -21,8 +23,8 @@ from pyuvm import uvm_sequence
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
 # EFUSE interface-controller MMRs (SEP-local shadow base 0x1093_0000 + 0x400 block).
-_EFUSE_READ_CTRL = 0x1093_0000 + 0x400 + 0x8
-_EFUSE_READ_DATA = 0x1093_0000 + 0x400 + 0x10
+_EFUSE_READ_CTRL = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x8
+_EFUSE_READ_DATA = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR") + 0x400 + 0x10
 
 # EFUSE_READ_CTRL field encoding (efuse_interface_ctrl.rdl).
 _EFUSE_READ_GO_BIT = 1 << 16       # efuse_read_go (singlepulse)

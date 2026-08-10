@@ -33,28 +33,34 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
-# --- fabric clock ungate (same value sep_address_map_seq uses) ----------------
-CLOCK_GATE_CTRL = 0x10A3_0008
-CLOCK_GATE_RESET = 0x001F_0021
-CLOCK_GATE_UNGATE = 0x001F_04A7     # | dma[1] mailbox[2] alias_remap[7] entropy_fifo[10]
+# --- fabric clock ungate ------------------------------------------------------
+# Derived from the generated SystemRDL export, never hardcoded.
+# sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
+# bit (pka_cg_enable[0:0], reset 0); the per-block gates an earlier revision
+# assumed (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) do not exist, so
+# every bank below is unconditionally clocked and there is nothing to ungate.
+# Writing the full implemented mask keeps this step's CSR write-path coverage.
+CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
+CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
-ALIAS_BASE = 0x10A1_0000
+ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 ALIAS_STRIDE = 0x20
 ALIAS_START = 0x00          # 64-bit, lo/hi at +0/+4
 ALIAS_END = 0x08            # 64-bit, 4KB-aligned ([11:0] masked)
 ALIAS_ATTRS = 0x10          # 64-bit; valid = bit 63 (hi word bit 31)
 
 # --- AP / STEE output-remap ---------------------------------------------------
-AP_BASE = 0x10A1_0200
-STEE_BASE = 0x10A1_0300
+AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
+STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = 0x08
 REMAP_ATTRS = 0x00          # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 
 # --- inbound / outbound filter config -----------------------------------------
-INFILT_BASE = 0x10A2_1000
-OUTFILT_BASE = 0x10A2_0000
+INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 FILTER_STRIDE = 0x20
 FILTER_CONFIG = 0x00        # lo = fields, hi (+4) bit 31 = locked (woset)
 

@@ -7,7 +7,7 @@ either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
 op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
-KMAC register map (base 0x1091_3000; hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
+KMAC register map (base 0x1091_3000; vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
 encodings reused from fw/sep/tests/kmac_test + the OCAH seq):
   CFG_SHADOWED @ 0x014 (shadowed: written twice)   CMD @ 0x018   STATUS @ 0x01C
   KEY_SHARE0_0 @ 0x030 .. KEY_SHARE0_15 @ 0x06C    KEY_SHARE1_0 @ 0x070
@@ -16,6 +16,8 @@ encodings reused from fw/sep/tests/kmac_test + the OCAH seq):
 """
 
 from __future__ import annotations
+
+from sep_reg_meta import sym
 
 from dataclasses import dataclass
 
@@ -29,7 +31,7 @@ from env.sep_axi_agent import SepAxiOp
 # the golden by construction.
 from env.sep_kmac_golden import encode_string, right_encode
 
-KMAC_BASE = 0x1091_3000
+KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 KMAC_INTR_STATE = KMAC_BASE + 0x000
 KMAC_CFG_SHADOWED = KMAC_BASE + 0x014
 KMAC_CMD = KMAC_BASE + 0x018

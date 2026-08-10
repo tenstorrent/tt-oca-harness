@@ -34,7 +34,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "spi_ot_dma_rx_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_rx_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.dtcm.hex")
 

@@ -6,7 +6,7 @@
 // word's [31:0] is software RW) that survives a KM/CPU warm reset. Firmware uses
 // it to publish a measured summary to a passive testbench observer that cannot
 // run an AXI master while the EL2 owns the LSU bus. (Addresses are SEP fabric
-// facts; meta/registers sep_scratch. Cold base = 0x1080_2000, 8-byte stride.)
+// facts; hw/sys/sep/regs sep_scratch. Cold base = 0x1080_2000, 8-byte stride.)
 
 #ifndef SEP_SCRATCH_DRV_H
 #define SEP_SCRATCH_DRV_H

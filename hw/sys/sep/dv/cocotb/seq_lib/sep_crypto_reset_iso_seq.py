@@ -19,12 +19,14 @@ a sibling's wrapper rst_ni is untouched, so its held result survives -- the isol
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # sep_reset_ctrl SW_RESET_N (active-low per-IP resets).
-SW_RESET_N = 0x1080_3000
+SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 SW_RESET_N_DEFAULT = 0x1E            # km[0] held, otbn/aes/hmac/kmac released
 RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC = 0, 1, 2, 3, 4
 

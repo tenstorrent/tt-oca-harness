@@ -11,25 +11,23 @@ filesets:
     depend:
       - ocah:subsystem:sep
 
-  # sep_wrapper DUT + its IP-integration models: real memory macros, the generic
-  # eFuse bank model + shim, and the OpenTitan-only SPI mux register block. This is
-  # the SEP subset of hw/.bos/filelists/oss_wrapper_sources.f, in dependency
-  # order (packages first). Compiled after files_rtl so the sep subsystem packages
-  # (sep_pkg/sep_crypto_pkg/sep_efuse_pkg/...) are already declared. These module
-  # names are NOT gated behind the tt_sep_dv_files/sep_wrapper bender targets, so they
-  # do not collide with the real hw/sep/sep_{wrapper,ip_integration}.sv.
+  # sep_wrapper DUT + its IP-integration models: real memory macros and the generic
+  # eFuse bank model + shim. Compiled after files_rtl so the sep subsystem packages
+  # (sep_pkg/sep_crypto_pkg/sep_efuse_pkg/...) are already declared.
+  #
+  # The SPI-mux register block is deliberately absent: it is a nonfree shim inside
+  # sep_axi_extension, so a pure-open build has no mux (see fw/drivers/spi_mux.h,
+  # which no-ops when the register is not present).
+  #
+  # NOTE: files_tests below is a partial snapshot and has not tracked the env since
+  # it was written. The native flow (tools/dv/run_dv.py) does not parse this file;
+  # regenerate the lists before relying on it from an external FuseSoC consumer.
   files_wrapper_models:
     files:
-      - ../../../../../../hw/.bos/models/efuse/efuse_shim_ctrl_reg_pkg.sv
-      - ../../../../../../hw/.bos/models/efuse/efuse_bank_reg_pkg.sv
-      - ../../../../../../hw/.bos/models/efuse/efuse_shim_ctrl_reg.sv
-      - ../../../../../../hw/.bos/models/efuse/efuse_bank_reg.sv
-      - ../../../../../../hw/.bos/models/efuse/efuse_interface_shim.sv
-      - ../../../../../../hw/.bos/models/efuse/efuse_bank_model.sv
-      - ../../../../../../hw/.bos/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv
-      - ../../../../../../hw/.bos/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv
-      - ../../../../../../hw/.bos/wrapper/sep/sep_ip_integration.sv
-      - ../../../../../../hw/.bos/wrapper/sep/sep_wrapper.sv
+      - ../../../../hw/ip/efuse/rtl/efuse_interface_shim.sv
+      - ../../../../hw/ip/efuse/dv/models/efuse_bank_model.sv
+      - ../../../../hw/top/sep_ip_integration.sv
+      - ../../../../hw/top/sep_wrapper.sv
     file_type: systemVerilogSource
 
   # TB sources compiled alongside tb_top. The bare-sep memory/eFuse behavioral

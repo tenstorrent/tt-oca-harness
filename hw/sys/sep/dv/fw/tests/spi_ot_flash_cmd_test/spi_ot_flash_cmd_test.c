@@ -71,13 +71,11 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
-// The sep_wrapper routes the extension aperture (0x2000_0000) to the real OT SPI mux
-// CSR, whose cs_force_high resets to 1 (holds CS deasserted). Clear it in spi_init so
-// the flash CS can toggle. (On bare sep this aperture had no LSU slave and the write
-// would hang -- that path is retired with the wrapper migration.)
+// No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is a nonfree shim absent from this
+// repository (the wrapper's SPI is a struct boundary), so nothing holds CS
+// deasserted and the 0x2000_0000 extension aperture decode-errors.
 
 static void spi_init(void) {
-    sep_spi_mux_release_cs();
     spi_wr(SPI_CTRL_REG, SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
     spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
     spi_wr(SPI_CSID_REG, 0);

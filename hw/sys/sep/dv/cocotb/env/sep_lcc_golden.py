@@ -4,7 +4,7 @@
 Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on its
 ``feat_ctrl`` output as a function of the eFuse-sensed lifecycle state and the
 DEMOTE / secure-test-mode / security-disable inputs. It is an independent port
-of the RTL combinational decode (``hw/sep/sep_lifecycle_ctrl.sv`` lines 61-154),
+of the RTL combinational decode (``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv`` lines 61-154),
 cross-checked against the OCAH UVM golden model
 (``compute_expected_feature_ctrl`` in ``sep_lcc_uvm_base_test_seq.sv``). Because
 it is derived from the spec/RTL -- not from observed DUT output -- a feat_ctrl
@@ -17,6 +17,8 @@ test reproduce the SVA intent on the observed lc_state sequence.
 """
 
 from __future__ import annotations
+
+from sep_reg_meta import sym
 
 # -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
 LC_TEST_DEV = 0x0
@@ -38,7 +40,7 @@ _LC_NAME = {
 }
 
 # -- LCC register map (single source of truth; imported by the LCC sequences) -
-SEP_LCC_BASE = 0x1091_8000
+SEP_LCC_BASE = sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR")
 LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0    # 64-bit RO, hw-driven from lc_state; [0]=sep_debug
 LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8     # demote [0:0], lock [1:1]
 LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10

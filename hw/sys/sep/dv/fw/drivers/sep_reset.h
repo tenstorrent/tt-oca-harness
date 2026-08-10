@@ -6,7 +6,7 @@
 // warm reset out of cold reset: SW_RESET_N resets to 0x1E, i.e. km_sw_rst_n
 // (bit 0) = 0 while the other crypto cores (otbn/aes/hmac/kmac) come up released.
 // The EL2 firmware writes km_sw_rst_n = 1 to release the KM so it boots from its
-// ROM responder. (Addresses are SEP fabric facts; meta/registers sep_reset_ctrl.)
+// ROM responder. (Addresses are SEP fabric facts; hw/sys/sep/regs sep_reset_ctrl.)
 
 #ifndef SEP_RESET_H
 #define SEP_RESET_H

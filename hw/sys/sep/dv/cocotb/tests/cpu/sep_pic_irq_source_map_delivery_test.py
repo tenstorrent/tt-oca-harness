@@ -48,7 +48,7 @@ from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "pic_irq_source_map_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "pic_irq_source_map_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "pic_irq_source_map_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "pic_irq_source_map_test.dtcm.hex")
 

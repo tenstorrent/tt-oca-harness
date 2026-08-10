@@ -22,7 +22,7 @@ Two buses are exercised:
     axi_err_slv with RESP_DECERR.
 
 Register-map constants live here (co-located with the stimulus, never copied into
-the test). Offsets mirror ``meta/registers/rdl/sep_lifecycle_ctrl.rdl``.
+the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl``.
 """
 
 from __future__ import annotations

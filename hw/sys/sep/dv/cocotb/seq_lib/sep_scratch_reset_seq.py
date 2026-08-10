@@ -19,12 +19,14 @@ the test.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # SEP System-block scratch register addresses (sep_system_csr.sv aperture).
-SCRATCH_COLD_0 = 0x1080_2000   # cold domain: .arst_n(rst_ni)
-SCRATCH_WARM_0 = 0x1080_2080   # warm domain: .arst_n(rst_ni && rst_warm_ni)
-SCRATCH_WARM_1 = 0x1080_2088
+SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")   # cold domain: .arst_n(rst_ni)
+SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")   # warm domain: .arst_n(rst_ni && rst_warm_ni)
+SCRATCH_WARM_1 = sym("SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR")
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
 # Test patterns (mirror the OCAH sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).

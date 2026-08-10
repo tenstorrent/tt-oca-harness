@@ -4,7 +4,7 @@
 // set, and provides helpers for secure boot enforcement and manifest
 // usage constraints validation.
 //
-// RTL reference: hw/sep/sep_lifecycle_ctrl.sv
+// RTL reference: hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
 // Registers:
 //   FEAT_CTRL  @ 0x10918000 (64-bit, read-only)
 //   DEMOTE_1   @ 0x10918008 (demote[0] + lock[1])

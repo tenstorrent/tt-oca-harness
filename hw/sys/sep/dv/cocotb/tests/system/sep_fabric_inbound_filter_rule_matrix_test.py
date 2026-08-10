@@ -20,7 +20,7 @@ through the live filter with an exact rdata value-check, vs OCAH proxy / CSR-onl
 CHK-OWNERSHIP ports OCAH run_filter_ownership(): the external master is denied
 read AND write of the filter's own config CSR (0x10A2_1000) with a completed
 DECERR, while the CPU-LSU reads the programmed rule -- the "only the SEP CPU can
-program these filters" asymmetry (hw/sep/doc/fabric.adoc).
+program these filters" asymmetry (hw/sys/sep/doc/fabric.adoc).
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-NONE (directed).
 """

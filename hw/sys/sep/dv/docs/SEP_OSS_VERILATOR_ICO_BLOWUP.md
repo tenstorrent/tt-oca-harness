@@ -65,7 +65,7 @@ Three DV-config files (no RTL):
 2. `runlib/stages.py` `cocotb_public_scope()` — a context manager (mirroring the
    existing `cocotb_make_jobs`) that wraps `Verilator._build_command` to strip
    `--public-flat-rw` and inject the scoped `.vlt`. It does **not** edit the venv
-   `runner.py`, which `sim/run.sh` regenerates.
+   `runner.py`, which the flist/compile stages regenerate.
 3. `sep_sim_cfg.toml` `[build.verilator] public_scope = "<path>"` — the config knob.
 
 Validated end-to-end through `run.sh` → `run_dv` → runlib: hdl_compile PASS, sim

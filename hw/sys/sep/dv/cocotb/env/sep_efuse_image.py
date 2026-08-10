@@ -2,11 +2,12 @@
 """SEP eFuse/OTP image builder for the OSS cocotb flow.
 
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
-generic efuse bank model (``hw/.bos/models/efuse/efuse_bank_model.sv``)
+generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
 loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
 field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
-(``meta/registers/svh/sep_efuse_map_reg.svh``); the constraints mirror the
-OCAH UVM ``sep_efuse_item`` golden model.
+(``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
+``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
+mirror the OCAH UVM ``sep_efuse_item`` golden model.
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the
@@ -16,6 +17,8 @@ readable field reads back verbatim).
 """
 
 from __future__ import annotations
+
+from sep_reg_meta import sym
 
 import random
 from pathlib import Path
@@ -27,9 +30,9 @@ WORD_BITS = 32
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # Software-visible shadow-register block base (LC_STATE reads at base+0x08).
-SHADOW_BASE = 0x1093_0000
+SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
-SEP_CPU_CTRL_BASE = 0x10A3_0000
+SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 
 # LC_STATE lives in shadow word 2 (efuse_pkg::SHADOW_IDX_LC_STATE); the OTP word

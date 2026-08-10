@@ -170,6 +170,9 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
         sep_mbx_puts(" ISR never reached the CPU\n");
         return 1; // fatal for this source
     }
+    sep_mbx_puts("CHK-DELIVER PASS: ");
+    sep_mbx_puts(name);
+    sep_mbx_puts(" ISR woke the CPU\n");
     if (g_claim[s] != pic_src) { // CHK-MAP
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
@@ -177,18 +180,32 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
         sep_mbx_puthex(g_claim[s]);
         sep_mbx_putc('\n');
         errors++;
+    } else {
+        sep_mbx_puts("CHK-MAP PASS: ");
+        sep_mbx_puts(name);
+        sep_mbx_puts(" meihap claim id == ");
+        sep_mbx_puthex(pic_src);
+        sep_mbx_putc('\n');
     }
     if (!only_one_fired(s, snap)) { // CHK-ONEHOT
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" triggered a neighbour source (not one-hot)\n");
         errors++;
+    } else {
+        sep_mbx_puts("CHK-ONEHOT PASS: ");
+        sep_mbx_puts(name);
+        sep_mbx_puts(" fired alone among the PIC-enabled sources\n");
     }
     if (rd32(intr_state) & bit) { // CHK-IP-RW1C
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
         sep_mbx_puts(" INTR_STATE did not clear via W1C\n");
         errors++;
+    } else {
+        sep_mbx_puts("CHK-IP-RW1C PASS: ");
+        sep_mbx_puts(name);
+        sep_mbx_puts(" INTR_STATE reads back 0 after W1C\n");
     }
     return errors;
 }
@@ -253,21 +270,31 @@ int main(void) {
             sep_mbx_puts("FAIL: mailbox ISR never reached the CPU\n");
             return 1;
         }
+        sep_mbx_puts("CHK-DELIVER PASS: mailbox ISR reached the CPU\n");
         if (g_claim[SRC_MBOX] != SEP_AXIL_MBOX0_PIC_SRC) { // CHK-MAP
             sep_mbx_puts("FAIL: mailbox wrong PIC claim id ");
             sep_mbx_puthex(g_claim[SRC_MBOX]);
             sep_mbx_putc('\n');
             errors++;
+        } else {
+            sep_mbx_puts("CHK-MAP PASS: mailbox meihap claim id == ");
+            sep_mbx_puthex(SEP_AXIL_MBOX0_PIC_SRC);
+            sep_mbx_putc('\n');
         }
         if (!only_one_fired(SRC_MBOX, snap)) { // CHK-ONEHOT
             sep_mbx_puts("FAIL: mailbox triggered a neighbour source\n");
             errors++;
+        } else {
+            sep_mbx_puts("CHK-ONEHOT PASS: only the mailbox ISR fired among the "
+                         "PIC-enabled sources\n");
         }
         if (g_mbox_irqs_after & SEP_AXIL_MBOX_IRQ_ALL) { // CHK-IP-RW1C
             sep_mbx_puts("FAIL: mailbox IRQS did not clear via W1C ");
             sep_mbx_puthex(g_mbox_irqs_after);
             sep_mbx_putc('\n');
             errors++;
+        } else {
+            sep_mbx_puts("CHK-IP-RW1C PASS: mailbox IRQS read back 0 after W1C\n");
         }
         sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u); // belt: mask after clear
     }
@@ -289,13 +316,19 @@ int main(void) {
     for (volatile int i = 0; i < STORM_CHECK_ITERS; i++) {
         __asm__ volatile("nop");
     }
+    int storm = 0;
     for (int j = 0; j < SRC_N; j++) {
         if (g_count[j] != before[j]) {
             sep_mbx_puts("FAIL: interrupt re-fired after clear (storm) on source idx ");
             sep_mbx_puthex((uint32_t)j);
             sep_mbx_putc('\n');
             errors++;
+            storm = 1;
         }
+    }
+    if (!storm) {
+        sep_mbx_puts("CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared "
+                     "it (claim completed, no storm)\n");
     }
 
     if (errors == 0) {

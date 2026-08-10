@@ -43,12 +43,17 @@ from env.sep_env_cfg import SepEnvCfg
 from env.sep_efuse_image import SepEfuseImage
 
 
-# FIXME(SEP-DV): tb/efuse_preloads/sep_efuse_default.hex was not ported with the
-# tree; real-fuse-sense tests (no +skip_fuse_sense) sense a zero OTP until it is
-# restored. Regenerate or copy the default preload before re-enabling them.
+# Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
+# no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
+# depend on it: without the file they would sense a zero OTP.
 _DEFAULT_EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[2] / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 )
+
+# Bound for the per-CSR reads in report_entropy_stall(). Generous versus a healthy
+# AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
+# the diagnostic itself into a sim timeout.
+_STALL_CSR_TIMEOUT_NS = 50_000
 
 
 class sep_base_test(uvm_test):
@@ -413,26 +418,19 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    async def spi_mux_release_cs(self) -> None:
-        """Clear SPI_MUX_CTRL.cs_force_high before an OpenTitan SPI flash scenario.
-
-        FIXME(SEP-DV): the och_sep_spi_mux_ctrl_ot register block no longer
-        exists in this repository (the wrapper SPI moved to struct ports), so
-        this CSR write likely no-ops or error-responds. Re-validate the SPI
-        flash tests against the new boundary before trusting this helper.
-
-        The wrapper's och_sep_spi_mux_ctrl_ot mux resets cs_force_high=1 (RDL default
-        0x1), which holds the SPI chip-select deasserted, so a flash access sees no CS
-        toggle. Clear it via the extension-aperture mux CSR (0x2000_0000, offset 0).
-        On bare sep this aperture was tied off (the write was a no-op); the sep_wrapper
-        routes it to the real mux register, so flash tests must clear it first. Call
-        after bring-up (fabric released) and before driving the flash.
-        """
-        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-        from env.sep_axi_agent import SepAxiOp
-
-        await self.start_seq(SepAxiAccessSeq(op=SepAxiOp.WRITE, addr=0x2000_0000, wdata=0))
-        self.logger.info("[spi] cleared SPI_MUX_CTRL.cs_force_high (0x2000_0000 <- 0)")
+    # No spi_mux_release_cs() helper on the Python side. The SPI pad mux
+    # (och_sep_spi_mux_ctrl_ot SPI_MUX_CTRL: spi_sel + cs_force_high) is a NONFREE
+    # shim block inside sep_axi_extension, so a pure-open SEP -- what these cocotb
+    # tests build -- has no mux at all: the generated open register export contains
+    # no SPI_MUX symbol, tb_top drives the pads straight off the wrapper's struct
+    # port, and nothing holds chip-select deasserted. There is nothing to release.
+    # The old helper wrote a fixed 0x2000_0000 aperture, which DECERRs here.
+    #
+    # This is deliberately NOT symmetric with the firmware side: fw/drivers/spi_mux.h
+    # keeps a spi_mux_select_ot() that is #ifdef-gated on the mux register existing,
+    # because CPU firmware also runs in overlay builds where the mux IS present and
+    # must be pointed at the OT host (spi_sel=1), not merely CS-released. If these
+    # Python tests ever run against an overlay build, they need that same select.
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
@@ -507,6 +505,81 @@ class sep_base_test(uvm_test):
     async def wait_seed_ready(self, timeout: int = 60_000) -> bool:
         """Wait until ESRC accumulates a seed and presents it to CSRNG."""
         return await self._wait_high(cocotb.top.drbg_seed_valid_o, timeout)
+
+    async def report_entropy_stall(self, window: int = 4_000) -> None:
+        """Log WHERE the ESRC->DRBG chain stopped after a seed/genbits timeout.
+
+        A bounded wait must name the handshake that did not
+        retire, not just report "no seed". The chain is
+        decor -> BIW/whitener -> compressor -> ESRC FIFO -> DRBG seed packer, and
+        tb_top exposes a strobe at each stage, so counting them over one window
+        attributes the stall to a specific stage instead of the whole datapath.
+        """
+        dut = cocotb.top
+        strobes = {
+            "esrc_decor_valid": dut.esrc_decor_valid_o,
+            "esrc_whiten_push": dut.esrc_whiten_push_o,
+            "esrc_compress_vld": dut.esrc_compress_vld_o,
+            "drbg_seed_valid": dut.drbg_seed_valid_o,
+        }
+        counts = dict.fromkeys(strobes, 0)
+        for _ in range(window):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            for name, sig in strobes.items():
+                counts[name] += 1 if self.rd(sig) else 0
+
+        self.logger.error(
+            "entropy stall over %d cycles: %s (noise_active=%d ro_enable=0x%03x "
+            "last_compress_data=0x%08x)",
+            window,
+            " ".join(f"{k}={v}" for k, v in counts.items()),
+            self.rd(dut.esrc_noise_active_o),
+            self.rd(dut.esrc_ro_enable_o),
+            self.rd(dut.esrc_compress_data_o),
+        )
+
+        # Frontdoor status: FIFO level and health-test result decide whether the
+        # ESRC itself is stuck or the DRBG side is not draining.
+        #
+        # Every read is BOUNDED and failure-tolerant. One plausible cause of the
+        # stall is a fabric that never released, in which case these reads would
+        # never retire -- and an unbounded diagnostic would turn an attributed
+        # failure into a bare sim timeout, the exact outcome a bounded wait exists
+        # to prevent. The strobe counts above always survive, so a wedged CSR path
+        # degrades to "counts logged, CSR unreadable" instead of taking the whole
+        # report down with it.
+        from seq_lib.sep_esrc_bringup_seq import (
+            ESRC_FIFO_STATUS,
+            ESRC_HEALTH_TEST_CTRL,
+            ESRC_HEALTH_TEST_STATUS,
+            ESRC_MAIN_SM_STATUS,
+            ESRC_CTRL,
+        )
+        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+        from env.sep_axi_agent import SepAxiOp
+
+        for label, addr in (
+            ("ESRC_CTRL", ESRC_CTRL),
+            ("ESRC_FIFO_STATUS", ESRC_FIFO_STATUS),
+            ("ESRC_HEALTH_TEST_CTRL", ESRC_HEALTH_TEST_CTRL),
+            ("ESRC_HEALTH_TEST_STATUS", ESRC_HEALTH_TEST_STATUS),
+            ("ESRC_MAIN_SM_STATUS", ESRC_MAIN_SM_STATUS),
+        ):
+            seq = SepAxiAccessSeq(op=SepAxiOp.READ, addr=addr)
+            try:
+                await with_timeout(self.start_seq(seq), _STALL_CSR_TIMEOUT_NS, "ns")
+            except SimTimeoutError:
+                self.logger.error(
+                    "entropy stall: %s (0x%08x) = <no AXI response within %d ns> -- the "
+                    "CSR path is wedged too, not just the entropy chain; skipping the "
+                    "remaining status reads",
+                    label,
+                    addr,
+                    _STALL_CSR_TIMEOUT_NS,
+                )
+                break
+            self.logger.error("entropy stall: %s (0x%08x) = 0x%08x", label, addr, seq.rdata)
 
     async def wait_genbits(self, timeout: int = 60_000) -> bool:
         """Wait until the CSRNG CTR_DRBG produces a genbits block."""
@@ -606,7 +679,9 @@ class sep_base_test(uvm_test):
         await self.assert_noise_force_active()
         await self.start_seq(SepEsrcConfigSeq("esrc_config", cfg=cfg))
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_enable_gens"))
-        assert await self.wait_seed_ready(), "ESRC never produced a seed (drbg_seed_valid_o)"
+        if not await self.wait_seed_ready():
+            await self.report_entropy_stall()
+            raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb
 

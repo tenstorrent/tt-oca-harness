@@ -6,21 +6,23 @@ helper keeps a shadow of the register so a test can release / park individual
 engines without a read-modify-write race, the way the OCAH consume base sequence
 releases KM first and the target crypto engine later.
 
-The shadow is seeded with the HW reset default (meta/registers/rdl/
+The shadow is seeded with the HW reset default (hw/sys/sep/regs/rdl/
 sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), otbn/aes/hmac/kmac=1 (released) => 0x1E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
 must park() them explicitly; do not rely on a wrong all-parked assumption.
 
-Bit map (hw/sep/sep_reset_ctrl.sv: SW_RESET_N fields):
+Bit map (hw/sys/sep/rtl/sep_reset_ctrl.sv: SW_RESET_N fields):
   km=0, otbn=1, aes=2, hmac=3, kmac=4
 """
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-SEP_RESET_CTRL_SW_RESET_N = 0x1080_3000
+SEP_RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 
 SW_RESET_N_BIT = {
     "km": 0,

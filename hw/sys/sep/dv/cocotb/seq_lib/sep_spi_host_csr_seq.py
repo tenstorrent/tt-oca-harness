@@ -14,13 +14,15 @@ AXI splice (no_cpu), so no firmware. Pure control plane -- no flash BFM.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import random
 
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- register offsets (SEP spi_controller @ 0x10B0_0000; NUM_CS=1) ----------
-SPI_BASE = 0x10B0_0000
+SPI_BASE = sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR")
 INTR_STATUS = SPI_BASE + 0x00   # W1C: ERROR, SPI_EVENT
 INTR_ENABLE = SPI_BASE + 0x04   # RW
 INTR_TEST = SPI_BASE + 0x08     # WO (write-1 sets INTR_STATUS)
@@ -38,6 +40,10 @@ EVENT_ENABLE = SPI_BASE + 0x34  # RW
 # --- field masks (from the generated spi_controller_reg.h) ------------------
 CTRL_RX_WM = 0x0000_00FF
 CTRL_TX_WM = 0x0000_FF00
+# NOTE: the CTRL/STATUS bit values below are FIELD MASKS, not addresses -- several
+# coincidentally resemble SEP apertures (CTRL_OUTPUT_EN/ST_TXFULL == 0x2000_0000, the
+# retired SPI-mux aperture; ST_TXEMPTY == 0x1000_0000, the SEP SRAM base). Do not
+# "derive" them from the register map.
 CTRL_OUTPUT_EN = 0x2000_0000
 CTRL_SW_RST = 0x4000_0000
 CTRL_SPIEN = 0x8000_0000

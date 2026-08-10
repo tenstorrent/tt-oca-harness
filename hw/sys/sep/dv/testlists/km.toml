@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run `./run.sh no_cpu --regress ...` and
-# `./run.sh cpu --regress ...` separately. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the no_cpu and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -42,7 +42,7 @@ args = ["+km_rom_hex=km_rom_coexist.parhex"]
 # oscillators alive under Verilator. REAL fuse-sense (no +skip_fuse_sense): the KM
 # firmware reads OTP/lifecycle at boot and faults on an all-zero shadow, so the test
 # stages a valid PROD OTP image and senses it. The rom_main.rom.parhex artifact is
-# built from tracked source (make -C cocotb/tests/km_fw rom_main); see run.sh.
+# built from tracked source (make -C cocotb/tests/km_fw rom_main).
 name = "sep_km_otbn_sideload_kat_test"
 module = "km.sep_km_otbn_sideload_kat_test"
 seed = 1
@@ -63,7 +63,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # no_cpu mode; +esrc_noise_force makes the ring oscillators alive under Verilator.
 # REAL fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at
 # boot, so the test stages a valid PROD OTP image and senses it. rom_main.rom.parhex
-# is built from tracked source (make -C cocotb/tests/km_fw rom_main); see run.sh.
+# is built from tracked source (make -C cocotb/tests/km_fw rom_main).
 name = "sep_km_aes_sideload_kat_test"
 module = "km.sep_km_aes_sideload_kat_test"
 seed = 1
